@@ -6,11 +6,13 @@
 
 package viper.silicon.reporting
 
-import viper.silicon.decider.RecordedPathConditions
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.decider.{PathConditionStack, RecordedPathConditions}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.AbstractLocalVar
 
 /* TODO: Use a proper pretty-printer such as the one we use for Silver AST nodes and Silicon terms */
 
@@ -59,35 +61,38 @@ class DefaultStateFormatter extends StateFormatter {
     }.mkString("(", ", ", ")")
   }
 
-//  //Methods for SymbexLogger
-//  def toJson(σ: S, π: InsertionOrderedSet[Term]): String = {
-//    val γStr = toJson(σ.γ)
-//    val hStr = toJson(σ.h)
-//    val gStr = toJson(σ.g)
-//    val πStr = toJson(π)
-//    s"""{"store":$γStr,"heap":$hStr,"oldHeap":$gStr,"pcs":$πStr}""".stripMargin
-//  }
-//
-//  private def toJson(γ: ST): String = {
-//    val values: Map[AbstractLocalVar, Term] = γ.values
-//    if (values.isEmpty) "[]" else values.map((storeChunk:(AbstractLocalVar,Term)) => {
-//      s"""{"value":"${storeChunk._1.toString()} -> ${storeChunk._2.toString()}","type":"${storeChunk._1.typ}"}"""
-//    }).mkString("[", ",", "]")
-//  }
-//
-//  private def toJson(h: H): String = {
-//    val values = h.values
-//    if (values.isEmpty) "[]" else values.mkString("[\"", "\",\"", "\"]")
-//  }
-//
-//  private def toJson(π: InsertionOrderedSet[Term]): String = {
-//    /* Attention: Hides non-null and combine terms. */
-//    val filteredPcs = π.filterNot {
-//      case c: BuiltinEquals if c.p0.isInstanceOf[Combine]
-//        || c.p1.isInstanceOf[Combine] => true
-//      case Not(BuiltinEquals(_, Null())) => true
-//      case _ => false
-//    }
-//    if (filteredPcs.isEmpty) "[]" else filteredPcs.mkString("[\"", "\",\"", "\"]")
-//  }
+  //Methods for SymbexLogger
+  def toJson(σ: State, π: Set[Term]): String = {
+    val γStr = toJson(σ.g)
+    val hStr = toJson(σ.h)
+    val gStr = σ.oldHeaps.get(Verifier.PRE_STATE_LABEL) match {
+      case Some(o) => toJson(o)
+      case _ => ""
+    }
+    val πStr = toJson(π)
+    s"""{"store":$γStr,"heap":$hStr,"oldHeap":$gStr,"pcs":$πStr}""".stripMargin
+  }
+
+  private def toJson(γ: Store): String = {
+    val values: Map[AbstractLocalVar, Term] = γ.values
+    if (values.isEmpty) "[]" else values.map((storeChunk:(AbstractLocalVar,Term)) => {
+      s"""{"value":"${storeChunk._1.toString()} -> ${storeChunk._2.toString()}","type":"${storeChunk._1.typ}"}"""
+    }).mkString("[", ",", "]")
+  }
+
+  private def toJson(h: Heap): String = {
+    val values = h.values
+    if (values.isEmpty) "[]" else values.mkString("[\"", "\",\"", "\"]")
+  }
+
+  private def toJson(π: Set[Term]): String = {
+    /* Attention: Hides non-null and combine terms. */
+    val filteredPcs = π.filterNot {
+      case c: BuiltinEquals if c.p0.isInstanceOf[Combine]
+        || c.p1.isInstanceOf[Combine] => true
+      case Not(BuiltinEquals(_, Null())) => true
+      case _ => false
+    }
+    if (filteredPcs.isEmpty) "[]" else filteredPcs.mkString("[\"", "\",\"", "\"]")
+  }
 }

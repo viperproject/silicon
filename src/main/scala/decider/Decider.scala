@@ -97,27 +97,17 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 //    }
 
     private def createProver(): Option[DependencyNotFoundError] = {
-      try {
-        z3 = new Z3ProverStdIO(uniqueId, termConverter, identifierFactory)
-        z3.start() /* Cannot query Z3 version otherwise */
-      } catch {
-        case e: java.io.IOException if e.getMessage.startsWith("Cannot run program") =>
-          val message = (
-            s"Could not execute Z3 at ${z3.z3Path}. Either place z3 in the path, or set "
-              + s"the environment variable ${Silicon.z3ExeEnvironmentVariable}, or run "
-              + s"Silicon with option --z3Exe")
-
-          return Some(DependencyNotFoundError(message))
-      }
+      z3 = new Z3ProverStdIO(uniqueId, termConverter, identifierFactory)
+      z3.start() /* Cannot query Z3 version otherwise */
 
       val z3Version = z3.z3Version()
-      logger.info(s"Using Z3 $z3Version located at ${z3.z3Path}")
+      logger.debug(s"Using Z3 $z3Version located at ${z3.z3Path}")
 
       if (z3Version < Silicon.z3MinVersion)
         logger.warn(s"Expected at least Z3 version ${Silicon.z3MinVersion.version}, but found $z3Version")
 
       if (Silicon.z3MaxVersion.fold(false)(_ < z3Version))
-        logger.warn(  s"Silicon might not work with Z3 version $z3Version, consider using ${Silicon.z3MaxVersion.get}")
+        logger.warn(s"Silicon might not work with Z3 version $z3Version, consider using ${Silicon.z3MaxVersion.get}")
 
       None
     }

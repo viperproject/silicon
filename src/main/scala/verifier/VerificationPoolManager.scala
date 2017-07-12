@@ -66,12 +66,16 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
   }
 
   private def teardownSlaveVerifierPool(): Unit = {
-    slaveVerifiers foreach (_.stop())
+    if (slaveVerifiers != null) {
+      slaveVerifiers foreach (_.stop())
 
-    slaveVerifierExecutor.shutdown()
-    slaveVerifierExecutor.awaitTermination(10, TimeUnit.SECONDS)
+      slaveVerifierExecutor.shutdown()
+      slaveVerifierExecutor.awaitTermination(10, TimeUnit.SECONDS)
+    }
 
-    slaveVerifierPool.close()
+    if (slaveVerifierPool != null) {
+      slaveVerifierPool.close()
+    }
   }
 
   private object slaveVerifierPoolableObjectFactory extends BasePooledObjectFactory[SlaveVerifier] {

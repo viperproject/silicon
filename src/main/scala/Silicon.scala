@@ -7,22 +7,19 @@
 package viper.silicon
 
 import java.text.SimpleDateFormat
-import java.util.concurrent.{Callable, ExecutionException, Executors, TimeUnit, TimeoutException}
-
+import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
-
 import scala.collection.immutable
 import scala.language.postfixOps
 import scala.reflect.runtime.universe
-import scala.util.Try
+import scala.util.{Left, Right, Try}
 import viper.silver.ast
-import viper.silver.verifier.{CliOptionError => SilCliOptionError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
-import viper.silver.frontend.SilFrontend
+import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
+import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
-import viper.silicon.reporting.VerificationException
 import viper.silicon.verifier.DefaultMasterVerifier
 
 object Silicon {
@@ -173,7 +170,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     //bookkeeping for Viper IVE
 //    verifier.bookkeeper.reportInitialProgress(program)
 
-    logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
+    logger.debug(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
     config.inputFile = program.pos match {
       case sp: ast.AbstractSourcePosition => Some(sp.file)
@@ -200,24 +197,19 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
             future.get(config.timeout(), TimeUnit.SECONDS)
 
         result = Some(convertFailures(failures))
-      } catch {
-        case VerificationException(error) =>
-          result = Some(SilFailure(error :: Nil))
-
+      } catch { /* Catch exceptions thrown during verification (errors are not caught) */
         case _: TimeoutException =>
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
-
-        case ee: ExecutionException =>
-          /* If possible, report the real exception that has been wrapped in
-           * the ExecutionException. The wrapping is due to using a future.
-           */
-          val ex =
-            if (ee.getCause != null) ee.getCause
-            else ee
-
-          handleThrowable(ex)
-
-        case ex: Exception => handleThrowable(ex)
+        case exception: Exception =>
+          /* An exception's root cause might be an error; the following code takes care of that */
+          reporting.exceptionToViperError(exception) match {
+            case Right((cause, failure)) =>
+              logger.debug("An exception occurred:", cause) /* Log exception if requested */
+              result = Some(failure) /* Return exceptions as regular verification failures */
+            case Left(error) =>
+              /* Errors are rethrown (see also the try-catch block in object SiliconRunner) */
+              throw error
+          }
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()
@@ -227,20 +219,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately")
       result.get
     }
-  }
-
-  private def handleThrowable(ex: Throwable) {
-//    config.logLevel().toUpperCase match {
-//      case "DEBUG" | "TRACE" | "ALL" => throw ex
-//      case _ =>
-//    }
-
-    throw ex
-
-//    val sw = new StringWriter()
-//    val pw = new PrintWriter(sw)
-//    ex.printStackTrace(pw)
-//    log.debug(ex.toString + "\n" + sw)
   }
 
   private def runVerifier(program: ast.Program): List[Failure] = {
@@ -276,7 +254,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
              })
 
     if (config.showStatistics.isDefined) {
-      ???
+      sys.error("Implementation missing")
 //      val proverStats = verifier.decider.statistics()
 //
 //      verifier.bookkeeper.proverStatistics = proverStats
@@ -297,9 +275,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 //      }
     }
 
-    failures foreach (f => logFailure(f, s => logger.info(s)))
+    failures foreach (f => logFailure(f, s => logger.debug(s)))
 
-    logger.info("\nVerification finished in %s with %s error(s)".format(
+    logger.debug("Verification finished in %s with %s error(s)".format(
         viper.silicon.common.format.formatMillisReadably(/*verifier.bookkeeper.*/elapsedMillis),
         failures.length))
 
@@ -318,12 +296,16 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private def setLogLevelsFromConfig() {
-    val logger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
-    logger.setLevel(Level.toLevel(config.logLevel()))
+    val level = Level.toLevel(config.logLevel())
 
-    config.logger.foreach { case (loggerName, level) =>
+    SiliconRunner.logger.setLevel(level)
+
+    val packageLogger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
+    packageLogger.setLevel(level)
+
+    config.logger.foreach { case (loggerName, loggerLevelString) =>
       val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
-      logger.setLevel(Level.toLevel(level))
+      logger.setLevel(Level.toLevel(loggerLevelString))
     }
   }
 }
@@ -347,11 +329,39 @@ class SiliconFrontend extends SilFrontend {
 
 object SiliconRunner extends SiliconFrontend {
   def main(args: Array[String]) {
+    var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
+
     try {
       execute(args)
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
+
+      if (state >= TranslatorState.Verified && result == SilSuccess) {
+        exitCode = 0
+      }
+    } catch { /* Catch exceptions and errors thrown at any point of the execution of Silicon */
+      case exception: Exception =>
+        /* An exception's root cause might be an error; the following code takes care of that */
+        reporting.exceptionToViperError(exception) match {
+          case Right((cause, failure)) =>
+            /* Report exceptions in a user-friendly way */
+            logger.debug("An exception occurred:", cause) /* Log stack trace */
+            logger.error(failure.toString) /* Log verification failure */
+          case Left(error) =>
+            /* Errors are rethrown (see below); for particular ones, additional messages are logged */
+            error match {
+              case _: NoClassDefFoundError =>
+                logger.error(reporting.noClassDefFoundErrorMessage, error)
+              case _ =>
+                /* Don't do anything special */
+            }
+
+            throw error
+        }
+      case error: NoClassDefFoundError =>
+        /* Log NoClassDefFoundErrors with an additional message */
+        logger.error(reporting.noClassDefFoundErrorMessage, error)
     } finally {
-      siliconInstance.stop()
+        siliconInstance.stop()
         /* TODO: This currently seems necessary to make sure that Z3 is terminated
          *       if Silicon is supposed to terminate prematurely because of a
          *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
@@ -362,14 +372,6 @@ object SiliconRunner extends SiliconFrontend {
          *       corresponding streams.
          */
     }
-
-    val exitCode =
-      if (   config.error.nonEmpty /* Handling command line options failed */
-          || config.exit           /* Must terminate for some other reason */
-          || result != SilSuccess) /* Verification (includes parsing) failed */
-        1
-      else
-        0
 
     sys.exit(exitCode)
   }

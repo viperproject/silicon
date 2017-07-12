@@ -51,7 +51,7 @@ class DefaultMasterVerifier(config: Config)
   protected val multisetsContributor = new DefaultMultisetsContributor(domainTranslator)
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
-  protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter)
+  protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
   protected val predicateSnapFunctionsContributor = new DefaultPredicateSnapFunctionsContributor(preambleReader, symbolConverter, termConverter, predSnapGenerator, config)
 
   private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
@@ -143,8 +143,8 @@ class DefaultMasterVerifier(config: Config)
     allProvers.comment("-" * 60)
 
 
-//    SymbExLogger.resetMemberList()
-//    SymbExLogger.setConfig(config)
+    SymbExLogger.resetMemberList()
+    SymbExLogger.setConfig(config)
 
     /* TODO: A workaround for Silver issue #94. toList must be before flatMap.
      *       Otherwise Set will be used internally and some error messages will be lost.
@@ -182,10 +182,10 @@ class DefaultMasterVerifier(config: Config)
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
 
-//    /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */
-//    SymbExLogger.writeJSFile()
-//    /** Write DOT-Representation of the log if the SymbExLogger is enabled */
-//    SymbExLogger.writeDotFile()
+    /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */
+    SymbExLogger.writeJSFile()
+    /** Write DOT-Representation of the log if the SymbExLogger is enabled */
+    SymbExLogger.writeDotFile()
 
     (   functionVerificationResults
      ++ predicateVerificationResults

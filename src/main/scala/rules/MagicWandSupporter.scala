@@ -10,12 +10,13 @@ import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{InsufficientPermission, InternalReason, NegativePermission}
 import viper.silicon._
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.{IsNoAccess, IsNonNegative}
+import viper.silicon.state.terms.perms.{IsNonNegative, IsNonPositive}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 
@@ -25,7 +26,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
   import consumer._
 
   def checkWandsAreSelfFraming(s: State, g: Store, oldHeap: Heap, root: ast.Member, v: Verifier): VerificationResult =
-    ???
+    sys.error("Implementation missing")
 //  {
 //    val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
 //    var result: VerificationResult = Success()
@@ -147,7 +148,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     var sCurr = s
     var vCurr = v
 
-    while (heapsToVisit.nonEmpty && !v.decider.check(IsNoAccess(toLose), Verifier.config.checkTimeout())) {
+    while (heapsToVisit.nonEmpty && !v.decider.check(IsNonPositive(toLose), Verifier.config.checkTimeout())) {
       val h = heapsToVisit.head
       heapsToVisit = heapsToVisit.tail
 
@@ -162,7 +163,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
       vCurr = v1
     }
 
-    if (vCurr.decider.check(IsNoAccess(toLose), Verifier.config.checkTimeout())) {
+    if (vCurr.decider.check(IsNonPositive(toLose), Verifier.config.checkTimeout())) {
       val tEqs =
         consumedChunks.flatten.sliding(2).map {
           case Array(ch1: BasicChunk, ch2: BasicChunk) => ch1.snap === ch2.snap
@@ -201,7 +202,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
           else
             (ch.perm, NoPerm(), PermMinus(pLoss, ch.perm))
         val h1 =
-          if (v.decider.check(IsNoAccess(pKeep), Verifier.config.checkTimeout())) h - ch
+          if (v.decider.check(IsNonPositive(pKeep), Verifier.config.checkTimeout())) h - ch
           else h - ch + (ch \ pKeep)
         val consumedChunk = ch \ pLost
         (s, h1, Some(consumedChunk), pToConsume, v)
@@ -526,8 +527,9 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             consume(sEmp, acc, pve, v2)((s3, _, v3) => {/* exhale_ext, s3.reserveHeaps = [σUsed', σOps', ...] */
               val s4 = s3.copy(h = s3.reserveHeaps.head,
                                reserveHeaps = Nil,
-                               exhaleExt = false)
-              predicateSupporter.unfold(s4, predicate, tArgs, tPerm, pve, v3, pa)((s5, v4) => { /* s5.h = σUsed'' */
+                               exhaleExt = false,
+                               constrainableARPs = s0.constrainableARPs)
+              predicateSupporter.unfold(s4, predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v3, pa)((s5, v4) => { /* s5.h = σUsed'' */
                 val hOpsJoinUsed = stateConsolidator.merge(s.reserveHeaps(1), s5.h, v4)
                 val s6 = s5.decCycleCounter(predicate)
                            .copy(h = Heap(),
@@ -554,7 +556,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
         eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
           v2.decider.assert(IsNonNegative(tPerm)) {
             case true =>
-              foldingPredicate(s2, predicate, tArgs, tPerm, pve, v2, Some(pa))((s3, h1, v3) => { /* TODO: Why is h1 not used? */
+              val wildcards = s2.constrainableARPs -- s1.constrainableARPs
+              foldingPredicate(s2, predicate, tArgs, tPerm, wildcards, pve, v2, Some(pa))((s3, h1, v3) => { /* TODO: Why is h1 not used? */
                 val s4 = s3.decCycleCounter(predicate)
                                .copy(h = Heap())
                 QI(s4, Heap(), v3)})
@@ -568,6 +571,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                        predicate: ast.Predicate,
                        tArgs: List[Term],
                        tPerm: Term,
+                       constrainableWildcards: InsertionOrderedSet[Var],
                        pve: PartialVerificationError,
                        v: Verifier,
                        optPA: Option[ast.PredicateAccess] = None)
@@ -596,7 +600,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                        h = s1.reserveHeaps.head,
                        reserveHeaps = Nil,
                        exhaleExt = false)
-      predicateSupporter.fold(s2, predicate, tArgs, tPerm, pve, v1)((s3, v2) => { /* s3.h = σUsed'' */
+                 .setConstrainable(constrainableWildcards, false)
+      predicateSupporter.fold(s2, predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v1)((s3, v2) => { /* s3.h = σUsed'' */
         val hOpsJoinUsed = stateConsolidator.merge(s.reserveHeaps(1), s3.h, v2)
         val s4 = s3.copy(h = Heap(),
                          reserveHeaps = Heap() +: hOpsJoinUsed +: s1.reserveHeaps.drop(2),

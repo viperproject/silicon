@@ -13,7 +13,7 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.IsNoAccess
+import viper.silicon.state.terms.perms.IsNonPositive
 import viper.silicon.verifier.Verifier
 
 trait ChunkSupportRules extends SymbolicExecutionRules {
@@ -144,7 +144,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       } else {
         if (terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
           withChunk(s, h, name, args, Some(perms), locacc, pve, v)((s1, h1, ch, v1) => {
-            if (v1.decider.check(IsNoAccess(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout()))
+            if (v1.decider.check(IsNonPositive(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout()))
               Q(s1, h1 - ch, Some(ch), v1)
             else
               Q(s1, h1 - ch + (ch - perms), Some(ch), v1)})

@@ -47,14 +47,13 @@ abstract class BaseVerifier(val config: Config,
   val triggerGenerator = new TriggerGenerator()
   val axiomRewriter = new AxiomRewriter(new utils.Counter()/*, bookkeeper.logfiles(s"axiomRewriter")*/, triggerGenerator)
   val quantifierSupporter = new DefaultQuantifierSupporter(triggerGenerator)
-//  protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter)
+  val snapshotSupporter = new DefaultSnapshotSupporter(symbolConverter)
 
   private val statefulSubcomponents = List[StatefulComponent](
 //    bookkeeper,
     decider,
-    identifierFactory/*,
-    quantifiedChunkSupporter,
-    quantifiedPredicateChunkSupporter*/)
+    termConverter,
+    identifierFactory)
 
   /* Lifetime */
 

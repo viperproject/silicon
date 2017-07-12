@@ -1,0 +1,37 @@
+diff -r 19832d947290 src/main/scala/Silicon.scala
+--- a/src/main/scala/Silicon.scala	Wed Jun 07 11:46:54 2017 +0200
++++ b/src/main/scala/Silicon.scala	Wed Jun 07 22:31:49 2017 +0200
+@@ -118,6 +118,8 @@
+     lifetimeState = LifetimeState.Configured
+ 
+     _config = new Config(args)
++
++    setLogLevelsFromConfig()
+   }
+ 
+   def debugInfo(debugInfo: Seq[(String, Any)]) { this.debugInfo = debugInfo }
+@@ -132,8 +134,6 @@
+ 
+     lifetimeState = LifetimeState.Started
+ 
+-    setLogLevelsFromConfig()
+-
+     verifier = new DefaultMasterVerifier(config)
+     verifier.start()
+   }
+@@ -304,9 +304,14 @@
+   }
+ 
+   private def setLogLevelsFromConfig() {
+-    val logger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
++    val logger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).asInstanceOf[Logger]
+     logger.setLevel(Level.toLevel(config.logLevel()))
+ 
++    val appender = logger.getAppender("STDOUT").asInstanceOf[ch.qos.logback.core.ConsoleAppender[_]]
++    val encoder = appender.getEncoder.asInstanceOf[ch.qos.logback.classic.encoder.PatternLayoutEncoder]
++    encoder.setPattern("%-7([%highlight(%level)]) %msg%n")
++    encoder.start() /* Apparently required for setPattern to have any effect */
++
+     config.logger.foreach { case (loggerName, level) =>
+       val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
+       logger.setLevel(Level.toLevel(level))

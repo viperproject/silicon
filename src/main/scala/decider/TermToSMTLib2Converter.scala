@@ -162,7 +162,6 @@ class TermToSMTLib2Converter
 
     case FullPerm() => "$Perm.Write"
     case NoPerm() => "$Perm.No"
-    case WildcardPerm(v) => render(v)
     case FractionPerm(n, d) => renderBinaryOp("/", renderAsReal(n), renderAsReal(d))
     case PermLess(t0, t1) => renderBinaryOp("<", render(t0), render(t1))
     case PermAtMost(t0, t1) => renderBinaryOp("<=", render(t0), render(t1))
@@ -228,7 +227,7 @@ class TermToSMTLib2Converter
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
-    case PredicateLookup(id, psf, args, formalVars) =>
+    case PredicateLookup(id, psf, args) =>
       val snap: Term = if (args.size == 1) {
         args.head.convert(sorts.Snap)
       } else {

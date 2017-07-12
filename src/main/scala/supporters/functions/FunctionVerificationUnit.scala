@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
-import viper.silicon.{Map, toMap}
+import viper.silicon.{Map, SymbExLogger, toMap}
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.interfaces._
 import viper.silicon.state._
@@ -133,7 +133,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
-//	    SymbExLogger.insertMember(function, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+	    SymbExLogger.insertMember(function, null, v.decider.pcs)
 
       val data = functionData(function)
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
@@ -144,8 +144,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
       val data = functionData(function)
-      val s = sInit.copy(quantifiedVariables = sInit.quantifiedVariables ++ data.arguments,
-                         functionRecorder = ActualFunctionRecorder(data))
+      val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data))
 
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(s, function) match {
