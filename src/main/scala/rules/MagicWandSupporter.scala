@@ -6,9 +6,6 @@
 
 package viper.silicon.rules
 
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon._
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -18,14 +15,17 @@ import viper.silicon.state.terms.perms.IsNonPositive
 import viper.silicon.state.terms.{MagicWandSnapshot, _}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
 import viper.silver.ast.{Exp, Stmt}
 import viper.silver.cfg.Edge
 import viper.silver.cfg.silver.SilverCfg.SilverBlock
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.InsufficientPermission
 
 object magicWandSupporter extends SymbolicExecutionRules with Immutable {
+  import consumer._
   import evaluator._
   import producer._
-  import consumer._
 
   def checkWandsAreSelfFraming(s: State, g: Store, oldHeap: Heap, root: ast.Member, v: Verifier): VerificationResult =
     sys.error("Implementation missing")
@@ -149,6 +149,38 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     Q(sCurr, rCurr, visitedHeaps.reverse ++ heapsToVisit, vCurr)
   }
 
+  def consumeFromMultipleHeaps[C <: PermissionChunk](s: State,
+                                  hs: Stack[Heap],
+                                  pLoss: Term,
+                                  failure: Failure,
+                                  v: Verifier)
+                                 (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[C]))
+                                 (Q: (State, Stack[Heap], Stack[Option[C]], Verifier) => VerificationResult)
+                                 : VerificationResult = {
+    val (result, s1, heaps, consumedChunks) =
+      hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[C]])]((Incomplete(pLoss), s, Stack.empty[Heap], Stack.empty[Option[C]]))((partialResult, heap) =>
+        partialResult match  {
+          case (Complete(), sIn, heaps, cchs)  => (Complete(), sIn, heap +: heaps, None +: cchs)
+          case (Incomplete(permsNeeded), sIn, heaps, cchs) =>
+            val (success, sOut, h, cch) = consumeFunction(sIn, heap, permsNeeded, v)
+            (success, sOut, h +: heaps, cch +: cchs)
+        })
+    result match {
+      case Complete() =>
+        assert(heaps.length == hs.length)
+        assert(consumedChunks.length == hs.length)
+        val tEqs =
+          consumedChunks.flatten.sliding(2).map {
+            case Seq(ch1: BasicChunk, ch2: BasicChunk) => ch1.snap === ch2.snap
+            case Seq(ch1: QuantifiedChunk, ch2: QuantifiedChunk) => ch1.snapshotMap === ch2.snapshotMap
+            case _ => True()
+          }
+        v.decider.assume(tEqs.toIterable)
+        Q(s1, heaps.reverse, consumedChunks.reverse, v)
+      case Incomplete(_) => failure
+    }
+  }
+
   def consumeFromMultipleHeaps(s: State,
                                hs: Stack[Heap],
                                name: String,
@@ -220,9 +252,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             (pLoss, PermMinus(ch.perm, pLoss), NoPerm())
           else
             (ch.perm, NoPerm(), PermMinus(pLoss, ch.perm))
-        val h1 =
-          if (v.decider.check(IsNonPositive(pKeep), Verifier.config.checkTimeout())) h - ch
-          else h - ch + (ch \ pKeep)
+        val h1 = h - ch + (ch \ pKeep)
         val consumedChunk = ch \ pLost
         (s, h1, Some(consumedChunk), pToConsume, v)
 
@@ -278,12 +308,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
-    var allConsumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] = Stack.fill(stackSize - 1)(MMap())
-      /* Record consumptions (transfers) from all heaps except the top-most (which is hUsed,
-       * from which we never transfer from, only to)
-       */
-    var finalStates: Seq[State] = Nil
-    var magicWandChunk: MagicWandChunk = null
+    var results: Seq[(State, Stack[Term], MagicWandChunk)] = Nil
 
     assert(s.reserveHeaps.head.values.isEmpty)
 
@@ -354,161 +379,27 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
 //            say(s"done: create wand chunk: $ch")
               pcsFromHeapIndepExprs :+= v4.decider.pcs.after(preMark)
-              val mergedSnapshot =
-                if (magicWandChunk != null) magicWandChunk.snap.merge(ch.snap, v.decider.pcs.branchConditions)
-                else ch.snap
-              magicWandChunk = ch.copy(snap = mergedSnapshot)
-              /* TODO: Assert that all produced chunks are identical (due to
-               * branching, we might get here multiple times per package).
-               */
 
-//            lnsay(s"-- reached local end of packageWand $myId --")
+              results :+= (s5, v4.decider.pcs.branchConditions, ch)
+              Success()
+            })})})})})
 
-//            lnsay(s"s3.consumedChunks:", 2)
-//            s3.consumedChunks.foreach(x => say(x.toString(), 3))
+    v.decider.prover.comment("Restoring path conditions obtained from evaluating heap-independent expressions")
+    pcsFromHeapIndepExprs.foreach(pcs => v.decider.assume(pcs.asConditionals))
 
-              assert(s3.consumedChunks.length <= allConsumedChunks.length)
-              /* s3.consumedChunks can have fewer layers due to infeasible execution paths,
-               * as illustrated by test case wands/regression/folding_inc1.sil.
-               * Hence the at-most comparison.
-               */
-
-              val consumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] =
-                s3.consumedChunks.map(pairs => {
-                  val cchs: MMap[Stack[Term], MList[BasicChunk]] = MMap()
-
-                  pairs.foreach {
-                    case (guards, chunk) => cchs.getOrElseUpdate(guards, MList()) += chunk
-                  }
-
-                  cchs
-                })
-
-//            say(s"consumedChunks:", 2)
-//            consumedChunks.foreach(x => say(x.toString(), 3))
-
-              assert(consumedChunks.length <= allConsumedChunks.length)
-              /* At-most comparison due to infeasible execution paths */
-
-              consumedChunks.zip(allConsumedChunks).foreach { case (cchs, allcchs) =>
-                cchs.foreach { case (guards, chunks) =>
-                  allcchs.get(guards) match {
-                    case Some(chunks1) => assert(chunks1 == chunks)
-                    case None => allcchs(guards) = chunks
-                  }
-                }
-              }
-
-//            say(s"allConsumedChunks:", 2)
-//            allConsumedChunks.foreach(x => say(x.toString(), 3))
-
-              finalStates :+= s5
-              Success()})})})})})
-
-//    cnt -= 1
-//    lnsay(s"[end packageWand $myId]")
-//
-//    say(s"produced magic wand chunk $magicWandChunk")
-//    say(s"allConsumedChunks:")
-//    allConsumedChunks.foreach(x => say(x.toString(), 2))
-//    say(s"recorded ${finalStates.length} final states")
-//    finalStates.foreach(s => s.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2)))
-
-    r && {
-      assert(finalStates.isEmpty == (magicWandChunk == null))
-
-      if (magicWandChunk == null) {
-        /* magicWandChunk is still null, i.e. no wand chunk was produced. This
-         * should only happen if the wand is inconsistent, i.e. if the symbolic
-         * execution pruned all branches (during the package operation) before
-         * reaching the point at which a wand chunk is created and assigned to
-         * magicWandChunk.
-         */
-        assert(!wand.contains[ast.Let])
-          /* TODO: magicWandSupporter.createChunk expects a store that already
-           * binds variables that are let-bound in the wand.
-           * In the case where the symbolic execution does not prune all branches,
-           * the bindings are taken from the context (see call to createChunk
-           * above).
-           */
-
-        val s1 = s.copy(reserveHeaps = s.reserveHeaps.tail) /* [Remainder reserveHeaps] (match code below) */
-        magicWandSupporter.createChunk(s1, wand, pve, v)((s2, ch, v1) => {
-//          say(s"done: create wand chunk: $ch")
-          Q(s2, ch, v1)})
-      } else {
-//        lnsay("Restoring path conditions obtained from evaluating heap-independent expressions")
-        v.decider.prover.comment("Restoring path conditions obtained from evaluating heap-independent expressions")
-        pcsFromHeapIndepExprs.foreach(pcs => v.decider.assume(pcs.asConditionals))
-
-        assert(finalStates.map(_.reserveHeaps).map(_.length).toSet.size == 1)
-        val joinedReserveHeaps: Stack[MList[Chunk]] = s.reserveHeaps.tail.map(h => MList() ++ h.values) /* [Remainder reserveHeaps] (match code above) */
-        assert(joinedReserveHeaps.length == allConsumedChunks.length - 2)
-
-//        lnsay("Computing joined reserve heaps. Initial stack:")
-//        joinedReserveHeaps.foreach(x => say(x.toString(), 2))
-
-        /* Drop the top-most two heaps from the stack, which record the chunks consumed from
-         * hOps and hLHS. Chunks consumed from these heaps are irrelevant to the outside
-         * package/packaging scope because chunks consumed from
-         *   - hOps have either been newly produced during the execution of ghost statements (such as a
-         *     predicate obtained by folding it), or they have been transferred into hOps, in which case
-         *     they've already been recorded as being consumed from another heap (lower in the stack).
-         *   - hLHS is discarded after the packaging is done
-         */
-        allConsumedChunks = allConsumedChunks.drop(2) /* TODO: Don't record irrelevant chunks in the first place */
-        assert(allConsumedChunks.length == joinedReserveHeaps.length)
-
-//        lnsay("Matching joined reserve heaps (as shown) with consumed chunks minus top two layers:")
-//        allConsumedChunks.foreach(x => say(x.toString(), 2))
-
-        joinedReserveHeaps.zip(allConsumedChunks).foreach { case (hR, allcchs) =>
-          allcchs.foreach { case (guards, chunks) =>
-            chunks.foreach(ch => {
-              val pLoss = Ite(And(guards), ch.perm, NoPerm())
-              var matched = false
-
-              hR.transform {
-                case ch1: BasicChunk if ch1.args == ch.args && ch1.name == ch.name =>
-                  matched = true
-                  ch.duplicate(perm = PermMinus(ch1.perm, pLoss))
-                case ch1 => ch1
-              }
-
-              if (!matched) {
-//                lnsay(s"Couldn't find a match for $ch!")
-//                say(s"hR = $hR", 2)
-//                say(s"guards = $guards", 2)
-//                say(s"chunks = $chunks", 2)
-                sys.error(s"Could not find a match for the following chunk: $ch")
-              }
-            })
-        }}
-
-//        lnsay("Finished joined reserve heaps. Final stack:")
-//        joinedReserveHeaps.foreach(x => say(x.toString(), 2))
-
-        assert(allConsumedChunks.length == s.consumedChunks.length)
-        val consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] =
-          allConsumedChunks.zip(s.consumedChunks).map { case (allcchs, cchs) =>
-            cchs ++ allcchs.toSeq.flatMap { case (guards, chunks) => chunks.map(ch => (guards, ch))}}
-
-//        lnsay(s"Exiting packageWand $myId. Final consumedChunks:")
-//        consumedChunks.foreach(x => say(x.toString(), 2))
-
-
-        /* TODO: Shouldn't we merge the final states here (modulo certain components)?
-         *       Use State.preserveAfterLocalEvaluation?
-         */
-        val s1 = finalStates.head.copy(reserveHeaps = joinedReserveHeaps.map(Heap(_)),
-                                       recordEffects = s.recordEffects,
-                                       consumedChunks = consumedChunks,
-                                       parallelizeBranches = s.parallelizeBranches /* See comment above */
-                                       /*branchConditions = c.branchConditions*/)
-
-        Q(s1, magicWandChunk, v)
-      }
-    }
+    results.foldLeft(r)((res, packageOut) => {
+      res && {
+        val state = packageOut._1
+        val branchConditions = packageOut._2
+        val magicWandChunk = packageOut._3
+        val s1 = state.copy(reserveHeaps = state.reserveHeaps.drop(3),
+          recordEffects = s.recordEffects,
+          consumedChunks = s.consumedChunks,
+          parallelizeBranches = s.parallelizeBranches /* See comment above */
+          /*branchConditions = c.branchConditions*/)
+        executionFlowController.locally(s1, v)((s2, v1) => {
+          v1.decider.setCurrentBranchCondition(And(branchConditions))
+          Q(s2, magicWandChunk, v1)})}})
   }
 
   def applyWand(s: State,
@@ -531,6 +422,48 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
               val s6 = stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
               Q(s6, v3)})})})}
 
+  def transfer[C <: PermissionChunk](s: State,
+               perms: Term,
+               failure: Failure,
+               v: Verifier)
+              (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[C]))
+              (Q: (State, Option[C], Verifier) => VerificationResult)
+              : VerificationResult = {
+
+    assert(s.consumedChunks.length == s.reserveHeaps.tail.length)
+
+    magicWandSupporter.consumeFromMultipleHeaps(s, s.reserveHeaps.tail, perms, failure, v)(consumeFunction)((s1, hs, chs, v1) => {
+      val s2 = s1.copy(reserveHeaps = s.reserveHeaps.head +: hs)
+
+      val s3 =
+        if (s2.recordEffects) {
+          assert(chs.length == s2.consumedChunks.length)
+          val bcs = v1.decider.pcs.branchConditions
+          val consumedChunks3 =
+            chs.zip(s2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], PermissionChunk)]]()) {
+              case (accConsumedChunks, (optCh, consumed)) =>
+                optCh match {
+                  case Some(ch) => ((bcs -> ch) +: consumed) :: accConsumedChunks
+                  case None => consumed :: accConsumedChunks
+                }
+            }.reverse
+
+          s2.copy(consumedChunks = consumedChunks3)
+        } else
+          s2
+
+      val usedChunks = chs.flatten
+      val hUsed = stateConsolidator.merge(s3.reserveHeaps.head, Heap(usedChunks), v1)
+
+      val s4 = s3.copy(reserveHeaps = hUsed +: s3.reserveHeaps.tail)
+
+      /* Returning any of the usedChunks should be fine w.r.t to the snapshot
+       * of the chunk, since consumeFromMultipleHeaps should have equated the
+       * snapshots of all usedChunks.
+       */
+      Q(s4, usedChunks.headOption, v1)})
+  }
+
   def transfer(s: State,
                name: String,
                args: Seq[Term],
@@ -551,7 +484,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
           assert(chs.length == s2.consumedChunks.length)
           val bcs = v1.decider.pcs.branchConditions
           val consumedChunks3 =
-            chs.zip(s2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], BasicChunk)]]()) {
+            chs.zip(s2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], PermissionChunk)]]()) {
               case (accConsumedChunks, (optCh, consumed)) =>
                 optCh match {
                   case Some(ch) => ((bcs -> ch) +: consumed) :: accConsumedChunks

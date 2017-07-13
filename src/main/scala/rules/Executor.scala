@@ -6,22 +6,23 @@
 
 package viper.silicon.rules
 
-import viper.silver.{ast, cfg}
-import viper.silver.cfg.silver.SilverCfg
-import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.errors._
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons._
-import viper.silicon.{ExecuteRecord, MethodCallRecord, Stack, SymbExLogger}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.state.PermissionChunk
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silicon.{ExecuteRecord, MethodCallRecord, Stack, SymbExLogger}
+import viper.silver.cfg.silver.SilverCfg
+import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.errors._
+import viper.silver.verifier.reasons._
+import viper.silver.{ast, cfg}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -260,6 +261,7 @@ object executor extends ExecutionRules with Immutable {
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
               if s.qpFields.contains(field) =>
 
+        assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
@@ -267,7 +269,7 @@ object executor extends ExecutionRules with Immutable {
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, field.name)
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            quantifiedChunkSupporter.removePermissions(
+            val result = quantifiedChunkSupporter.removePermissions(
               s2,
               relevantChunks,
               Seq(`?r`),
@@ -276,18 +278,20 @@ object executor extends ExecutionRules with Immutable {
               FullPerm(),
               chunkOrderHeuristics,
               v2
-            ) {
-              case (true, s3, remainingChunks) =>
+            )
+            result match {
+              case (Complete(), s3, remainingChunks) =>
                 val h3 = Heap(remainingChunks ++ otherChunks)
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 v1.decider.assume(smValueDef)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm)
                 Q(s3.copy(h = h3 + ch), v2)
-              case (false, _, _) =>
+              case (Incomplete(_), _, _) =>
                 Failure(pve dueTo InsufficientPermission(fa))}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
+        assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) =>
@@ -373,7 +377,7 @@ object executor extends ExecutionRules with Immutable {
               if (s.exhaleExt) {
               val s1 = s.copy(recordEffects = true, consumedChunks = Stack.fill(s.consumedChunks.size)(Nil))
               consume(s1, a, pve, v)((s2, _, v1) => {
-                val newlyConsumedChunks = s2.consumedChunks.foldLeft[Seq[(Stack[Term], BasicChunk)]](Nil)(_ ++ _)
+                val newlyConsumedChunks = s2.consumedChunks.foldLeft[Seq[(Stack[Term], PermissionChunk)]](Nil)(_ ++ _)
                 val hOps = newlyConsumedChunks.foldLeft(s.reserveHeaps.head)((collected, consumedChunk) =>
                   collected + consumedChunk._2)
                 val mergedConsumedChunks = s.consumedChunks.zip(s2.consumedChunks).map((consumedPair) =>
