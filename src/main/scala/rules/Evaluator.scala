@@ -6,11 +6,6 @@
 
 package viper.silicon.rules
 
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors.PreconditionInAppFalse
-import viper.silver.verifier.reasons._
-import viper.silicon.{EvaluateRecord, Map, SymbExLogger, TriggerSets}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.state._
@@ -18,8 +13,13 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.{BigPermSum, IsNonNegative, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.verifier.Verifier
 import viper.silicon.utils.toSf
+import viper.silicon.verifier.Verifier
+import viper.silicon.{EvaluateRecord, Map, SymbExLogger, TriggerSets}
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.errors.PreconditionInAppFalse
+import viper.silver.verifier.reasons._
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -56,8 +56,8 @@ trait EvaluationRules extends SymbolicExecutionRules {
 }
 
 object evaluator extends EvaluationRules with Immutable {
-  import producer._
   import consumer._
+  import producer._
 
   def evals(s: State, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, v: Verifier)
            (Q: (State, List[Term], Verifier) => VerificationResult)
@@ -118,8 +118,7 @@ object evaluator extends EvaluationRules with Immutable {
      */
     val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s),
                     reserveHeaps = Nil,
-                    exhaleExt = false,
-                    recordEffects = false)
+                    exhaleExt = false)
 
     eval2(s1, e, pve, v)((s2, t, v1) => {
       val s3 =
@@ -135,8 +134,7 @@ object evaluator extends EvaluationRules with Immutable {
           s2
       val s4 = s3.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
-                       exhaleExt = s.exhaleExt,
-                       recordEffects = s.recordEffects)
+                       exhaleExt = s.exhaleExt)
       Q(s4, t, v1)})
   }
 

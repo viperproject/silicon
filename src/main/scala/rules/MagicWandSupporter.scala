@@ -302,9 +302,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //    s.reserveHeaps.map(v.stateFormatter.format).foreach(str => say(str, 2))
 
     val s = if (state.exhaleExt) state else
-      state.copy(reserveHeaps = Heap() :: state.h :: Nil,
-                 recordEffects = true,
-                 consumedChunks = Nil :: Nil)
+      state.copy(reserveHeaps = Heap() :: state.h :: Nil)
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
@@ -348,9 +346,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                            reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
                            exhaleExt = true,
                            oldHeaps = s.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> sLhs.h),
-                           recordEffects = true,
-                           conservingSnapshotGeneration = s.conservingSnapshotGeneration,
-                           consumedChunks = Stack.fill(stackSize - 1)(Nil))
+                           conservingSnapshotGeneration = s.conservingSnapshotGeneration)
         /* s2.reserveHeaps is [hUsed, hOps, hLHS, ...], where hUsed and hOps are initially
          * empty, and where the dots represent the heaps belonging to surrounding package/packaging
          * operations. hOps will be populated while processing the RHS of the wand to package.
@@ -369,9 +365,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
           consume(proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail), wand.right, pve, proofScriptVerifier)((s3, snap, v3) => {
             val s4 = s3.copy(//h = s.h, /* Temporarily */
                              exhaleExt = false,
-                             recordEffects = false,
-                             oldHeaps = s.oldHeaps,
-                             consumedChunks = Stack())
+                             oldHeaps = s.oldHeaps)
 
 //          say(s"done: consumed RHS ${wand.right}")
 //          say(s"next: create wand chunk")
@@ -393,8 +387,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
         val branchConditions = packageOut._2
         val magicWandChunk = packageOut._3
         val s1 = state.copy(reserveHeaps = state.reserveHeaps.drop(3),
-          recordEffects = s.recordEffects,
-          consumedChunks = s.consumedChunks,
           parallelizeBranches = s.parallelizeBranches /* See comment above */
           /*branchConditions = c.branchConditions*/)
         executionFlowController.locally(s1, v)((s2, v1) => {
@@ -430,38 +422,19 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
               (Q: (State, Option[C], Verifier) => VerificationResult)
               : VerificationResult = {
 
-    assert(s.consumedChunks.length == s.reserveHeaps.tail.length)
-
     magicWandSupporter.consumeFromMultipleHeaps(s, s.reserveHeaps.tail, perms, failure, v)(consumeFunction)((s1, hs, chs, v1) => {
       val s2 = s1.copy(reserveHeaps = s.reserveHeaps.head +: hs)
 
-      val s3 =
-        if (s2.recordEffects) {
-          assert(chs.length == s2.consumedChunks.length)
-          val bcs = v1.decider.pcs.branchConditions
-          val consumedChunks3 =
-            chs.zip(s2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], PermissionChunk)]]()) {
-              case (accConsumedChunks, (optCh, consumed)) =>
-                optCh match {
-                  case Some(ch) => ((bcs -> ch) +: consumed) :: accConsumedChunks
-                  case None => consumed :: accConsumedChunks
-                }
-            }.reverse
-
-          s2.copy(consumedChunks = consumedChunks3)
-        } else
-          s2
-
       val usedChunks = chs.flatten
-      val hUsed = stateConsolidator.merge(s3.reserveHeaps.head, Heap(usedChunks), v1)
+      val hUsed = stateConsolidator.merge(s2.reserveHeaps.head, Heap(usedChunks), v1)
 
-      val s4 = s3.copy(reserveHeaps = hUsed +: s3.reserveHeaps.tail)
+      val s3 = s2.copy(reserveHeaps = hUsed +: s2.reserveHeaps.tail)
 
       /* Returning any of the usedChunks should be fine w.r.t to the snapshot
        * of the chunk, since consumeFromMultipleHeaps should have equated the
        * snapshots of all usedChunks.
        */
-      Q(s4, usedChunks.headOption, v1)})
+      Q(s3, usedChunks.headOption, v1)})
   }
 
   def transfer(s: State,
@@ -474,38 +447,19 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
               (Q: (State, Option[BasicChunk], Verifier) => VerificationResult)
               : VerificationResult = {
 
-    assert(s.consumedChunks.length == s.reserveHeaps.tail.length)
-
     magicWandSupporter.consumeFromMultipleHeaps(s, s.reserveHeaps.tail, name, args, perms, locacc, pve, v)((s1, hs, chs, v1/*, pcr*/) => {
       val s2 = s1.copy(reserveHeaps = s.reserveHeaps.head +: hs)
 
-      val s3 =
-        if (s2.recordEffects) {
-          assert(chs.length == s2.consumedChunks.length)
-          val bcs = v1.decider.pcs.branchConditions
-          val consumedChunks3 =
-            chs.zip(s2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], PermissionChunk)]]()) {
-              case (accConsumedChunks, (optCh, consumed)) =>
-                optCh match {
-                  case Some(ch) => ((bcs -> ch) +: consumed) :: accConsumedChunks
-                  case None => consumed :: accConsumedChunks
-                }
-            }.reverse
-
-          s2.copy(consumedChunks = consumedChunks3)
-        } else
-          s2
-
       val usedChunks = chs.flatten
-      val hUsed = stateConsolidator.merge(s3.reserveHeaps.head, Heap(usedChunks), v1)
+      val hUsed = stateConsolidator.merge(s2.reserveHeaps.head, Heap(usedChunks), v1)
 
-      val s4 = s3.copy(reserveHeaps = hUsed +: s3.reserveHeaps.tail)
+      val s3 = s2.copy(reserveHeaps = hUsed +: s2.reserveHeaps.tail)
 
       /* Returning any of the usedChunks should be fine w.r.t to the snapshot
        * of the chunk, since consumeFromMultipleHeaps should have equated the
        * snapshots of all usedChunks.
        */
-      Q(s4, usedChunks.headOption, v1)})
+      Q(s3, usedChunks.headOption, v1)})
   }
 
   def getEvalHeap(s: State): Heap = {

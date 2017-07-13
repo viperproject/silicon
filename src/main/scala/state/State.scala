@@ -8,7 +8,6 @@ package viper.silicon.state
 
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces.state.PermissionChunk
 import viper.silicon.rules.SnapshotMapDefinition
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
@@ -48,9 +47,6 @@ final case class State(g: Store = Store(),
                        applyHeuristics: Boolean = false,
                        heuristicsDepth: Int = 0,
                        triggerAction: AnyRef = null,
-
-                       recordEffects: Boolean = false,
-                       consumedChunks: Stack[Seq[(Stack[Term], PermissionChunk)]] = Nil,
 
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
@@ -135,7 +131,6 @@ object State {
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, exhaleExt1,
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
-                 recordEffects1, consumedChunks1,
                  qpFields1, qpPredicates1, smCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1) =>
 
@@ -156,7 +151,6 @@ object State {
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `exhaleExt1`,
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
-                     `recordEffects1`, `consumedChunks1`,
                      `qpFields1`, `qpPredicates1`, smCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`) =>
 

@@ -9,14 +9,13 @@ package viper.silicon.rules
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.state.PermissionChunk
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ExecuteRecord, MethodCallRecord, Stack, SymbExLogger}
+import viper.silicon.{ExecuteRecord, MethodCallRecord, SymbExLogger}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.PartialVerificationError
@@ -375,18 +374,19 @@ object executor extends ExecutionRules with Immutable {
               r && Q(s, v)
             } else
               if (s.exhaleExt) {
-              val s1 = s.copy(recordEffects = true, consumedChunks = Stack.fill(s.consumedChunks.size)(Nil))
-              consume(s1, a, pve, v)((s2, _, v1) => {
-                val newlyConsumedChunks = s2.consumedChunks.foldLeft[Seq[(Stack[Term], PermissionChunk)]](Nil)(_ ++ _)
-                val hOps = newlyConsumedChunks.foldLeft(s.reserveHeaps.head)((collected, consumedChunk) =>
-                  collected + consumedChunk._2)
-                val mergedConsumedChunks = s.consumedChunks.zip(s2.consumedChunks).map((consumedPair) =>
-                  consumedPair._2 ++ consumedPair._1)
-                Q(s2.copy(h = hOps, reserveHeaps = hOps +: s2.reserveHeaps.tail, recordEffects = s.recordEffects, consumedChunks = mergedConsumedChunks), v1)
+              Predef.assert(s.h.values.isEmpty)
+              Predef.assert(s.reserveHeaps.head.values.isEmpty)
+
+              /* When exhaleExt is set magicWandSupporter.transfer is used to transfer permissions to
+               * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
+               * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
+               */
+              consume(s, a, pve, v)((s2, _, v1) => {
+                Q(s2.copy(h = s2.reserveHeaps.head), v1)
               })
             } else
               consume(s, a, pve, v)((s1, _, v1) => {
-                val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps, recordEffects = s.recordEffects)
+                val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
                 Q(s2, v1)})
         }
 
@@ -452,12 +452,8 @@ object executor extends ExecutionRules with Immutable {
               /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
               s1.copy(h = hOps,
                       exhaleExt = false,
-                      reserveHeaps = Nil,
-                      recordEffects = false,
-                      consumedChunks = Stack())
+                      reserveHeaps = Nil)
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
-            assert(s2.consumedChunks.length == s.consumedChunks.length)
-            assert(s2.consumedChunks.length == math.max(s2.reserveHeaps.length - 1, 0))
             continuation(s2, v1)
           })
       }
