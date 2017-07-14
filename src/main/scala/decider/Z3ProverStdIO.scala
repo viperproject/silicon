@@ -103,17 +103,27 @@ class Z3ProverStdIO(uniqueId: String,
   // resulting in the close() method to terminate
   def stop() {
     this.synchronized {
-      if (logfileWriter != null) logfileWriter.flush()
-      if (output != null) output.flush()
-
+      if (logfileWriter != null) {
+        logfileWriter.flush()
+      }
+      if (output != null) {
+        output.flush()
+      }
       if (z3 != null) {
-          z3.destroyForcibly()
-          z3.waitFor(10, TimeUnit.SECONDS) /* Makes the current thread wait until the process has been shut down */
+        z3.destroyForcibly()
+        z3.waitFor(10, TimeUnit.SECONDS) /* Makes the current thread wait until the process has been shut down */
       }
 
-      if (logfileWriter != null) logfileWriter.close()
-      if (input != null) input.close()
-      if (output != null) output.close()
+      if (logfileWriter != null) {
+        logfileWriter.close()
+      }
+      if (input != null) {
+        input.close()
+      }
+      if (output != null) {
+        output.close()
+      }
+    }
   }
 
   def push(n: Int = 1) {
