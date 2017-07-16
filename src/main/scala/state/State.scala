@@ -8,6 +8,7 @@ package viper.silicon.state
 
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.rules.SnapshotMapDefinition
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
@@ -42,6 +43,7 @@ final case class State(g: Store = Store(),
 
                        reserveHeaps: Stack[Heap] = Nil,
                        reserveCfgs: Stack[SilverCfg] = Stack(),
+                       conservedPcs: Stack[Vector[RecordedPathConditions]] = Stack(),
                        exhaleExt: Boolean = false,
 
                        applyHeuristics: Boolean = false,
@@ -129,7 +131,7 @@ object State {
                  recordPossibleTriggers1, possibleTriggers1,
                  partiallyConsumedHeap1,
                  permissionScalingFactor1,
-                 reserveHeaps1, reserveCfgs1, exhaleExt1,
+                 reserveHeaps1, reserveCfgs1, conseredPcs1, exhaleExt1,
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
                  qpFields1, qpPredicates1, smCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1) =>
@@ -149,7 +151,7 @@ object State {
                      `recordPossibleTriggers1`, possibleTriggers2,
                      `partiallyConsumedHeap1`,
                      `permissionScalingFactor1`,
-                     `reserveHeaps1`, `reserveCfgs1`, `exhaleExt1`,
+                     `reserveHeaps1`, `reserveCfgs1`, `conseredPcs1`, `exhaleExt1`,
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
                      `qpFields1`, `qpPredicates1`, smCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`) =>

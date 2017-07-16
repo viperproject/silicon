@@ -157,6 +157,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                                  (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[C]))
                                  (Q: (State, Stack[Heap], Stack[Option[C]], Verifier) => VerificationResult)
                                  : VerificationResult = {
+    assert(s.exhaleExt)
+    val preMark = v.decider.setPathConditionMark()
     val (result, s1, heaps, consumedChunks) =
       hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[C]])]((Incomplete(pLoss), s, Stack.empty[Heap], Stack.empty[Option[C]]))((partialResult, heap) =>
         partialResult match  {
@@ -176,7 +178,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             case _ => True()
           }
         v.decider.assume(tEqs.toIterable)
-        Q(s1, heaps.reverse, consumedChunks.reverse, v)
+        val conservedPcs = s1.conservedPcs.head :+ v.decider.pcs.after(preMark)
+        Q(s1.copy(conservedPcs = conservedPcs +: s1.conservedPcs.tail), heaps.reverse, consumedChunks.reverse, v)
       case Incomplete(_) => failure
     }
   }
@@ -192,6 +195,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                               (Q: (State, Stack[Heap], Stack[Option[BasicChunk]], Verifier) => VerificationResult)
                               : VerificationResult = {
 
+    assert(s.exhaleExt)
+    val preMark = v.decider.setPathConditionMark()
     val consumedChunks: Array[Option[BasicChunk]] = Array.fill(hs.length)(None)
     var toLose = pLoss
     var heapsToVisit = hs
@@ -223,7 +228,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
       vCurr.decider.assume(tEqs.toIterable)
 
-      Q(sCurr, visitedHeaps.reverse ++ heapsToVisit, consumedChunks, vCurr)
+      val conservedPcs = sCurr.conservedPcs.head :+ vCurr.decider.pcs.after(preMark)
+      Q(sCurr.copy(conservedPcs = conservedPcs +: sCurr.conservedPcs.tail), visitedHeaps.reverse ++ heapsToVisit, consumedChunks, vCurr)
     } else
       Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
   }
@@ -306,7 +312,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
-    var results: Seq[(State, Stack[Term], MagicWandChunk)] = Nil
+    var results: Seq[(State, Stack[Term], Vector[RecordedPathConditions], MagicWandChunk)] = Nil
 
     assert(s.reserveHeaps.head.values.isEmpty)
 
@@ -318,8 +324,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                       reserveHeaps = Nil,
                       exhaleExt = false,
                       parallelizeBranches = false)
-
-    var pcsFromHeapIndepExprs = Vector[RecordedPathConditions]()
 
     val r = executionFlowController.locally(sEmp, v)((s1, v1) => {
       /* Using conservingSnapshotGeneration a snapshot (binary tree) will be
@@ -344,6 +348,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                            h = Heap(),
                            reserveHeaps = Heap() +: Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
                            reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
+                           conservedPcs = Vector[RecordedPathConditions]() +: s.conservedPcs,
                            exhaleExt = true,
                            oldHeaps = s.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> sLhs.h),
                            conservingSnapshotGeneration = s.conservingSnapshotGeneration)
@@ -372,25 +377,31 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             val preMark = v3.decider.setPathConditionMark()
             magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
 //            say(s"done: create wand chunk: $ch")
-              pcsFromHeapIndepExprs :+= v4.decider.pcs.after(preMark)
+              val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark)
+              val conservedPcsTail = s5.conservedPcs.tail
+              val newConservedPcs =
+                if (conservedPcsTail.isEmpty) conservedPcsTail
+                else {
+                  val head = conservedPcsTail.head ++ conservedPcs
+                  head +: conservedPcsTail.tail
+                }
 
-              results :+= (s5, v4.decider.pcs.branchConditions, ch)
+              results :+= (s5.copy(conservedPcs = newConservedPcs), v4.decider.pcs.branchConditions, conservedPcs, ch)
               Success()
             })})})})})
-
-    v.decider.prover.comment("Restoring path conditions obtained from evaluating heap-independent expressions")
-    pcsFromHeapIndepExprs.foreach(pcs => v.decider.assume(pcs.asConditionals))
 
     results.foldLeft(r)((res, packageOut) => {
       res && {
         val state = packageOut._1
         val branchConditions = packageOut._2
-        val magicWandChunk = packageOut._3
+        val conservedPcs = packageOut._3
+        val magicWandChunk = packageOut._4
         val s1 = state.copy(reserveHeaps = state.reserveHeaps.drop(3),
           parallelizeBranches = s.parallelizeBranches /* See comment above */
           /*branchConditions = c.branchConditions*/)
         executionFlowController.locally(s1, v)((s2, v1) => {
           v1.decider.setCurrentBranchCondition(And(branchConditions))
+          conservedPcs.foreach(pcs => v1.decider.assume(pcs.asConditionals))
           Q(s2, magicWandChunk, v1)})}})
   }
 

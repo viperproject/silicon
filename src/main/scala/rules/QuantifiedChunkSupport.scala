@@ -504,7 +504,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         (result, s2, h2, Some(consumedChunk))
       })((s3, oCh, v2) =>
         oCh match {
-          case Some(ch) => Q(s3, s3.h, ch.snapshotMap.convert(sorts.Snap), v2)
+          case Some(ch) =>
+            val snap = genericLookup(location, ch.snapshotMap, arguments, v).convert(sorts.Snap)
+            Q(s3, s3.h, snap, v2)
           case _ => Q(s3, s3.h, v2.decider.fresh(sorts.Snap), v2)
         }
       )
