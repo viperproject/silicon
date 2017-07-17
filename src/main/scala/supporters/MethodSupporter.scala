@@ -11,7 +11,6 @@ import viper.silicon.{SymbExLogger, WellformednessCheckRecord}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
-import viper.silicon.common.io.toFile
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}

@@ -9,7 +9,7 @@ package viper.silicon.supporters
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
-import viper.silicon.{Map, toMap}
+import viper.silicon.toMap
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.{SymbolConverter, terms}

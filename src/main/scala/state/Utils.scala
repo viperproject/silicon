@@ -181,6 +181,7 @@ package object utils {
       case MultisetCardinality(t) => MultisetCardinality(go(t))
       case MultisetCount(t0, t1) => MultisetCount(go(t0), go(t1))
       case MultisetAdd(t1, t2) => MultisetAdd(go(t1), go(t2))
+      case MagicWandSnapshot(lhs, rhs) => MagicWandSnapshot(go(lhs), go(rhs))
       case Combine(t0, t1) => Combine(go(t0), go(t1))
       case First(t) => First(go(t))
       case Second(t) => Second(go(t))

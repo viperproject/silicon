@@ -12,7 +12,6 @@ import viper.silver.verifier.VerificationError
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
 import viper.silver.ast.utility.Rewriter.Traverse
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, Var}
 import viper.silicon.verifier.Verifier
 

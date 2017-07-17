@@ -7,11 +7,8 @@
 package viper.silicon.state.terms
 
 import viper.silver.ast.utility.{GenericArithmeticSolver, GenericTriggerGenerator, GenericAxiomRewriter}
-import viper.silicon.reporting.MultiRunLogger
 import viper.silicon.utils.Counter
-import viper.silicon.state.terms
-import viper.silicon.state.terms._
-import viper.silicon.state.Identifier
+import viper.silicon.state.{Identifier, terms}
 
 class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryOp[Seq[Term]] {
   override val toString = s"{${p.mkString(",")}}"

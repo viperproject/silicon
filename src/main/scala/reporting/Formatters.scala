@@ -6,8 +6,7 @@
 
 package viper.silicon.reporting
 
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.{PathConditionStack, RecordedPathConditions}
+import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.terms._

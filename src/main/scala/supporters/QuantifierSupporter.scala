@@ -6,9 +6,7 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.state.terms.{App, HeapDepFun, Trigger}
 import viper.silicon.state.terms._
-import viper.silver.ast.utility.Rewriter.Traverse
 
 trait QuantifierSupporter {
   def autoTrigger(q: Quantification): Quantification

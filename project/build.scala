@@ -1,7 +1,7 @@
 import sbt._
 import Keys._
 import sbtassembly.AssemblyPlugin.autoImport._
-import de.oakgrove.SbtBrand.{BrandKeys, brandSettings, Val, BrandObject}
+import de.oakgrove.SbtBrand.{BrandKeys, brandSettings, Val}
 import de.oakgrove.SbtHgId.{HgIdKeys, hgIdSettings}
 import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
 

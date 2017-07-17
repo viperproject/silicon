@@ -1,6 +1,5 @@
 import java.io.{FileOutputStream, OutputStreamWriter, BufferedWriter}
 import scala.collection.mutable
-import scala.collection.immutable.SortedMap
 import scala.io.{Source, BufferedSource}
 
 /* Declarations */

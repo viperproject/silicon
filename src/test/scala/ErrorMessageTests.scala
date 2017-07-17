@@ -8,7 +8,7 @@ package viper.silicon.tests
 import java.nio.file.{Path, Paths}
 
 import org.scalatest.FunSuite
-import viper.silver.verifier.{AbstractError, AbstractVerificationError, ErrorReason, Failure => SilFailure}
+import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure => SilFailure}
 import viper.silicon.Silicon
 import viper.silver.ast._
 import viper.silver.ast.utility.Rewriter._

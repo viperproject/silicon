@@ -149,7 +149,7 @@ object producer extends ProductionRules with Immutable {
           v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
           /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
            *       then remove use of BigAnd; for one it is not efficient since
-           *       the tail of the (decreasing list parameter Ï†s) is BigAnd-ed
+           *       the tail of the (decreasing list parameter as) is BigAnd-ed
            *       over and over again.
            */
 
@@ -195,11 +195,14 @@ object producer extends ProductionRules with Immutable {
                          a: ast.Exp,
                          pve: PartialVerificationError,
                          v: Verifier)
-                        (Q: (State, Verifier) => VerificationResult)
+                        (continuation: (State, Verifier) => VerificationResult)
                         : VerificationResult = {
 
     v.logger.debug(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
     v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
+
+    val Q: (State, Verifier) => VerificationResult = (state, verifier) =>
+      continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
 
     val produced = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
@@ -317,7 +320,8 @@ object producer extends ProductionRules with Immutable {
             addNewChunk(s2, tArgs, snap, gain, v2)(Q)}))
 
       case wand: ast.MagicWand =>
-        magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) =>
+        val snap = sf(sorts.Snap, v)
+        magicWandSupporter.createChunk(s, wand, First(snap), Second(snap), pve, v)((s1, chWand, v1) =>
           chunkSupporter.produce(s1, s1.h, chWand, v1)((s2, h2, v2) =>
             Q(s2.copy(h = h2), v2)))
 

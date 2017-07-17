@@ -8,7 +8,7 @@ package viper.silicon.supporters
 
 import viper.silver.ast
 import viper.silicon.rules.functionSupporter
-import viper.silicon.state.{Identifier, SymbolConverter}
+import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
 
 trait ExpressionTranslator {
@@ -193,6 +193,7 @@ trait ExpressionTranslator {
              | _: ast.FractionalPerm
              | _: ast.Result
              | _: ast.Unfolding
+             | _: ast.Applying
              | _: ast.InhaleExhaleExp
              | _: ast.PredicateAccess
              | _: ast.FuncApp
@@ -201,12 +202,7 @@ trait ExpressionTranslator {
              | _: ast.WildcardPerm
              | _: ast.EpsilonPerm
              | _: ast.ForPerm
-             | _: ast.ApplyOld
              | _: ast.MagicWand
-             | _: ast.FoldingGhostOp
-             | _: ast.UnfoldingGhostOp
-             | _: ast.ApplyingGhostOp
-             | _: ast.PackagingGhostOp
              =>
 
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")

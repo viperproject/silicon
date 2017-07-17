@@ -155,7 +155,8 @@ case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdenti
 
 case class MagicWandChunk(id: MagicWandIdentifier,
                           bindings: Map[ast.AbstractLocalVar, Term],
-                          args: Seq[Term])
+                          args: Seq[Term],
+                          snap: MagicWandSnapshot)
     extends ResourceChunk {
   override val resourceID = MagicWandID()
 
@@ -165,6 +166,6 @@ case class MagicWandChunk(id: MagicWandIdentifier,
       case other => other.toString
     }
 
-    s"wand@$pos[${args.mkString(",")}]"
+    s"wand@$pos[$snap; ${args.mkString(",")}]"
   }
 }

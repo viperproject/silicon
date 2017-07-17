@@ -16,9 +16,7 @@ import viper.silicon.interfaces.state._
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms._
 import viper.silicon.state._
-import viper.silicon.supporters.PredicateVerificationUnit
 import viper.silicon.verifier.Verifier
-import viper.silicon.{Config, Stack}
 
 object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
   import executor._
@@ -330,11 +328,10 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
     if (s.exhaleExt) {
 //      heuristicsLogger.debug(s"  reaction: packaging $wand")
       /* TODO: The next block is an exact copy of the corresponding case in the consumer. Reuse code! */
-      magicWandSupporter.packageWand(s.copy(h = h), wand, pve, v)((s1, chWand, v1) => {
+      magicWandSupporter.packageWand(s.copy(h = h), wand, ast.Seqn(Seq())(), pve, v)((s1, chWand, v1) => {
         val hOps = s1.reserveHeaps.head + chWand
         val s2 = s1.copy(exhaleExt = true,
-                         reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail,
-                         lhsHeap = None)
+                         reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail)
         assert(s2.reserveHeaps.length == s.reserveHeaps.length)
         assert(s2.consumedChunks.length == s.consumedChunks.length)
         assert(s2.consumedChunks.length == s2.reserveHeaps.length - 1)
@@ -342,7 +339,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
         Q(sEmp, sEmp.h, v1)})
     } else {
 //      heuristicsLogger.debug(s"  reaction: package $wand")
-      val packageStmt = ast.Package(wand)()
+      val packageStmt = ast.Package(wand, ast.Seqn(Seq())(), Seq())()
       exec(s.copy(h = h), packageStmt, v)((s1, v1) => {
         Q(s1, s1.h, v1)})
     }
@@ -355,64 +352,35 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 
     /* TODO: Test combination of applyWand-heuristic and wand references (wand w := ...) */
 
-    if (s.exhaleExt) {
-//      heuristicsLogger.debug(s"  reaction: applying $wand")
-      val lhsAndWand = ast.And(wand.left, wand)()
-      magicWandSupporter.applyingWand(s.copy(h = h), Store(bindings), wand, lhsAndWand, pve, v)(Q)
-    } else {
-//      heuristicsLogger.debug(s"  reaction: apply $wand")
       val applyStmt = ast.Apply(wand)()
       exec(s.copy(g = Store(bindings), h = h), applyStmt, v)((s1, v1) => {
         Q(s1.copy(g = s.g), s1.h, v1)})
-    }
   }
 
   def unfoldPredicate(acc: ast.PredicateAccessPredicate, pve: PartialVerificationError)
                      (s: State, h: Heap, v: Verifier)
                      (Q: (State, Heap, Verifier) => VerificationResult)
                      : VerificationResult = {
-
-
-    if (s.exhaleExt) {
-//      heuristicsLogger.debug(s"  reaction: unfolding $acc")
-      magicWandSupporter.unfoldingPredicate(s.copy(h = h), acc, pve, v)(Q)
-    } else {
-//      heuristicsLogger.debug(s"  reaction: unfold $acc")
       val unfoldStmt = ast.Unfold(acc)()
       exec(s.copy(h = h), unfoldStmt, v)((s1, v1) => {
         Q(s1, s1.h, v1)})
-    }
   }
 
   def foldPredicate(acc: ast.PredicateAccessPredicate, pve: PartialVerificationError)
                    (s: State, h: Heap, v: Verifier)
                    (Q: (State, Heap, Verifier) => VerificationResult)
                    : VerificationResult = {
-
-    if (s.exhaleExt) {
-//      heuristicsLogger.debug(s"  reaction: folding $acc")
-      magicWandSupporter.foldingPredicate(s.copy(h = h), acc, pve, v)(Q)
-    } else {
-//      heuristicsLogger.debug(s"  reaction: fold $acc")
       val foldStmt = ast.Fold(acc)()
       exec(s.copy(h = h), foldStmt, v)((s1, v1) => {
         Q(s1, s1.h, v1)})
-    }
   }
 
   def foldPredicate(predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError)
                    (s: State, h: Heap, v: Verifier)
                    (Q: (State, Heap, Verifier) => VerificationResult)
                    : VerificationResult = {
-
-    if (s.exhaleExt) {
-//      heuristicsLogger.debug(s"  reaction: folding ${predicate.name}(${tArgs.mkString(",")})")
-      magicWandSupporter.foldingPredicate(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)(Q)
-    } else {
-//      heuristicsLogger.debug(s"  reaction: fold ${predicate.name}(${tArgs.mkString(",")})")
-      predicateSupporter.fold(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)((s1, v1) =>
+    predicateSupporter.fold(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)((s1, v1) =>
         Q(s1, s1.h, v1))
-    }
   }
 
   /* Helpers */

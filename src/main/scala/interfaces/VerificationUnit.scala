@@ -9,7 +9,6 @@ package viper.silicon.interfaces
 import viper.silver.ast
 import viper.silicon.state.State
 import viper.silver.components.StatefulComponent
-import viper.silicon.verifier.Verifier
 
 trait VerificationUnit[U <: ast.Node] extends StatefulComponent {
   def units: Seq[U]

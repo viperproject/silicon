@@ -502,12 +502,7 @@ object consumer extends ConsumptionRules with Immutable {
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) => {
           val s2 = s1.copy(g = s1.g + g1)
-          val s3 =
-            if (s2.recordEffects)
-              s2.copy(letBoundVars = s2.letBoundVars ++ g1.values)
-            else
-              s2
-          consumeR(s3, h, body, pve, v1)(Q)})
+          consumeR(s2, h, body, pve, v1)(Q)})
 
       case ast.AccessPredicate(locacc, perm) =>
         eval(s, perm, pve, v)((s1, tPerm, v1) =>
@@ -525,8 +520,8 @@ object consumer extends ConsumptionRules with Immutable {
       case _: ast.InhaleExhaleExp =>
         Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a))
 
-      /* Handle wands or wand-typed variables */
-      case _ if a.typ == ast.Wand && magicWandSupporter.isDirectWand(a) =>
+      /* Handle wands */
+      case wand: ast.MagicWand =>
         def QL(s: State, h: Heap, chWand: MagicWandChunk, wand: ast.MagicWand, ve: VerificationError, v: Verifier) = {
           heuristicsSupporter.tryOperation[Heap, Term](s"consume wand $wand")(s, h, v)((s1, h1, v1, QS) => {
             val hs =
@@ -543,86 +538,26 @@ object consumer extends ConsumptionRules with Immutable {
                 case someChunk @ Some(ch) => (s2, someChunk, h2 - ch, v2)
                 case _ => (s2, None, h2, v2)
               }
-            ){case (s2, Some(ch), hs2, v2) =>
+            ){case (s2, Some(ch: MagicWandChunk), hs2, v2) =>
                 assert(s2.exhaleExt == s.exhaleExt)
                 if (s.exhaleExt) {
                   /* transfer: move ch into h = σUsed*/
                   assert(hs2.size == s.reserveHeaps.size)
                   val topReserveHeap = hs2.head + ch
                   val s3 = s2.copy(reserveHeaps = topReserveHeap +: hs2.tail)
-                  QS(s3, h /*+ ch*/, v2.decider.fresh(sorts.Snap), v2)
+                  QS(s3, h /*+ ch*/, ch.snap, v2)
                 } else {
                   assert(hs2.size == 1)
                   assert(s2.reserveHeaps == s.reserveHeaps)
-                  QS(s2, hs2.head, v2.decider.fresh(sorts.Snap), v2)
+                  QS(s2, hs2.head, ch.snap, v2)
                 }
 
               case _ => Failure(ve)}
           })(Q)
         }
-
-        a match {
-          case wand: ast.MagicWand =>
-            magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) => {
-              val ve = pve dueTo MagicWandChunkNotFound(wand)
-              QL(s1, h, chWand, wand, ve, v1)})
-          case x: ast.AbstractLocalVar =>
-            val tWandChunk = s.g(x).asInstanceOf[MagicWandChunkTerm].chunk
-            val ve = pve dueTo NamedMagicWandChunkNotFound(x)
-            QL(s, h, tWandChunk, tWandChunk.id.ghostFreeWand, ve, v)
-          case _ => sys.error(s"Expected a magic wand, but found node $a")
-        }
-
-      case ast.PackagingGhostOp(eWand, eIn) =>
-        assert(s.exhaleExt)
-        assert(s.reserveHeaps.head.values.isEmpty)
-        /** TODO: [[viper.silicon.rules.heuristicsSupporter.packageWand]]
-          *       Is essentially a copy of the code here. Re-use code to avoid running out of sync!
-          */
-        magicWandSupporter.packageWand(s, eWand, pve, v)((s1, chWand, v1) => {
-          val hOps = s1.reserveHeaps.head + chWand
-          val s2 = s1.copy(exhaleExt = true,
-                           reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail,
-                           lhsHeap = None)
-          assert(s2.reserveHeaps.length == s.reserveHeaps.length)
-          assert(s2.consumedChunks.length == s.consumedChunks.length)
-          assert(s2.consumedChunks.length == s2.reserveHeaps.length - 1)
-          val sEmp = s2.copy(h = Heap())
-          consumeR(sEmp, sEmp.h, eIn, pve, v1)((s3, h3, _, v3) =>
-            Q(s3, h3, v3.decider.fresh(sorts.Snap), v3))})
-
-      case ast.ApplyingGhostOp(eWandOrVar, eIn) =>
-        val (eWand, eLHSAndWand, g1) = eWandOrVar match {
-          case _eWand: ast.MagicWand =>
-            (_eWand, ast.And(_eWand.left, _eWand)(_eWand.left.pos, _eWand.left.info), s.g)
-          case x: ast.AbstractLocalVar =>
-            val chWand = s.g(x).asInstanceOf[MagicWandChunkTerm].chunk
-            val _eWand = chWand.id.ghostFreeWand
-            (_eWand, ast.And(_eWand.left, _eWand)(x.pos, x.info), Store(chWand.bindings))
-              /* Note that wand reference x is most likely not bound in tChunk.bindings.
-               * Since wands cannot be recursive, this shouldn't be a problem,
-               * as long as x doesn't need to be looked up during
-               * magicWandSupporter.applyingWand (for whatever reason).
-               */
-          case _ => sys.error(s"Expected a magic wand, but found node $a")
-        }
-
-        heuristicsSupporter.tryOperation[Heap](s"applying $eWand")(s, h, v)((s1, h1, v1, QS) => /* TODO: Why is h1 never used? */
-          magicWandSupporter.applyingWand(s1, g1, eWand, eLHSAndWand, pve, v1)(QS)){case (s2, h2, v2) =>
-            consumeR(s2, h2, eIn, pve, v2)((s3, h3, _, v3) =>
-              Q(s3, h3, v3.decider.fresh(sorts.Snap), v3))}
-
-      case ast.FoldingGhostOp(acc: ast.PredicateAccessPredicate, eIn) =>
-        heuristicsSupporter.tryOperation[Heap](s"folding $acc")(s, h, v)((s1, h1, v1, QS) => /* TODO: Why is h1 never used? */
-          magicWandSupporter.foldingPredicate(s1, acc, pve, v1)(QS)){case (s2, h2, v2) =>
-            consumeR(s2, h2, eIn, pve, v2)((s3, h3, _, v3) =>
-              Q(s3, h3, v3.decider.fresh(sorts.Snap), v3))}
-
-      case ast.UnfoldingGhostOp(acc: ast.PredicateAccessPredicate, eIn) =>
-        heuristicsSupporter.tryOperation[Heap](s"unfolding $acc")(s, h, v)((s1, h1, v1, QS) => /* TODO: Why is h1 never used? */
-          magicWandSupporter.unfoldingPredicate(s1, acc, pve, v1)(QS)){case (s2, h2, v2) =>
-            consumeR(s2, h2, eIn, pve, v2)((s3, h3, _, v3) =>
-              Q(s3, h3, v3.decider.fresh(sorts.Snap), v3))}
+        magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) => {
+          val ve = pve dueTo MagicWandChunkNotFound(wand)
+          QL(s1, h, chWand, wand, ve, v1)})
 
       case _ =>
         evalAndAssert(s, a, pve, v)((s1, t, v1) => {

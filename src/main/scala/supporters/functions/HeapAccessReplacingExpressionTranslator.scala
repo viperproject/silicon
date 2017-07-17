@@ -9,7 +9,6 @@ package viper.silicon.supporters.functions
 import com.typesafe.scalalogging.LazyLogging
 import viper.silver.ast
 import viper.silicon.Map
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
@@ -82,7 +81,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                   : Term =
 
     e match {
-      case _: ast.AccessPredicate if ignoreAccessPredicates => True()
+      case _: ast.AccessPredicate | _: ast.MagicWand if ignoreAccessPredicates => True()
       case q: ast.Forall if !q.isPure && ignoreAccessPredicates => True()
 
       case _: ast.Result => data.formalResult
@@ -117,6 +116,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
 
       case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ), data.programFunction.name)
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
+      case ast.Applying(_, eIn) => translate(toSort)(eIn)
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)

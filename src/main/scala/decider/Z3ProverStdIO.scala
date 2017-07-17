@@ -16,7 +16,6 @@ import viper.silicon.interfaces.decider.{Prover, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, Z3InteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
-import viper.silicon.supporters.QuantifierSupporter
 import viper.silicon.verifier.Verifier
 
 class Z3ProverStdIO(uniqueId: String,

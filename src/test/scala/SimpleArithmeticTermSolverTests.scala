@@ -6,8 +6,7 @@
 
 package viper.silicon.tests
 
-import org.scalatest.FunSuite
-import org.scalatest.Matchers
+import org.scalatest.{FunSuite, Matchers}
 import viper.silicon.state.Identifier
 import DSL._
 import viper.silicon.state.terms._

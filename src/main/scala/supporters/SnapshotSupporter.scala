@@ -10,7 +10,6 @@ import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silicon.state.{State, SymbolConverter}
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, True, Unit, sorts}
-import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 
@@ -123,8 +122,12 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
      * it takes 2min 20sec when only first/second datatypes are used. Might be
      * worth re-benchmarking from time to time.
      */
+    /* [2017-06-30 Nils] The performance difference seems to be negligible.
+     * Using only first/second datatypes causes all/issues/carbon/0122.sil to fail,
+     * though. Silicon produces the same output as Carbon in that case.
+     */
 
-    if (s.functionRecorder == NoopFunctionRecorder) {
+    if (!s.conservingSnapshotGeneration) {
       val snap0 = mkSnap(a0, Verifier.program, v)
       val snap1 = mkSnap(a1, Verifier.program, v)
 

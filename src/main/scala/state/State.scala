@@ -34,6 +34,7 @@ final case class State(g: Store = Store(),
                        retrying: Boolean = false,
                        underJoin: Boolean = false,
                        functionRecorder: FunctionRecorder = NoopFunctionRecorder,
+                       conservingSnapshotGeneration: Boolean = false,
                        recordPossibleTriggers: Boolean = false,
                        possibleTriggers: Map[ast.Exp, Term] = Map(),
 
@@ -41,8 +42,8 @@ final case class State(g: Store = Store(),
                        permissionScalingFactor: Term = terms.FullPerm(),
 
                        reserveHeaps: Stack[Heap] = Nil,
+                       reserveCfgs: Stack[SilverCfg] = Stack(),
                        exhaleExt: Boolean = false,
-                       lhsHeap: Option[Heap] = None, /* Used to interpret e in lhs(e) */
 
                        applyHeuristics: Boolean = false,
                        heuristicsDepth: Int = 0,
@@ -50,7 +51,6 @@ final case class State(g: Store = Store(),
 
                        recordEffects: Boolean = false,
                        consumedChunks: Stack[Seq[(Stack[Term], DefaultChunk)]] = Nil,
-                       letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil,
 
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
@@ -129,12 +129,13 @@ object State {
                  retrying1,
                  underJoin1,
                  functionRecorder1,
+                 conservingSnapshotGeneration1,
                  recordPossibleTriggers1, possibleTriggers1,
                  partiallyConsumedHeap1,
                  permissionScalingFactor1,
-                 reserveHeaps1, exhaleExt1, lhsHeap1,
+                 reserveHeaps1, reserveCfgs1, exhaleExt1,
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
-                 recordEffects1, consumedChunks1, letBoundVars1,
+                 recordEffects1, consumedChunks1,
                  qpFields1, qpPredicates1, smCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1) =>
 
@@ -149,12 +150,13 @@ object State {
                      `retrying1`,
                      `underJoin1`,
                      functionRecorder2,
+                     `conservingSnapshotGeneration1`,
                      `recordPossibleTriggers1`, possibleTriggers2,
                      `partiallyConsumedHeap1`,
                      `permissionScalingFactor1`,
-                     `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`,
+                     `reserveHeaps1`, `reserveCfgs1`, `exhaleExt1`,
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
-                     `recordEffects1`, `consumedChunks1`, `letBoundVars1`,
+                     `recordEffects1`, `consumedChunks1`,
                      `qpFields1`, `qpPredicates1`, smCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`) =>
 
