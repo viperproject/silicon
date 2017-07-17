@@ -8,17 +8,18 @@ package viper.silicon.resources
 
 sealed abstract class PropertyExpression
 
-sealed abstract class EquatableExpression extends PropertyExpression
-sealed abstract class BooleanExpression extends EquatableExpression
-sealed abstract class IdentifierExpression extends EquatableExpression
-sealed abstract class ArgumentExpression extends EquatableExpression
-sealed abstract class PermissionExpression extends EquatableExpression
-sealed abstract class ValueExpression extends EquatableExpression
+sealed abstract class EquatableExpression(private val sort: String) extends PropertyExpression {
+  def isOfSameSortAs(other: EquatableExpression): Boolean = sort == other.sort
+}
+sealed abstract class BooleanExpression extends EquatableExpression("Boolean")
+sealed abstract class ArgumentExpression extends EquatableExpression("Argument")
+sealed abstract class PermissionExpression extends EquatableExpression("Permission")
+sealed abstract class ValueExpression extends EquatableExpression("Value")
 
 case class Check(condition: BooleanExpression, thenDo: BooleanExpression, otherwise: BooleanExpression) extends BooleanExpression
 
 /**
-  * Foreach c1, c2 iterates over all <b>distinct</b> pairs of chunks.
+  * ForEach c1, ..., cn iterates over all n-tuples of <b>distinct</b> chunks with the same chunk id.
   * @param chunkVariables a non-empty sequence of chunk variables without duplicates
   * @param body an expression
   */
@@ -31,18 +32,7 @@ case class PermissionIfThenElse(condition: BooleanExpression, thenDo: Permission
 case class ValueIfThenElse(condition: ValueExpression, thenDo: ValueExpression, otherwise: ValueExpression) extends ValueExpression
 
 case class Equals(left: EquatableExpression, right: EquatableExpression) extends BooleanExpression {
-  require(left.isInstanceOf[BooleanExpression] == right.isInstanceOf[BooleanExpression])
-  require(left.isInstanceOf[IdentifierExpression] == right.isInstanceOf[IdentifierExpression])
-  require(left.isInstanceOf[ArgumentExpression] == right.isInstanceOf[ArgumentExpression])
-  require(left.isInstanceOf[PermissionExpression] == right.isInstanceOf[PermissionExpression])
-  require(left.isInstanceOf[ValueExpression] == right.isInstanceOf[ValueExpression])
-}
-case class NotEquals(left: EquatableExpression, right: EquatableExpression) extends BooleanExpression {
-  require(left.isInstanceOf[BooleanExpression] == right.isInstanceOf[BooleanExpression])
-  require(left.isInstanceOf[IdentifierExpression] == right.isInstanceOf[IdentifierExpression])
-  require(left.isInstanceOf[ArgumentExpression] == right.isInstanceOf[ArgumentExpression])
-  require(left.isInstanceOf[PermissionExpression] == right.isInstanceOf[PermissionExpression])
-  require(left.isInstanceOf[ValueExpression] == right.isInstanceOf[ValueExpression])
+  require(left.isOfSameSortAs(right), "Equatable expressions have to be of same sort.")
 }
 
 case class GreaterThan(left: PermissionExpression, right: PermissionExpression) extends BooleanExpression
@@ -68,16 +58,11 @@ case class PermissionLiteral(numerator: BigInt, denominator: BigInt) extends Per
 
 sealed abstract class ChunkPlaceholder(name: String) extends PropertyExpression
 
-/**
-  * A placeholder for a chunk.
-  * @param name a string starting with a lowercase <i>c</i>
-  */
 case class ChunkVariable(name: String) extends ChunkPlaceholder(name) {
-  require(name.startsWith("c"))
+  require(name != "this")
 }
 case class This() extends ChunkPlaceholder(name = "this")
 
-case class IdentifierAccess(chunk: ChunkPlaceholder) extends IdentifierExpression
 case class ArgumentAccess(chunk: ChunkPlaceholder) extends ArgumentExpression
 case class PermissionAccess(chunk: ChunkPlaceholder) extends PermissionExpression
 case class ValueAccess(chunk: ChunkPlaceholder) extends ValueExpression

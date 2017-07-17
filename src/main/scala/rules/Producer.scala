@@ -319,7 +319,7 @@ object producer extends ProductionRules with Immutable {
       case wand: ast.MagicWand =>
         magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) =>
           chunkSupporter.produce(s1, s1.h, chWand, v1)((s2, h2, v2) =>
-          Q(s2.copy(h = h2), v2)))
+            Q(s2.copy(h = h2), v2)))
 
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.

@@ -23,25 +23,23 @@ case class BasicChunk(resourceID: BaseID,
                       args: Seq[Term],
                       snap: Term,
                       perm: Term)
-  extends DefaultChunk {
+    extends DefaultChunk {
 
-  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
+  require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
   resourceID match {
-    case FieldID() => assert(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
-    case PredicateID() => assert(snap.sort == sorts.Snap,
-      s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
-    case _ => assert(assertion = false, s"Resource ID has to be FieldID or PredicateID, but found $resourceID")
+    case FieldID() => require(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
+    case PredicateID() => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
+    case _ =>
   }
 
   override def withPerm(newPerm: Term) = BasicChunk(resourceID, id, args, snap, newPerm)
   override def withSnap(newSnap: Term) = BasicChunk(resourceID, id, args, newSnap, perm)
 
-  override def toString = resourceID match {
+  override lazy val toString = resourceID match {
     case FieldID() => s"${args.head}.$id -> $snap # $perm"
     case PredicateID() => s"$id($snap; ${args.mkString(",")}) # $perm"
     case _ => ""
   }
-
 }
 
 sealed trait QuantifiedChunk extends PermissionChunk {
@@ -149,19 +147,16 @@ case class QuantifiedPredicateChunk(name: String,
 }
 
 case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdentifer {
-
   override def equals(obj: Any): Boolean = obj match {
     case w: MagicWandIdentifier => ghostFreeWand.structurallyMatches(w.ghostFreeWand, Verifier.program)
     case _ => false
   }
-
 }
 
 case class MagicWandChunk(id: MagicWandIdentifier,
                           bindings: Map[ast.AbstractLocalVar, Term],
                           args: Seq[Term])
     extends ResourceChunk {
-
   override val resourceID = MagicWandID()
 
   override lazy val toString: String = {
@@ -172,5 +167,4 @@ case class MagicWandChunk(id: MagicWandIdentifier,
 
     s"wand@$pos[${args.mkString(",")}]"
   }
-
 }

@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import scala.collection.mutable.ListBuffer
+import viper.silicon.MMap
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
 import viper.silicon.resources.{PropertyInterpreter, Resources}
@@ -14,8 +16,6 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
-
-import scala.collection.mutable
 
 trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State
@@ -94,7 +94,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   private def singleMerge(destChunks: Seq[ResourceChunk], newChunks: Seq[ResourceChunk], v: Verifier)
   : (Seq[ResourceChunk], Seq[ResourceChunk], InsertionOrderedSet[Term]) = {
 
-    //    bookkeeper.heapMergeIterations += 1
+    // bookkeeper.heapMergeIterations += 1
 
     val initial = (destChunks, Seq[ResourceChunk](), InsertionOrderedSet[Term]())
 
@@ -142,35 +142,34 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
   /* Compute assumptions capturing that a valid field permission amount cannot exceed write permission */
   private def computeUpperPermissionBoundAssumptions(chs: Seq[Chunk], v: Verifier): List[Term] = {
-//    bookkeeper.objectDistinctnessComputations += 1
+    // bookkeeper.objectDistinctnessComputations += 1
 
-    val pairsPerField = mutable.HashMap[String, mutable.ListBuffer[(Term, Term)]]()
-//    val pairsPerFieldQP = mutable.HashMap[String, mutable.ListBuffer[Term]]()
+    val pairsPerField = MMap[String, ListBuffer[(Term, Term)]]()
+    // val pairsPerFieldQP = mutable.HashMap[String, mutable.ListBuffer[Term]]()
 
     def add(fieldName: String, rcvr: Term, perm: Term) {
-      pairsPerField.getOrElseUpdate(fieldName, mutable.ListBuffer[(Term, Term)]())
+      pairsPerField.getOrElseUpdate(fieldName, ListBuffer[(Term, Term)]())
                    .append((rcvr, perm))
     }
 
-//    def addQP(fieldName: String, perm: Term) {
-//      pairsPerFieldQP.getOrElseUpdate(fieldName, mutable.ListBuffer[Term]())
-//                     .append(perm)
-//    }
+    // def addQP(fieldName: String, perm: Term) {
+    //  pairsPerFieldQP.getOrElseUpdate(fieldName, mutable.ListBuffer[Term]()).append(perm)
+    // }
 
     chs foreach {
-/*
+    /*
       case BasicChunk(FieldID(), fieldName, args, _, perm) =>
         add(fieldName, args.head, perm)
-*/
+    */
       case QuantifiedFieldChunk(fieldName, _, perm, _, _, Some(rcvr), _) =>
         /* Singleton quantified chunks are treated analogous to non-quantified chunks */
         add(fieldName, rcvr, perm.replace(`?r`, rcvr))
-//      case QuantifiedFieldChunk(fieldName, _, perm, _, _, _, _) =>
-//        addQP(fieldName, perm)
+    //      case QuantifiedFieldChunk(fieldName, _, perm, _, _, _, _) =>
+    //        addQP(fieldName, perm)
       case _ =>
     }
 
-    val tAssumptions = mutable.ListBuffer[Term]()
+    val tAssumptions = ListBuffer[Term]()
 
     for ((_, pairs) <- pairsPerField;
          Seq((rcvr1, perm1), (rcvr2, perm2)) <- pairs.combinations(2)) {
@@ -181,19 +180,19 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       }
     }
 
-//    val r1 = Var(Identifier("r1"), sorts.Ref)
-//    val r2 = Var(Identifier("r2"), sorts.Ref)
-//    var rs = Seq(r1, r2)
-//
-//    for ((field, perms) <- pairsPerFieldQP;
-//         Seq(p1, p2) <- perms.combinations(2);
-//         perm1 = p1.replace(`?r`, r1);
-//         perm2 = p2.replace(`?r`, r2)) {
-//
-//      tAssumptions += Forall(rs, Implies(r1 === r2, PermAtMost(PermPlus(perm1, perm2), FullPerm())), Nil).autoTrigger
-//        /* TODO: Give each quantifier a unique QID */
-//        /* TODO: Body probably won't contain any (good) triggers - we need a field access trigger! */
-//    }
+    //    val r1 = Var(Identifier("r1"), sorts.Ref)
+    //    val r2 = Var(Identifier("r2"), sorts.Ref)
+    //    var rs = Seq(r1, r2)
+    //
+    //    for ((field, perms) <- pairsPerFieldQP;
+    //         Seq(p1, p2) <- perms.combinations(2);
+    //         perm1 = p1.replace(`?r`, r1);
+    //         perm2 = p2.replace(`?r`, r2)) {
+    //
+    //      tAssumptions += Forall(rs, Implies(r1 === r2, PermAtMost(PermPlus(perm1, perm2), FullPerm())), Nil).autoTrigger
+    //        /* TODO: Give each quantifier a unique QID */
+    //        /* TODO: Body probably won't contain any (good) triggers - we need a field access trigger! */
+    //    }
 
     tAssumptions.result()
   }

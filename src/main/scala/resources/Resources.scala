@@ -6,14 +6,14 @@
 
 package viper.silicon.resources
 
-object Resources {
+import viper.silicon.Map
 
+object Resources {
   val resourceDescriptions: Map[ResourceID, ResourceDescription] = Map(
         PredicateID() -> new PredicateDescription,
         FieldID() -> new FieldDescription,
         MagicWandID() -> new MagicWandDescription
       )
-
 }
 
 sealed abstract class ResourceID

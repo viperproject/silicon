@@ -39,5 +39,5 @@ trait DefaultChunk extends ResourceChunk {
   val perm: Term
   val snap: Term
   def withPerm(perm: Term): DefaultChunk
-  def withSnap(perm: Term): DefaultChunk
+  def withSnap(snap: Term): DefaultChunk
 }
