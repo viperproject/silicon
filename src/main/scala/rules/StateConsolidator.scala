@@ -20,7 +20,7 @@ import viper.silicon.verifier.Verifier
 trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State
   def consolidateIfRetrying(s: State, v: Verifier): State
-  def merge(h: Heap, ch: ResourceChunk, v: Verifier): Heap
+  def merge(h: Heap, ch: NonQuantifiedChunk, v: Verifier): Heap
   def merge(h: Heap, newH: Heap, v: Verifier): Heap
 }
 
@@ -29,13 +29,13 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   def consolidate(s: State, v: Verifier): State = {
     v.decider.prover.comment("[state consolidation]")
 
-    val (resourceChunks, otherChunks) = partition(s.h)
+    val (nonQuantifiedChunks, otherChunks) = partition(s.h)
 
     var continue = false
 
-    var mergedChunks: Seq[ResourceChunk] = Nil
-    var destChunks: Seq[ResourceChunk] = Nil
-    var newChunks: Seq[ResourceChunk] = resourceChunks
+    var mergedChunks: Seq[NonQuantifiedChunk] = Nil
+    var destChunks: Seq[NonQuantifiedChunk] = Nil
+    var newChunks: Seq[NonQuantifiedChunk] = nonQuantifiedChunks
 
     do {
       val (_mergedChunks, _, snapEqs) = singleMerge(destChunks, newChunks, v)
@@ -56,7 +56,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     }
 
     mergedChunks foreach {
-      case ch: ResourceChunk =>
+      case ch: NonQuantifiedChunk =>
         val resource = Resources.resourceDescriptions(ch.resourceID)
         v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
         v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
@@ -73,12 +73,12 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     if (s.retrying) consolidate(s, v)
     else s
 
-  def merge(h: Heap, ch: ResourceChunk, v: Verifier): Heap = merge(h, Heap(Seq(ch)), v)
+  def merge(h: Heap, ch: NonQuantifiedChunk, v: Verifier): Heap = merge(h, Heap(Seq(ch)), v)
 
   def merge(h: Heap, newH: Heap, v: Verifier): Heap = {
-    val (resourceChunks, otherChunks) = partition(h)
-    val (newResourceChunks, newOtherChunk) = partition(newH)
-    val (mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(resourceChunks, newResourceChunks, v)
+    val (nonQuantifiedChunks, otherChunks) = partition(h)
+    val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
+    val (mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(nonQuantifiedChunks, newNonQuantifiedChunks, v)
 
     val interpreter = new PropertyInterpreter(mergedChunks, v)
     newlyAddedChunks foreach { ch =>
@@ -91,12 +91,12 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     Heap(mergedChunks ++ otherChunks ++ newOtherChunk)
   }
 
-  private def singleMerge(destChunks: Seq[ResourceChunk], newChunks: Seq[ResourceChunk], v: Verifier)
-  : (Seq[ResourceChunk], Seq[ResourceChunk], InsertionOrderedSet[Term]) = {
+  private def singleMerge(destChunks: Seq[NonQuantifiedChunk], newChunks: Seq[NonQuantifiedChunk], v: Verifier)
+  : (Seq[NonQuantifiedChunk], Seq[NonQuantifiedChunk], InsertionOrderedSet[Term]) = {
 
     // bookkeeper.heapMergeIterations += 1
 
-    val initial = (destChunks, Seq[ResourceChunk](), InsertionOrderedSet[Term]())
+    val initial = (destChunks, Seq[NonQuantifiedChunk](), InsertionOrderedSet[Term]())
 
     newChunks.foldLeft(initial) { case ((accMergedChunks, accNewChunks, accSnapEqs), nextChunk) =>
       /* accMergedChunks: already merged chunks
@@ -120,7 +120,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     }
   }
 
-  private def mergeChunks(chunk1: ResourceChunk, chunk2: ResourceChunk, v: Verifier) = (chunk1, chunk2) match {
+  private def mergeChunks(chunk1: NonQuantifiedChunk, chunk2: NonQuantifiedChunk, v: Verifier) = (chunk1, chunk2) match {
     case (BasicChunk(rid1, id1, args1, snap1, perm1), BasicChunk(_, _, _, snap2, perm2)) =>
       val (combinedSnap, snapEq) = combineSnapshots(snap1, snap2, perm1, perm2, v)
       Some(BasicChunk(rid1, id1, args1, combinedSnap, PermPlus(perm1, perm2)), snapEq)
@@ -140,6 +140,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     (tSnap, tSnapDef)
   }
 
+  // TODO only here for singleton quantified chunks
   /* Compute assumptions capturing that a valid field permission amount cannot exceed write permission */
   private def computeUpperPermissionBoundAssumptions(chs: Seq[Chunk], v: Verifier): List[Term] = {
     // bookkeeper.objectDistinctnessComputations += 1
@@ -198,16 +199,16 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   }
 
   @inline
-  final private def partition(h: Heap): (Seq[ResourceChunk], Seq[Chunk]) = {
-    var resourceChunks = Seq[ResourceChunk]()
+  final private def partition(h: Heap): (Seq[NonQuantifiedChunk], Seq[Chunk]) = {
+    var NonQuantifiedChunks = Seq[NonQuantifiedChunk]()
     var otherChunks = Seq[Chunk]()
 
     h.values foreach {
-      case ch: ResourceChunk => resourceChunks +:= ch
+      case ch: NonQuantifiedChunk => NonQuantifiedChunks +:= ch
       case ch => otherChunks +:= ch
     }
 
-    (resourceChunks, otherChunks)
+    (NonQuantifiedChunks, otherChunks)
   }
 
 }

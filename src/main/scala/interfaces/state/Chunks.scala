@@ -28,16 +28,12 @@ trait PermissionChunk extends GenericPermissionChunk[PermissionChunk]
 
 trait ChunkIdentifer
 
-trait ResourceChunk extends Chunk {
+trait NonQuantifiedChunk extends Chunk {
   val resourceID: ResourceID
   val id: ChunkIdentifer
   val args: Iterable[Term]
-}
-
-// TODO: will be merged with ResourceChunk and become NonQuantifiedChunk, once magic wands have snapshots
-trait DefaultChunk extends ResourceChunk {
   val perm: Term
   val snap: Term
-  def withPerm(perm: Term): DefaultChunk
-  def withSnap(snap: Term): DefaultChunk
+  def withPerm(perm: Term): NonQuantifiedChunk
+  def withSnap(snap: Term): NonQuantifiedChunk
 }

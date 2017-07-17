@@ -11,7 +11,7 @@ import viper.silicon.{Map, Stack}
 import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces.state.DefaultChunk
+import viper.silicon.interfaces.state.NonQuantifiedChunk
 import viper.silicon.rules.SnapshotMapDefinition
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
@@ -50,7 +50,7 @@ final case class State(g: Store = Store(),
                        triggerAction: AnyRef = null,
 
                        recordEffects: Boolean = false,
-                       consumedChunks: Stack[Seq[(Stack[Term], DefaultChunk)]] = Nil,
+                       consumedChunks: Stack[Seq[(Stack[Term], NonQuantifiedChunk)]] = Nil,
 
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,

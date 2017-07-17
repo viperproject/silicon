@@ -23,7 +23,7 @@ case class BasicChunk(resourceID: BaseID,
                       args: Seq[Term],
                       snap: Term,
                       perm: Term)
-    extends DefaultChunk {
+    extends NonQuantifiedChunk {
 
   require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
   resourceID match {
@@ -156,9 +156,16 @@ case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdenti
 case class MagicWandChunk(id: MagicWandIdentifier,
                           bindings: Map[ast.AbstractLocalVar, Term],
                           args: Seq[Term],
-                          snap: MagicWandSnapshot)
-    extends ResourceChunk {
+                          snap: MagicWandSnapshot,
+                          perm: Term)
+    extends NonQuantifiedChunk {
   override val resourceID = MagicWandID()
+
+  override def withPerm(newPerm: Term) = MagicWandChunk(id, bindings, args, snap, newPerm)
+  override def withSnap(newSnap: Term) = newSnap match {
+    case s: MagicWandSnapshot => MagicWandChunk(id, bindings, args, s, perm)
+    case _ => sys.error(s"MagicWand snapshot has to be of type MagicWandSnapshot but found $newSnap")
+  }
 
   override lazy val toString: String = {
     val pos = id.ghostFreeWand.pos match {

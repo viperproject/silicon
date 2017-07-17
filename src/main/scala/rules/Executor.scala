@@ -16,7 +16,7 @@ import viper.silicon.{ExecuteRecord, MethodCallRecord, Stack, SymbExLogger}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.state.DefaultChunk
+import viper.silicon.interfaces.state.NonQuantifiedChunk
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -378,7 +378,7 @@ object executor extends ExecutionRules with Immutable {
               if (s.exhaleExt) {
               val s1 = s.copy(recordEffects = true, consumedChunks = Stack.fill(s.consumedChunks.size)(Nil))
               consume(s1, a, pve, v)((s2, _, v1) => {
-                val newlyConsumedChunks = s2.consumedChunks.foldLeft[Seq[(Stack[Term], DefaultChunk)]](Nil)(_ ++ _)
+                val newlyConsumedChunks = s2.consumedChunks.foldLeft[Seq[(Stack[Term], NonQuantifiedChunk)]](Nil)(_ ++ _)
                 val hOps = newlyConsumedChunks.foldLeft(s.reserveHeaps.head)((collected, consumedChunk) =>
                   collected + consumedChunk._2)
                 val mergedConsumedChunks = s.consumedChunks.zip(s2.consumedChunks).map((consumedPair) =>

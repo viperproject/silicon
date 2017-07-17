@@ -14,9 +14,9 @@ import viper.silicon.verifier.Verifier
 
 class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
 
-  private type PlaceholderMap = Map[ChunkPlaceholder, ResourceChunk]
-  private val resourceChunks: Iterable[ResourceChunk] = heap.flatMap {
-    case c: ResourceChunk => Some(c)
+  private type PlaceholderMap = Map[ChunkPlaceholder, NonQuantifiedChunk]
+  private val nonQuantifiedChunks: Iterable[NonQuantifiedChunk] = heap.flatMap {
+    case c: NonQuantifiedChunk => Some(c)
     case _ => None
   }
   private var currentResourceID: Option[ResourceID] = None
@@ -28,7 +28,7 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
     * @param expression an expression potentially containing <code>This()</code>
     * @return the corresponding term
     */
-  def buildPathConditionForChunk(chunk: ResourceChunk, expression: BooleanExpression): terms.Term = {
+  def buildPathConditionForChunk(chunk: NonQuantifiedChunk, expression: BooleanExpression): terms.Term = {
     currentResourceID = Some(chunk.resourceID)
     val pc = buildPathCondition(expression, Map(This() -> chunk))
     currentResourceID = None
@@ -49,7 +49,7 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
     pc
   }
 
-  def buildPathConditionsForChunk(chunk: ResourceChunk, expressions: Iterable[BooleanExpression]): Iterable[terms.Term] = {
+  def buildPathConditionsForChunk(chunk: NonQuantifiedChunk, expressions: Iterable[BooleanExpression]): Iterable[terms.Term] = {
     expressions.map(buildPathConditionForChunk(chunk, _))
   }
 
@@ -85,18 +85,8 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
     case LessThan(left, right) => buildBinary(terms.PermLess, left, right, placeholderMap)
 
     // Chunk accessors, only work for appropriate chunks
-    case PermissionAccess(cv) => placeholderMap(cv) match {
-      case b: DefaultChunk => b.perm
-      case _ =>
-        // TODO: this will be removed once magic wands have snapshots
-        sys.error("Permission access of non-permission chunk")
-    }
-    case ValueAccess(cv) => placeholderMap(cv) match {
-      case b: DefaultChunk => b.snap
-      case _ =>
-        // TODO: this will be removed once magic wands have snapshots
-        sys.error("Value access of non-value chunk")
-    }
+    case PermissionAccess(cv) => placeholderMap(cv).perm
+    case ValueAccess(cv) => placeholderMap(cv).snap
 
     // decider / heap interaction
     case Check(condition, thenDo, otherwise) =>
@@ -176,14 +166,14 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
   private def buildForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: PlaceholderMap): Term = {
     pm.get(This()) match {
       case Some(ch) =>
-         buildForEach(resourceChunks.filter(_.id == ch.id), chunkVariables, body, pm)
+         buildForEach(nonQuantifiedChunks.filter(_.id == ch.id), chunkVariables, body, pm)
       case None =>
-        terms.And(resourceChunks.filter(_.resourceID == currentResourceID.get)
+        terms.And(nonQuantifiedChunks.filter(_.resourceID == currentResourceID.get)
           .groupBy(ch => ch.id).values.map(chs => buildForEach(chs, chunkVariables, body, pm)))
     }
   }
 
-  private def buildForEach(chunks: Iterable[ResourceChunk], chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: PlaceholderMap): Term = {
+  private def buildForEach(chunks: Iterable[NonQuantifiedChunk], chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: PlaceholderMap): Term = {
     chunkVariables match {
       case c +: Seq() =>
         terms.And(chunks.flatMap((chunk) => {
