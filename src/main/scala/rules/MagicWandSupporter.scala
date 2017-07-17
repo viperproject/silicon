@@ -157,7 +157,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                                  (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[C]))
                                  (Q: (State, Stack[Heap], Stack[Option[C]], Verifier) => VerificationResult)
                                  : VerificationResult = {
-    assert(s.exhaleExt)
+    assert(s.recordPcs)
     val preMark = v.decider.setPathConditionMark()
     val (result, s1, heaps, consumedChunks) =
       hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[C]])]((Incomplete(pLoss), s, Stack.empty[Heap], Stack.empty[Option[C]]))((partialResult, heap) =>
@@ -195,7 +195,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                               (Q: (State, Stack[Heap], Stack[Option[BasicChunk]], Verifier) => VerificationResult)
                               : VerificationResult = {
 
-    assert(s.exhaleExt)
+    assert(s.recordPcs)
     val preMark = v.decider.setPathConditionMark()
     val consumedChunks: Array[Option[BasicChunk]] = Array.fill(hs.length)(None)
     var toLose = pLoss
@@ -323,6 +323,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     val sEmp = s.copy(h = Heap(),
                       reserveHeaps = Nil,
                       exhaleExt = false,
+                      conservedPcs = Vector[RecordedPathConditions]() +: s.conservedPcs,
+                      recordPcs = true,
                       parallelizeBranches = false)
 
     val r = executionFlowController.locally(sEmp, v)((s1, v1) => {
@@ -348,7 +350,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                            h = Heap(),
                            reserveHeaps = Heap() +: Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
                            reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
-                           conservedPcs = Vector[RecordedPathConditions]() +: s.conservedPcs,
                            exhaleExt = true,
                            oldHeaps = s.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> sLhs.h),
                            conservingSnapshotGeneration = s.conservingSnapshotGeneration)
@@ -386,7 +387,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                   head +: conservedPcsTail.tail
                 }
 
-              results :+= (s5.copy(conservedPcs = newConservedPcs), v4.decider.pcs.branchConditions, conservedPcs, ch)
+              results :+= (s5.copy(conservedPcs = newConservedPcs, recordPcs = s.recordPcs), v4.decider.pcs.branchConditions, conservedPcs, ch)
               Success()
             })})})})})
 

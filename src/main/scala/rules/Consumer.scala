@@ -329,7 +329,7 @@ object consumer extends ConsumptionRules with Immutable {
                       }
                       val (consumedChunk, _) = quantifiedChunkSupporter.createQuantifiedChunk(
                         qvars,
-                        tCond,
+                        condOfInvOfLoc,
                         acc.loc.field,
                         Seq(tRcvr),
                         permsTaken,
@@ -574,7 +574,7 @@ object consumer extends ConsumptionRules with Immutable {
                       }
                       val (consumedChunk, _) = quantifiedChunkSupporter.createQuantifiedChunk(
                         qvars,
-                        tCond,
+                        condOfInvOfLoc,
                         predicate,
                         tArgs,
                         permsTaken,
