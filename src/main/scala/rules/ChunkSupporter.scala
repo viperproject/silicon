@@ -111,7 +111,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                       : Iterable[CH]
 
 }
-
+// TODO: replace Failure by VerificationError
 object chunkSupporter extends ChunkSupportRules with Immutable {
   def consume(s: State,
               h: Heap,
@@ -143,6 +143,72 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     })(Q)
   }
 
+  def consume(s: State,
+              h: Heap,
+              id: ChunkIdentifer,
+              args: Seq[Term],
+              perms: Term,
+              failure: Failure,
+              v: Verifier,
+              description: String)
+             (Q: (State, Heap, Term, Verifier) => VerificationResult)
+             : VerificationResult = {
+    heuristicsSupporter.tryOperation[Heap, Term](description)(s, h, v)((s1, h1, v1, QS) => {
+      consume(s1, h1, id, args, perms, failure, v1)((s2, h2, optSnap, v2) =>
+        optSnap match {
+          case Some(snap) =>
+            QS(s2, h2, snap.convert(sorts.Snap), v2)
+          case None =>
+            /* Not having consumed anything could mean that we are in an infeasible
+             * branch, or that the permission amount to consume was zero.
+             * Returning a fresh snapshot in these cases should not lose any information.
+             */
+            val fresh = v2.decider.fresh(sorts.Snap)
+            val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
+            QS(s3, h2, fresh, v2)
+        })
+    })(Q)
+  }
+
+  private def consume(s: State,
+                      h: Heap,
+                      id: ChunkIdentifer,
+                      args: Seq[Term],
+                      perms: Term,
+                      failure: Failure,
+                      v: Verifier)
+                     (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
+                     : VerificationResult = {
+    if (s.exhaleExt) {
+
+      /* TODO: Integrate magic wand's transferring consumption into the regular,
+       * (non-)exact consumption (the code following this if-branch)
+       */
+
+      def consumeFunction(s: State, h: Heap, perms: Term, v: Verifier) = {
+        findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+          case Some(ch) =>
+            val toTake = PermMin(ch.perm, perms)
+            val newChunk = ch.withPerm(PermMinus(ch.perm, toTake))
+            val takenChunk = Some(ch.withPerm(toTake))
+            (ConsumptionResult(PermMinus(perms, toTake), v), s, h - ch + newChunk, takenChunk)
+          case None =>
+            (Incomplete(perms), s, h, None)
+        }
+      }
+
+      magicWandSupporter.transfer(s, perms, failure, v)(consumeFunction)((s1, optCh, v1) =>
+        Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
+    } else {
+      findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+        case Some(ch) =>
+          Q(s, h - ch, Some(ch.snap), v)
+        case None =>
+          failure
+      }
+    }
+  }
+
   private def consume(s: State,
                       h: Heap,
                       id: ChunkIdentifer,
@@ -153,7 +219,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                       v: Verifier)
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
-
     if (s.exhaleExt) {
 
       /* TODO: Integrate magic wand's transferring consumption into the regular,

@@ -814,8 +814,10 @@ object consumer extends ConsumptionRules with Immutable {
           })(Q)
         }
         magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) => {
-          val ve = pve dueTo MagicWandChunkNotFound(wand)
-          QL(s1, h, chWand, wand, ve, v1)})
+          val failure = Failure(pve dueTo MagicWandChunkNotFound(wand))
+          val description = s"consume wand $wand"
+          chunkSupporter.consume(s1, h, chWand.id, chWand.args, FullPerm(), failure, v1, description)(Q)
+        })
 
       case _ =>
         evalAndAssert(s, a, pve, v)((s1, t, v1) => {
