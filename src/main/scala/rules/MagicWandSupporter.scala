@@ -149,20 +149,20 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     Q(sCurr, rCurr, visitedHeaps.reverse ++ heapsToVisit, vCurr)
   }
 
-  def consumeFromMultipleHeaps[C <: PermissionChunk](s: State,
+  def consumeFromMultipleHeaps[CH <: Chunk](s: State,
                                   hs: Stack[Heap],
                                   pLoss: Term,
                                   failure: Failure,
                                   v: Verifier)
-                                 (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[C]))
-                                 (Q: (State, Stack[Heap], Stack[Option[C]], Verifier) => VerificationResult)
+                                 (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
+                                 (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
                                  : VerificationResult = {
     assert(s.recordPcs)
     val preMark = v.decider.setPathConditionMark()
     val (result, s1, heaps, consumedChunks) =
-      hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[C]])]((Incomplete(pLoss), s, Stack.empty[Heap], Stack.empty[Option[C]]))((partialResult, heap) =>
+      hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[CH]])]((ConsumptionResult(pLoss, v), s, Stack.empty[Heap], Stack.empty[Option[CH]]))((partialResult, heap) =>
         partialResult match  {
-          case (Complete(), sIn, heaps, cchs)  => (Complete(), sIn, heap +: heaps, None +: cchs)
+          case (r: Complete, sIn, heaps, cchs)  => (r, sIn, heap +: heaps, None +: cchs)
           case (Incomplete(permsNeeded), sIn, heaps, cchs) =>
             val (success, sOut, h, cch) = consumeFunction(sIn, heap, permsNeeded, v)
             (success, sOut, h +: heaps, cch +: cchs)
@@ -426,12 +426,12 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
               val s6 = stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
               Q(s6, v3)})})})}
 
-  def transfer[C <: PermissionChunk](s: State,
+  def transfer[CH <: Chunk](s: State,
                perms: Term,
                failure: Failure,
                v: Verifier)
-              (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[C]))
-              (Q: (State, Option[C], Verifier) => VerificationResult)
+              (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
+              (Q: (State, Option[CH], Verifier) => VerificationResult)
               : VerificationResult = {
 
     magicWandSupporter.consumeFromMultipleHeaps(s, s.reserveHeaps.tail, perms, failure, v)(consumeFunction)((s1, hs, chs, v1) => {

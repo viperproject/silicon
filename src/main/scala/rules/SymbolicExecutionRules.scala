@@ -6,21 +6,4 @@
 
 package viper.silicon.rules
 
-import viper.silicon.state.terms.Term
-
 trait SymbolicExecutionRules extends Immutable
-
-trait ConsumptionResult {
-  def isComplete: Boolean
-  def ||(other: => ConsumptionResult): ConsumptionResult
-}
-
-case class Complete() extends ConsumptionResult {
-  override def isComplete: Boolean = true
-  override def ||(other: => ConsumptionResult): ConsumptionResult = this
-}
-
-case class Incomplete(permsNeeded: Term) extends ConsumptionResult {
-  override def isComplete: Boolean = false
-  override def ||(other: => ConsumptionResult): ConsumptionResult = other
-}
