@@ -155,10 +155,25 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                      : VerificationResult = {
 
     if (s.exhaleExt) {
+
       /* TODO: Integrate magic wand's transferring consumption into the regular,
        * (non-)exact consumption (the code following this if-branch)
        */
-      magicWandSupporter.transfer(s, id, args, perms, locacc, pve, v)((s1, optCh, v1) =>
+
+      def consumeFunction(s: State, h: Heap, perms: Term, v: Verifier) = {
+        findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+          case Some(ch) =>
+            val toTake = PermMin(ch.perm, perms)
+            val newChunk = ch.withPerm(PermMinus(ch.perm, toTake))
+            val takenChunk = Some(ch.withPerm(toTake))
+            (ConsumptionResult(PermMinus(perms, toTake), v), s, h - ch + newChunk, takenChunk)
+          case None =>
+            (Incomplete(perms), s, h, None)
+        }
+      }
+
+      val failure = Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
+      magicWandSupporter.transfer(s, perms, failure, v)(consumeFunction)((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else if (Verifier.config.enableMoreCompleteExhale()) {
       consumeComplete(s, h, id, args, perms, locacc, pve, v)((s1, h1, snap1, v1) => {

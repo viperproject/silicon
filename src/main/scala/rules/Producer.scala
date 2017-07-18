@@ -6,19 +6,19 @@
 
 package viper.silicon.rules
 
-import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
 import scala.collection.mutable
+import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.resources.{FieldID, PredicateID}
+import viper.silicon.state.terms.perms.IsPositive
+import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.state.terms.{App, _}
+import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, State}
+import viper.silicon.supporters.functions.NoopFunctionRecorder
+import viper.silicon.verifier.Verifier
+import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, State}
-import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.terms.{App, _}
-import viper.silicon.state.terms.perms.IsPositive
-import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.supporters.functions.NoopFunctionRecorder
-import viper.silicon.verifier.Verifier
 
 trait ProductionRules extends SymbolicExecutionRules {
 
@@ -382,7 +382,11 @@ object producer extends ProductionRules with Immutable {
                 v1.decider.assume(tAuxQuants)
             }
             v1.decider.prover.comment("Definitional axioms for inverse functions")
+            val definitionalAxiomMark = v1.decider.setPathConditionMark()
             v1.decider.assume(inverseFunctions.definitionalAxioms)
+            val conservedPcs =
+              if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
+              else s1.conservedPcs
 
             val gainNonNeg =
               quantifiedChunkSupporter.permissionsNonNegativeAxioms(
@@ -404,7 +408,7 @@ object producer extends ProductionRules with Immutable {
 
             v1.decider.prover.comment("Receivers are non-null")
             v1.decider.assume(tNonNullQuant)
-            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions))
+            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
             Q(s2.copy(h = s2.h + ch), v1)}
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
@@ -463,7 +467,11 @@ object producer extends ProductionRules with Immutable {
             }
 
             v1.decider.prover.comment("Definitional axioms for inverse functions")
+            val definitionalAxiomMark = v1.decider.setPathConditionMark()
             v1.decider.assume(inverseFunctions.definitionalAxioms)
+            val conservedPcs =
+              if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
+              else s1.conservedPcs
 
             val gainNonNeg =
               quantifiedChunkSupporter.permissionsNonNegativeAxioms(
@@ -474,7 +482,7 @@ object producer extends ProductionRules with Immutable {
             v1.decider.prover.comment("Produced permissions are non-negative")
             v1.decider.assume(gainNonNeg)
 
-            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions))
+            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
             Q(s2.copy(h = s2.h + ch), v1)}
 
       case _: ast.InhaleExhaleExp =>

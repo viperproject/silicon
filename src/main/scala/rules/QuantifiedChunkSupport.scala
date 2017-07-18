@@ -6,7 +6,6 @@
 
 package viper.silicon.rules
 
-import scala.reflect.ClassTag
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, VerificationResult}
@@ -14,11 +13,13 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
 import viper.silicon.state.terms.utils.consumeExactRead
+import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
-import viper.silicon.utils.notNothing.NotNothing
+
+import scala.reflect.ClassTag
 
 class InverseFunctions(val condition: Term,
                        val invertibles: Seq[Term],
@@ -456,9 +457,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     val location = locationAccess.loc(Verifier.program)
 
-    val (relevantChunks, otherChunks) =
-      quantifiedChunkSupporter.splitHeap[QuantifiedChunk](h, location.name)
-
     val chunkOrderHeuristics = optChunkOrderHeuristic match {
       case Some(heuristics) =>
         heuristics
@@ -467,39 +465,90 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           quantifiedChunkSupporter.extractHints(None, arguments))
     }
 
-    quantifiedChunkSupporter.removePermissions(
-      s,
-      relevantChunks,
-      codomainQVars,
-      And(codomainQVars.zip(arguments).map { case (r, e) => r === e }),
-      location,
-      permissions,
-      chunkOrderHeuristics,
-      v
-    ) {
-      case (true, s1, remainingChunks) =>
-        val h1 = Heap(remainingChunks ++ otherChunks)
+    if (s.exhaleExt) {
+      magicWandSupporter.transfer(s, permissions, Failure(pve dueTo InsufficientPermission(locationAccess)), v)((s1, h1, rPerm, v1) => {
+        val (relevantChunks, otherChunks) =
+          quantifiedChunkSupporter.splitHeap[QuantifiedChunk](h1, location.name)
+
+        val (result, s2, remainingChunks) = quantifiedChunkSupporter.removePermissions(
+          s1,
+          relevantChunks,
+          codomainQVars,
+          And(codomainQVars.zip(arguments).map { case (r, e) => r === e }),
+          location,
+          rPerm,
+          chunkOrderHeuristics,
+          v
+        )
+
+        val h2 = Heap(remainingChunks ++ otherChunks)
         val (sm, smValueDefs, optSmDomainDef) =
           quantifiedChunkSupporter.summarise(
-            s1,
+            s2,
             relevantChunks,
             codomainQVars,
             location,
-            if (s1.smDomainNeeded) Some(True()) else None,
-            v)
-        if (s1.smDomainNeeded) {
-          v.decider.prover.comment("Definitional axioms for singleton-SM's domain")
-          v.decider.assume(optSmDomainDef.get.body.replace(codomainQVars, arguments))
+            if (s2.smDomainNeeded) Some(True()) else None,
+            v1)
+        if (s2.smDomainNeeded) {
+          v1.decider.prover.comment("Definitional axioms for singleton-SM's domain")
+          v1.decider.assume(optSmDomainDef.get.body.replace(codomainQVars, arguments))
         }
-        v.decider.prover.comment("Definitional axioms for singleton-SM's value")
-        v.decider.assume(smValueDefs.map(_.body.replace(codomainQVars, arguments)))
-        val smDef = SnapshotMapDefinition(location, sm, smValueDefs, optSmDomainDef.toSeq)
-        val s2 = s1.copy(partiallyConsumedHeap = Some(h1),
-                         functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef))
-        val snap = genericLookup(location, sm, arguments, v).convert(sorts.Snap)
-        Q(s2, h1, snap, v)
-      case (false, _, _) =>
-        Failure(pve dueTo InsufficientPermission(locationAccess))
+        v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
+        v1.decider.assume(smValueDefs.map(_.body.replace(codomainQVars, arguments)))
+        val permsTaken = result match {
+          case Complete() => rPerm
+          case Incomplete(remaining) => PermMinus(rPerm, remaining)
+        }
+        val consumedChunk = quantifiedChunkSupporter.createSingletonQuantifiedChunk(codomainQVars, location, arguments, permsTaken, sm)
+        (result, s2, h2, Some(consumedChunk))
+      })((s3, oCh, v2) =>
+        oCh match {
+          case Some(ch) =>
+            val snap = genericLookup(location, ch.snapshotMap, arguments, v).convert(sorts.Snap)
+            Q(s3, s3.h, snap, v2)
+          case _ => Q(s3, s3.h, v2.decider.fresh(sorts.Snap), v2)
+        }
+      )
+    } else {
+      val (relevantChunks, otherChunks) =
+        quantifiedChunkSupporter.splitHeap[QuantifiedChunk](h, location.name)
+
+      val result = quantifiedChunkSupporter.removePermissions(
+        s,
+        relevantChunks,
+        codomainQVars,
+        And(codomainQVars.zip(arguments).map { case (r, e) => r === e }),
+        location,
+        permissions,
+        chunkOrderHeuristics,
+        v
+      )
+      result match {
+        case (Complete(), s1, remainingChunks) =>
+          val h1 = Heap(remainingChunks ++ otherChunks)
+          val (sm, smValueDefs, optSmDomainDef) =
+            quantifiedChunkSupporter.summarise(
+              s1,
+              relevantChunks,
+              codomainQVars,
+              location,
+              if (s1.smDomainNeeded) Some(True()) else None,
+              v)
+          if (s1.smDomainNeeded) {
+            v.decider.prover.comment("Definitional axioms for singleton-SM's domain")
+            v.decider.assume(optSmDomainDef.get.body.replace(codomainQVars, arguments))
+          }
+          v.decider.prover.comment("Definitional axioms for singleton-SM's value")
+          v.decider.assume(smValueDefs.map(_.body.replace(codomainQVars, arguments)))
+          val smDef = SnapshotMapDefinition(location, sm, smValueDefs, optSmDomainDef.toSeq)
+          val s2 = s1.copy(partiallyConsumedHeap = Some(h1),
+            functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef))
+          val snap = genericLookup(location, sm, arguments, v).convert(sorts.Snap)
+          Q(s2, h1, snap, v)
+        case (Incomplete(_), _, _) =>
+          Failure(pve dueTo InsufficientPermission(locationAccess))
+      }
     }
   }
 
@@ -513,8 +562,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                         perms: Term, // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                         v: Verifier)
-                       (Q: (Boolean, State, Seq[QuantifiedChunk]) => VerificationResult)
-                       : VerificationResult = {
+                       : (ConsumptionResult, State, Seq[QuantifiedChunk]) = {
 
     assert(
       relevantChunks forall (_.name == location.name),
@@ -528,7 +576,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     var remainingChunks = Vector.empty[QuantifiedChunk]
     var permsNeeded = perms
-    var success = false
+    var success: ConsumptionResult = Incomplete(permsNeeded)
 
     v.decider.prover.comment("Precomputing data for removing quantified permissions")
 
@@ -548,7 +596,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm()), Nil)
 
     precomputedData foreach { case (ithChunk, ithPTaken, ithPNeeded) =>
-      if (success)
+      if (success.isComplete)
         remainingChunks = remainingChunks :+ ithChunk
       else {
         val (permissionConstraint, depletedCheck) =
@@ -580,16 +628,24 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           Forall(codomainQVars, Implies(condition, ithPNeeded === NoPerm()), Nil)
 
         v.decider.prover.comment(s"Intermediate check if already taken enough permissions")
-        success = v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())
+        success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())) {
+          Complete()
+        } else {
+          Incomplete(ithPNeeded)
+        }
       }
     }
 
     v.decider.prover.comment("Final check if taken enough permissions")
-    success = success || v.decider.check(tookEnoughCheck, 0) /* This check is a must-check, i.e. an assert */
+    success =
+      if (success.isComplete || v.decider.check(tookEnoughCheck, 0) /* This check is a must-check, i.e. an assert */)
+        Complete()
+      else
+        success
 
     v.decider.prover.comment("Done removing quantified permissions")
 
-    Q(success, s, remainingChunks)
+    (success, s, remainingChunks)
   }
 
   private def createPermissionConstraintAndDepletedCheck(codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */

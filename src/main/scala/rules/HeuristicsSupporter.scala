@@ -6,17 +6,17 @@
 
 package viper.silicon.rules
 
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors.HeuristicsFailed
-import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.terms._
 import viper.silicon.state._
+import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.errors.HeuristicsFailed
+import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 
 object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
   import executor._
@@ -333,8 +333,6 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
         val s2 = s1.copy(exhaleExt = true,
                          reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail)
         assert(s2.reserveHeaps.length == s.reserveHeaps.length)
-        assert(s2.consumedChunks.length == s.consumedChunks.length)
-        assert(s2.consumedChunks.length == s2.reserveHeaps.length - 1)
         val sEmp = s2.copy(h = Heap())
         Q(sEmp, sEmp.h, v1)})
     } else {
