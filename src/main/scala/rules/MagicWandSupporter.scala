@@ -200,7 +200,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
    *       implemented for supporting quantified permissions. It should be
    *       possible to unite the two.
    *
-   * TODO: decider.getChunk will return the first chunk it finds - and only
+   * TODO: chunkSupporter.findChunk will return the first chunk it finds - and only
    *       the first chunk. That is, if h contains multiple chunks for the
    *       given id, only the first one will be considered. This may result
    *       in missing permissions that could be taken from h.

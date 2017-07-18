@@ -29,7 +29,6 @@ case class BasicChunk(resourceID: BaseID,
   resourceID match {
     case FieldID() => require(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
     case PredicateID() => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
-    case _ =>
   }
 
   override def withPerm(newPerm: Term) = BasicChunk(resourceID, id, args, snap, newPerm)
@@ -38,7 +37,6 @@ case class BasicChunk(resourceID: BaseID,
   override lazy val toString = resourceID match {
     case FieldID() => s"${args.head}.$id -> $snap # $perm"
     case PredicateID() => s"$id($snap; ${args.mkString(",")}) # $perm"
-    case _ => ""
   }
 }
 
@@ -159,12 +157,15 @@ case class MagicWandChunk(id: MagicWandIdentifier,
                           snap: MagicWandSnapshot,
                           perm: Term)
     extends NonQuantifiedChunk {
+
+  require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
+
   override val resourceID = MagicWandID()
 
   override def withPerm(newPerm: Term) = MagicWandChunk(id, bindings, args, snap, newPerm)
   override def withSnap(newSnap: Term) = newSnap match {
     case s: MagicWandSnapshot => MagicWandChunk(id, bindings, args, s, perm)
-    case _ => sys.error(s"MagicWand snapshot has to be of type MagicWandSnapshot but found $newSnap")
+    case _ => sys.error(s"MagicWand snapshot has to be of type MagicWandSnapshot but found ${newSnap.getClass}")
   }
 
   override lazy val toString: String = {
