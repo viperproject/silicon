@@ -167,18 +167,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     } else {
       consumeGreedy(s, h, id, args, perms, failure, v)((s1, h1, snap1, v1) => {
         Q(s1, h1, snap1, v1)
-      })/*
-      id match {
-        case mwid: MagicWandIdentifier => findChunk[NonQuantifiedChunk](h.values, mwid, args, v) match {
-          case Some(ch) =>
-            Q(s, h - ch, Some(ch.snap), v)
-          case None =>
-            failure
-        }
-        case _ => consumeGreedy(s, h, id, args, perms, failure, v)((s1, h1, snap1, v1) => {
-          Q(s1, h1, snap1, v1)
-        })
-      }*/
+      })
     }
   }
 

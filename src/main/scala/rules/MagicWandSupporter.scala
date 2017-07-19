@@ -11,7 +11,6 @@ import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
-import viper.silicon.state.terms.perms.IsNonPositive
 import viper.silicon.state.terms.{MagicWandSnapshot, _}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
@@ -20,7 +19,6 @@ import viper.silver.ast.{Exp, Stmt}
 import viper.silver.cfg.Edge
 import viper.silver.cfg.silver.SilverCfg.SilverBlock
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.InsufficientPermission
 
 object magicWandSupporter extends SymbolicExecutionRules with Immutable {
   import consumer._
@@ -129,37 +127,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
       Q(s3, MagicWandChunk(MagicWandIdentifier(wand), s3.g.values, ts, snap, FullPerm()), v1)
     })}
 
-  /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
-   *       structure. Try to merge the two.
-   */
-
-  def doWithMultipleHeaps[R](s: State,
-                             hs: Stack[Heap],
-                             v: Verifier)
-                            (action: (State, Heap, Verifier) => (State, Option[R], Heap, Verifier))
-                            (Q: (State, Option[R], Stack[Heap], Verifier) => VerificationResult)
-                            : VerificationResult = {
-
-    var heapsToVisit = hs
-    var visitedHeaps: List[Heap] = Nil
-    var rCurr: Option[R] = None
-    var sCurr = s
-    var vCurr = v
-
-    while (heapsToVisit.nonEmpty && rCurr.isEmpty) {
-      val h = heapsToVisit.head
-      heapsToVisit = heapsToVisit.tail
-
-      val (s1, r1, h1, v1) = action(sCurr, h, vCurr)
-      visitedHeaps = h1 :: visitedHeaps
-      rCurr = r1
-      sCurr = s1
-      vCurr = v1
-    }
-
-    Q(sCurr, rCurr, visitedHeaps.reverse ++ heapsToVisit, vCurr)
-  }
-
   def consumeFromMultipleHeaps[CH <: Chunk](s: State,
                                   hs: Stack[Heap],
                                   pLoss: Term,
@@ -192,88 +159,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
         val conservedPcs = s1.conservedPcs.head :+ v.decider.pcs.after(preMark)
         Q(s1.copy(conservedPcs = conservedPcs +: s1.conservedPcs.tail), heaps.reverse, consumedChunks.reverse, v)
       case Incomplete(_) => failure
-    }
-  }
-
-  def consumeFromMultipleHeaps(s: State,
-                               hs: Stack[Heap],
-                               id: ChunkIdentifer,
-                               args: Seq[Term],
-                               pLoss: Term,
-                               locacc: ast.LocationAccess,
-                               pve: PartialVerificationError,
-                               v: Verifier)
-                              (Q: (State, Stack[Heap], Stack[Option[NonQuantifiedChunk]], Verifier) => VerificationResult)
-                              : VerificationResult = {
-
-    assert(s.recordPcs)
-    val preMark = v.decider.setPathConditionMark()
-    val consumedChunks: Array[Option[NonQuantifiedChunk]] = Array.fill(hs.length)(None)
-    var toLose = pLoss
-    var heapsToVisit = hs
-    var visitedHeaps: List[Heap] = Nil
-    var sCurr = s
-    var vCurr = v
-
-    while (heapsToVisit.nonEmpty && !v.decider.check(IsNonPositive(toLose), Verifier.config.checkTimeout())) {
-      val h = heapsToVisit.head
-      heapsToVisit = heapsToVisit.tail
-
-      val (s1, h1, optCh1, toLose1, v1) = consumeMaxPermissions(sCurr, h, id, args, toLose, vCurr)
-
-      visitedHeaps = h1 :: visitedHeaps
-
-      assert(consumedChunks(hs.length - 1 - heapsToVisit.length).isEmpty)
-      consumedChunks(hs.length - 1 - heapsToVisit.length) = optCh1
-      toLose = toLose1
-      sCurr = s1
-      vCurr = v1
-    }
-
-    if (vCurr.decider.check(IsNonPositive(toLose), Verifier.config.checkTimeout())) {
-      val tEqs =
-        consumedChunks.flatten.sliding(2).map {
-          case Array(ch1: NonQuantifiedChunk, ch2: NonQuantifiedChunk) => ch1.snap === ch2.snap
-          case _ => True()
-        }
-
-      vCurr.decider.assume(tEqs.toIterable)
-
-      val conservedPcs = sCurr.conservedPcs.head :+ vCurr.decider.pcs.after(preMark)
-      Q(sCurr.copy(conservedPcs = conservedPcs +: sCurr.conservedPcs.tail), visitedHeaps.reverse ++ heapsToVisit, consumedChunks, vCurr)
-    } else
-      Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
-  }
-
-  /* TODO: This is similar, but not as general, as the consumption algorithm
-   *       implemented for supporting quantified permissions. It should be
-   *       possible to unite the two.
-   *
-   * TODO: chunkSupporter.findChunk will return the first chunk it finds - and only
-   *       the first chunk. That is, if h contains multiple chunks for the
-   *       given id, only the first one will be considered. This may result
-   *       in missing permissions that could be taken from h.
-   */
-  private def consumeMaxPermissions(s: State,
-                                    h: Heap,
-                                    id: ChunkIdentifer,
-                                    args: Seq[Term],
-                                    pLoss: Term,
-                                    v: Verifier)
-                                   : (State, Heap, Option[NonQuantifiedChunk], Term, Verifier) = {
-
-    chunkSupporter.findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
-      case Some(ch) =>
-        val (pLost, pKeep, pToConsume) =
-          if (v.decider.check(PermAtMost(pLoss, ch.perm), Verifier.config.checkTimeout()))
-            (pLoss, PermMinus(ch.perm, pLoss), NoPerm())
-          else
-            (ch.perm, NoPerm(), PermMinus(pLoss, ch.perm))
-        val h1 = h - ch + ch.withPerm(pKeep)
-        val consumedChunk = ch.withPerm(pLost)
-        (s, h1, Some(consumedChunk), pToConsume, v)
-
-      case None => (s, h, None, pLoss, v)
     }
   }
 
@@ -446,31 +331,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
               : VerificationResult = {
 
     magicWandSupporter.consumeFromMultipleHeaps(s, s.reserveHeaps.tail, perms, failure, v)(consumeFunction)((s1, hs, chs, v1) => {
-      val s2 = s1.copy(reserveHeaps = s.reserveHeaps.head +: hs)
-
-      val usedChunks = chs.flatten
-      val hUsed = stateConsolidator.merge(s2.reserveHeaps.head, Heap(usedChunks), v1)
-
-      val s3 = s2.copy(reserveHeaps = hUsed +: s2.reserveHeaps.tail)
-
-      /* Returning any of the usedChunks should be fine w.r.t to the snapshot
-       * of the chunk, since consumeFromMultipleHeaps should have equated the
-       * snapshots of all usedChunks.
-       */
-      Q(s3, usedChunks.headOption, v1)})
-  }
-
-  def transfer(s: State,
-               id: ChunkIdentifer,
-               args: Seq[Term],
-               perms: Term,
-               locacc: ast.LocationAccess,
-               pve: PartialVerificationError,
-               v: Verifier)
-              (Q: (State, Option[NonQuantifiedChunk], Verifier) => VerificationResult)
-              : VerificationResult = {
-
-    magicWandSupporter.consumeFromMultipleHeaps(s, s.reserveHeaps.tail, id, args, perms, locacc, pve, v)((s1, hs, chs, v1/*, pcr*/) => {
       val s2 = s1.copy(reserveHeaps = s.reserveHeaps.head +: hs)
 
       val usedChunks = chs.flatten

@@ -6,19 +6,18 @@
 
 package viper.silicon.rules
 
+import scala.collection.mutable
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ConsumeRecord, GlobalBranchRecord, Stack, SymbExLogger}
+import viper.silicon.{ConsumeRecord, GlobalBranchRecord, SymbExLogger}
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
-import viper.silver.verifier.{PartialVerificationError, VerificationError}
-
-import scala.collection.mutable
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 
@@ -782,39 +781,6 @@ object consumer extends ConsumptionRules with Immutable {
 
       /* Handle wands */
       case wand: ast.MagicWand =>
-        def QL(s: State, h: Heap, chWand: MagicWandChunk, wand: ast.MagicWand, ve: VerificationError, v: Verifier) = {
-          heuristicsSupporter.tryOperation[Heap, Term](s"consume wand $wand")(s, h, v)((s1, h1, v1, QS) => {
-            val hs =
-              if (s1.exhaleExt) s1.reserveHeaps
-              else Stack(h1)
-
-            /* TODO: Consuming a wand chunk, respectively, transferring it if c.exhaleExt
-             *       is true, should be implemented on top of MagicWandSupporter.transfer,
-             *       or even on ChunkSupporter.consume.
-             * TODO: Does context.partiallyConsumedHeap need to be updated after consuming chunks?
-             */
-            magicWandSupporter.doWithMultipleHeaps(s1, hs, v1)((s2, h2, v2) =>
-              chunkSupporter.findMatchingChunk(h2.values, chWand, v2) match {
-                case someChunk @ Some(ch) => (s2, someChunk, h2 - ch, v2)
-                case _ => (s2, None, h2, v2)
-              }
-            ){case (s2, Some(ch: MagicWandChunk), hs2, v2) =>
-                assert(s2.exhaleExt == s.exhaleExt)
-                if (s.exhaleExt) {
-                  /* transfer: move ch into h = σUsed*/
-                  assert(hs2.size == s.reserveHeaps.size)
-                  val topReserveHeap = hs2.head + ch
-                  val s3 = s2.copy(reserveHeaps = topReserveHeap +: hs2.tail)
-                  QS(s3, h /*+ ch*/, ch.snap, v2)
-                } else {
-                  assert(hs2.size == 1)
-                  assert(s2.reserveHeaps == s.reserveHeaps)
-                  QS(s2, hs2.head, ch.snap, v2)
-                }
-
-              case _ => Failure(ve)}
-          })(Q)
-        }
         magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) => {
           val failure = Failure(pve dueTo MagicWandChunkNotFound(wand))
           val description = s"consume wand $wand"
