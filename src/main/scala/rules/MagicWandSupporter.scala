@@ -151,6 +151,11 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
         assert(consumedChunks.length == hs.length)
         val tEqs =
           consumedChunks.flatten.sliding(2).map {
+            /* Equating wand snapshots would indirectly equate the actual left hand sides when they are applied
+             * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their
+             * snapshots. Also have a look at the comments in the packageWand and applyWand methods.
+             */
+            case Seq(_: MagicWandChunk, _: MagicWandChunk) => True()
             case Seq(ch1: NonQuantifiedChunk, ch2: NonQuantifiedChunk) => ch1.snap === ch2.snap
             case Seq(ch1: QuantifiedChunk, ch2: QuantifiedChunk) => ch1.snapshotMap === ch2.snapshotMap
             case _ => True()
@@ -338,11 +343,13 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
       val s3 = s2.copy(reserveHeaps = hUsed +: s2.reserveHeaps.tail)
 
-      /* Returning any of the usedChunks should be fine w.r.t to the snapshot
+      /* Returning the last of the usedChunks should be fine w.r.t to the snapshot
        * of the chunk, since consumeFromMultipleHeaps should have equated the
-       * snapshots of all usedChunks.
+       * snapshots of all usedChunks, except for magic wand chunks, where usedChunks
+       * is potentially a series of empty chunks (perm = Z) followed by the that was
+       * actually consumed.
        */
-      Q(s3, usedChunks.headOption, v1)})
+      Q(s3, usedChunks.lastOption, v1)})
   }
 
   def getEvalHeap(s: State): Heap = {
