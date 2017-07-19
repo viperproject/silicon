@@ -768,7 +768,9 @@ object consumer extends ConsumptionRules with Immutable {
             v2.decider.assert(perms.IsNonNegative(tPerm)){
               case true =>
                 val loss = PermTimes(tPerm, s2.permissionScalingFactor)
-                chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), args, loss, pve, v2, locacc, Some(a))((s3, h1, snap1, v3) => {
+                val failure = Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
+                val description = s"consume ${a.pos}: $a"
+                chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), args, loss, failure, v2, description)((s3, h1, snap1, v3) => {
                   val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
                                    constrainableARPs = s.constrainableARPs)
                   Q(s4, h1, snap1, v3)})

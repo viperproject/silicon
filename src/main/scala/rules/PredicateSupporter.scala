@@ -9,12 +9,13 @@ package viper.silicon.rules
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.resources.PredicateID
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silicon.utils.toSf
+import viper.silver.verifier.reasons.InsufficientPermission
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
   def fold(s: State,
@@ -126,7 +127,9 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
           Q(s4.copy(g = s.g), v2)})
       })
     } else {
-      chunkSupporter.consume(s1, s1.h, BasicChunkIdentifier(predicate.name), tArgs, s1.permissionScalingFactor, pve, v, pa)((s2, h1, snap, v1) => {
+      val failure = Failure(pve dueTo InsufficientPermission(pa)).withLoad(tArgs)
+      val description = s"consume ${pa.pos}: $pa"
+      chunkSupporter.consume(s1, s1.h, BasicChunkIdentifier(predicate.name), tArgs, s1.permissionScalingFactor, failure, v, description)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
