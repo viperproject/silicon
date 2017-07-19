@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import scala.collection.mutable
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.perms.IsPositive
@@ -18,8 +19,6 @@ import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
-
-import scala.collection.mutable
 
 trait ProductionRules extends SymbolicExecutionRules {
 

@@ -6,12 +6,11 @@
 
 package viper.silicon.state.terms
 
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.state.{Identifier, MagicWandChunk}
-import viper.silicon.{Map, Stack, state, toMap}
-import viper.silver.ast.utility.Visitor
-
 import scala.reflect.ClassTag
+import viper.silver.ast.utility.Visitor
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.{Map, Stack, state, toMap}
+import viper.silicon.state.{Identifier, MagicWandChunk}
 
 
 sealed trait Node
@@ -545,7 +544,7 @@ class Times(val p0: Term, val p1: Term) extends ArithmeticTerm
 }
 
 object Times extends ((Term, Term) => Term) {
-  import predef.{One, Zero}
+  import predef.{Zero, One}
 
   def apply(e0: Term, e1: Term) = (e0, e1) match {
     case (_, Zero) => Zero
@@ -950,7 +949,7 @@ class IntPermTimes(val p0: Term, val p1: Term)
 }
 
 object IntPermTimes extends ((Term, Term) => Term) {
-  import predef.{One, Zero}
+  import predef.{Zero, One}
 
   def apply(t0: Term, t1: Term) = (t0, t1) match {
     case (Zero, _) => NoPerm()
