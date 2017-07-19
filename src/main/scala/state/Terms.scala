@@ -6,11 +6,12 @@
 
 package viper.silicon.state.terms
 
-import scala.reflect.ClassTag
-import viper.silver.ast.utility.Visitor
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk}
+import viper.silicon.{Map, Stack, state, toMap}
+import viper.silver.ast.utility.Visitor
+
+import scala.reflect.ClassTag
 
 
 sealed trait Node
@@ -544,7 +545,7 @@ class Times(val p0: Term, val p1: Term) extends ArithmeticTerm
 }
 
 object Times extends ((Term, Term) => Term) {
-  import predef.{Zero, One}
+  import predef.{One, Zero}
 
   def apply(e0: Term, e1: Term) = (e0, e1) match {
     case (_, Zero) => Zero
@@ -949,7 +950,7 @@ class IntPermTimes(val p0: Term, val p1: Term)
 }
 
 object IntPermTimes extends ((Term, Term) => Term) {
-  import predef.{Zero, One}
+  import predef.{One, Zero}
 
   def apply(t0: Term, t1: Term) = (t0, t1) match {
     case (Zero, _) => NoPerm()
@@ -1643,6 +1644,17 @@ case class MagicWandSnapshot(val abstractLhs: Term, val rhsSnapshot: Term) exten
       this.rhsSnapshot
     else
       Ite(condition, other.rhsSnapshot, this.rhsSnapshot))
+  }
+}
+
+object MagicWandSnapshot {
+  def apply(snapshot: Term): MagicWandSnapshot = {
+    assert(snapshot.sort == sorts.Snap)
+    if (snapshot.isInstanceOf[MagicWandSnapshot])
+      snapshot.asInstanceOf[MagicWandSnapshot]
+    else {
+      MagicWandSnapshot(First(snapshot), Second(snapshot))
+    }
   }
 }
 

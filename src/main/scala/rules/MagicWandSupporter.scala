@@ -109,14 +109,25 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                           (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                           : VerificationResult = {
 
+    val snapshotPair = possibleSnapshotPair.getOrElse((freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v)))
+    createChunk(s, wand, MagicWandSnapshot(snapshotPair._1, snapshotPair._2), pve, v)(Q)
+  }
+
+  def createChunk(s: State,
+                  wand: ast.MagicWand,
+                  snap: MagicWandSnapshot,
+                  pve: PartialVerificationError,
+                  v: Verifier)
+                 (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
+                 : VerificationResult = {
+
     val s1 = s.copy(exhaleExt = false)
     val es = wand.subexpressionsToEvaluate(Verifier.program)
 
     evals(s1, es, _ => pve, v)((s2, ts, v1) => {
       val s3 = s2.copy(exhaleExt = s.exhaleExt)
-      val snapshotPair = possibleSnapshotPair.getOrElse((freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v)))
-      Q(s3, MagicWandChunk(MagicWandIdentifier(wand), s3.g.values, ts, MagicWandSnapshot(snapshotPair._1, snapshotPair._2), FullPerm()), v1)
-  })}
+      Q(s3, MagicWandChunk(MagicWandIdentifier(wand), s3.g.values, ts, snap, FullPerm()), v1)
+    })}
 
   /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
    *       structure. Try to merge the two.
@@ -413,7 +424,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                 (Q: (State, Verifier) => VerificationResult)
                 : VerificationResult = {
         consume(s, wand, pve, v)((s1, snap, v1) => {
-          val wandSnap = snap.asInstanceOf[MagicWandSnapshot]
+          val wandSnap = MagicWandSnapshot(snap)
           consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
             /* It is assumed that snap and wandSnap.abstractLhs are structurally the same.
              * Since a wand can only be applied once, equating the two snapshots is sound.
