@@ -1629,7 +1629,7 @@ object SortWrapper {
 
 /* Magic wands */
 
-case class MagicWandSnapshot(val abstractLhs: Term, val rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
+case class MagicWandSnapshot(abstractLhs: Term, rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
 
   utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
   utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
@@ -1649,10 +1649,10 @@ case class MagicWandSnapshot(val abstractLhs: Term, val rhsSnapshot: Term) exten
 object MagicWandSnapshot {
   def apply(snapshot: Term): MagicWandSnapshot = {
     assert(snapshot.sort == sorts.Snap)
-    if (snapshot.isInstanceOf[MagicWandSnapshot])
-      snapshot.asInstanceOf[MagicWandSnapshot]
-    else {
-      MagicWandSnapshot(First(snapshot), Second(snapshot))
+    snapshot match {
+      case snap: MagicWandSnapshot => snap
+      case _ =>
+        MagicWandSnapshot(First(snapshot), Second(snapshot))
     }
   }
 }
