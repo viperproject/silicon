@@ -324,7 +324,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
                  (s: State, h: Heap, v: Verifier)
                  (Q: (State, Heap, Verifier) => VerificationResult)
                  : VerificationResult = {
-
+/*
     if (s.exhaleExt) {
 //      heuristicsLogger.debug(s"  reaction: packaging $wand")
       /* TODO: The next block is an exact copy of the corresponding case in the consumer. Reuse code! */
@@ -341,6 +341,8 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
       exec(s.copy(h = h), packageStmt, v)((s1, v1) => {
         Q(s1, s1.h, v1)})
     }
+*/
+    Q(s, h, v)
   }
 
   def applyWand(wand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], pve: PartialVerificationError)

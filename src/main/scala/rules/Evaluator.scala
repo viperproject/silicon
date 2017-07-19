@@ -227,8 +227,8 @@ object evaluator extends EvaluationRules with Immutable {
       case fa: ast.FieldAccess =>
         evalLocationAccess(s, fa, pve, v)((s1, name, args, v1) => {
           val chunkID = BasicChunkIdentifier(name)
-          val failure = Failure(pve dueTo InsufficientPermission(fa)).withLoad(args)
-          chunkSupporter.withChunk[BasicChunk](s1, chunkID, args, None, failure, v1)((s2, ch, v2) => {
+          val ve = pve dueTo InsufficientPermission(fa)
+          chunkSupporter.withChunk[BasicChunk](s1, chunkID, args, None, ve, v1)((s2, ch, v2) => {
             val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, ch.snap))
             Q(s3, ch.snap, v2)})})
 

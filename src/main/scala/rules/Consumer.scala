@@ -767,9 +767,9 @@ object consumer extends ConsumptionRules with Immutable {
             v2.decider.assert(perms.IsNonNegative(tPerm)){
               case true =>
                 val loss = PermTimes(tPerm, s2.permissionScalingFactor)
-                val failure = Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
+                val ve = pve dueTo InsufficientPermission(locacc)
                 val description = s"consume ${a.pos}: $a"
-                chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), args, loss, failure, v2, description)((s3, h1, snap1, v3) => {
+                chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), args, loss, ve, v2, description)((s3, h1, snap1, v3) => {
                   val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
                                    constrainableARPs = s.constrainableARPs)
                   Q(s4, h1, snap1, v3)})
@@ -782,9 +782,9 @@ object consumer extends ConsumptionRules with Immutable {
       /* Handle wands */
       case wand: ast.MagicWand =>
         magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) => {
-          val failure = Failure(pve dueTo MagicWandChunkNotFound(wand))
+          val ve = pve dueTo MagicWandChunkNotFound(wand)
           val description = s"consume wand $wand"
-          chunkSupporter.consume(s1, h, chWand.id, chWand.args, FullPerm(), failure, v1, description)(Q)
+          chunkSupporter.consume(s1, h, chWand.id, chWand.args, FullPerm(), ve, v1, description)(Q)
         })
 
       case _ =>

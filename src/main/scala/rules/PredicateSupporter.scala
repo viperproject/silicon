@@ -127,9 +127,9 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
           Q(s4.copy(g = s.g), v2)})
       })
     } else {
-      val failure = Failure(pve dueTo InsufficientPermission(pa)).withLoad(tArgs)
+      val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
-      chunkSupporter.consume(s1, s1.h, BasicChunkIdentifier(predicate.name), tArgs, s1.permissionScalingFactor, failure, v, description)((s2, h1, snap, v1) => {
+      chunkSupporter.consume(s1, s1.h, BasicChunkIdentifier(predicate.name), tArgs, s1.permissionScalingFactor, ve, v, description)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {

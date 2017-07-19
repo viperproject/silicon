@@ -296,8 +296,8 @@ object executor extends ExecutionRules with Immutable {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
-            val failure = Failure(pve dueTo InsufficientPermission(fa)).withLoad(Seq(tRcvr))
-            chunkSupporter.withChunk[BasicChunk](s2, BasicChunkIdentifier(field.name), Seq(tRcvr), Some(FullPerm()), failure, v2)((s3, fc, v3) => {
+            val ve = pve dueTo InsufficientPermission(fa)
+            chunkSupporter.withChunk[BasicChunk](s2, BasicChunkIdentifier(field.name), Seq(tRcvr), Some(FullPerm()), ve, v2)((s3, fc, v3) => {
               val t = ssaifyRhs(tRhs, field.name, field.typ, v3)
               val fieldChunk = fc.withSnap(t)
               Q(s3.copy(h = s3.h - fc + fieldChunk), v3)})}))
