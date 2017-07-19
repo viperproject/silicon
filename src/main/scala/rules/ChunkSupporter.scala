@@ -15,9 +15,6 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.InsufficientPermission
 
 trait ChunkSupportRules extends SymbolicExecutionRules {
   def consume(s: State,
@@ -25,10 +22,9 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               id: ChunkIdentifer,
               args: Seq[Term],
               perms: Term,
-              pve: PartialVerificationError,
+              failure: Failure,
               v: Verifier,
-              locacc: ast.LocationAccess,
-              optNode: Option[ast.Node with ast.Positioned] = None)
+              description: String)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult
 
@@ -41,8 +37,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                 h: Heap,
                 id: ChunkIdentifer,
                 args: Seq[Term],
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
+                failure: Failure,
                 v: Verifier)
                (Q: (State, Heap, CH, Verifier) => VerificationResult)
                : VerificationResult
@@ -53,8 +48,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                 id: ChunkIdentifer,
                 args: Seq[Term],
                 optPerms: Option[Term],
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
+                failure: Failure,
                 v: Verifier)
                (Q: (State, Heap, CH, Verifier) => VerificationResult)
                : VerificationResult
@@ -63,8 +57,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                (s: State,
                 id: ChunkIdentifer,
                 args: Seq[Term],
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
+                failure: Failure,
                 v: Verifier)
                (Q: (State, CH, Verifier) => VerificationResult)
                : VerificationResult
@@ -74,8 +67,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                 id: ChunkIdentifer,
                 args: Seq[Term],
                 optPerms: Option[Term],
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
+                failure: Failure,
                 v: Verifier)
                (Q: (State, CH, Verifier) => VerificationResult)
                : VerificationResult
@@ -86,8 +78,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                       id: ChunkIdentifer,
                       args: Seq[Term],
                       perms: Term,
-                      locacc: ast.LocationAccess,
-                      pve: PartialVerificationError,
+                      failure: Failure,
                       v: Verifier)
                      (Q: (State, Heap, Option[CH], Verifier) => VerificationResult)
                      : VerificationResult
@@ -113,36 +104,6 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
 }
 // TODO: replace Failure by VerificationError
 object chunkSupporter extends ChunkSupportRules with Immutable {
-  def consume(s: State,
-              h: Heap,
-              id: ChunkIdentifer,
-              args: Seq[Term],
-              perms: Term,
-              pve: PartialVerificationError,
-              v: Verifier,
-              locacc: ast.LocationAccess,
-              optNode: Option[ast.Node with ast.Positioned] = None)
-             (Q: (State, Heap, Term, Verifier) => VerificationResult)
-             : VerificationResult = {
-
-    val description = optNode.orElse(Some(locacc)).map(node => s"consume ${node.pos}: $node").get
-    heuristicsSupporter.tryOperation[Heap, Term](description)(s, h, v)((s1, h1, v1, QS) => {
-      consume(s1, h1, id, args, perms, locacc, pve, v1)((s2, h2, optSnap, v2) =>
-        optSnap match {
-          case Some(snap) =>
-            QS(s2, h2, snap.convert(sorts.Snap), v2)
-          case None =>
-            /* Not having consumed anything could mean that we are in an infeasible
-             * branch, or that the permission amount to consume was zero.
-             * Returning a fresh snapshot in these cases should not lose any information.
-             */
-            val fresh = v2.decider.fresh(sorts.Snap)
-            val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
-            QS(s3, h2, fresh, v2)
-        })
-    })(Q)
-  }
-
   def consume(s: State,
               h: Heap,
               id: ChunkIdentifer,
@@ -199,55 +160,25 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
       magicWandSupporter.transfer(s, perms, failure, v)(consumeFunction)((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
-    } else {
-      findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
-        case Some(ch) =>
-          Q(s, h - ch, Some(ch.snap), v)
-        case None =>
-          failure
-      }
-    }
-  }
-
-  private def consume(s: State,
-                      h: Heap,
-                      id: ChunkIdentifer,
-                      args: Seq[Term],
-                      perms: Term,
-                      locacc: ast.LocationAccess,
-                      pve: PartialVerificationError,
-                      v: Verifier)
-                     (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
-                     : VerificationResult = {
-    if (s.exhaleExt) {
-
-      /* TODO: Integrate magic wand's transferring consumption into the regular,
-       * (non-)exact consumption (the code following this if-branch)
-       */
-
-      def consumeFunction(s: State, h: Heap, perms: Term, v: Verifier) = {
-        findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
-          case Some(ch) =>
-            val toTake = PermMin(ch.perm, perms)
-            val newChunk = ch.withPerm(PermMinus(ch.perm, toTake))
-            val takenChunk = Some(ch.withPerm(toTake))
-            (ConsumptionResult(PermMinus(perms, toTake), v), s, h - ch + newChunk, takenChunk)
-          case None =>
-            (Incomplete(perms), s, h, None)
-        }
-      }
-
-      val failure = Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
-      magicWandSupporter.transfer(s, perms, failure, v)(consumeFunction)((s1, optCh, v1) =>
-        Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else if (Verifier.config.enableMoreCompleteExhale()) {
-      consumeComplete(s, h, id, args, perms, locacc, pve, v)((s1, h1, snap1, v1) => {
+      consumeComplete(s, h, id, args, perms, failure, v)((s1, h1, snap1, v1) => {
         Q(s1, h1, snap1, v1)
       })
     } else {
-      consumeGreedy(s, h, id, args, perms, locacc, pve, v)((s1, h1, snap1, v1) => {
+      consumeGreedy(s, h, id, args, perms, failure, v)((s1, h1, snap1, v1) => {
         Q(s1, h1, snap1, v1)
-      })
+      })/*
+      id match {
+        case mwid: MagicWandIdentifier => findChunk[NonQuantifiedChunk](h.values, mwid, args, v) match {
+          case Some(ch) =>
+            Q(s, h - ch, Some(ch.snap), v)
+          case None =>
+            failure
+        }
+        case _ => consumeGreedy(s, h, id, args, perms, failure, v)((s1, h1, snap1, v1) => {
+          Q(s1, h1, snap1, v1)
+        })
+      }*/
     }
   }
 
@@ -256,13 +187,12 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                             id: ChunkIdentifer,
                             args: Seq[Term],
                             perms: Term,
-                            locacc: ast.LocationAccess,
-                            pve: PartialVerificationError,
+                            failure: Failure,
                             v: Verifier)
                            (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                            : VerificationResult = {
     if (terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-      withChunkIfPerm[NonQuantifiedChunk](s, h, id, args, perms, locacc, pve, v)((s1, h1, optCh, v1) => {
+      withChunkIfPerm[NonQuantifiedChunk](s, h, id, args, perms, failure, v)((s1, h1, optCh, v1) => {
         optCh match {
           case Some(ch) =>
             if (v1.decider.check (IsNonPositive(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout () ) )
@@ -274,7 +204,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         }
       })
     } else {
-      withChunk[NonQuantifiedChunk](s, h, id, args, None, locacc, pve, v)((s1, h1, ch, v1) => {
+      withChunk[NonQuantifiedChunk](s, h, id, args, None, failure, v)((s1, h1, ch, v1) => {
         v1.decider.assume(PermLess(perms, ch.perm))
         Q(s1, h1 - ch + ch.withPerm(PermMinus(ch.perm, perms)), Some(ch.snap), v1)
       })
@@ -286,8 +216,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                               id: ChunkIdentifer,
                               args: Seq[Term],
                               perms: Term,
-                              locacc: ast.LocationAccess,
-                              pve: PartialVerificationError,
+                              failure: Failure,
                               v: Verifier)
                              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                              : VerificationResult = {
@@ -303,7 +232,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       if (v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
         Q(s, h, None, v)
       } else {
-        Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
+        failure
       }
     } else {
       val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
@@ -374,7 +303,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
               v.decider.assume(PermLess(perms, pSum))
             }
             Q(s1, newHeap, Some(snap), v)
-          case false => Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
+          case false => failure
         }
       }
     }
@@ -390,8 +319,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                 h: Heap,
                 id: ChunkIdentifer,
                 args: Seq[Term],
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
+                failure: Failure,
                 v: Verifier)
                (Q: (State, Heap, CH, Verifier) => VerificationResult)
                : VerificationResult = {
@@ -405,7 +333,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           if (v1.decider.checkSmoke())
             Success() /* TODO: Mark branch as dead? */
           else
-            Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)}
+            failure
+      }
     )(Q)
   }
 
@@ -415,13 +344,12 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                 id: ChunkIdentifer,
                 args: Seq[Term],
                 optPerms: Option[Term],
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
+                failure: Failure,
                 v: Verifier)
                (Q: (State, Heap, CH, Verifier) => VerificationResult)
                : VerificationResult = {
 
-    withChunk[CH](s, h, id, args, locacc, pve, v)((s1, h1, ch, v1) => {
+    withChunk[CH](s, h, id, args, failure, v)((s1, h1, ch, v1) => {
       val permCheck = optPerms match {
         case Some(p) => PermAtMost(p, ch.perm)
         case None => ch.perm !== NoPerm()
@@ -432,7 +360,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           v1.decider.assume(permCheck)
           Q(s1, h1, ch, v1)
         case false =>
-          Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
+          failure
       }
     })
   }
@@ -441,24 +369,22 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                (s: State,
                 id: ChunkIdentifer,
                 args: Seq[Term],
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
+                failure: Failure,
                 v: Verifier)
                (Q: (State, CH, Verifier) => VerificationResult)
                : VerificationResult =
-    withChunk[CH](s, s.h, id, args, locacc, pve, v)((s1, h1, ch, v1) => Q(s1.copy(h = h1), ch, v1))
+    withChunk[CH](s, s.h, id, args, failure, v)((s1, h1, ch, v1) => Q(s1.copy(h = h1), ch, v1))
 
   def withChunk[CH <: NonQuantifiedChunk: ClassTag]
                (s: State,
                 id: ChunkIdentifer,
                 args: Seq[Term],
                 optPerms: Option[Term],
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
+                failure: Failure,
                 v: Verifier)
                (Q: (State, CH, Verifier) => VerificationResult)
                : VerificationResult =
-    withChunk[CH](s, s.h, id, args, optPerms, locacc, pve, v)((s1, h1, ch, v1) => Q(s1.copy(h = h1), ch, v1))
+    withChunk[CH](s, s.h, id, args, optPerms, failure, v)((s1, h1, ch, v1) => Q(s1.copy(h = h1), ch, v1))
 
   /**
     * Just like withChunk, but calls the continuation with <code>None</code> if the permission value is
@@ -470,8 +396,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                       id: ChunkIdentifer,
                       args: Seq[Term],
                       perms: Term,
-                      locacc: ast.LocationAccess,
-                      pve: PartialVerificationError,
+                      failure: Failure,
                       v: Verifier)
                      (Q: (State, Heap, Option[CH], Verifier) => VerificationResult)
                      : VerificationResult = {
@@ -485,7 +410,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
               v1.decider.assume(permCheck)
               QS(s1.copy(h = s.h), s1.h, Some(ch), v1)
             case false =>
-              Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
+              failure
           }
 
         case None =>
@@ -494,7 +419,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           else if (s1.retrying && v1.decider.check(perms === NoPerm(), Verifier.config.checkTimeout()))
             QS(s1.copy(h = s.h), s1.h, None, v1)
           else
-            Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)}
+            failure
+      }
     )(Q)
   }
 
