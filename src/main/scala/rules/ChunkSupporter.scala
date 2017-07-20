@@ -103,7 +103,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                       : Iterable[CH]
 
 }
-// TODO: replace Failure by VerificationError
+
 object chunkSupporter extends ChunkSupportRules with Immutable {
   def consume(s: State,
               h: Heap,
@@ -195,8 +195,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       withChunkIfPerm[NonQuantifiedChunk](s, h, id, args, perms, ve, v)((s1, h1, optCh, v1) => {
         optCh match {
           case Some(ch) =>
-            if (v1.decider.check (IsNonPositive(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout () ) )
-              Q (s1, h1 - ch, Some (ch.snap), v1)
+            if (v1.decider.check(IsNonPositive(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout()))
+              Q (s1, h1 - ch, Some(ch.snap), v1)
             else
               Q (s1, h1 - ch + ch.withPerm(PermMinus(ch.perm, perms)), Some (ch.snap), v1)
           case None =>
