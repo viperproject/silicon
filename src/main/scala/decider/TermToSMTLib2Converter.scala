@@ -338,6 +338,6 @@ class TermToSMTLib2Converter
   }
 
   def stop(): Unit = {
-    sanitizedNamesCache.clear()
+    if (sanitizedNamesCache != null) sanitizedNamesCache.clear()
   }
 }
