@@ -252,7 +252,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       }
       var moreNeeded = true
 
-      relevantChunks.sortWith((b1, _) => b1.args == args) foreach { ch =>
+      relevantChunks.sortWith((ch1, ch2) => definitiveAlias.contains(ch1) || !definitiveAlias.contains(ch2) && ch1.args == args) foreach { ch =>
         if (moreNeeded) {
           val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
           pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm()))
@@ -298,8 +298,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         }
         Q(s1, newHeap, Some(snap), v)
       } else {
-        val toCheck = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
-        v.decider.assert(toCheck) {
+        val toAssert = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
+        v.decider.assert(toAssert) {
           case true =>
             if (!consumeExact) {
               v.decider.assume(PermLess(perms, pSum))
