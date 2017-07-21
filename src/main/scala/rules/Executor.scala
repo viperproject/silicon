@@ -235,7 +235,7 @@ object executor extends ExecutionRules with Immutable {
     }
 
     val executed = stmt match {
-      case ast.Seqn(stmts) =>
+      case ast.Seqn(stmts, _) =>
         execs(s, stmts, v)(Q)
 
       case ast.Label(name, _) =>
