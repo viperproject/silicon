@@ -185,7 +185,7 @@ object evaluator extends EvaluationRules with Immutable {
         eval(s, fa.rcv, pve, v)((s1, tRcvr, v1) => {
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, fa.field.name)
-          s1.smCache.get(relevantChunks) match {
+          s1.smCache.get((fa.field, relevantChunks)) match {
             case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) if !Verifier.config.disableValueMapCaching() =>
               /* The next assertion must be made if the FVF definition is taken from the cache;
                * in the other case it is part of quantifiedChunkSupporter.withValue.
@@ -219,7 +219,7 @@ object evaluator extends EvaluationRules with Immutable {
                                                .recordFvfAndDomain(smDef)
                   val smCache2 =
                     if (Verifier.config.disableValueMapCaching()) s1.smCache
-                    else s1.smCache + (relevantChunks -> (smDef, totalPermissions))
+                    else s1.smCache + ((fa.field, relevantChunks) -> (smDef, totalPermissions))
                   val s2 = s1.copy(functionRecorder = fr2,
                                    smCache = smCache2)
                   Q(s2, smLookup, v1)}}})

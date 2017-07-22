@@ -87,13 +87,13 @@ class ErrorMessageTests extends FunSuite {
         count = count + 1
         Seqn(Seq(
           Assert(invars)(w.invs.head.pos, w.invs.head.info, ErrTrafo( { case AssertFailed(as, r) => LoopInvariantNotEstablished(as.exp, r) })),
-          If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("skiploop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
+          If(Not(w.cond)(w.cond.pos, w.cond.info), Seqn(Seq(Goto("skiploop" + count)(w.pos, w.info)), Seq())(w.pos, w.info), Seqn(Seq(), Seq())(w.pos, w.info))(w.pos, w.info),
           Label("loop" + count, Seq(TrueLit()()))(w.pos, w.info),
           w.body,
           Assert(invars)(w.invs.head.pos, w.invs.head.info, ErrTrafo({ case AssertFailed(as, r) => LoopInvariantNotPreserved(as.exp, r) })),
-          If(w.cond, Goto("loop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
+          If(w.cond, Seqn(Seq(Goto("loop" + count)(w.pos, w.info)), Seq())(w.pos, w.info), Seqn(Seq(), Seq())(w.pos, w.info))(w.pos, w.info),
           Label("skiploop" + count, Seq(TrueLit()()))(w.pos, w.info)
-        ))()
+        ), Seq())()
     })
 
     files foreach { fileName: String => {
@@ -170,7 +170,7 @@ class ErrorMessageTests extends FunSuite {
         val context2 = new PartialContextC[Node, Map[Exp, Exp]](replacer2)
         val inPosts = mDecl.posts.map(replaceStrat.execute[Exp](_, context2)).map(x => Inhale(x)(x.pos, x.info, postError(x, mDecl)))
 
-        Seqn(exPres ++ inPosts)()
+        Seqn(exPres ++ inPosts, Seq())()
     }) traverse Traverse.Innermost
 
     files foreach { fileName: String => {
