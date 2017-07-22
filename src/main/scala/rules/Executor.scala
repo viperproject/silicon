@@ -445,7 +445,7 @@ object executor extends ExecutionRules with Immutable {
               case false =>
                 Failure(pve dueTo NegativePermission(ePerm))}))
 
-      case pckg @ ast.Package(wand, proofScript, _) => {
+      case pckg @ ast.Package(wand, proofScript) => {
         val pve = PackageFailed(pckg)
           magicWandSupporter.packageWand(s, wand, proofScript, pve, v)((s1, chWand, v1) => {
             val hOps = s1.reserveHeaps.head + chWand
