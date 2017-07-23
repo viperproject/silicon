@@ -21,7 +21,7 @@ trait GeneralChunk extends Chunk {
 }
 
 trait NonQuantifiedChunk extends GeneralChunk {
-  val args: Iterable[Term]
+  val args: Seq[Term]
   val snap: Term
   override def withPerm(perm: Term): NonQuantifiedChunk
   def withSnap(snap: Term): NonQuantifiedChunk
