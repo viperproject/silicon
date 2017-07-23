@@ -6,6 +6,16 @@
 
 package viper.silicon.resources
 
+/**
+  * A resource description contains the assumptions that are added at several points during verificaton.
+  * <ul>
+  *   <li>Instance properties are assumed when a new chunk is added to the heap. They describe properties of single chunks
+  *   and may contain the <code>This()</code> literal. </li>
+  *   <li>Static properties are also assumed when a new chunk is added to the heap. They descripe properties of the whole heap
+  *   and are not allowed to contain the <code>This()</code> literal.</li>
+  *   <li>Delayed properties are static properties that are only assumed after a state consolidation.</li>
+  *  </ul>
+  */
 trait ResourceDescription {
   val instanceProperties: Seq[BooleanExpression]
   val staticProperties: Seq[BooleanExpression]

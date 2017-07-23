@@ -37,7 +37,8 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
 
   /**
     * Builds a term for the path conditions out of the expression. If <code>expression</code> contains a
-    * <code>ForEach(...)</code> clause, it iterates over all chunks with ResourceID <code>resourceID</code>.
+    * <code>ForEach(...)</code> clause, it iterates over each group of chunks with the same chunk ID and ResourceID
+    * <code>resourceID</code> separately.
     * @param resourceID a resource ID
     * @param expression an expression <b>not</b> containing <code>This()</code>
     * @return the corresponding term
@@ -166,34 +167,28 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
   private def buildForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: PlaceholderMap): Term = {
     pm.get(This()) match {
       case Some(ch) =>
+        // when interpreting a property expression, only look at chunks with the same ID as the "This"-chunk
          buildForEach(nonQuantifiedChunks.filter(_.id == ch.id), chunkVariables, body, pm)
       case None =>
+        // when interpreting a static or delayed property, look at every ID separately
         terms.And(nonQuantifiedChunks.filter(_.resourceID == currentResourceID.get)
           .groupBy(ch => ch.id).values.map(chs => buildForEach(chs, chunkVariables, body, pm)))
     }
   }
 
   private def buildForEach(chunks: Iterable[NonQuantifiedChunk], chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: PlaceholderMap): Term = {
-    chunkVariables match {
-      case c +: Seq() =>
-        terms.And(chunks.flatMap((chunk) => {
-          // check that only chunks with the same resource type and only distinct tuples are handled
-          if (!pm.values.exists(chunk == _)) {
-            Some(buildPathCondition(body, pm + ((c, chunk))))
-          } else {
-            None
-          }
-        }))
-      case c +: tail =>
-        terms.And(chunks.flatMap((chunk) => {
-          // check that only chunks with the same resource type and only distinct tuples are handled
-          if (!pm.values.exists(chunk == _)) {
-            Some(buildForEach(chunks, tail, body, pm + ((c, chunk))))
-          } else {
-            None
-          }
-        }))
+    val builder: (NonQuantifiedChunk => Term) = chunkVariables match {
+      case c +: Seq() => chunk => buildPathCondition(body, pm + ((c, chunk)))
+      case c +: tail => chunk => buildForEach(chunks, tail, body, pm + ((c, chunk)))
     }
+    terms.And(chunks.flatMap((chunk) => {
+      // check that only distinct tuples are handled
+      if (!pm.values.exists(chunk eq _)) {
+        Some(builder(chunk))
+      } else {
+        None
+      }
+    }))
   }
 
   private def buildIfThenElse(condition: PropertyExpression, thenDo: PropertyExpression, otherwise: PropertyExpression, pm: PlaceholderMap) = {
