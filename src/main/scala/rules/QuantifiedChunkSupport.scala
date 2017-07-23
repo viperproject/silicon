@@ -147,7 +147,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                      arguments: Seq[Term],
                                      permissions: Term,
                                      sm: Term)
-                                    : QuantifiedChunk
+                                    : QuantifiedBasicChunk
 
   /** Creates a quantified chunk corresponding to the assertion
     * `forall xs :: c(xs) ==> acc(..., p(xs))`.
@@ -178,16 +178,16 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                             userProvidedTriggers: Option[Seq[Trigger]],
                             qidPrefix: String,
                             v: Verifier)
-                           : (QuantifiedChunk, InverseFunctions)
+                           : (QuantifiedBasicChunk, InverseFunctions)
 
-  def splitHeap[CH <: QuantifiedChunk : NotNothing : ClassTag]
+  def splitHeap[CH <: QuantifiedBasicChunk : NotNothing : ClassTag]
                (h: Heap, name: String)
                : (Seq[CH], Seq[Chunk])
 
   def extractHints(cond: Option[Term], arguments: Seq[Term]): Seq[Term]
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])
-                                  : Seq[QuantifiedChunk] => Seq[QuantifiedChunk]
+                                  : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]
 }
 
 object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
@@ -199,7 +199,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                                      arguments: Seq[Term],
                                      permissions: Term,
                                      sm: Term)
-                                    : QuantifiedChunk = {
+                                    : QuantifiedBasicChunk = {
 
     val condition =
       And(
@@ -236,7 +236,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                             userProvidedTriggers: Option[Seq[Trigger]],
                             qidPrefix: String,
                             v: Verifier)
-                           : (QuantifiedChunk, InverseFunctions) = {
+                           : (QuantifiedBasicChunk, InverseFunctions) = {
 
     val inverseFunctions =
       getFreshInverseFunctions(
@@ -276,7 +276,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
   /* State queries */
 
-  def splitHeap[CH <: QuantifiedChunk : NotNothing : ClassTag]
+  def splitHeap[CH <: QuantifiedBasicChunk : NotNothing : ClassTag]
                (h: Heap, name: String)
                : (Seq[CH], Seq[Chunk]) = {
 
@@ -284,7 +284,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     var otherChunks = Seq[Chunk]()
 
     h.values foreach {
-      case ch: QuantifiedChunk if ch.name == name =>
+      case ch: QuantifiedBasicChunk if ch.id.name == name =>
         relevantChunks +:= ch.asInstanceOf[CH]
       case ch: BasicChunk if ch.id.name == name =>
         sys.error(
@@ -325,7 +325,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                                      optInitialCond: Option[Term],
                                      optSingletonArguments: Option[Seq[Term]],
                                      hints: Seq[Term])
-                                    : QuantifiedChunk = {
+                                    : QuantifiedBasicChunk = {
 
     location match {
       case _: ast.Field =>
@@ -333,7 +333,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         assert(optSingletonArguments.fold(true)(_.length == 1))
 
         QuantifiedFieldChunk(
-          location.name,
+          BasicChunkIdentifier(location.name),
           sm,
           permissions,
           optInverseFunctions,
@@ -343,7 +343,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
       case _: ast.Predicate =>
         QuantifiedPredicateChunk(
-          location.name,
+          BasicChunkIdentifier(location.name),
           codomainQVars,
           sm,
           permissions,
@@ -358,7 +358,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   }
 
   def summarise(s: State,
-                relevantChunks: Seq[QuantifiedChunk],
+                relevantChunks: Seq[QuantifiedBasicChunk],
                 codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
                 location: ast.Location,
                 optSmDomainDefinitionCondition: Option[Term], /* c(rs) */
@@ -449,7 +449,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                             arguments: Seq[Term], // es := e_1, ..., e_n
                             locationAccess: ast.LocationAccess,
                             permissions: Term, /* p */
-                            optChunkOrderHeuristic: Option[Seq[QuantifiedChunk] => Seq[QuantifiedChunk]],
+                            optChunkOrderHeuristic: Option[Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]],
                             pve: PartialVerificationError,
                             v: Verifier)
                            (Q: (State, Heap, Term, Verifier) => VerificationResult)
@@ -468,7 +468,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     if (s.exhaleExt) {
       magicWandSupporter.transfer(s, permissions, Failure(pve dueTo InsufficientPermission(locationAccess)), v)((s1, h1, rPerm, v1) => {
         val (relevantChunks, otherChunks) =
-          quantifiedChunkSupporter.splitHeap[QuantifiedChunk](h1, location.name)
+          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, location.name)
 
         val (result, s2, remainingChunks) = quantifiedChunkSupporter.removePermissions(
           s1,
@@ -512,7 +512,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       )
     } else {
       val (relevantChunks, otherChunks) =
-        quantifiedChunkSupporter.splitHeap[QuantifiedChunk](h, location.name)
+        quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, location.name)
 
       val result = quantifiedChunkSupporter.removePermissions(
         s,
@@ -555,17 +555,17 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   // TODO: Consider taking a single term λr.q(r) that maps to a permission amount,
   //       as done in my thesis
   def removePermissions(s: State,
-                        relevantChunks: Seq[QuantifiedChunk],
+                        relevantChunks: Seq[QuantifiedBasicChunk],
                         codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
                         condition: Term, // c(rs)
                         location: ast.Location, // field f: e_1(rs).f; or predicate P: P(es)
                         perms: Term, // p(rs)
-                        chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
+                        chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
                         v: Verifier)
-                       : (ConsumptionResult, State, Seq[QuantifiedChunk]) = {
+                       : (ConsumptionResult, State, Seq[QuantifiedBasicChunk]) = {
 
     assert(
-      relevantChunks forall (_.name == location.name),
+      relevantChunks forall (_.id.name == location.name),
       s"Expected only chunks for resource ${location.name}, but got: $relevantChunks")
 
     val candidates =
@@ -574,7 +574,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     val constrainPermissions = !consumeExactRead(perms, s.constrainableARPs)
 
-    var remainingChunks = Vector.empty[QuantifiedChunk]
+    var remainingChunks = Vector.empty[QuantifiedBasicChunk]
     var permsNeeded = perms
     var success: ConsumptionResult = Incomplete(permsNeeded)
 
@@ -608,14 +608,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           v.decider.assume(permissionConstraint)
 
           remainingChunks =
-            remainingChunks :+ ithChunk.duplicate(perm = PermMinus(ithChunk.perm, ithPTaken))
+            remainingChunks :+ ithChunk.withPerm(PermMinus(ithChunk.perm, ithPTaken))
         } else {
           v.decider.prover.comment(s"Chunk depleted?")
           val chunkDepleted = v.decider.check(depletedCheck, Verifier.config.splitTimeout())
 
           if (!chunkDepleted) {
             remainingChunks =
-              remainingChunks :+ ithChunk.duplicate(perm = PermMinus(ithChunk.perm, ithPTaken))
+              remainingChunks :+ ithChunk.withPerm(PermMinus(ithChunk.perm, ithPTaken))
           }
         }
 
@@ -652,7 +652,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                                                          condition: Term, // c(rs)
                                                          perms: Term, // p(rs)
                                                          constrainPermissions: Boolean,
-                                                         ithChunk: QuantifiedChunk,
+                                                         ithChunk: QuantifiedBasicChunk,
                                                          ithPTaken: Term,
                                                          v: Verifier)
                                                         : (Term, Term) = {
@@ -904,9 +904,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])
-                                  : Seq[QuantifiedChunk] => Seq[QuantifiedChunk] =
+                                  : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk] =
 
-    (chunks: Seq[QuantifiedChunk]) => {
+    (chunks: Seq[QuantifiedBasicChunk]) => {
       val (matchingChunks, otherChunks) = chunks.partition(_.hints == hints)
 
       matchingChunks ++ otherChunks

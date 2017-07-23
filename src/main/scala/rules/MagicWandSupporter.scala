@@ -157,7 +157,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
              */
             case Seq(_: MagicWandChunk, _: MagicWandChunk) => True()
             case Seq(ch1: NonQuantifiedChunk, ch2: NonQuantifiedChunk) => ch1.snap === ch2.snap
-            case Seq(ch1: QuantifiedChunk, ch2: QuantifiedChunk) => ch1.snapshotMap === ch2.snapshotMap
+            case Seq(ch1: QuantifiedBasicChunk, ch2: QuantifiedBasicChunk) => ch1.snapshotMap === ch2.snapshotMap
             case _ => True()
           }
         v.decider.assume(tEqs.toIterable)

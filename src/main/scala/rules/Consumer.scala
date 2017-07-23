@@ -294,7 +294,7 @@ object consumer extends ConsumptionRules with Immutable {
                     val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(`?r`)
                     val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
                     val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
-                    magicWandSupporter.transfer[QuantifiedChunk](s1, lossOfInvOfLoc, Failure(pve dueTo InsufficientPermission(acc.loc)), v1)((s2, heap, rPerms, v2) => {
+                    magicWandSupporter.transfer[QuantifiedBasicChunk](s1, lossOfInvOfLoc, Failure(pve dueTo InsufficientPermission(acc.loc)), v1)((s2, heap, rPerms, v2) => {
                       val (relevantChunks, otherChunks) =
                         quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](heap, field.name)
                       val (result, s3, remainingChunks) = quantifiedChunkSupporter.removePermissions(
@@ -539,7 +539,7 @@ object consumer extends ConsumptionRules with Immutable {
                     val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalVars)
                     val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
                     val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
-                    magicWandSupporter.transfer[QuantifiedChunk](s1, lossOfInvOfLoc, Failure(pve dueTo InsufficientPermission(acc.loc)), v1)((s2, heap, rPerm, v2) => {
+                    magicWandSupporter.transfer[QuantifiedBasicChunk](s1, lossOfInvOfLoc, Failure(pve dueTo InsufficientPermission(acc.loc)), v1)((s2, heap, rPerm, v2) => {
                       val (relevantChunks, otherChunks) =
                       quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](heap, predicate.name)
                       val (result, s3, remainingChunks) = quantifiedChunkSupporter.removePermissions(

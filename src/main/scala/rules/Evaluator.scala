@@ -399,7 +399,7 @@ object evaluator extends EvaluationRules with Immutable {
             if (usesQPChunks) {
               loc match {
                 case _: ast.Field =>
-                  val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.name == name => ch }
+                  val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.id.name == name => ch }
                   val perm =
                     chs.foldLeft(NoPerm(): Term)((q, ch) =>
                       PermPlus(q, ch.perm.replace(`?r`, args.head)))
@@ -415,7 +415,7 @@ object evaluator extends EvaluationRules with Immutable {
 //                  //added for quantified predicate permissions
                   val formalArgs:Seq[Var] =
                     pred.formalArgs.map(formalArg => Var(Identifier(formalArg.name), v1.symbolConverter.toSort(formalArg.typ)))
-                  val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.name == name => ch }
+                  val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.id.name == name => ch }
                   chs.foldLeft(NoPerm(): Term)((q, ch) =>
                     PermPlus(q, ch.perm.replace(formalArgs, args)))
               }

@@ -40,22 +40,12 @@ case class BasicChunk(resourceID: BaseID,
   }
 }
 
-sealed trait QuantifiedChunk extends PermissionChunk {
-  type Self <: QuantifiedChunk
-
-  def name: String
-  def snapshotMap: Term
+sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
+  override val id: BasicChunkIdentifier
+  override def withPerm(perm: Term): QuantifiedBasicChunk
+  override def withSnapshotMap(snap: Term): QuantifiedBasicChunk
   def singletonArguments: Option[Seq[Term]]
   def hints: Seq[Term]
-
-  def valueAt(arguments: Seq[Term]): Term
-
-  def duplicate(name: String = name,
-                snapshotMap: Term = snapshotMap,
-                perm: Term,
-                singletonArguments: Option[Seq[Term]] = singletonArguments,
-                hints: Seq[Term] = hints)
-               : Self
 }
 
 /* TODO: Instead of using the singletonRcvr to differentiate between QP chunks that
@@ -63,51 +53,40 @@ sealed trait QuantifiedChunk extends PermissionChunk {
  *       to potentially multiple locations, consider using regular, non-quantified
  *       chunks instead.
  */
-case class QuantifiedFieldChunk(name: String,
+case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
                                 fvf: Term,
                                 perm: Term,
                                 invs: Option[InverseFunctions],
                                 initialCond: Option[Term],
                                 singletonRcvr: Option[Term],
                                 hints: Seq[Term] = Nil)
-    extends QuantifiedChunk {
+    extends QuantifiedBasicChunk {
 
   assert(fvf.sort.isInstanceOf[terms.sorts.FieldValueFunction],
          s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
-
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
-  type Self = QuantifiedFieldChunk
+  override val resourceID = FieldID()
+  override val formalVars = Seq(`?r`)
 
-  def snapshotMap: Term = fvf
-  def singletonArguments: Option[Seq[Term]] = singletonRcvr.map(Seq(_))
+  override def snapshotMap: Term = fvf
+  override def singletonArguments: Option[Seq[Term]] = singletonRcvr.map(Seq(_))
 
-  def valueAt(rcvr: Term): Term = Lookup(name, fvf, rcvr)
+  def valueAt(rcvr: Term): Term = Lookup(id.name, fvf, rcvr)
 
-  def valueAt(arguments: Seq[Term]): Term = {
+  override def valueAt(arguments: Seq[Term]): Term = {
     assert(arguments.length == 1)
 
-    Lookup(name, fvf, arguments.head)
+    Lookup(id.name, fvf, arguments.head)
   }
 
-  def +(perm: Term): QuantifiedFieldChunk = copy(perm = PermPlus(this.perm, perm))
-  def -(perm: Term): QuantifiedFieldChunk = copy(perm = PermMinus(this.perm, perm))
-  def \(perm: Term): QuantifiedFieldChunk = copy(perm = perm)
+  override def withPerm(newPerm: Term) = QuantifiedFieldChunk(id, fvf, newPerm, invs, initialCond, singletonRcvr, hints)
+  override def withSnapshotMap(newFvf: Term) = QuantifiedFieldChunk(id, newFvf, perm, invs, initialCond, singletonRcvr, hints)
 
-  override def toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$name -> $fvf # $perm"
-
-  def duplicate(name: String,
-                snapshotMap: Term,
-                perm: Term,
-                singletonArguments: Option[Seq[Term]],
-                hints: Seq[Term])
-               : Self = {
-
-    copy(name, fvf, perm, invs, initialCond, singletonRcvr, hints)
-  }
+  override def toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$id -> $fvf # $perm"
 }
 
-case class QuantifiedPredicateChunk(name: String,
+case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
                                     formalVars: Seq[Var],
                                     psf: Term,
                                     perm: Term,
@@ -115,33 +94,22 @@ case class QuantifiedPredicateChunk(name: String,
                                     initialCond: Option[Term],
                                     singletonArgs: Option[Seq[Term]],
                                     hints: Seq[Term] = Nil)
-    extends QuantifiedChunk {
+    extends QuantifiedBasicChunk {
 
   assert(psf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction], s"Quantified predicate chunk values must be of sort PredicateSnapFunction ($psf), but found ${psf.sort}")
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
-  type Self = QuantifiedPredicateChunk
+  override val resourceID = PredicateID()
 
-  def snapshotMap: Term = psf
-  def singletonArguments: Option[Seq[Term]] = singletonArgs
+  override def snapshotMap: Term = psf
+  override def singletonArguments: Option[Seq[Term]] = singletonArgs
 
-  def valueAt(args: Seq[Term]) = PredicateLookup(name, psf, args)
+  override def valueAt(args: Seq[Term]) = PredicateLookup(id.name, psf, args)
 
-  def +(perm: Term): QuantifiedPredicateChunk = copy(perm = PermPlus(this.perm, perm))
-  def -(perm: Term): QuantifiedPredicateChunk = copy(perm = PermMinus(this.perm, perm))
-  def \(perm: Term): QuantifiedPredicateChunk = copy(perm = perm)
+  override def withPerm(newPerm: Term) = QuantifiedPredicateChunk(id, formalVars, psf, newPerm, invs, initialCond, singletonArgs, hints)
+  override def withSnapshotMap(newPsf: Term) = QuantifiedPredicateChunk(id, formalVars, newPsf, perm, invs, initialCond, singletonArgs, hints)
 
-  override def toString = s"${terms.Forall}  ${formalVars.mkString(",")} :: $name(${formalVars.mkString(",")}) -> $psf # $perm"
-
-  def duplicate(name: String,
-                snapshotMap: Term,
-                perm: Term,
-                singletonArguments: Option[Seq[Term]],
-                hints: Seq[Term])
-               : Self = {
-
-    copy(name, formalVars, psf, perm, invs, initialCond, singletonArgs, hints)
-  }
+  override def toString = s"${terms.Forall}  ${formalVars.mkString(",")} :: $id(${formalVars.mkString(",")}) -> $psf # $perm"
 }
 
 case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdentifer {

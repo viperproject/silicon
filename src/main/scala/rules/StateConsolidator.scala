@@ -196,9 +196,9 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       case BasicChunk(FieldID(), fieldName, args, _, perm) =>
         add(fieldName, args.head, perm)
     */
-      case QuantifiedFieldChunk(fieldName, _, perm, _, _, Some(rcvr), _) =>
+      case QuantifiedFieldChunk(id, _, perm, _, _, Some(rcvr), _) =>
         /* Singleton quantified chunks are treated analogous to non-quantified chunks */
-        add(fieldName, rcvr, perm.replace(`?r`, rcvr))
+        add(id.name, rcvr, perm.replace(`?r`, rcvr))
     //      case QuantifiedFieldChunk(fieldName, _, perm, _, _, _, _) =>
     //        addQP(fieldName, perm)
       case _ =>
