@@ -22,36 +22,36 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
   private var currentResourceID: Option[ResourceID] = None
 
   /**
-    * Builds a term for the path conditions out of the expression. If <code>expression</code> contains a
-    * <code>ForEach(...)</code> clause, it iterates over all chunks with the same ID as <code>chunk</code>.
+    * Builds a term for the path conditions out of the expression. The <code>property</code> my not contain
+    * <code>ForEach(...)</code> clauses.
     * @param chunk the chunk used for the <code>This()</code> placeholder
-    * @param expression an expression potentially containing <code>This()</code>
+    * @param property a property with an expression potentially containing <code>This()</code>
     * @return the corresponding term
     */
-  def buildPathConditionForChunk(chunk: NonQuantifiedChunk, expression: BooleanExpression): Term = {
-    buildPathCondition(expression, Map(This() -> chunk))
+  def buildPathConditionForChunk(chunk: NonQuantifiedChunk, property: Property): Term = {
+    buildPathCondition(property.expression, Map(This() -> chunk))
   }
 
   /**
-    * Builds a term for the path conditions out of the expression. If <code>expression</code> contains a
+    * Builds a term for the path conditions out of the expression. If <code>property</code> contains a
     * <code>ForEach(...)</code> clause, it iterates over each group of chunks with the same chunk ID and ResourceID
     * <code>resourceID</code> separately.
     * @param resourceID a resource ID
-    * @param expression an expression <b>not</b> containing <code>This()</code>
+    * @param property an expression <b>not</b> containing <code>This()</code>
     * @return the corresponding term
     */
-  def buildPathConditionForResource(resourceID: ResourceID, expression: BooleanExpression): Term = {
+  def buildPathConditionForResource(resourceID: ResourceID, property: Property): Term = {
     currentResourceID = Some(resourceID)
-    val pc = buildPathCondition(expression, Map.empty)
+    val pc = buildPathCondition(property.expression, Map.empty)
     currentResourceID = None
     pc
   }
 
-  def buildPathConditionsForChunk(chunk: NonQuantifiedChunk, expressions: Iterable[BooleanExpression]): Iterable[Term] = {
+  def buildPathConditionsForChunk(chunk: NonQuantifiedChunk, expressions: Iterable[Property]): Iterable[Term] = {
     expressions.map(buildPathConditionForChunk(chunk, _))
   }
 
-  def buildPathConditionsForResource(resourceID: ResourceID, expressions: Iterable[BooleanExpression]): Iterable[Term] = {
+  def buildPathConditionsForResource(resourceID: ResourceID, expressions: Iterable[Property]): Iterable[Term] = {
     expressions.map(buildPathConditionForResource(resourceID, _))
   }
 
@@ -163,9 +163,8 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
 
   private def buildForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: PlaceholderMap): Term = {
     pm.get(This()) match {
-      case Some(ch) =>
-        // when interpreting a property expression, only look at chunks with the same ID as the "This"-chunk
-         buildForEach(nonQuantifiedChunks.filter(_.id == ch.id), chunkVariables, body, pm)
+      case Some(_) =>
+         sys.error("Property expressions may not contain any ForEach clauses.")
       case None =>
         // when interpreting a static or delayed property, look at every ID separately
         terms.And(nonQuantifiedChunks.filter(_.resourceID == currentResourceID.get)

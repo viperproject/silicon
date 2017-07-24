@@ -17,52 +17,59 @@ package viper.silicon.resources
   *  </ul>
   */
 trait ResourceDescription {
-  val instanceProperties: Seq[BooleanExpression]
-  val staticProperties: Seq[BooleanExpression]
-  val delayedProperties: Seq[BooleanExpression]
+  val instanceProperties: Seq[Property]
+  val staticProperties: Seq[Property]
+  val delayedProperties: Seq[Property]
 }
 
 abstract class BasicDescription extends ResourceDescription {
   override val instanceProperties = Seq(permAtLeastZero)
-  override val staticProperties = Seq[BooleanExpression]()
+  override val staticProperties = Seq[Property]()
   override val delayedProperties = Seq(valNeqImpliesLocNeq)
 
-  def permAtLeastZero: BooleanExpression = GreaterThanEquals(PermissionAccess(This()), PermissionLiteral(0, 1))
+  def permAtLeastZero: Property = Property(GreaterThanEquals(PermissionAccess(This()), PermissionLiteral(0, 1)), "permAtLeastZero")
 
-  def valNeqImpliesLocNeq: BooleanExpression = {
+  def valNeqImpliesLocNeq: Property = {
     val c1 = ChunkVariable("c1")
     val c2 = ChunkVariable("c2")
     val condition = Not(Equals(ValueAccess(c1), ValueAccess(c2)))
-    ForEach(Seq(c1, c2), Check(condition, Not(Equals(ArgumentAccess(c1), ArgumentAccess(c2))), True()))
+    Property(ForEach(Seq(c1, c2), Check(condition, Not(Equals(ArgumentAccess(c1), ArgumentAccess(c2))), True())), "valNeqImpliesLocNeq")
   }
 }
 
-class PredicateDescription extends BasicDescription
+class PredicateDescription extends BasicDescription {
+  override def toString = "Predicate"
+}
 
 class FieldDescription extends BasicDescription {
   override val instanceProperties = Seq(permAtLeastZero, permAtMostOne, permImpliesNonNull)
   override val delayedProperties = Seq(permUpperBoundDiseq, valNeqImpliesLocNeq)
 
-  def permAtMostOne: BooleanExpression = LessThanEquals(PermissionAccess(This()), PermissionLiteral(1, 1))
+  def permAtMostOne: Property = Property(LessThanEquals(PermissionAccess(This()), PermissionLiteral(1, 1)), "permAtMostOne")
 
-  def permImpliesNonNull: BooleanExpression = {
-    Implies(GreaterThan(PermissionAccess(This()), PermissionLiteral(0, 1)), Not(Equals(ArgumentAccess(This()), Null())))
+  def permImpliesNonNull: Property = {
+    val exp = Implies(GreaterThan(PermissionAccess(This()), PermissionLiteral(0, 1)), Not(Equals(ArgumentAccess(This()), Null())))
+    Property(exp, "permImpliesNonNull")
   }
 
-  def permUpperBoundDiseq: BooleanExpression = {
+  def permUpperBoundDiseq: Property = {
     val c1 = ChunkVariable("c1")
     val c2 = ChunkVariable("c2")
     val perm1 = PermissionAccess(c1)
     val perm2 = PermissionAccess(c2)
     val greaterThan = GreaterThan(Plus(perm1, perm2), PermissionLiteral(1, 1))
     val neq = Not(Equals(ArgumentAccess(c1), ArgumentAccess(c2)))
-    ForEach(Seq(c1, c2), Check(greaterThan, neq, True()))
+    Property(ForEach(Seq(c1, c2), Check(greaterThan, neq, True())), "permUpperBoundDiseq")
   }
+
+  override def toString = "Field"
 }
 
 class MagicWandDescription extends ResourceDescription {
-  override val instanceProperties = Seq[BooleanExpression]()
-  override val staticProperties = Seq[BooleanExpression]()
-  override val delayedProperties = Seq[BooleanExpression]()
+  override val instanceProperties = Seq[Property]()
+  override val staticProperties = Seq[Property]()
+  override val delayedProperties = Seq[Property]()
+
+  override def toString = "Magic Wand"
 }
 
