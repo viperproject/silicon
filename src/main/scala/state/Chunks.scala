@@ -41,7 +41,7 @@ case class BasicChunk(resourceID: BaseID,
 }
 
 sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
-  override val id: BasicChunkIdentifier
+  override val id: ChunkIdentifer
   override def withPerm(perm: Term): QuantifiedBasicChunk
   override def withSnapshotMap(snap: Term): QuantifiedBasicChunk
   def singletonArguments: Option[Seq[Term]]
@@ -112,11 +112,39 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
   override def toString = s"${terms.Forall}  ${formalVars.mkString(",")} :: $id(${formalVars.mkString(",")}) -> $psf # $perm"
 }
 
+case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
+                                    formalVars: Seq[Var],
+                                    wsf: Term,
+                                    perm: Term,
+                                    invs: Option[InverseFunctions],
+                                    initialCond: Option[Term],
+                                    singletonArgs: Option[Seq[Term]],
+                                    hints: Seq[Term] = Nil)
+  extends QuantifiedBasicChunk {
+
+  assert(wsf.sort == terms.sorts.PredicateSnapFunction(sorts.Snap), s"Quantified magic wand chunk values must be of sort MagicWandSnapFunction ($wsf), but found ${wsf.sort}")
+  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
+
+  override val resourceID = PredicateID()
+
+  override def snapshotMap: Term = wsf
+  override def singletonArguments: Option[Seq[Term]] = singletonArgs
+
+  override def valueAt(args: Seq[Term]) = PredicateLookup(id.toString, wsf, args)
+
+  override def withPerm(newPerm: Term) = QuantifiedMagicWandChunk(id, formalVars, wsf, newPerm, invs, initialCond, singletonArgs, hints)
+  override def withSnapshotMap(newWsf: Term) = QuantifiedMagicWandChunk(id, formalVars, newWsf, perm, invs, initialCond, singletonArgs, hints)
+
+  override def toString = s"${terms.Forall}  ${formalVars.mkString(",")} :: $id(${formalVars.mkString(",")}) -> $wsf # $perm"
+}
+
 case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdentifer {
   override def equals(obj: Any): Boolean = obj match {
     case w: MagicWandIdentifier => ghostFreeWand.structurallyMatches(w.ghostFreeWand, Verifier.program)
     case _ => false
   }
+
+  override def toString: String = s"wand${this.hashCode().toString}"
 }
 
 case class MagicWandChunk(id: MagicWandIdentifier,

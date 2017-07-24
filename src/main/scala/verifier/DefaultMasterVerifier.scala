@@ -54,6 +54,7 @@ class DefaultMasterVerifier(config: Config)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
   protected val predicateSnapFunctionsContributor = new DefaultPredicateSnapFunctionsContributor(preambleReader, symbolConverter, termConverter, predSnapGenerator, config)
+  protected val magicWandSnapFunctionsContributor = new DefaultMagicWandSnapFunctionsContributor(preambleReader, termConverter)
 
   private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
@@ -240,6 +241,7 @@ class DefaultMasterVerifier(config: Config)
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -251,6 +253,7 @@ class DefaultMasterVerifier(config: Config)
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -262,6 +265,7 @@ class DefaultMasterVerifier(config: Config)
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -277,6 +281,7 @@ class DefaultMasterVerifier(config: Config)
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -288,6 +293,7 @@ class DefaultMasterVerifier(config: Config)
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateSnapFunctionsContributor,
+    magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )

@@ -16,6 +16,7 @@ import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.Location
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
 
@@ -65,7 +66,7 @@ class InverseFunctions(val condition: Term,
        """.stripMargin
 }
 
-case class SnapshotMapDefinition(location: ast.Location,
+case class SnapshotMapDefinition(location: ast.Node,
                                  sm: Term,
                                  valueDefinitions: Seq[Term],
                                  domainDefinitions: Seq[Term])
@@ -169,7 +170,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     */
   def createQuantifiedChunk(qvars: Seq[Var],
                             condition: Term,
-                            location: ast.Location,
+                            location: ast.Node,
                             arguments: Seq[Term],
                             permissions: Term,
                             codomainQVars: Seq[Var],
@@ -181,7 +182,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                            : (QuantifiedBasicChunk, InverseFunctions)
 
   def splitHeap[CH <: QuantifiedBasicChunk : NotNothing : ClassTag]
-               (h: Heap, name: String)
+               (h: Heap, id: ChunkIdentifer)
                : (Seq[CH], Seq[Chunk])
 
   def extractHints(cond: Option[Term], arguments: Seq[Term]): Seq[Term]
@@ -227,7 +228,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   /** @inheritdoc [[QuantifiedChunkSupport.createQuantifiedChunk]] */
   def createQuantifiedChunk(qvars: Seq[Var],
                             condition: Term,
-                            location: ast.Location,
+                            location: ast.Node,
                             arguments: Seq[Term],
                             permissions: Term,
                             codomainQVars: Seq[Var],
@@ -277,18 +278,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   /* State queries */
 
   def splitHeap[CH <: QuantifiedBasicChunk : NotNothing : ClassTag]
-               (h: Heap, name: String)
+               (h: Heap, id: ChunkIdentifer)
                : (Seq[CH], Seq[Chunk]) = {
 
     var relevantChunks = Seq[CH]()
     var otherChunks = Seq[Chunk]()
 
     h.values foreach {
-      case ch: QuantifiedBasicChunk if ch.id.name == name =>
+      case ch: QuantifiedBasicChunk if ch.id == id =>
         relevantChunks +:= ch.asInstanceOf[CH]
-      case ch: BasicChunk if ch.id.name == name =>
+      case ch: BasicChunk if ch.id == id =>
         sys.error(
-            s"I did not expect non-quantified chunks on the heap for resource $name, "
+            s"I did not expect non-quantified chunks on the heap for resource $id, "
           + s"but found $ch")
       case ch =>
         otherChunks +:= ch
@@ -298,17 +299,20 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   }
 
   // TODO: Remove once Lookup term generic
-  private def genericLookup(location: ast.Location, sm: Term, arguments: Seq[Term], v: Verifier)
+  private def genericLookup(location: ast.Node, sm: Term, arguments: Seq[Term], v: Verifier)
                            : Term = {
 
     location match {
-      case _: ast.Field =>
+      case field: ast.Field =>
         assert(arguments.length == 1)
 
-        Lookup(location.name, sm, arguments.head)
+        Lookup(field.name, sm, arguments.head)
 
-      case _: ast.Predicate =>
-        PredicateLookup(location.name, sm, arguments)
+      case predicate: ast.Predicate =>
+        PredicateLookup(predicate.name, sm, arguments)
+
+      case wand: ast.MagicWand =>
+        PredicateLookup(MagicWandIdentifier(wand).toString, sm, arguments)
 
       case other =>
         sys.error(s"Found yet unsupported resource $other (${other.getClass.getSimpleName})")
@@ -317,7 +321,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
   // TODO: Remove once QuantifiedChunk generic
   private def genericQuantifiedChunk(codomainQVars: Seq[Var],
-                                     location: ast.Location,
+                                     location: ast.Node,
                                      arguments: Seq[Term],
                                      sm: Term,
                                      permissions: Term,
@@ -328,12 +332,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                                     : QuantifiedBasicChunk = {
 
     location match {
-      case _: ast.Field =>
+      case field: ast.Field =>
         assert(arguments.length == 1)
         assert(optSingletonArguments.fold(true)(_.length == 1))
 
         QuantifiedFieldChunk(
-          BasicChunkIdentifier(location.name),
+          BasicChunkIdentifier(field.name),
           sm,
           permissions,
           optInverseFunctions,
@@ -341,9 +345,20 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           optSingletonArguments.map(_.head),
           hints)
 
-      case _: ast.Predicate =>
+      case predicate: ast.Predicate =>
         QuantifiedPredicateChunk(
-          BasicChunkIdentifier(location.name),
+          BasicChunkIdentifier(predicate.name),
+          codomainQVars,
+          sm,
+          permissions,
+          optInverseFunctions,
+          optInitialCond,
+          optSingletonArguments,
+          hints)
+
+      case wand: ast.MagicWand =>
+        QuantifiedMagicWandChunk(
+          MagicWandIdentifier(wand),
           codomainQVars,
           sm,
           permissions,
@@ -360,7 +375,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   def summarise(s: State,
                 relevantChunks: Seq[QuantifiedBasicChunk],
                 codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
-                location: ast.Location,
+                location: ast.Node,
                 optSmDomainDefinitionCondition: Option[Term], /* c(rs) */
                 v: Verifier)
                : (Term, Seq[Quantification], Option[Quantification]) = {
@@ -375,21 +390,29 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val domain: (String, Term) => Term =
       location match {
         case _: ast.Field => Domain
-        case _: ast.Predicate => PredicateDomain
+        case _: ast.Predicate | _: ast.MagicWand => PredicateDomain
         case other => sys.error(s"Found yet unsupported resource $other (${other.getClass.getSimpleName})")
       }
 
     // TODO: Avoid need for pattern matching on location
     val codomainQVarsInDomainOfSummarisingSm =
       location match {
-        case _: ast.Field =>
+        case field: ast.Field =>
           assert(codomainQVars.length == 1)
-          SetIn(codomainQVars.head, domain(location.name, sm))
-        case _: ast.Predicate =>
+          SetIn(codomainQVars.head, domain(field.name, sm))
+        case predicate: ast.Predicate =>
           SetIn(codomainQVars
                   .map(_.convert(sorts.Snap))
                   .reduceLeft(Combine),
-                domain(location.name, sm))
+                domain(predicate.name, sm))
+        case wand: ast.MagicWand =>
+          val numLhs = wand.left.shallowCollect({
+            case n: ast.LocalVar => n
+          }).size
+          val lhsSnap = codomainQVars.take(numLhs).map(_.convert(sorts.Snap)).reduceLeft(Combine)
+          val rhsSnap = codomainQVars.drop(numLhs).map(_.convert(sorts.Snap)).reduceLeft(Combine)
+          SetIn(MagicWandSnapshot(lhsSnap, rhsSnap),
+            domain(MagicWandIdentifier(wand).toString, sm))
         case other =>
           sys.error(s"Found yet unsupported resource $other (${other.getClass.getSimpleName})")
       }
@@ -468,7 +491,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     if (s.exhaleExt) {
       magicWandSupporter.transfer(s, permissions, Failure(pve dueTo InsufficientPermission(locationAccess)), v)((s1, h1, rPerm, v1) => {
         val (relevantChunks, otherChunks) =
-          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, location.name)
+          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, BasicChunkIdentifier(location.name))
 
         val (result, s2, remainingChunks) = quantifiedChunkSupporter.removePermissions(
           s1,
@@ -512,7 +535,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       )
     } else {
       val (relevantChunks, otherChunks) =
-        quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, location.name)
+        quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, BasicChunkIdentifier(location.name))
 
       val result = quantifiedChunkSupporter.removePermissions(
         s,
@@ -558,15 +581,20 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                         relevantChunks: Seq[QuantifiedBasicChunk],
                         codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
                         condition: Term, // c(rs)
-                        location: ast.Location, // field f: e_1(rs).f; or predicate P: P(es)
+                        location: ast.Node, // field f: e_1(rs).f; or predicate P: P(es)
                         perms: Term, // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
                         v: Verifier)
                        : (ConsumptionResult, State, Seq[QuantifiedBasicChunk]) = {
 
+    val requiredId = location match {
+      case l: Location => BasicChunkIdentifier(l.name)
+      case wand: ast.MagicWand => MagicWandIdentifier(wand)
+      case _ => sys.error(s"Expected location to be quantifiable but found $location.")
+    }
     assert(
-      relevantChunks forall (_.id.name == location.name),
-      s"Expected only chunks for resource ${location.name}, but got: $relevantChunks")
+      relevantChunks forall (_.id == requiredId),
+      s"Expected only chunks for resource $location, but got: $relevantChunks")
 
     val candidates =
       if (Verifier.config.disableChunkOrderHeuristics()) relevantChunks
@@ -701,7 +729,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
   /* ATTENTION: Never create a snapshot map without calling this method! */
   private def freshSnapshotMap(s: State,
-                               location: ast.Location,
+                               location: ast.Node,
                                appliedArgs: Seq[Term],
                                v: Verifier)
                               : Term = {
@@ -719,6 +747,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         case predicate: ast.Predicate =>
           // TODO: Reconsider use of and general design behind s.predicateSnapMap
           sorts.PredicateSnapFunction(s.predicateSnapMap(predicate))
+        case wand: ast.MagicWand =>
+          sorts.PredicateSnapFunction(sorts.Snap)
         case _ =>
           sys.error(s"Found yet unsupported resource $location (${location.getClass.getSimpleName})")
       }

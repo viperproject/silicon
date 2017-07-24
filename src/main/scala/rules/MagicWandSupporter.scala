@@ -136,6 +136,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                                  (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
                                  : VerificationResult = {
     assert(s.recordPcs)
+    //TODO: add comment
     val preMark = v.decider.setPathConditionMark()
     val (result, s1, heaps, consumedChunks) =
       hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[CH]])]((ConsumptionResult(pLoss, v), s, Stack.empty[Heap], Stack.empty[Option[CH]]))((partialResult, heap) =>

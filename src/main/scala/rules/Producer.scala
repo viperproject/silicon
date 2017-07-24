@@ -12,11 +12,12 @@ import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{App, _}
-import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, State}
+import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
 import viper.silver.ast
+import viper.silver.ast.LocalVar
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 
@@ -329,7 +330,7 @@ object producer extends ProductionRules with Immutable {
        *       and producer. Try to unify the code.
        */
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) =>
-        val qid = s"qp.l${viper.silicon.utils.ast.sourceLine(forall)}${v.counter(this).next()}"
+        val qid = acc.loc.field.name
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
@@ -414,7 +415,7 @@ object producer extends ProductionRules with Immutable {
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
         val predicate = Verifier.program.findPredicate(acc.loc.predicateName)
         val formalVars = s.predicateFormalVarMap(predicate)
-        val qid = s"qp.l${viper.silicon.utils.ast.sourceLine(forall)}${v.counter(this).next()}"
+        val qid = acc.loc.predicateName
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
@@ -479,6 +480,83 @@ object producer extends ProductionRules with Immutable {
                 perms     = gain,
                 triggers  = effectiveTriggers,
                 qidPrefix = qid)
+            v1.decider.prover.comment("Produced permissions are non-negative")
+            v1.decider.assume(gainNonNeg)
+
+            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
+            Q(s2.copy(h = s2.h + ch), v1)}
+
+      case  forall @ ast.Forall(variables, triggers, ast.Implies(cond: ast.Exp, acc: ast.MagicWand)) =>
+        val bodyVars = acc.subexpressionsToEvaluate(Verifier.program).flatMap({
+          case v: ast.LocalVar => Some(v)
+          case _ => None
+        })
+        val formalVars = bodyVars.map(variable => Var(Identifier(variable.name), v.symbolConverter.toSort(variable.typ)))
+        val optTrigger =
+          if (triggers.isEmpty) None
+          else Some(triggers)
+        val qid = MagicWandIdentifier(acc)
+        evalQuantified(s, Forall, variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
+          case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
+            val snap = v.decider.fresh(sorts.PredicateSnapFunction(sorts.Snap))
+            val gain = PermTimes(FullPerm(), s1.permissionScalingFactor)
+            val (ch, inverseFunctions) =
+              quantifiedChunkSupporter.createQuantifiedChunk(
+                qvars                = qvars,
+                condition            = tCond,
+                location             = acc,
+                arguments            = tArgs,
+                permissions          = gain,
+                sm                   = snap,
+                codomainQVars        = formalVars,
+                additionalInvArgs    = s1.relevantQuantifiedVariables(tArgs),
+                userProvidedTriggers = optTrigger.map(_ => tTriggers),
+                qidPrefix            = qid.toString,
+                v                    = v1)
+            val (effectiveTriggers, effectiveTriggersQVars) =
+              optTrigger match {
+                case Some(_) =>
+                  /* Explicit triggers were provided */
+                  (tTriggers, qvars)
+                case None =>
+                  /* No explicit triggers were provided and we resort to those from the inverse
+                   * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
+                   * Note that the trigger generation code might have added quantified variables
+                   * to that axiom.
+                   */
+                  (inverseFunctions.axiomInversesOfInvertibles.triggers,
+                    inverseFunctions.axiomInversesOfInvertibles.vars)
+              }
+            if (effectiveTriggers.isEmpty)
+              v1.logger.warn(s"No triggers available for quantifier at ${forall.pos}")
+
+            v1.decider.prover.comment("Nested auxiliary terms")
+            auxQuantResult match {
+              case Left(tAuxQuantNoTriggers) =>
+                /* No explicit triggers provided */
+                v1.decider.assume(
+                  tAuxQuantNoTriggers.copy(
+                    vars = effectiveTriggersQVars,
+                    triggers = effectiveTriggers))
+
+              case Right(tAuxQuants) =>
+                /* Explicit triggers were provided. */
+                v1.decider.assume(tAuxQuants)
+            }
+
+            v1.decider.prover.comment("Definitional axioms for inverse functions")
+            val definitionalAxiomMark = v1.decider.setPathConditionMark()
+            v1.decider.assume(inverseFunctions.definitionalAxioms)
+            val conservedPcs =
+              if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
+              else s1.conservedPcs
+
+            val gainNonNeg =
+              quantifiedChunkSupporter.permissionsNonNegativeAxioms(
+                qvars     = effectiveTriggersQVars,
+                perms     = gain,
+                triggers  = effectiveTriggers,
+                qidPrefix = qid.toString)
             v1.decider.prover.comment("Produced permissions are non-negative")
             v1.decider.assume(gainNonNeg)
 
