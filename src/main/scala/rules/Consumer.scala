@@ -577,7 +577,7 @@ object consumer extends ConsumptionRules with Immutable {
                         predicate,
                         tArgs,
                         permsTaken,
-                        Seq(`?r`),
+                        formalVars,
                         fvf,
                         s3.relevantQuantifiedVariables(tArgs),
                         optTrigger.map(_ => tTriggers),
@@ -712,6 +712,135 @@ object consumer extends ConsumptionRules with Immutable {
                     Failure(pve dueTo ReceiverNotInjective(acc.loc))}
               case false =>
                 Failure(pve dueTo NegativePermission(acc.perm))}}
+
+      case forall @ ast.Forall(variables, triggers, ast.Implies(cond: ast.Exp, acc: ast.MagicWand)) if s.exhaleExt =>
+        // TODO: Quantified codomain variables are used in axioms and chunks (analogous to `?r`)
+        //       and need to be instantiated in several places. Hence, they need to be known,
+        //       which is more complicated if fresh identifiers are used.
+        //       At least two options:
+        //         1. Choose fresh identifiers each time; remember/restore, e.g. by storing these variables in chunks
+        //         2. Chose fresh identifiers once; store in and take from state (or from object Verifier)
+        val bodyVars = acc.subexpressionsToEvaluate(Verifier.program).flatMap({
+          case v: ast.LocalVar => Some(v)
+          case _ => None
+        })
+        val formalVars = bodyVars.map(variable => Var(Identifier(variable.name), v.symbolConverter.toSort(variable.typ)))
+        val qid = MagicWandIdentifier(acc)
+        val optTrigger =
+          if (triggers.isEmpty) None
+          else Some(triggers)
+        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
+          case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
+            val inverseFunctions =
+              quantifiedChunkSupporter.getFreshInverseFunctions(
+                qvars,
+                tCond,
+                tArgs,
+                formalVars,
+                s1.relevantQuantifiedVariables(tArgs),
+                optTrigger.map(_ => tTriggers),
+                qid.toString,
+                v1)
+            val (effectiveTriggers, effectiveTriggersQVars) =
+              optTrigger match {
+                case Some(_) =>
+                  /* Explicit triggers were provided */
+                  (tTriggers, qvars)
+                case None =>
+                  /* No explicit triggers were provided and we resort to those from the inverse
+                   * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
+                   * Note that the trigger generation code might have added quantified variables
+                   * to that axiom.
+                   */
+                  (inverseFunctions.axiomInversesOfInvertibles.triggers,
+                    inverseFunctions.axiomInversesOfInvertibles.vars)
+              }
+            v1.decider.prover.comment("Nested auxiliary terms")
+            auxQuantResult match {
+              case Left(tAuxQuantNoTriggers) =>
+                /* No explicit triggers provided */
+                v1.decider.assume(
+                  tAuxQuantNoTriggers.copy(
+                    vars = effectiveTriggersQVars,
+                    triggers = effectiveTriggers))
+
+              case Right(tAuxQuants) =>
+                /* Explicit triggers were provided. */
+                v1.decider.assume(tAuxQuants)
+            }
+            val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
+            val chunkOrderHeuristics =
+              quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+            val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
+            /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+            val receiverInjectivityCheck =
+              quantifiedChunkSupporter.injectivityAxiom(
+                qvars     = qvars,
+                condition = tCond,
+                perms     = FullPerm(),
+                arguments = tArgs,
+                triggers  = Nil,
+                qidPrefix = qid.toString)
+            v1.decider.prover.comment("Check receiver injectivity")
+            v1.decider.assert(receiverInjectivityCheck) {
+              case true =>
+                v1.decider.prover.comment("Definitional axioms for inverse functions")
+                v1.decider.assume(inverseFunctions.definitionalAxioms)
+                val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalVars)
+                val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
+                val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
+                magicWandSupporter.transfer[QuantifiedMagicWandChunk](s1, lossOfInvOfLoc, Failure(pve dueTo MagicWandChunkNotFound(acc)), v1)((s2, heap, rPerm, v2) => {
+                val (relevantChunks, otherChunks) =
+                quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](heap, MagicWandIdentifier(acc))
+                val (result, sRes, remainingChunks) = quantifiedChunkSupporter.removePermissions(
+                  s2,
+                  relevantChunks,
+                  formalVars,
+                  condOfInvOfLoc,
+                  acc,
+                  rPerm,
+                  chunkOrderHeuristics,
+                  v1
+                )
+                  val h2 = Heap(remainingChunks ++ otherChunks)
+                  val (fvf, fvfValueDefs, optFvfDomainDef) =
+                    quantifiedChunkSupporter.summarise(
+                      sRes,
+                      relevantChunks,
+                      formalVars,
+                      acc,
+                      if (sRes.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(rPerm))) else None,
+                      v2)
+                  if (sRes.smDomainNeeded) {
+                    v2.decider.prover.comment("Definitional axioms for SM domain")
+                    v2.decider.assume(optFvfDomainDef.get)
+                  }
+                  v2.decider.prover.comment("Definitional axioms for SM values")
+                  v2.decider.assume(fvfValueDefs)
+                  val permsTaken = result match {
+                    case Complete() => rPerm
+                    case Incomplete(remaining) => PermMinus(rPerm, remaining)
+                  }
+                  val (consumedChunk, _) = quantifiedChunkSupporter.createQuantifiedChunk(
+                    qvars,
+                    condOfInvOfLoc,
+                    acc,
+                    tArgs,
+                    permsTaken,
+                    formalVars,
+                    fvf,
+                    sRes.relevantQuantifiedVariables(tArgs),
+                    optTrigger.map(_ => tTriggers),
+                    qid.toString,
+                    v2
+                  )
+                  (result, sRes, h2, Some(consumedChunk.asInstanceOf[QuantifiedMagicWandChunk]))})((s3, oCh, v3) =>
+                  oCh match {
+                    case Some(ch) => Q(s3, s3.h, ch.snapshotMap.convert(sorts.Snap), v3)
+                    case _ => Q(s3, s3.h, v3.decider.fresh(sorts.Snap), v3)
+                  })
+              case false =>
+                Failure(pve dueTo MagicWandChunkNotFound(acc))}}
 
       case forall @ ast.Forall(variables, triggers, ast.Implies(cond: ast.Exp, acc: ast.MagicWand)) =>
         // TODO: Quantified codomain variables are used in axioms and chunks (analogous to `?r`)
