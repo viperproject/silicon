@@ -320,6 +320,22 @@ object producer extends ProductionRules with Immutable {
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             addNewChunk(s2, tArgs, snap, gain, v2)(Q)}))
 
+      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand)) =>
+        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program).flatMap({
+          case v: ast.LocalVar => Some(v)
+          case _ => None
+        })
+        val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        evals(s, bodyVars, _ => pve, v)((s1, args, v1) => {
+          val (sm, smValueDef) =
+            quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
+          v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
+          v1.decider.assume(smValueDef)
+          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+          val smDef = SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq())
+          val s2 = s1.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
+        Q(s2.copy(h = s2.h + ch), v)})
+
       case wand: ast.MagicWand =>
         val snap = sf(sorts.Snap, v)
         magicWandSupporter.createChunk(s, wand, MagicWandSnapshot(snap), pve, v)((s1, chWand, v1) =>
@@ -491,7 +507,7 @@ object producer extends ProductionRules with Immutable {
           case v: ast.LocalVar => Some(v)
           case _ => None
         })
-        val formalVars = bodyVars.map(variable => Var(Identifier(variable.name), v.symbolConverter.toSort(variable.typ)))
+        val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val optTrigger =
           if (triggers.isEmpty) None
           else Some(triggers)

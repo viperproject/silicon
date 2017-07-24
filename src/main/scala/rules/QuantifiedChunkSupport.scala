@@ -18,7 +18,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Location
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.InsufficientPermission
+import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 
 import scala.reflect.ClassTag
 
@@ -144,7 +144,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                   : Quantification
 
   def createSingletonQuantifiedChunk(codomainQVars: Seq[Var],
-                                     location: ast.Location,
+                                     location: ast.Node,
                                      arguments: Seq[Term],
                                      permissions: Term,
                                      sm: Term)
@@ -196,7 +196,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   /* Chunk creation */
 
   def createSingletonQuantifiedChunk(codomainQVars: Seq[Var],
-                                     location: ast.Location,
+                                     location: ast.Node,
                                      arguments: Seq[Term],
                                      permissions: Term,
                                      sm: Term)
@@ -451,7 +451,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
   /** @inheritdoc */
   def singletonSnapshotMap(s: State,
-                           location: ast.Location,
+                           location: ast.Node,
                            arguments: Seq[Term],
                            value: Term,
                            v: Verifier)
@@ -470,7 +470,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                             h: Heap,
                             codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
                             arguments: Seq[Term], // es := e_1, ..., e_n
-                            locationAccess: ast.LocationAccess,
+                            locationAccess: ast.Node,
                             permissions: Term, /* p */
                             optChunkOrderHeuristic: Option[Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]],
                             pve: PartialVerificationError,
@@ -478,7 +478,20 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                            (Q: (State, Heap, Term, Verifier) => VerificationResult)
                            : VerificationResult = {
 
-    val location = locationAccess.loc(Verifier.program)
+    val location = locationAccess match {
+      case locAcc: ast.LocationAccess => locAcc.loc(Verifier.program)
+      case o => o
+    }
+    val failure = locationAccess match {
+      case locAcc: ast.LocationAccess => Failure(pve dueTo InsufficientPermission(locAcc))
+      case wand: ast.MagicWand => Failure(pve dueTo MagicWandChunkNotFound(wand))
+      case _ => sys.error(s"Found resource $locationAccess, that is not supported as quantified permission yet.")
+    }
+    val chunkIdentifer = location match {
+      case loc: ast.Location => BasicChunkIdentifier(loc.name)
+      case wand: ast.MagicWand => MagicWandIdentifier(wand)
+      case _ => sys.error(s"Found resource $locationAccess, that is not supported as quantified permission yet.")
+    }
 
     val chunkOrderHeuristics = optChunkOrderHeuristic match {
       case Some(heuristics) =>
@@ -489,9 +502,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     }
 
     if (s.exhaleExt) {
-      magicWandSupporter.transfer(s, permissions, Failure(pve dueTo InsufficientPermission(locationAccess)), v)((s1, h1, rPerm, v1) => {
+      magicWandSupporter.transfer(s, permissions, failure, v)((s1, h1, rPerm, v1) => {
         val (relevantChunks, otherChunks) =
-          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, BasicChunkIdentifier(location.name))
+          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifer)
 
         val (result, s2, remainingChunks) = quantifiedChunkSupporter.removePermissions(
           s1,
@@ -535,7 +548,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       )
     } else {
       val (relevantChunks, otherChunks) =
-        quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, BasicChunkIdentifier(location.name))
+        quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, chunkIdentifer)
 
       val result = quantifiedChunkSupporter.removePermissions(
         s,
@@ -570,7 +583,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           val snap = genericLookup(location, sm, arguments, v).convert(sorts.Snap)
           Q(s2, h1, snap, v)
         case (Incomplete(_), _, _) =>
-          Failure(pve dueTo InsufficientPermission(locationAccess))
+          failure
       }
     }
   }

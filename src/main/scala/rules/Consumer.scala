@@ -724,7 +724,7 @@ object consumer extends ConsumptionRules with Immutable {
           case v: ast.LocalVar => Some(v)
           case _ => None
         })
-        val formalVars = bodyVars.map(variable => Var(Identifier(variable.name), v.symbolConverter.toSort(variable.typ)))
+        val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val qid = MagicWandIdentifier(acc)
         val optTrigger =
           if (triggers.isEmpty) None
@@ -853,7 +853,7 @@ object consumer extends ConsumptionRules with Immutable {
           case v: ast.LocalVar => Some(v)
           case _ => None
         })
-        val formalVars = bodyVars.map(variable => Var(Identifier(variable.name), v.symbolConverter.toSort(variable.typ)))
+        val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val qid = MagicWandIdentifier(acc)
         val optTrigger =
           if (triggers.isEmpty) None
@@ -1027,6 +1027,30 @@ object consumer extends ConsumptionRules with Immutable {
         Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a))
 
       /* Handle wands */
+      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand)) =>
+        val qid = MagicWandIdentifier(wand)
+        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program).flatMap({
+          case v: ast.LocalVar => Some(v)
+          case _ => None
+        })
+        val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+
+        evals(s, bodyVars, _ => pve, v)((s1, tArgs, v1) => {
+          val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
+          quantifiedChunkSupporter.consumeSingleLocation(
+            s1,
+            h,
+            formalVars,
+            tArgs,
+            wand,
+            loss,
+            None,
+            pve,
+            v1
+          )((s3, h3, snap, v3) => {
+            val s4 = s3.copy(constrainableARPs = s1.constrainableARPs)
+            Q(s4, h3, snap, v3)})})
+
       case wand: ast.MagicWand =>
         magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) => {
           val ve = pve dueTo MagicWandChunkNotFound(wand)
