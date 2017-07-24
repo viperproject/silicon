@@ -28,7 +28,7 @@ trait NonQuantifiedChunk extends GeneralChunk {
 }
 
 trait QuantifiedChunk extends GeneralChunk {
-  val formalVars: Seq[Var]
+  val quantifiedVars: Seq[Var]
   def snapshotMap: Term
   def valueAt(arguments: Seq[Term]): Term
   override def withPerm(perm: Term): QuantifiedChunk

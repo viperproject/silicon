@@ -67,7 +67,7 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
   override val resourceID = FieldID()
-  override val formalVars = Seq(`?r`)
+  override val quantifiedVars = Seq(`?r`)
 
   override def snapshotMap: Term = fvf
   override def singletonArguments: Option[Seq[Term]] = singletonRcvr.map(Seq(_))
@@ -83,11 +83,11 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
   override def withPerm(newPerm: Term) = QuantifiedFieldChunk(id, fvf, newPerm, invs, initialCond, singletonRcvr, hints)
   override def withSnapshotMap(newFvf: Term) = QuantifiedFieldChunk(id, newFvf, perm, invs, initialCond, singletonRcvr, hints)
 
-  override def toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$id -> $fvf # $perm"
+  override lazy val toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$id -> $fvf # $perm"
 }
 
 case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
-                                    formalVars: Seq[Var],
+                                    quantifiedVars: Seq[Var],
                                     psf: Term,
                                     perm: Term,
                                     invs: Option[InverseFunctions],
@@ -106,10 +106,10 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
 
   override def valueAt(args: Seq[Term]) = PredicateLookup(id.name, psf, args)
 
-  override def withPerm(newPerm: Term) = QuantifiedPredicateChunk(id, formalVars, psf, newPerm, invs, initialCond, singletonArgs, hints)
-  override def withSnapshotMap(newPsf: Term) = QuantifiedPredicateChunk(id, formalVars, newPsf, perm, invs, initialCond, singletonArgs, hints)
+  override def withPerm(newPerm: Term) = QuantifiedPredicateChunk(id, quantifiedVars, psf, newPerm, invs, initialCond, singletonArgs, hints)
+  override def withSnapshotMap(newPsf: Term) = QuantifiedPredicateChunk(id, quantifiedVars, newPsf, perm, invs, initialCond, singletonArgs, hints)
 
-  override def toString = s"${terms.Forall}  ${formalVars.mkString(",")} :: $id(${formalVars.mkString(",")}) -> $psf # $perm"
+  override lazy val toString = s"${terms.Forall}  ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $psf # $perm"
 }
 
 case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdentifer {
@@ -141,7 +141,6 @@ case class MagicWandChunk(id: MagicWandIdentifier,
       case rp: viper.silver.ast.HasLineColumn => s"${rp.line}:${rp.column}"
       case other => other.toString
     }
-
     s"wand@$pos[$snap; ${args.mkString(",")}]"
   }
 }

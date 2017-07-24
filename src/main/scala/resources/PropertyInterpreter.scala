@@ -15,7 +15,7 @@ import viper.silicon.verifier.Verifier
 class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
 
   private type PlaceholderMap = Map[ChunkPlaceholder, NonQuantifiedChunk]
-  private val nonQuantifiedChunks: Iterable[NonQuantifiedChunk] = heap.flatMap {
+  private val nonQuantifiedChunks = heap.flatMap {
     case c: NonQuantifiedChunk => Some(c)
     case _ => None
   }
@@ -28,11 +28,8 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
     * @param expression an expression potentially containing <code>This()</code>
     * @return the corresponding term
     */
-  def buildPathConditionForChunk(chunk: NonQuantifiedChunk, expression: BooleanExpression): terms.Term = {
-    currentResourceID = Some(chunk.resourceID)
-    val pc = buildPathCondition(expression, Map(This() -> chunk))
-    currentResourceID = None
-    pc
+  def buildPathConditionForChunk(chunk: NonQuantifiedChunk, expression: BooleanExpression): Term = {
+    buildPathCondition(expression, Map(This() -> chunk))
   }
 
   /**
@@ -43,18 +40,18 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
     * @param expression an expression <b>not</b> containing <code>This()</code>
     * @return the corresponding term
     */
-  def buildPathConditionForResource(resourceID: ResourceID, expression: BooleanExpression): terms.Term = {
+  def buildPathConditionForResource(resourceID: ResourceID, expression: BooleanExpression): Term = {
     currentResourceID = Some(resourceID)
     val pc = buildPathCondition(expression, Map.empty)
     currentResourceID = None
     pc
   }
 
-  def buildPathConditionsForChunk(chunk: NonQuantifiedChunk, expressions: Iterable[BooleanExpression]): Iterable[terms.Term] = {
+  def buildPathConditionsForChunk(chunk: NonQuantifiedChunk, expressions: Iterable[BooleanExpression]): Iterable[Term] = {
     expressions.map(buildPathConditionForChunk(chunk, _))
   }
 
-  def buildPathConditionsForResource(resourceID: ResourceID, expressions: Iterable[BooleanExpression]): Iterable[terms.Term] = {
+  def buildPathConditionsForResource(resourceID: ResourceID, expressions: Iterable[BooleanExpression]): Iterable[Term] = {
     expressions.map(buildPathConditionForResource(resourceID, _))
   }
 

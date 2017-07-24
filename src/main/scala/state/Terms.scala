@@ -1065,13 +1065,28 @@ object PermAtMost extends ((Term, Term) => Term) {
   def unapply(e: PermAtMost) = Some((e.p0, e.p1))
 }
 
-case class PermMin(p0: Term, p1: Term) extends Permissions
+class PermMin(val p0: Term, val p1: Term) extends Permissions
     with BinaryOp[Term] {
 
   utils.assertSort(p0, "Permission 1st", sorts.Perm)
   utils.assertSort(p1, "Permission 2nd", sorts.Perm)
 
   override val toString = s"min ($p0, $p1)"
+}
+
+object PermMin {
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (NoPerm(), NoPerm()) => NoPerm()
+    case (FullPerm(), FullPerm()) => FullPerm()
+    case (NoPerm(), FullPerm()) => NoPerm()
+    case (FullPerm(), NoPerm()) => NoPerm()
+    case (NoPerm(), fp: FractionPerm) if fp.isDefinitelyPositive => NoPerm()
+    case (fp: FractionPerm, NoPerm()) if fp.isDefinitelyPositive => NoPerm()
+    case (t0, t1) if t0 == t1 => t0
+    case _ => new PermMin(e0, e1)
+  }
+
+  def unapply(e: PermMin) = Some((e.p0, e.p1))
 }
 
 /* Sequences */
