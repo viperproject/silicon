@@ -176,7 +176,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                   proofScript: ast.Seqn,
                   pve: PartialVerificationError,
                   v: Verifier)
-                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
+                  (Q: (State, Chunk, Verifier) => VerificationResult)
                   : VerificationResult = {
 
     /* TODO: Logging code is very similar to that in HeuristicsSupporter. Unify. */
@@ -214,7 +214,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
-    var results: Seq[(State, Stack[Term], Vector[RecordedPathConditions], MagicWandChunk)] = Nil
+    var results: Seq[(State, Stack[Term], Vector[RecordedPathConditions], Chunk)] = Nil
 
     assert(s.reserveHeaps.head.values.isEmpty)
 
@@ -278,7 +278,33 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //          say(s"done: consumed RHS ${wand.right}")
 //          say(s"next: create wand chunk")
             val preMark = v3.decider.setPathConditionMark()
-            magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
+            if (s4.qpMagicWands.contains(MagicWandIdentifier(wand))) {
+              val bodyVars = wand.subexpressionsToEvaluate(Verifier.program).flatMap({
+                case v: ast.LocalVar => Some(v)
+                case _ => None
+              })
+              val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+              evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {
+                val (sm, smValueDef) =
+                  quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
+                v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
+                v4.decider.assume(smValueDef)
+                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+
+                val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark)
+                val conservedPcsTail = s5.conservedPcs.tail
+                val newConservedPcs =
+                  if (conservedPcsTail.isEmpty) conservedPcsTail
+                  else {
+                    val head = conservedPcsTail.head ++ conservedPcs
+                    head +: conservedPcsTail.tail
+                  }
+
+                results :+= (s5.copy(conservedPcs = newConservedPcs, recordPcs = s.recordPcs), v4.decider.pcs.branchConditions, conservedPcs, ch)
+                Success()
+              })
+            }
+            else magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
 //            say(s"done: create wand chunk: $ch")
               val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark)
               val conservedPcsTail = s5.conservedPcs.tail
