@@ -10,7 +10,7 @@ import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, Success, VerificationResult}
-import viper.silicon.resources.{PropertyInterpreter, Resources}
+import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
@@ -275,7 +275,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       }
 
       val allChunks = otherChunks ++ newChunks
-      val interpreter = new PropertyInterpreter(allChunks, v)
+      val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
       Resources.resourceDescriptions foreach { case (rid, desc) =>
         v.decider.assume(interpreter.buildPathConditionsForResource(rid, desc.staticProperties))
       }

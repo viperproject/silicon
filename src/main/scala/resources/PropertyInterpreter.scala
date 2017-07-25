@@ -6,69 +6,15 @@
 
 package viper.silicon.resources
 
-import viper.silicon.Map
-import viper.silicon.interfaces.state._
-import viper.silicon.state.{QuantifiedBasicChunk, terms}
+import viper.silicon.state.terms
 import viper.silicon.state.terms.Term
 import viper.silicon.verifier.Verifier
 
-class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
-
-  private type PlaceholderMap = Map[ChunkPlaceholder, GeneralChunk]
-  // both actual non-quantified chunks and singleton quantified chunks
-  private val nonQuantifiedChunks = heap.flatMap {
-    case c: NonQuantifiedChunk => Some(c)
-    case c: QuantifiedBasicChunk if c.singletonArguments.isDefined => Some(c)
-    case _ => None
-  }
-  private var currentResourceID: Option[ResourceID] = None
-
-  /**
-    * Builds a term for the path conditions out of the expression. The <code>property</code> my not contain
-    * <code>ForEach(...)</code> clauses.
-    * @param chunk the chunk used for the <code>This()</code> placeholder
-    * @param property a property with an expression potentially containing <code>This()</code>
-    * @return the corresponding term
-    */
-  def buildPathConditionForChunk(chunk: NonQuantifiedChunk, property: Property): Term = {
-    buildPathCondition(property.expression, Map(This() -> chunk))
-  }
-
-  // TODO: remove if singleton quantified chunks are not used anymore
-  def buildPathConditionForChunk(chunk: QuantifiedBasicChunk, property: Property): Term = {
-    require(chunk.singletonArguments.isDefined)
-    buildPathCondition(property.expression, Map(This() -> chunk))
-  }
-
-  // TODO: remove if singleton quantified chunks are not used anymore
-  def buildPathConditionsForChunk(chunk: QuantifiedBasicChunk, properties: Iterable[Property]): Iterable[Term] = {
-    properties.map(buildPathConditionForChunk(chunk, _))
-  }
-
-  /**
-    * Builds a term for the path conditions out of the expression. If <code>property</code> contains a
-    * <code>ForEach(...)</code> clause, it iterates over each group of chunks with the same chunk ID and ResourceID
-    * <code>resourceID</code> separately.
-    * @param resourceID a resource ID
-    * @param property an expression <b>not</b> containing <code>This()</code>
-    * @return the corresponding term
-    */
-  def buildPathConditionForResource(resourceID: ResourceID, property: Property): Term = {
-    currentResourceID = Some(resourceID)
-    val pc = buildPathCondition(property.expression, Map.empty)
-    currentResourceID = None
-    pc
-  }
-
-  def buildPathConditionsForChunk(chunk: NonQuantifiedChunk, properties: Iterable[Property]): Iterable[Term] = {
-    properties.map(buildPathConditionForChunk(chunk, _))
-  }
-
-  def buildPathConditionsForResource(resourceID: ResourceID, properties: Iterable[Property]): Iterable[Term] = {
-    properties.map(buildPathConditionForResource(resourceID, _))
-  }
-
-  private def buildPathCondition(expression: PropertyExpression, placeholderMap: PlaceholderMap): Term = expression match {
+abstract class PropertyInterpreter(verifier: Verifier) {
+  
+  protected type Info
+  
+  protected def buildPathCondition(expression: PropertyExpression, info: Info): Term = expression match {
     // Literals
     case True() => terms.True()
     case False() => terms.False()
@@ -76,82 +22,73 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
     case Null() => terms.Null()
 
     // Boolean operators
-    case Not(expr) => terms.Not(buildPathCondition(expr, placeholderMap))
-    case And(left, right) => buildAnd(left, right, placeholderMap)
-    case Or(left, right) => buildOr(left, right, placeholderMap)
-    case Implies(left, right) => buildImplies(left, right, placeholderMap)
+    case Not(expr) => terms.Not(buildPathCondition(expr, info))
+    case And(left, right) => buildAnd(left, right, info)
+    case Or(left, right) => buildOr(left, right, info)
+    case Implies(left, right) => buildImplies(left, right, info)
 
     // Universal operator
-    case Equals(left, right) => buildEquals(left, right, placeholderMap)
+    case Equals(left, right) => buildEquals(left, right, info)
 
     // Permission operators
-    case Plus(left, right) => buildBinary(terms.PermPlus, left, right, placeholderMap)
-    case Minus(left, right) => buildBinary(terms.PermMinus, left, right, placeholderMap)
-    case Times(left, right) => buildBinary(terms.PermTimes, left, right, placeholderMap)
-    case Div(left, right) => buildBinary(terms.Div, left, right, placeholderMap)
+    case Plus(left, right) => buildBinary(terms.PermPlus, left, right, info)
+    case Minus(left, right) => buildBinary(terms.PermMinus, left, right, info)
+    case Times(left, right) => buildBinary(terms.PermTimes, left, right, info)
+    case Div(left, right) => buildBinary(terms.Div, left, right, info)
 
-    case GreaterThanEquals(left, right) => buildBinary(terms.PermAtMost, right, left, placeholderMap)
-    case GreaterThan(left, right) => buildBinary(terms.PermLess, right, left, placeholderMap)
-    case LessThanEquals(left, right) => buildBinary(terms.PermAtMost, left, right, placeholderMap)
-    case LessThan(left, right) => buildBinary(terms.PermLess, left, right, placeholderMap)
+    case GreaterThanEquals(left, right) => buildBinary(terms.PermAtMost, right, left, info)
+    case GreaterThan(left, right) => buildBinary(terms.PermLess, right, left, info)
+    case LessThanEquals(left, right) => buildBinary(terms.PermAtMost, left, right, info)
+    case LessThan(left, right) => buildBinary(terms.PermLess, left, right, info)
 
-    // Chunk accessors, only work for appropriate chunks
-    case PermissionAccess(cv) => placeholderMap(cv) match {
-      case c: NonQuantifiedChunk => c.perm
-      case c: QuantifiedBasicChunk => c.perm.replace(c.quantifiedVars, c.singletonArguments.get)
-    }
-    case ValueAccess(cv) => placeholderMap(cv) match {
-      case c: NonQuantifiedChunk => c.snap
-      case c: QuantifiedBasicChunk => c.valueAt(c.singletonArguments.get)
-    }
+    // Chunk accessors
+    case PermissionAccess(cv) => buildPermissionAccess(cv, info)
+    case ValueAccess(cv) => buildValueAccess(cv, info)
 
     // decider / heap interaction
-    case Check(condition, thenDo, otherwise) =>
-      val conditionTerm = buildPathCondition(condition, placeholderMap)
-      if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout())) {
-        buildPathCondition(thenDo, placeholderMap)
-      } else {
-        buildPathCondition(otherwise, placeholderMap)
-      }
-    case ForEach(chunkVariables, body) => buildForEach(chunkVariables, body, placeholderMap)
+    case check: Check => buildCheck(check, info)
+    case ForEach(chunkVariables, body) => buildForEach(chunkVariables, body, info)
 
     // If then else
-    case PermissionIfThenElse(condition, thenDo, otherwise) => buildIfThenElse(condition, thenDo, otherwise, placeholderMap)
-    case ValueIfThenElse(condition, thenDo, otherwise) => buildIfThenElse(condition, thenDo, otherwise, placeholderMap)
+    case PermissionIfThenElse(condition, thenDo, otherwise) => buildIfThenElse(condition, thenDo, otherwise, info)
+    case ValueIfThenElse(condition, thenDo, otherwise) => buildIfThenElse(condition, thenDo, otherwise, info)
 
     // The only missing cases are chunk expressions which only happen in accessors, and location expressions which
     // only happen in equality expressions and are treated separately
     case e => sys.error( s"An expression of type ${e.getClass} is not allowed here.")
   }
 
+  protected def buildPermissionAccess(chunkVariable: ChunkPlaceholder, info: Info): Term
+  protected def buildValueAccess(chunkVariable: ChunkPlaceholder, info: Info): Term
+
   // Assures short-circuit evalutation of 'and'
-  private def buildAnd(left: PropertyExpression, right: PropertyExpression, pm: PlaceholderMap) = {
-    buildPathCondition(left, pm) match {
+  protected def buildAnd(left: PropertyExpression, right: PropertyExpression, info: Info) = {
+    buildPathCondition(left, info) match {
       case leftTerm @ terms.False() => leftTerm
-      case leftTerm @ _ => terms.And(leftTerm, buildPathCondition(right, pm))
+      case leftTerm @ _ => terms.And(leftTerm, buildPathCondition(right, info))
     }
   }
 
-  private def buildOr(left: PropertyExpression, right: PropertyExpression, pm: PlaceholderMap) = {
-    buildPathCondition(left, pm) match {
+  protected def buildOr(left: PropertyExpression, right: PropertyExpression, info: Info) = {
+    buildPathCondition(left, info) match {
       case leftTerm @ terms.True() => leftTerm
-      case leftTerm @ _ => terms.Or(leftTerm, buildPathCondition(right, pm))
+      case leftTerm @ _ => terms.Or(leftTerm, buildPathCondition(right, info))
     }
   }
 
-  private def buildImplies(left: PropertyExpression, right: PropertyExpression, pm: PlaceholderMap) = {
-    buildPathCondition(left, pm) match {
+  protected def buildImplies(left: PropertyExpression, right: PropertyExpression, info: Info) = {
+    buildPathCondition(left, info) match {
       case terms.False() => terms.True()
-      case leftTerm @ _ => terms.Implies(leftTerm, buildPathCondition(right, pm))
+      case leftTerm @ _ => terms.Implies(leftTerm, buildPathCondition(right, info))
     }
   }
 
-  private def buildEquals(left: PropertyExpression, right: PropertyExpression, pm: PlaceholderMap) = {
+  protected def buildEquals(left: PropertyExpression, right: PropertyExpression, info: Info) = {
     (left, right) match {
       case (Null(), Null()) => terms.True()
       case (ArgumentAccess(cv1), ArgumentAccess(cv2)) =>
-        val args1 = extractArguments(pm(cv1))
-        val args2 = extractArguments(pm(cv2))
+        val args1 = extractArguments(cv1, info)
+        val args2 = extractArguments(cv2, info)
         if (args1 == args2) {
           // if all arguments are the same, they are definitely equal
           terms.True()
@@ -159,18 +96,15 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
           // else return argument-wise equal
           terms.And(args1.zip(args2).map{ case (t1, t2) => t1 === t2 })
         }
-      case (ArgumentAccess(cv), Null()) => terms.And(extractArguments(pm(cv)).map(terms.Equals(_, terms.Null())))
-      case (Null(), ArgumentAccess(cv)) => terms.And(extractArguments(pm(cv)).map(terms.Equals(_, terms.Null())))
-      case _ => terms.Equals(buildPathCondition(left, pm), buildPathCondition(right, pm))
+      case (ArgumentAccess(cv), Null()) => terms.And(extractArguments(cv, info).map(terms.Equals(_, terms.Null())))
+      case (Null(), ArgumentAccess(cv)) => terms.And(extractArguments(cv, info).map(terms.Equals(_, terms.Null())))
+      case _ => terms.Equals(buildPathCondition(left, info), buildPathCondition(right, info))
     }
   }
 
-  private def extractArguments(chunk: GeneralChunk) = chunk match {
-    case c: NonQuantifiedChunk => c.args
-    case c: QuantifiedBasicChunk => c.singletonArguments.get
-  }
+  protected def extractArguments(chunkVariable: ChunkPlaceholder, info: Info): Seq[Term]
 
-  private def buildPermissionLiteral(numerator: BigInt, denominator: BigInt): Term = {
+  protected def buildPermissionLiteral(numerator: BigInt, denominator: BigInt): Term = {
     require(denominator != 0, "Denominator of permission literal must not be 0")
     (numerator, denominator) match {
       case (n, _) if n == 0 => terms.NoPerm()
@@ -179,39 +113,16 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
     }
   }
 
-  private def buildBinary(builder: (Term, Term) => Term, left: PropertyExpression, right: PropertyExpression, pm: PlaceholderMap) = {
+  protected def buildBinary(builder: (Term, Term) => Term, left: PropertyExpression, right: PropertyExpression, pm: Info) = {
     val leftTerm = buildPathCondition(left, pm)
     val rightTerm = buildPathCondition(right, pm)
     builder(leftTerm, rightTerm)
   }
 
-  private def buildForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: PlaceholderMap): Term = {
-    pm.get(This()) match {
-      case Some(_) =>
-         sys.error("Property expressions may not contain any ForEach clauses.")
-      case None =>
-        // when interpreting a static or delayed property, look at every ID separately
-        terms.And(nonQuantifiedChunks.filter(_.resourceID == currentResourceID.get)
-          .groupBy(ch => ch.id).values.map(chs => buildForEach(chs, chunkVariables, body, pm)))
-    }
-  }
+  protected def buildCheck(check: Check, info: Info): Term
+  protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: Info): Term
 
-  private def buildForEach(chunks: Iterable[GeneralChunk], chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: PlaceholderMap): Term = {
-    val builder: (GeneralChunk => Term) = chunkVariables match {
-      case c +: Seq() => chunk => buildPathCondition(body, pm + ((c, chunk)))
-      case c +: tail => chunk => buildForEach(chunks, tail, body, pm + ((c, chunk)))
-    }
-    terms.And(chunks.flatMap((chunk) => {
-      // check that only distinct tuples are handled
-      if (!pm.values.exists(chunk eq _)) {
-        Some(builder(chunk))
-      } else {
-        None
-      }
-    }))
-  }
-
-  private def buildIfThenElse(condition: PropertyExpression, thenDo: PropertyExpression, otherwise: PropertyExpression, pm: PlaceholderMap) = {
+  protected def buildIfThenElse(condition: PropertyExpression, thenDo: PropertyExpression, otherwise: PropertyExpression, pm: Info) = {
     val conditionTerm = buildPathCondition(condition, pm)
     val thenDoTerm = buildPathCondition(thenDo, pm)
     val otherwiseTerm = buildPathCondition(otherwise, pm)

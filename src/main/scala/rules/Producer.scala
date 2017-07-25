@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import scala.collection.mutable
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.resources.{FieldID, PredicateID, PropertyInterpreter, Resources}
+import viper.silicon.resources.{FieldID, PredicateID, NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{App, _}
 import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, State}
@@ -259,14 +259,13 @@ object producer extends ProductionRules with Immutable {
                        : VerificationResult = {
 
           if (s.qpFields.contains(field)) {
-            val (sm, smValueDef) =
-              quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(rcvr), snap, v)
+            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(rcvr), snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-SM's value")
             v.decider.assume(smValueDef)
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(rcvr), p, sm)
             val h1 = s.h + ch
 
-            val interpreter = new PropertyInterpreter(h1.values, v)
+            val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
             val resource = Resources.resourceDescriptions(ch.resourceID)
             v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
 
@@ -301,7 +300,7 @@ object producer extends ProductionRules with Immutable {
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalArgs, predicate, args, p, sm)
             val h1 = s.h + ch
 
-            val interpreter = new PropertyInterpreter(h1.values, v)
+            val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
             val resource = Resources.resourceDescriptions(ch.resourceID)
             v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
 

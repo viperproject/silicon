@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
-import viper.silicon.resources.{PropertyInterpreter, Resources}
+import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms._
@@ -47,7 +47,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     val allChunks = mergedChunks ++ otherChunks
 
-    val interpreter = new PropertyInterpreter(allChunks, v)
+    val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
     Resources.resourceDescriptions foreach { case (id, desc) =>
       v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
       v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.staticProperties))
@@ -88,7 +88,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     }
     val allChunks = newChunks ++ otherChunks
     v.decider.assume(equalities)
-    val interpreter = new PropertyInterpreter(allChunks, v)
+    val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
     Resources.resourceDescriptions foreach { case (rid, desc) =>
       v.decider.assume(interpreter.buildPathConditionsForResource(rid, desc.staticProperties))
     }
@@ -106,7 +106,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
     val (mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(nonQuantifiedChunks, newNonQuantifiedChunks, v)
 
-    val interpreter = new PropertyInterpreter(mergedChunks, v)
+    val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
     Resources.resourceDescriptions foreach { case (rid, desc) =>
       v.decider.assume(interpreter.buildPathConditionsForResource(rid, desc.staticProperties))
     }
