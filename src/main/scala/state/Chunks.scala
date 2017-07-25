@@ -125,7 +125,7 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
   assert(wsf.sort == terms.sorts.PredicateSnapFunction(sorts.Snap), s"Quantified magic wand chunk values must be of sort MagicWandSnapFunction ($wsf), but found ${wsf.sort}")
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
-  override val resourceID = PredicateID()
+  override val resourceID = MagicWandID()
 
   override def snapshotMap: Term = wsf
   override def singletonArguments: Option[Seq[Term]] = singletonArgs
