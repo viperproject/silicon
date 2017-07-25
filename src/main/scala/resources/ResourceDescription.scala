@@ -29,6 +29,7 @@ abstract class BasicDescription extends ResourceDescription {
 
   def permAtLeastZero: Property = Property(GreaterThanEquals(PermissionAccess(This()), PermissionLiteral(0, 1)), "permAtLeastZero")
 
+  // TODO: this does not work for singleton quantified chunks for some reason
   def valNeqImpliesLocNeq: Property = {
     val c1 = ChunkVariable("c1")
     val c2 = ChunkVariable("c2")

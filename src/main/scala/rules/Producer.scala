@@ -8,8 +8,7 @@ package viper.silicon.rules
 
 import scala.collection.mutable
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.terms.perms.IsPositive
+import viper.silicon.resources.{FieldID, PredicateID, PropertyInterpreter, Resources}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{App, _}
 import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, State}
@@ -260,16 +259,20 @@ object producer extends ProductionRules with Immutable {
                        : VerificationResult = {
 
           if (s.qpFields.contains(field)) {
-            v.decider.assume(PermAtMost(NoPerm(), p))
-            v.decider.assume(Implies(IsPositive(p), rcvr !== Null()))
             val (sm, smValueDef) =
               quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(rcvr), snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-SM's value")
             v.decider.assume(smValueDef)
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(rcvr), p, sm)
+            val h1 = s.h + ch
+
+            val interpreter = new PropertyInterpreter(h1.values, v)
+            val resource = Resources.resourceDescriptions(ch.resourceID)
+            v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+
             val smDef = SnapshotMapDefinition(field, sm, Seq(smValueDef), Seq())
-            val s1 = s.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
-            Q(s1.copy(h = s1.h + ch), v)
+            val s1 = s.copy(h = h1, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
+            Q(s1, v)
           } else {
             val ch = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(rcvr), snap, p)
             chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
@@ -290,16 +293,21 @@ object producer extends ProductionRules with Immutable {
                        : VerificationResult = {
 
           if (s.qpPredicates.contains(predicate)) {
-            v.decider.assume(PermAtMost(NoPerm(), p))
             val formalArgs = s.predicateFormalVarMap(predicate)
             val (sm, smValueDef) =
               quantifiedChunkSupporter.singletonSnapshotMap(s, predicate, args, snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-SM's value")
             v.decider.assume(smValueDef)
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalArgs, predicate, args, p, sm)
+            val h1 = s.h + ch
+
+            val interpreter = new PropertyInterpreter(h1.values, v)
+            val resource = Resources.resourceDescriptions(ch.resourceID)
+            v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+
             val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
-            val s1 = s.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
-            Q(s1.copy(h = s1.h + ch), v)
+            val s1 = s.copy(h = h1, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
+            Q(s1, v)
           } else {
             val snap1 = snap.convert(sorts.Snap)
             val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), args, snap1, p)
