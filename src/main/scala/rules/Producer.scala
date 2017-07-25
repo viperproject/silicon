@@ -321,9 +321,8 @@ object producer extends ProductionRules with Immutable {
             addNewChunk(s2, tArgs, snap, gain, v2)(Q)}))
 
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand)) =>
-        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program).flatMap({
-          case v: ast.LocalVar => Some(v)
-          case _ => None
+        val bodyVars = wand.shallowCollect({
+          case v: ast.LocalVar => v
         })
         val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         evals(s, bodyVars, _ => pve, v)((s1, args, v1) => {
@@ -503,9 +502,8 @@ object producer extends ProductionRules with Immutable {
             Q(s2.copy(h = s2.h + ch), v1)}
 
       case  forall @ ast.Forall(variables, triggers, ast.Implies(cond: ast.Exp, acc: ast.MagicWand)) =>
-        val bodyVars = acc.subexpressionsToEvaluate(Verifier.program).flatMap({
-          case v: ast.LocalVar => Some(v)
-          case _ => None
+        val bodyVars = acc.shallowCollect({
+          case v: ast.LocalVar => v
         })
         val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val optTrigger =

@@ -720,9 +720,8 @@ object consumer extends ConsumptionRules with Immutable {
         //       At least two options:
         //         1. Choose fresh identifiers each time; remember/restore, e.g. by storing these variables in chunks
         //         2. Chose fresh identifiers once; store in and take from state (or from object Verifier)
-        val bodyVars = acc.subexpressionsToEvaluate(Verifier.program).flatMap({
-          case v: ast.LocalVar => Some(v)
-          case _ => None
+        val bodyVars = acc.shallowCollect({
+          case v: ast.LocalVar => v
         })
         val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val qid = MagicWandIdentifier(acc)
@@ -849,9 +848,8 @@ object consumer extends ConsumptionRules with Immutable {
         //       At least two options:
         //         1. Choose fresh identifiers each time; remember/restore, e.g. by storing these variables in chunks
         //         2. Chose fresh identifiers once; store in and take from state (or from object Verifier)
-        val bodyVars = acc.subexpressionsToEvaluate(Verifier.program).flatMap({
-          case v: ast.LocalVar => Some(v)
-          case _ => None
+        val bodyVars = acc.shallowCollect({
+          case v: ast.LocalVar => v
         })
         val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val qid = MagicWandIdentifier(acc)
@@ -1029,9 +1027,8 @@ object consumer extends ConsumptionRules with Immutable {
       /* Handle wands */
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand)) =>
         val qid = MagicWandIdentifier(wand)
-        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program).flatMap({
-          case v: ast.LocalVar => Some(v)
-          case _ => None
+        val bodyVars = wand.shallowCollect({
+          case v: ast.LocalVar => v
         })
         val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
 

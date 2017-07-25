@@ -145,9 +145,17 @@ case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdenti
   }
 
   override def hashCode(): Int = {
-    val subexpToEval = ghostFreeWand.subexpressionsToEvaluate(Verifier.program)
+    var substitutionMap = Map.empty[(String, ast.Type), String]
+    var currentIndex = 0
     val structureWand = ghostFreeWand.transform({
-      case e: ast.Exp if subexpToEval.contains(e) => ast.LocalVar(e.typ.toString())(e.typ)
+      case v: ast.LocalVar =>
+        val substituedName = substitutionMap.getOrElse((v.name, v.typ), {
+          val name = s"${v.typ.toString()}$currentIndex"
+          currentIndex += 1
+          substitutionMap += (v.name, v.typ) -> name
+          name
+        })
+        ast.LocalVar(substituedName)(v.typ)
     })
     structureWand.toString().hashCode
   }

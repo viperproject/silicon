@@ -279,9 +279,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //          say(s"next: create wand chunk")
             val preMark = v3.decider.setPathConditionMark()
             if (s4.qpMagicWands.contains(MagicWandIdentifier(wand))) {
-              val bodyVars = wand.subexpressionsToEvaluate(Verifier.program).flatMap({
-                case v: ast.LocalVar => Some(v)
-                case _ => None
+              val bodyVars = wand.shallowCollect({
+                case v: ast.LocalVar => v
               })
               val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
               evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {
