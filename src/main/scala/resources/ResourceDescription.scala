@@ -67,9 +67,11 @@ class FieldDescription extends BasicDescription {
 }
 
 class MagicWandDescription extends ResourceDescription {
-  override val instanceProperties = Seq[Property]()
+  override val instanceProperties = Seq(permAtLeastZero)
   override val staticProperties = Seq[Property]()
   override val delayedProperties = Seq[Property]()
+
+  def permAtLeastZero: Property = Property(GreaterThanEquals(PermissionAccess(This()), PermissionLiteral(0, 1)), "permAtLeastZero")
 
   override def toString = "Magic Wand"
 }
