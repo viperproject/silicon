@@ -49,15 +49,13 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
     Resources.resourceDescriptions foreach { case (id, desc) =>
-      v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
       v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.staticProperties))
+      v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
     }
 
-    mergedChunks foreach {
-      case ch: NonQuantifiedChunk =>
-        val resource = Resources.resourceDescriptions(ch.resourceID)
-        v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
-      case _ =>
+    mergedChunks foreach { ch =>
+      val resource = Resources.resourceDescriptions(ch.resourceID)
+      v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
     }
 
     s.copy(h = Heap(allChunks))

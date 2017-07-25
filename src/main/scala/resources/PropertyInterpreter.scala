@@ -46,7 +46,7 @@ abstract class PropertyInterpreter(verifier: Verifier) {
     case ValueAccess(cv) => buildValueAccess(cv, info)
 
     // decider / heap interaction
-    case check: Check => buildCheck(check, info)
+    case Check(condition, thenDo, otherwise) => buildCheck(condition, thenDo, otherwise, info)
     case ForEach(chunkVariables, body) => buildForEach(chunkVariables, body, info)
 
     // If then else
@@ -119,7 +119,7 @@ abstract class PropertyInterpreter(verifier: Verifier) {
     builder(leftTerm, rightTerm)
   }
 
-  protected def buildCheck(check: Check, info: Info): Term
+  protected def buildCheck(condition: BooleanExpression, thenDo: BooleanExpression, otherwise: BooleanExpression, info: Info): Term
   protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: Info): Term
 
   protected def buildIfThenElse(condition: PropertyExpression, thenDo: PropertyExpression, otherwise: PropertyExpression, pm: Info) = {

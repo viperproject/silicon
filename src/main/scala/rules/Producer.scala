@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import scala.collection.mutable
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.resources.{FieldID, PredicateID, NonQuantifiedPropertyInterpreter, Resources}
+import viper.silicon.resources._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{App, _}
 import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, State}
@@ -268,6 +268,7 @@ object producer extends ProductionRules with Immutable {
             val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
             val resource = Resources.resourceDescriptions(ch.resourceID)
             v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+            v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
 
             val smDef = SnapshotMapDefinition(field, sm, Seq(smValueDef), Seq())
             val s1 = s.copy(h = h1, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
@@ -303,6 +304,7 @@ object producer extends ProductionRules with Immutable {
             val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
             val resource = Resources.resourceDescriptions(ch.resourceID)
             v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+            v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
 
             val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
             val s1 = s.copy(h = h1, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
@@ -395,26 +397,22 @@ object producer extends ProductionRules with Immutable {
               if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
               else s1.conservedPcs
 
-            val gainNonNeg =
-              quantifiedChunkSupporter.permissionsNonNegativeAxioms(
-                qvars     = effectiveTriggersQVars,
-                perms     = gain,
-                triggers  = effectiveTriggers,
+            val resource = Resources.resourceDescriptions(ch.resourceID)
+            val interpreter = new QuantifiedPropertyInterpreter(v)
+            resource.instanceProperties.foreach { property =>
+              v1.decider.prover.comment(property.description)
+              v1.decider.assume(interpreter.buildPathConditionForChunk(
+                chunk = ch,
+                property = property,
+                qvars = effectiveTriggersQVars,
+                arguments = Seq(tRcvr),
+                perms = tPerm,
+                condition = tCond,
+                triggers = effectiveTriggers,
                 qidPrefix = qid)
-            v1.decider.prover.comment("Produced permissions are non-negative")
-            v1.decider.assume(gainNonNeg)
+              )
+            }
 
-            val tNonNullQuant =
-              quantifiedChunkSupporter.receiverNonNullAxiom(
-                qvars     = effectiveTriggersQVars,
-                condition  = tCond,
-                receiver  = tRcvr,
-                perms = gain,
-                triggers  = effectiveTriggers,
-                qidPrefix = qid)
-
-            v1.decider.prover.comment("Receivers are non-null")
-            v1.decider.assume(tNonNullQuant)
             val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
             Q(s2.copy(h = s2.h + ch), v1)}
 
@@ -480,14 +478,21 @@ object producer extends ProductionRules with Immutable {
               if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
               else s1.conservedPcs
 
-            val gainNonNeg =
-              quantifiedChunkSupporter.permissionsNonNegativeAxioms(
-                qvars     = effectiveTriggersQVars,
-                perms     = gain,
-                triggers  = effectiveTriggers,
+            val resource = Resources.resourceDescriptions(ch.resourceID)
+            val interpreter = new QuantifiedPropertyInterpreter(v)
+            resource.instanceProperties.foreach { property =>
+              v1.decider.prover.comment(property.description)
+              v1.decider.assume(interpreter.buildPathConditionForChunk(
+                chunk = ch,
+                property = property,
+                qvars = effectiveTriggersQVars,
+                arguments = tArgs,
+                perms = tPerm,
+                condition = tCond,
+                triggers = effectiveTriggers,
                 qidPrefix = qid)
-            v1.decider.prover.comment("Produced permissions are non-negative")
-            v1.decider.assume(gainNonNeg)
+              )
+            }
 
             val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
             Q(s2.copy(h = s2.h + ch), v1)}

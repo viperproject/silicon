@@ -88,12 +88,12 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     case c: QuantifiedBasicChunk => c.singletonArguments.get
   }
 
-  override protected def buildCheck(check: Check, info: Info) = {
-    val conditionTerm = buildPathCondition(check.condition, info)
+  override protected def buildCheck(condition: BooleanExpression, thenDo: BooleanExpression, otherwise: BooleanExpression, info: Info) = {
+    val conditionTerm = buildPathCondition(condition, info)
     if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout())) {
-      buildPathCondition(check.thenDo, info)
+      buildPathCondition(thenDo, info)
     } else {
-      buildPathCondition(check.otherwise, info)
+      buildPathCondition(otherwise, info)
     }
   }
 

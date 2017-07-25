@@ -13,26 +13,43 @@ import viper.silicon.verifier.Verifier
 
 class QuantifiedPropertyInterpreter(verifier: Verifier) extends PropertyInterpreter(verifier) {
 
-  protected type Info = QuantifiedChunk
+  protected case class Info(chunk: QuantifiedChunk, arguments: Seq[Term], perms: Term)
 
-  def buildPathConditionForChunk(qvars: Seq[Var], condition: Term, triggers: Seq[Trigger], chunk: QuantifiedChunk, property: Property): Term = {
-    val info = chunk
-    terms.Forall(qvars, terms.Implies(condition, buildPathCondition(property.expression, info)), triggers, property.description)
+  private var argsUsed = false
+
+  def buildPathConditionForChunk(chunk: QuantifiedChunk,
+                                 property: Property,
+                                 qvars: Seq[Var],
+                                 arguments: Seq[Term],
+                                 perms: Term,
+                                 condition: Term,
+                                 triggers: Seq[Trigger],
+                                 qidPrefix: String)
+                                : Term = {
+    val body = buildPathCondition(property.expression, Info(chunk, arguments, perms)).replace(chunk.quantifiedVars, arguments)
+    val description = s"$qidPrefix-${property.name}"
+    val cond = if (argsUsed) condition else terms.True()
+    argsUsed = false
+    terms.Forall(qvars, terms.Implies(cond, body), triggers, description)
   }
 
-  override protected def buildPermissionAccess(chunkPlaceholder: ChunkPlaceholder, info: QuantifiedChunk) = info.perm
+  override protected def buildPermissionAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = info.perms
 
-  override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: QuantifiedChunk) = {
-    info.valueAt(info.quantifiedVars)
+  override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
+    argsUsed = true
+    info.chunk.valueAt(info.chunk.quantifiedVars)
   }
 
-  override protected def extractArguments(chunkVariable: ChunkPlaceholder, info: QuantifiedChunk) = info.quantifiedVars
+  override protected def extractArguments(chunkVariable: ChunkPlaceholder, info: Info) = {
+    argsUsed = true
+    info.arguments
+  }
 
-  override protected def buildCheck(check: Check, info: QuantifiedChunk) = {
+  override protected def buildCheck(condition: BooleanExpression, thenDo: BooleanExpression, otherwise: BooleanExpression, info: Info) = {
     terms.True()
   }
 
-  override protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: QuantifiedChunk) = {
-    sys.error("ForEach clauses are not allowed in quantified properties.")
+  override protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression, info: Info) = {
+    sys.error("ForEach clauses are not supported in quantified properties.")
   }
 }
