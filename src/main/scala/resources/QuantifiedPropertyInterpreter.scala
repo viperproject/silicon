@@ -46,7 +46,10 @@ class QuantifiedPropertyInterpreter(verifier: Verifier) extends PropertyInterpre
   }
 
   override protected def buildCheck(condition: BooleanExpression, thenDo: BooleanExpression, otherwise: BooleanExpression, info: Info) = {
-    terms.True()
+    val cond = buildPathCondition(condition, info)
+    val td = buildPathCondition(thenDo, info)
+    val ow = buildPathCondition(otherwise, info)
+    terms.Ite(cond, td, ow)
   }
 
   override protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression, info: Info) = {

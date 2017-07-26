@@ -32,7 +32,7 @@ case class PermissionIfThenElse(condition: BooleanExpression, thenDo: Permission
 case class ValueIfThenElse(condition: ValueExpression, thenDo: ValueExpression, otherwise: ValueExpression) extends ValueExpression
 
 case class Equals(left: EquatableExpression, right: EquatableExpression) extends BooleanExpression {
-  require(left.isOfSameKindAs(right), "Equatable expressions have to be of same sort.")
+  require(left.isOfSameKindAs(right), "Equatable expressions have to be of same kind.")
 }
 
 case class GreaterThan(left: PermissionExpression, right: PermissionExpression) extends BooleanExpression
