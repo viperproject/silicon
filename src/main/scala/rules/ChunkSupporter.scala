@@ -73,17 +73,6 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                (Q: (State, CH, Verifier) => VerificationResult)
                : VerificationResult
 
-  def withChunkIfPerm[CH <: NonQuantifiedChunk: ClassTag]
-                     (s: State,
-                      h: Heap,
-                      id: ChunkIdentifer,
-                      args: Seq[Term],
-                      perms: Term,
-                      ve: VerificationError,
-                      v: Verifier)
-                     (Q: (State, Heap, Option[CH], Verifier) => VerificationResult)
-                     : VerificationResult
-
   def findChunk[CH <: NonQuantifiedChunk: ClassTag]
                (chunks: Iterable[Chunk],
                 id: ChunkIdentifer,
@@ -143,30 +132,9 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                      : VerificationResult = {
     if (s.exhaleExt) {
 
-      /* TODO: Integrate magic wand's transferring consumption into the regular,
-       * (non-)exact consumption (the code following this if-branch)
-       */
-
-      /* TODO: This is similar, but not as general, as the consumption algorithm
-       * implemented for supporting quantified permissions. It should be
-       * possible to unite the two.
-      */
-
       def consumeFunction(s: State, h: Heap, perms: Term, v: Verifier) = {
         val mergedHeap = stateConsolidator.mergeChunkAliases(h, id, args, v)
-        findChunk[NonQuantifiedChunk](mergedHeap.values, id, args, v) match {
-          case Some(ch) =>
-            val toTake = PermMin(ch.perm, perms)
-            val newChunk = ch.withPerm(PermMinus(ch.perm, toTake))
-            val takenChunk = Some(ch.withPerm(toTake))
-            if (v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.checkTimeout())) {
-              (ConsumptionResult(PermMinus(perms, toTake), v), s, mergedHeap - ch, takenChunk)
-            } else {
-              (ConsumptionResult(PermMinus(perms, toTake), v), s, mergedHeap - ch + newChunk, takenChunk)
-            }
-          case None =>
-            (Incomplete(perms), s, mergedHeap, None)
-        }
+        consumeGreedy(s, mergedHeap, id, args, perms, v)
       }
 
       magicWandSupporter.transfer(s, perms, Failure(ve).withLoad(args), v)(consumeFunction)((s1, optCh, v1) =>
@@ -176,38 +144,48 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         Q(s1, h1, snap1, v1)
       })
     } else {
-      consumeGreedy(s, h, id, args, perms, ve, v)((s1, h1, snap1, v1) => {
-        Q(s1, h1, snap1, v1)
-      })
+      executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
+        consumeGreedy(s1, s1.h, id, args, perms, v1) match {
+          case (Complete(), s2, h2, optCh) =>
+            QS(s2.copy(h = s.h), h2, optCh.map(_.snap), v1)
+          case _ if v1.decider.checkSmoke() =>
+            Success() // TODO: Mark branch as dead?
+          case _ =>
+            Failure(ve).withLoad(args)
+        }
+      )(Q)
     }
   }
 
-  private def consumeGreedy(s: State,
-                            h: Heap,
-                            id: ChunkIdentifer,
-                            args: Seq[Term],
-                            perms: Term,
-                            ve: VerificationError,
-                            v: Verifier)
-                           (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
-                           : VerificationResult = {
-    if (terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-      withChunkIfPerm[NonQuantifiedChunk](s, h, id, args, perms, ve, v)((s1, h1, optCh, v1) => {
-        optCh match {
-          case Some(ch) =>
-            if (v1.decider.check(IsNonPositive(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout()))
-              Q (s1, h1 - ch, Some(ch.snap), v1)
-            else
-              Q (s1, h1 - ch + ch.withPerm(PermMinus(ch.perm, perms)), Some (ch.snap), v1)
-          case None =>
-            Q(s1, h1, None, v1)
+  private def consumeGreedy(s: State, h: Heap, id: ChunkIdentifer, args: Seq[Term], perms: Term, v: Verifier) = {
+    val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
+    findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+      case Some(ch) =>
+        if (consumeExact) {
+          val toTake = PermMin(ch.perm, perms)
+          val newChunk = ch.withPerm(PermMinus(ch.perm, toTake))
+          val takenChunk = Some(ch.withPerm(toTake))
+          if (v.decider.check(newChunk.perm === NoPerm(), Verifier.config.checkTimeout())) {
+            (ConsumptionResult(PermMinus(perms, toTake), v), s, h - ch, takenChunk)
+          } else {
+            (ConsumptionResult(PermMinus(perms, toTake), v), s, h - ch + newChunk, takenChunk)
+          }
+        } else {
+          if (v.decider.check(ch.perm !== NoPerm(), Verifier.config.checkTimeout())) {
+            v.decider.assume(PermLess(perms, ch.perm))
+            val newChunk = ch.withPerm(PermMinus(ch.perm, perms))
+            val takenChunk = ch.withPerm(perms)
+            (Complete(), s, h - ch + newChunk, Some(takenChunk))
+          } else {
+            (Incomplete(perms), s, h, None)
+          }
         }
-      })
-    } else {
-      withChunk[NonQuantifiedChunk](s, h, id, args, None, ve, v)((s1, h1, ch, v1) => {
-        v1.decider.assume(PermLess(perms, ch.perm))
-        Q(s1, h1 - ch + ch.withPerm(PermMinus(ch.perm, perms)), Some(ch.snap), v1)
-      })
+      case None =>
+        if (consumeExact && s.retrying && v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
+          (Complete(), s, h, None)
+        } else {
+          (Incomplete(perms), s, h, None)
+        }
     }
   }
 
@@ -387,44 +365,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                (Q: (State, CH, Verifier) => VerificationResult)
                : VerificationResult =
     withChunk[CH](s, s.h, id, args, optPerms, ve, v)((s1, h1, ch, v1) => Q(s1.copy(h = h1), ch, v1))
-
-  /**
-    * Just like withChunk, but calls the continuation with <code>None</code> if the permission value is
-    * <code>NoPerm()</code>.
-    */
-  def withChunkIfPerm[CH <: NonQuantifiedChunk: ClassTag]
-                     (s: State,
-                      h: Heap,
-                      id: ChunkIdentifer,
-                      args: Seq[Term],
-                      perms: Term,
-                      ve: VerificationError,
-                      v: Verifier)
-                     (Q: (State, Heap, Option[CH], Verifier) => VerificationResult)
-                     : VerificationResult = {
-
-    executionFlowController.tryOrFail2[Heap, Option[CH]](s.copy(h = h), v)((s1, v1, QS) =>
-      findChunk[CH](s1.h.values, id, args, v1) match {
-        case Some(ch) =>
-          val permCheck = PermAtMost(perms, ch.perm)
-          v1.decider.assert(permCheck) {
-            case true =>
-              v1.decider.assume(permCheck)
-              QS(s1.copy(h = s.h), s1.h, Some(ch), v1)
-            case false =>
-              Failure(ve).withLoad(args)
-          }
-
-        case None =>
-          if (v1.decider.checkSmoke())
-            Success() /* TODO: Mark branch as dead? */
-          else if (s1.retrying && v1.decider.check(perms === NoPerm(), Verifier.config.checkTimeout()))
-            QS(s1.copy(h = s.h), s1.h, None, v1)
-          else
-            Failure(ve).withLoad(args)
-      }
-    )(Q)
-  }
 
   def findChunk[CH <: NonQuantifiedChunk: ClassTag]
                (chunks: Iterable[Chunk],
