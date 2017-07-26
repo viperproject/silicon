@@ -8,13 +8,13 @@ package viper.silicon.resources
 
 sealed abstract class PropertyExpression
 
-sealed abstract class EquatableExpression(private val sort: String) extends PropertyExpression {
-  def isOfSameSortAs(other: EquatableExpression): Boolean = sort == other.sort
+sealed abstract class EquatableExpression(private val kind: Class[_ <: EquatableExpression]) extends PropertyExpression {
+  def isOfSameKindAs(other: EquatableExpression): Boolean = kind == other.kind
 }
-sealed abstract class BooleanExpression extends EquatableExpression("Boolean")
-sealed abstract class ArgumentExpression extends EquatableExpression("Argument")
-sealed abstract class PermissionExpression extends EquatableExpression("Permission")
-sealed abstract class ValueExpression extends EquatableExpression("Value")
+sealed abstract class BooleanExpression extends EquatableExpression(classOf[BooleanExpression])
+sealed abstract class ArgumentExpression extends EquatableExpression(classOf[ArgumentExpression])
+sealed abstract class PermissionExpression extends EquatableExpression(classOf[PermissionExpression])
+sealed abstract class ValueExpression extends EquatableExpression(classOf[ValueExpression])
 
 case class Check(condition: BooleanExpression, thenDo: BooleanExpression, otherwise: BooleanExpression) extends BooleanExpression
 
@@ -32,7 +32,7 @@ case class PermissionIfThenElse(condition: BooleanExpression, thenDo: Permission
 case class ValueIfThenElse(condition: ValueExpression, thenDo: ValueExpression, otherwise: ValueExpression) extends ValueExpression
 
 case class Equals(left: EquatableExpression, right: EquatableExpression) extends BooleanExpression {
-  require(left.isOfSameSortAs(right), "Equatable expressions have to be of same sort.")
+  require(left.isOfSameKindAs(right), "Equatable expressions have to be of same sort.")
 }
 
 case class GreaterThan(left: PermissionExpression, right: PermissionExpression) extends BooleanExpression
