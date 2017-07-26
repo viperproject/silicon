@@ -22,6 +22,7 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
+import viper.silver.ast.utility.Rewriter.Traverse
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -112,11 +113,15 @@ class DefaultMasterVerifier(config: Config)
   def verify(_program: ast.Program): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
+      * This is done bottom-up to ensure that nested quantifiers are transformed as well
+      * (top-down should also work, but the default of 'innermost' won't).
       * See also [[viper.silicon.utils.ast.autoTrigger]].
       */
-    val program = _program.transform {
-      case forall: ast.Forall if forall.isPure => viper.silicon.utils.ast.autoTrigger(forall)
-    }
+    val program =
+      _program.transform({
+        case forall: ast.Forall if forall.isPure =>
+          viper.silicon.utils.ast.autoTrigger(forall)
+      }, Traverse.BottomUp)
 
     if (config.printTranslatedProgram()) {
       println(program)

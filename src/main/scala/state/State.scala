@@ -53,7 +53,7 @@ final case class State(g: Store = Store(),
 
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
-                       smCache: Map[Seq[QuantifiedChunk], (SnapshotMapDefinition, Term)] = Map.empty,
+                       smCache: Map[(ast.Field, Seq[QuantifiedChunk]), (SnapshotMapDefinition, Term)] = Map.empty,
                        smDomainNeeded: Boolean = false,
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
