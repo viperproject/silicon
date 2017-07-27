@@ -136,7 +136,14 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                                  (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
                                  : VerificationResult = {
     assert(s.recordPcs)
-    //TODO: add comment
+    /* During state consolidation or the consumption of quantified permissions new chunks with new snapshots
+     * might be created, the information about these new snapshots is stored in the path conditions and needs
+     * to be preserved after the package operation finishes.
+     * It is assumed that only information regarding snapshots is added to the path conditions during the
+     * execution of the consumeFunction. If any other assumptions from the wand's lhs or footprint are
+     * recorded, this might not be sound! This might especially happen when consumeFromMultipleHeaps is
+     * called in an inconsistent state.
+     */
     val preMark = v.decider.setPathConditionMark()
     val (result, s1, heaps, consumedChunks) =
       hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[CH]])]((ConsumptionResult(pLoss, v), s, Stack.empty[Heap], Stack.empty[Option[CH]]))((partialResult, heap) =>

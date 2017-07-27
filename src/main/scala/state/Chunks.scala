@@ -140,22 +140,16 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
 
 case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdentifer {
   override def equals(obj: Any): Boolean = obj match {
-    case w: MagicWandIdentifier => ghostFreeWand.structurallyMatches(w.ghostFreeWand, Verifier.program)
+    case w: MagicWandIdentifier => this.hashCode() == w.hashCode()
     case _ => false
   }
 
   override def hashCode(): Int = {
-    var substitutionMap = Map.empty[(String, ast.Type), String]
-    var currentIndex = 0
+    val subexpressionsToEvaluate = ghostFreeWand.subexpressionsToEvaluate(Verifier.program)
     val structureWand = ghostFreeWand.transform({
-      case v: ast.LocalVar =>
-        val substituedName = substitutionMap.getOrElse((v.name, v.typ), {
-          val name = s"${v.typ.toString()}$currentIndex"
-          currentIndex += 1
-          substitutionMap += (v.name, v.typ) -> name
-          name
-        })
-        ast.LocalVar(substituedName)(v.typ)
+      case exp: ast.Exp if subexpressionsToEvaluate.contains(exp) =>
+
+        ast.LocalVar(exp.typ.toString())(exp.typ)
     })
     structureWand.toString().hashCode
   }

@@ -435,7 +435,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
     }
 
     def structure(wand: ast.MagicWand, program: ast.Program): PartialFunction[ast.Node, Any] = {
-      case other: ast.MagicWand if wand.structurallyMatches(other, program) =>
+      case other: ast.MagicWand if MagicWandIdentifier(wand) == MagicWandIdentifier(other) =>
     }
   }
 
