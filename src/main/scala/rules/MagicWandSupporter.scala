@@ -87,7 +87,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                   v: Verifier)
                   (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                   : VerificationResult =
-    createChunk(s, wand, None, pve, v)(Q)
+    createChunk(s, wand, MagicWandSnapshot(freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v)), pve, v)(Q)
 
   def createChunk(s: State,
                   wand: ast.MagicWand,
@@ -97,19 +97,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                   v: Verifier)
                   (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                   : VerificationResult =
-    createChunk(s, wand, Some((abstractLhs, rhsSnapshot)), pve, v)(Q)
-
-  private def createChunk(s: State,
-                          wand: ast.MagicWand,
-                          possibleSnapshotPair: Option[(Term, Term)],
-                          pve: PartialVerificationError,
-                          v: Verifier)
-                          (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
-                          : VerificationResult = {
-
-    val snapshotPair = possibleSnapshotPair.getOrElse((freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v)))
-    createChunk(s, wand, MagicWandSnapshot(snapshotPair._1, snapshotPair._2), pve, v)(Q)
-  }
+    createChunk(s, wand, MagicWandSnapshot(abstractLhs, rhsSnapshot), pve, v)(Q)
 
   def createChunk(s: State,
                   wand: ast.MagicWand,
@@ -118,14 +106,24 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                   v: Verifier)
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
+    evaluateWandArguments(s, wand, pve, v)((s1, ts, v1) =>
+      Q(s1, MagicWandChunk(MagicWandIdentifier(wand), s1.g.values, ts, snap, FullPerm()), v1)
+    )
+  }
 
+  def evaluateWandArguments(s: State,
+                            wand: ast.MagicWand,
+                            pve: PartialVerificationError,
+                            v: Verifier)
+                           (Q: (State, Seq[Term], Verifier) => VerificationResult)
+                           : VerificationResult = {
     val s1 = s.copy(exhaleExt = false)
     val es = wand.subexpressionsToEvaluate(Verifier.program)
 
     evals(s1, es, _ => pve, v)((s2, ts, v1) => {
-      val s3 = s2.copy(exhaleExt = s.exhaleExt)
-      Q(s3, MagicWandChunk(MagicWandIdentifier(wand), s3.g.values, ts, snap, FullPerm()), v1)
-    })}
+      Q(s2.copy(exhaleExt = s.exhaleExt), ts, v1)
+    })
+  }
 
   def consumeFromMultipleHeaps[CH <: Chunk](s: State,
                                   hs: Stack[Heap],
