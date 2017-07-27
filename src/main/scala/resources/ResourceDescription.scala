@@ -68,7 +68,7 @@ class FieldDescription extends BasicDescription {
     val perm2 = PermissionAccess(c2)
     val greaterThan = GreaterThan(Plus(perm1, perm2), PermissionLiteral(1, 1))
     val neq = Not(Equals(ArgumentAccess(c1), ArgumentAccess(c2)))
-    val description = "Added permissions greater than one imply non-equal receivers"
+    val description = "Permission sum greater than one implies non-equal receivers"
     Property(ForEach(Seq(c1, c2), Check(greaterThan, neq, True())), "permUpperBoundDiseq", description)
   }
 
