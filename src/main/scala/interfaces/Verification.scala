@@ -73,14 +73,12 @@ case class Unreachable() extends NonFatalResult {
 case class Failure/*[ST <: Store[ST],
                    H <: Heap[H],
                    S <: State[ST, H, S]]*/
-                  (message: VerificationError)
+                  (message: VerificationError, private val _load: Option[Seq[Term]] = None)
     extends FatalResult {
 
-  /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
-  var load: Option[Seq[Term]] = None
+  val load = _load
   def withLoad(load: Seq[Term]) = {
-    this.load = Some(load)
-    this
+    Failure(message, Some(load))
   }
 
   override lazy val toString = message.readableMessage

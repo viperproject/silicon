@@ -1074,7 +1074,7 @@ class PermMin(val p0: Term, val p1: Term) extends Permissions
   override val toString = s"min ($p0, $p1)"
 }
 
-object PermMin {
+object PermMin extends ((Term, Term) => Term) {
   def apply(e0: Term, e1: Term) = (e0, e1) match {
     case (NoPerm(), NoPerm()) => NoPerm()
     case (FullPerm(), FullPerm()) => FullPerm()

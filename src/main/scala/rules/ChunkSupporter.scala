@@ -139,19 +139,21 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
       magicWandSupporter.transfer(s, perms, Failure(ve).withLoad(args), v)(consumeFunction)((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
-    } else if (Verifier.config.enableMoreCompleteExhale()) {
-      consumeComplete(s, h, id, args, perms, ve, v)((s1, h1, snap1, v1) => {
-        Q(s1, h1, snap1, v1)
-      })
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
-        consumeGreedy(s1, s1.h, id, args, perms, v1) match {
-          case (Complete(), s2, h2, optCh) =>
-            QS(s2.copy(h = s.h), h2, optCh.map(_.snap), v1)
-          case _ if v1.decider.checkSmoke() =>
-            Success() // TODO: Mark branch as dead?
-          case _ =>
-            Failure(ve).withLoad(args)
+        if (Verifier.config.enableMoreCompleteExhale()) {
+          consumeComplete(s1, s1.h, id, args, perms, ve, v1)((s2, h2, snap2, v2) => {
+            QS(s2.copy(h = s.h), h2, snap2, v2)
+          })
+        } else {
+          consumeGreedy(s1, s1.h, id, args, perms, v1) match {
+            case (Complete(), s2, h2, optCh) =>
+              QS(s2.copy(h = s.h), h2, optCh.map(_.snap), v1)
+            case _ if v1.decider.checkSmoke() =>
+              Success() // TODO: Mark branch as dead?
+            case _ =>
+              Failure(ve).withLoad(args)
+          }
         }
       )(Q)
     }
@@ -201,7 +203,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     val relevantChunks = ListBuffer[NonQuantifiedChunk]()
     val otherChunks = ListBuffer[Chunk]()
     h.values foreach {
-      case c: NonQuantifiedChunk if c.id == id => relevantChunks.append(c)
+      case c: NonQuantifiedChunk if id == c.id => relevantChunks.append(c)
       case ch => otherChunks.append(ch)
     }
 
@@ -220,6 +222,11 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       val newChunks = ListBuffer[NonQuantifiedChunk]()
       val equalities = ListBuffer[Term]()
 
+      /*
+        A fresh snapshot is only used if there is no definitive alias because returning
+        a fresh snapshot loses all information stored in a magic wand snapshot. Also, a
+        fresh snapshot in functions leads to triggering problems.
+       */
       val definitiveAlias = findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
       val (snap, fresh) = definitiveAlias match {
         case Some(alias) => (alias.snap, None)
