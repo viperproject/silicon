@@ -8,8 +8,8 @@ package viper.silicon.resources
 
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
-import viper.silicon.state.{QuantifiedBasicChunk, terms}
 import viper.silicon.state.terms.Term
+import viper.silicon.state.{QuantifiedBasicChunk, terms}
 import viper.silicon.verifier.Verifier
 
 class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) extends PropertyInterpreter(verifier) {

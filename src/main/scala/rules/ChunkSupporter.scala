@@ -290,7 +290,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
               v.decider.assume(PermLess(perms, pSum))
             }
             Q(s1, newHeap, Some(snap), v)
-          case false => Failure(ve).withLoad(args)
+          case false =>
+            Failure(ve).withLoad(args)
         }
       }
     }
