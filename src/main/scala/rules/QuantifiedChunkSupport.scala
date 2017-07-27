@@ -406,8 +406,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                   .reduceLeft(Combine),
                 domain(predicate.name, sm))
         case wand: ast.MagicWand =>
+          val subexpressionsToEvaluate = wand.subexpressionsToEvaluate(Verifier.program)
           val numLhs = wand.left.shallowCollect({
-            case n: ast.LocalVar => n
+            case n if subexpressionsToEvaluate.contains(n) => n
           }).size
           val lhsSnap = codomainQVars.take(numLhs).map(_.convert(sorts.Snap)).reduceLeft(Combine)
           val rhsSnap = codomainQVars.drop(numLhs).map(_.convert(sorts.Snap)).reduceLeft(Combine)

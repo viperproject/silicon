@@ -266,11 +266,15 @@ object producer extends ProductionRules with Immutable {
             val (sm, smValueDef) =
               quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(rcvr), snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-SM's value")
+            val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(smValueDef)
+            val conservedPcs =
+              if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
+              else s.conservedPcs
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(rcvr), p, sm)
             val smDef = SnapshotMapDefinition(field, sm, Seq(smValueDef), Seq())
             val s1 = s.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
-            Q(s1.copy(h = s1.h + ch), v)
+            Q(s1.copy(h = s1.h + ch, conservedPcs = conservedPcs), v)
           } else {
             val ch = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(rcvr), snap, p)
             chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
@@ -296,11 +300,15 @@ object producer extends ProductionRules with Immutable {
             val (sm, smValueDef) =
               quantifiedChunkSupporter.singletonSnapshotMap(s, predicate, args, snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-SM's value")
+            val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(smValueDef)
+            val conservedPcs =
+              if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
+              else s.conservedPcs
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalArgs, predicate, args, p, sm)
             val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
             val s1 = s.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
-            Q(s1.copy(h = s1.h + ch), v)
+            Q(s1.copy(h = s1.h + ch, conservedPcs = conservedPcs), v)
           } else {
             val snap1 = snap.convert(sorts.Snap)
             val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), args, snap1, p)
@@ -321,19 +329,21 @@ object producer extends ProductionRules with Immutable {
             addNewChunk(s2, tArgs, snap, gain, v2)(Q)}))
 
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand)) =>
-        val bodyVars = wand.shallowCollect({
-          case v: ast.LocalVar => v
-        })
-        val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         evals(s, bodyVars, _ => pve, v)((s1, args, v1) => {
           val (sm, smValueDef) =
             quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
           v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
+          val definitionalAxiomMark = v1.decider.setPathConditionMark()
           v1.decider.assume(smValueDef)
+          val conservedPcs =
+            if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
+            else s1.conservedPcs
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
           val smDef = SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq())
           val s2 = s1.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
-        Q(s2.copy(h = s2.h + ch), v)})
+        Q(s2.copy(h = s2.h + ch, conservedPcs = conservedPcs), v)})
 
       case wand: ast.MagicWand =>
         val snap = sf(sorts.Snap, v)
@@ -502,17 +512,15 @@ object producer extends ProductionRules with Immutable {
             Q(s2.copy(h = s2.h + ch), v1)}
 
       case  forall @ ast.Forall(variables, triggers, ast.Implies(cond: ast.Exp, acc: ast.MagicWand)) =>
-        val bodyVars = acc.shallowCollect({
-          case v: ast.LocalVar => v
-        })
-        val formalVars = (0 until bodyVars.size).toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val bodyVars = acc.subexpressionsToEvaluate(Verifier.program)
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val optTrigger =
           if (triggers.isEmpty) None
           else Some(triggers)
         val qid = MagicWandIdentifier(acc)
         evalQuantified(s, Forall, variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
-            val snap = v.decider.fresh(sorts.PredicateSnapFunction(sorts.Snap))
+            val snap = sf(sorts.PredicateSnapFunction(sorts.Snap), v1)
             val gain = PermTimes(FullPerm(), s1.permissionScalingFactor)
             val (ch, inverseFunctions) =
               quantifiedChunkSupporter.createQuantifiedChunk(
