@@ -63,7 +63,7 @@ class DefaultMasterVerifier(config: Config)
     uniqueIdCounter,
     sequencesContributor, setsContributor, multisetsContributor, domainsContributor,
     fieldValueFunctionsContributor,
-    predSnapGenerator, predicateSnapFunctionsContributor,
+    predSnapGenerator, predicateSnapFunctionsContributor, magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     _verificationPoolManager
   )
