@@ -17,6 +17,7 @@ import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.MagicWandIdentifier
 import viper.silicon.state.terms.{Sort, SortDecl, sorts}
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 
 trait MagicWandSnapFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 
@@ -46,7 +47,7 @@ class DefaultMagicWandSnapFunctionsContributor(preambleReader: PreambleReader[St
 
   def analyze(program: ast.Program) {
     program visit {
-      case ast.Forall(_, _, ast.Implies(_, wand: ast.MagicWand)) =>
+      case QuantifiedPermissionAssertion(_, _, wand: ast.MagicWand) =>
         collectedWands += MagicWandIdentifier(wand)
     }
 

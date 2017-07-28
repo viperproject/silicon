@@ -713,19 +713,19 @@ object consumer extends ConsumptionRules with Immutable {
               case false =>
                 Failure(pve dueTo NegativePermission(acc.perm))}}
 
-      case forall @ ast.Forall(variables, triggers, ast.Implies(cond: ast.Exp, acc: ast.MagicWand)) if s.exhaleExt =>
+      case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) if s.exhaleExt =>
         // TODO: Quantified codomain variables are used in axioms and chunks (analogous to `?r`)
         //       and need to be instantiated in several places. Hence, they need to be known,
         //       which is more complicated if fresh identifiers are used.
         //       At least two options:
         //         1. Choose fresh identifiers each time; remember/restore, e.g. by storing these variables in chunks
         //         2. Chose fresh identifiers once; store in and take from state (or from object Verifier)
-        val bodyVars = acc.subexpressionsToEvaluate(Verifier.program)
+        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        val qid = MagicWandIdentifier(acc)
+        val qid = MagicWandIdentifier(wand)
         val optTrigger =
-          if (triggers.isEmpty) None
-          else Some(triggers)
+          if (forall.triggers.isEmpty) None
+          else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
             val inverseFunctions =
@@ -786,15 +786,15 @@ object consumer extends ConsumptionRules with Immutable {
                 val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalVars)
                 val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
                 val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
-                magicWandSupporter.transfer[QuantifiedMagicWandChunk](s1, lossOfInvOfLoc, Failure(pve dueTo MagicWandChunkNotFound(acc)), v1)((s2, heap, rPerm, v2) => {
+                magicWandSupporter.transfer[QuantifiedMagicWandChunk](s1, lossOfInvOfLoc, Failure(pve dueTo MagicWandChunkNotFound(wand)), v1)((s2, heap, rPerm, v2) => {
                 val (relevantChunks, otherChunks) =
-                quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](heap, MagicWandIdentifier(acc))
+                quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](heap, MagicWandIdentifier(wand))
                 val (result, sRes, remainingChunks) = quantifiedChunkSupporter.removePermissions(
                   s2,
                   relevantChunks,
                   formalVars,
                   condOfInvOfLoc,
-                  acc,
+                  wand,
                   rPerm,
                   chunkOrderHeuristics,
                   v1
@@ -805,7 +805,7 @@ object consumer extends ConsumptionRules with Immutable {
                       sRes,
                       relevantChunks,
                       formalVars,
-                      acc,
+                      wand,
                       if (sRes.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(rPerm))) else None,
                       v2)
                   if (sRes.smDomainNeeded) {
@@ -821,7 +821,7 @@ object consumer extends ConsumptionRules with Immutable {
                   val (consumedChunk, _) = quantifiedChunkSupporter.createQuantifiedChunk(
                     qvars,
                     condOfInvOfLoc,
-                    acc,
+                    wand,
                     tArgs,
                     permsTaken,
                     formalVars,
@@ -837,21 +837,21 @@ object consumer extends ConsumptionRules with Immutable {
                     case _ => Q(s3, s3.h, v3.decider.fresh(sorts.Snap), v3)
                   })
               case false =>
-                Failure(pve dueTo MagicWandChunkNotFound(acc))}}
+                Failure(pve dueTo MagicWandChunkNotFound(wand))}}
 
-      case forall @ ast.Forall(variables, triggers, ast.Implies(cond: ast.Exp, acc: ast.MagicWand)) =>
+      case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
         // TODO: Quantified codomain variables are used in axioms and chunks (analogous to `?r`)
         //       and need to be instantiated in several places. Hence, they need to be known,
         //       which is more complicated if fresh identifiers are used.
         //       At least two options:
         //         1. Choose fresh identifiers each time; remember/restore, e.g. by storing these variables in chunks
         //         2. Chose fresh identifiers once; store in and take from state (or from object Verifier)
-        val bodyVars = acc.subexpressionsToEvaluate(Verifier.program)
+        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        val qid = MagicWandIdentifier(acc)
+        val qid = MagicWandIdentifier(wand)
         val optTrigger =
-          if (triggers.isEmpty) None
-          else Some(triggers)
+          if (forall.triggers.isEmpty) None
+          else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
           val inverseFunctions =
@@ -910,7 +910,7 @@ object consumer extends ConsumptionRules with Immutable {
                   v1.decider.prover.comment("Definitional axioms for inverse functions")
                   v1.decider.assume(inverseFunctions.definitionalAxioms)
                   val (relevantChunks, otherChunks) =
-                    quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h, MagicWandIdentifier(acc))
+                    quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h, MagicWandIdentifier(wand))
                   val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalVars)
                   val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
                   val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
@@ -919,7 +919,7 @@ object consumer extends ConsumptionRules with Immutable {
                     relevantChunks,
                     formalVars,
                     condOfInvOfLoc,
-                    acc,
+                    wand,
                     lossOfInvOfLoc,
                     chunkOrderHeuristics,
                     v1
@@ -932,7 +932,7 @@ object consumer extends ConsumptionRules with Immutable {
                           s2,
                           relevantChunks,
                           formalVars,
-                          acc,
+                          wand,
                           if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc))) else None,
                           v1)
                       if (s2.smDomainNeeded) {
@@ -941,7 +941,7 @@ object consumer extends ConsumptionRules with Immutable {
                       }
                       v1.decider.prover.comment("Definitional axioms for SM values")
                       v1.decider.assume(fvfValueDefs)
-                      val fvfDef = SnapshotMapDefinition(acc, fvf, fvfValueDefs, optFvfDomainDef.toSeq)
+                      val fvfDef = SnapshotMapDefinition(wand, fvf, fvfValueDefs, optFvfDomainDef.toSeq)
                       val fr3 = s2.functionRecorder.recordFvfAndDomain(fvfDef)
                         .recordFieldInv(inverseFunctions)
                       val s3 = s2.copy(functionRecorder = fr3,
@@ -949,9 +949,9 @@ object consumer extends ConsumptionRules with Immutable {
                         constrainableARPs = s.constrainableARPs)
                       Q(s3, h2, fvf.convert(sorts.Snap), v1)
                     case (Incomplete(_), _, _) =>
-                      Failure(pve dueTo MagicWandChunkNotFound(acc))}
+                      Failure(pve dueTo MagicWandChunkNotFound(wand))}
                 case false =>
-                  Failure(pve dueTo MagicWandChunkNotFound(acc))}}
+                  Failure(pve dueTo MagicWandChunkNotFound(wand))}}
 
 
       case ast.AccessPredicate(loc @ ast.FieldAccess(eRcvr, field), ePerm)
