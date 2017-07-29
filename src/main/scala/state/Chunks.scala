@@ -62,9 +62,9 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
                                 hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
-  assert(fvf.sort.isInstanceOf[terms.sorts.FieldValueFunction],
+  require(fvf.sort.isInstanceOf[terms.sorts.FieldValueFunction],
          s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
-  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
+  require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
   override val resourceID = FieldID()
   override val quantifiedVars = Seq(`?r`)
@@ -75,7 +75,7 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
   def valueAt(rcvr: Term): Term = Lookup(id.name, fvf, rcvr)
 
   override def valueAt(arguments: Seq[Term]): Term = {
-    assert(arguments.length == 1)
+    require(arguments.length == 1)
 
     Lookup(id.name, fvf, arguments.head)
   }
@@ -96,8 +96,8 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
                                     hints: Seq[Term] = Nil)
     extends QuantifiedBasicChunk {
 
-  assert(psf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction], s"Quantified predicate chunk values must be of sort PredicateSnapFunction ($psf), but found ${psf.sort}")
-  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
+  require(psf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction], s"Quantified predicate chunk values must be of sort PredicateSnapFunction ($psf), but found ${psf.sort}")
+  require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
   override val resourceID = PredicateID()
 
@@ -109,7 +109,7 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
   override def withPerm(newPerm: Term) = QuantifiedPredicateChunk(id, quantifiedVars, psf, newPerm, invs, initialCond, singletonArgs, hints)
   override def withSnapshotMap(newPsf: Term) = QuantifiedPredicateChunk(id, quantifiedVars, newPsf, perm, invs, initialCond, singletonArgs, hints)
 
-  override lazy val toString = s"${terms.Forall}  ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $psf # $perm"
+  override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $psf # $perm"
 }
 
 case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
@@ -122,8 +122,8 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
                                     hints: Seq[Term] = Nil)
   extends QuantifiedBasicChunk {
 
-  assert(wsf.sort == terms.sorts.PredicateSnapFunction(sorts.Snap), s"Quantified magic wand chunk values must be of sort MagicWandSnapFunction ($wsf), but found ${wsf.sort}")
-  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
+  require(wsf.sort == terms.sorts.PredicateSnapFunction(sorts.Snap), s"Quantified magic wand chunk values must be of sort MagicWandSnapFunction ($wsf), but found ${wsf.sort}")
+  require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
   override val resourceID = MagicWandID()
 
@@ -135,16 +135,16 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
   override def withPerm(newPerm: Term) = QuantifiedMagicWandChunk(id, quantifiedVars, wsf, newPerm, invs, initialCond, singletonArgs, hints)
   override def withSnapshotMap(newWsf: Term) = QuantifiedMagicWandChunk(id, quantifiedVars, newWsf, perm, invs, initialCond, singletonArgs, hints)
 
-  override def toString = s"${terms.Forall}  ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $wsf # $perm"
+  override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $wsf # $perm"
 }
 
 case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdentifer {
   override def equals(obj: Any): Boolean = obj match {
-    case w: MagicWandIdentifier => this.hashCode() == w.hashCode()
+    case w: MagicWandIdentifier => this.hashCode == w.hashCode
     case _ => false
   }
 
-  override def hashCode(): Int = {
+  override lazy val hashCode: Int = {
     val subexpressionsToEvaluate = ghostFreeWand.subexpressionsToEvaluate(Verifier.program)
     val structureWand = ghostFreeWand.transform({
       case exp: ast.Exp if subexpressionsToEvaluate.contains(exp) =>
@@ -154,7 +154,7 @@ case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdenti
     structureWand.toString().hashCode
   }
 
-  override def toString: String = s"wand${this.hashCode().toString}"
+  override lazy val toString = s"wand${hashCode.toString}"
 }
 
 case class MagicWandChunk(id: MagicWandIdentifier,
@@ -174,7 +174,7 @@ case class MagicWandChunk(id: MagicWandIdentifier,
     case _ => sys.error(s"MagicWand snapshot has to be of type MagicWandSnapshot but found ${newSnap.getClass}")
   }
 
-  override lazy val toString: String = {
+  override lazy val toString = {
     val pos = id.ghostFreeWand.pos match {
       case rp: viper.silver.ast.HasLineColumn => s"${rp.line}:${rp.column}"
       case other => other.toString
