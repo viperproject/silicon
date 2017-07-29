@@ -11,7 +11,7 @@ import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.resources._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{App, _}
-import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, State}
+import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
@@ -261,7 +261,11 @@ object producer extends ProductionRules with Immutable {
           if (s.qpFields.contains(field)) {
             val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(rcvr), snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-SM's value")
+            val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(smValueDef)
+            val conservedPcs =
+              if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
+              else s.conservedPcs
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(rcvr), p, sm)
             val h1 = s.h + ch
 
@@ -271,8 +275,7 @@ object producer extends ProductionRules with Immutable {
             v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
 
             val smDef = SnapshotMapDefinition(field, sm, Seq(smValueDef), Seq())
-            val s1 = s.copy(h = h1, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
-            Q(s1, v)
+            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef)), v)
           } else {
             val ch = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(rcvr), snap, p)
             chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
@@ -297,7 +300,11 @@ object producer extends ProductionRules with Immutable {
             val (sm, smValueDef) =
               quantifiedChunkSupporter.singletonSnapshotMap(s, predicate, args, snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-SM's value")
+            val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(smValueDef)
+            val conservedPcs =
+              if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
+              else s.conservedPcs
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalArgs, predicate, args, p, sm)
             val h1 = s.h + ch
 
@@ -307,8 +314,7 @@ object producer extends ProductionRules with Immutable {
             v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
 
             val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
-            val s1 = s.copy(h = h1, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
-            Q(s1, v)
+            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef)), v)
           } else {
             val snap1 = snap.convert(sorts.Snap)
             val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), args, snap1, p)
@@ -328,6 +334,23 @@ object producer extends ProductionRules with Immutable {
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             addNewChunk(s2, tArgs, snap, gain, v2)(Q)}))
 
+      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand)) =>
+        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        evals(s, bodyVars, _ => pve, v)((s1, args, v1) => {
+          val (sm, smValueDef) =
+            quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
+          v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
+          val definitionalAxiomMark = v1.decider.setPathConditionMark()
+          v1.decider.assume(smValueDef)
+          val conservedPcs =
+            if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
+            else s1.conservedPcs
+          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+          val smDef = SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq())
+          val s2 = s1.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
+        Q(s2.copy(h = s2.h + ch, conservedPcs = conservedPcs), v)})
+
       case wand: ast.MagicWand =>
         val snap = sf(sorts.Snap, v)
         magicWandSupporter.createChunk(s, wand, MagicWandSnapshot(snap), pve, v)((s1, chWand, v1) =>
@@ -338,7 +361,7 @@ object producer extends ProductionRules with Immutable {
        *       and producer. Try to unify the code.
        */
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) =>
-        val qid = s"qp.l${viper.silicon.utils.ast.sourceLine(forall)}${v.counter(this).next()}"
+        val qid = acc.loc.field.name
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
@@ -346,11 +369,11 @@ object producer extends ProductionRules with Immutable {
           case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, auxQuantResult, v1) =>
             val snap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
             val gain = PermTimes(tPerm, s1.permissionScalingFactor)
-            val (ch, inverseFunctions) =
+            val (ch: QuantifiedBasicChunk, inverseFunctions) =
               quantifiedChunkSupporter.createQuantifiedChunk(
                 qvars                = qvars,
                 condition            = tCond,
-                location             = acc.loc.field,
+                resource             = acc.loc.field,
                 arguments            = Seq(tRcvr),
                 permissions          = gain,
                 codomainQVars        = Seq(`?r`),
@@ -406,20 +429,20 @@ object producer extends ProductionRules with Immutable {
                 property = property,
                 qvars = effectiveTriggersQVars,
                 arguments = Seq(tRcvr),
-                perms = tPerm,
+                perms = gain,
                 condition = tCond,
                 triggers = effectiveTriggers,
                 qidPrefix = qid)
               )
             }
 
-            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
-            Q(s2.copy(h = s2.h + ch), v1)}
+            val s2 = s1.copy(h = s1.h + ch, functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
+            Q(s2, v1)}
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
         val predicate = Verifier.program.findPredicate(acc.loc.predicateName)
         val formalVars = s.predicateFormalVarMap(predicate)
-        val qid = s"qp.l${viper.silicon.utils.ast.sourceLine(forall)}${v.counter(this).next()}"
+        val qid = acc.loc.predicateName
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
@@ -427,11 +450,11 @@ object producer extends ProductionRules with Immutable {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, auxQuantResult, v1) =>
             val snap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
             val gain = PermTimes(tPerm, s1.permissionScalingFactor)
-            val (ch, inverseFunctions) =
+            val (ch: QuantifiedBasicChunk, inverseFunctions) =
               quantifiedChunkSupporter.createQuantifiedChunk(
                 qvars                = qvars,
                 condition            = tCond,
-                location             = predicate,
+                resource             = predicate,
                 arguments            = tArgs,
                 permissions          = gain,
                 sm                   = snap,
@@ -487,15 +510,96 @@ object producer extends ProductionRules with Immutable {
                 property = property,
                 qvars = effectiveTriggersQVars,
                 arguments = tArgs,
-                perms = tPerm,
+                perms = gain,
                 condition = tCond,
                 triggers = effectiveTriggers,
                 qidPrefix = qid)
               )
             }
 
-            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
-            Q(s2.copy(h = s2.h + ch), v1)}
+            val s2 = s1.copy(h = s1.h + ch, functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
+            Q(s2, v1)}
+
+      case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
+        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val optTrigger =
+          if (forall.triggers.isEmpty) None
+          else Some(forall.triggers)
+        val qid = MagicWandIdentifier(wand)
+        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
+          case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
+            val snap = sf(sorts.PredicateSnapFunction(sorts.Snap), v1)
+            val gain = PermTimes(FullPerm(), s1.permissionScalingFactor)
+            val (ch: QuantifiedBasicChunk, inverseFunctions) =
+              quantifiedChunkSupporter.createQuantifiedChunk(
+                qvars                = qvars,
+                condition            = tCond,
+                resource             = wand,
+                arguments            = tArgs,
+                permissions          = gain,
+                sm                   = snap,
+                codomainQVars        = formalVars,
+                additionalInvArgs    = s1.relevantQuantifiedVariables(tArgs),
+                userProvidedTriggers = optTrigger.map(_ => tTriggers),
+                qidPrefix            = qid.toString,
+                v                    = v1)
+            val (effectiveTriggers, effectiveTriggersQVars) =
+              optTrigger match {
+                case Some(_) =>
+                  /* Explicit triggers were provided */
+                  (tTriggers, qvars)
+                case None =>
+                  /* No explicit triggers were provided and we resort to those from the inverse
+                   * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
+                   * Note that the trigger generation code might have added quantified variables
+                   * to that axiom.
+                   */
+                  (inverseFunctions.axiomInversesOfInvertibles.triggers,
+                    inverseFunctions.axiomInversesOfInvertibles.vars)
+              }
+            if (effectiveTriggers.isEmpty)
+              v1.logger.warn(s"No triggers available for quantifier at ${forall.pos}")
+
+            v1.decider.prover.comment("Nested auxiliary terms")
+            auxQuantResult match {
+              case Left(tAuxQuantNoTriggers) =>
+                /* No explicit triggers provided */
+                v1.decider.assume(
+                  tAuxQuantNoTriggers.copy(
+                    vars = effectiveTriggersQVars,
+                    triggers = effectiveTriggers))
+
+              case Right(tAuxQuants) =>
+                /* Explicit triggers were provided. */
+                v1.decider.assume(tAuxQuants)
+            }
+
+            v1.decider.prover.comment("Definitional axioms for inverse functions")
+            val definitionalAxiomMark = v1.decider.setPathConditionMark()
+            v1.decider.assume(inverseFunctions.definitionalAxioms)
+            val conservedPcs =
+              if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
+              else s1.conservedPcs
+
+            val resource = Resources.resourceDescriptions(ch.resourceID)
+            val interpreter = new QuantifiedPropertyInterpreter(v)
+            resource.instanceProperties.foreach { property =>
+              v1.decider.prover.comment(property.description)
+              v1.decider.assume(interpreter.buildPathConditionForChunk(
+                chunk = ch,
+                property = property,
+                qvars = effectiveTriggersQVars,
+                arguments = tArgs,
+                perms = gain,
+                condition = tCond,
+                triggers = effectiveTriggers,
+                qidPrefix = qid.toString)
+              )
+            }
+
+            val s2 = s1.copy(h = s1.h + ch, functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
+            Q(s2, v1)}
 
       case _: ast.InhaleExhaleExp =>
         Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a))

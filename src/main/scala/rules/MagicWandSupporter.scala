@@ -134,6 +134,14 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                                  (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
                                  : VerificationResult = {
     assert(s.recordPcs)
+    /* During state consolidation or the consumption of quantified permissions new chunks with new snapshots
+     * might be created, the information about these new snapshots is stored in the path conditions and needs
+     * to be preserved after the package operation finishes.
+     * It is assumed that only information regarding snapshots is added to the path conditions during the
+     * execution of the consumeFunction. If any other assumptions from the wand's lhs or footprint are
+     * recorded, this might not be sound! This might especially happen when consumeFromMultipleHeaps is
+     * called in an inconsistent state.
+     */
     val preMark = v.decider.setPathConditionMark()
     val (result, s1, heaps, consumedChunks) =
       hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[CH]])]((ConsumptionResult(pLoss, v), s, Stack.empty[Heap], Stack.empty[Option[CH]]))((partialResult, heap) =>
@@ -173,7 +181,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                   proofScript: ast.Seqn,
                   pve: PartialVerificationError,
                   v: Verifier)
-                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
+                  (Q: (State, Chunk, Verifier) => VerificationResult)
                   : VerificationResult = {
 
     /* TODO: Logging code is very similar to that in HeuristicsSupporter. Unify. */
@@ -211,7 +219,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
-    var results: Seq[(State, Stack[Term], Vector[RecordedPathConditions], MagicWandChunk)] = Nil
+    var results: Seq[(State, Stack[Term], Vector[RecordedPathConditions], Chunk)] = Nil
 
     assert(s.reserveHeaps.head.values.isEmpty)
 
@@ -275,7 +283,30 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //          say(s"done: consumed RHS ${wand.right}")
 //          say(s"next: create wand chunk")
             val preMark = v3.decider.setPathConditionMark()
-            magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
+            if (s4.qpMagicWands.contains(MagicWandIdentifier(wand))) {
+              val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+              val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+              evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {
+                val (sm, smValueDef) =
+                  quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
+                v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
+                v4.decider.assume(smValueDef)
+                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+
+                val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark)
+                val conservedPcsTail = s5.conservedPcs.tail
+                val newConservedPcs =
+                  if (conservedPcsTail.isEmpty) conservedPcsTail
+                  else {
+                    val head = conservedPcsTail.head ++ conservedPcs
+                    head +: conservedPcsTail.tail
+                  }
+
+                results :+= (s5.copy(conservedPcs = newConservedPcs, recordPcs = s.recordPcs), v4.decider.pcs.branchConditions, conservedPcs, ch)
+                Success()
+              })
+            }
+            else magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
 //            say(s"done: create wand chunk: $ch")
               val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark)
               val conservedPcsTail = s5.conservedPcs.tail

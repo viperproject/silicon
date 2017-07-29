@@ -20,6 +20,7 @@ import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import viper.silver.verifier.reasons._
+import viper.silicon.interfaces.state.ChunkIdentifer
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -184,7 +185,7 @@ object evaluator extends EvaluationRules with Immutable {
       case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, v1) => {
           val (relevantChunks, _) =
-            quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, fa.field.name)
+            quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(fa.field.name))
           s1.smCache.get((fa.field, relevantChunks)) match {
             case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) if !Verifier.config.disableValueMapCaching() =>
               /* The next assertion must be made if the FVF definition is taken from the cache;

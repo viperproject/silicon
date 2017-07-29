@@ -53,6 +53,7 @@ final case class State(g: Store = Store(),
 
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
+                       qpMagicWands: InsertionOrderedSet[MagicWandIdentifier] = InsertionOrderedSet.empty,
                        smCache: Map[(ast.Field, Seq[QuantifiedBasicChunk]), (SnapshotMapDefinition, Term)] = Map.empty,
                        smDomainNeeded: Boolean = false,
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
@@ -134,7 +135,7 @@ object State {
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
-                 qpFields1, qpPredicates1, smCache1, smDomainNeeded1,
+                 qpFields1, qpPredicates1, qpMagicWands1, smCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1) =>
 
         /* Decompose state s2: most values must match those of s1 */
@@ -154,7 +155,7 @@ object State {
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
-                     `qpFields1`, `qpPredicates1`, smCache2, `smDomainNeeded1`,
+                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)

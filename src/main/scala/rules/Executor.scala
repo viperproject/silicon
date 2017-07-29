@@ -267,7 +267,7 @@ object executor extends ExecutionRules with Immutable {
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
             val (relevantChunks, otherChunks) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, field.name)
+              quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             val result = quantifiedChunkSupporter.removePermissions(
