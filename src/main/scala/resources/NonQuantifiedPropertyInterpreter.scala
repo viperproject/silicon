@@ -88,7 +88,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     case c: QuantifiedBasicChunk => c.singletonArguments.get
   }
 
-  override protected def buildCheck(condition: BooleanExpression, thenDo: BooleanExpression, otherwise: BooleanExpression, info: Info) = {
+  override protected def buildCheck[T <: Type](condition: PropertyExpression[types.Boolean], thenDo: PropertyExpression[T], otherwise: PropertyExpression[T], info: Info) = {
     val conditionTerm = buildPathCondition(condition, info)
     if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout())) {
       buildPathCondition(thenDo, info)
@@ -97,7 +97,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     }
   }
 
-  override protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression, info: Info): Term = {
+  override protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[types.Boolean], info: Info): Term = {
     info.pm.get(This()) match {
       case Some(_) =>
          sys.error("Property expressions may not contain any ForEach clauses.")
@@ -108,7 +108,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     }
   }
 
-  private def buildForEach(chunks: Iterable[GeneralChunk], chunkVariables: Seq[ChunkVariable], body: BooleanExpression, info: Info): Term = {
+  private def buildForEach(chunks: Iterable[GeneralChunk], chunkVariables: Seq[ChunkVariable], body: PropertyExpression[types.Boolean], info: Info): Term = {
     val builder: (GeneralChunk => Term) = chunkVariables match {
       case c +: Seq() => chunk => buildPathCondition(body, info.addMapping(c, chunk))
       case c +: tail => chunk => buildForEach(chunks, tail, body, info.addMapping(c, chunk))
