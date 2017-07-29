@@ -46,16 +46,16 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     } while(continue)
 
     val allChunks = mergedChunks ++ otherChunks
-
     val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
-    Resources.resourceDescriptions foreach { case (id, desc) =>
-      v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.staticProperties))
-      v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
-    }
 
     mergedChunks foreach { ch =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
       v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+    }
+
+    Resources.resourceDescriptions foreach { case (id, desc) =>
+      v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.staticProperties))
+      v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
     }
 
     s.copy(h = Heap(allChunks))
@@ -168,15 +168,15 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
   @inline
   final private def partition(h: Heap): (Seq[NonQuantifiedChunk], Seq[Chunk]) = {
-    var NonQuantifiedChunks = Seq[NonQuantifiedChunk]()
+    var nonQuantifiedChunks = Seq[NonQuantifiedChunk]()
     var otherChunks = Seq[Chunk]()
 
     h.values foreach {
-      case ch: NonQuantifiedChunk => NonQuantifiedChunks +:= ch
+      case ch: NonQuantifiedChunk => nonQuantifiedChunks +:= ch
       case ch => otherChunks +:= ch
     }
 
-    (NonQuantifiedChunks, otherChunks)
+    (nonQuantifiedChunks, otherChunks)
   }
 
 }
