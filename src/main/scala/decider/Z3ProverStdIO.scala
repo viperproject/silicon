@@ -9,6 +9,7 @@ package viper.silicon.decider
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
+
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.{Config, Map, toMap}
 import viper.silicon.common.config.Version
@@ -73,11 +74,11 @@ class Z3ProverStdIO(uniqueId: String,
         Array()
 
       case Some(args) =>
-        logger.debug(s"Additional command-line arguments are $args")
+        logger.info(s"Additional command-line arguments are $args")
         args.split(' ').map(_.trim)
     }
 
-    val builder = new ProcessBuilder(z3File.getPath +: "-smt2" +: "-in" +: userProvidedZ3Args :_*)
+    val builder = new ProcessBuilder(z3Path.toFile.getPath +: "-smt2" +: "-in" +: userProvidedZ3Args :_*)
     builder.redirectErrorStream(true)
 
     val process = builder.start()
@@ -96,25 +97,30 @@ class Z3ProverStdIO(uniqueId: String,
     start()
   }
 
+  // the statement input.close() does not always terminate (e.g. if there is data left to be read)
+  // therefore it makes sense to first kill the z3 process, because then the channel is closed from the other side first
+  // resulting in the close() method to terminate
   def stop() {
     this.synchronized {
       if (logfileWriter != null) {
         logfileWriter.flush()
-        logfileWriter.close()
       }
-
       if (output != null) {
         output.flush()
-        output.close()
       }
-
-      if (input != null) {
-        input.close()
-      }
-
       if (z3 != null) {
         z3.destroyForcibly()
         z3.waitFor(10, TimeUnit.SECONDS) /* Makes the current thread wait until the process has been shut down */
+      }
+
+      if (logfileWriter != null) {
+        logfileWriter.close()
+      }
+      if (input != null) {
+        input.close()
+      }
+      if (output != null) {
+        output.close()
       }
     }
   }

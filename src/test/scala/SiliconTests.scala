@@ -12,6 +12,7 @@ import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, Unexpec
 import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
 import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
 import viper.silver.frontend.TranslatorState
+import viper.silver.reporter.StdIOReporter
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = List("consistency")
@@ -28,7 +29,7 @@ class SiliconTests extends SilSuite {
     SymbExLogger.reset()
     SymbExLogger.filePath = files.head
     SymbExLogger.initUnitTestEngine()
-    val fe = new SiliconFrontend()//SiliconFrontendWithUnitTesting()
+    val fe = new SiliconFrontend(new StdIOReporter("silicon_for_testing"))//SiliconFrontendWithUnitTesting()
     fe.init(verifier)
     fe.reset(files.head)
     fe
@@ -54,7 +55,7 @@ class SiliconTests extends SilSuite {
   }
 }
 
-class SiliconFrontendWithUnitTesting extends SiliconFrontend {
+class SiliconFrontendWithUnitTesting extends SiliconFrontend(new StdIOReporter("silicon_for_unit_testing")) {
   /** Is overridden only to append SymbExLogging-UnitTesting-Errors to the Result. **/
   override def result: SilVerificationResult = {
     if(_state < TranslatorState.Verified) super.result

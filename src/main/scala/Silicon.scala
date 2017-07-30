@@ -8,9 +8,11 @@ package viper.silicon
 
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
+
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
+
 import scala.collection.immutable
 import scala.language.postfixOps
 import scala.reflect.runtime.universe
@@ -21,6 +23,7 @@ import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.verifier.DefaultMasterVerifier
+import viper.silver.reporter.{Reporter, StdIOReporter}
 
 object Silicon {
   private val brandingDataObjectName = "viper.silicon.brandingData"
@@ -310,7 +313,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 }
 
-class SiliconFrontend extends SilFrontend {
+class SiliconFrontend(override val reporter: Reporter) extends SilFrontend {
   protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {
@@ -327,7 +330,7 @@ class SiliconFrontend extends SilFrontend {
   }
 }
 
-object SiliconRunner extends SiliconFrontend {
+object SiliconRunner extends SiliconFrontend(new StdIOReporter("silicon")) {
   def main(args: Array[String]) {
     var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
 
