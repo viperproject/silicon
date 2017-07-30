@@ -132,12 +132,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                      : VerificationResult = {
     if (s.exhaleExt) {
 
-      def consumeFunction(s: State, h: Heap, perms: Term, v: Verifier) = {
-        val mergedHeap = stateConsolidator.mergeChunkAliases(h, id, args, v)
-        consumeGreedy(s, mergedHeap, id, args, perms, v)
-      }
-
-      magicWandSupporter.transfer(s, perms, Failure(ve).withLoad(args), v)(consumeFunction)((s1, optCh, v1) =>
+      magicWandSupporter.transfer(s, perms, Failure(ve).withLoad(args), v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>

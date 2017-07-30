@@ -133,16 +133,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                                  (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
                                  (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
                                  : VerificationResult = {
-    assert(s.recordPcs)
-    /* During state consolidation or the consumption of quantified permissions new chunks with new snapshots
-     * might be created, the information about these new snapshots is stored in the path conditions and needs
-     * to be preserved after the package operation finishes.
-     * It is assumed that only information regarding snapshots is added to the path conditions during the
-     * execution of the consumeFunction. If any other assumptions from the wand's lhs or footprint are
-     * recorded, this might not be sound! This might especially happen when consumeFromMultipleHeaps is
-     * called in an inconsistent state.
-     */
-    val preMark = v.decider.setPathConditionMark()
     val (result, s1, heaps, consumedChunks) =
       hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[CH]])]((ConsumptionResult(pLoss, v), s, Stack.empty[Heap], Stack.empty[Option[CH]]))((partialResult, heap) =>
         partialResult match  {
@@ -167,8 +157,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             case _ => True()
           }
         v.decider.assume(tEqs.toIterable)
-        val conservedPcs = s1.conservedPcs.head :+ v.decider.pcs.after(preMark)
-        Q(s1.copy(conservedPcs = conservedPcs +: s1.conservedPcs.tail), heaps.reverse, consumedChunks.reverse, v)
+        Q(s1, heaps.reverse, consumedChunks.reverse, v)
       case Incomplete(_) => failure
     }
   }
@@ -363,14 +352,26 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
               (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
               (Q: (State, Option[CH], Verifier) => VerificationResult)
               : VerificationResult = {
+    assert(s.recordPcs)
+    /* During state consolidation or the consumption of quantified permissions new chunks with new snapshots
+     * might be created, the information about these new snapshots is stored in the path conditions and needs
+     * to be preserved after the package operation finishes.
+     * It is assumed that only information regarding snapshots is added to the path conditions during the
+     * execution of the consumeFunction. If any other assumptions from the wand's lhs or footprint are
+     * recorded, this might not be sound! This might especially happen when consumeFromMultipleHeaps is
+     * called in an inconsistent state.
+     */
+    val preMark = v.decider.setPathConditionMark()
+    executionFlowController.tryOrFail2[Stack[Heap], Stack[Option[CH]]](s, v)((s1, v1, QS) =>
+      magicWandSupporter.consumeFromMultipleHeaps(s1, s1.reserveHeaps.tail, perms, failure, v1)(consumeFunction)(QS)
+    )((s2, hs2, chs2, v2) => {
+      val conservedPcs = s2.conservedPcs.head :+ v2.decider.pcs.after(preMark)
+      val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 
-    magicWandSupporter.consumeFromMultipleHeaps(s, s.reserveHeaps.tail, perms, failure, v)(consumeFunction)((s1, hs, chs, v1) => {
-      val s2 = s1.copy(reserveHeaps = s.reserveHeaps.head +: hs)
+      val usedChunks = chs2.flatten
+      val hUsed = stateConsolidator.merge(s2.reserveHeaps.head, Heap(usedChunks), v2)
 
-      val usedChunks = chs.flatten
-      val hUsed = stateConsolidator.merge(s2.reserveHeaps.head, Heap(usedChunks), v1)
-
-      val s3 = s2.copy(reserveHeaps = hUsed +: s2.reserveHeaps.tail)
+      val s4 = s3.copy(reserveHeaps = hUsed +: s3.reserveHeaps.tail)
 
       /* Returning the last of the usedChunks should be fine w.r.t to the snapshot
        * of the chunk, since consumeFromMultipleHeaps should have equated the
@@ -378,7 +379,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
        * is potentially a series of empty chunks (perm = Z) followed by the that was
        * actually consumed.
        */
-      Q(s3, usedChunks.lastOption, v1)})
+      Q(s4, usedChunks.lastOption, v2)})
   }
 
   def getEvalHeap(s: State): Heap = {

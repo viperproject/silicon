@@ -24,78 +24,51 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
 object stateConsolidator extends StateConsolidationRules with Immutable {
   
   def consolidate(s: State, v: Verifier): State = {
-    v.decider.prover.comment("[state consolidation]")
+    val heaps  = s.h +: s.reserveHeaps
+    val newHeaps = heaps.map { h =>
+      v.decider.prover.comment("[state consolidation]")
 
-    val (nonQuantifiedChunks, otherChunks) = partition(s.h)
+      val (nonQuantifiedChunks, otherChunks) = partition(h)
 
-    var continue = false
+      var continue = false
 
-    var mergedChunks: Seq[NonQuantifiedChunk] = Nil
-    var destChunks: Seq[NonQuantifiedChunk] = Nil
-    var newChunks: Seq[NonQuantifiedChunk] = nonQuantifiedChunks
+      var mergedChunks: Seq[NonQuantifiedChunk] = Nil
+      var destChunks: Seq[NonQuantifiedChunk] = Nil
+      var newChunks: Seq[NonQuantifiedChunk] = nonQuantifiedChunks
 
-    do {
-      val (_mergedChunks, _, snapEqs) = singleMerge(destChunks, newChunks, v)
+      do {
+        val (_mergedChunks, _, snapEqs) = singleMerge(destChunks, newChunks, v)
 
-      snapEqs foreach v.decider.assume
+        snapEqs foreach v.decider.assume
 
-      mergedChunks = _mergedChunks
-      destChunks = Nil
-      newChunks = mergedChunks
-      continue = snapEqs.nonEmpty
-    } while(continue)
+        mergedChunks = _mergedChunks
+        destChunks = Nil
+        newChunks = mergedChunks
+        continue = snapEqs.nonEmpty
+      } while (continue)
 
-    val allChunks = mergedChunks ++ otherChunks
-    val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
+      val allChunks = mergedChunks ++ otherChunks
+      val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
 
-    mergedChunks foreach { ch =>
-      val resource = Resources.resourceDescriptions(ch.resourceID)
-      v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+      mergedChunks foreach { ch =>
+        val resource = Resources.resourceDescriptions(ch.resourceID)
+        v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+      }
+
+      Resources.resourceDescriptions foreach { case (id, desc) =>
+        v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.staticProperties))
+        v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
+      }
+
+      Heap(allChunks)
     }
 
-    Resources.resourceDescriptions foreach { case (id, desc) =>
-      v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.staticProperties))
-      v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
-    }
-
-    s.copy(h = Heap(allChunks))
+    s.copy(h = newHeaps.head, reserveHeaps = newHeaps.tail)
   }
 
   def consolidateIfRetrying(s: State, v: Verifier): State =
     if (s.retrying) consolidate(s, v)
     else s
-
-  // Merges all chunks with specified id and args in the heap by using the mergeChunks method and returns the new heap
-  def mergeChunkAliases(h: Heap, id: ChunkIdentifer, args: Seq[Term], v: Verifier): Heap = {
-    val (nonQuantifiedChunks, chunks) = partition(h)
-    val (relevantChunks, otherChunks) = nonQuantifiedChunks.partition {
-      case ch: NonQuantifiedChunk =>
-        id == ch.id && (ch.args == args || v.decider.check(And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 }), Verifier.config.checkTimeout()))
-      case _ =>
-        false
-    }
-    val initial = (Seq[NonQuantifiedChunk](), Seq[Term]())
-    val (newChunks, equalities) = relevantChunks.foldLeft(initial) { case ((chs, eqs), ch) =>
-      chs match {
-        case Seq() => (Seq(ch), eqs)
-        case cs => mergeChunks(cs.head, ch, v) match {
-          case Some((mergedChunk, eq)) => (mergedChunk +: cs.tail, eq +: eqs)
-          case None => (ch +: cs, eqs)
-        }
-      }
-    }
-    val allChunks = newChunks ++ otherChunks
-    v.decider.assume(equalities)
-    val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
-    Resources.resourceDescriptions foreach { case (rid, desc) =>
-      v.decider.assume(interpreter.buildPathConditionsForResource(rid, desc.staticProperties))
-    }
-    newChunks foreach { ch =>
-        val resource = Resources.resourceDescriptions(ch.resourceID)
-        v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
-    }
-    Heap(allChunks ++ chunks)
-  }
 
   def merge(h: Heap, ch: NonQuantifiedChunk, v: Verifier): Heap = merge(h, Heap(Seq(ch)), v)
 

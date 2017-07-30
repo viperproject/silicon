@@ -526,8 +526,8 @@ object producer extends ProductionRules with Immutable {
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        val qid = MagicWandIdentifier(wand)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
+        val qid = MagicWandIdentifier(wand).toString
+        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
             val snap = sf(sorts.PredicateSnapFunction(sorts.Snap), v1)
             val gain = PermTimes(FullPerm(), s1.permissionScalingFactor)
@@ -542,7 +542,7 @@ object producer extends ProductionRules with Immutable {
                 codomainQVars        = formalVars,
                 additionalInvArgs    = s1.relevantQuantifiedVariables(tArgs),
                 userProvidedTriggers = optTrigger.map(_ => tTriggers),
-                qidPrefix            = qid.toString,
+                qidPrefix            = qid,
                 v                    = v1)
             val (effectiveTriggers, effectiveTriggersQVars) =
               optTrigger match {
@@ -594,7 +594,7 @@ object producer extends ProductionRules with Immutable {
                 perms = gain,
                 condition = tCond,
                 triggers = effectiveTriggers,
-                qidPrefix = qid.toString)
+                qidPrefix = qid)
               )
             }
 

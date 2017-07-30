@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import scala.reflect.ClassTag
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, VerificationResult}
@@ -19,8 +20,6 @@ import viper.silver.ast
 import viper.silver.ast.Location
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
-
-import scala.reflect.ClassTag
 
 class InverseFunctions(val condition: Term,
                        val invertibles: Seq[Term],
