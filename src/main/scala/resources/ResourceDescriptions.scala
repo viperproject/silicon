@@ -32,11 +32,12 @@ abstract class BasicDescription extends ResourceDescription {
     Property(GreaterThanEquals(PermissionAccess(This()), PermissionLiteral(0, 1)), "permAtLeastZero", description)
   }
 
-  // TODO: this does not work for singleton quantified chunks for some reason
   def valNeqImpliesLocNeq: Property = {
     val c1 = ChunkVariable("c1")
     val c2 = ChunkVariable("c2")
-    val condition = Not(Equals(ValueAccess(c1), ValueAccess(c2)))
+    val noPerm = PermissionLiteral(0, 1)
+    val permNonZero = And(GreaterThan(PermissionAccess(c1), noPerm), GreaterThan(PermissionAccess(c2), noPerm))
+    val condition = And(permNonZero, Not(Equals(ValueAccess(c1), ValueAccess(c2))))
     val expression = ForEach(Seq(c1, c2), Check(condition, Not(Equals(ArgumentAccess(c1), ArgumentAccess(c2))), True()))
     val description = "Different values imply different arguments"
     Property(expression, "valNeqImpliesLocNeq", description)

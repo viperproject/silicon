@@ -131,7 +131,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
     if (s.exhaleExt) {
-
       magicWandSupporter.transfer(s, perms, Failure(ve).withLoad(args), v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
@@ -142,8 +141,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           })
         } else {
           consumeGreedy(s1, s1.h, id, args, perms, v1) match {
-            case (Complete(), s2, h2, optCh) =>
-              QS(s2.copy(h = s.h), h2, optCh.map(_.snap), v1)
+            case (Complete(), s2, h2, optCh2) =>
+              QS(s2.copy(h = s.h), h2, optCh2.map(_.snap), v1)
             case _ if v1.decider.checkSmoke() =>
               Success() // TODO: Mark branch as dead?
             case _ =>

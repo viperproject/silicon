@@ -788,7 +788,7 @@ object consumer extends ConsumptionRules with Immutable {
                 val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
                 magicWandSupporter.transfer[QuantifiedMagicWandChunk](s1, lossOfInvOfLoc, Failure(pve dueTo MagicWandChunkNotFound(wand)), v1)((s2, heap, rPerm, v2) => {
                 val (relevantChunks, otherChunks) =
-                quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](heap, MagicWandIdentifier(wand))
+                  quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](heap, MagicWandIdentifier(wand))
                 val (result, sRes, remainingChunks) = quantifiedChunkSupporter.removePermissions(
                   s2,
                   relevantChunks,
@@ -910,7 +910,7 @@ object consumer extends ConsumptionRules with Immutable {
                   v1.decider.prover.comment("Definitional axioms for inverse functions")
                   v1.decider.assume(inverseFunctions.definitionalAxioms)
                   val (relevantChunks, otherChunks) =
-                    quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h, MagicWandIdentifier(wand))
+                    quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, MagicWandIdentifier(wand))
                   val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalVars)
                   val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
                   val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)

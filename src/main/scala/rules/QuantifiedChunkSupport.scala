@@ -284,9 +284,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     var otherChunks = Seq[Chunk]()
 
     h.values foreach {
-      case ch: QuantifiedBasicChunk if ch.id == id =>
-        relevantChunks +:= ch.asInstanceOf[CH]
-      case ch: BasicChunk if ch.id == id =>
+      case ch: CH if ch.id == id =>
+        relevantChunks +:= ch
+      case ch: NonQuantifiedChunk if ch.id == id =>
         sys.error(
             s"I did not expect non-quantified chunks on the heap for resource $id, "
           + s"but found $ch")
