@@ -453,7 +453,7 @@ object executor extends ExecutionRules with Immutable {
             val s2 = if (s.exhaleExt)
               s1.copy(h = Heap(),
                   exhaleExt = true,
-                  reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail)
+                  reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
             else
               /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
               s1.copy(h = hOps,

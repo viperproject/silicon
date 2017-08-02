@@ -1022,7 +1022,6 @@ object consumer extends ConsumptionRules with Immutable {
 
       /* Handle wands */
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand)) =>
-        val qid = MagicWandIdentifier(wand)
         val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
 

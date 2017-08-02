@@ -210,8 +210,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
     var results: Seq[(State, Stack[Term], Vector[RecordedPathConditions], Chunk)] = Nil
 
-    assert(s.reserveHeaps.head.values.isEmpty)
-
     /* TODO: When parallelising branches, some of the runtime assertions in the code below crash
      *       during some executions - since such crashes are hard to debug, branch parallelisation
      *       has been disabled for now.

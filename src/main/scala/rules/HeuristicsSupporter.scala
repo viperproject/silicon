@@ -237,7 +237,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
       case _ if !reactionResult.isFatal =>
         reactionResult
 
-      case reactionFailure: Failure =>
+      case _: Failure =>
         initialFailure.getOrElse(globalActionResult)
     }
   }
@@ -324,33 +324,15 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
                  (s: State, h: Heap, v: Verifier)
                  (Q: (State, Heap, Verifier) => VerificationResult)
                  : VerificationResult = {
-/*
-    if (s.exhaleExt) {
-//      heuristicsLogger.debug(s"  reaction: packaging $wand")
-      /* TODO: The next block is an exact copy of the corresponding case in the consumer. Reuse code! */
-      magicWandSupporter.packageWand(s.copy(h = h), wand, ast.Seqn(Seq())(), pve, v)((s1, chWand, v1) => {
-        val hOps = s1.reserveHeaps.head + chWand
-        val s2 = s1.copy(exhaleExt = true,
-                         reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail)
-        assert(s2.reserveHeaps.length == s.reserveHeaps.length)
-        val sEmp = s2.copy(h = Heap())
-        Q(sEmp, sEmp.h, v1)})
-    } else {
-//      heuristicsLogger.debug(s"  reaction: package $wand")
-      val packageStmt = ast.Package(wand, ast.Seqn(Seq())(), Seq())()
+      val packageStmt = ast.Package(wand, ast.Seqn(Seq(), Seq())())()
       exec(s.copy(h = h), packageStmt, v)((s1, v1) => {
         Q(s1, s1.h, v1)})
-    }
-*/
-    Q(s, h, v)
   }
 
   def applyWand(wand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], pve: PartialVerificationError)
                (s: State, h: Heap, v: Verifier)
                (Q: (State, Heap, Verifier) => VerificationResult)
                : VerificationResult = {
-
-    /* TODO: Test combination of applyWand-heuristic and wand references (wand w := ...) */
 
       val applyStmt = ast.Apply(wand)()
       exec(s.copy(g = Store(bindings), h = h), applyStmt, v)((s1, v1) => {
