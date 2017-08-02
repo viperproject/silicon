@@ -17,6 +17,11 @@ import viper.silver.frontend.SilFrontendConfig
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   import Config._
 
+  /** Attention: Don't use options to compute default values! This will cause
+    * a crash when help is printed (--help) because of the order in which things
+    * are initialised.
+    */
+
   /* Argument converter */
 
   private val statisticsSinkConverter = new ValueConverter[(Sink, String)] {
@@ -338,11 +343,10 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
              + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
     // If the SymbEx Logger is enabled, only use one core.
-    default = Some(if (ideModeAdvanced()) 1 else Runtime.getRuntime.availableProcessors()),
+    default = Some(Runtime.getRuntime.availableProcessors()),
     noshort = true,
     hidden = false
   )
-  conflicts(numberOfParallelVerifiers, ideModeAdvanced :: Nil)
 
   val printTranslatedProgram = opt[Boolean]("printTranslatedProgram",
     descr ="Print the final program that is going to be verified.",
@@ -356,6 +360,19 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   validateOpt(timeout) {
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
     case _ => Right(Unit)
+  }
+
+  validateOpt(ideModeAdvanced, numberOfParallelVerifiers) {
+    case (Some(false), _) =>
+      Right(Unit)
+    case (Some(true), Some(n)) =>
+      if (n == 1)
+        Right(Unit)
+      else
+        Left(  s"Option ${ideModeAdvanced.name} requires setting "
+             + s"${numberOfParallelVerifiers.name} to 1")
+    case other =>
+      sys.error(s"Unexpected combination: $other")
   }
 
   verify()
