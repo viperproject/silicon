@@ -8,7 +8,6 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
-
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._
@@ -16,6 +15,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
@@ -23,6 +23,7 @@ import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvide
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast.utility.Rewriter.Traverse
+import viper.silver.reporter.{Reporter, VerificationResultMessage}
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -34,7 +35,7 @@ trait MasterVerifier extends Verifier {
   def verificationPoolManager: VerificationPoolManager
 }
 
-class DefaultMasterVerifier(config: Config)
+class DefaultMasterVerifier(config: Config, reporter: Reporter)
     extends BaseVerifier(config, "00")
        with MasterVerifier
        with DefaultFunctionVerificationUnitProvider
@@ -155,15 +156,21 @@ class DefaultMasterVerifier(config: Config)
      *       Otherwise Set will be used internally and some error messages will be lost.
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
-      val res = functionsSupporter.verify(createInitialState(function, program), function)
-//      bookkeeper.functionVerified(function.name)
-      res
+      val startTime = System.currentTimeMillis()
+      val results = functionsSupporter.verify(createInitialState(function, program), function)
+      val elapsed = System.currentTimeMillis() - startTime
+      reporter.report(VerificationResultMessage(function, elapsed, condenseToViperResult(results)))
+
+      results
     })
 
-    val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate =>{
-      val res = predicateSupporter.verify(createInitialState(predicate, program), predicate)
-//      bookkeeper.predicateVerified(predicate.name)
-      res
+    val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
+      val startTime = System.currentTimeMillis()
+      val results = predicateSupporter.verify(createInitialState(predicate, program), predicate)
+      val elapsed = System.currentTimeMillis() - startTime
+      reporter.report(VerificationResultMessage(predicate, elapsed, condenseToViperResult(results)))
+
+      results
     })
 
     decider.prover.stop()
@@ -182,7 +189,15 @@ class DefaultMasterVerifier(config: Config)
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
         val s = createInitialState(method, program)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
-        _verificationPoolManager.queueVerificationTask(v => v.methodSupporter.verify(s, method))
+
+        _verificationPoolManager.queueVerificationTask(v => {
+          val startTime = System.currentTimeMillis()
+          val results = v.methodSupporter.verify(s, method)
+          val elapsed = System.currentTimeMillis() - startTime
+          reporter.report(VerificationResultMessage(method, elapsed, condenseToViperResult(results)))
+
+          results
+        })
       })
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
