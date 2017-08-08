@@ -162,10 +162,8 @@ case class MagicWandChunk(id: MagicWandIdentifier,
   override val resourceID = MagicWandID()
 
   override def withPerm(newPerm: Term) = MagicWandChunk(id, bindings, args, snap, newPerm)
-  override def withSnap(newSnap: Term) = newSnap match {
-    case s: MagicWandSnapshot => MagicWandChunk(id, bindings, args, s, perm)
-    case _ => sys.error(s"MagicWand snapshot has to be of type MagicWandSnapshot but found ${newSnap.getClass}")
-  }
+  override def withSnap(newSnap: Term) =
+    MagicWandChunk(id, bindings, args, MagicWandSnapshot(newSnap), perm)
 
   override lazy val toString = {
     val pos = id.ghostFreeWand.pos match {
