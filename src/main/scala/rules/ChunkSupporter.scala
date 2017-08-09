@@ -14,6 +14,7 @@ import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
+import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.VerificationError
 
@@ -131,11 +132,14 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
     if (s.exhaleExt) {
-      magicWandSupporter.transfer(s, perms, Failure(ve).withLoad(args), v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
+      val failure = Failure(ve).withLoad(args)
+      magicWandSupporter.transfer(s, perms, failure, v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
-        if (Verifier.config.enableMoreCompleteExhale()) {
+        // Complete exhale does not work in functions since returning a fresh snapshot leads to triggering problems,
+        // therefore check for NoopFunctionRecorder, which means we are not in a function.
+        if (Verifier.config.enableMoreCompleteExhale() && s1.functionRecorder == NoopFunctionRecorder) {
           consumeComplete(s1, s1.h, id, args, perms, ve, v1)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
           })
@@ -216,11 +220,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       val newChunks = ListBuffer[NonQuantifiedChunk]()
       val equalities = ListBuffer[Term]()
 
-      /*
-        A fresh snapshot is only used if there is no definitive alias because returning
-        a fresh snapshot loses all information stored in a magic wand snapshot. Also, a
-        fresh snapshot in functions leads to triggering problems.
-       */
       val definitiveAlias = findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
       val (snap, fresh) = definitiveAlias match {
         case Some(alias) => (alias.snap, None)
@@ -231,7 +230,13 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       }
       var moreNeeded = true
 
-      relevantChunks.sortWith((ch1, ch2) => definitiveAlias.contains(ch1) || !definitiveAlias.contains(ch2) && ch1.args == args) foreach { ch =>
+      val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
+        // The definitive alias should get priority, since it is always possible to consume from it
+        // Else, look for a syntactic alias
+        definitiveAlias.contains(ch1) || !definitiveAlias.contains(ch2) && ch1.args == args
+      }
+
+      relevantChunks.sortWith(sortFunction) foreach { ch =>
         if (moreNeeded) {
           val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
           pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm()))

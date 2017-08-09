@@ -722,11 +722,11 @@ object consumer extends ConsumptionRules with Immutable {
         //         2. Chose fresh identifiers once; store in and take from state (or from object Verifier)
         val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        val qid = MagicWandIdentifier(wand)
+        val qid = MagicWandIdentifier(wand).toString
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
+        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
             val inverseFunctions =
               quantifiedChunkSupporter.getFreshInverseFunctions(
@@ -736,7 +736,7 @@ object consumer extends ConsumptionRules with Immutable {
                 formalVars,
                 s1.relevantQuantifiedVariables(tArgs),
                 optTrigger.map(_ => tTriggers),
-                qid.toString,
+                qid,
                 v1)
             val (effectiveTriggers, effectiveTriggersQVars) =
               optTrigger match {
@@ -777,7 +777,7 @@ object consumer extends ConsumptionRules with Immutable {
                 perms     = FullPerm(),
                 arguments = tArgs,
                 triggers  = Nil,
-                qidPrefix = qid.toString)
+                qidPrefix = qid)
             v1.decider.prover.comment("Check receiver injectivity")
             v1.decider.assert(receiverInjectivityCheck) {
               case true =>
@@ -828,7 +828,7 @@ object consumer extends ConsumptionRules with Immutable {
                     fvf,
                     sRes.relevantQuantifiedVariables(tArgs),
                     optTrigger.map(_ => tTriggers),
-                    qid.toString,
+                    qid,
                     v2
                   )
                   (result, sRes, h2, Some(consumedChunk.asInstanceOf[QuantifiedMagicWandChunk]))})((s3, oCh, v3) =>
@@ -848,11 +848,11 @@ object consumer extends ConsumptionRules with Immutable {
         //         2. Chose fresh identifiers once; store in and take from state (or from object Verifier)
         val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        val qid = MagicWandIdentifier(wand)
+        val qid = MagicWandIdentifier(wand).toString
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
+        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
           val inverseFunctions =
             quantifiedChunkSupporter.getFreshInverseFunctions(
@@ -862,7 +862,7 @@ object consumer extends ConsumptionRules with Immutable {
               formalVars,
               s1.relevantQuantifiedVariables(tArgs),
               optTrigger.map(_ => tTriggers),
-              qid.toString,
+              qid,
               v1)
           val (effectiveTriggers, effectiveTriggersQVars) =
             optTrigger match {
@@ -903,7 +903,7 @@ object consumer extends ConsumptionRules with Immutable {
                   perms     = FullPerm(),
                   arguments = tArgs,
                   triggers  = Nil,
-                  qidPrefix = qid.toString)
+                  qidPrefix = qid)
               v1.decider.prover.comment("Check receiver injectivity")
               v1.decider.assert(receiverInjectivityCheck) {
                 case true =>
