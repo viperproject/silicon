@@ -780,11 +780,7 @@ class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Equals
 
 object BuiltinEquals {
   def forPerm(t1: Term, t2: Term) = (t1, t2) match {
-    case (FullPerm(), NoPerm()) | (NoPerm(), FullPerm()) => False()
-    case (NoPerm(), fp: FractionPerm) if fp.isDefinitelyPositive => False()
-    case (fp: FractionPerm, NoPerm()) if fp.isDefinitelyPositive => False()
-    case (FullPerm(), fp: FractionPerm) if fp.isLiteral => False()
-    case (fp: FractionPerm, FullPerm()) if fp.isLiteral => False()
+    case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal == p1.literal) True() else False()
     case _ => new BuiltinEquals(t1, t2)
   }
 
@@ -874,6 +870,45 @@ object AtLeast extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Te
 }
 
 /*
+  Helper class for permissions
+ */
+
+final class Rational(n: BigInt, d: BigInt) extends Ordered[Rational] {
+  require(d != 0, "Denominator of Rational must not be 0.")
+
+  private val g = n.gcd(d)
+  val numerator: BigInt = n / g * d.signum
+  val denominator: BigInt = d.abs / g
+
+  def +(that: Rational): Rational = Rational(numerator * that.denominator + that.numerator * denominator, denominator * that.denominator)
+  def -(that: Rational): Rational = this + (-that)
+  def unary_- = Rational(-numerator, denominator)
+  def abs = Rational(numerator.abs, denominator)
+  def signum = Rational(numerator.signum, 1)
+
+  def *(that: Rational): Rational = Rational(this.numerator * that.numerator, this.denominator * that.denominator)
+  def /(that: Rational): Rational = this * that.inverse
+  def inverse = Rational(denominator, numerator)
+
+  def compare(that: Rational) = (this.numerator * that.denominator - that.numerator * this.denominator).signum
+
+  override def equals(obj: Any) = obj match {
+    case that: Rational => this.numerator == that.numerator && this.denominator == that.denominator
+    case _ => false
+  }
+
+  override def toString = s"$numerator/$denominator"
+}
+
+object Rational extends ((BigInt, BigInt) => Rational) {
+  val zero = Rational(0, 1)
+  val one = Rational(1, 1)
+
+  def apply(numer: BigInt, denom: BigInt) = new Rational(numer, denom)
+  def unapply(r: Rational) = Some(r.numerator, r.denominator)
+}
+
+/*
  * Permissions
  */
 
@@ -881,34 +916,47 @@ sealed trait Permissions extends Term {
   val sort = sorts.Perm
 }
 
-case class NoPerm() extends Permissions { override val toString = "Z" }
-case class FullPerm() extends Permissions { override val toString = "W" }
+sealed trait PermLiteral extends Permissions {
+  val literal: Rational
+}
+
+case class NoPerm() extends PermLiteral {
+  override val literal = Rational(0, 1)
+  override val toString = "Z"
+}
+case class FullPerm() extends PermLiteral {
+  override val literal = Rational(1, 1)
+  override val toString = "W"
+}
+
+class FractionPermLiteral(r: Rational) extends PermLiteral {
+  override val literal = r
+  override val toString = literal.toString
+}
+
+object FractionPermLiteral extends (Rational => Permissions) {
+  def apply(r: Rational) = r match {
+    case Rational(n, _) if n == 0 => NoPerm()
+    case Rational(n, d) if n == d => FullPerm()
+    case _ => new FractionPermLiteral(r)
+  }
+
+  def unapply(t: FractionPermLiteral) = Some(t.literal)
+}
 
 class FractionPerm(val n: Term, val d: Term)
     extends Permissions
        with StructuralEquality {
-
-  lazy val isDefinitelyPositive = literal match {
-    case Some((i1, i2)) => 0 < i1 * i2
-    case None => false
-  }
-
-  lazy val isLiteral = literal.nonEmpty
-
-  lazy val literal = (n, d) match {
-    case (IntLiteral(i1), IntLiteral(i2)) => Some((i1, i2))
-    case _ => None
-  }
 
   val equalityDefiningMembers = n :: d :: Nil
   override val toString = s"$n/$d"
 }
 
 object FractionPerm extends ((Term, Term) => Permissions) {
-  def apply(n: Term, d: Term) =
-    if (n == predef.Zero) NoPerm()
-    else if (n == d) FullPerm()
-    else new FractionPerm(n, d)
+  def apply(n: Term, d: Term) = (n, d) match {
+    case (IntLiteral(i1), IntLiteral(i2)) if i2 != 0 => FractionPermLiteral(Rational(i1, i2))
+    case _ => new FractionPerm(n, d)
+  }
 
   def unapply(fp: FractionPerm) = Some((fp.n, fp.d))
 }
@@ -934,6 +982,7 @@ object PermTimes extends ((Term, Term) => Term) {
     case (t, FullPerm()) => t
     case (NoPerm(), _) => NoPerm()
     case (_, NoPerm()) => NoPerm()
+    case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal * p1.literal)
     case (_, _) => new PermTimes(t0, t1)
   }
 
@@ -955,13 +1004,14 @@ object IntPermTimes extends ((Term, Term) => Term) {
     case (Zero, _) => NoPerm()
     case (One, t) => t
     case (_, NoPerm()) => NoPerm()
+    case (IntLiteral(i), p: PermLiteral) => FractionPermLiteral(Rational(i, 1) * p.literal)
     case (_, _) => new IntPermTimes(t0, t1)
   }
 
   def unapply(pt: IntPermTimes) = Some((pt.p0, pt.p1))
 }
 
-case class PermIntDiv(p0: Term, p1: Term)
+class PermIntDiv(val p0: Term, val p1: Term)
     extends Permissions
        with BinaryOp[Term] {
 //    with commonnodes.StructuralEqualityBinaryOp[Term]
@@ -969,6 +1019,18 @@ case class PermIntDiv(p0: Term, p1: Term)
   utils.assertSort(p1, "Second term", sorts.Int)
 
   override val op = "/"
+}
+
+object PermIntDiv extends ((Term, Term) => Term) {
+  import predef.One
+
+  def apply(t0: Term, t1: Term) = (t0, t1) match {
+    case (t, One) => t
+    case (p: PermLiteral, IntLiteral(i)) if i != 0 => FractionPermLiteral(p.literal / Rational(i, 1))
+    case (_, _) => new PermIntDiv(t0, t1)
+  }
+
+  def unapply(t: PermIntDiv) = Some((t.p0, t.p1))
 }
 
 class PermPlus(val p0: Term, val p1: Term)
@@ -983,6 +1045,7 @@ object PermPlus extends ((Term, Term) => Term) {
   def apply(t0: Term, t1: Term) = (t0, t1) match {
     case (NoPerm(), _) => t1
     case (_, NoPerm()) => t0
+    case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal + p1.literal)
     case (FractionPerm(n1, d1), FractionPerm(n2, d2)) if d1 == d2 => FractionPerm(Plus(n1, n2), d1)
     case (PermMinus(t00, t01), _) if t01 == t1 => t00
     case (_, PermMinus(t10, t11)) if t11 == t0 => t10
@@ -1010,6 +1073,7 @@ object PermMinus extends ((Term, Term) => Term) {
   def apply(t0: Term, t1: Term) = (t0, t1) match {
     case (_, NoPerm()) => t0
     case (p0, p1) if p0 == p1 => NoPerm()
+    case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal - p1.literal)
     case (p0, PermMinus(p1, p2)) if p0 == p1 => p2
     case (PermPlus(p0, p1), p2) if p0 == p2 => p1
     case (PermPlus(p0, p1), p2) if p1 == p2 => p0
@@ -1033,7 +1097,7 @@ object PermLess extends ((Term, Term) => Term) {
   def apply(t0: Term, t1: Term): Term = {
     (t0, t1) match {
       case _ if t0 == t1 => False()
-      case (NoPerm(), FullPerm()) => True()
+      case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal < p1.literal) True() else False()
 
       case (`t0`, Ite(tCond, tIf, tElse)) =>
         /* The pattern p0 < b ? p1 : p2 arises very often in the context of quantified permissions.
@@ -1056,8 +1120,7 @@ class PermAtMost(val p0: Term, val p1: Term) extends ComparisonTerm
 
 object PermAtMost extends ((Term, Term) => Term) {
   def apply(e0: Term, e1: Term) = (e0, e1) match {
-    case (NoPerm(), FullPerm()) => True()
-    case (NoPerm(), fp: FractionPerm) if fp.isDefinitelyPositive => True()
+    case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal <= p1.literal) True() else False()
     case (t0, t1) if t0 == t1 => True()
     case _ => new PermAtMost(e0, e1)
   }
@@ -1077,10 +1140,7 @@ class PermMin(val p0: Term, val p1: Term) extends Permissions
 object PermMin extends ((Term, Term) => Term) {
   def apply(e0: Term, e1: Term) = (e0, e1) match {
     case (t0, t1) if t0 == t1 => t0
-    case (NoPerm(), FullPerm()) => NoPerm()
-    case (FullPerm(), NoPerm()) => NoPerm()
-    case (NoPerm(), fp: FractionPerm) if fp.isDefinitelyPositive => NoPerm()
-    case (fp: FractionPerm, NoPerm()) if fp.isDefinitelyPositive => NoPerm()
+    case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal > p1.literal) p1 else p0
     case _ => new PermMin(e0, e1)
   }
 
@@ -1733,18 +1793,12 @@ object perms {
        */
 
   def IsPositive(p: Term): Term = p match {
-    case _: NoPerm => False()
-    case _: FullPerm => True()
-    case fp: FractionPerm if fp.isDefinitelyPositive => True()
+    case p: PermLiteral => if (p.literal > Rational.zero) True() else False()
     case _ => PermLess(NoPerm(), p)
   }
 
   def IsNonPositive(p: Term): Term = p match {
-    case _: NoPerm => True()
-    case  _: PermPlus => False()
-      /* ATTENTION: This is only sound if both plus operands are positive!
-       * Consider removing IsNonPositive and using Not(IsPositive(...)) instead.
-       */
+    case p: PermLiteral => if (p.literal <= Rational.zero) True() else False()
     case _ => Or(p === NoPerm(), PermLess(p, NoPerm()))
   }
 

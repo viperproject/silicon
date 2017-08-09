@@ -162,6 +162,7 @@ class TermToSMTLib2Converter
 
     case FullPerm() => "$Perm.Write"
     case NoPerm() => "$Perm.No"
+    case FractionPermLiteral(r) => renderBinaryOp("/", renderAsReal(IntLiteral(r.numerator)), renderAsReal(IntLiteral(r.denominator)))
     case FractionPerm(n, d) => renderBinaryOp("/", renderAsReal(n), renderAsReal(d))
     case PermLess(t0, t1) => renderBinaryOp("<", render(t0), render(t1))
     case PermAtMost(t0, t1) => renderBinaryOp("<=", render(t0), render(t1))

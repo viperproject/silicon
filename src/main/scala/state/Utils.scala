@@ -66,7 +66,7 @@ package object utils {
     case ite: Ite => List(ite.t0, ite.t1, ite.t2)
     case and: And => and.ts
     case or: Or => or.ts
-    case _: NoPerm | _: FullPerm => Nil
+    case _: PermLiteral => Nil
     case fp: FractionPerm => List(fp.n, fp.d)
     case ivp: IsValidPermVar => List(ivp.v)
     case irp: IsReadPermVar => List(irp.v, irp.ub)
@@ -142,7 +142,7 @@ package object utils {
       case AtMost(t0, t1) => AtMost(go(t0), go(t1))
       case Greater(t0, t1) => Greater(go(t0), go(t1))
       case AtLeast(t0, t1) => AtLeast(go(t0), go(t1))
-      case _: NoPerm | _: FullPerm  => term
+      case _: PermLiteral => term
       case FractionPerm(n, d) => FractionPerm(go(n), go(d))
       case IsValidPermVar(v) => IsValidPermVar(go(v))
       case IsReadPermVar(v, ub) => IsReadPermVar(go(v), go(ub))
