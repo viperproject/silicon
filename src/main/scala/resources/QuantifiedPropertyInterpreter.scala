@@ -45,11 +45,11 @@ class QuantifiedPropertyInterpreter(verifier: Verifier) extends PropertyInterpre
     info.arguments
   }
 
-  override protected def buildCheck[T <: Type](condition: PropertyExpression[types.Boolean], thenDo: PropertyExpression[T], otherwise: PropertyExpression[T], info: Info) = {
+  override protected def buildCheck[K <: Kind](condition: PropertyExpression[kinds.Boolean], thenDo: PropertyExpression[K], otherwise: PropertyExpression[K], info: Info) = {
     buildIfThenElse(condition, thenDo, otherwise, info)
   }
 
-  override protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[types.Boolean], info: Info) = {
+  override protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[kinds.Boolean], info: Info) = {
     sys.error("ForEach clauses are not supported in quantified properties.")
   }
 }

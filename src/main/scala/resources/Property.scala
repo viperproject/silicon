@@ -6,6 +6,6 @@
 
 package viper.silicon.resources
 
-case class Property(expression: PropertyExpression[types.Boolean], name: String, description: String) {
+case class Property(expression: PropertyExpression[kinds.Boolean], name: String, description: String) {
   override def toString = name
 }

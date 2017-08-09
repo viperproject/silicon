@@ -14,7 +14,7 @@ abstract class PropertyInterpreter(verifier: Verifier) {
   
   protected type Info
   
-  protected def buildPathCondition[T <: Type](expression: PropertyExpression[T], info: Info): Term = expression match {
+  protected def buildPathCondition[K <: Kind](expression: PropertyExpression[K], info: Info): Term = expression match {
     // Literals
     case True() => terms.True()
     case False() => terms.False()
@@ -61,28 +61,28 @@ abstract class PropertyInterpreter(verifier: Verifier) {
   protected def buildValueAccess(chunkVariable: ChunkPlaceholder, info: Info): Term
 
   // Assures short-circuit evalutation of 'and'
-  protected def buildAnd(left: PropertyExpression[types.Boolean], right: PropertyExpression[types.Boolean], info: Info) = {
+  protected def buildAnd(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
       case leftTerm @ terms.False() => leftTerm
       case leftTerm @ _ => terms.And(leftTerm, buildPathCondition(right, info))
     }
   }
 
-  protected def buildOr(left: PropertyExpression[types.Boolean], right: PropertyExpression[types.Boolean], info: Info) = {
+  protected def buildOr(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
       case leftTerm @ terms.True() => leftTerm
       case leftTerm @ _ => terms.Or(leftTerm, buildPathCondition(right, info))
     }
   }
 
-  protected def buildImplies(left: PropertyExpression[types.Boolean], right: PropertyExpression[types.Boolean], info: Info) = {
+  protected def buildImplies(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
       case terms.False() => terms.True()
       case leftTerm @ _ => terms.Implies(leftTerm, buildPathCondition(right, info))
     }
   }
 
-  protected def buildEquals[T <: EquatableType](left: PropertyExpression[T], right: PropertyExpression[T], info: Info) = {
+  protected def buildEquals[K <: EquatableKind](left: PropertyExpression[K], right: PropertyExpression[K], info: Info) = {
     (left, right) match {
       case (Null(), Null()) => terms.True()
       case (ArgumentAccess(cv1), ArgumentAccess(cv2)) =>
@@ -112,16 +112,16 @@ abstract class PropertyInterpreter(verifier: Verifier) {
     }
   }
 
-  protected def buildBinary[T <: Type](builder: (Term, Term) => Term, left: PropertyExpression[T], right: PropertyExpression[T], pm: Info) = {
+  protected def buildBinary[K <: Kind](builder: (Term, Term) => Term, left: PropertyExpression[K], right: PropertyExpression[K], pm: Info) = {
     val leftTerm = buildPathCondition(left, pm)
     val rightTerm = buildPathCondition(right, pm)
     builder(leftTerm, rightTerm)
   }
 
-  protected def buildCheck[T <: Type](condition: PropertyExpression[types.Boolean], thenDo: PropertyExpression[T], otherwise: PropertyExpression[T], info: Info): Term
-  protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[types.Boolean], pm: Info): Term
+  protected def buildCheck[K <: Kind](condition: PropertyExpression[kinds.Boolean], thenDo: PropertyExpression[K], otherwise: PropertyExpression[K], info: Info): Term
+  protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[kinds.Boolean], pm: Info): Term
 
-  protected def buildIfThenElse[T <: Type](condition: PropertyExpression[types.Boolean], thenDo: PropertyExpression[T], otherwise: PropertyExpression[T], pm: Info) = {
+  protected def buildIfThenElse[K <: Kind](condition: PropertyExpression[kinds.Boolean], thenDo: PropertyExpression[K], otherwise: PropertyExpression[K], pm: Info) = {
     val conditionTerm = buildPathCondition(condition, pm)
     val thenDoTerm = buildPathCondition(thenDo, pm)
     val otherwiseTerm = buildPathCondition(otherwise, pm)
