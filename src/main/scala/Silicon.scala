@@ -21,6 +21,7 @@ import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.verifier.DefaultMasterVerifier
+import viper.silicon.reporting.condenseToViperResult
 import viper.silver.reporter.{NoopReporter, Reporter}
 
 object Silicon {
@@ -75,8 +76,12 @@ object Silicon {
         }
     }.toSeq
 
-  def fromPartialCommandLineArguments(args: Seq[String], debugInfo: Seq[(String, Any)] = Nil): Silicon = {
-    val silicon = new Silicon(debugInfo)
+  def fromPartialCommandLineArguments(args: Seq[String],
+                                      reporter: Reporter,
+                                      debugInfo: Seq[(String, Any)] = Nil)
+                                     : Silicon = {
+
+    val silicon = new Silicon(reporter, debugInfo)
 
     silicon.parseCommandLine(args :+ "dummy-file-to-prevent-cli-parser-from-complaining-about-missing-file-name.silver")
 
@@ -84,9 +89,13 @@ object Silicon {
   }
 }
 
-class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
-      extends SilVerifier
-         with LazyLogging {
+class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] = Nil)
+    extends SilVerifier
+       with LazyLogging {
+
+  def this(debugInfo: Seq[(String, Any)]) = this(NoopReporter, debugInfo)
+
+  def this() = this(NoopReporter, Nil)
 
   val name: String = Silicon.name
   val version = Silicon.version
@@ -112,8 +121,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private var startTime: Long = _
   private var elapsedMillis: Long = _
 
-  def this() = this(Nil)
-
   def parseCommandLine(args: Seq[String]) {
     assert(lifetimeState == LifetimeState.Instantiated, "Silicon can only be configured once")
     lifetimeState = LifetimeState.Configured
@@ -135,7 +142,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     setLogLevelsFromConfig()
 
-    verifier = new DefaultMasterVerifier(config)
+    verifier = new DefaultMasterVerifier(config, reporter)
     verifier.start()
   }
 
@@ -197,7 +204,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
           else
             future.get(config.timeout(), TimeUnit.SECONDS)
 
-        result = Some(convertFailures(failures))
+        result = Some(condenseToViperResult(failures))
       } catch { /* Catch exceptions thrown during verification (errors are not caught) */
         case _: TimeoutException =>
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
@@ -285,13 +292,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     failures
   }
 
-  private def convertFailures(failures: List[Failure]): SilVerificationResult = {
-    failures match {
-      case Seq() => SilSuccess
-      case _ => SilFailure(failures map (_.message))
-    }
-  }
-
   private def logFailure(failure: Failure, log: String => Unit) {
     log("\n" + failure.message.readableMessage(withId = true, withPosition = true))
   }
@@ -315,7 +315,7 @@ class SiliconFrontend(override val reporter: Reporter) extends SilFrontend {
   protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {
-    siliconInstance = new Silicon(Seq("args" -> fullCmd))
+    siliconInstance = new Silicon(reporter, Seq("args" -> fullCmd))
 
     siliconInstance
   }

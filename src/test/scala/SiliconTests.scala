@@ -47,8 +47,9 @@ class SiliconTests extends SilSuite {
 
   private def createSiliconInstance() = {
     val args = Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap.getOrElse("silicon", Map()))
+    val reporter = NoopReporter
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
-    val silicon = Silicon.fromPartialCommandLineArguments(args, debugInfo)
+    val silicon = Silicon.fromPartialCommandLineArguments(args, reporter, debugInfo)
 
     silicon
   }

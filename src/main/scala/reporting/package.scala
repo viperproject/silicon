@@ -7,7 +7,8 @@
 package viper.silicon
 
 import java.util.concurrent.ExecutionException
-import viper.silver.verifier.{AbortedExceptionally => VprAbortedExceptionally, AbstractError => VprAbstractError, Failure => VprFailure}
+import viper.silver.verifier.{AbortedExceptionally => VprAbortedExceptionally, Failure => VprFailure, Success => VprSuccess, VerificationResult => VprVerificationResult}
+import viper.silicon.interfaces.{Failure, Success, Unreachable, VerificationResult}
 
 package object reporting {
   /** Extract the root exception that has been wrapped in one or more `ExecutionException`s. */
@@ -41,4 +42,23 @@ package object reporting {
       "A NoClassDefFoundError occurred (see below). As an attempt of solving this "
     + "problem, please delete the file 'silicon_classpath.txt' (should be in Silicon's "
     + "home directory), recompile Silicon (if possible) and then execute Silicon again.")
+
+  def convertToViperResult(result: VerificationResult): VprVerificationResult = {
+    result match {
+      case Success() | Unreachable() => VprSuccess
+      case Failure(message) => VprFailure(Seq(message))
+    }
+  }
+
+  def convertToViperResults(results: Seq[VerificationResult]): Seq[VprVerificationResult] =
+    results.map(convertToViperResult)
+
+  def condenseToViperResult(results: Seq[VerificationResult]): VprVerificationResult = {
+    results.map(convertToViperResult)
+           .collect { case failure: VprFailure => failure.errors }
+           .flatten match {
+              case Seq() => VprSuccess
+              case errors => VprFailure(errors)
+            }
+  }
 }
