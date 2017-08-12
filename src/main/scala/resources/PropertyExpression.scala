@@ -10,18 +10,19 @@ sealed trait Kind
 sealed trait EquatableKind extends Kind
 
 object kinds {
-  trait Boolean extends EquatableKind
-  trait Argument extends EquatableKind
-  trait Permission extends EquatableKind
-  trait Value extends EquatableKind
-  trait Chunk extends Kind
+  sealed trait Boolean extends EquatableKind
+  sealed trait Argument extends EquatableKind
+  sealed trait Permission extends EquatableKind
+  sealed trait Value extends EquatableKind
+  sealed trait Chunk extends Kind
 }
 
 sealed abstract class PropertyExpression[K <: Kind]
 
-case class Check[K <: Kind](condition: PropertyExpression[kinds.Boolean],
-                            thenDo: PropertyExpression[K],
-                            otherwise: PropertyExpression[K]) 
+case class Check[K <: Kind]
+                (condition: PropertyExpression[kinds.Boolean],
+                 thenDo: PropertyExpression[K],
+                 otherwise: PropertyExpression[K])
     extends PropertyExpression[K]
 
 /**
@@ -34,9 +35,10 @@ case class ForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[
   require(chunkVariables.distinct.size == chunkVariables.size, "Cannot quantify over non-distinct variables.")
 }
 
-case class IfThenElse[K <: Kind](condition: PropertyExpression[kinds.Boolean],
-                                 thenDo: PropertyExpression[K],
-                                 otherwise: PropertyExpression[K]) 
+case class IfThenElse[K <: Kind]
+                     (condition: PropertyExpression[kinds.Boolean],
+                      thenDo: PropertyExpression[K],
+                      otherwise: PropertyExpression[K])
     extends PropertyExpression[K]
 
 case class Equals[K <: EquatableKind](left: PropertyExpression[K], right: PropertyExpression[K]) extends PropertyExpression[kinds.Boolean]

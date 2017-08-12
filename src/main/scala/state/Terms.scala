@@ -880,7 +880,11 @@ final class Rational(n: BigInt, d: BigInt) extends Ordered[Rational] {
   val numerator: BigInt = n / g * d.signum
   val denominator: BigInt = d.abs / g
 
-  def +(that: Rational): Rational = Rational(numerator * that.denominator + that.numerator * denominator, denominator * that.denominator)
+  def +(that: Rational): Rational = {
+    val newNum = this.numerator * that.denominator + that.numerator * this.denominator
+    val newDen = this.denominator * that.denominator
+    Rational(newNum, newDen)
+  }
   def -(that: Rational): Rational = this + (-that)
   def unary_- = Rational(-numerator, denominator)
   def abs = Rational(numerator.abs, denominator)
@@ -916,21 +920,12 @@ sealed trait Permissions extends Term {
   val sort = sorts.Perm
 }
 
-sealed trait PermLiteral extends Permissions {
-  val literal: Rational
-}
+sealed abstract class PermLiteral(val literal: Rational) extends Permissions
 
-case class NoPerm() extends PermLiteral {
-  override val literal = Rational(0, 1)
-  override val toString = "Z"
-}
-case class FullPerm() extends PermLiteral {
-  override val literal = Rational(1, 1)
-  override val toString = "W"
-}
+case class NoPerm() extends PermLiteral(Rational.zero) { override val toString = "Z" }
+case class FullPerm() extends PermLiteral(Rational.one) { override val toString = "W" }
 
-class FractionPermLiteral(r: Rational) extends PermLiteral {
-  override val literal = r
+class FractionPermLiteral(r: Rational) extends PermLiteral(r) {
   override val toString = literal.toString
 }
 

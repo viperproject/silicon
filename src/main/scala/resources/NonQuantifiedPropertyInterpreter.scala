@@ -19,6 +19,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
   }
 
   // both actual non-quantified chunks and singleton quantified chunks
+  // TODO: simplify once singleton quantified chunks are not used anymore
   private val nonQuantifiedChunks = heap.flatMap {
     case c: NonQuantifiedChunk => Some(c)
     case c: QuantifiedBasicChunk if c.singletonArguments.isDefined => Some(c)
