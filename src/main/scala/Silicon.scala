@@ -8,11 +8,9 @@ package viper.silicon
 
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
-
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
-
 import scala.collection.immutable
 import scala.language.postfixOps
 import scala.reflect.runtime.universe
