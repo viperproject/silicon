@@ -21,7 +21,7 @@ import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.verifier.DefaultMasterVerifier
-import viper.silver.reporter.{Reporter, StdIOReporter}
+import viper.silver.reporter.{NoopReporter, Reporter}
 
 object Silicon {
   private val brandingDataObjectName = "viper.silicon.brandingData"
@@ -328,7 +328,7 @@ class SiliconFrontend(override val reporter: Reporter) extends SilFrontend {
   }
 }
 
-object SiliconRunner extends SiliconFrontend(new StdIOReporter("silicon")) {
+object SiliconRunner extends SiliconFrontend(NoopReporter) {
   def main(args: Array[String]) {
     var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
 
