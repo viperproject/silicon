@@ -35,7 +35,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
         Right(Some(Sink.File, fileName))
 
       case Nil => Right(None)
-      case _ => Left(s"Unexpected arguments")
+      case _ => Left(s"unexpected arguments")
     }
 
     val tag = scala.reflect.runtime.universe.typeTag[(Sink, String)]
@@ -46,7 +46,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     def parse(s: List[(String, List[String])]) = s match {
       case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' => Right(Some(str.substring(1, str.length - 1)))
       case Nil => Right(None)
-      case _ => Left(s"Unexpected arguments")
+      case _ => Left(s"unexpected arguments")
     }
 
     val tag = scala.reflect.runtime.universe.typeTag[String]
@@ -66,14 +66,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
                 case Array(k, v) =>
                   Some(k -> v)
                 case other =>
-                  return Left(s"Unexpected arguments")
+                  return Left(s"unexpected arguments")
            })
 
         Right(Some(config))
       case Nil =>
         Right(None)
       case _ =>
-        Left(s"Unexpected arguments")
+        Left(s"unexpected arguments")
     }
 
     val tag = scala.reflect.runtime.universe.typeTag[Map[String, String]]
@@ -88,7 +88,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       case (_, pushPopRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.PushPop))
       case (_, softConstraintsRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.SoftConstraints))
       case Nil => Right(None)
-      case _ => Left(s"Unexpected arguments")
+      case _ => Left(s"unexpected arguments")
     }
 
     val tag = scala.reflect.runtime.universe.typeTag[AssertionMode]
@@ -99,8 +99,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     def parse(s: List[(String, List[String])]) = s match {
       case Seq((_, Seq(rawString))) =>
         val trimmedString = rawString.trim
-        if (!trimmedString.startsWith("[") || !trimmedString.startsWith("]"))
-          Left("Unexpected argument: weights must be provided inside square brackets")
+        if (!trimmedString.startsWith("[") || !trimmedString.endsWith("]"))
+          Left("weights must be provided inside square brackets")
         else {
           val weightsString = trimmedString.tail.init /* Drop leading/trailing '[' and ']' */
 
@@ -116,12 +116,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
               /* Should always succeed due to above length check */
             Right(result)
           } else
-            Left(   "Unexpected argument: expected "
-                 + s"${Z3SaturationTimeoutWeights.numberOfWeights} non-negative floats.")
+            Left(s"expected ${Z3SaturationTimeoutWeights.numberOfWeights} non-negative floats")
         }
 
       case Seq() => Right(None)
-      case _ => Left(s"Unexpected arguments")
+      case _ => Left(s"unexpected arguments")
     }
 
     val tag = scala.reflect.runtime.universe.typeTag[Z3SaturationTimeoutWeights]
