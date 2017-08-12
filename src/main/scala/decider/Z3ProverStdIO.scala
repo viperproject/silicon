@@ -211,6 +211,20 @@ class Z3ProverStdIO(uniqueId: String,
     (result, endTime - startTime)
   }
 
+  def saturate(data: Option[Config.Z3StateSaturationTimeout]): Unit = {
+    data match {
+      case Some(Config.Z3StateSaturationTimeout(timeout, comment)) => saturate(timeout, comment)
+      case None => /* Don't do anything */
+    }
+  }
+
+  def saturate(timeout: Int, comment: String): Unit = {
+    this.comment(s"State saturation: $comment")
+    setTimeout(Some(timeout))
+    writeLine("(check-sat)")
+    readLine()
+  }
+
   private def getModel(): Unit = {
     if (Verifier.config.ideModeAdvanced()) {
       writeLine("(get-model)")

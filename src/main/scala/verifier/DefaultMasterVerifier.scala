@@ -106,6 +106,16 @@ class DefaultMasterVerifier(config: Config)
       decider.prover.comment(content)
       _verificationPoolManager.pooledVerifiers.comment(content)
     }
+
+    def saturate(timeout: Int, comment: String): Unit = {
+      decider.prover.saturate(timeout, comment)
+      _verificationPoolManager.pooledVerifiers.saturate(timeout, comment)
+    }
+
+    def saturate(data: Option[Config.Z3StateSaturationTimeout]): Unit = {
+      decider.prover.saturate(data)
+      _verificationPoolManager.pooledVerifiers.saturate(data)
+    }
   }
 
   /* Program verification */
@@ -146,6 +156,8 @@ class DefaultMasterVerifier(config: Config)
 
     allProvers.comment("End preamble")
     allProvers.comment("-" * 60)
+
+    allProvers.saturate(config.z3SaturationTimeouts.afterPrelude)
 
 
     SymbExLogger.resetMemberList()

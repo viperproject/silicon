@@ -209,21 +209,22 @@ object producer extends ProductionRules with Immutable {
 
         eval(s, e0, pve, v)((s1, t0, v1) => {
           impLog.finish_cond()
-          val branch_res = branch(s1, t0, v1,
-            (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
-              val res1 = Q(s3, v3)
-              impLog.finish_thnSubs()
-              SymbExLogger.currentLog().prepareOtherBranch(impLog)
-              res1}),
-            (s2, v2) => {
-              v2.decider.assume(sf(sorts.Snap, v2) === Unit)
-                /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
-                 * otherwise. In order words, only make this assumption if `sf` has
-                 * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
-                 */
-              val res2 = Q(s2,  v2)
-              impLog.finish_elsSubs()
-              res2})
+          val branch_res =
+            branch(s1, t0, v1)(
+              (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
+                val res1 = Q(s3, v3)
+                impLog.finish_thnSubs()
+                SymbExLogger.currentLog().prepareOtherBranch(impLog)
+                res1}),
+              (s2, v2) => {
+                v2.decider.assume(sf(sorts.Snap, v2) === Unit)
+                  /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
+                   * otherwise. In order words, only make this assumption if `sf` has
+                   * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
+                   */
+                val res2 = Q(s2,  v2)
+                impLog.finish_elsSubs()
+                res2})
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
@@ -233,16 +234,17 @@ object producer extends ProductionRules with Immutable {
         SymbExLogger.currentLog().initializeBranching()
         eval(s, e0, pve, v)((s1, t0, v1) => {
           gbLog.finish_cond()
-          val branch_res = branch(s1, t0, v1,
-            (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
-              val res1 = Q(s3, v3)
-              gbLog.finish_thnSubs()
-              SymbExLogger.currentLog().prepareOtherBranch(gbLog)
-              res1}),
-            (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
-              val res2 = Q(s3, v3)
-              gbLog.finish_elsSubs()
-              res2}))
+          val branch_res =
+            branch(s1, t0, v1)(
+              (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
+                val res1 = Q(s3, v3)
+                gbLog.finish_thnSubs()
+                SymbExLogger.currentLog().prepareOtherBranch(gbLog)
+                res1}),
+              (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
+                val res2 = Q(s3, v3)
+                gbLog.finish_elsSubs()
+                res2}))
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
