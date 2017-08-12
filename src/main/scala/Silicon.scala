@@ -322,7 +322,14 @@ class SiliconFrontend(override val reporter: Reporter) extends SilFrontend {
 
   def configureVerifier(args: Seq[String]) = {
     siliconInstance.parseCommandLine(args)
-    siliconInstance.start()
+
+    if (siliconInstance.config.error.isEmpty) {
+      /** Parsing the provided command-line options might fail, in which the resulting error
+        * is recorded in `siliconInstance.config.error`
+        * (see also [[viper.silver.frontend.SilFrontendConfig.onError]]).
+        */
+      siliconInstance.start()
+    }
 
     siliconInstance.config
   }
