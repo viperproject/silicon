@@ -4,6 +4,8 @@
 
 set -e
 
+set -e
+
 BASEDIR="$(realpath `dirname $0`)"
 
 CP_FILE="$BASEDIR/silicon_classpath.txt"

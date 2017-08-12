@@ -544,6 +544,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     }
 
     v.decider.prover.comment(s"Done precomputing, updating quantified chunks")
+    v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)
 
     var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm()), Nil)
 

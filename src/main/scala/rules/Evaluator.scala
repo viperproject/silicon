@@ -20,6 +20,7 @@ import viper.silicon.state.terms.perms.{BigPermSum, IsNonNegative, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
 import viper.silicon.utils.toSf
+import viper.silver.ast.Info
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -262,7 +263,7 @@ object evaluator extends EvaluationRules with Immutable {
         /* Evaluate `e0 && e1` as `e0 && (e0 ==> e1)`, but without evaluating `e0` twice */
         eval(s, e0, pve, v)((s1, t0, v1) => {
           val lv = ast.LocalVar(v1.identifierFactory.fresh("v").name)(e0.typ, e0.pos, e0.info)
-          val e1Short = ast.Implies(lv, e1)(e1.pos, e1.info)
+          val e1Short = ast.Implies(lv, e1)(e1.pos, FromShortCircuitingAnd)
           eval(s1.copy(g = s1.g + (lv, t0)), e1Short, pve, v1)((s2, t1, v2) =>
             Q(s2, And(t0, t1), v2))})
 
@@ -279,14 +280,14 @@ object evaluator extends EvaluationRules with Immutable {
           eval(s1.copy(g = s1.g + (lv, t0)), e1Short, pve, v1)((s2, t1, v2) =>
             Q(s2, Or(t0, t1), v2))})
 
-      case ast.Implies(e0, e1) =>
+      case implies @ ast.Implies(e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          evalImplies(s1, t0, e1, pve, v1)(Q))
+          evalImplies(s1, t0, e1, implies.info == FromShortCircuitingAnd, pve, v1)(Q))
 
       case ast.CondExp(e0, e1, e2) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, v2,
+            brancher.branch(s2, t0, v2)(
               (s3, v3) => eval(s3, e1, pve, v3)(QB),
               (s3, v3) => eval(s3, e2, pve, v3)(QB))
           )(entries => {
@@ -448,7 +449,7 @@ object evaluator extends EvaluationRules with Immutable {
           else {
             val ch = chs.head
             val rcvr = ch.args.head /* NOTE: If ch is a predicate chunk, only the first argument is used */
-            evalImplies(s.copy(s.g + (qvar, rcvr)), IsPositive(ch.perm), body, pve, v)((s1, tImplies, v1) =>
+            evalImplies(s.copy(s.g + (qvar, rcvr)), IsPositive(ch.perm), body, false, pve, v)((s1, tImplies, v1) =>
               bindRcvrAndEvalBody(s1, chs.tail, tImplies +: ts, v1)(Q))}
         }
         val s1 = s.copy(h = s.partiallyConsumedHeap.getOrElse(s.h))
@@ -746,12 +747,17 @@ object evaluator extends EvaluationRules with Immutable {
     }
   }
 
-  private def evalImplies(s: State, tLhs: Term, eRhs: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  private def evalImplies(s: State,
+                          tLhs: Term,
+                          eRhs: ast.Exp,
+                          fromShortCircuitingAnd: Boolean,
+                          pve: PartialVerificationError,
+                          v: Verifier)
                          (Q: (State, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
 
     joiner.join[Term, Term](s, v)((s1, v1, QB) =>
-      brancher.branch(s1, tLhs, v1,
+      brancher.branch(s1, tLhs, v1, fromShortCircuitingAnd)(
         (s2, v2) => eval(s2, eRhs, pve, v2)(QB),
         (s2, v2) => QB(s2, True(), v2))
     )(entries => {
@@ -1004,5 +1010,9 @@ object evaluator extends EvaluationRules with Immutable {
 
         (sJoined, joinTerm)
     }
+  }
+
+  private[silicon] case object FromShortCircuitingAnd extends Info {
+    val comment = Nil
   }
 }

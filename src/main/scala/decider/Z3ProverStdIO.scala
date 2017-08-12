@@ -9,7 +9,6 @@ package viper.silicon.decider
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
-
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.{Config, Map, toMap}
 import viper.silicon.common.config.Version
@@ -75,7 +74,7 @@ class Z3ProverStdIO(uniqueId: String,
         Array()
 
       case Some(args) =>
-        logger.info(s"Additional command-line arguments are $args")
+        logger.debug(s"Additional command-line arguments are $args")
         args.split(' ').map(_.trim)
     }
 
@@ -98,9 +97,10 @@ class Z3ProverStdIO(uniqueId: String,
     start()
   }
 
-  // the statement input.close() does not always terminate (e.g. if there is data left to be read)
-  // therefore it makes sense to first kill the z3 process, because then the channel is closed from the other side first
-  // resulting in the close() method to terminate
+  /* The statement input.close() does not always terminate (e.g. if there is data left to be read).
+   * It therefore makes sense to first kill the Z3 process because then the channel is closed from
+   * the other side first, resulting in the close() method to terminate.
+   */
   def stop() {
     this.synchronized {
       if (logfileWriter != null) {
@@ -209,6 +209,20 @@ class Z3ProverStdIO(uniqueId: String,
     pop()
 
     (result, endTime - startTime)
+  }
+
+  def saturate(data: Option[Config.Z3StateSaturationTimeout]): Unit = {
+    data match {
+      case Some(Config.Z3StateSaturationTimeout(timeout, comment)) => saturate(timeout, comment)
+      case None => /* Don't do anything */
+    }
+  }
+
+  def saturate(timeout: Int, comment: String): Unit = {
+    this.comment(s"State saturation: $comment")
+    setTimeout(Some(timeout))
+    writeLine("(check-sat)")
+    readLine()
   }
 
   private def getModel(): Unit = {

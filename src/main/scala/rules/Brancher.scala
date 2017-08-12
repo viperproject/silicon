@@ -17,7 +17,8 @@ trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
              condition: Term,
              v: Verifier,
-             fTrue: (State, Verifier) => VerificationResult,
+             fromShortCircuitingAnd: Boolean = false)
+            (fTrue: (State, Verifier) => VerificationResult,
              fFalse: (State, Verifier) => VerificationResult)
             : VerificationResult
 }
@@ -26,20 +27,33 @@ object brancher extends BranchingRules with Immutable {
   def branch(s: State,
              condition: Term,
              v: Verifier,
-             fThen: (State, Verifier) => VerificationResult,
+             fromShortCircuitingAnd: Boolean = false)
+            (fThen: (State, Verifier) => VerificationResult,
              fElse: (State, Verifier) => VerificationResult)
             : VerificationResult = {
 
     val negatedCondition = Not(condition)
     val parallelizeElseBranch = s.parallelizeBranches && !s.underJoin
 
-    /* False if the then-branch is dead, i.e. if the condition is known to be false */
-    val executeThenBranch =
-      !v.decider.check(negatedCondition, Verifier.config.checkTimeout())
+    /* Skip path feasibility check if one of the following holds:
+     *   (1) the branching is due to the short-circuiting evaluation of a conjunction
+     *   (2) the branch condition contains a quantified variable
+     */
+    val skipPathFeasibilityCheck = (
+         fromShortCircuitingAnd
+      || (   s.quantifiedVariables.nonEmpty
+          && s.quantifiedVariables.exists(condition.freeVariables.contains))
+    )
 
-    /* False if the else-branch is dead, i.e. if the condition is known to be true */
+    /* True if the then-branch is to be explored */
+    val executeThenBranch = (
+         skipPathFeasibilityCheck
+      || !v.decider.check(negatedCondition, Verifier.config.checkTimeout()))
+
+    /* False if the then-branch is to be explored */
     val executeElseBranch = (
-         !executeThenBranch
+         !executeThenBranch /* Assumes that ast least one branch is feasible */
+      || skipPathFeasibilityCheck
       || !v.decider.check(condition, Verifier.config.checkTimeout()))
 
 //    val additionalPaths =
