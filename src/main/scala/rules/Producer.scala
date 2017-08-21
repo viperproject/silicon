@@ -334,7 +334,7 @@ object producer extends ProductionRules with Immutable {
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             addNewChunk(s2, tArgs, snap, gain, v2)(Q)}))
 
-      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand)) =>
+      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         evals(s, bodyVars, _ => pve, v)((s1, args, v1) => {
@@ -526,7 +526,7 @@ object producer extends ProductionRules with Immutable {
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        val qid = MagicWandIdentifier(wand).toString
+        val qid = MagicWandIdentifier(wand, Verifier.program).toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
             val snap = sf(sorts.PredicateSnapFunction(sorts.Snap), v1)

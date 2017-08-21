@@ -453,7 +453,7 @@ object executor extends ExecutionRules with Immutable {
               s1.copy(h = Heap(),
                   exhaleExt = true,
                   /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
-                   * by the packageWandMethod. hUsed is normally used during transferring
+                   * by the packageWand method. hUsed is normally used during transferring
                    * consume to store permissions that have already been consumed. The
                    * permissions on this heap should be discarded after a statement finishes
                    * execution. hUsed should therefore be empty unless the package statement

@@ -48,7 +48,7 @@ class DefaultMagicWandSnapFunctionsContributor(preambleReader: PreambleReader[St
   def analyze(program: ast.Program) {
     program visit {
       case QuantifiedPermissionAssertion(_, _, wand: ast.MagicWand) =>
-        collectedWands += MagicWandIdentifier(wand)
+        collectedWands += MagicWandIdentifier(wand, program)
     }
 
     collectedFunctionDecls = generateFunctionDecls

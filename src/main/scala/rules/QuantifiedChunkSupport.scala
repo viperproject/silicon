@@ -311,7 +311,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         PredicateLookup(predicate.name, sm, arguments)
 
       case wand: ast.MagicWand =>
-        PredicateLookup(MagicWandIdentifier(wand).toString, sm, arguments)
+        PredicateLookup(MagicWandIdentifier(wand, Verifier.program).toString, sm, arguments)
 
       case other =>
         sys.error(s"Found yet unsupported resource $other (${other.getClass.getSimpleName})")
@@ -357,7 +357,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
       case wand: ast.MagicWand =>
         QuantifiedMagicWandChunk(
-          MagicWandIdentifier(wand),
+          MagicWandIdentifier(wand, Verifier.program),
           codomainQVars,
           sm,
           permissions,
@@ -412,7 +412,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           val lhsSnap = codomainQVars.take(numLhs).map(_.convert(sorts.Snap)).reduceLeft(Combine)
           val rhsSnap = codomainQVars.drop(numLhs).map(_.convert(sorts.Snap)).reduceLeft(Combine)
           SetIn(MagicWandSnapshot(lhsSnap, rhsSnap),
-            domain(MagicWandIdentifier(wand).toString, sm))
+            domain(MagicWandIdentifier(wand, Verifier.program).toString, sm))
         case other =>
           sys.error(s"Found yet unsupported resource $other (${other.getClass.getSimpleName})")
       }
@@ -486,7 +486,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     }
     val chunkIdentifer = resource match {
       case loc: ast.Location => BasicChunkIdentifier(loc.name)
-      case wand: ast.MagicWand => MagicWandIdentifier(wand)
+      case wand: ast.MagicWand => MagicWandIdentifier(wand, Verifier.program)
       case _ => sys.error(s"Found resource $resourceAccess, that is not supported as quantified permission yet.")
     }
 
@@ -599,7 +599,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     val requiredId = resource match {
       case l: Location => BasicChunkIdentifier(l.name)
-      case wand: ast.MagicWand => MagicWandIdentifier(wand)
+      case wand: ast.MagicWand => MagicWandIdentifier(wand, Verifier.program)
       case _ => sys.error(s"Expected location to be quantifiable but found $resource.")
     }
     assert(

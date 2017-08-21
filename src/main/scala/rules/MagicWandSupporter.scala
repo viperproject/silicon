@@ -107,7 +107,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v)((s1, ts, v1) =>
-      Q(s1, MagicWandChunk(MagicWandIdentifier(wand), s1.g.values, ts, snap, FullPerm()), v1)
+      Q(s1, MagicWandChunk(MagicWandIdentifier(wand, Verifier.program), s1.g.values, ts, snap, FullPerm()), v1)
     )
   }
 
@@ -270,7 +270,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //          say(s"done: consumed RHS ${wand.right}")
 //          say(s"next: create wand chunk")
             val preMark = v3.decider.setPathConditionMark()
-            if (s4.qpMagicWands.contains(MagicWandIdentifier(wand))) {
+            if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program))) {
               val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
               val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
               evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {

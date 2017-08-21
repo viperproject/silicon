@@ -138,16 +138,21 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
   override lazy val toString = s"${terms.Forall} ${quantifiedVars.mkString(",")} :: $id(${quantifiedVars.mkString(",")}) -> $wsf # $perm"
 }
 
-case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdentifer {
+case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand)(override val hashCode: Int) extends ChunkIdentifer {
   override def equals(obj: Any): Boolean = obj match {
     case w: MagicWandIdentifier => this.hashCode == w.hashCode
     case _ => false
   }
 
-  override lazy val hashCode: Int =
-    Verifier.program.magicWandStructures.indexOf(ghostFreeWand.structure(Verifier.program))
-
   override lazy val toString = s"wand${hashCode.toString}"
+}
+
+object MagicWandIdentifier {
+  def apply(wand: ast.MagicWand, program: ast.Program): MagicWandIdentifier = {
+    val structureWand = wand.structure(program)
+    val hashCode = program.magicWandStructures.indexOf(structureWand)
+    MagicWandIdentifier(wand)(hashCode)
+  }
 }
 
 case class MagicWandChunk(id: MagicWandIdentifier,
