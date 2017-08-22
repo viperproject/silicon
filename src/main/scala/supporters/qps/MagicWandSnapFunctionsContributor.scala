@@ -28,7 +28,7 @@ class DefaultMagicWandSnapFunctionsContributor(preambleReader: PreambleReader[St
   /* PreambleBlock = Comment x Lines */
   private type PreambleBlock = (String, Iterable[String])
 
-  var collectedWands: InsertionOrderedSet[MagicWandIdentifier] = InsertionOrderedSet.empty
+  var collectedWands: Set[MagicWandIdentifier] = InsertionOrderedSet.empty
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
 
 
@@ -46,10 +46,8 @@ class DefaultMagicWandSnapFunctionsContributor(preambleReader: PreambleReader[St
   /* Functionality */
 
   def analyze(program: ast.Program) {
-    program visit {
-      case QuantifiedPermissionAssertion(_, _, wand: ast.MagicWand) =>
-        collectedWands += MagicWandIdentifier(wand, program)
-    }
+    collectedWands = ast.utility.QuantifiedPermissions.quantifiedMagicWands(program, program)
+      .map(MagicWandIdentifier(_, program)).toSet
 
     collectedFunctionDecls = generateFunctionDecls
   }
@@ -65,15 +63,6 @@ class DefaultMagicWandSnapFunctionsContributor(preambleReader: PreambleReader[St
   }
 
   def generateFunctionDecls: Iterable[PreambleBlock] = {
-    /* TODO: The predicate snap function axioms (see method generateAxioms) use set-contains
-     *       and set equality (for sort Snap only), but Nadja only emits the necessary set function
-     *       declarations, but no corresponding axioms. Looks like an oversight.
-     */
-    val setsTemplateFile = "/dafny_axioms/qpp_sets_declarations_dafny.smt2"
-    val setsSort = sorts.Snap
-    val substitutions = Map("$S$" -> termConverter.convert(setsSort))
-    val setsDeclarations = preambleReader.readParametricPreamble(setsTemplateFile, substitutions)
-
     val snapsTemplateFile = "/predicate_snap_functions_declarations.smt2"
     collectedWands map (p => {
         val snapSort = sorts.Snap

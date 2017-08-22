@@ -144,7 +144,7 @@ case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand)(override val hashCo
     case _ => false
   }
 
-  override lazy val toString = s"wand${hashCode.toString}"
+  override lazy val toString = s"wand@${hashCode.toString}"
 }
 
 object MagicWandIdentifier {
