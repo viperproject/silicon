@@ -159,6 +159,14 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
   private def consumeGreedy(s: State, h: Heap, id: ChunkIdentifer, args: Seq[Term], perms: Term, v: Verifier) = {
     val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
+
+    def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap) = {
+      val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
+      val resource = Resources.resourceDescriptions(chunk.resourceID)
+      v.decider.assume(interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties))
+      v.decider.assume(interpreter.buildPathConditionsForResource(chunk.resourceID, resource.staticProperties))
+    }
+
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
       case Some(ch) =>
         if (consumeExact) {
@@ -168,14 +176,18 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           if (v.decider.check(newChunk.perm === NoPerm(), Verifier.config.checkTimeout())) {
             (ConsumptionResult(PermMinus(perms, toTake), v), s, h - ch, takenChunk)
           } else {
-            (ConsumptionResult(PermMinus(perms, toTake), v), s, h - ch + newChunk, takenChunk)
+            val newHeap = h - ch + newChunk
+            assumeProperties(newChunk, newHeap)
+            (ConsumptionResult(PermMinus(perms, toTake), v), s, newHeap, takenChunk)
           }
         } else {
           if (v.decider.check(ch.perm !== NoPerm(), Verifier.config.checkTimeout())) {
             v.decider.assume(PermLess(perms, ch.perm))
             val newChunk = ch.withPerm(PermMinus(ch.perm, perms))
             val takenChunk = ch.withPerm(perms)
-            (Complete(), s, h - ch + newChunk, Some(takenChunk))
+            val newHeap = h - ch + newChunk
+            assumeProperties(newChunk, newHeap)
+            (Complete(), s, newHeap, Some(takenChunk))
           } else {
             (Incomplete(perms), s, h, None)
           }

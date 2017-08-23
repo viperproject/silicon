@@ -140,7 +140,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   }
 
   @inline
-  final private def partition(h: Heap): (Seq[NonQuantifiedChunk], Seq[Chunk]) = {
+  private final def partition(h: Heap): (Seq[NonQuantifiedChunk], Seq[Chunk]) = {
     var nonQuantifiedChunks = Seq[NonQuantifiedChunk]()
     var otherChunks = Seq[Chunk]()
 

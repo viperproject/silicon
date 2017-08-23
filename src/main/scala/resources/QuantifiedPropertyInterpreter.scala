@@ -20,13 +20,13 @@ class QuantifiedPropertyInterpreter(verifier: Verifier) extends PropertyInterpre
   def buildPathConditionForChunk(chunk: QuantifiedChunk,
                                  property: Property,
                                  qvars: Seq[Var],
-                                 arguments: Seq[Term],
+                                 args: Seq[Term],
                                  perms: Term,
                                  condition: Term,
                                  triggers: Seq[Trigger],
                                  qidPrefix: String)
                                 : Term = {
-    val body = buildPathCondition(property.expression, Info(chunk, arguments, perms)).replace(chunk.quantifiedVars, arguments)
+    val body = buildPathCondition(property.expression, Info(chunk, args, perms)).replace(chunk.quantifiedVars, args)
     val description = s"$qidPrefix-${property.name}"
     val cond = if (argsUsed) condition else terms.True()
     argsUsed = false
@@ -53,7 +53,9 @@ class QuantifiedPropertyInterpreter(verifier: Verifier) extends PropertyInterpre
     buildIfThenElse(condition, thenDo, otherwise, info)
   }
 
-  override protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[kinds.Boolean], info: Info) = {
+  override protected def buildForEach(chunkVariables: Seq[ChunkVariable],
+                                      body: PropertyExpression[kinds.Boolean],
+                                      info: Info) = {
     sys.error("ForEach clauses are not supported in quantified properties.")
   }
 }

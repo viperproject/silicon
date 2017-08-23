@@ -7,5 +7,7 @@
 package viper.silicon.resources
 
 case class Property(expression: PropertyExpression[kinds.Boolean], name: String, description: String) {
+  require(!name.contains(" "), "Property names may not contain whitespace characters.")
+
   override def toString = name
 }
