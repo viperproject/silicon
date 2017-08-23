@@ -201,7 +201,7 @@ class DefaultMasterVerifier(config: Config)
   private def createInitialState(member: ast.Member, program: ast.Program): State = {
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
-    val quantifiedMagicWands = magicWandSnapFunctionsContributor.collectedWands
+    val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
     val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
 
     State(qpFields = quantifiedFields,

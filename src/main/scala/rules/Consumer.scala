@@ -722,7 +722,7 @@ object consumer extends ConsumptionRules with Immutable {
         //         2. Chose fresh identifiers once; store in and take from state (or from object Verifier)
         val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        val qid = MagicWandIdentifier(wand).toString
+        val qid = MagicWandIdentifier(wand, Verifier.program).toString
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
@@ -788,7 +788,7 @@ object consumer extends ConsumptionRules with Immutable {
                 val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
                 magicWandSupporter.transfer[QuantifiedMagicWandChunk](s1, lossOfInvOfLoc, Failure(pve dueTo MagicWandChunkNotFound(wand)), v1)((s2, heap, rPerm, v2) => {
                 val (relevantChunks, otherChunks) =
-                  quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](heap, MagicWandIdentifier(wand))
+                  quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](heap, MagicWandIdentifier(wand, Verifier.program))
                 val (result, sRes, remainingChunks) = quantifiedChunkSupporter.removePermissions(
                   s2,
                   relevantChunks,
@@ -848,7 +848,7 @@ object consumer extends ConsumptionRules with Immutable {
         //         2. Chose fresh identifiers once; store in and take from state (or from object Verifier)
         val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        val qid = MagicWandIdentifier(wand).toString
+        val qid = MagicWandIdentifier(wand, Verifier.program).toString
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
@@ -910,7 +910,7 @@ object consumer extends ConsumptionRules with Immutable {
                   v1.decider.prover.comment("Definitional axioms for inverse functions")
                   v1.decider.assume(inverseFunctions.definitionalAxioms)
                   val (relevantChunks, otherChunks) =
-                    quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, MagicWandIdentifier(wand))
+                    quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, MagicWandIdentifier(wand, Verifier.program))
                   val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalVars)
                   val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
                   val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
@@ -1021,7 +1021,7 @@ object consumer extends ConsumptionRules with Immutable {
         Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a))
 
       /* Handle wands */
-      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand)) =>
+      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
 
@@ -1045,7 +1045,7 @@ object consumer extends ConsumptionRules with Immutable {
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val ve = pve dueTo MagicWandChunkNotFound(wand)
           val description = s"consume wand $wand"
-          chunkSupporter.consume(s1, h, MagicWandIdentifier(wand), tArgs, FullPerm(), ve, v1, description)(Q)
+          chunkSupporter.consume(s1, h, MagicWandIdentifier(wand, Verifier.program), tArgs, FullPerm(), ve, v1, description)(Q)
         })
 
       case _ =>
