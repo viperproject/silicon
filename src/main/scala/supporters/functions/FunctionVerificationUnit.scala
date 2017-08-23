@@ -224,6 +224,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (intermediateResult, Phase1Data(sPre, pcsPre)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             decider.assume(pcsPre)
+            v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, _) => {
               decider.assume(data.formalResult === tBody)
               consumes(s2, posts, postconditionViolated, v)((s3, _, _) => {

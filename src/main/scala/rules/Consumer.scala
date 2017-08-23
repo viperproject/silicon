@@ -194,16 +194,17 @@ object consumer extends ConsumptionRules with Immutable {
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) => {
           impLog.finish_cond()
-          val branch_res = branch(s1, t0, v1,
-            (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h3, snap3, v3) => {
-              val res1 = Q(s3, h3, snap3, v3)
-              impLog.finish_thnSubs()
-              SymbExLogger.currentLog().prepareOtherBranch(impLog)
-              res1}),
-            (s2, v2) => {
-              val res2 = Q(s2, h, Unit, v2)
-              impLog.finish_elsSubs()
-              res2})
+          val branch_res =
+            branch(s1, t0, v1)(
+              (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h3, snap3, v3) => {
+                val res1 = Q(s3, h3, snap3, v3)
+                impLog.finish_thnSubs()
+                SymbExLogger.currentLog().prepareOtherBranch(impLog)
+                res1}),
+              (s2, v2) => {
+                val res2 = Q(s2, h, Unit, v2)
+                impLog.finish_elsSubs()
+                res2})
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
@@ -213,16 +214,17 @@ object consumer extends ConsumptionRules with Immutable {
         SymbExLogger.currentLog().initializeBranching()
         eval(s, e0, pve, v)((s1, t0, v1) => {
           gbLog.finish_cond()
-          val branch_res = branch(s1, t0, v1,
-            (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h3, snap3, v3) => {
-              val res1 = Q(s3, h3, snap3, v3)
-              gbLog.finish_thnSubs()
-              SymbExLogger.currentLog().prepareOtherBranch(gbLog)
-              res1}),
-            (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h3, snap3, v3) => {
-              val res2 = Q(s3, h3, snap3, v3)
-              gbLog.finish_elsSubs()
-              res2}))
+          val branch_res =
+            branch(s1, t0, v1)(
+              (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h3, snap3, v3) => {
+                val res1 = Q(s3, h3, snap3, v3)
+                gbLog.finish_thnSubs()
+                SymbExLogger.currentLog().prepareOtherBranch(gbLog)
+                res1}),
+              (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h3, snap3, v3) => {
+                val res2 = Q(s3, h3, snap3, v3)
+                gbLog.finish_elsSubs()
+                res2}))
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 

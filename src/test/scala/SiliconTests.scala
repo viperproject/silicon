@@ -1,4 +1,4 @@
-/*
+  /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -7,12 +7,11 @@
 package viper.silicon.tests
 
 import java.nio.file.Path
-
 import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
 import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
 import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
 import viper.silver.frontend.TranslatorState
-import viper.silver.reporter.StdIOReporter
+import viper.silver.reporter.NoopReporter
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = List("consistency")
@@ -29,7 +28,7 @@ class SiliconTests extends SilSuite {
     SymbExLogger.reset()
     SymbExLogger.filePath = files.head
     SymbExLogger.initUnitTestEngine()
-    val fe = new SiliconFrontend(new StdIOReporter("silicon_for_testing"))//SiliconFrontendWithUnitTesting()
+    val fe = new SiliconFrontend(NoopReporter)//SiliconFrontendWithUnitTesting()
     fe.init(verifier)
     fe.reset(files.head)
     fe
@@ -48,14 +47,15 @@ class SiliconTests extends SilSuite {
 
   private def createSiliconInstance() = {
     val args = Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap.getOrElse("silicon", Map()))
+    val reporter = NoopReporter
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
-    val silicon = Silicon.fromPartialCommandLineArguments(args, debugInfo)
+    val silicon = Silicon.fromPartialCommandLineArguments(args, reporter, debugInfo)
 
     silicon
   }
 }
 
-class SiliconFrontendWithUnitTesting extends SiliconFrontend(new StdIOReporter("silicon_for_unit_testing")) {
+class SiliconFrontendWithUnitTesting extends SiliconFrontend(NoopReporter) {
   /** Is overridden only to append SymbExLogging-UnitTesting-Errors to the Result. **/
   override def result: SilVerificationResult = {
     if(_state < TranslatorState.Verified) super.result

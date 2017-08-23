@@ -72,6 +72,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
          */
         executionFlowController.locally(s, v)((s1, v1) => {
           produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
+            v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
                   val s4 = s3.copy(h = Heap())

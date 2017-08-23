@@ -7,7 +7,7 @@
 package viper.silicon.interfaces.decider
 
 import viper.silver.components.StatefulComponent
-import viper.silicon.Map
+import viper.silicon.{Config, Map}
 import viper.silicon.state.terms._
 
 sealed abstract class Result
@@ -22,6 +22,8 @@ trait ProverLike {
   def assume(term: Term)
   def declare(decl: Decl): Unit
   def comment(content: String): Unit
+  def saturate(timeout: Int, comment: String): Unit
+  def saturate(data: Option[Config.Z3StateSaturationTimeout]): Unit
 }
 
 trait Prover extends ProverLike with StatefulComponent {

@@ -120,6 +120,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
+          v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
           val predicateTrigger =
             App(Verifier.predicateData(predicate).triggerFunction,
                 snap.convert(terms.sorts.Snap) +: tArgs)
@@ -133,6 +134,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
+          v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
           val predicateTrigger =
             App(Verifier.predicateData(predicate).triggerFunction, snap +: tArgs)
           v2.decider.assume(predicateTrigger)

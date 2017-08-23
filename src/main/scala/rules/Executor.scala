@@ -65,7 +65,7 @@ object executor extends ExecutionRules with Immutable {
           /* Using branch(...) here ensures that the edge condition is recorded
            * as a branch condition on the pathcondition stack.
            */
-          brancher.branch(s2, tCond, v1,
+          brancher.branch(s2, tCond, v1)(
             (s3, v3) => exec(s3, ce.target, ce.kind, v3)(Q),
             (_, _)  => Success()))
 
@@ -168,14 +168,15 @@ object executor extends ExecutionRules with Immutable {
                     case (intermediateResult, (s1, pcs, ff1)) =>
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
                       intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
-//                    v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
-                      v2.decider.assume(pcs.assumptions)
-                      if (v2.decider.checkSmoke())
-                        Success()
-                      else {
-                        execs(s3, stmts, v2)((s4, v3) => {
-                          v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                          follows(s4, sortedEdges, WhileFailed, v3)(Q)})}})}})}))
+  //                    v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
+                        v2.decider.assume(pcs.assumptions)
+                        v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
+                        if (v2.decider.checkSmoke())
+                          Success()
+                        else {
+                          execs(s3, stmts, v2)((s4, v3) => {
+                            v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
+                            follows(s4, sortedEdges, WhileFailed, v3)(Q)})}})}})}))
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -345,7 +346,9 @@ object executor extends ExecutionRules with Immutable {
           /* We're done */
           Success()
         case _ =>
-          produce(s, freshSnap, a, InhaleFailed(inhale), v)(Q)
+          produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
+            v1.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterInhale)
+            Q(s1, v1)})
       }
 
       case exhale @ ast.Exhale(a) =>
@@ -412,6 +415,7 @@ object executor extends ExecutionRules with Immutable {
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
             produces(s4, freshSnap, meth.posts, pvefCall, v2)((s5, v3) => {
               mcLog.finish_postcondition()
+              v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
                               .map(p => (p._1, s5.g(p._2))).toMap)
               val s6 = s5.copy(g = s1.g + gLhs,
