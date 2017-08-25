@@ -533,9 +533,7 @@ object evaluator extends EvaluationRules with Immutable {
                                recordVisited = s2.recordVisited,
                                functionRecorder = s4.functionRecorder.recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1),
                                smDomainNeeded = s2.smDomainNeeded)
-              /* TODO: Necessary? Isn't tFApp already recorded by the outermost eval? */
-              val s6 = if (s5.recordPossibleTriggers) s5.copy(possibleTriggers = s5.possibleTriggers + (fapp -> tFApp)) else s5
-              QB(s6, tFApp, v3)})
+              QB(s5, tFApp, v3)})
             /* TODO: The join-function is heap-independent, and it is not obvious how a
              *       joined snapshot could be defined and represented
              */
