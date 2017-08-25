@@ -89,7 +89,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     case c: QuantifiedBasicChunk => c.singletonArguments.get
   }
 
-  override protected def buildCheck[K <: Kind](condition: PropertyExpression[kinds.Boolean], thenDo: PropertyExpression[K], otherwise: PropertyExpression[K], info: Info) = {
+  override protected def buildCheck[K <: IteUsableKind](condition: PropertyExpression[kinds.Boolean], thenDo: PropertyExpression[K], otherwise: PropertyExpression[K], info: Info) = {
     val conditionTerm = buildPathCondition(condition, info)
     if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout())) {
       buildPathCondition(thenDo, info)
@@ -114,13 +114,13 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
       case c +: Seq() => chunk => buildPathCondition(body, info.addMapping(c, chunk))
       case c +: tail => chunk => buildForEach(chunks, tail, body, info.addMapping(c, chunk))
     }
-    terms.And(chunks.flatMap((chunk) => {
+    terms.And(chunks.flatMap { chunk =>
       // check that only distinct tuples are handled
       if (!info.pm.values.exists(chunk eq _)) {
         Some(builder(chunk))
       } else {
         None
       }
-    }))
+    })
   }
 }

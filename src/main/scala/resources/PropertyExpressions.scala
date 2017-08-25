@@ -7,19 +7,34 @@
 package viper.silicon.resources
 
 sealed trait Kind
+
+/**
+  * A kind that is allowed to occur in an <code>Equals</code> expression.
+  */
 sealed trait EquatableKind extends Kind
 
+/**
+  * A kind that is allowed to occur in an <code>IfThenElse</code> or <code>CheckThenElse</code> expression.
+  */
+sealed trait IteUsableKind extends Kind
+
 object kinds {
-  sealed trait Boolean extends EquatableKind
+  sealed trait Boolean extends EquatableKind with IteUsableKind
   sealed trait Argument extends EquatableKind
-  sealed trait Permission extends EquatableKind
-  sealed trait Value extends EquatableKind
+  sealed trait Value extends EquatableKind with IteUsableKind
+  sealed trait Permission extends EquatableKind with IteUsableKind
   sealed trait Chunk extends Kind
 }
 
 sealed abstract class PropertyExpression[K <: Kind]
 
-case class Check[K <: Kind]
+case class IfThenElse[K <: IteUsableKind]
+                     (condition: PropertyExpression[kinds.Boolean],
+                      thenDo: PropertyExpression[K],
+                      otherwise: PropertyExpression[K])
+    extends PropertyExpression[K]
+
+case class Check[K <: IteUsableKind]
                 (condition: PropertyExpression[kinds.Boolean],
                  thenDo: PropertyExpression[K],
                  otherwise: PropertyExpression[K])
@@ -34,12 +49,6 @@ case class ForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[
   require(chunkVariables.nonEmpty, "Cannot quantify over no variable.")
   require(chunkVariables.distinct.size == chunkVariables.size, "Cannot quantify over non-distinct variables.")
 }
-
-case class IfThenElse[K <: Kind]
-                     (condition: PropertyExpression[kinds.Boolean],
-                      thenDo: PropertyExpression[K],
-                      otherwise: PropertyExpression[K])
-    extends PropertyExpression[K]
 
 case class Equals[K <: EquatableKind](left: PropertyExpression[K], right: PropertyExpression[K]) extends PropertyExpression[kinds.Boolean]
 

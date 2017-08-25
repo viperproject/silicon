@@ -45,7 +45,7 @@ class QuantifiedPropertyInterpreter(verifier: Verifier) extends PropertyInterpre
     info.arguments
   }
 
-  override protected def buildCheck[K <: Kind]
+  override protected def buildCheck[K <: IteUsableKind]
                                    (condition: PropertyExpression[kinds.Boolean],
                                     thenDo: PropertyExpression[K],
                                     otherwise: PropertyExpression[K],

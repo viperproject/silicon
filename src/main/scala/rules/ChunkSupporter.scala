@@ -232,8 +232,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       val newChunks = ListBuffer[NonQuantifiedChunk]()
       val equalities = ListBuffer[Term]()
 
-      val definitiveAlias = findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
-      val (snap, fresh) = definitiveAlias match {
+      val definiteAlias = findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
+      val (snap, fresh) = definiteAlias match {
         case Some(alias) => (alias.snap, None)
         case None =>
           val sort = relevantChunks.head.snap.sort
@@ -245,7 +245,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
         // The definitive alias should get priority, since it is always possible to consume from it
         // Else, look for a syntactic alias
-        definitiveAlias.contains(ch1) || !definitiveAlias.contains(ch2) && ch1.args == args
+        definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
       }
 
       relevantChunks.sortWith(sortFunction) foreach { ch =>

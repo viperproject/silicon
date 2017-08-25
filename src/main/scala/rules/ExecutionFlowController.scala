@@ -110,7 +110,7 @@ object executionFlowController extends ExecutionFlowRules with Immutable {
      *       e.g. by performing a state consolidation.
      */
 
-    var firstActionResult =
+    val firstActionResult =
       action(
         s,
         v,
