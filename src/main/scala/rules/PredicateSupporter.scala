@@ -6,6 +6,9 @@
 
 package viper.silicon.rules
 
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.PredicateID
@@ -13,9 +16,6 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.InsufficientPermission
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
   def fold(s: State,

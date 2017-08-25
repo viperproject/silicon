@@ -6,6 +6,11 @@
 
 package viper.silicon.rules
 
+import viper.silver.ast
+import viper.silver.ast.{Exp, Stmt}
+import viper.silver.cfg.Edge
+import viper.silver.cfg.silver.SilverCfg.SilverBlock
+import viper.silver.verifier.PartialVerificationError
 import viper.silicon._
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -14,11 +19,6 @@ import viper.silicon.state._
 import viper.silicon.state.terms.{MagicWandSnapshot, _}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
-import viper.silver.ast.{Exp, Stmt}
-import viper.silver.cfg.Edge
-import viper.silver.cfg.silver.SilverCfg.SilverBlock
-import viper.silver.verifier.PartialVerificationError
 
 object magicWandSupporter extends SymbolicExecutionRules with Immutable {
   import consumer._

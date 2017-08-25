@@ -6,16 +6,16 @@
 
 package viper.silicon.supporters.functions
 
-import viper.silicon.{Config, Map, toMap}
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, functionSupporter}
-import viper.silicon.state.{IdentifierFactory, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
+import viper.silicon.state.{IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
+import viper.silicon.{Config, Map, toMap}
 
 /* TODO: Refactor FunctionData!
  *       Separate computations from "storing" the final results and sharing

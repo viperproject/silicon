@@ -7,6 +7,10 @@
 package viper.silicon.rules
 
 import scala.collection.mutable
+import viper.silver.ast
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons._
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -14,10 +18,6 @@ import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
 import viper.silicon.{ConsumeRecord, GlobalBranchRecord, SymbExLogger}
-import viper.silver.ast
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons._
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 

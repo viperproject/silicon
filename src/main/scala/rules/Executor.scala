@@ -6,6 +6,12 @@
 
 package viper.silicon.rules
 
+import viper.silver.cfg.silver.SilverCfg
+import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.errors._
+import viper.silver.verifier.reasons._
+import viper.silver.{ast, cfg}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -17,12 +23,6 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silicon.{ExecuteRecord, MethodCallRecord, SymbExLogger}
-import viper.silver.cfg.silver.SilverCfg
-import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors._
-import viper.silver.verifier.reasons._
-import viper.silver.{ast, cfg}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,

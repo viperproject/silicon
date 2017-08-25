@@ -74,7 +74,7 @@ case class Failure/*[ST <: Store[ST],
                    H <: Heap[H],
                    S <: State[ST, H, S]]*/
                   (message: VerificationError)
-  extends FatalResult {
+    extends FatalResult {
 
   /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
   var load: Option[Seq[Term]] = None

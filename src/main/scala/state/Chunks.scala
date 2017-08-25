@@ -6,12 +6,12 @@
 
 package viper.silicon.state
 
+import viper.silver.ast
 import viper.silicon.interfaces.state._
 import viper.silicon.resources._
 import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
-import viper.silver.ast
 
 case class BasicChunkIdentifier(name: String) extends ChunkIdentifer {
   override def toString = name
