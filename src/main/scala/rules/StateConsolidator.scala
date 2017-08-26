@@ -92,7 +92,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   }
 
   private def singleMerge(destChunks: Seq[NonQuantifiedChunk], newChunks: Seq[NonQuantifiedChunk], v: Verifier)
-  : (Seq[NonQuantifiedChunk], Seq[NonQuantifiedChunk], InsertionOrderedSet[Term]) = {
+                         : (Seq[NonQuantifiedChunk], Seq[NonQuantifiedChunk], InsertionOrderedSet[Term]) = {
 
     // bookkeeper.heapMergeIterations += 1
 

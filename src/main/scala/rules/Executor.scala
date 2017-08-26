@@ -215,8 +215,8 @@ object executor extends ExecutionRules with Immutable {
   }
 
   def exec2(state: State, stmt: ast.Stmt, v: Verifier)
-          (continuation: (State, Verifier) => VerificationResult)
-          : VerificationResult = {
+           (continuation: (State, Verifier) => VerificationResult)
+           : VerificationResult = {
 
     val s = state.copy(h=magicWandSupporter.getExecutionHeap(state))
     val Q: (State, Verifier) => VerificationResult = (s, v) => {

@@ -416,5 +416,4 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         args.size == ch.args.size &&
         v.decider.check(And(ch.args zip args map (x => x._1 === x._2)), Verifier.config.checkTimeout()))
   }
-
 }

@@ -73,6 +73,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
   override protected def buildPermissionAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
     info.pm(chunkPlaceholder) match {
       case c: NonQuantifiedChunk => c.perm
+      // TODO: remove once singleton quantified chunks are not used anymore
       case c: QuantifiedBasicChunk => c.perm.replace(c.quantifiedVars, c.singletonArguments.get)
     }
   }
@@ -80,16 +81,23 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
   override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
     info.pm(chunkPlaceholder) match {
       case c: NonQuantifiedChunk => c.snap
+      // TODO: remove once singleton quantified chunks are not used anymore
       case c: QuantifiedBasicChunk => c.valueAt(c.singletonArguments.get)
     }
   }
 
-  override protected def extractArguments(chunkPlaceholder: ChunkPlaceholder, info: Info) = info.pm(chunkPlaceholder) match {
+  override protected def extractArguments(chunkPlaceholder: ChunkPlaceholder,
+                                          info: Info) = info.pm(chunkPlaceholder) match {
     case c: NonQuantifiedChunk => c.args
+    // TODO: remove once singleton quantified chunks are not used anymore
     case c: QuantifiedBasicChunk => c.singletonArguments.get
   }
 
-  override protected def buildCheck[K <: IteUsableKind](condition: PropertyExpression[kinds.Boolean], thenDo: PropertyExpression[K], otherwise: PropertyExpression[K], info: Info) = {
+  override protected def buildCheck[K <: IteUsableKind]
+                                   (condition: PropertyExpression[kinds.Boolean],
+                                    thenDo: PropertyExpression[K],
+                                    otherwise: PropertyExpression[K],
+                                    info: Info) = {
     val conditionTerm = buildPathCondition(condition, info)
     if (verifier.decider.check(conditionTerm, Verifier.config.checkTimeout())) {
       buildPathCondition(thenDo, info)
@@ -98,7 +106,10 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     }
   }
 
-  override protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[kinds.Boolean], info: Info): Term = {
+  override protected def buildForEach(chunkVariables: Seq[ChunkVariable],
+                                      body: PropertyExpression[kinds.Boolean],
+                                      info: Info)
+                                     : Term = {
     info.pm.get(This()) match {
       case Some(_) =>
          sys.error("Property expressions may not contain any ForEach clauses.")
@@ -109,13 +120,18 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
     }
   }
 
-  private def buildForEach(chunks: Iterable[GeneralChunk], chunkVariables: Seq[ChunkVariable], body: PropertyExpression[kinds.Boolean], info: Info): Term = {
+  private def buildForEach(chunks: Iterable[GeneralChunk],
+                           chunkVariables: Seq[ChunkVariable],
+                           body: PropertyExpression[kinds.Boolean],
+                           info: Info)
+                          : Term = {
     val builder: (GeneralChunk => Term) = chunkVariables match {
       case c +: Seq() => chunk => buildPathCondition(body, info.addMapping(c, chunk))
       case c +: tail => chunk => buildForEach(chunks, tail, body, info.addMapping(c, chunk))
     }
     terms.And(chunks.flatMap { chunk =>
       // check that only distinct tuples are handled
+      // TODO: Is it possible to get this behavior without having to check every tuple?
       if (!info.pm.values.exists(chunk eq _)) {
         Some(builder(chunk))
       } else {

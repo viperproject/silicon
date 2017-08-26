@@ -34,7 +34,7 @@ abstract class PropertyInterpreter(verifier: Verifier) {
     case Plus(left, right) => buildBinary(terms.PermPlus, left, right, info)
     case Minus(left, right) => buildBinary(terms.PermMinus, left, right, info)
     case Times(left, right) => buildBinary(terms.PermTimes, left, right, info)
-    case Div(left, right) => buildBinary(terms.Div, left, right, info)
+    case Div(left, right) => buildBinary(terms.PermDiv, left, right, info)
 
     case GreaterThanEquals(left, right) => buildBinary(terms.PermAtMost, right, left, info)
     case GreaterThan(left, right) => buildBinary(terms.PermLess, right, left, info)
@@ -60,27 +60,30 @@ abstract class PropertyInterpreter(verifier: Verifier) {
   protected def buildPermissionAccess(chunkVariable: ChunkPlaceholder, info: Info): Term
   protected def buildValueAccess(chunkVariable: ChunkPlaceholder, info: Info): Term
 
-  // Assures short-circuit evalutation of 'and'
+  /* Assures that if the left-hand side is known to be false without a prover check,
+   the right-hand side is not evaluated. */
   protected def buildAnd(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
-      case leftTerm @ terms.False() => leftTerm
-      case leftTerm @ _ => terms.And(leftTerm, buildPathCondition(right, info))
+      case leftTerm: terms.False => leftTerm
+      case leftTerm => terms.And(leftTerm, buildPathCondition(right, info))
     }
   }
 
-  // Assures short-circuit evalutation of 'or'
+  /* Assures that if the left-hand side is known to be true without a prover check,
+   the right-hand side is not evaluated. */
   protected def buildOr(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
-      case leftTerm @ terms.True() => leftTerm
+      case leftTerm: terms.True => leftTerm
       case leftTerm => terms.Or(leftTerm, buildPathCondition(right, info))
     }
   }
 
-  // Assures short-circuit evalutation of 'implies'
+  /* Assures that if the left-hand side is known to be false without a prover check,
+   the right-hand side is not evaluated. */
   protected def buildImplies(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
       case terms.False() => terms.True()
-      case leftTerm @ _ => terms.Implies(leftTerm, buildPathCondition(right, info))
+      case leftTerm => terms.Implies(leftTerm, buildPathCondition(right, info))
     }
   }
 
@@ -114,16 +117,33 @@ abstract class PropertyInterpreter(verifier: Verifier) {
     }
   }
 
-  protected def buildBinary[K <: Kind](builder: (Term, Term) => Term, left: PropertyExpression[K], right: PropertyExpression[K], pm: Info) = {
+  protected def buildBinary[K <: Kind]
+                           (builder: (Term, Term) => Term,
+                            left: PropertyExpression[K],
+                            right: PropertyExpression[K],
+                            pm: Info) = {
     val leftTerm = buildPathCondition(left, pm)
     val rightTerm = buildPathCondition(right, pm)
     builder(leftTerm, rightTerm)
   }
 
-  protected def buildCheck[K <: IteUsableKind](condition: PropertyExpression[kinds.Boolean], thenDo: PropertyExpression[K], otherwise: PropertyExpression[K], info: Info): Term
-  protected def buildForEach(chunkVariables: Seq[ChunkVariable], body: PropertyExpression[kinds.Boolean], pm: Info): Term
+  protected def buildCheck[K <: IteUsableKind]
+                          (condition: PropertyExpression[kinds.Boolean],
+                           thenDo: PropertyExpression[K],
+                           otherwise: PropertyExpression[K],
+                           info: Info)
+                          : Term
 
-  protected def buildIfThenElse[K <: IteUsableKind](condition: PropertyExpression[kinds.Boolean], thenDo: PropertyExpression[K], otherwise: PropertyExpression[K], pm: Info) = {
+  protected def buildForEach(chunkVariables: Seq[ChunkVariable],
+                             body: PropertyExpression[kinds.Boolean],
+                             pm: Info)
+                            : Term
+
+  protected def buildIfThenElse[K <: IteUsableKind]
+                               (condition: PropertyExpression[kinds.Boolean],
+                                thenDo: PropertyExpression[K],
+                                otherwise: PropertyExpression[K],
+                                pm: Info) = {
     val conditionTerm = buildPathCondition(condition, pm)
     val thenDoTerm = buildPathCondition(thenDo, pm)
     val otherwiseTerm = buildPathCondition(otherwise, pm)

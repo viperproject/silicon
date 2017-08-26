@@ -125,16 +125,18 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     })
   }
 
-  def consumeFromMultipleHeaps[CH <: Chunk](s: State,
-                                  hs: Stack[Heap],
-                                  pLoss: Term,
-                                  failure: Failure,
-                                  v: Verifier)
-                                 (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
-                                 (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
-                                 : VerificationResult = {
+  def consumeFromMultipleHeaps[CH <: Chunk]
+                              (s: State,
+                               hs: Stack[Heap],
+                               pLoss: Term,
+                               failure: Failure,
+                               v: Verifier)
+                              (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
+                              (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
+                              : VerificationResult = {
+    val initial = (ConsumptionResult(pLoss, v), s, Stack.empty[Heap], Stack.empty[Option[CH]])
     val (result, s1, heaps, consumedChunks) =
-      hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[CH]])]((ConsumptionResult(pLoss, v), s, Stack.empty[Heap], Stack.empty[Option[CH]]))((partialResult, heap) =>
+      hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[CH]])](initial)((partialResult, heap) =>
         partialResult match  {
           case (r: Complete, sIn, hps, cchs)  => (r, sIn, heap +: hps, None +: cchs)
           case (Incomplete(permsNeeded), sIn, hps, cchs) =>
@@ -170,8 +172,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                   proofScript: ast.Seqn,
                   pve: PartialVerificationError,
                   v: Verifier)
-                  (Q: (State, Chunk, Verifier) => VerificationResult)
-                  : VerificationResult = {
+                 (Q: (State, Chunk, Verifier) => VerificationResult)
+                 : VerificationResult = {
 
     /* TODO: Logging code is very similar to that in HeuristicsSupporter. Unify. */
 
@@ -327,8 +329,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                 wand: ast.MagicWand,
                 pve: PartialVerificationError,
                 v: Verifier)
-                (Q: (State, Verifier) => VerificationResult)
-                : VerificationResult = {
+               (Q: (State, Verifier) => VerificationResult)
+               : VerificationResult = {
         consume(s, wand, pve, v)((s1, snap, v1) => {
           val wandSnap = MagicWandSnapshot(snap)
           consume(s1, wand.left, pve, v1)((s2, snap, v2) => {

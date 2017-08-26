@@ -1025,6 +1025,15 @@ object PermIntDiv extends ((Term, Term) => Term) {
   def unapply(t: PermIntDiv) = Some((t.p0, t.p1))
 }
 
+object PermDiv extends ((Term, Term) => Term) {
+  def apply(t0: Term, t1: Term) = t1 match {
+    case FractionPerm(n, d) => PermTimes(t0, FractionPerm(d, n))
+    case FractionPermLiteral(r) if r == Rational.zero =>
+      PermTimes(t0, FractionPerm(IntLiteral(r.denominator), IntLiteral(0)))
+    case FractionPermLiteral(r) => PermTimes(t0, FractionPermLiteral(r.inverse))
+  }
+}
+
 class PermPlus(val p0: Term, val p1: Term)
     extends Permissions
        with BinaryOp[Term]
