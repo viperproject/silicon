@@ -149,5 +149,4 @@ abstract class PropertyInterpreter(verifier: Verifier) {
     val otherwiseTerm = buildPathCondition(otherwise, pm)
     terms.Ite(conditionTerm, thenDoTerm, otherwiseTerm)
   }
-
 }

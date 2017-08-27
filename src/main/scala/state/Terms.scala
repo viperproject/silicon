@@ -12,7 +12,6 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk}
 
-
 sealed trait Node
 
 sealed trait Symbol extends Node {
@@ -23,43 +22,38 @@ sealed trait Symbol extends Node {
  * Sorts
  */
 
-sealed trait Sort extends Symbol
+sealed trait Sort extends Symbol {
+  override val toString = id.toString
+}
 
 object sorts {
-  object Snap extends Sort { val id = Identifier("Snap"); override val toString = id.toString }
-  object Int  extends Sort { val id = Identifier("Int");  override val toString = id.toString }
-  object Bool extends Sort { val id = Identifier("Bool"); override val toString = id.toString }
-  object Ref  extends Sort { val id = Identifier("Ref");  override val toString = id.toString }
-  object Perm extends Sort { val id = Identifier("Perm"); override val toString = id.toString }
-  object Unit extends Sort { val id = Identifier("()");   override val toString = id.toString }
+  object Snap extends Sort { val id = Identifier("Snap") }
+  object Int  extends Sort { val id = Identifier("Int") }
+  object Bool extends Sort { val id = Identifier("Bool") }
+  object Ref  extends Sort { val id = Identifier("Ref") }
+  object Perm extends Sort { val id = Identifier("Perm") }
+  object Unit extends Sort { val id = Identifier("()") }
 
   case class Seq(elementsSort: Sort) extends Sort {
-    val id = Identifier("Seq[%s]".format(elementsSort))
-    override val toString = id.toString
+    val id = Identifier(s"Seq[$elementsSort]")
   }
 
   case class Set(elementsSort: Sort) extends Sort {
-    val id = Identifier("Set[%s]".format(elementsSort))
-    override val toString = id.toString
+    val id = Identifier(s"Set[$elementsSort]")
   }
 
   case class Multiset(elementsSort: Sort) extends Sort {
-    val id = Identifier("Multiset[%s]".format(elementsSort))
-    override val toString = id.toString
+    val id = Identifier(s"Multiset[$elementsSort]")
   }
 
-  case class UserSort(id: Identifier) extends Sort {
-    override val toString = id.toString
-  }
+  case class UserSort(id: Identifier) extends Sort
 
   case class FieldValueFunction(codomainSort: Sort) extends Sort {
-    val id = Identifier("FVF[%s]".format(codomainSort))
-    override val toString = id.toString
+    val id = Identifier(s"FVF[$codomainSort]")
   }
 
   case class PredicateSnapFunction(codomainSort: Sort) extends Sort {
-    val id = Identifier("PSF[%s]".format(codomainSort))
-    override val toString = id.toString
+    val id = Identifier(s"PSF[$codomainSort]")
   }
 
 }
@@ -710,9 +704,7 @@ class Ite(val t0: Term, val t1: Term, val t2: Term)
     extends Term with StructuralEquality {
 
   assert(t0.sort == sorts.Bool && t1.sort == t2.sort, /* @elidable */
-      "Ite term Ite(%s, %s, %s) is not well-sorted: %s, %s, %s"
-      .format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
-
+         s"Ite term Ite($t0, $t1, $t2) is not well-sorted: ${t0.sort}, ${t1.sort}, ${t2.sort}")
 
   val equalityDefiningMembers = t0 :: t1 :: t2 :: Nil
   val sort = t1.sort
@@ -741,8 +733,7 @@ sealed trait Equals extends ComparisonTerm with BinaryOp[Term] { override val op
 object Equals extends ((Term, Term) => BooleanTerm) {
   def apply(e0: Term, e1: Term) = {
     assert(e0.sort == e1.sort,
-           "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-           .format(e0.sort, e0, e1.sort, e1))
+           s"Expected both operands to be of the same sort, but found ${e0.sort} ($e0) and ${e1.sort} ($e1).")
 
     if (e0 == e1)
       True()
@@ -798,8 +789,7 @@ class Less(val p0: Term, val p1: Term) extends ComparisonTerm
     with StructuralEqualityBinaryOp[Term] {
 
   assert(p0.sort == p1.sort,
-    "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-      .format(p0.sort, p0, p1.sort, p1))
+         s"Expected both operands to be of the same sort, but found ${p0.sort} ($p0) and ${p1.sort} ($p1).")
 
   override val op = "<"
 }
@@ -1026,12 +1016,9 @@ object PermIntDiv extends ((Term, Term) => Term) {
 }
 
 object PermDiv extends ((Term, Term) => Term) {
-  def apply(t0: Term, t1: Term) = t1 match {
-    case FractionPerm(n, d) => PermTimes(t0, FractionPerm(d, n))
-    case FractionPermLiteral(r) if r == Rational.zero =>
-      PermTimes(t0, FractionPerm(IntLiteral(r.denominator), IntLiteral(0)))
-    case FractionPermLiteral(r) => PermTimes(t0, FractionPermLiteral(r.inverse))
-  }
+  import predef.One
+
+  def apply(t0: Term, t1: Term) = PermTimes(t0, FractionPerm(One, t1))
 }
 
 class PermPlus(val p0: Term, val p1: Term)
