@@ -22,38 +22,43 @@ sealed trait Symbol extends Node {
  * Sorts
  */
 
-sealed trait Sort extends Symbol {
-  override val toString = id.toString
-}
+sealed trait Sort extends Symbol
 
 object sorts {
-  object Snap extends Sort { val id = Identifier("Snap") }
-  object Int  extends Sort { val id = Identifier("Int") }
-  object Bool extends Sort { val id = Identifier("Bool") }
-  object Ref  extends Sort { val id = Identifier("Ref") }
-  object Perm extends Sort { val id = Identifier("Perm") }
-  object Unit extends Sort { val id = Identifier("()") }
+  object Snap extends Sort { val id = Identifier("Snap"); override val toString = id.toString }
+  object Int  extends Sort { val id = Identifier("Int");  override val toString = id.toString }
+  object Bool extends Sort { val id = Identifier("Bool"); override val toString = id.toString }
+  object Ref  extends Sort { val id = Identifier("Ref");  override val toString = id.toString }
+  object Perm extends Sort { val id = Identifier("Perm"); override val toString = id.toString }
+  object Unit extends Sort { val id = Identifier("()");   override val toString = id.toString }
 
   case class Seq(elementsSort: Sort) extends Sort {
     val id = Identifier(s"Seq[$elementsSort]")
+    override val toString = id.toString
   }
 
   case class Set(elementsSort: Sort) extends Sort {
     val id = Identifier(s"Set[$elementsSort]")
+    override val toString = id.toString
   }
 
   case class Multiset(elementsSort: Sort) extends Sort {
     val id = Identifier(s"Multiset[$elementsSort]")
+    override val toString = id.toString
   }
 
-  case class UserSort(id: Identifier) extends Sort
+  case class UserSort(id: Identifier) extends Sort {
+    override val toString = id.toString
+  }
 
   case class FieldValueFunction(codomainSort: Sort) extends Sort {
     val id = Identifier(s"FVF[$codomainSort]")
+    override val toString = id.toString
   }
 
   case class PredicateSnapFunction(codomainSort: Sort) extends Sort {
     val id = Identifier(s"PSF[$codomainSort]")
+    override val toString = id.toString
   }
 
 }

@@ -141,24 +141,27 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
           case (r: Complete, sIn, hps, cchs)  => (r, sIn, heap +: hps, None +: cchs)
           case (Incomplete(permsNeeded), sIn, hps, cchs) =>
             val (success, sOut, h, cch) = consumeFunction(sIn, heap, permsNeeded, v)
-            (success, sOut, h +: hps, cch +: cchs)
+            val tEq = (cchs.flatten.lastOption, cch) match {
+              /* Equating wand snapshots would indirectly equate the actual left hand sides when they are applied
+               * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their
+               * snapshots. Also have a look at the comments in the packageWand and applyWand methods.
+               */
+              case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True()
+              case (Some(ch1: NonQuantifiedChunk), Some(ch2: NonQuantifiedChunk)) => ch1.snap === ch2.snap
+              case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
+              case _ => True()
+            }
+            v.decider.assume(tEq)
+            if (v.decider.checkSmoke()) {
+              (Complete(), sOut, h +: hps, cch +: cchs)
+            } else {
+              (success, sOut, h +: hps, cch +: cchs)
+            }
         })
     result match {
       case Complete() =>
         assert(heaps.length == hs.length)
         assert(consumedChunks.length == hs.length)
-        val tEqs =
-          consumedChunks.flatten.sliding(2).map {
-            /* Equating wand snapshots would indirectly equate the actual left hand sides when they are applied
-             * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their
-             * snapshots. Also have a look at the comments in the packageWand and applyWand methods.
-             */
-            case Seq(_: MagicWandChunk, _: MagicWandChunk) => True()
-            case Seq(ch1: NonQuantifiedChunk, ch2: NonQuantifiedChunk) => ch1.snap === ch2.snap
-            case Seq(ch1: QuantifiedBasicChunk, ch2: QuantifiedBasicChunk) => ch1.snapshotMap === ch2.snapshotMap
-            case _ => True()
-          }
-        v.decider.assume(tEqs.toIterable)
         Q(s1, heaps.reverse, consumedChunks.reverse, v)
       case Incomplete(_) => failure
     }
