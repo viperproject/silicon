@@ -164,7 +164,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
       val resource = Resources.resourceDescriptions(chunk.resourceID)
       v.decider.assume(interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties))
-      v.decider.assume(interpreter.buildPathConditionsForResource(chunk.resourceID, resource.staticProperties))
     }
 
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
@@ -272,9 +271,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
       val allChunks = otherChunks ++ newChunks
       val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
-      Resources.resourceDescriptions foreach { case (rid, desc) =>
-        v.decider.assume(interpreter.buildPathConditionsForResource(rid, desc.staticProperties))
-      }
       newChunks foreach { ch =>
         val resource = Resources.resourceDescriptions(ch.resourceID)
         v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))

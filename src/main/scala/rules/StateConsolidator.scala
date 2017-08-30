@@ -57,7 +57,6 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       }
 
       Resources.resourceDescriptions foreach { case (id, desc) =>
-        v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.staticProperties))
         v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
       }
 
@@ -79,9 +78,6 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     val (mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(nonQuantifiedChunks, newNonQuantifiedChunks, v)
 
     val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
-    Resources.resourceDescriptions foreach { case (rid, desc) =>
-      v.decider.assume(interpreter.buildPathConditionsForResource(rid, desc.staticProperties))
-    }
     newlyAddedChunks foreach { ch =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
       v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
@@ -152,5 +148,4 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     (nonQuantifiedChunks, otherChunks)
   }
-
 }

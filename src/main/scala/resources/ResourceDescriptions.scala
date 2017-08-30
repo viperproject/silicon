@@ -18,13 +18,11 @@ package viper.silicon.resources
   */
 trait ResourceDescription {
   val instanceProperties: Seq[Property]
-  val staticProperties: Seq[Property]
   val delayedProperties: Seq[Property]
 }
 
 abstract class BasicDescription extends ResourceDescription {
   override val instanceProperties = Seq(permAtLeastZero)
-  override val staticProperties = Seq[Property]()
   override val delayedProperties = Seq(valNeqImpliesLocNeq)
 
   def permAtLeastZero: Property = {
@@ -78,7 +76,6 @@ class FieldDescription extends BasicDescription {
 
 class MagicWandDescription extends ResourceDescription {
   override val instanceProperties = Seq(permAtLeastZero)
-  override val staticProperties = Seq[Property]()
   override val delayedProperties = Seq[Property]()
 
   def permAtLeastZero: Property = {

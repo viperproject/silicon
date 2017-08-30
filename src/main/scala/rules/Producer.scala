@@ -274,7 +274,6 @@ object producer extends ProductionRules with Immutable {
             val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
             val resource = Resources.resourceDescriptions(ch.resourceID)
             v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
-            v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
 
             val smDef = SnapshotMapDefinition(field, sm, Seq(smValueDef), Seq())
             Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef)), v)
@@ -313,7 +312,6 @@ object producer extends ProductionRules with Immutable {
             val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
             val resource = Resources.resourceDescriptions(ch.resourceID)
             v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
-            v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
 
             val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
             Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef)), v)
