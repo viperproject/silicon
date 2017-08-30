@@ -77,12 +77,13 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
     val (mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(nonQuantifiedChunks, newNonQuantifiedChunks, v)
 
+    v.decider.assume(snapEqs)
+
     val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
     newlyAddedChunks foreach { ch =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
       v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
     }
-    v.decider.assume(snapEqs)
 
     Heap(mergedChunks ++ otherChunks ++ newOtherChunk)
   }
