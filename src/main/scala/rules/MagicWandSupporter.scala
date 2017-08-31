@@ -150,6 +150,20 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
               case _ => True()
             }
             v.decider.assume(tEq)
+
+            /* In the future it might be worth to recheck whether the permissions needed, in the case of
+             * success being an instance of Incomplete, are zero.
+             * For example if an assertion similar to x.f == 0 ==> acc(x.f) has previously been exhaled, Silicon
+             * currently branches and if we learn that x.f != 0 from tEq above one of the branches becomes
+             * infeasible. If a future version of Silicon would introduce conditionals to the permission term
+             * of the corresponding chunk instead of branching we might get something similar to
+             * Incomplete(W - (x.f == 0 ? Z : W)) for success, when using transfer to consume acc(x.f).
+             * After learning x.f != 0 we would then be done, which is not detected by a smoke check.
+             *
+             * Note that when tEq is assumed it should be ensured, that permissions have actually been taken
+             * from heap, i.e. that tEq does not result in already having the required permissions before
+             * consuming from heap.
+             */
             if (v.decider.checkSmoke()) {
               (Complete(), sOut, h +: hps, cch +: cchs)
             } else {
@@ -360,7 +374,9 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
      * It is assumed that only information regarding snapshots is added to the path conditions during the
      * execution of the consumeFunction. If any other assumptions from the wand's lhs or footprint are
      * recorded, this might not be sound! This might especially happen when consumeFromMultipleHeaps is
-     * called in an inconsistent state.
+     * called in an inconsistent state or when transfer results in an inconsistent state. One solution to
+     * consider might be to store the conserved path conditions in the wand's chunk and restore them during
+     * the apply operation.
      */
     val preMark = v.decider.setPathConditionMark()
     executionFlowController.tryOrFail2[Stack[Heap], Stack[Option[CH]]](s, v)((s1, v1, QS) =>
