@@ -27,7 +27,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)
 
-    val heaps  = s.h +: s.reserveHeaps
+    val heaps = s.h +: s.reserveHeaps
     val newHeaps = heaps.map { h =>
       val (nonQuantifiedChunks, otherChunks) = partition(h)
 
@@ -117,6 +117,8 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     }
   }
 
+  // Merges two chunks that are aliases (i.e. that have the same id and the args are proven to be equal)
+  // and returns the merged chunk or None, if the chunks could not be merged
   private def mergeChunks(chunk1: NonQuantifiedChunk, chunk2: NonQuantifiedChunk, v: Verifier) = (chunk1, chunk2) match {
     case (BasicChunk(rid1, id1, args1, snap1, perm1), BasicChunk(_, _, _, snap2, perm2)) =>
       val (combinedSnap, snapEq) = combineSnapshots(snap1, snap2, perm1, perm2, v)
@@ -131,7 +133,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
         case (b1, True()) => (t2, Implies(b1, t2 === t1))
         case (b1, b2) =>
           val t3 = v.decider.fresh(t1.sort)
-          (t3,  And(Implies(b1, t3 === t1), Implies(b2, t3 === t2)))
+          (t3, And(Implies(b1, t3 === t1), Implies(b2, t3 === t2)))
       }
 
     (tSnap, tSnapDef)

@@ -15,7 +15,7 @@ import viper.silicon.verifier.Verifier
 class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) extends PropertyInterpreter(verifier) {
 
   protected case class Info(pm: Map[ChunkPlaceholder, GeneralChunk], resourceID: ResourceID) {
-    def addMapping(cp: ChunkPlaceholder, ch: GeneralChunk) = Info(pm + ((cp, ch)), resourceID)
+    def addMapping(cp: ChunkPlaceholder, ch: GeneralChunk) = Info(pm + (cp -> ch), resourceID)
   }
 
   // both actual non-quantified chunks and singleton quantified chunks

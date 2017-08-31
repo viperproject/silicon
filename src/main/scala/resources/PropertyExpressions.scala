@@ -16,6 +16,8 @@ sealed trait EquatableKind extends Kind
 /**
   * A kind that is allowed to occur in an <code>IfThenElse</code> or <code>CheckThenElse</code> expression.
   */
+// TODO: This trait is needed, since it is currently not possible to build a term that puts
+// arguments into a terms.Ite expression, since arguments are lists.
 sealed trait IteUsableKind extends Kind
 
 object kinds {
