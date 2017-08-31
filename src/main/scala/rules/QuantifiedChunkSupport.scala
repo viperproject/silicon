@@ -8,15 +8,16 @@ package viper.silicon.rules
 
 import scala.reflect.ClassTag
 import viper.silver.ast
-import viper.silver.ast.Location
+import viper.silver.ast.{Location, Resource}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.resources.{QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
+import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
@@ -127,20 +128,6 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                        triggers: Seq[Trigger],
                        qidPrefix: String)
                       : Quantification
-
-  def receiverNonNullAxiom(qvars: Seq[Var],
-                           condition: Term,
-                           receiver: Term,
-                           perms: Term,
-                           triggers: Seq[Trigger],
-                           qidPrefix: String)
-                          : Quantification
-
-  def permissionsNonNegativeAxioms(qvars: Seq[Var],
-                                   perms: Term,
-                                   triggers: Seq[Trigger],
-                                   qidPrefix: String)
-                                  : Quantification
 
   def createSingletonQuantifiedChunk(codomainQVars: Seq[Var],
                                      resource: ast.Resource,
@@ -465,6 +452,98 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   }
 
   /* Manipulating quantified chunks */
+
+  def produce(s: State,
+              forall: ast.Forall,
+              rec: Resource,
+              qvars: Seq[Var],
+              formalQVars: Seq[Var],
+              qid: String,
+              optTrigger: Option[Seq[ast.Trigger]],
+              tTriggers: Seq[Trigger],
+              auxQuantResult: Either[Quantification,
+                Seq[Quantification]],
+              tCond: Term,
+              tArgs: Seq[Term],
+              tSnap: Term,
+              tPerm: Term,
+              v: Verifier)
+             (Q: (State, Verifier) => VerificationResult)
+             : VerificationResult = {
+
+    val gain = PermTimes(tPerm, s.permissionScalingFactor)
+    val (ch: QuantifiedBasicChunk, inverseFunctions) =
+      quantifiedChunkSupporter.createQuantifiedChunk(
+        qvars                = qvars,
+        condition            = tCond,
+        resource             = rec,
+        arguments            = tArgs,
+        permissions          = gain,
+        codomainQVars        = formalQVars,
+        sm                   = tSnap,
+        additionalInvArgs    = s.relevantQuantifiedVariables(tArgs),
+        userProvidedTriggers = optTrigger.map(_ => tTriggers),
+        qidPrefix            = qid,
+        v                    = v)
+    val (effectiveTriggers, effectiveTriggersQVars) =
+      optTrigger match {
+        case Some(_) =>
+          /* Explicit triggers were provided */
+          (tTriggers, qvars)
+        case None =>
+          /* No explicit triggers were provided and we resort to those from the inverse
+           * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
+           * Note that the trigger generation code might have added quantified variables
+           * to that axiom.
+           */
+          (inverseFunctions.axiomInversesOfInvertibles.triggers,
+            inverseFunctions.axiomInversesOfInvertibles.vars)
+      }
+
+    if (effectiveTriggers.isEmpty)
+      v.logger.warn(s"No triggers available for quantifier at ${forall.pos}")
+
+    v.decider.prover.comment("Nested auxiliary terms")
+    auxQuantResult match {
+      case Left(tAuxQuantNoTriggers) =>
+        /* No explicit triggers provided */
+        v.decider.assume(
+          tAuxQuantNoTriggers.copy(
+            vars = effectiveTriggersQVars,
+            triggers = effectiveTriggers))
+
+      case Right(tAuxQuants) =>
+        /* Explicit triggers were provided. */
+        v.decider.assume(tAuxQuants)
+    }
+    v.decider.prover.comment("Definitional axioms for inverse functions")
+    val definitionalAxiomMark = v.decider.setPathConditionMark()
+    v.decider.assume(inverseFunctions.definitionalAxioms)
+    val conservedPcs =
+      if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
+      else s.conservedPcs
+
+    val resource = Resources.resourceDescriptions(ch.resourceID)
+    val interpreter = new QuantifiedPropertyInterpreter(v)
+    resource.instanceProperties.foreach { property =>
+      v.decider.prover.comment(property.description)
+      v.decider.assume(interpreter.buildPathConditionForChunk(
+        chunk = ch,
+        property = property,
+        qvars = effectiveTriggersQVars,
+        args = tArgs,
+        perms = gain,
+        condition = tCond,
+        triggers = effectiveTriggers,
+        qidPrefix = qid)
+      )
+    }
+
+    val s1 = s.copy(h = s.h + ch,
+      functionRecorder = s.functionRecorder.recordFieldInv(inverseFunctions),
+      conservedPcs = conservedPcs)
+    Q(s1, v)
+  }
 
   def consumeSingleLocation(s: State,
                             h: Heap,
@@ -811,34 +890,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       implies,
       triggers,
       s"$qidPrefix-rcvrInj")
-  }
-
-  def receiverNonNullAxiom(qvars: Seq[Var],
-                           condition: Term,
-                           receiver: Term,
-                           perms: Term,
-                           triggers: Seq[Trigger],
-                           qidPrefix: String)
-                          : Quantification = {
-
-   Forall(
-      qvars,
-      Implies(And(condition, IsPositive(perms)), receiver !== Null()),
-      triggers,
-      s"$qidPrefix-rcvrNonNull")
-  }
-
-  def permissionsNonNegativeAxioms(qvars: Seq[Var],
-                                   perms: Term,
-                                   triggers: Seq[Trigger],
-                                   qidPrefix: String)
-                                  : Quantification = {
-
-    Forall(
-      qvars,
-      IsNonNegative(perms),
-      triggers,
-      s"$qidPrefix-permNonNeg")
   }
 
   // TODO: Update method's API documentation

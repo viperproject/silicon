@@ -365,79 +365,24 @@ object producer extends ProductionRules with Immutable {
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v){
+        evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, auxQuantResult, v1) =>
-            val snap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
-            val gain = PermTimes(tPerm, s1.permissionScalingFactor)
-            val (ch: QuantifiedBasicChunk, inverseFunctions) =
-              quantifiedChunkSupporter.createQuantifiedChunk(
-                qvars                = qvars,
-                condition            = tCond,
-                resource             = acc.loc.field,
-                arguments            = Seq(tRcvr),
-                permissions          = gain,
-                codomainQVars        = Seq(`?r`),
-                sm                   = snap,
-                additionalInvArgs    = s1.relevantQuantifiedVariables(Seq(tRcvr)),
-                userProvidedTriggers = optTrigger.map(_ => tTriggers),
-                qidPrefix            = qid,
-                v                    = v1)
-            val (effectiveTriggers, effectiveTriggersQVars) =
-              optTrigger match {
-                case Some(_) =>
-                  /* Explicit triggers were provided */
-                  (tTriggers, qvars)
-                case None =>
-                  /* No explicit triggers were provided and we resort to those from the inverse
-                   * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
-                   * Note that the trigger generation code might have added quantified variables
-                   * to that axiom.
-                   */
-                  (inverseFunctions.axiomInversesOfInvertibles.triggers,
-                   inverseFunctions.axiomInversesOfInvertibles.vars)
-              }
-
-            if (effectiveTriggers.isEmpty)
-              v1.logger.warn(s"No triggers available for quantifier at ${forall.pos}")
-
-            v1.decider.prover.comment("Nested auxiliary terms")
-            auxQuantResult match {
-              case Left(tAuxQuantNoTriggers) =>
-                /* No explicit triggers provided */
-                v1.decider.assume(
-                  tAuxQuantNoTriggers.copy(
-                    vars = effectiveTriggersQVars,
-                    triggers = effectiveTriggers))
-
-              case Right(tAuxQuants) =>
-                /* Explicit triggers were provided. */
-                v1.decider.assume(tAuxQuants)
-            }
-            v1.decider.prover.comment("Definitional axioms for inverse functions")
-            val definitionalAxiomMark = v1.decider.setPathConditionMark()
-            v1.decider.assume(inverseFunctions.definitionalAxioms)
-            val conservedPcs =
-              if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
-              else s1.conservedPcs
-
-            val resource = Resources.resourceDescriptions(ch.resourceID)
-            val interpreter = new QuantifiedPropertyInterpreter(v)
-            resource.instanceProperties.foreach { property =>
-              v1.decider.prover.comment(property.description)
-              v1.decider.assume(interpreter.buildPathConditionForChunk(
-                chunk = ch,
-                property = property,
-                qvars = effectiveTriggersQVars,
-                args = Seq(tRcvr),
-                perms = gain,
-                condition = tCond,
-                triggers = effectiveTriggers,
-                qidPrefix = qid)
-              )
-            }
-
-            val s2 = s1.copy(h = s1.h + ch, functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
-            Q(s2, v1)}
+            val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
+            quantifiedChunkSupporter.produce(
+              s1,
+              forall,
+              acc.loc.field,
+              qvars, Seq(`?r`),
+              qid, optTrigger,
+              tTriggers,
+              auxQuantResult,
+              tCond,
+              Seq(tRcvr),
+              tSnap,
+              tPerm,
+              v1
+            )(Q)
+        }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
         val predicate = Verifier.program.findPredicate(acc.loc.predicateName)
@@ -448,77 +393,24 @@ object producer extends ProductionRules with Immutable {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, auxQuantResult, v1) =>
-            val snap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
-            val gain = PermTimes(tPerm, s1.permissionScalingFactor)
-            val (ch: QuantifiedBasicChunk, inverseFunctions) =
-              quantifiedChunkSupporter.createQuantifiedChunk(
-                qvars                = qvars,
-                condition            = tCond,
-                resource             = predicate,
-                arguments            = tArgs,
-                permissions          = gain,
-                sm                   = snap,
-                codomainQVars        = formalVars,
-                additionalInvArgs    = s1.relevantQuantifiedVariables(tArgs),
-                userProvidedTriggers = optTrigger.map(_ => tTriggers),
-                qidPrefix            = qid,
-                v                    = v1)
-            val (effectiveTriggers, effectiveTriggersQVars) =
-              optTrigger match {
-                case Some(_) =>
-                  /* Explicit triggers were provided */
-                  (tTriggers, qvars)
-                case None =>
-                  /* No explicit triggers were provided and we resort to those from the inverse
-                   * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
-                   * Note that the trigger generation code might have added quantified variables
-                   * to that axiom.
-                   */
-                  (inverseFunctions.axiomInversesOfInvertibles.triggers,
-                   inverseFunctions.axiomInversesOfInvertibles.vars)
-              }
-            if (effectiveTriggers.isEmpty)
-              v1.logger.warn(s"No triggers available for quantifier at ${forall.pos}")
-
-            v1.decider.prover.comment("Nested auxiliary terms")
-            auxQuantResult match {
-              case Left(tAuxQuantNoTriggers) =>
-                /* No explicit triggers provided */
-                v1.decider.assume(
-                  tAuxQuantNoTriggers.copy(
-                    vars = effectiveTriggersQVars,
-                    triggers = effectiveTriggers))
-
-              case Right(tAuxQuants) =>
-                /* Explicit triggers were provided. */
-                v1.decider.assume(tAuxQuants)
-            }
-
-            v1.decider.prover.comment("Definitional axioms for inverse functions")
-            val definitionalAxiomMark = v1.decider.setPathConditionMark()
-            v1.decider.assume(inverseFunctions.definitionalAxioms)
-            val conservedPcs =
-              if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
-              else s1.conservedPcs
-
-            val resource = Resources.resourceDescriptions(ch.resourceID)
-            val interpreter = new QuantifiedPropertyInterpreter(v)
-            resource.instanceProperties.foreach { property =>
-              v1.decider.prover.comment(property.description)
-              v1.decider.assume(interpreter.buildPathConditionForChunk(
-                chunk = ch,
-                property = property,
-                qvars = effectiveTriggersQVars,
-                args = tArgs,
-                perms = gain,
-                condition = tCond,
-                triggers = effectiveTriggers,
-                qidPrefix = qid)
-              )
-            }
-
-            val s2 = s1.copy(h = s1.h + ch, functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
-            Q(s2, v1)}
+            val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
+            quantifiedChunkSupporter.produce(
+              s1,
+              forall,
+              predicate,
+              qvars,
+              formalVars,
+              qid,
+              optTrigger,
+              tTriggers,
+              auxQuantResult,
+              tCond,
+              tArgs,
+              tSnap,
+              tPerm,
+              v1
+            )(Q)
+        }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
         val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
@@ -529,77 +421,24 @@ object producer extends ProductionRules with Immutable {
         val qid = MagicWandIdentifier(wand, Verifier.program).toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
-            val snap = sf(sorts.PredicateSnapFunction(sorts.Snap), v1)
-            val gain = PermTimes(FullPerm(), s1.permissionScalingFactor)
-            val (ch: QuantifiedBasicChunk, inverseFunctions) =
-              quantifiedChunkSupporter.createQuantifiedChunk(
-                qvars                = qvars,
-                condition            = tCond,
-                resource             = wand,
-                arguments            = tArgs,
-                permissions          = gain,
-                sm                   = snap,
-                codomainQVars        = formalVars,
-                additionalInvArgs    = s1.relevantQuantifiedVariables(tArgs),
-                userProvidedTriggers = optTrigger.map(_ => tTriggers),
-                qidPrefix            = qid,
-                v                    = v1)
-            val (effectiveTriggers, effectiveTriggersQVars) =
-              optTrigger match {
-                case Some(_) =>
-                  /* Explicit triggers were provided */
-                  (tTriggers, qvars)
-                case None =>
-                  /* No explicit triggers were provided and we resort to those from the inverse
-                   * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
-                   * Note that the trigger generation code might have added quantified variables
-                   * to that axiom.
-                   */
-                  (inverseFunctions.axiomInversesOfInvertibles.triggers,
-                    inverseFunctions.axiomInversesOfInvertibles.vars)
-              }
-            if (effectiveTriggers.isEmpty)
-              v1.logger.warn(s"No triggers available for quantifier at ${forall.pos}")
-
-            v1.decider.prover.comment("Nested auxiliary terms")
-            auxQuantResult match {
-              case Left(tAuxQuantNoTriggers) =>
-                /* No explicit triggers provided */
-                v1.decider.assume(
-                  tAuxQuantNoTriggers.copy(
-                    vars = effectiveTriggersQVars,
-                    triggers = effectiveTriggers))
-
-              case Right(tAuxQuants) =>
-                /* Explicit triggers were provided. */
-                v1.decider.assume(tAuxQuants)
-            }
-
-            v1.decider.prover.comment("Definitional axioms for inverse functions")
-            val definitionalAxiomMark = v1.decider.setPathConditionMark()
-            v1.decider.assume(inverseFunctions.definitionalAxioms)
-            val conservedPcs =
-              if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
-              else s1.conservedPcs
-
-            val resource = Resources.resourceDescriptions(ch.resourceID)
-            val interpreter = new QuantifiedPropertyInterpreter(v)
-            resource.instanceProperties.foreach { property =>
-              v1.decider.prover.comment(property.description)
-              v1.decider.assume(interpreter.buildPathConditionForChunk(
-                chunk = ch,
-                property = property,
-                qvars = effectiveTriggersQVars,
-                args = tArgs,
-                perms = gain,
-                condition = tCond,
-                triggers = effectiveTriggers,
-                qidPrefix = qid)
-              )
-            }
-
-            val s2 = s1.copy(h = s1.h + ch, functionRecorder = s1.functionRecorder.recordFieldInv(inverseFunctions), conservedPcs = conservedPcs)
-            Q(s2, v1)}
+            val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap), v1)
+            quantifiedChunkSupporter.produce(
+              s1,
+              forall,
+              wand,
+              qvars,
+              formalVars,
+              qid,
+              optTrigger,
+              tTriggers,
+              auxQuantResult,
+              tCond,
+              tArgs,
+              tSnap,
+              FullPerm(),
+              v1
+            )(Q)
+        }
 
       case _: ast.InhaleExhaleExp =>
         Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a))
