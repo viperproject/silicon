@@ -389,7 +389,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
           val reversedArgs: Seq[ast.Exp] = backtranslate(s.g.values, allChunks.toSeq, args, program)
 
           if (args.length == reversedArgs.length)
-            Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, program.findPredicate(name))(), ast.FullPerm()())())
+            Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, name)(), ast.FullPerm()())())
           else
             None
       }.toSeq
