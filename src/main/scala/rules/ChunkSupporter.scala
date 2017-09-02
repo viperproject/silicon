@@ -306,6 +306,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
              (Q: (State, Heap, Verifier) => VerificationResult) = {
+    // Try to merge the chunk into the heap by finding an alias.
+    // In any case, property assumptions are added after the merge step.
     Q(s, stateConsolidator.merge(h, ch, v), v)
   }
 
