@@ -248,7 +248,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           val pTaken = App(pTakenMacro, Seq())
           val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
           if (definiteAlias.isEmpty) {
-            constraints.append((eq, newChunk.snap))
+            constraints.append((And(eq, IsPositive(ch.perm)), newChunk.snap))
           }
           pNeeded = PermMinus(pNeeded, pTaken)
 
