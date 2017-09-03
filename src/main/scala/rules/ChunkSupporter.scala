@@ -137,9 +137,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
-        // Complete exhale does not work in functions since returning a fresh snapshot leads to triggering problems,
-        // therefore check for NoopFunctionRecorder, which means we are not in a function.
-        if (Verifier.config.enableMoreCompleteExhale() && s1.functionRecorder == NoopFunctionRecorder) {
+        if (Verifier.config.enableMoreCompleteExhale()) {
           consumeComplete(s1, s1.h, id, args, perms, ve, v1)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
           })
@@ -229,16 +227,10 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       var pNeeded = perms
       var pSum: Term = NoPerm()
       val newChunks = ListBuffer[NonQuantifiedChunk]()
-      val equalities = ListBuffer[Term]()
+      val constraints = ListBuffer[(Term, Term)]()
 
       val definiteAlias = findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
-      val (snap, fresh) = definiteAlias match {
-        case Some(alias) => (alias.snap, None)
-        case None =>
-          val sort = relevantChunks.head.snap.sort
-          val f = v.decider.appliedFresh("complete_fresh", sort, s.relevantQuantifiedVariables)
-          (f, Some(f))
-      }
+
       var moreNeeded = true
 
       val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
@@ -254,8 +246,10 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm())
           val pTakenMacro = v.decider.freshMacro("complete_pTaken", Seq(), pTakenBody)
           val pTaken = App(pTakenMacro, Seq())
-          val newChunk = ch.withSnap(ch.snap).withPerm(PermMinus(ch.perm, pTaken))
-          equalities.append(Implies(And(IsPositive(ch.perm), eq), snap === newChunk.snap))
+          val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
+          if (definiteAlias.isEmpty) {
+            constraints.append((eq, newChunk.snap))
+          }
           pNeeded = PermMinus(pNeeded, pTaken)
 
           if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
@@ -269,26 +263,48 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         }
       }
 
+      // Creates the snapshot that is returned by the consume method
+      // Since the permission amount to be exhaled cannot be 0, there has to
+      // be some alias in the heap whose snapshot we can return by building
+      // a conditional expression
+      def createSnapshot(constraints: List[(Term, Term)]): Option[Term] = constraints match {
+        case (_, sn) :: Nil => Some(sn)
+        case (eq, sn) :: tail => createSnapshot(tail).flatMap(s => Some(Ite(eq, sn, s)))
+        case _ => None
+      }
+
+      // Introducing a fresh snapshot can lead to triggering problems when using functions. We therefore return
+      // the snapshot created by createdSnapshot. However, this is unsound if no definite alias was found and
+      // the permission amount to be exhaled is 0, since in that case it is possible to not have any alias (not
+      // even a disjunctive alias) in the heap, which means that the last snapshot in the heap would be returned.
+      // In the case where there is no definite alias and the permission amount to be exhaled cannot be proven to
+      // be 0, a fresh snapshot is therefore returned.
+      val s1 = if (consumeExact && definiteAlias.isEmpty
+          && !v.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
+        val sort = relevantChunks.head.snap.sort
+        val fresh = v.decider.fresh(sort)
+        constraints.append((True(), fresh))
+        s.copy(functionRecorder = s.functionRecorder.recordFreshSnapshot(fresh.applicable))
+      } else {
+        s
+      }
+
+      val snap = definiteAlias.map(_.snap).orElse(createSnapshot(constraints.toList))
+
       val allChunks = otherChunks ++ newChunks
       val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
       newChunks foreach { ch =>
         val resource = Resources.resourceDescriptions(ch.resourceID)
         v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
       }
-      v.decider.assume(equalities)
 
       val newHeap = Heap(allChunks)
-      // TODO: remove cast
-      val sOpt = fresh.map { f =>
-        s.copy(functionRecorder = s.functionRecorder.recordFreshSnapshot(f.applicable.asInstanceOf[Function]))
-      }
-      val s1 = sOpt.getOrElse(s)
 
       if (!moreNeeded) {
         if (!consumeExact) {
           v.decider.assume(PermLess(perms, pSum))
         }
-        Q(s1, newHeap, Some(snap), v)
+        Q(s1, newHeap, snap, v)
       } else {
         val toAssert = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
         v.decider.assert(toAssert) {
@@ -296,7 +312,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
             if (!consumeExact) {
               v.decider.assume(PermLess(perms, pSum))
             }
-            Q(s1, newHeap, Some(snap), v)
+            Q(s1, newHeap, snap, v)
           case false =>
             Failure(ve).withLoad(args)
         }
