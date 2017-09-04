@@ -247,9 +247,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           val pTakenMacro = v.decider.freshMacro("complete_pTaken", Seq(), pTakenBody)
           val pTaken = App(pTakenMacro, Seq())
           val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
-          if (definiteAlias.isEmpty) {
-            constraints.append((And(eq, IsPositive(ch.perm)), newChunk.snap))
-          }
+          constraints.append((And(eq, IsPositive(ch.perm)), newChunk.snap))
           pNeeded = PermMinus(pNeeded, pTaken)
 
           if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
@@ -264,9 +262,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       }
 
       // Creates the snapshot that is returned by the consume method
-      // Since the permission amount to be exhaled cannot be 0, there has to
-      // be some alias in the heap whose snapshot we can return by building
-      // a conditional expression
+      // by building a conditional expression
       def createSnapshot(constraints: List[(Term, Term)]): Option[Term] = constraints match {
         case (_, sn) :: Nil => Some(sn)
         case (eq, sn) :: tail => createSnapshot(tail).flatMap(s => Some(Ite(eq, sn, s)))
@@ -274,11 +270,10 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       }
 
       // Introducing a fresh snapshot can lead to triggering problems when using functions. We therefore return
-      // the snapshot created by createdSnapshot. However, this is unsound if no definite alias was found and
-      // the permission amount to be exhaled is 0, since in that case it is possible to not have any alias (not
-      // even a disjunctive alias) in the heap, which means that the last snapshot in the heap would be returned.
-      // In the case where there is no definite alias and the permission amount to be exhaled cannot be proven to
-      // be 0, a fresh snapshot is therefore returned.
+      // the snapshot created by createdSnapshot. However, this is unsound if the permission amount to be exhaled
+      // is 0, since in that case it is possible to not have any alias (not even a disjunctive alias) in the heap,
+      // which means that the last snapshot in the heap would be returned. In the case where the permission amount
+      // to be exhaled cannot be proven to be 0, a fresh snapshot is therefore used.
       val s1 = if (consumeExact && definiteAlias.isEmpty
           && !v.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
         val sort = relevantChunks.head.snap.sort
@@ -289,7 +284,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         s
       }
 
-      val snap = definiteAlias.map(_.snap).orElse(createSnapshot(constraints.toList))
+      val snap = createSnapshot(constraints.toList)
 
       val allChunks = otherChunks ++ newChunks
       val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
