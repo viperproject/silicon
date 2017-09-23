@@ -226,12 +226,15 @@ object evaluator extends EvaluationRules with Immutable {
                   Q(s2, smLookup, v1)}}})
 
       case fa: ast.FieldAccess =>
-        evalLocationAccess(s, fa, pve, v)((s1, name, args, v1) => {
-          val chunkID = BasicChunkIdentifier(name)
+        evalLocationAccess(s, fa, pve, v)((s1, name, tArgs, v1) => {
+          val id = BasicChunkIdentifier(name)
           val ve = pve dueTo InsufficientPermission(fa)
-          chunkSupporter.withChunk[BasicChunk](s1, chunkID, args, None, ve, v1)((s2, ch, v2) => {
-            val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, ch.snap))
-            Q(s3, ch.snap, v2)})})
+          chunkSupporter.lookup(s1, s1.h, id, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
+            val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
+            val s3 = s2.copy(h = h2, functionRecorder = fr)
+            Q(s3, tSnap, v1)
+          })
+        })
 
       case ast.Not(e0) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>

@@ -13,7 +13,7 @@ import viper.silicon.verifier.Verifier
 
 class QuantifiedPropertyInterpreter(verifier: Verifier) extends PropertyInterpreter(verifier) {
 
-  protected case class Info(chunk: QuantifiedChunk, arguments: Seq[Term], perms: Term)
+  protected case class Info(chunk: QuantifiedChunk, args: Seq[Term], perms: Term)
 
   private var argsUsed = false
 
@@ -37,12 +37,12 @@ class QuantifiedPropertyInterpreter(verifier: Verifier) extends PropertyInterpre
 
   override protected def buildValueAccess(chunkPlaceholder: ChunkPlaceholder, info: Info) = {
     argsUsed = true
-    info.chunk.valueAt(info.chunk.quantifiedVars)
+    info.chunk.valueAt(info.args)
   }
 
   override protected def extractArguments(chunkVariable: ChunkPlaceholder, info: Info) = {
     argsUsed = true
-    info.arguments
+    info.args
   }
 
   override protected def buildCheck[K <: IteUsableKind]

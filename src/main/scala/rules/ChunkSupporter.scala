@@ -8,15 +8,14 @@ package viper.silicon.rules
 
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
+import viper.silver.verifier.VerificationError
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, Success, VerificationResult}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
-import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.VerificationError
 
 trait ChunkSupportRules extends SymbolicExecutionRules {
   def consume(s: State,
@@ -34,45 +33,14 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              (Q: (State, Heap, Verifier) => VerificationResult)
              : VerificationResult
 
-  def withChunk[CH <: NonQuantifiedChunk: ClassTag]
-               (s: State,
-                h: Heap,
-                id: ChunkIdentifer,
-                args: Seq[Term],
-                ve: VerificationError,
-                v: Verifier)
-               (Q: (State, Heap, CH, Verifier) => VerificationResult)
-               : VerificationResult
-
-  def withChunk[CH <: NonQuantifiedChunk: ClassTag]
-               (s: State,
-                h: Heap,
-                id: ChunkIdentifer,
-                args: Seq[Term],
-                optPerms: Option[Term],
-                ve: VerificationError,
-                v: Verifier)
-               (Q: (State, Heap, CH, Verifier) => VerificationResult)
-               : VerificationResult
-
-  def withChunk[CH <: NonQuantifiedChunk: ClassTag]
-               (s: State,
-                id: ChunkIdentifer,
-                args: Seq[Term],
-                ve: VerificationError,
-                v: Verifier)
-               (Q: (State, CH, Verifier) => VerificationResult)
-               : VerificationResult
-
-  def withChunk[CH <: NonQuantifiedChunk: ClassTag]
-               (s: State,
-                id: ChunkIdentifer,
-                args: Seq[Term],
-                optPerms: Option[Term],
-                ve: VerificationError,
-                v: Verifier)
-               (Q: (State, CH, Verifier) => VerificationResult)
-               : VerificationResult
+  def lookup(s: State,
+             h: Heap,
+             id: ChunkIdentifer,
+             args: Seq[Term],
+             ve: VerificationError,
+             v: Verifier)
+            (Q: (State, Heap, Term, Verifier) => VerificationResult)
+            : VerificationResult
 
   def findChunk[CH <: NonQuantifiedChunk: ClassTag]
                (chunks: Iterable[Chunk],
@@ -91,7 +59,6 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                       (chunks: Iterable[Chunk],
                        id: ChunkIdentifer)
                       : Iterable[CH]
-
 }
 
 object chunkSupporter extends ChunkSupportRules with Immutable {
@@ -137,9 +104,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
-        // Complete exhale does not work in functions since returning a fresh snapshot leads to triggering problems,
-        // therefore check for NoopFunctionRecorder, which means we are not in a function.
-        if (Verifier.config.enableMoreCompleteExhale() && s1.functionRecorder == NoopFunctionRecorder) {
+        if (Verifier.config.enableMoreCompleteExhale()) {
           consumeComplete(s1, s1.h, id, args, perms, ve, v1)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
           })
@@ -157,7 +122,12 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     }
   }
 
-  private def consumeGreedy(s: State, h: Heap, id: ChunkIdentifer, args: Seq[Term], perms: Term, v: Verifier) = {
+  private def consumeGreedy(s: State,
+                            h: Heap,
+                            id: ChunkIdentifer,
+                            args: Seq[Term],
+                            perms: Term,
+                            v: Verifier) = {
     val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
 
     def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap) = {
@@ -229,21 +199,14 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       var pNeeded = perms
       var pSum: Term = NoPerm()
       val newChunks = ListBuffer[NonQuantifiedChunk]()
-      val equalities = ListBuffer[Term]()
-
-      val definiteAlias = findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
-      val (snap, fresh) = definiteAlias match {
-        case Some(alias) => (alias.snap, None)
-        case None =>
-          val sort = relevantChunks.head.snap.sort
-          val f = v.decider.appliedFresh("complete_fresh", sort, s.relevantQuantifiedVariables)
-          (f, Some(f))
-      }
+      val constraints = ListBuffer[(Term, Term)]()
       var moreNeeded = true
 
+      val definiteAlias = findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
+
       val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
-        // The definitive alias should get priority, since it is always possible to consume from it
-        // Else, look for a syntactic alias
+        // The definitive alias and syntactic aliases should get priority, since it is always
+        // possible to consume from them
         definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
       }
 
@@ -254,8 +217,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm())
           val pTakenMacro = v.decider.freshMacro("complete_pTaken", Seq(), pTakenBody)
           val pTaken = App(pTakenMacro, Seq())
-          val newChunk = ch.withSnap(ch.snap).withPerm(PermMinus(ch.perm, pTaken))
-          equalities.append(Implies(And(IsPositive(ch.perm), eq), snap === newChunk.snap))
+          val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
+          constraints.append((And(eq, IsPositive(ch.perm)), newChunk.snap))
           pNeeded = PermMinus(pNeeded, pTaken)
 
           if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
@@ -269,26 +232,42 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         }
       }
 
+      // A fresh snapshot is only needed, if we are consuming no permissions and
+      // there is no definite alias with a non-zero permission amount
+      val toCheck = Or(IsPositive(perms), IsPositive(definiteAlias.map(_.perm).getOrElse(NoPerm())))
+      val s1 = if (consumeExact && !v.decider.check(toCheck, Verifier.config.checkTimeout())) {
+        val sort = relevantChunks.head.snap.sort
+        val fresh = v.decider.fresh(sort)
+        constraints.append((True(), fresh))
+        s.copy(functionRecorder = s.functionRecorder.recordFreshSnapshot(fresh.applicable))
+      } else {
+        s
+      }
+
+      // Creates the snapshot that is returned by the consume method
+      // by building a conditional expression
+      def createSnapshot(constraints: List[(Term, Term)]): Option[Term] = constraints match {
+        case (_, sn) :: Nil => Some(sn)
+        case (eq, sn) :: tail => createSnapshot(tail).flatMap(s => Some(Ite(eq, sn, s)))
+        case _ => None
+      }
+
+      val snap = createSnapshot(constraints.toList)
+
       val allChunks = otherChunks ++ newChunks
       val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
       newChunks foreach { ch =>
         val resource = Resources.resourceDescriptions(ch.resourceID)
         v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
       }
-      v.decider.assume(equalities)
 
       val newHeap = Heap(allChunks)
-      // TODO: remove cast
-      val sOpt = fresh.map { f =>
-        s.copy(functionRecorder = s.functionRecorder.recordFreshSnapshot(f.applicable.asInstanceOf[Function]))
-      }
-      val s1 = sOpt.getOrElse(s)
 
       if (!moreNeeded) {
         if (!consumeExact) {
           v.decider.assume(PermLess(perms, pSum))
         }
-        Q(s1, newHeap, Some(snap), v)
+        Q(s1, newHeap, snap, v)
       } else {
         val toAssert = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
         v.decider.assert(toAssert) {
@@ -296,7 +275,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
             if (!consumeExact) {
               v.decider.assume(PermLess(perms, pSum))
             }
-            Q(s1, newHeap, Some(snap), v)
+            Q(s1, newHeap, snap, v)
           case false =>
             Failure(ve).withLoad(args)
         }
@@ -311,77 +290,100 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     Q(s, stateConsolidator.merge(h, ch, v), v)
   }
 
-  def withChunk[CH <: NonQuantifiedChunk: ClassTag]
-               (s: State,
-                h: Heap,
-                id: ChunkIdentifer,
-                args: Seq[Term],
-                ve: VerificationError,
-                v: Verifier)
-               (Q: (State, Heap, CH, Verifier) => VerificationResult)
-               : VerificationResult = {
+  def lookup(s: State,
+             h: Heap,
+             id: ChunkIdentifer,
+             args: Seq[Term],
+             ve: VerificationError,
+             v: Verifier)
+            (Q: (State, Heap, Term, Verifier) => VerificationResult)
+            : VerificationResult = {
+    executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
+      val lookupFunction = if (Verifier.config.enableMoreCompleteExhale()) lookupComplete _ else lookupGreedy _
+      lookupFunction(s1, s1.h, id, args, ve, v1)((s2, tSnap, v2) => {
+          QS(s2.copy(h = s.h), s2.h, tSnap, v2)
+      })
+    })(Q)
+  }
 
-    executionFlowController.tryOrFail2[Heap, CH](s.copy(h = h), v)((s1, v1, QS) =>
-      findChunk[CH](s1.h.values, id, args, v1) match {
-        case Some(chunk) =>
-          QS(s1.copy(h = s.h), s1.h, chunk, v1)
+  private def lookupGreedy(s: State,
+                           h: Heap,
+                           id: ChunkIdentifer,
+                           args: Seq[Term],
+                           ve: VerificationError,
+                           v: Verifier)
+                          (Q: (State, Term, Verifier) => VerificationResult)
+                          : VerificationResult = {
+    findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+      case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
+        Q(s, ch.snap, v)
+      case _ if v.decider.checkSmoke() =>
+        Success() // TODO: Mark branch as dead?
+      case _ =>
+        Failure(ve).withLoad(args)
+    }
+  }
 
-        case None =>
-          if (v1.decider.checkSmoke())
-            Success() /* TODO: Mark branch as dead? */
-          else
+  private def lookupComplete(s: State,
+                             h: Heap,
+                             id: ChunkIdentifer,
+                             args: Seq[Term],
+                             ve: VerificationError,
+                             v: Verifier)
+                            (Q: (State, Term, Verifier) => VerificationResult)
+                            : VerificationResult = {
+    val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
+
+    if (relevantChunks.isEmpty) {
+      if (v.decider.checkSmoke()) {
+        Success() // TODO: Mark branch as dead?
+      } else {
+        Failure(ve).withLoad(args)
+      }
+    } else {
+      var pSum: Term = NoPerm()
+      val constraints = ListBuffer[(Term, Term)]()
+      var moreNeeded = true
+
+      val definiteAlias = findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
+
+      val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
+        // The definitive alias should get priority, since it is always possible to consume from it
+        // Else, look for a syntactic alias
+        definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
+      }
+
+      relevantChunks.sortWith(sortFunction) foreach { ch =>
+        if (moreNeeded) {
+          val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
+          pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm()))
+          constraints.append((And(eq, IsPositive(ch.perm)), ch.snap))
+          moreNeeded = !v.decider.check(IsPositive(pSum), Verifier.config.splitTimeout())
+        }
+      }
+
+      // Creates the snapshot that is returned by the lookup method
+      // by building a conditional expression
+      def createSnapshot(constraints: List[(Term, Term)]): Term = constraints match {
+        case (_, sn) :: Nil => sn
+        case (eq, sn) :: tail => Ite(eq, sn, createSnapshot(tail))
+        case _ => sys.error("Should never happen, since relevant chunks is non-empty")
+      }
+
+      val snap = createSnapshot(constraints.toList)
+
+      if (!moreNeeded) {
+        Q(s, snap, v)
+      } else {
+        v.decider.assert(IsPositive(pSum)) {
+          case true =>
+            Q(s, snap, v)
+          case false =>
             Failure(ve).withLoad(args)
+        }
       }
-    )(Q)
+    }
   }
-
-  def withChunk[CH <: NonQuantifiedChunk: ClassTag]
-               (s: State,
-                h: Heap,
-                id: ChunkIdentifer,
-                args: Seq[Term],
-                optPerms: Option[Term],
-                ve: VerificationError,
-                v: Verifier)
-               (Q: (State, Heap, CH, Verifier) => VerificationResult)
-               : VerificationResult = {
-
-    withChunk[CH](s, h, id, args, ve, v)((s1, h1, ch, v1) => {
-      val permCheck = optPerms match {
-        case Some(p) => PermAtMost(p, ch.perm)
-        case None => ch.perm !== NoPerm()
-      }
-
-      v1.decider.assert(permCheck) {
-        case true =>
-          v1.decider.assume(permCheck)
-          Q(s1, h1, ch, v1)
-        case false =>
-          Failure(ve).withLoad(args)
-      }
-    })
-  }
-
-  def withChunk[CH <: NonQuantifiedChunk: ClassTag]
-               (s: State,
-                id: ChunkIdentifer,
-                args: Seq[Term],
-                ve: VerificationError,
-                v: Verifier)
-               (Q: (State, CH, Verifier) => VerificationResult)
-               : VerificationResult =
-    withChunk[CH](s, s.h, id, args, ve, v)((s1, h1, ch, v1) => Q(s1.copy(h = h1), ch, v1))
-
-  def withChunk[CH <: NonQuantifiedChunk: ClassTag]
-               (s: State,
-                id: ChunkIdentifer,
-                args: Seq[Term],
-                optPerms: Option[Term],
-                ve: VerificationError,
-                v: Verifier)
-               (Q: (State, CH, Verifier) => VerificationResult)
-               : VerificationResult =
-    withChunk[CH](s, s.h, id, args, optPerms, ve, v)((s1, h1, ch, v1) => Q(s1.copy(h = h1), ch, v1))
 
   def findChunk[CH <: NonQuantifiedChunk: ClassTag]
                (chunks: Iterable[Chunk],
@@ -410,8 +412,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
   }
 
   private def findChunkWithProver[CH <: NonQuantifiedChunk](chunks: Iterable[CH], args: Iterable[Term], v: Verifier) = {
-      chunks find (ch =>
-        args.size == ch.args.size &&
-        v.decider.check(And(ch.args zip args map (x => x._1 === x._2)), Verifier.config.checkTimeout()))
+    chunks find (ch =>
+      args.size == ch.args.size &&
+      v.decider.check(And(ch.args zip args map (x => x._1 === x._2)), Verifier.config.checkTimeout()))
   }
 }
