@@ -3,10 +3,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
+
 package viper.silicon.tests
 
 import java.nio.file.{Path, Paths}
-
 import org.scalatest.FunSuite
 import viper.silicon.Silicon
 import viper.silver.ast._
@@ -16,35 +16,7 @@ import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure => SilFailure}
 
-
 class ErrorMessageTests extends FunSuite {
-
-  test("Test") {
-    val frontend = new DummyFrontend
-
-    val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
-    backend.parseCommandLine(List("--ignoreFile", "dummy.sil"))
-    backend.start()
-
-    frontend.init(backend)
-    val fileName = "ErrorMessageTests/test.sil"
-
-    val testFile = getClass.getClassLoader.getResource(fileName)
-    assert(testFile != null, s"File $fileName not found")
-    val file = Paths.get(testFile.toURI)
-
-    frontend.reset(file)
-    frontend.parse()
-    frontend.typecheck()
-    frontend.translate()
-
-    val targetNode: Program = frontend.translatorResult
-
-    val errorRef = backend.verify(targetNode)
-
-    println("Reference: " + errorRef.toString)
-  }
-
   test("MeetingExample") {
     val filePrefix = "ErrorMessageTests/MeetingExample/"
     val files = Seq("simple")
@@ -62,10 +34,7 @@ class ErrorMessageTests extends FunSuite {
 
     frontend.init(backend)
 
-    files foreach { fileName: String => {
-      executeTest(filePrefix, strat, frontend, backend, fileName)
-    }
-    }
+    files foreach (executeTest(filePrefix, strat, frontend, backend, _))
   }
 
   test("WhileToIfGoto") {
@@ -96,10 +65,7 @@ class ErrorMessageTests extends FunSuite {
         ), Seq())()
     })
 
-    files foreach { fileName: String => {
-      executeTest(filePrefix, strat, frontend, backend, fileName)
-    }
-    }
+    files foreach (executeTest(filePrefix, strat, frontend, backend, _))
   }
 
   test("CombinedRewrites") {
@@ -126,10 +92,7 @@ class ErrorMessageTests extends FunSuite {
 
     val strat = andStrat + orStrat + notStrat
 
-    files foreach { fileName: String => {
-      executeTest(filePrefix, strat, frontend, backend, fileName)
-    }
-    }
+    files foreach (executeTest(filePrefix, strat, frontend, backend, _))
   }
 
   test("MethodInlining") {
@@ -173,10 +136,7 @@ class ErrorMessageTests extends FunSuite {
         Seqn(exPres ++ inPosts, Seq())()
     }) traverse Traverse.Innermost
 
-    files foreach { fileName: String => {
-      executeTest(filePrefix, strat, frontend, backend, fileName)
-    }
-    }
+    files foreach (executeTest(filePrefix, strat, frontend, backend, _))
   }
 
   def executeTest(filePrefix: String, strat: StrategyInterface[Node], frontend: DummyFrontend, backend: Silicon, fileName: String): Unit = {
@@ -194,21 +154,16 @@ class ErrorMessageTests extends FunSuite {
     val transformed = strat.execute[Program](targetNode)
 
     val errorTransformed = backend.verify(transformed) match {
-      case SilFailure(errors) => {
+      case SilFailure(errors) =>
         SilFailure(errors.map {
-          {
-            case a: AbstractVerificationError => a.transformedError()
-            case rest => rest
-          }
+          case a: AbstractVerificationError => a.transformedError()
+          case rest => rest
         })
-      }
       case rest => rest
     }
+
     val errorRef = backend.verify(targetNode)
 
-    //  println("Old: " + targetNode.toString())
-    println("Transformed: " + errorTransformed.toString)
-    println("Reference: " + errorRef.toString)
     assert(errorTransformed.toString == errorRef.toString, "Files are not equal")
   }
 }
