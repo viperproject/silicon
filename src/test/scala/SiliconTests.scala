@@ -14,9 +14,9 @@ import viper.silver.frontend.TranslatorState
 import viper.silver.reporter.NoopReporter
 
 class SiliconTests extends SilSuite {
-  private val siliconTestDirectories = List("consistency")
-  private val silTestDirectories = List("all", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
-  override def testDirectories = siliconTestDirectories ++ silTestDirectories
+  private val siliconTestDirectories = Seq("consistency")
+  private val silTestDirectories = Seq("all", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
+  val testDirectories = siliconTestDirectories ++ silTestDirectories
 
   override def frontend(verifier: Verifier, files: Seq[Path]) = {
     require(files.length == 1, "tests should consist of exactly one file")
@@ -37,8 +37,7 @@ class SiliconTests extends SilSuite {
   override def annotationShouldLeadToTestCancel(ann: LocatedAnnotation) = {
     ann match {
       case UnexpectedOutput(_, _, _, _, _, _) => true
-      case MissingOutput(_, _, _, _, _, issue) =>
-        issue != 34
+      case MissingOutput(_, _, _, _, _, issue) => issue != 34
       case _ => false
     }
   }
