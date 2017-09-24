@@ -333,6 +333,20 @@ class SiliconFrontend(override val reporter: Reporter) extends SilFrontend {
 
     siliconInstance.config
   }
+
+  override def init(verifier: SilVerifier): Unit = {
+    verifier match {
+      case silicon: Silicon =>
+        siliconInstance = silicon
+      case _ =>
+        sys.error( "Expected verifier to be an instance of Silicon but got an instance " +
+                  s"of ${verifier.getClass}")
+    }
+
+    super.init(verifier)
+
+    _config = siliconInstance.config
+  }
 }
 
 object SiliconRunner extends SiliconFrontend(NoopReporter) {
