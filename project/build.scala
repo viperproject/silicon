@@ -35,7 +35,7 @@ object SiliconBuild extends Build {
            baseSettings
         ++ Seq(
               name := "Silicon",
-              mainClass in assembly := Some("viper.silicon.Silicon"),
+              mainClass in assembly := Some("viper.silicon.SiliconRunner"),
               jarName in assembly := "silicon.jar",
               test in assembly := {},
                 /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
