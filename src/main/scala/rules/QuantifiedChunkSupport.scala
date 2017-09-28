@@ -561,12 +561,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val failure = resourceAccess match {
       case locAcc: ast.LocationAccess => Failure(pve dueTo InsufficientPermission(locAcc))
       case wand: ast.MagicWand => Failure(pve dueTo MagicWandChunkNotFound(wand))
-      case _ => sys.error(s"Found resource $resourceAccess, that is not supported as quantified permission yet.")
+      case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
     }
     val chunkIdentifer = resource match {
       case loc: ast.Location => BasicChunkIdentifier(loc.name)
       case wand: ast.MagicWand => MagicWandIdentifier(wand, Verifier.program)
-      case _ => sys.error(s"Found resource $resourceAccess, that is not supported as quantified permission yet.")
+      case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
     }
 
     val chunkOrderHeuristics = optChunkOrderHeuristic match {
