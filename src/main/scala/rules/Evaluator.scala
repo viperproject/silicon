@@ -103,6 +103,8 @@ object evaluator extends EvaluationRules with Immutable {
       case _ =>
         v.logger.debug(s"\nEVAL ${viper.silicon.utils.ast.sourceLineColumn(e)}: $e")
         v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
+        if (s.partiallyConsumedHeap.nonEmpty)
+          v.logger.debug("pcH = " + s.partiallyConsumedHeap.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
         if (s.reserveHeaps.nonEmpty)
           v.logger.debug("hR = " + s.reserveHeaps.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
         s.oldHeaps.get(Verifier.MAGIC_WAND_LHS_STATE_LABEL) match {
