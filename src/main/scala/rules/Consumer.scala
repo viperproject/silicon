@@ -945,10 +945,10 @@ object consumer extends ConsumptionRules with Immutable {
                       v1.decider.assume(fvfValueDefs)
                       val fvfDef = SnapshotMapDefinition(wand, fvf, fvfValueDefs, optFvfDomainDef.toSeq)
                       val fr3 = s2.functionRecorder.recordFvfAndDomain(fvfDef)
-                        .recordFieldInv(inverseFunctions)
+                                  .recordFieldInv(inverseFunctions)
                       val s3 = s2.copy(functionRecorder = fr3,
-                        partiallyConsumedHeap = Some(h2),
-                        constrainableARPs = s.constrainableARPs)
+                                       partiallyConsumedHeap = Some(h2),
+                                       constrainableARPs = s.constrainableARPs)
                       Q(s3, h2, fvf.convert(sorts.Snap), v1)
                     case (Incomplete(_), _, _) =>
                       Failure(pve dueTo MagicWandChunkNotFound(wand))}
@@ -973,7 +973,8 @@ object consumer extends ConsumptionRules with Immutable {
               pve,
               v2
             )((s3, h3, snap, v3) => {
-              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs)
+              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
+                               partiallyConsumedHeap = Some(h3))
               Q(s4, h3, snap, v3)})}))
 
       case ast.AccessPredicate(loc @ ast.PredicateAccess(eArgs, predname), ePerm)
@@ -996,7 +997,8 @@ object consumer extends ConsumptionRules with Immutable {
               pve,
               v2
             )((s3, h3, snap, v3) => {
-              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs)
+              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
+                               partiallyConsumedHeap = Some(h3))
               Q(s4, h3, snap, v3)})}))
 
       case let: ast.Let if !let.isPure =>
@@ -1040,7 +1042,8 @@ object consumer extends ConsumptionRules with Immutable {
             pve,
             v1
           )((s3, h3, snap, v3) => {
-            val s4 = s3.copy(constrainableARPs = s1.constrainableARPs)
+            val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
+                             partiallyConsumedHeap = Some(h3))
             Q(s4, h3, snap, v3)})})
 
       case wand: ast.MagicWand =>

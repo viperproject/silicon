@@ -654,8 +654,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           v.decider.prover.comment("Definitional axioms for singleton-SM's value")
           v.decider.assume(smValueDefs.map(_.body.replace(codomainQVars, arguments)))
           val smDef = SnapshotMapDefinition(resource, sm, smValueDefs, optSmDomainDef.toSeq)
-          val s2 = s1.copy(partiallyConsumedHeap = Some(h1),
-            functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef))
+          val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef))
           val snap = genericLookup(resource, sm, arguments, v).convert(sorts.Snap)
           Q(s2, h1, snap, v)
         case (Incomplete(_), _, _) =>
