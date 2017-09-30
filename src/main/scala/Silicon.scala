@@ -16,6 +16,7 @@ import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import viper.silver.ast
+import viper.silver.ast.NoPosition
 import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silver.reporter.{NoopReporter, Reporter}
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
@@ -251,7 +252,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
              .reverse
              .foldLeft((immutable.Set.empty[String], List[Failure]())){
                 case ((ss, rs), f: Failure) =>
-                  if (ss.contains(f.message.readableMessage)) (ss, rs)
+                  if (f.message.pos != NoPosition && ss.contains(f.message.readableMessage)) (ss, rs)
                   else (ss + f.message.readableMessage, f :: rs)
                 case ((ss, rs), r) => (ss, r :: rs)}
              ._2
