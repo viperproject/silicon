@@ -8,7 +8,7 @@ package viper.silicon.reporting
 
 import java.io.PrintWriter
 
-/* TODO: Base this class on the logging framework being used, e.g. slf4s */
+/* TODO: Base this class on the logging framework being used, e.g. slf4j */
 class MultiRunLogger(sink: PrintWriter, source: () => Option[String]) {
   private var lastSeenSource: Either[_, Option[String]] = Left(())
     /* Left() indicates that we haven't seen any source yet */

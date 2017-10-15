@@ -172,7 +172,7 @@ class DefaultMasterVerifier(config: Config, reporter: Reporter)
       val startTime = System.currentTimeMillis()
       val results = functionsSupporter.verify(createInitialState(function, program), function)
       val elapsed = System.currentTimeMillis() - startTime
-      reporter.report(VerificationResultMessage(function, elapsed, condenseToViperResult(results)))
+      reporter.report(VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results)))
 
       results
     })
@@ -181,7 +181,7 @@ class DefaultMasterVerifier(config: Config, reporter: Reporter)
       val startTime = System.currentTimeMillis()
       val results = predicateSupporter.verify(createInitialState(predicate, program), predicate)
       val elapsed = System.currentTimeMillis() - startTime
-      reporter.report(VerificationResultMessage(predicate, elapsed, condenseToViperResult(results)))
+      reporter.report(VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results)))
 
       results
     })
@@ -207,7 +207,7 @@ class DefaultMasterVerifier(config: Config, reporter: Reporter)
           val startTime = System.currentTimeMillis()
           val results = v.methodSupporter.verify(s, method)
           val elapsed = System.currentTimeMillis() - startTime
-          reporter.report(VerificationResultMessage(method, elapsed, condenseToViperResult(results)))
+          reporter.report(VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results)))
 
           results
         })
