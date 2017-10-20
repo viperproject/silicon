@@ -48,7 +48,10 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       val pres = method.pres
       val posts = method.posts
-      val body = method.body.toCfg()
+
+      val body = method.bodyOrAssumeFalse.toCfg()
+        /* TODO: Might be worth special-casing on methods with empty bodies */
+
       val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
 
       val ins = method.formalArgs.map(_.localVar)
