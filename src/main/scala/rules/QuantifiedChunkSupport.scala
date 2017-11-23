@@ -358,6 +358,23 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     }
   }
 
+  /** Summarises the values of heap locations by axiomatising a fresh snapshot map.
+    *
+    * @param s The current state.
+    * @param relevantChunks Chunks relevant for the summarisation, i.e. chunks that correspond
+    *                       to the given `resource`.
+    * @param codomainQVars Quantified variables, typically from a quantified permission assertion,
+    *                      but ranging over codomain types.
+    * @param resource A particular resource (e.g. a field) for to summarise the heap.
+    * @param optSmDomainDefinitionCondition A constraint, potentially mentioning the
+    *                                       `codomainQVars`. If provided, a domain definition is
+    *                                       returned that is conditionally defined w.r.t. this
+    *                                       constraint.
+    * @param v The current verifier.
+    * @return A triple `(snapshotMap, valueDefinitions, optDomainDefinition)`.
+    *         The domain definition is `None` iff the provided `optSmDomainDefinitionCondition` is
+    *         `None`.
+    */
   def summarise(s: State,
                 relevantChunks: Seq[QuantifiedBasicChunk],
                 codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
