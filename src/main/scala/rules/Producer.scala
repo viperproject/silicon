@@ -366,7 +366,7 @@ object producer extends ProductionRules with Immutable {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, auxQuantResult, v1) =>
+          case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
             quantifiedChunkSupporter.produce(
               s1,
@@ -375,7 +375,8 @@ object producer extends ProductionRules with Immutable {
               qvars, Seq(`?r`),
               qid, optTrigger,
               tTriggers,
-              auxQuantResult,
+              auxGlobals,
+              auxNonGlobals,
               tCond,
               Seq(tRcvr),
               tSnap,
@@ -392,7 +393,7 @@ object producer extends ProductionRules with Immutable {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, auxQuantResult, v1) =>
+          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
             quantifiedChunkSupporter.produce(
               s1,
@@ -403,7 +404,8 @@ object producer extends ProductionRules with Immutable {
               qid,
               optTrigger,
               tTriggers,
-              auxQuantResult,
+              auxGlobals,
+              auxNonGlobals,
               tCond,
               tArgs,
               tSnap,
@@ -420,7 +422,7 @@ object producer extends ProductionRules with Immutable {
           else Some(forall.triggers)
         val qid = MagicWandIdentifier(wand, Verifier.program).toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
+          case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap), v1)
             quantifiedChunkSupporter.produce(
               s1,
@@ -431,7 +433,8 @@ object producer extends ProductionRules with Immutable {
               qid,
               optTrigger,
               tTriggers,
-              auxQuantResult,
+              auxGlobals,
+              auxNonGlobals,
               tCond,
               tArgs,
               tSnap,

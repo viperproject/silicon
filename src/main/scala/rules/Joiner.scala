@@ -58,7 +58,7 @@ object joiner extends JoiningRules with Immutable {
         val (sJoined, dataJoined) = merge(entries)
 
         entries foreach (entry => {
-          val pcs = entry.pathConditions.asConditionals
+          val pcs = entry.pathConditions.conditionalized
           v.decider.prover.comment("Joined path conditions")
           v.decider.assume(pcs)
         })

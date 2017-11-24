@@ -338,7 +338,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
           /*branchConditions = c.branchConditions*/)
         executionFlowController.locally(s1, v)((s2, v1) => {
           v1.decider.setCurrentBranchCondition(And(branchConditions))
-          conservedPcs.foreach(pcs => v1.decider.assume(pcs.asConditionals))
+          conservedPcs.foreach(pcs => v1.decider.assume(pcs.conditionalized))
           Q(s2, magicWandChunk, v1)})}})
   }
 

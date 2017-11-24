@@ -435,7 +435,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           codomainQVars,
           Implies(effectiveCondition, lookupSummary === lookupChunk),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
-          s"qp.fvfValDef${v.counter(this).next()}"
+          s"qp.fvfValDef${v.counter(this).next()}",
+          isGlobal = true
         )
       })
 
@@ -447,7 +448,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
             codomainQVarsInDomainOfSummarisingSm,
             condition),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(codomainQVarsInDomainOfSummarisingSm)),
-          s"qp.fvfDomDef${v.counter(this).next()}"
+          s"qp.fvfDomDef${v.counter(this).next()}",
+          isGlobal = true
         ))
 
     (sm, valueDefinitions, optDomainDefinition)
@@ -478,8 +480,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
               qid: String,
               optTrigger: Option[Seq[ast.Trigger]],
               tTriggers: Seq[Trigger],
-              auxQuantResult: Either[Quantification,
-                Seq[Quantification]],
+              auxGlobals: Seq[Quantification],
+              auxNonGlobals: Seq[Quantification],
               tCond: Term,
               tArgs: Seq[Term],
               tSnap: Term,
@@ -520,19 +522,21 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     if (effectiveTriggers.isEmpty)
       v.logger.warn(s"No triggers available for quantifier at ${forall.pos}")
 
-    v.decider.prover.comment("Nested auxiliary terms")
-    auxQuantResult match {
-      case Left(tAuxQuantNoTriggers) =>
+    v.decider.prover.comment("Nested auxiliary terms: globals")
+    v.decider.assume(auxGlobals)
+    v.decider.prover.comment("Nested auxiliary terms: non-globals")
+    optTrigger match {
+      case None =>
         /* No explicit triggers provided */
         v.decider.assume(
-          tAuxQuantNoTriggers.copy(
+          auxNonGlobals.map(_.copy(
             vars = effectiveTriggersQVars,
-            triggers = effectiveTriggers))
-
-      case Right(tAuxQuants) =>
+            triggers = effectiveTriggers)))
+      case Some(x) =>
         /* Explicit triggers were provided. */
-        v.decider.assume(tAuxQuants)
+        v.decider.assume(auxNonGlobals)
     }
+
     v.decider.prover.comment("Definitional axioms for inverse functions")
     val definitionalAxiomMark = v.decider.setPathConditionMark()
     v.decider.assume(inverseFunctions.definitionalAxioms)
@@ -972,6 +976,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
             axInvsOfFctsBody,
             if (Verifier.config.disableISCTriggers()) Nil: Seq[Term] else And(invertibles) :: axInvsOfFctsBody :: Nil,
             s"$qidPrefix-invOfFct",
+            isGlobal = true,
             v.axiomRewriter)
         case Some(triggers) =>
           /* User-provided triggers; create quantifier directly */
@@ -1000,6 +1005,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         axFctsOfInvsBody,
         if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(inversesOfCodomains) :: Nil,
         s"$qidPrefix-fctOfInv",
+        isGlobal = true,
         v.axiomRewriter)
 
     new InverseFunctions(

@@ -235,7 +235,7 @@ object consumer extends ConsumptionRules with Immutable {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, auxQuantResult, v1) =>
+          case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val inverseFunctions =
               quantifiedChunkSupporter.getFreshInverseFunctions(
                 qvars,
@@ -260,18 +260,19 @@ object consumer extends ConsumptionRules with Immutable {
                   (inverseFunctions.axiomInversesOfInvertibles.triggers,
                     inverseFunctions.axiomInversesOfInvertibles.vars)
               }
-            v1.decider.prover.comment("Nested auxiliary terms")
-            auxQuantResult match {
-              case Left(tAuxQuantNoTriggers) =>
+            v1.decider.prover.comment("Nested auxiliary terms: globals")
+            v1.decider.assume(auxGlobals)
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals")
+            optTrigger match {
+              case None =>
                 /* No explicit triggers provided */
                 v1.decider.assume(
-                  tAuxQuantNoTriggers.copy(
+                  auxNonGlobals.map(_.copy(
                     vars = effectiveTriggersQVars,
-                    triggers = effectiveTriggers))
-
-              case Right(tAuxQuants) =>
+                    triggers = effectiveTriggers)))
+              case Some(x) =>
                 /* Explicit triggers were provided. */
-                v1.decider.assume(tAuxQuants)
+                v1.decider.assume(auxNonGlobals)
             }
             v1.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
               case true =>
@@ -362,7 +363,7 @@ object consumer extends ConsumptionRules with Immutable {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, auxQuantResult, v1) =>
+          case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val inverseFunctions =
               quantifiedChunkSupporter.getFreshInverseFunctions(
                 qvars,
@@ -387,18 +388,19 @@ object consumer extends ConsumptionRules with Immutable {
                   (inverseFunctions.axiomInversesOfInvertibles.triggers,
                    inverseFunctions.axiomInversesOfInvertibles.vars)
               }
-            v1.decider.prover.comment("Nested auxiliary terms")
-            auxQuantResult match {
-              case Left(tAuxQuantNoTriggers) =>
+            v1.decider.prover.comment("Nested auxiliary terms: globals")
+            v1.decider.assume(auxGlobals)
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals")
+            optTrigger match {
+              case None =>
                 /* No explicit triggers provided */
                 v1.decider.assume(
-                  tAuxQuantNoTriggers.copy(
+                  auxNonGlobals.map(_.copy(
                     vars = effectiveTriggersQVars,
-                    triggers = effectiveTriggers))
-
-              case Right(tAuxQuants) =>
+                    triggers = effectiveTriggers)))
+              case Some(x) =>
                 /* Explicit triggers were provided. */
-                v1.decider.assume(tAuxQuants)
+                v1.decider.assume(auxNonGlobals)
             }
             v1.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
               case true =>
@@ -480,7 +482,7 @@ object consumer extends ConsumptionRules with Immutable {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, auxQuantResult, v1) =>
+          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val inverseFunctions =
               quantifiedChunkSupporter.getFreshInverseFunctions(
                 qvars,
@@ -505,18 +507,19 @@ object consumer extends ConsumptionRules with Immutable {
                   (inverseFunctions.axiomInversesOfInvertibles.triggers,
                     inverseFunctions.axiomInversesOfInvertibles.vars)
               }
-            v1.decider.prover.comment("Nested auxiliary terms")
-            auxQuantResult match {
-              case Left(tAuxQuantNoTriggers) =>
+            v1.decider.prover.comment("Nested auxiliary terms: globals")
+            v1.decider.assume(auxGlobals)
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals")
+            optTrigger match {
+              case None =>
                 /* No explicit triggers provided */
                 v1.decider.assume(
-                  tAuxQuantNoTriggers.copy(
+                  auxNonGlobals.map(_.copy(
                     vars = effectiveTriggersQVars,
-                    triggers = effectiveTriggers))
-
-              case Right(tAuxQuants) =>
+                    triggers = effectiveTriggers)))
+              case Some(x) =>
                 /* Explicit triggers were provided. */
-                v1.decider.assume(tAuxQuants)
+                v1.decider.assume(auxNonGlobals)
             }
             v1.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
               case true =>
@@ -611,7 +614,7 @@ object consumer extends ConsumptionRules with Immutable {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, auxQuantResult, v1) =>
+          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val inverseFunctions =
               quantifiedChunkSupporter.getFreshInverseFunctions(
                 qvars,
@@ -636,18 +639,19 @@ object consumer extends ConsumptionRules with Immutable {
                   (inverseFunctions.axiomInversesOfInvertibles.triggers,
                    inverseFunctions.axiomInversesOfInvertibles.vars)
               }
-            v1.decider.prover.comment("Nested auxiliary terms")
-            auxQuantResult match {
-              case Left(tAuxQuantNoTriggers) =>
+            v1.decider.prover.comment("Nested auxiliary terms: globals")
+            v1.decider.assume(auxGlobals)
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals")
+            optTrigger match {
+              case None =>
                 /* No explicit triggers provided */
                 v1.decider.assume(
-                  tAuxQuantNoTriggers.copy(
+                  auxNonGlobals.map(_.copy(
                     vars = effectiveTriggersQVars,
-                    triggers = effectiveTriggers))
-
-              case Right(tAuxQuants) =>
+                    triggers = effectiveTriggers)))
+              case Some(x) =>
                 /* Explicit triggers were provided. */
-                v1.decider.assume(tAuxQuants)
+                v1.decider.assume(auxNonGlobals)
             }
             v1.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
               case true =>
@@ -729,7 +733,7 @@ object consumer extends ConsumptionRules with Immutable {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
+          case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val inverseFunctions =
               quantifiedChunkSupporter.getFreshInverseFunctions(
                 qvars,
@@ -754,18 +758,19 @@ object consumer extends ConsumptionRules with Immutable {
                   (inverseFunctions.axiomInversesOfInvertibles.triggers,
                     inverseFunctions.axiomInversesOfInvertibles.vars)
               }
-            v1.decider.prover.comment("Nested auxiliary terms")
-            auxQuantResult match {
-              case Left(tAuxQuantNoTriggers) =>
+            v1.decider.prover.comment("Nested auxiliary terms: globals")
+            v1.decider.assume(auxGlobals)
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals")
+            optTrigger match {
+              case None =>
                 /* No explicit triggers provided */
                 v1.decider.assume(
-                  tAuxQuantNoTriggers.copy(
+                  auxNonGlobals.map(_.copy(
                     vars = effectiveTriggersQVars,
-                    triggers = effectiveTriggers))
-
-              case Right(tAuxQuants) =>
+                    triggers = effectiveTriggers)))
+              case Some(x) =>
                 /* Explicit triggers were provided. */
-                v1.decider.assume(tAuxQuants)
+                v1.decider.assume(auxNonGlobals)
             }
             val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
             val chunkOrderHeuristics =
@@ -855,7 +860,7 @@ object consumer extends ConsumptionRules with Immutable {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), tArgs, tTriggers, auxQuantResult, v1) =>
+          case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
           val inverseFunctions =
             quantifiedChunkSupporter.getFreshInverseFunctions(
               qvars,
@@ -880,80 +885,81 @@ object consumer extends ConsumptionRules with Immutable {
                 (inverseFunctions.axiomInversesOfInvertibles.triggers,
                   inverseFunctions.axiomInversesOfInvertibles.vars)
             }
-          v1.decider.prover.comment("Nested auxiliary terms")
-          auxQuantResult match {
-            case Left(tAuxQuantNoTriggers) =>
+          v1.decider.prover.comment("Nested auxiliary terms: globals")
+          v1.decider.assume(auxGlobals)
+          v1.decider.prover.comment("Nested auxiliary terms: non-globals")
+          optTrigger match {
+            case None =>
               /* No explicit triggers provided */
               v1.decider.assume(
-                tAuxQuantNoTriggers.copy(
+                auxNonGlobals.map(_.copy(
                   vars = effectiveTriggersQVars,
-                  triggers = effectiveTriggers))
-
-            case Right(tAuxQuants) =>
+                  triggers = effectiveTriggers)))
+            case Some(x) =>
               /* Explicit triggers were provided. */
-              v1.decider.assume(tAuxQuants)
+              v1.decider.assume(auxNonGlobals)
           }
-              val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
-              val chunkOrderHeuristics =
-                quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-              val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
-              /* TODO: Can we omit/simplify the injectivity check in certain situations? */
-              val receiverInjectivityCheck =
-                quantifiedChunkSupporter.injectivityAxiom(
-                  qvars     = qvars,
-                  condition = tCond,
-                  perms     = FullPerm(),
-                  arguments = tArgs,
-                  triggers  = Nil,
-                  qidPrefix = qid)
-              v1.decider.prover.comment("Check receiver injectivity")
-              v1.decider.assert(receiverInjectivityCheck) {
-                case true =>
-                  v1.decider.prover.comment("Definitional axioms for inverse functions")
-                  v1.decider.assume(inverseFunctions.definitionalAxioms)
-                  val (relevantChunks, otherChunks) =
-                    quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, MagicWandIdentifier(wand, Verifier.program))
-                  val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalVars)
-                  val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
-                  val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
-                  val result = quantifiedChunkSupporter.removePermissions(
-                    s1,
-                    relevantChunks,
-                    formalVars,
-                    condOfInvOfLoc,
-                    wand,
-                    lossOfInvOfLoc,
-                    chunkOrderHeuristics,
-                    v1
-                  )
-                  result match {
-                    case (Complete(), s2, remainingChunks) =>
-                      val h2 = Heap(remainingChunks ++ otherChunks)
-                      val (fvf, fvfValueDefs, optFvfDomainDef) =
-                        quantifiedChunkSupporter.summarise(
-                          s2,
-                          relevantChunks,
-                          formalVars,
-                          wand,
-                          if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc))) else None,
-                          v1)
-                      if (s2.smDomainNeeded) {
-                        v1.decider.prover.comment("Definitional axioms for SM domain")
-                        v1.decider.assume(optFvfDomainDef.get)
-                      }
-                      v1.decider.prover.comment("Definitional axioms for SM values")
-                      v1.decider.assume(fvfValueDefs)
-                      val fvfDef = SnapshotMapDefinition(wand, fvf, fvfValueDefs, optFvfDomainDef.toSeq)
-                      val fr3 = s2.functionRecorder.recordFvfAndDomain(fvfDef)
-                                  .recordFieldInv(inverseFunctions)
-                      val s3 = s2.copy(functionRecorder = fr3,
-                                       partiallyConsumedHeap = Some(h2),
-                                       constrainableARPs = s.constrainableARPs)
-                      Q(s3, h2, fvf.convert(sorts.Snap), v1)
-                    case (Incomplete(_), _, _) =>
-                      Failure(pve dueTo MagicWandChunkNotFound(wand))}
-                case false =>
-                  Failure(pve dueTo MagicWandChunkNotFound(wand))}}
+          val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
+          val chunkOrderHeuristics =
+            quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+          val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
+          /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+          val receiverInjectivityCheck =
+            quantifiedChunkSupporter.injectivityAxiom(
+              qvars     = qvars,
+              condition = tCond,
+              perms     = FullPerm(),
+              arguments = tArgs,
+              triggers  = Nil,
+              qidPrefix = qid)
+          v1.decider.prover.comment("Check receiver injectivity")
+          v1.decider.assert(receiverInjectivityCheck) {
+            case true =>
+              v1.decider.prover.comment("Definitional axioms for inverse functions")
+              v1.decider.assume(inverseFunctions.definitionalAxioms)
+              val (relevantChunks, otherChunks) =
+                quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, MagicWandIdentifier(wand, Verifier.program))
+              val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalVars)
+              val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
+              val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
+              val result = quantifiedChunkSupporter.removePermissions(
+                s1,
+                relevantChunks,
+                formalVars,
+                condOfInvOfLoc,
+                wand,
+                lossOfInvOfLoc,
+                chunkOrderHeuristics,
+                v1
+              )
+              result match {
+                case (Complete(), s2, remainingChunks) =>
+                  val h2 = Heap(remainingChunks ++ otherChunks)
+                  val (fvf, fvfValueDefs, optFvfDomainDef) =
+                    quantifiedChunkSupporter.summarise(
+                      s2,
+                      relevantChunks,
+                      formalVars,
+                      wand,
+                      if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc))) else None,
+                      v1)
+                  if (s2.smDomainNeeded) {
+                    v1.decider.prover.comment("Definitional axioms for SM domain")
+                    v1.decider.assume(optFvfDomainDef.get)
+                  }
+                  v1.decider.prover.comment("Definitional axioms for SM values")
+                  v1.decider.assume(fvfValueDefs)
+                  val fvfDef = SnapshotMapDefinition(wand, fvf, fvfValueDefs, optFvfDomainDef.toSeq)
+                  val fr3 = s2.functionRecorder.recordFvfAndDomain(fvfDef)
+                              .recordFieldInv(inverseFunctions)
+                  val s3 = s2.copy(functionRecorder = fr3,
+                                   partiallyConsumedHeap = Some(h2),
+                                   constrainableARPs = s.constrainableARPs)
+                  Q(s3, h2, fvf.convert(sorts.Snap), v1)
+                case (Incomplete(_), _, _) =>
+                  Failure(pve dueTo MagicWandChunkNotFound(wand))}
+            case false =>
+              Failure(pve dueTo MagicWandChunkNotFound(wand))}}
 
 
       case ast.AccessPredicate(loc @ ast.FieldAccess(eRcvr, field), ePerm)

@@ -52,7 +52,7 @@ trait EvaluationRules extends SymbolicExecutionRules {
                      name: String,
                      pve: PartialVerificationError,
                      v: Verifier)
-                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Either[Quantification, Seq[Quantification]], Verifier) => VerificationResult)
+                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Quantification], Seq[Quantification]), Verifier) => VerificationResult)
                     : VerificationResult
 }
 
@@ -480,9 +480,11 @@ object evaluator extends EvaluationRules with Immutable {
         val body = eQuant.exp
         val name = s"prog.l${viper.silicon.utils.ast.sourceLine(sourceQuant)}"
         evalQuantified(s, qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v){
-          case (s1, tVars, _, Seq(tBody), tTriggers, Right(tAuxQuants), v1) =>
-            v1.decider.prover.comment("Nested auxiliary terms")
-            v1.decider.assume(tAuxQuants)
+          case (s1, tVars, _, Seq(tBody), tTriggers, (tAuxGlobal, tAux), v1) =>
+            v1.decider.prover.comment("Nested auxiliary terms: globals")
+            v1.decider.assume(tAuxGlobal)
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals")
+            v1.decider.assume(tAux)
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
             Q(s1, tQuant, v1)}
 
@@ -713,7 +715,7 @@ object evaluator extends EvaluationRules with Immutable {
                      name: String,
                      pve: PartialVerificationError,
                      v: Verifier)
-                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Either[Quantification, Seq[Quantification]], Verifier) => VerificationResult)
+                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Quantification], Seq[Quantification]), Verifier) => VerificationResult)
                     : VerificationResult = {
 
     val localVars = vars map (_.localVar)
@@ -724,32 +726,19 @@ object evaluator extends EvaluationRules with Immutable {
                     quantifiedVariables = tVars ++ s.quantifiedVariables,
                     recordPossibleTriggers = true,
                     possibleTriggers = Map.empty) // TODO: Why reset possibleTriggers if they are merged with s.possibleTriggers later anyway?
-    type R = (State, Seq[Term], Seq[Term], Seq[Trigger], Either[Quantification, Seq[Quantification]], Map[ast.Exp, Term])
+    type R = (State, Seq[Term], Seq[Term], Seq[Trigger], (Seq[Quantification], Seq[Quantification]), Map[ast.Exp, Term])
     executionFlowController.locallyWithResult[R](s1, v)((s2, v1, QB) => {
-      val preMark = v1.decider.setPathConditionMark()
+       val preMark = v1.decider.setPathConditionMark()
       evals(s2, es1, _ => pve, v1)((s3, ts1, v2) => {
         val bc = And(ts1)
         v2.decider.setCurrentBranchCondition(bc)
         evals(s3, es2, _ => pve, v2)((s4, ts2, v3) => {
-          val πDelta = v3.decider.pcs.after(preMark).assumptions - bc
-          evalTriggers(s4, optTriggers.getOrElse(Nil), πDelta, pve, v3)((s5, tTriggers, v4) => {
-            def auxQuantGen(trigger: Trigger, extraVars: Iterable[Var]) =
-              Quantification(quant, tVars ++ extraVars, And(πDelta), Seq(trigger), s"$name-aux")
-            /* TODO: Is the Either really necessary?
-             *       Wouldn't clients be able to perform the same differentiation by
-             *       checking whether or not the `optTriggers` they passed in is None/Some?
-             *       Related: return Option[Seq[Trigger]]; return None instead of an empty sequence
-             */
-            val auxQuant =
-              if (optTriggers.isEmpty)
-                Left(auxQuantGen(Trigger(Nil), Nil))
-              else {
-                val triggersAndVars =
-                  v4.quantifierSupporter.makeTriggersHeapIndependent(tTriggers, v4.decider.fresh)
-                Right(triggersAndVars map {case (ts, vs) => auxQuantGen(ts, vs)})}
+          evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, v4) => { // TODO: v4 isn't forward - problem?
+            val (auxGlobalQuants, auxNonGlobalQuants) =
+              v3.decider.pcs.after(preMark).quantified(quant, tVars, tTriggers, s"$name-aux", isGlobal = false, bc)
             val additionalPossibleTriggers: Map[ast.Exp, Term] =
               if (s.recordPossibleTriggers) s5.possibleTriggers else Map()
-            QB((s5, ts1, ts2, tTriggers, auxQuant, additionalPossibleTriggers))})})})
+            QB((s5, ts1, ts2, tTriggers, (auxGlobalQuants, auxNonGlobalQuants), additionalPossibleTriggers))})})})
     }){case (s2, ts1, ts2, tTriggers, auxQuant, additionalPossibleTriggers) =>
       val s3 = s.copy(possibleTriggers = s.possibleTriggers ++ additionalPossibleTriggers)
                 .preserveAfterLocalEvaluation(s2)
@@ -846,7 +835,6 @@ object evaluator extends EvaluationRules with Immutable {
 
   private def evalTriggers(s: State,
                            silverTriggers: Seq[ast.Trigger],
-                           bodyPathConditions: InsertionOrderedSet[Term],
                            pve: PartialVerificationError,
                            v: Verifier)
                           (Q: (State, Seq[Trigger], Verifier) => VerificationResult)

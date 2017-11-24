@@ -279,6 +279,7 @@ sealed trait Term extends Node {
     else
       this.replace(toMap(originals.zip(replacements)))
   }
+
   def contains(t: Term): Boolean = this.existsDefined{case `t` =>}
 
   lazy val freeVariables =
@@ -297,6 +298,13 @@ sealed trait Term extends Node {
           freeVars
       }
     })
+
+  lazy val topLevelConjuncts: Seq[Term] = {
+    this match {
+      case and: And => and.subterms flatMap (_.topLevelConjuncts)
+      case other => Vector(other)
+    }
+  }
 }
 
 trait UnaryOp[E] {
@@ -403,6 +411,9 @@ case object Forall extends Quantifier {
   def apply(qvar: Var, tBody: Term, trigger: Trigger, name: String) =
     Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil, name)
 
+  def apply(qvar: Var, tBody: Term, trigger: Trigger, name: String, isGlobal: Boolean) =
+    Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil, name, isGlobal)
+
   def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]): Quantification =
     apply(qvar, tBody, triggers, "")
 
@@ -415,16 +426,20 @@ case object Forall extends Quantifier {
   def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger, name: String) =
     Quantification(Forall, qvars, tBody, trigger :: Nil, name)
 
+  def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger, name: String, isGlobal: Boolean) =
+    Quantification(Forall, qvars, tBody, trigger :: Nil, name, isGlobal)
+
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
     apply(qvars, tBody, triggers, "")
 
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) =
     Quantification(Forall, qvars, tBody, triggers, name)
 
-  def unapply(q: Quantification) = q match {
-    case Quantification(Forall, qvars, tBody, triggers, name) => Some((qvars, tBody, triggers, name))
-    case _ => None
-  }
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String, isGlobal: Boolean) =
+    Quantification(Forall, qvars, tBody, triggers, name, isGlobal)
+
+  def unapply(q: Quantification): Option[(Seq[Var], Term, Seq[Trigger], String, Boolean)] =
+    Some(q.vars, q.body, q.triggers, q.name, q.isGlobal)
 
   override val toString = "QA"
 }
@@ -446,7 +461,8 @@ class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
                                      val vars: Seq[Var],
                                      val body: Term,
                                      val triggers: Seq[Trigger],
-                                     val name: String)
+                                     val name: String,
+                                     val isGlobal: Boolean)
     extends BooleanTerm
        with StructuralEquality {
 
@@ -471,25 +487,43 @@ class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
     else stringRepresentation
 }
 
-object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String) => Quantification) {
+object Quantification
+    extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean) => Quantification) {
+
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
     apply(q, vars, tBody, triggers, "")
 
-  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) = {
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String)
+           : Quantification = {
+
+    apply(q, vars, tBody, triggers, "", false)
+  }
+
+  def apply(q: Quantifier,
+            vars: Seq[Var],
+            tBody: Term,
+            triggers: Seq[Trigger],
+            name: String,
+            isGlobal: Boolean)
+           : Quantification = {
 //    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
 //    assert(triggers.distinct.length == triggers.length, s"Found duplicate triggers: $triggers")
 
     /* TODO: If we optimise away a quantifier, we cannot, for example, access
      *       autoTrigger on the returned object.
      */
-    new Quantification(q, vars, tBody, triggers, name)
+    new Quantification(q, vars, tBody, triggers, name, isGlobal)
 //    tBody match {
 //    case True() | False() => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
 //  }
   }
 
-  def unapply(q: Quantification) = Some((q.q, q.vars, q.body, q.triggers, q.name))
+  def unapply(q: Quantification)
+             : Option[(Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean)] = {
+
+    Some((q.q, q.vars, q.body, q.triggers, q.name, q.isGlobal))
+  }
 }
 
 /* Arithmetic expression terms */

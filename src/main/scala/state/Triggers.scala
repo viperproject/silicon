@@ -48,6 +48,7 @@ class TriggerGenerator
                              body: Term,
                              toSearch: Seq[Term],
                              qid: String,
+                             isGlobal: Boolean,
                              axiomRewriter: AxiomRewriter)
                             : Quantification = {
 
@@ -57,7 +58,7 @@ class TriggerGenerator
 
     setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
-    val quantification = Quantification(quantifier, qvars ++ extraVars, body, triggers, qid)
+    val quantification = Quantification(quantifier, qvars ++ extraVars, body, triggers, qid, isGlobal)
     val finalQuantification = axiomRewriter.rewrite(quantification).getOrElse(quantification)
 
     finalQuantification
@@ -68,11 +69,12 @@ class TriggerGenerator
                              body: Term,
                              triggers: Seq[Trigger],
                              qid: String,
+                             isGlobal: Boolean,
                              axiomRewriter: AxiomRewriter)
                             (implicit dummyImplicit: DummyImplicit)
                             : Quantification = {
 
-    val quantification = Quantification(quantifier, qvars, body, triggers, qid)
+    val quantification = Quantification(quantifier, qvars, body, triggers, qid, isGlobal)
     val finalQuantification = axiomRewriter.rewrite(quantification).getOrElse(quantification)
 
     finalQuantification

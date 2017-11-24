@@ -8,19 +8,34 @@ package viper.silicon.decider
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Stack
-import viper.silicon.state.terms.{And, Decl, Implies, Term, True}
+import viper.silicon.state.terms.{And, Decl, Implies, Quantification, Quantifier, Term, Trigger, True, Var}
 import viper.silicon.utils.Counter
 
 /*
  * Interfaces
  */
 
+/* TODO: 'contains' functionality currently not needed. If removed, 'allAssumptions' could
+ *       probably removed as well.
+ *       Benchmark runtime difference!
+ */
+
 trait RecordedPathConditions {
   def branchConditions: Stack[Term]
   def assumptions: InsertionOrderedSet[Term]
   def declarations: InsertionOrderedSet[Decl]
+
   def contains(assumption: Term): Boolean
-  def asConditionals: Seq[Term]
+
+  def conditionalized: Seq[Term]
+
+  def quantified(quantifier: Quantifier,
+                 qvars: Seq[Var],
+                 triggers: Seq[Trigger],
+                 name: String,
+                 isGlobal: Boolean,
+                 ignore: Term /* TODO: Hack, implement properly */)
+                : (Seq[Quantification], Seq[Quantification])
 }
 
 trait PathConditionStack extends RecordedPathConditions {
@@ -45,13 +60,17 @@ private class PathConditionStackLayer
        with Cloneable {
 
   private var _branchCondition: Option[Term] = None
-  private var _assumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
+  private var _globalAssumptions: InsertionOrderedSet[Quantification] = InsertionOrderedSet.empty
+  private var _nonGlobalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _declarations: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
 
   def branchCondition: Option[Term] = _branchCondition
-  def assumptions: InsertionOrderedSet[Term] = _assumptions
+  def globalAssumptions: InsertionOrderedSet[Quantification] = _globalAssumptions
+  def nonGlobalAssumptions: InsertionOrderedSet[Term] = _nonGlobalAssumptions
   def declarations: InsertionOrderedSet[Decl] = _declarations
-  def pathConditions: InsertionOrderedSet[Term] = _assumptions ++ _branchCondition
+
+  def assumptions: InsertionOrderedSet[Term] = globalAssumptions ++ nonGlobalAssumptions
+  def pathConditions: InsertionOrderedSet[Term] = assumptions ++ branchCondition
 
   def branchCondition_=(condition: Term) {
     assert(_branchCondition.isEmpty,
@@ -62,14 +81,35 @@ private class PathConditionStackLayer
   }
 
   def add(assumption: Term): Unit = {
+    assert(
+      !assumption.isInstanceOf[And],
+      s"Unexpectedly found a conjunction (should have been split): $assumption")
+
     /* TODO: Don't record branch conditions as assumptions */
-    /*if (!branchCondition.contains(t))*/ _assumptions += assumption
+
+    assumption match {
+      case quantification: Quantification if quantification.isGlobal =>
+        _globalAssumptions += quantification
+      case _ =>
+        _nonGlobalAssumptions += assumption
+    }
   }
 
   def add(declaration: Decl): Unit = _declarations += declaration
 
-  def contains(pathCondition: Term): Boolean =
-    _assumptions.contains(pathCondition) || _branchCondition.contains(pathCondition)
+  def contains(pathCondition: Term): Boolean = {
+    assert(
+      !pathCondition.isInstanceOf[And],
+      s"Unexpectedly found a conjunction (should have been split): $pathCondition")
+
+    pathCondition match {
+      case quantification: Quantification if quantification.isGlobal =>
+        /* Assumption: globals are never used as branch conditions */
+        _globalAssumptions.contains(quantification)
+      case _ =>
+        _nonGlobalAssumptions.contains(pathCondition) || _branchCondition.contains(pathCondition)
+    }
+  }
 
   override def clone(): AnyRef = {
     /* Attention: the original and its clone must not share any mutable data! */
@@ -90,14 +130,48 @@ private trait LayeredPathConditionStackLike {
   protected def contains(layers: Stack[PathConditionStackLayer], assumption: Term): Boolean =
     layers exists (_.contains(assumption))
 
-  protected def asConditionals(layers: Stack[PathConditionStackLayer]): Seq[Term] = {
+  protected def conditionalized(layers: Stack[PathConditionStackLayer]): Seq[Term] = {
+    var unconditionalTerms = Vector.empty[Term]
     var conditionalTerms = Vector.empty[Term]
 
     for (layer <- layers) {
-      conditionalTerms :+= Implies(layer.branchCondition.getOrElse(True()), And(layer.assumptions))
+      unconditionalTerms ++= layer.globalAssumptions
+
+      conditionalTerms :+=
+        Implies(layer.branchCondition.getOrElse(True()), And(layer.nonGlobalAssumptions))
     }
 
-    conditionalTerms
+    unconditionalTerms ++ conditionalTerms
+  }
+
+  protected def quantified(layers: Stack[PathConditionStackLayer],
+                           quantifier: Quantifier,
+                           qvars: Seq[Var],
+                           triggers: Seq[Trigger],
+                           name: String,
+                           isGlobal: Boolean,
+                           ignore: Term)
+                          : (Seq[Quantification], Seq[Quantification]) = {
+
+    var globals = Vector.empty[Quantification]
+    var nonGlobals = Vector.empty[Quantification]
+
+    val ignores = ignore.topLevelConjuncts
+
+    for (layer <- layers) {
+      globals ++= layer.globalAssumptions
+
+      nonGlobals :+=
+        Quantification(
+          quantifier,
+          qvars,
+          And(layer.nonGlobalAssumptions -- ignores),
+          triggers,
+          name,
+          isGlobal)
+    }
+
+    (globals, nonGlobals)
   }
 }
 
@@ -109,8 +183,21 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   val branchConditions: Stack[Term] = branchConditions(from)
   val assumptions: InsertionOrderedSet[Term] = assumptions(from)
   val declarations: InsertionOrderedSet[Decl] = declarations(from)
+
   def contains(assumption: Term): Boolean = contains(from, assumption)
-  val asConditionals: Seq[Term] = asConditionals(from)
+
+  val conditionalized: Seq[Term] = conditionalized(from)
+
+  def quantified(quantifier: Quantifier,
+                 qvars: Seq[Var],
+                 triggers: Seq[Trigger],
+                 name: String,
+                 isGlobal: Boolean,
+                 ignore: Term)
+                : (Seq[Quantification], Seq[Quantification]) = {
+
+    quantified(from, quantifier, qvars, triggers, name, isGlobal, ignore)
+  }
 }
 
 private[decider] class LayeredPathConditionStack
@@ -130,12 +217,18 @@ private[decider] class LayeredPathConditionStack
   pushScope() /* Create an initial layer on the stack */
 
   def setCurrentBranchCondition(condition: Term): Unit = {
+    /* TODO: Split condition into top-level conjuncts as well? */
+
     layers.head.branchCondition = condition
   }
 
   def add(assumption: Term): Unit = {
-    layers.head.add(assumption)
-    allAssumptions += assumption
+    /* TODO: Would be cleaner to not add assumptions that are already set as branch conditions */
+
+    val tlcs = assumption.topLevelConjuncts
+
+    tlcs foreach layers.head.add
+    allAssumptions ++= tlcs
   }
 
   def add(declaration: Decl): Unit = {
@@ -196,14 +289,17 @@ private[decider] class LayeredPathConditionStack
 
   def contains(assumption: Term): Boolean = allAssumptions.contains(assumption)
 
-  def asConditionals: Seq[Term] = {
-    var conditionalTerms = Vector.empty[Term]
+  def conditionalized: Seq[Term] = conditionalized(layers)
 
-    for (layer <- layers) {
-      conditionalTerms :+= Implies(layer.branchCondition.getOrElse(True()), And(layer.assumptions))
-    }
+  def quantified(quantifier: Quantifier,
+                 qvars: Seq[Var],
+                 triggers: Seq[Trigger],
+                 name: String,
+                 isGlobal: Boolean,
+                 ignore: Term)
+                : (Seq[Quantification], Seq[Quantification]) = {
 
-    conditionalTerms
+    quantified(layers, quantifier, qvars, triggers, name, isGlobal, ignore)
   }
 
   def mark(): Mark = pushLayer()

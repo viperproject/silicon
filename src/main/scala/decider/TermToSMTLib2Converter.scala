@@ -111,7 +111,7 @@ class TermToSMTLib2Converter
       render(And(q.triggers.map(trg => q.copy(triggers = Vector(trg)))))
 
     /* Handle quantifiers that have at most one trigger set */
-    case Quantification(quant, vars, body, triggers, name) =>
+    case Quantification(quant, vars, body, triggers, name, _) =>
       val docVars = ssep((vars map (v => parens(text(sanitize(v.id)) <+> render(v.sort)))).to[collection.immutable.Seq], space)
       val docBody = render(body)
       val docQuant = render(quant)
