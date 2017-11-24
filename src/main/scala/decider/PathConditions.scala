@@ -23,13 +23,6 @@ trait RecordedPathConditions {
   def asConditionals: Seq[Term]
 }
 
-trait PathConditionScope {
-  def add(assumption: Term): Unit
-  def branchCondition: Option[Term]
-  def assumptions: InsertionOrderedSet[Term]
-  def marks: Map[Mark, Int]
-}
-
 trait PathConditionStack extends RecordedPathConditions {
   def setCurrentBranchCondition(condition: Term): Unit
   def add(assumption: Term): Unit
@@ -75,7 +68,7 @@ private class PathConditionStackLayer
 
   def add(declaration: Decl): Unit = _declarations += declaration
 
-  def contains(pathCondition: Term) =
+  def contains(pathCondition: Term): Boolean =
     _assumptions.contains(pathCondition) || _branchCondition.contains(pathCondition)
 
   override def clone(): AnyRef = {
