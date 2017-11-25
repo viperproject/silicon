@@ -472,9 +472,10 @@ class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
            vars: Seq[Var] = vars,
            body: Term = body,
            triggers: Seq[Trigger] = triggers,
-           name: String = name) = {
+           name: String = name,
+           isGlobal: Boolean = isGlobal) = {
 
-    Quantification(q, vars, body, triggers, name)
+    Quantification(q, vars, body, triggers, name, isGlobal)
   }
 
   lazy val stringRepresentation = s"$q ${vars.mkString(",")} :: $body"

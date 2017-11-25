@@ -102,7 +102,10 @@ package object utils {
 
     def recurse(term: Term): Term = term match {
       case _: Var | _: Function | _: Literal | _: MagicWandChunkTerm | _: Distinct => term
-      case q: Quantification => Quantification(q.q, q.vars map go, go(q.body), q.triggers map goTriggers)
+
+      case Quantification(quantifier, variables, body, triggers, name, isGlobal) =>
+        Quantification(quantifier, variables map go, go(body), triggers map goTriggers, name, isGlobal)
+
       case Plus(t0, t1) => Plus(go(t0), go(t1))
       case Minus(t0, t1) => Minus(go(t0), go(t1))
       case Times(t0, t1) => Times(go(t0), go(t1))
