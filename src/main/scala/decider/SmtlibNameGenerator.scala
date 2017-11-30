@@ -85,6 +85,6 @@ class SmtlibNameSanitizer extends AbstractNameSanitizer {
     /* SMTLIB 2.5 - Theory Reals_Ints */
     "to_real", "to_int", "is_int",
     /* Other reserved words (Z3 specific?) */
-    "min", "List"
+    "min", "List", "const"
   )
 }
