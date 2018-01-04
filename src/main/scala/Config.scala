@@ -473,6 +473,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )
 
+  val disableCatchingExceptions = opt[Boolean]("disableCatchingExceptions",
+    descr =s"Don't catch exceptions (can be useful for debugging problems with ${Silicon.name})",
+    default = Some(false),
+    noshort = true,
+    hidden = false
+  )
+
   /* Option validation */
 
   validateOpt(timeout) {

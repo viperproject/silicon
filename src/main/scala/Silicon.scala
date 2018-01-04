@@ -209,7 +209,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
       } catch { /* Catch exceptions thrown during verification (errors are not caught) */
         case _: TimeoutException =>
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
-        case exception: Exception =>
+        case exception: Exception if config.verified && !config.disableCatchingExceptions() =>
           /* An exception's root cause might be an error; the following code takes care of that */
           reporting.exceptionToViperError(exception) match {
             case Right((cause, failure)) =>
@@ -362,7 +362,7 @@ object SiliconRunner extends SiliconFrontend(NoopReporter) {
         exitCode = 0
       }
     } catch { /* Catch exceptions and errors thrown at any point of the execution of Silicon */
-      case exception: Exception =>
+      case exception: Exception if config.verified && !config.asInstanceOf[Config].disableCatchingExceptions() =>
         /* An exception's root cause might be an error; the following code takes care of that */
         reporting.exceptionToViperError(exception) match {
           case Right((cause, failure)) =>
