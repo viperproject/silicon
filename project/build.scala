@@ -68,6 +68,9 @@ object SiliconBuild extends Build {
                  * "show javaOptions" on the Sbt console.
                  */
               libraryDependencies ++= externalDep,
+              excludeFilter in unmanagedResources := {
+                new SimpleFileFilter(_.getCanonicalPath endsWith "logback.xml")
+              },
               BrandKeys.dataPackage := "viper.silicon",
               BrandKeys.dataObject := "brandingData",
               BrandKeys.data += Val("buildDate", new java.text.SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(new java.util.Date)),
