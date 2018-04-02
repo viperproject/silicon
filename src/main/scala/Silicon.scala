@@ -25,7 +25,7 @@ import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.verifier.DefaultMasterVerifier
-import viper.silver.logger.SilentLogger
+import viper.silver.logger.ViperStdOutLogger
 
 object Silicon {
   private val brandingDataObjectName = "viper.silicon.brandingData"
@@ -315,7 +315,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 }
 
 class SiliconFrontend(override val reporter: Reporter,
-                      override implicit val logger: Logger = SilentLogger().get) extends SilFrontend {
+                      override implicit val logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) extends SilFrontend {
   protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {
