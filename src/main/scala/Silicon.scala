@@ -300,17 +300,19 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   }
 
   private def setLogLevelsFromConfig() {
-    val level = Level.toLevel(config.logLevel())
+    config.logLevel
+      .map(Level.toLevel)
+      .foreach(level => {
+        SiliconRunner.logger.setLevel(level)
 
-    SiliconRunner.logger.setLevel(level)
+        val packageLogger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
+        packageLogger.setLevel(level)
 
-    val packageLogger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
-    packageLogger.setLevel(level)
-
-    config.logger.foreach { case (loggerName, loggerLevelString) =>
-      val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
-      logger.setLevel(Level.toLevel(loggerLevelString))
-    }
+        config.logger.foreach { case (loggerName, loggerLevelString) =>
+          val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
+          logger.setLevel(Level.toLevel(loggerLevelString))
+        }
+    })
   }
 }
 
@@ -402,3 +404,29 @@ object SiliconRunner extends SiliconFrontend(NoopReporter) {
     sys.exit(exitCode)
   }
 }
+
+//import java.util.concurrent.Executors
+//import viper.silicon.Silicon
+//import scala.concurrent.duration._
+//import scala.concurrent.{Await, ExecutionContext, Future}
+
+//object ConcurrentInstantiation extends App {
+//  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+//
+//  val numTasks = 10
+//
+//  val tasks: Seq[Future[Unit]] = for (i <- 1 to numTasks) yield Future {
+//    // By enabling the following line, everything works fine
+//    // LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
+//
+//    val verifier = new Silicon()
+//    verifier.parseCommandLine(Seq("--logLevel ALL", "--z3Exe", "/usr/bin/z3", "dummy-program.sil"))
+//  }
+//
+//  val aggregated: Future[Seq[Unit]] = Future.sequence(tasks)
+//
+//  Await.result(aggregated, Duration.Inf)
+//
+//  println("Ok")
+//  sys.exit(0)
+//}
