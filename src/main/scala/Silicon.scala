@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory
 import viper.silver.ast
 import viper.silver.ast.NoPosition
 import viper.silver.frontend.{SilFrontend, TranslatorState}
-import viper.silver.reporter.{NoopReporter, Reporter}
+import viper.silver.reporter.{ExceptionReport, NoopReporter, Reporter}
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
@@ -376,8 +376,9 @@ object SiliconRunner extends SiliconFrontend(NoopReporter) {
           case Right((cause, failure)) =>
             /* Report exceptions in a user-friendly way */
             logger.debug("An exception occurred:", cause) /* Log stack trace */
-            printErrors(failure.errors: _*) /* Log verification failure */
-          case Left(error) =>
+            //printErrors(failure.errors: _*) /* Log verification failure */
+            reporter.report( ExceptionReport(exception) )
+          case Left(error: Error) =>
             /* Errors are rethrown (see below); for particular ones, additional messages are logged */
             error match {
               case _: NoClassDefFoundError =>
