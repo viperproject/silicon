@@ -227,12 +227,12 @@ package object utils {
       root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
         case forall: silver.ast.Forall =>
           forall.triggers.flatMap { ts =>
-            ts.exps.collect {
+            ts.exps.flatMap(_.collect {
               case fa: silver.ast.FieldAccess
                 if !quantifiedFields.contains(fa.field) || !forall.exp.contains(fa)
 
               => fa
-            }
+            })
           } match {
             case Seq() => errors.flatten
             case fas => (fas map createUnsupportedFieldAccessInTrigger) ++ errors.flatten
