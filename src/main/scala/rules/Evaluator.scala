@@ -1006,7 +1006,7 @@ object evaluator extends EvaluationRules with Immutable {
 
         v.decider.assume(joinDefEqs)
 
-        (sJoined, joinTerm)
+        (sJoined.copy(functionRecorder=sJoined.functionRecorder.recordJoinSymbol(joinTerm)), joinTerm)
     }
   }
 

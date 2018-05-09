@@ -87,6 +87,7 @@ class FunctionData(val programFunction: ast.Function,
   private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   private[this] var freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   private[this] var freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
+  private[this] var freshJoinSymbols: InsertionOrderedSet[App] = InsertionOrderedSet.empty
   private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
 
   private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunctions] = freshFieldInvs
@@ -108,6 +109,12 @@ class FunctionData(val programFunction: ast.Function,
     freshFieldInvs = mergedFunctionRecorder.freshFieldInvs
     freshArps = mergedFunctionRecorder.freshArps
     freshSnapshots = mergedFunctionRecorder.freshSnapshots
+    freshJoinSymbols = mergedFunctionRecorder.freshJoinSymbols
+
+    freshSymbolsAcrossAllPhases ++= freshJoinSymbols.flatMap{
+      case App(f@Function(_, _, _), _) => Some(f.asInstanceOf[Function])
+      case _ => None
+    }
 
     freshSymbolsAcrossAllPhases ++= freshArps.map(_._1)
 
