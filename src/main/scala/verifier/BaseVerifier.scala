@@ -16,6 +16,7 @@ import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
 import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.utils.Counter
+import viper.silver.reporter.StdIOReporter
 
 import scala.collection.mutable
 
