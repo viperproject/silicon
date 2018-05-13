@@ -196,11 +196,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val logLevel = opt[String]("logLevel",
     descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF",
-    default = /* Default log level is that of the root logger (specified in Logback config file) */
-        Some(LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).asInstanceOf[Logger]
-                          .getLevel
-                          .toString
-                          .toUpperCase),
+    default = None,
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )(singleArgConverter(level => level.toUpperCase))

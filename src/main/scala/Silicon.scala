@@ -300,17 +300,19 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   }
 
   private def setLogLevelsFromConfig() {
-    val level = Level.toLevel(config.logLevel())
+    config.logLevel
+      .map(Level.toLevel)
+      .foreach(level => {
+        SiliconRunner.logger.setLevel(level)
 
-    SiliconRunner.logger.setLevel(level)
+        val packageLogger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
+        packageLogger.setLevel(level)
 
-    val packageLogger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
-    packageLogger.setLevel(level)
-
-    config.logger.foreach { case (loggerName, loggerLevelString) =>
-      val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
-      logger.setLevel(Level.toLevel(loggerLevelString))
-    }
+        config.logger.foreach { case (loggerName, loggerLevelString) =>
+          val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
+          logger.setLevel(Level.toLevel(loggerLevelString))
+        }
+    })
   }
 }
 
@@ -365,13 +367,16 @@ object SiliconRunner extends SiliconFrontend(NoopReporter) {
         exitCode = 0
       }
     } catch { /* Catch exceptions and errors thrown at any point of the execution of Silicon */
-      case exception: Exception if config.verified && !config.asInstanceOf[Config].disableCatchingExceptions() =>
+      case exception: Exception
+           if config == null ||
+              (config.verified && !config.asInstanceOf[Config].disableCatchingExceptions()) =>
+
         /* An exception's root cause might be an error; the following code takes care of that */
         reporting.exceptionToViperError(exception) match {
           case Right((cause, failure)) =>
             /* Report exceptions in a user-friendly way */
             logger.debug("An exception occurred:", cause) /* Log stack trace */
-            logger.error(failure.toString) /* Log verification failure */
+            printErrors(failure.errors: _*) /* Log verification failure */
           case Left(error) =>
             /* Errors are rethrown (see below); for particular ones, additional messages are logged */
             error match {

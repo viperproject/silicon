@@ -12,6 +12,7 @@ import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.AbstractLocalVar
+import viper.silicon.SiliconRunner
 
 /* TODO: Use a proper pretty-printer such as the one we use for Silver AST nodes and Silicon terms */
 
@@ -30,8 +31,10 @@ class DefaultStateFormatter extends StateFormatter {
     val oldHeapsStr = format(s.oldHeaps)
 
     val pcsStr =
-      if (   Verifier.config.logLevel().equalsIgnoreCase("TRACE")
-          || Verifier.config.logLevel().equalsIgnoreCase("ALL"))
+      if (SiliconRunner.logger.isTraceEnabled())
+        /* TODO: It would be better if the choice between whether or not to include path
+         *       conditions in the output were made when instantiating the state formatter
+         */
         s"${format(pcs)}\n"
       else
         ""
