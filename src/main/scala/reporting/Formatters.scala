@@ -69,7 +69,7 @@ class DefaultStateFormatter extends StateFormatter {
     val hStr = toJson(σ.h)
     val gStr = σ.oldHeaps.get(Verifier.PRE_STATE_LABEL) match {
       case Some(o) => toJson(o)
-      case _ => ""
+      case _ => "[]"
     }
     val πStr = toJson(π)
     s"""{"store":$γStr,"heap":$hStr,"oldHeap":$gStr,"pcs":$πStr}""".stripMargin
