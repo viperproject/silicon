@@ -174,7 +174,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       val results = functionsSupporter.verify(createInitialState(function, program), function)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
-      logger debug s"Silicon finished verification of function `${function.name}` in ${(elapsed*0.001).toString} seconds with the following result: ${condenseToViperResult(results).toString}"
+      logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
       results
     })
 
@@ -183,7 +183,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       val results = predicateSupporter.verify(createInitialState(predicate, program), predicate)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
-      logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${(elapsed*0.001).toString} seconds with the following result: ${condenseToViperResult(results).toString}"
+      logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
       results
     })
 
@@ -210,7 +210,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
-          logger debug s"Silicon finished verification of method `${method.name}` in ${(elapsed*0.001).toString} seconds with the following result: ${condenseToViperResult(results).toString}"
+          logger debug s"Silicon finished verification of method `${method.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
 
           results
         })
