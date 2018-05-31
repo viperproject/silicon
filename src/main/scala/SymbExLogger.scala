@@ -177,11 +177,16 @@ object SymbExLogger {
   @elidable(INFO)
   def writeJSFile() {
     if (enabled && (FLAG_WRITE_FILES || config.ideModeAdvanced())) {
-      val jsRenderer = new JSTreeRenderer()
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "executionTreeData.js"))
-      try pw.write(jsRenderer.render(memberList)) finally pw.close()
+      try pw.write(toJSString()) finally pw.close()
     }
   }
+
+  /** A JSON representation of the log, used when sending back messages or when writing data to a
+    * file.
+    */
+  @elidable(INFO)
+  def toJSString(): String = new JSTreeRenderer().render(memberList)
 
   protected def getOutputFolder(): String = {
     ""

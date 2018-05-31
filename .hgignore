@@ -1,6 +1,7 @@
 syntax: glob
 .idea
 .idea_modules
+silicon.iml
 project/project
 project/target
 target
