@@ -6,7 +6,7 @@
 
 package viper.silicon.supporters
 
-import ch.qos.logback.classic.Logger
+import org.slf4j.Logger
 import viper.silicon.{SymbExLogger, WellformednessCheckRecord}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent

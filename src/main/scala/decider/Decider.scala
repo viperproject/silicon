@@ -7,7 +7,7 @@
 package viper.silicon.decider
 
 import scala.reflect.{ClassTag, classTag}
-import ch.qos.logback.classic.Logger
+import org.slf4j.Logger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError

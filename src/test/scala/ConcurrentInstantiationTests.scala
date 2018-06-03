@@ -8,7 +8,7 @@ import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Futu
 
 /** See also Silicon issue #315. */
 class ConcurrentInstantiationTests extends FunSuite {
-  test("ConcurrentInstantiationTest") {
+  test("ConcurrentInstantiationTest1") {
     implicit val ec: ExecutionContextExecutor =
       ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
@@ -17,6 +17,23 @@ class ConcurrentInstantiationTests extends FunSuite {
     val tasks: Seq[Future[Unit]] = for (i <- 1 to numTasks) yield Future {
       val verifier = new Silicon()
       verifier.parseCommandLine(Seq("--logLevel ALL", "dummy-program.sil"))
+    }
+
+    val aggregated: Future[Seq[Unit]] = Future.sequence(tasks)
+
+    Await.result(aggregated, Duration.create("5s"))
+  }
+
+  test("ConcurrentInstantiationTest2") {
+    implicit val ec: ExecutionContextExecutor =
+      ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+
+    val numTasks = 10
+
+    val tasks: Seq[Future[Unit]] = for (i <- 1 to numTasks) yield Future {
+      val verifier = new Silicon()
+      verifier.parseCommandLine(Seq("dummy-program.sil"))
+      verifier.start()
     }
 
     val aggregated: Future[Seq[Unit]] = Future.sequence(tasks)
