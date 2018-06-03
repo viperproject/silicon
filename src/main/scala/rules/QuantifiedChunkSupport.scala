@@ -21,6 +21,7 @@ import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
+import viper.silver.reporter.InternalWarningMessage
 
 class InverseFunctions(val condition: Term,
                        val invertibles: Seq[Term],
@@ -519,8 +520,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
             inverseFunctions.axiomInversesOfInvertibles.vars)
       }
 
-    if (effectiveTriggers.isEmpty)
-      v.logger.warn(s"No triggers available for quantifier at ${forall.pos}")
+    if (effectiveTriggers.isEmpty) {
+      val msg = s"No triggers available for quantifier at ${forall.pos}"
+      v.reporter report InternalWarningMessage(msg)
+      v.logger warn msg
+    }
 
     v.decider.prover.comment("Nested auxiliary terms: globals")
     v.decider.assume(auxGlobals)

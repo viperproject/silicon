@@ -9,6 +9,7 @@ package viper.silicon.decider
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
+
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.{Config, Map, toMap}
 import viper.silicon.common.config.Version
@@ -17,10 +18,12 @@ import viper.silicon.reporting.{ExternalToolError, Z3InteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
+import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
 
 class Z3ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
-                    identifierFactory: IdentifierFactory)
+                    identifierFactory: IdentifierFactory,
+                    reporter: Reporter)
     extends Prover
        with LazyLogging {
 
@@ -58,7 +61,10 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
   private def createZ3Instance() = {
-    logger.debug(s"Starting Z3 at location '$z3Path'")
+    // One can pass some options. This allows to check whether they have been received.
+    val msg = s"Starting Z3 at location '$z3Path'"
+    reporter report ConfigurationConfirmation(msg)
+    logger debug msg
 
     val z3File = z3Path.toFile
 
@@ -73,7 +79,10 @@ class Z3ProverStdIO(uniqueId: String,
         Array()
 
       case Some(args) =>
-        logger.debug(s"Additional command-line arguments are $args")
+        // One can pass some options. This allows to check whether they have been received.
+        val msg = s"Additional command-line arguments are $args"
+        reporter report ConfigurationConfirmation(msg)
+        logger debug msg
         args.split(' ').map(_.trim)
     }
 
@@ -184,7 +193,7 @@ class Z3ProverStdIO(uniqueId: String,
       case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
     }
 
-    comment(s"${viper.silicon.common.format.formatMillisReadably(duration)}")
+    comment(s"${viper.silver.reporter.format.formatMillisReadably(duration)}")
     comment("(get-info :all-statistics)")
 
     result
@@ -385,7 +394,11 @@ class Z3ProverStdIO(uniqueId: String,
       if (result.toLowerCase != "success") comment(result)
 
       val warning = result.startsWith("WARNING")
-      if (warning) logger.warn(s"Z3 warning: $result")
+      if (warning) {
+        val msg = s"Z3 warning: $result"
+        reporter report InternalWarningMessage(msg)
+        logger warn msg
+      }
 
       repeat = warning
     }

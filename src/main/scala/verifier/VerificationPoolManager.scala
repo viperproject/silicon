@@ -86,7 +86,7 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
   private object slaveVerifierPoolableObjectFactory extends BasePooledObjectFactory[SlaveVerifier] {
     def create(): SlaveVerifier = {
-      val slave = new SlaveVerifier(master, master.nextUniqueVerifierId())
+      val slave = new SlaveVerifier(master, master.nextUniqueVerifierId(), master.reporter)
       slaveVerifiers = slave +: slaveVerifiers
 
       slave

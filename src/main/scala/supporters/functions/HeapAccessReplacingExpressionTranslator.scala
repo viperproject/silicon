@@ -13,9 +13,11 @@ import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
+import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
-                                              fresh: (String, Sort) => Var)
+                                              fresh: (String, Sort) => Var,
+                                              reporter: Reporter)
     extends ExpressionTranslator
        with LazyLogging {
 
@@ -141,8 +143,11 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case Some(s) =>
         s.convert(sort)
       case None =>
-        if (!failed && data.verificationFailures.isEmpty)
-          logger.warn(s"Could not resolve $key (${key.pos}) during the axiomatisation of function $fname")
+        if (!failed && data.verificationFailures.isEmpty) {
+          val msg = s"Could not resolve $key (${key.pos}) during the axiomatisation of function $fname"
+          reporter report InternalWarningMessage(msg)
+          logger warn msg
+        }
 
         failed = true
 

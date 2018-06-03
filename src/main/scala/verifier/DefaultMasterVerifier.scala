@@ -8,6 +8,7 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
+
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._
@@ -23,7 +24,7 @@ import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvide
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast.utility.Rewriter.Traverse
-import viper.silver.reporter.{Reporter, VerificationResultMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, Reporter, VerificationResultMessage}
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -35,7 +36,7 @@ trait MasterVerifier extends Verifier {
   def verificationPoolManager: VerificationPoolManager
 }
 
-class DefaultMasterVerifier(config: Config, reporter: Reporter)
+class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     extends BaseVerifier(config, "00")
        with MasterVerifier
        with DefaultFunctionVerificationUnitProvider
@@ -172,8 +173,8 @@ class DefaultMasterVerifier(config: Config, reporter: Reporter)
       val startTime = System.currentTimeMillis()
       val results = functionsSupporter.verify(createInitialState(function, program), function)
       val elapsed = System.currentTimeMillis() - startTime
-      reporter.report(VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results)))
-
+      reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
+      logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
       results
     })
 
@@ -181,8 +182,8 @@ class DefaultMasterVerifier(config: Config, reporter: Reporter)
       val startTime = System.currentTimeMillis()
       val results = predicateSupporter.verify(createInitialState(predicate, program), predicate)
       val elapsed = System.currentTimeMillis() - startTime
-      reporter.report(VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results)))
-
+      reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
+      logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
       results
     })
 
@@ -207,7 +208,9 @@ class DefaultMasterVerifier(config: Config, reporter: Reporter)
           val startTime = System.currentTimeMillis()
           val results = v.methodSupporter.verify(s, method)
           val elapsed = System.currentTimeMillis() - startTime
-          reporter.report(VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results)))
+
+          reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
+          logger debug s"Silicon finished verification of method `${method.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
 
           results
         })
@@ -253,7 +256,10 @@ class DefaultMasterVerifier(config: Config, reporter: Reporter)
       config.z3ConfigArgs().map { case (k, v) => s"(set-option :$k $v)" }
 
     if (smt2ConfigOptions.nonEmpty) {
-      logger.info(s"Additional Z3 configuration options are '${config.z3ConfigArgs()}'")
+      // One can pass options to Z3. This allows to check whether they have been received.
+      val msg = s"Additional Z3 configuration options are '${config.z3ConfigArgs()}'"
+      reporter report ConfigurationConfirmation(msg)
+      logger info msg
       preambleReader.emitPreamble(smt2ConfigOptions, sink)
     }
 

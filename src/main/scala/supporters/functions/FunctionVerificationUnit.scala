@@ -48,7 +48,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     private var freshVars: Vector[Var] = Vector.empty
 
     private val expressionTranslator =
-      new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh)
+      new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh, reporter)
 
     def units = functionData.keys.toSeq
 

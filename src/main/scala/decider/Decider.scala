@@ -18,6 +18,7 @@ import viper.silicon.interfaces.decider.{Prover, Unsat}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 
 /*
  * Interfaces
@@ -96,17 +97,27 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 //    }
 
     private def createProver(): Option[DependencyNotFoundError] = {
-      z3 = new Z3ProverStdIO(uniqueId, termConverter, identifierFactory)
+      z3 = new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
       z3.start() /* Cannot query Z3 version otherwise */
 
       val z3Version = z3.z3Version()
-      logger.debug(s"Using Z3 $z3Version located at ${z3.z3Path}")
+      // One can pass some options. This allows to check whether they have been received.
 
-      if (z3Version < Silicon.z3MinVersion)
-        logger.warn(s"Expected at least Z3 version ${Silicon.z3MinVersion.version}, but found $z3Version")
+      val msg = s"Using Z3 $z3Version located at ${z3.z3Path}"
+      reporter report ConfigurationConfirmation(msg)
+      logger debug msg
 
-      if (Silicon.z3MaxVersion.fold(false)(_ < z3Version))
-        logger.warn(s"Silicon might not work with Z3 version $z3Version, consider using ${Silicon.z3MaxVersion.get}")
+      if (z3Version < Silicon.z3MinVersion) {
+        val msg1 = s"Expected at least Z3 version ${Silicon.z3MinVersion.version}, but found $z3Version"
+        reporter report InternalWarningMessage(msg1)
+        logger warn msg1
+      }
+
+      if (Silicon.z3MaxVersion.fold(false)(_ < z3Version)) {
+        val msg1 = s"Silicon might not work with Z3 version $z3Version, consider using ${Silicon.z3MaxVersion.get}"
+        reporter report InternalWarningMessage(msg1)
+        logger warn msg1
+      }
 
       None
     }
