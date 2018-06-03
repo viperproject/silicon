@@ -461,7 +461,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val printTranslatedProgram = opt[Boolean]("printTranslatedProgram",
-    descr ="Print the final program that is going to be verified.",
+    descr ="Print the final program that is going to be verified to stdout.",
+    default = Some(false),
+    noshort = true,
+    hidden = false
+  )
+
+  val printMethodCFGs = opt[Boolean]("printMethodCFGs",
+    descr = "Print a DOT (Graphviz) representation of the CFG of each method to verify to " +
+            "a file '<tempDirectory>/<methodName>.dot'.",
     default = Some(false),
     noshort = true,
     hidden = false
