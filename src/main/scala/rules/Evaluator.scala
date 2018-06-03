@@ -301,11 +301,13 @@ object evaluator extends EvaluationRules with Immutable {
              *       that are executed if a branch is dead */
             val (s2, t1, t2) = entries match {
               case Seq(entry) if entry.pathConditions.branchConditions.head == t0 =>
-                val t2 = v1.decider.appliedFresh("$deadElse", v1.symbolConverter.toSort(e2.typ), s1.relevantQuantifiedVariables)
-                (entry.s, entry.data, t2)
+                val t2 = v1.decider.appliedFresh("dead_else", v1.symbolConverter.toSort(e2.typ), s1.relevantQuantifiedVariables)
+                val fr1 = entry.s.functionRecorder.recordPathSymbol(t2.applicable.asInstanceOf[Function]) // TODO: Avoid cast
+                (entry.s.copy(functionRecorder = fr1), entry.data, t2)
               case Seq(entry) if entry.pathConditions.branchConditions.head == Not(t0) =>
-                val t1 = v1.decider.appliedFresh("$deadThen", v1.symbolConverter.toSort(e1.typ), s1.relevantQuantifiedVariables)
-                (entry.s, t1, entry.data)
+                val t1 = v1.decider.appliedFresh("dead_then", v1.symbolConverter.toSort(e1.typ), s1.relevantQuantifiedVariables)
+                val fr1 = entry.s.functionRecorder.recordPathSymbol(t1.applicable.asInstanceOf[Function]) // TODO: Avoid cast
+                (entry.s.copy(functionRecorder = fr1), t1, entry.data)
               case Seq(entry1, entry2) =>
                 (entry1.s.merge(entry2.s), entry1.data, entry2.data)
               case _ =>
@@ -585,7 +587,7 @@ object evaluator extends EvaluationRules with Immutable {
                                           permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
                         eval(s9, eIn, pve, v5)(QB)})})
-                  })(join(v2.symbolConverter.toSort(eIn.typ), "joinedIn", s2.relevantQuantifiedVariables, v2))(Q)
+                  })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
         } else {
@@ -597,7 +599,7 @@ object evaluator extends EvaluationRules with Immutable {
         joiner.join[Term, Term](s, v)((s1, v1, QB) =>
           magicWandSupporter.applyWand(s1, wand, pve, v1)((s2, v2) => {
             eval(s2, eIn, pve, v2)(QB)
-        }))(join(v.symbolConverter.toSort(eIn.typ), "joinedIn", s.relevantQuantifiedVariables, v))(Q)
+        }))(join(v.symbolConverter.toSort(eIn.typ), "joined_applying", s.relevantQuantifiedVariables, v))(Q)
 
       /* Sequences */
 
@@ -976,13 +978,6 @@ object evaluator extends EvaluationRules with Immutable {
     }
   }
 
-//  private def partiallyAppliedFresh(id: String, appliedArgs: Seq[Term], result: ast.Type, v: Verifier) = {
-//    val appliedSorts = appliedArgs.map(_.sort)
-//    val func = v.decider.fresh(id, appliedSorts, v.symbolConverter.toSort(result))
-//
-//    App(func, appliedArgs)
-//  }
-
   private def join(joinSort: Sort,
                    joinFunctionName: String,
                    joinFunctionArgs: Seq[Term],
@@ -1003,7 +998,8 @@ object evaluator extends EvaluationRules with Immutable {
         val joinDefEqs = entries map (entry =>
           Implies(And(entry.pathConditions.branchConditions), joinTerm === entry.data))
 
-        val sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) =>sAcc.merge(entry.s))
+        var sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) =>sAcc.merge(entry.s))
+        sJoined = sJoined.copy(functionRecorder = sJoined.functionRecorder.recordPathSymbol(joinSymbol))
 
         v.decider.assume(joinDefEqs)
 

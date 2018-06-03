@@ -24,12 +24,14 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def freshFieldInvs: InsertionOrderedSet[InverseFunctions]
   def freshArps: InsertionOrderedSet[(Var, Term)]
   def freshSnapshots: InsertionOrderedSet[Function]
+  def freshPathSymbols: InsertionOrderedSet[Function]
   def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term): FunctionRecorder
   def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder
   def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): FunctionRecorder
   def recordFieldInv(inv: InverseFunctions): FunctionRecorder
   def recordArp(arp: Var, constraint: Term): FunctionRecorder
   def recordFreshSnapshot(snap: Function): FunctionRecorder
+  def recordPathSymbol(symbol: Function): FunctionRecorder
 }
 
 case class ActualFunctionRecorder(private val _data: FunctionData,
@@ -38,7 +40,8 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
                                   freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet(),
                                   freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet(),
                                   freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet(),
-                                  freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet())
+                                  freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet(),
+                                  freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet())
     extends FunctionRecorder {
 
   val data = Some(_data)
@@ -91,6 +94,8 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
 
   def recordFreshSnapshot(snap: Function) = copy(freshSnapshots = freshSnapshots + snap)
 
+  def recordPathSymbol(symbol: Function): FunctionRecorder = copy(freshPathSymbols = freshPathSymbols + symbol)
+
   def merge(other: FunctionRecorder): FunctionRecorder = {
     assert(other.getClass == this.getClass)
     assert(other.asInstanceOf[ActualFunctionRecorder]._data eq this._data)
@@ -111,13 +116,15 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     val fieldInvs = freshFieldInvs ++ other.freshFieldInvs
     val arps = freshArps ++ other.freshArps
     val snaps = freshSnapshots ++ other.freshSnapshots
+    val symbols = freshPathSymbols ++ other.freshPathSymbols
 
     copy(locToSnaps = lts,
          fappToSnaps = fts,
          freshFvfsAndDomains = fvfs,
          freshFieldInvs = fieldInvs,
          freshArps = arps,
-         freshSnapshots = snaps)
+         freshSnapshots = snaps,
+         freshPathSymbols = symbols)
   }
 
   override lazy val toString = {
@@ -144,6 +151,7 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   val freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   val freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   val freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
+  val freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
 
   def merge(other: FunctionRecorder): FunctionRecorder = {
     assert(other == this)
@@ -157,4 +165,5 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   def recordSnapshot(fapp: FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder = this
   def recordArp(arp: Var, constraint: Term): FunctionRecorder = this
   def recordFreshSnapshot(snap: Function): FunctionRecorder = this
+  def recordPathSymbol(symbol: Function): FunctionRecorder = this
 }
