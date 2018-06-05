@@ -11,7 +11,7 @@ import viper.silicon.utils.Counter
 import viper.silicon.state.{Identifier, terms}
 
 class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryOp[Seq[Term]] {
-  override val toString = s"{${p.mkString(",")}}"
+  override lazy val toString = s"{${p.mkString(",")}}"
 }
 
 object Trigger extends (Seq[Term] => Trigger) {
