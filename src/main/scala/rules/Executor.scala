@@ -495,20 +495,26 @@ object executor extends ExecutionRules with Immutable {
     executed
   }
 
-   private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term =
+   private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term = {
      rhs match {
        case _: Var | _: Literal =>
-         /* Cheap (and likely to succeed) matches come first */
          rhs
 
-       case _ if rhs.existsDefined { case t if v.triggerGenerator.isForbiddenInTrigger(t) => true } =>
+       case _  =>
+         /* 2018-06-05 Malte:
+          *   This case was previously guarded by the condition
+          *     rhs.existsDefined {
+          *       case t if v.triggerGenerator.isForbiddenInTrigger(t) => true
+          *     }
+          *   and followed by a catch-all case in which rhs was returned.
+          *   However, reducing the number of fresh symbols does not appear to improve
+          *   performance; instead, it can cause an exponential blow-up in term size, as
+          *   reported by Silicon issue #328.
+          */
          val t = v.decider.fresh(name, v.symbolConverter.toSort(typ))
          v.decider.assume(t === rhs)
 
          t
-
-       case _ =>
-         /* Catch-all case */
-         rhs
      }
+   }
 }
