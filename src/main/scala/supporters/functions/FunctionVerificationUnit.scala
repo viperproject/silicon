@@ -6,7 +6,7 @@
 
 package viper.silicon.supporters.functions
 
-import org.slf4j.Logger
+import com.typesafe.scalalogging.Logger
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent

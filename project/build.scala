@@ -124,9 +124,8 @@ object SiliconBuild extends Build {
 
   object dependencies {
     lazy val logging = Seq(
-      "org.slf4j" % "slf4j-api" % "1.7.12",
-      "ch.qos.logback" % "logback-classic" % "1.1.7",
-      "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0")
+      "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0")
 
     lazy val scallop = "org.rogach" %% "scallop" % "2.0.7"
     lazy val jgrapht = "org.jgrapht" % "jgrapht-core" % "0.9.1"
