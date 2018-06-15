@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silver.ast
-import viper.silver.ast.{Info, PredicateAccess}
+import viper.silver.ast.Info
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import viper.silver.verifier.reasons._
@@ -409,12 +409,12 @@ object evaluator extends EvaluationRules with Immutable {
                 case _: ast.MagicWand =>
                   val chs = h.values.collect { case ch: QuantifiedMagicWandChunk if ch.id == identifier => ch }
                   val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                  PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
+                    PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
                   perm
                 case _: ast.Field =>
                   val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.id == identifier => ch}
                   val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                  PermPlus(q, ch.perm.replace(`?r`, args.head)))
+                    PermPlus(q, ch.perm.replace(`?r`, args.head)))
                   /* TODO: Try again once Silicon fully supports field accesses as triggers.
                    *       Currently, adding these axioms makes several of the RSL examples
                    *       exhibit matching loops (potentially other examples as well).
@@ -426,7 +426,7 @@ object evaluator extends EvaluationRules with Immutable {
                 case pred: ast.Predicate =>
                   val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.id == identifier => ch}
                   val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                  PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
+                    PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
                   perm
               }
             } else {
@@ -444,115 +444,114 @@ object evaluator extends EvaluationRules with Immutable {
             }
         Q(s1, perm, v1)})
 
-//      case ast.ForPerm(varDecl, accessList, body) =>
-//        val qvar = varDecl.localVar
-//        /* Iterate over the list of relevant chunks in continuation passing style (very similar
-//         * to evals), and evaluate the forperm-body with a different qvar assignment each time.
-//         */
-//        def bindRcvrAndEvalBody(s: State,
-//                                chs: Iterable[BasicChunk],
-//                                ts: Seq[Term],
-//                                v: Verifier)
-//                               (Q: (State, Seq[Term], Verifier) => VerificationResult)
-//                               : VerificationResult = {
-//          if (chs.isEmpty)
-//            Q(s, ts.reverse, v)
-//          else {
-//            val ch = chs.head
-//            val rcvr = ch.args.head /* NOTE: If ch is a predicate chunk, only the first argument is used */
-//            evalImplies(s.copy(s.g + (qvar, rcvr)), IsPositive(ch.perm), body, false, pve, v)((s1, tImplies, v1) =>
-//              bindRcvrAndEvalBody(s1, chs.tail, tImplies +: ts, v1)(Q))}
-//        }
-//        val s1 = s.copy(h = s.partiallyConsumedHeap.getOrElse(s.h))
-//        val locs = accessList.map(_.name)
-//        val chs = s1.h.values.collect { case ch: BasicChunk if locs contains ch.id.name => ch }
-//        bindRcvrAndEvalBody(s1, chs, Seq.empty, v)((s2, ts, v1) => {
-//          val s3 = s2.copy(h = s.h, g = s.g)
-//          Q(s3, And(ts), v1)})
+      case ast.ForPerm(vars, accessList, body) =>
 
-      case fp@ast.ForPerm(vars, accessList, body) =>
+        /* Iterate over the list of relevant chunks in continuation passing style (very similar
+         * to evals), and evaluate the forperm-body with a different qvar assignment each time.
+        */
 
-        def bindRcvrsAndEvalBody(s: State, chs: Iterable[NonQuantifiedChunk], args: Seq[ast.Exp], ts: Seq[Term], v: Verifier)(Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
+        def bindRcvrsAndEvalBody(s: State, chs: Iterable[NonQuantifiedChunk], args: Seq[ast.Exp], ts: Seq[Term], v: Verifier)
+                                (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
           if (chs.isEmpty)
             Q(s, ts.reverse, v)
           else {
             val ch = chs.head
             val rcvrs = ch.args
-            var state = s.copy()
-            var store = state.g
-            for (v <- vars) {
-              if (args.contains(v.localVar)) {
-                val index = args.indexOf(v.localVar)
-                store = store + (v.localVar, rcvrs(index))
+            var s1 = s.copy()
+            var g1 = s1.g
+            var addCons : Seq[Term] = Seq()
+            for (vr <- vars) {
+              if (args.contains(vr.localVar)) {
+                val indices = args.zipWithIndex.filter(ai => ai._1 == vr.localVar).map(_._2)
+                val index = indices.head
+                g1 = g1 + (vr.localVar, rcvrs(index))
+                if (indices.length > 1) {
+                  val equalArgs = And(indices.tail map { i => rcvrs(i) === rcvrs(index) })
+                  addCons = addCons :+ equalArgs
+                }
               }
             }
-            state = state.copy(store)
-            evalImplies(state, IsPositive(ch.perm), body, false, pve, v)((s1, tImplies, v1) => bindRcvrsAndEvalBody(s1, chs.tail, args, tImplies +: ts, v1)(Q))
+            s1 = s1.copy(g1)
+
+            val nonQuantArgs = args filter (a => !vars.map(_.localVar).contains(a))
+            val indices = nonQuantArgs map (a => args.indexOf(a))
+
+            evals(s1, nonQuantArgs, _ => pve, v)((s2, tArgs, v1) => {
+              val argsWithIndex = tArgs zip indices
+              val zippedArgs = argsWithIndex map (ai => (ai._1, ch.args(ai._2)))
+              val argsPairWiseEqual = And(zippedArgs map {case (a1, a2) => a1 === a2})
+
+              evalImplies(s2, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), body, false, pve, v1)((s3, tImplies, v2) =>
+                bindRcvrsAndEvalBody(s3, chs.tail, args, tImplies +: ts, v2)(Q))
+            })
           }
         }
 
-        def bindQuantRcvrsAndEvalBody(s: State, chs: Iterable[QuantifiedBasicChunk], args: Seq[ast.Exp], ts: Seq[Term], v: Verifier)(Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
+        def bindQuantRcvrsAndEvalBody(s: State, chs: Iterable[QuantifiedBasicChunk], args: Seq[ast.Exp], ts: Seq[Term], v: Verifier)
+                                     (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
           if (chs.isEmpty)
             Q(s, ts.reverse, v)
           else {
             val ch = chs.head
             val rcvrs = ch.singletonArguments.getOrElse(Seq())
-            if (!rcvrs.isEmpty) {
-              var state = s.copy()
-              var store = state.g
+            if (rcvrs.nonEmpty) {
+              var s1 = s.copy()
+              var g1 = s1.g
 
               for (v <- vars) {
                 if (args.contains(v.localVar)) {
                   val index = args.indexOf(v.localVar)
-                  store = store + (v.localVar, rcvrs(index))
+                  g1 = g1 + (v.localVar, rcvrs(index))
                 }
               }
 
-              state = state.copy(store)
-              val tVars = vars.map(v => store(v.localVar))
-              return evalImplies(state, IsPositive(ch.perm.replace(ch.quantifiedVars, tVars)), body, false, pve, v)((s1, tImplies, v1) => bindQuantRcvrsAndEvalBody(s1, chs.tail, args, tImplies +: ts, v1)(Q))
+              s1 = s1.copy(g1)
+              val tVars = vars.map(v => g1(v.localVar))
+              return evalImplies(s1, IsPositive(ch.perm.replace(ch.quantifiedVars, tVars)), body, false, pve, v)((s2, tImplies, v1) =>
+                bindQuantRcvrsAndEvalBody(s2, chs.tail, args, tImplies +: ts, v1)(Q))
             }
 
             val localVars = vars map (_.localVar)
             val tVars = localVars map (x => v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ)))
             val gVars = Store(localVars zip tVars)
 
-            val state = s.copy(s.g + gVars, quantifiedVariables = tVars ++ s.quantifiedVariables)
+            val s1 = s.copy(s.g + gVars, quantifiedVariables = tVars ++ s.quantifiedVariables)
 
-            evals(state, args, _ => pve, v)((s1, ts1, v1) => {
+            evals(s1, args, _ => pve, v)((s2, ts1, v1) => {
 
               val bc = IsPositive(ch.perm.replace(ch.quantifiedVars, ts1))
               val tTriggers = Seq(Trigger(ch.valueAt(ts1)))
 
-              evalImplies(s1, bc, body, false, pve, v1)((s2, tImplies, v2) => {
+              evalImplies(s2, bc, body, false, pve, v1)((s3, tImplies, v2) => {
                 val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
-                bindQuantRcvrsAndEvalBody(s2, chs.tail, args, tQuant +: ts, v2)(Q)})
+                bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, v2)(Q)})
             })
           }
         }
 
-          val s1 = s.copy(h = s.partiallyConsumedHeap.getOrElse(s.h))
-          val resIdent = accessList.map( res => res match {
-            case ast.FieldAccess(_, field) => BasicChunkIdentifier(field.name)
-            case ast.PredicateAccess(_, predicateName) => BasicChunkIdentifier(predicateName)
-            case w: ast.MagicWand => MagicWandIdentifier(w, Verifier.program)
-          })
-          val args = accessList.map( res => res match {
-            case fa: ast.FieldAccess => Seq(fa.rcv)
-            case pa: ast.PredicateAccess => pa.args
-            case w: ast.MagicWand => w.subexpressionsToEvaluate(Verifier.program)
-          })
-          val identWithArg = resIdent.zip(args)
-          identWithArg.foldLeft(Success(): VerificationResult)((q, ia) => {
-            val chs = s1.h.values.collect { case ch: NonQuantifiedChunk if ch.id == ia._1 => ch }
-            bindRcvrsAndEvalBody(s1, chs, ia._2, Seq.empty, v)((s2, ts, v1) => {
-              val qchs = s2.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == ia._1 => ch }
-              bindQuantRcvrsAndEvalBody(s2, qchs, ia._2, ts, v1)((s3, ts1, v2) => {
-                val s4 = s3.copy(h = s.h, g = s.g)
-                q && Q(s4, And(ts1), v2)
-              })
+        val s1 = s.copy(h = s.partiallyConsumedHeap.getOrElse(s.h))
+        val resIdent = accessList.map( res => res match {
+          case ast.FieldAccess(_, field) => BasicChunkIdentifier(field.name)
+          case ast.PredicateAccess(_, predicateName) => BasicChunkIdentifier(predicateName)
+          case w: ast.MagicWand => MagicWandIdentifier(w, Verifier.program)
+        })
+        val args = accessList.map( res => res match {
+          case fa: ast.FieldAccess => Seq(fa.rcv)
+          case pa: ast.PredicateAccess => pa.args
+          case w: ast.MagicWand => w.subexpressionsToEvaluate(Verifier.program)
+        })
+
+        val identWithArg = resIdent.zip(args)
+        identWithArg.foldLeft(Success(): VerificationResult)((q, ia) => {
+          val chs = s1.h.values.collect { case ch: NonQuantifiedChunk if ch.id == ia._1 => ch }
+          bindRcvrsAndEvalBody(s1, chs, ia._2, Seq.empty, v)((s2, ts, v1) => {
+            val qchs = s2.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == ia._1 => ch }
+            bindQuantRcvrsAndEvalBody(s2, qchs, ia._2, ts, v1)((s3, ts1, v2) => {
+              val s4 = s3.copy(h = s.h, g = s.g)
+              q && Q(s4, And(ts1), v2)
             })
           })
+        })
 
       case sourceQuant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
         val (eQuant, qantOp, eTriggers) = sourceQuant match {
@@ -895,7 +894,6 @@ object evaluator extends EvaluationRules with Immutable {
                         (Q: (State, ChunkIdentifer, Seq[Term], Verifier) => VerificationResult)
                         : VerificationResult = {
     resacc match {
-      //case locacc : ast.LocationAccess => evalLocationAccess(s, locacc, pve, v)
       case wand : ast.MagicWand =>
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) =>
         Q(s1, MagicWandIdentifier(wand, Verifier.program), tArgs, v1))
