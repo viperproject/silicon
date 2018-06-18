@@ -6,7 +6,7 @@
 
 package viper.silicon.supporters
 
-import ch.qos.logback.classic.Logger
+import com.typesafe.scalalogging.Logger
 import viper.silicon.{SymbExLogger, WellformednessCheckRecord}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
@@ -66,8 +66,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                          oldHeaps = OldHeaps(),
                          methodCfg = body)
 
-//      toFile(method.toString(), new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.sil"))
-//      toFile(body.toDot, new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
+      if (Verifier.config.printMethodCFGs()) {
+        viper.silicon.common.io.toFile(
+          body.toDot,
+          new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
+      }
 
       val result =
         /* Combined the well-formedness check and the execution of the body, which are two separate

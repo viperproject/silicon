@@ -6,7 +6,7 @@
 
 package viper.silicon.verifier
 
-import ch.qos.logback.classic.Logger
+import com.typesafe.scalalogging.Logger
 import viper.silver.ast
 import viper.silver.parser.FastParser
 import viper.silicon.{Config, Map}
@@ -17,11 +17,13 @@ import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters.{PredicateData, QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.supporters.functions.FunctionData
 import viper.silicon.utils.Counter
+import viper.silver.reporter.Reporter
 
 trait Verifier {
   def uniqueId: String
 
   def logger: Logger
+  def reporter: Reporter
   def counter(id: AnyRef): Counter
 
   def decider: Decider

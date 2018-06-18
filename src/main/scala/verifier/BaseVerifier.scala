@@ -6,7 +6,7 @@
 
 package viper.silicon.verifier
 
-import ch.qos.logback.classic.Logger
+import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import viper.silver.components.StatefulComponent
 import viper.silicon.{utils, _}
@@ -30,7 +30,8 @@ abstract class BaseVerifier(val config: Config,
        with Verifier
        with DefaultDeciderProvider {
 
-  val logger: Logger = LoggerFactory.getLogger(s"${this.getClass.getName}-$uniqueId").asInstanceOf[Logger]
+  val logger: Logger =
+    Logger(LoggerFactory.getLogger(s"${this.getClass.getName}-$uniqueId"))
 
   private val counters = mutable.Map[AnyRef, Counter]()
 
