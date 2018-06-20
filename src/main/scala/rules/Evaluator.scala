@@ -446,7 +446,7 @@ object evaluator extends EvaluationRules with Immutable {
             }
         Q(s1, perm, v1)})
 
-      case ast.ForPerm(vars, accessList, body) =>
+      case ast.ForPerm(vars, accessRes, body) =>
 
         /* Iterate over the list of relevant chunks in continuation passing style (very similar
          * to evals), and evaluate the forperm-body with a different qvar assignment each time.
@@ -532,26 +532,24 @@ object evaluator extends EvaluationRules with Immutable {
         }
 
         val s1 = s.copy(h = s.partiallyConsumedHeap.getOrElse(s.h))
-        val resIdent = accessList.map( res => res match {
+
+        val resIdent = accessRes match {
           case ast.FieldAccess(_, field) => BasicChunkIdentifier(field.name)
           case ast.PredicateAccess(_, predicateName) => BasicChunkIdentifier(predicateName)
           case w: ast.MagicWand => MagicWandIdentifier(w, Verifier.program)
-        })
-        val args = accessList.map( res => res match {
+        }
+        val args = accessRes match {
           case fa: ast.FieldAccess => Seq(fa.rcv)
           case pa: ast.PredicateAccess => pa.args
           case w: ast.MagicWand => w.subexpressionsToEvaluate(Verifier.program)
-        })
+        }
 
-        val identWithArg = resIdent.zip(args)
-        identWithArg.foldLeft(Success(): VerificationResult)((q, ia) => {
-          val chs = s1.h.values.collect { case ch: NonQuantifiedChunk if ch.id == ia._1 => ch }
-          bindRcvrsAndEvalBody(s1, chs, ia._2, Seq.empty, v)((s2, ts, v1) => {
-            val qchs = s2.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == ia._1 => ch }
-            bindQuantRcvrsAndEvalBody(s2, qchs, ia._2, ts, v1)((s3, ts1, v2) => {
-              val s4 = s3.copy(h = s.h, g = s.g)
-              q && Q(s4, And(ts1), v2)
-            })
+        val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](s1.h.values, resIdent)
+        bindRcvrsAndEvalBody(s1, chs, args, Seq.empty, v)((s2, ts, v1) => {
+          val qchs = s2.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }
+          bindQuantRcvrsAndEvalBody(s2, qchs, args, ts, v1)((s3, ts1, v2) => {
+            val s4 = s3.copy(h = s.h, g = s.g)
+            Q(s4, And(ts1), v2)
           })
         })
 
