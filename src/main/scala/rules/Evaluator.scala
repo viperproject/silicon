@@ -129,6 +129,7 @@ object evaluator extends EvaluationRules with Immutable {
         if (s2.recordPossibleTriggers)
           e match {
             case pt: ast.PossibleTrigger =>
+              println(pt)
               s2.copy(possibleTriggers = s2.possibleTriggers + (pt -> t))
             case fa: ast.FieldAccess if s2.qpFields.contains(fa.field) =>
               s2.copy(possibleTriggers = s2.possibleTriggers + (fa -> t))
@@ -806,6 +807,8 @@ object evaluator extends EvaluationRules with Immutable {
                     (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Quantification], Seq[Quantification]), Verifier) => VerificationResult)
                     : VerificationResult = {
 
+    println(optTriggers)
+
     val localVars = vars map (_.localVar)
 
     val tVars = localVars map (x => v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ)))
@@ -979,14 +982,24 @@ object evaluator extends EvaluationRules with Immutable {
 
     if (eTriggerSets.isEmpty)
       Q(s, tTriggersSets, v)
-    else
-      evalTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
-        evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
+    else {
+      println("Trigger sets head: ")
+      println(eTriggerSets.head)
+      println(eTriggerSets.head.head.isHeapDependent(Verifier.program))
+      if (eTriggerSets.head.head.isHeapDependent(Verifier.program)) {
+        evalHeapTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
+          evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
+      } else {
+        evalTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
+          evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
+      }}
   }
 
   private def evalTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier)
                          (Q: (State, Seq[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
+
+    println(exps)
 
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map {
@@ -1107,6 +1120,30 @@ object evaluator extends EvaluationRules with Immutable {
 
         (sJoined, joinTerm)
     }
+  }
+
+  private def evalHeapTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier)
+                             (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
+    var triggers: Seq[Term] = Seq()
+    var triggerAxioms: Seq[Quantification] = Seq()
+    val r = exps map {
+      case fa: ast.FieldAccess => {
+        val relevantChunks = s.h.values.collect { case ch: QuantifiedFieldChunk if ch.id.name == fa.field.name => ch }
+        println(relevantChunks)
+        val dom = if (s.smDomainNeeded) ??? else None
+        val summarisedHeap = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), fa.field, dom, v)
+        println(summarisedHeap)
+        triggerAxioms = triggerAxioms ++ summarisedHeap._2
+        val s1 = s.copy()
+        eval(s1, fa.rcv, pve, v)((s2, tRcv, v1) => {
+          triggers = triggers :+ FieldTrigger(fa.field.name, summarisedHeap._1, tRcv)
+          Success()}
+        )
+      }
+    }
+    triggerAxioms foreach v.decider.pcs.add
+    println("Triggers: " + triggers)
+    Q(s, triggers, v)
   }
 
   private[silicon] case object FromShortCircuitingAnd extends Info {

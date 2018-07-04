@@ -427,6 +427,13 @@ object consumer extends ConsumptionRules with Immutable {
                     val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(`?r`)
                     val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
                     val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
+                    val fName = acc.loc.field.name
+                    val relChunks = s.h.values.collect { case ch: QuantifiedFieldChunk if ch.id.name == fName => ch}
+                    val sum = quantifiedChunkSupporter.summarise(s, relChunks.toSeq, Seq(`?r`), acc.loc.field, None, v1)
+                    println("TEST")
+                    v1.decider.prover.comment("TESTING EXHALE")
+                    sum._2 foreach v1.decider.assume
+                    v1.decider.assume(Forall(`?r`, Implies(condOfInvOfLoc, FieldTrigger(fName, sum._1 , tRcvr)), Trigger(inverseFunctions.inversesOf(`?r`))))
                     val result = quantifiedChunkSupporter.removePermissions(
                       s1,
                       relevantChunks,

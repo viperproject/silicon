@@ -1679,6 +1679,13 @@ case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigg
   val sort = sorts.Set(elementsSort)
 }
 
+case class FieldTrigger(field: String, fvf: Term, at: Term) extends Term {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+  utils.assertSort(at, "receiver", sorts.Ref)
+
+  val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+}
+
 
 /* Quantified predicates */
 case class PredicateLookup(predname: String, psf: Term, args: Seq[Term]) extends Term {

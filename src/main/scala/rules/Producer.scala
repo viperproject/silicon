@@ -368,6 +368,7 @@ object producer extends ProductionRules with Immutable {
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
+            println(tTriggers)
             quantifiedChunkSupporter.produce(
               s1,
               forall,

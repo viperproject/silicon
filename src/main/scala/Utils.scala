@@ -197,7 +197,7 @@ package object utils {
 
     def check(program: silver.ast.Program) = (
          checkPermissions(program)
-      ++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program))
+      //++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program))
       ++ checkInhaleExhaleAssertions(program))
 
     def createUnsupportedPermissionExpressionError(offendingNode: errors.ErrorNode) = {
