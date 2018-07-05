@@ -270,6 +270,16 @@ object executor extends ExecutionRules with Immutable {
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+            s2.smCache.get(field, relevantChunks) match {
+              case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) =>
+                v2.decider.assume(FieldTrigger(field.name, fvfDef.sm, tRcvr))
+              case _ => {
+                val (fvf, fvfValueDefs, None) =
+                  quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), field, None, v1)
+                v2.decider.assume(fvfValueDefs)
+                v2.decider.assume(FieldTrigger(field.name, fvf, tRcvr))
+              }
+            }
             val result = quantifiedChunkSupporter.removePermissions(
               s2,
               relevantChunks,
@@ -287,6 +297,7 @@ object executor extends ExecutionRules with Immutable {
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 v1.decider.assume(smValueDef)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm)
+                v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
               case (Incomplete(_), _, _) =>
                 Failure(pve dueTo InsufficientPermission(fa))}}))
@@ -496,6 +507,8 @@ object executor extends ExecutionRules with Immutable {
   }
 
    private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term = {
+     val lookups = rhs.deepCollect[Lookup] {case l: Lookup => l}
+     lookups foreach {l => v.decider.assume(FieldTrigger(l.field, l.fvf, l.at))}
      rhs match {
        case _: Var | _: Literal =>
          rhs

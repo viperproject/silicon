@@ -224,7 +224,7 @@ class TermToSMTLib2Converter
 //        sys.error(s"Unexpected sort '${fvf.sort}' of field value function '$fvf' in lookup term '$term'")
 //    }
 
-    case FieldTrigger(field, fvf, at) => parens(text("$FVF.loc_") <> field <+> render(fvf) <+> render(at))
+    case FieldTrigger(field, fvf, at) => parens(text("$FVF.loc_") <> field <+> render(Lookup(field, fvf, at)) <+> render(at))
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 

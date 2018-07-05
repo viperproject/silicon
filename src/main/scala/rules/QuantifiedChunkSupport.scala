@@ -18,6 +18,7 @@ import viper.silicon.resources.{QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
+import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
@@ -547,6 +548,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val conservedPcs =
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
+
+//    val relevantChunks = s.h.values.collect {case ch1: QuantifiedBasicChunk if ch1.id == ch.id => ch1}
+//    val summarisedHeap = summarise(s.copy(h = s.h + ch), relevantChunks.toSeq, Seq(`?r`), rec, None,v)
+//    v.decider.assume(summarisedHeap._2)
+
+    val heapTriggers: Seq[FieldTrigger] = ((tTriggers flatMap  (_.p)) filter (t => t.isInstanceOf[FieldTrigger])).asInstanceOf[Seq[FieldTrigger]]
+    if (heapTriggers.nonEmpty) {
+      val trig = heapTriggers.head
+      v.decider.assume(Forall(ch.quantifiedVars, Implies(tCond, Lookup(trig.field, trig.fvf, ch.quantifiedVars.head) === Lookup(trig.field, tSnap, ch.quantifiedVars.head)), Seq(Trigger(Lookup(trig.field, trig.fvf, ch.quantifiedVars.head)), Trigger(Lookup(trig.field, tSnap, ch.quantifiedVars.head)))))
+    }
 
     val resource = Resources.resourceDescriptions(ch.resourceID)
     val interpreter = new QuantifiedPropertyInterpreter(v)

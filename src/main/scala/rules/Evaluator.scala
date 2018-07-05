@@ -211,13 +211,16 @@ object evaluator extends EvaluationRules with Immutable {
                   Q(s2, fvfLookup, v1)}
             case _ =>
               val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
+              val (fvf, fvfValueDefs, None) =
+                quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), fa.field, None, v1)
+              println(totalPermissions)
+              v1.decider.assume(fvfValueDefs)
+              v1.decider.assume(FieldTrigger(fa.field.name, fvf, tRcvr))
               v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
                 case true =>
-                  val (fvf, fvfValueDefs, None) =
-                    quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), fa.field, None, v1)
-                  v1.decider.assume(fvfValueDefs)
+
                   val smLookup = Lookup(fa.field.name, fvf, tRcvr)
                   val smDef = SnapshotMapDefinition(fa.field, fvf, fvfValueDefs, Seq())
                   val fr2 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
@@ -414,8 +417,20 @@ object evaluator extends EvaluationRules with Immutable {
                   val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
                     PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
                   perm
-                case _: ast.Field =>
+                case field: ast.Field =>
                   val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.id == identifier => ch}
+
+                  s1.smCache.get(field, chs.toSeq) match {
+                    case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) =>
+                      v1.decider.assume(FieldTrigger(field.name, fvfDef.sm, args.head))
+                    case _ => {
+                      val (fvf, fvfValueDefs, None) =
+                        quantifiedChunkSupporter.summarise(s1, chs.toSeq, Seq(`?r`), field, None, v1)
+                      v1.decider.assume(fvfValueDefs)
+                      v1.decider.assume(FieldTrigger(field.name, fvf, args.head))
+                    }
+                  }
+
                   val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
                     PermPlus(q, ch.perm.replace(`?r`, args.head)))
                   /* TODO: Try again once Silicon fully supports field accesses as triggers.
@@ -807,8 +822,6 @@ object evaluator extends EvaluationRules with Immutable {
                     (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Quantification], Seq[Quantification]), Verifier) => VerificationResult)
                     : VerificationResult = {
 
-    println(optTriggers)
-
     val localVars = vars map (_.localVar)
 
     val tVars = localVars map (x => v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ)))
@@ -983,9 +996,6 @@ object evaluator extends EvaluationRules with Immutable {
     if (eTriggerSets.isEmpty)
       Q(s, tTriggersSets, v)
     else {
-      println("Trigger sets head: ")
-      println(eTriggerSets.head)
-      println(eTriggerSets.head.head.isHeapDependent(Verifier.program))
       if (eTriggerSets.head.head.isHeapDependent(Verifier.program)) {
         evalHeapTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
           evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
@@ -998,8 +1008,6 @@ object evaluator extends EvaluationRules with Immutable {
   private def evalTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier)
                          (Q: (State, Seq[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
-
-    println(exps)
 
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map {
@@ -1129,10 +1137,8 @@ object evaluator extends EvaluationRules with Immutable {
     val r = exps map {
       case fa: ast.FieldAccess => {
         val relevantChunks = s.h.values.collect { case ch: QuantifiedFieldChunk if ch.id.name == fa.field.name => ch }
-        println(relevantChunks)
         val dom = if (s.smDomainNeeded) ??? else None
         val summarisedHeap = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), fa.field, dom, v)
-        println(summarisedHeap)
         triggerAxioms = triggerAxioms ++ summarisedHeap._2
         val s1 = s.copy()
         eval(s1, fa.rcv, pve, v)((s2, tRcv, v1) => {
@@ -1141,9 +1147,8 @@ object evaluator extends EvaluationRules with Immutable {
         )
       }
     }
-    triggerAxioms foreach v.decider.pcs.add
-    println("Triggers: " + triggers)
-    Q(s, triggers, v)
+    triggerAxioms foreach v.decider.assume
+    r.foldLeft(Q(s, triggers, v))((c, q) => c && q)
   }
 
   private[silicon] case object FromShortCircuitingAnd extends Info {

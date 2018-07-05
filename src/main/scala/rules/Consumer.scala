@@ -1094,13 +1094,15 @@ object consumer extends ConsumptionRules with Immutable {
                     exhaleExt = false)
 
     executionFlowController.tryOrFail0(s1, v)((s2, v1, QS) => {
-      eval(s2, e, pve, v1)((s3, t, v2) =>
+      eval(s2, e, pve, v1)((s3, t, v2) => {
+        val heapTriggers = t.deepCollect[Lookup] {case l: Lookup => l}
+        heapTriggers foreach (l => v2.decider.assume(FieldTrigger(l.field, l.fvf, l.at)))
         v2.decider.assert(t) {
           case true =>
             v2.decider.assume(t)
             QS(s3, v2)
           case false =>
-            Failure(pve dueTo AssertionFalse(e))})
+            Failure(pve dueTo AssertionFalse(e))}})
     })((s4, v4) => {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
