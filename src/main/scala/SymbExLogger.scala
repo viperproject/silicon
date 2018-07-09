@@ -263,6 +263,29 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     sepCounter
   }
 
+  /** Record the last prover query that failed.
+    *
+    * This is used to record failed SMT queries, that ultimately led Silicon
+    * to a verification failure. Whenever a new SMT query is successful, then
+    * the currently recorded one is supposed to be discarded (via the
+    * discardSMTQuery method), because it did not cause a failure.
+    *
+    * @param query The query to be recorded.
+    */
+  def setSMTQuery(query: Term): Unit = {
+    main.lastFailedProverQuery = Some(query)
+  }
+
+  /** Discard the currently recorded SMT query.
+    *
+    * This is supposed to be called when we know the recorded SMT query cannot
+    * have been the reason for a verification failure (e.g. a new query has
+    * been performed afterwards).
+    */
+  def discardSMTQuery(): Unit = {
+    main.lastFailedProverQuery = None
+  }
+
   /**
     * 'Finishes' the recording at the current node and goes one level higher in the record tree.
     * There should be only one call of collapse per insert.
@@ -784,6 +807,7 @@ sealed trait SymbolicRecord {
   // TODO: Oops.
   val pcs: Set[Term]
   var subs = List[SymbolicRecord]()
+  var lastFailedProverQuery: Option[Term] = None
 
   def toTypeString(): String
 
