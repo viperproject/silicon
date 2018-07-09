@@ -11,7 +11,7 @@ import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
 
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.{Config, Map, SymbExLogger, toMap}
+import viper.silicon.{Config, Map, toMap}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, Z3InteractionFailed}
@@ -180,20 +180,8 @@ class Z3ProverStdIO(uniqueId: String,
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None) = {
-    val result = assert(termConverter.convert(goal), timeout)
-
-    // If the SMT query was not successful, store it (possibly "overwriting"
-    // any previously saved query), otherwise discard any query we had saved
-    // previously (it did not cause a verification failure) and ignore the
-    // current one, because it cannot cause a verification error.
-    if (result)
-      SymbExLogger.currentLog().discardSMTQuery()
-    else
-      SymbExLogger.currentLog().setSMTQuery(goal)
-
-    result
-  }
+  def assert(goal: Term, timeout: Option[Int] = None) =
+    assert(termConverter.convert(goal), timeout)
 
   def assert(goal: String, timeout: Option[Int]) = {
 //    bookkeeper.assertionCounter += 1
