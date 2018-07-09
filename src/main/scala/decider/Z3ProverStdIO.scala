@@ -205,7 +205,7 @@ class Z3ProverStdIO(uniqueId: String,
       case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
     }
 
-    comment(s"${viper.silicon.common.format.formatMillisReadably(duration)}")
+    comment(s"${viper.silver.reporter.format.formatMillisReadably(duration)}")
     comment("(get-info :all-statistics)")
 
     result

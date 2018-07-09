@@ -787,6 +787,8 @@ object Equals extends ((Term, Term) => BooleanTerm) {
               assert(false, s"Equality '$e0 == (Snap) $e1' is not allowed")
             case (_: SortWrapper, _: Combine) =>
               assert(false, s"Equality '(Snap) $e0 == $e1' is not allowed")
+            case (Unit, _: Combine) | (_: Combine, Unit) =>
+              assert(false, s"Equality '$e0 == $e1' is not allowed")
             case _ => /* Ok */
           }
 

@@ -247,14 +247,14 @@ object evaluator extends EvaluationRules with Immutable {
           Q(s1, Minus(0, t0), v1))
 
       case ast.Old(e0) =>
-        evalOld(s, s.oldHeaps(Verifier.PRE_STATE_LABEL), e0, pve, v)(Q)
+        evalInOldState(s, Verifier.PRE_STATE_LABEL, e0, pve, v)(Q)
 
       case old @ ast.LabelledOld(e0, lbl) =>
         s.oldHeaps.get(lbl) match {
           case None =>
             Failure(pve dueTo LabelledStateNotReached(old))
           case Some(h) =>
-            evalOld(s, h, e0, pve, v)(Q)}
+            evalInOldState(s, lbl, e0, pve, v)(Q)}
 
       case ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
@@ -767,23 +767,24 @@ object evaluator extends EvaluationRules with Immutable {
     })(Q)
   }
 
-  private def evalOld(s: State, h: Heap, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
-                     (Q: (State, Term, Verifier) => VerificationResult)
-                     : VerificationResult =
+  private def evalInOldState(s: State,
+                             label: String,
+                             e: ast.Exp,
+                             pve: PartialVerificationError,
+                             v: Verifier)
+                            (Q: (State, Term, Verifier) => VerificationResult)
+                            : VerificationResult = {
 
-    if (s.retrying) {
-      val r =
-        eval(s.copy(h = h, partiallyConsumedHeap = None), e, pve, v)((s1, t, v1) => {
-          val s2 = s1.copy(h = s.h,
-                           partiallyConsumedHeap = s.partiallyConsumedHeap)
-          Q(s2, t, v1)})
+    val h = s.oldHeaps(label)
+    val s1 = s.copy(h = h, partiallyConsumedHeap = None)
+    val s2 = stateConsolidator.consolidateIfRetrying(s1, v)
 
-      r
-    } else
-      eval(s.copy(h = h, partiallyConsumedHeap = None), e, pve, v)((s1, t, v1) => {
-        val s2 = s1.copy(h = s.h,
-                         partiallyConsumedHeap = s.partiallyConsumedHeap)
-        Q(s2, t, v1)})
+    eval(s2, e, pve, v)((s3, t, v1) => {
+      val s4 = s3.copy(h = s.h,
+                       oldHeaps = s3.oldHeaps + (label -> s3.h),
+                       partiallyConsumedHeap = s.partiallyConsumedHeap)
+      Q(s4, t, v1)})
+  }
 
   def evalLocationAccess(s: State,
                          locacc: ast.LocationAccess,
