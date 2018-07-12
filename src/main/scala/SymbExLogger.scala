@@ -363,6 +363,8 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
       case _ => true
     }
   }
+
+  override def toString: String = new SimpleTreeRenderer().renderMember(this)
 }
 
 object NoopSymbLog extends SymbLog(null, null, null) {
