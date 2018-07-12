@@ -80,9 +80,6 @@ object SymbExLogger {
   /** List of logged Method/Predicates/Functions. **/
   var memberList = List[SymbLog]()
 
-  /** Flag; if disabled, no output files for visualisations are created. **/
-  val FLAG_WRITE_FILES = false
-
   var enabled = false
 
   /** Config of Silicon. Used by StateFormatters. **/
@@ -121,7 +118,8 @@ object SymbExLogger {
   def setConfig(c: Config) {
     if (config == null) {
       config = c
-      setEnabled(config.ideModeAdvanced())
+      // In both cases we need to record the trace
+      setEnabled(config.ideModeAdvanced() || config.writeTraceFile())
     }
   }
 
@@ -162,7 +160,7 @@ object SymbExLogger {
     */
   @elidable(INFO)
   def writeDotFile() {
-    if (enabled && (FLAG_WRITE_FILES || config.ideModeAdvanced())) {
+    if (config.writeTraceFile()) {
       val dotRenderer = new DotTreeRenderer()
       val str = dotRenderer.render(memberList)
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "dot_input.dot"))
@@ -176,7 +174,7 @@ object SymbExLogger {
     */
   @elidable(INFO)
   def writeJSFile() {
-    if (enabled && (FLAG_WRITE_FILES || config.ideModeAdvanced())) {
+    if (config.writeTraceFile()) {
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "executionTreeData.js"))
       try pw.write(toJSString()) finally pw.close()
     }
