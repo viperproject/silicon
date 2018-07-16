@@ -394,7 +394,7 @@ object evaluator extends EvaluationRules with Immutable {
           val fi = v1.symbolConverter.toFunction(Verifier.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(s1, App(fi, tArgs), v1)})
 
-      case ast.CurrentPerm(resacc : ast.ResourceAccess) =>
+      case ast.CurrentPerm(resacc) =>
         val h = s.partiallyConsumedHeap.getOrElse(s.h)
         evalResourceAccess(s, resacc, pve, v)((s1, identifier, args, v1) => {
           val res = resacc.res(Verifier.program)
@@ -402,7 +402,7 @@ object evaluator extends EvaluationRules with Immutable {
            * either only quantified or only non-quantified chunks are used.
            */
           val usesQPChunks = res match {
-            case wand : ast.MagicWand => s1.qpMagicWands.contains(identifier.asInstanceOf[MagicWandIdentifier])
+            case _: ast.MagicWand => s1.qpMagicWands.contains(identifier.asInstanceOf[MagicWandIdentifier])
             case field: ast.Field => s1.qpFields.contains(field)
             case pred: ast.Predicate => s1.qpPredicates.contains(pred)}
           val perm =
@@ -444,22 +444,23 @@ object evaluator extends EvaluationRules with Immutable {
 //              v1.decider.assume(PermAtMost(perm, FullPerm()))
               perm
             }
-        Q(s1, perm, v1)})
+          Q(s1, perm, v1)})
 
-      case ast.ForPerm(vars, accessRes, body) =>
+      case ast.ForPerm(vars, resourceAccess, body) =>
 
         /* Iterate over the list of relevant chunks in continuation passing style (very similar
          * to evals), and evaluate the forperm-body with a different qvar assignment each time.
         */
 
         def bindRcvrsAndEvalBody(s: State, chs: Iterable[NonQuantifiedChunk], args: Seq[ast.Exp], ts: Seq[Term], v: Verifier)
-                                (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
+                                (Q: (State, Seq[Term], Verifier) => VerificationResult)
+                                : VerificationResult = {
           if (chs.isEmpty)
             Q(s, ts.reverse, v)
           else {
             val ch = chs.head
             val rcvrs = ch.args
-            var s1 = s.copy()
+            val s1 = s.copy()
             var g1 = s1.g
             var addCons : Seq[Term] = Seq()
             for (vr <- vars) {
@@ -473,31 +474,32 @@ object evaluator extends EvaluationRules with Immutable {
                 }
               }
             }
-            s1 = s1.copy(g1)
+            val s2 = s1.copy(g1)
 
             val nonQuantArgs = args filter (a => !vars.map(_.localVar).contains(a))
             val indices = nonQuantArgs map (a => args.indexOf(a))
 
-            evals(s1, nonQuantArgs, _ => pve, v)((s2, tArgs, v1) => {
+            evals(s2, nonQuantArgs, _ => pve, v)((s3, tArgs, v1) => {
               val argsWithIndex = tArgs zip indices
               val zippedArgs = argsWithIndex map (ai => (ai._1, ch.args(ai._2)))
               val argsPairWiseEqual = And(zippedArgs map {case (a1, a2) => a1 === a2})
 
-              evalImplies(s2, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), body, false, pve, v1)((s3, tImplies, v2) =>
-                bindRcvrsAndEvalBody(s3, chs.tail, args, tImplies +: ts, v2)(Q))
+              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), body, false, pve, v1)((s4, tImplies, v2) =>
+                bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, v2)(Q))
             })
           }
         }
 
         def bindQuantRcvrsAndEvalBody(s: State, chs: Iterable[QuantifiedBasicChunk], args: Seq[ast.Exp], ts: Seq[Term], v: Verifier)
-                                     (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
+                                     (Q: (State, Seq[Term], Verifier) => VerificationResult)
+                                     : VerificationResult = {
           if (chs.isEmpty)
             Q(s, ts.reverse, v)
           else {
             val ch = chs.head
             val rcvrs = ch.singletonArguments.getOrElse(Seq())
             if (rcvrs.nonEmpty) {
-              var s1 = s.copy()
+              val s1 = s.copy()
               var g1 = s1.g
 
               for (v <- vars) {
@@ -507,10 +509,10 @@ object evaluator extends EvaluationRules with Immutable {
                 }
               }
 
-              s1 = s1.copy(g1)
+              val s2 = s1.copy(g1)
               val tVars = vars.map(v => g1(v.localVar))
-              return evalImplies(s1, IsPositive(ch.perm.replace(ch.quantifiedVars, tVars)), body, false, pve, v)((s2, tImplies, v1) =>
-                bindQuantRcvrsAndEvalBody(s2, chs.tail, args, tImplies +: ts, v1)(Q))
+              return evalImplies(s2, IsPositive(ch.perm.replace(ch.quantifiedVars, tVars)), body, false, pve, v)((s3, tImplies, v1) =>
+                bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tImplies +: ts, v1)(Q))
             }
 
             val localVars = vars map (_.localVar)
@@ -520,7 +522,6 @@ object evaluator extends EvaluationRules with Immutable {
             val s1 = s.copy(s.g + gVars, quantifiedVariables = tVars ++ s.quantifiedVariables)
 
             evals(s1, args, _ => pve, v)((s2, ts1, v1) => {
-
               val bc = IsPositive(ch.perm.replace(ch.quantifiedVars, ts1))
               val tTriggers = Seq(Trigger(ch.valueAt(ts1)))
 
@@ -533,12 +534,12 @@ object evaluator extends EvaluationRules with Immutable {
 
         val s1 = s.copy(h = s.partiallyConsumedHeap.getOrElse(s.h))
 
-        val resIdent = accessRes match {
+        val resIdent = resourceAccess match {
           case ast.FieldAccess(_, field) => BasicChunkIdentifier(field.name)
           case ast.PredicateAccess(_, predicateName) => BasicChunkIdentifier(predicateName)
           case w: ast.MagicWand => MagicWandIdentifier(w, Verifier.program)
         }
-        val args = accessRes match {
+        val args = resourceAccess match {
           case fa: ast.FieldAccess => Seq(fa.rcv)
           case pa: ast.PredicateAccess => pa.args
           case w: ast.MagicWand => w.subexpressionsToEvaluate(Verifier.program)
