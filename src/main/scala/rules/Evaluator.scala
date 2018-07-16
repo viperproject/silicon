@@ -129,7 +129,6 @@ object evaluator extends EvaluationRules with Immutable {
         if (s2.recordPossibleTriggers)
           e match {
             case pt: ast.PossibleTrigger =>
-              println(pt)
               s2.copy(possibleTriggers = s2.possibleTriggers + (pt -> t))
             case fa: ast.FieldAccess if s2.qpFields.contains(fa.field) =>
               s2.copy(possibleTriggers = s2.possibleTriggers + (fa -> t))
@@ -195,13 +194,13 @@ object evaluator extends EvaluationRules with Immutable {
               /* The next assertion must be made if the FVF definition is taken from the cache;
                * in the other case it is part of quantifiedChunkSupporter.withValue.
                */
+              v1.decider.assume(fvfDef.valueDefinitions)
               v1.decider.assume(FieldTrigger(fa.field.name, fvfDef.sm, tRcvr))
-              println("Trigger generated: " + FieldTrigger(fa.field.name, fvfDef.sm, tRcvr))
               v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
                 case true =>
-                  v1.decider.assume(fvfDef.valueDefinitions)
+                  //v1.decider.assume(fvfDef.valueDefinitions)
                     /* Re-emit definition since the previous definition could be nested under
                      * an auxiliary quantifier (resulting from the evaluation of some Silver
                      * quantifier in whose body field 'fa.field' was accessed)
@@ -217,7 +216,6 @@ object evaluator extends EvaluationRules with Immutable {
                 quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), fa.field, None, v1)
               v1.decider.assume(fvfValueDefs)
               v1.decider.assume(FieldTrigger(fa.field.name, fvf, tRcvr))
-              println("Trigger generated: " + FieldTrigger(fa.field.name, fvf, tRcvr))
               v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
@@ -239,7 +237,6 @@ object evaluator extends EvaluationRules with Immutable {
           val id = BasicChunkIdentifier(name)
           val ve = pve dueTo InsufficientPermission(fa)
           chunkSupporter.lookup(s1, s1.h, id, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
-            v2.decider.assume(FieldTrigger(fa.field.name, tSnap, tArgs.head))
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
             Q(s3, tSnap, v1)
@@ -426,13 +423,11 @@ object evaluator extends EvaluationRules with Immutable {
                   s1.smCache.get(field, chs.toSeq) match {
                     case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) =>
                       v1.decider.assume(FieldTrigger(field.name, fvfDef.sm, args.head))
-                      println("Trigger generated: " + FieldTrigger(field.name, fvfDef.sm, args.head))
                     case _ => {
                       val (fvf, fvfValueDefs, None) =
                         quantifiedChunkSupporter.summarise(s1, chs.toSeq, Seq(`?r`), field, None, v1)
                       v1.decider.assume(fvfValueDefs)
                       v1.decider.assume(FieldTrigger(field.name, fvf, args.head))
-                      println("Trigger generated: " + FieldTrigger(field.name, fvf, args.head))
                     }
                   }
 
@@ -447,7 +442,7 @@ object evaluator extends EvaluationRules with Immutable {
 //                  v1.decider.assume(PermAtMost(perm, FullPerm()))
                   perm
                 case pred: ast.Predicate =>
-                  val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.id == identifier => ch}
+                  val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.id == identifier => ch }
                   val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
                     PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
                   perm
@@ -533,6 +528,8 @@ object evaluator extends EvaluationRules with Immutable {
 
               val trig = ch match {
                 case fc: QuantifiedFieldChunk => FieldTrigger(fc.id.name, fc.fvf, rcvrs.head)
+                case pc: QuantifiedPredicateChunk => PredicateTrigger(pc.id.name, pc.psf, rcvrs)
+                case mc: QuantifiedMagicWandChunk => PredicateTrigger(mc.id.toString, mc.wsf, rcvrs)
               }
 
               val s2 = s1.copy(g1)
@@ -553,6 +550,8 @@ object evaluator extends EvaluationRules with Immutable {
 
               val trig = ch match {
                 case fc: QuantifiedFieldChunk => FieldTrigger(fc.id.name, fc.fvf, ts1.head)
+                case pc: QuantifiedPredicateChunk => PredicateTrigger(pc.id.name, pc.psf, ts1)
+                case wc: QuantifiedMagicWandChunk => PredicateTrigger(wc.id.toString, wc.wsf, ts1)
               }
 
               evalImplies(s2, And(trig, bc), body, false, pve, v1)((s3, tImplies, v2) => {
@@ -1011,7 +1010,7 @@ object evaluator extends EvaluationRules with Immutable {
     if (eTriggerSets.isEmpty)
       Q(s, tTriggersSets, v)
     else {
-      if (eTriggerSets.head.head.isHeapDependent(Verifier.program)) {
+      if (eTriggerSets.head.head.isInstanceOf[ast.FieldAccess]) {
         evalHeapTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
           evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
       } else {
@@ -1184,7 +1183,6 @@ object evaluator extends EvaluationRules with Immutable {
 //        }
       }
     }
-    println("Triggers evaluated: " + exps + " => " + triggers)
     v.decider.assume(triggerAxioms)
     Q(s, triggers, v)
     //r.foldLeft(Q(s, triggers, v))((c, q) => c && q)
@@ -1195,7 +1193,9 @@ object evaluator extends EvaluationRules with Immutable {
     var triggers = Seq.empty[Term]
     var mostRecentTrig: FieldTrigger = null
     val relevantChunks = s.h.values.collect {case ch: QuantifiedFieldChunk if ch.id.name == fa.field.name => ch}
-    val dom = if (s.smDomainNeeded) ??? else None
+    val dom = if (s.smDomainNeeded) {
+      None
+    } else None
     val sumHeap = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), fa.field, dom, v)
 
     fa.rcv match {

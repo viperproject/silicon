@@ -241,6 +241,15 @@ class TermToSMTLib2Converter
 
       parens(text("$PSF.lookup_") <> id <+> render(psf) <+> render(snap))
 
+    case PredicateTrigger(id, psf, args) =>
+      val snap: Term = if (args.size == 1) {
+        args.head.convert(sorts.Snap)
+      } else {
+        args.reduce((arg1, arg2) => Combine(arg1, arg2))
+      }
+
+      parens(text("$PSF.loc_") <> id <+> render(PredicateLookup(id, psf, args)) <+> render(snap))
+
     /* Other terms */
 
     case First(t) => parens(text("$Snap.first") <+> render(t))

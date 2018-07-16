@@ -447,8 +447,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       })
 
     val valueDefs2 = Forall(codomainQVars, And(relevantChunks map (chunk => {
-      FieldTrigger(resource.asInstanceOf[ast.Field].name, chunk.snapshotMap, codomainQVars.head)
-    })), Trigger(FieldTrigger(resource.asInstanceOf[ast.Field].name, sm, codomainQVars.head)))
+      resource match {
+        case f: ast.Field => FieldTrigger(f.name, chunk.snapshotMap, codomainQVars.head)
+        case p: ast.Predicate => PredicateTrigger(p.name, chunk.snapshotMap, codomainQVars)
+        case w: ast.MagicWand => PredicateTrigger(MagicWandIdentifier(w, Verifier.program).toString, chunk.snapshotMap, codomainQVars)
+      }
+    })), Trigger(resource match {
+      case f: ast.Field => FieldTrigger(f.name, sm, codomainQVars.head)
+      case p: ast.Predicate => PredicateTrigger(p.name, sm, codomainQVars)
+      case w: ast.MagicWand => PredicateTrigger(MagicWandIdentifier(w, Verifier.program).toString, sm, codomainQVars)
+    }))
 
     val optDomainDefinition =
       optSmDomainDefinitionCondition.map(condition =>

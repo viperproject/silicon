@@ -87,6 +87,7 @@ package object utils {
     case PredicateDomain(_, psf) => psf :: Nil
     case PredicateLookup(_, psf, args) => Seq(psf) ++ args
     case FieldTrigger(_, fvf, at) => fvf :: at :: Nil
+    case PredicateTrigger(_, psf, args) => psf +: args
 
   }
 
@@ -198,6 +199,7 @@ package object utils {
 
       case PredicateDomain(p, psf) => PredicateDomain(p, go(psf))
       case PredicateLookup(p, psf, args) => PredicateLookup(p, go(psf), args map go)
+      case PredicateTrigger(p, psf, args) => PredicateTrigger(p, go(psf), args map go)
 
     }
 

@@ -1680,7 +1680,7 @@ case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigg
 }
 
 case class FieldTrigger(field: String, fvf: Term, at: Term) extends Term {
-  //utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
   utils.assertSort(at, "receiver", sorts.Ref)
 
   val sort = if (fvf.isInstanceOf[sorts.FieldValueFunction]) fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort else fvf.sort
@@ -1699,6 +1699,13 @@ case class PredicateDomain(predname: String, psf: Term) extends SetTerm /*with P
   val elementsSort = sorts.Snap
   val sort = sorts.Set(elementsSort)
 }
+
+case class PredicateTrigger(predname: String, psf: Term, args: Seq[Term]) extends Term {
+  utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
+
+  val sort = psf.sort.asInstanceOf[sorts.PredicateSnapFunction].codomainSort
+}
+
 /* TODO: remove
 case class PsfAfterRelation(predname: String, psf2: Term, psf1: Term) extends BooleanTerm {
   utils.assertSameSorts[sorts.PredicateSnapFunction](psf2, psf1)
