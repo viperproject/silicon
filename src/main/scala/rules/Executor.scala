@@ -324,13 +324,8 @@ object executor extends ExecutionRules with Immutable {
             BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
           }
         })
+        val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
         val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
-        val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s1, tRcvr)
-          /* Calling computeReferenceDisjointnesses with the updated state σ1 ensures that
-           * tRcvr is constrained to be different from (ref-typed) fields of tRcvr to which
-           * permissions have been gained.
-           * Note that we do not constrain the (ref-typed) fields to be mutually disjoint.
-           */
         v.decider.assume(ts)
         Q(s1, v)
 
