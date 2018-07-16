@@ -195,6 +195,8 @@ object evaluator extends EvaluationRules with Immutable {
               /* The next assertion must be made if the FVF definition is taken from the cache;
                * in the other case it is part of quantifiedChunkSupporter.withValue.
                */
+              v1.decider.assume(FieldTrigger(fa.field.name, fvfDef.sm, tRcvr))
+              println("Trigger generated: " + FieldTrigger(fa.field.name, fvfDef.sm, tRcvr))
               v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
@@ -213,9 +215,9 @@ object evaluator extends EvaluationRules with Immutable {
               val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
               val (fvf, fvfValueDefs, None) =
                 quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), fa.field, None, v1)
-              println(totalPermissions)
               v1.decider.assume(fvfValueDefs)
               v1.decider.assume(FieldTrigger(fa.field.name, fvf, tRcvr))
+              println("Trigger generated: " + FieldTrigger(fa.field.name, fvf, tRcvr))
               v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
@@ -237,6 +239,7 @@ object evaluator extends EvaluationRules with Immutable {
           val id = BasicChunkIdentifier(name)
           val ve = pve dueTo InsufficientPermission(fa)
           chunkSupporter.lookup(s1, s1.h, id, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
+            v2.decider.assume(FieldTrigger(fa.field.name, tSnap, tArgs.head))
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
             Q(s3, tSnap, v1)
@@ -423,11 +426,13 @@ object evaluator extends EvaluationRules with Immutable {
                   s1.smCache.get(field, chs.toSeq) match {
                     case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) =>
                       v1.decider.assume(FieldTrigger(field.name, fvfDef.sm, args.head))
+                      println("Trigger generated: " + FieldTrigger(field.name, fvfDef.sm, args.head))
                     case _ => {
                       val (fvf, fvfValueDefs, None) =
                         quantifiedChunkSupporter.summarise(s1, chs.toSeq, Seq(`?r`), field, None, v1)
                       v1.decider.assume(fvfValueDefs)
                       v1.decider.assume(FieldTrigger(field.name, fvf, args.head))
+                      println("Trigger generated: " + FieldTrigger(field.name, fvf, args.head))
                     }
                   }
 
@@ -474,6 +479,7 @@ object evaluator extends EvaluationRules with Immutable {
             Q(s, ts.reverse, v)
           else {
             val ch = chs.head
+
             val rcvrs = ch.args
             var s1 = s.copy()
             var g1 = s1.g
@@ -523,9 +529,13 @@ object evaluator extends EvaluationRules with Immutable {
                 }
               }
 
+              val trig = ch match {
+                case fc: QuantifiedFieldChunk => FieldTrigger(fc.id.name, fc.fvf, rcvrs.head)
+              }
+
               s1 = s1.copy(g1)
               val tVars = vars.map(v => g1(v.localVar))
-              return evalImplies(s1, IsPositive(ch.perm.replace(ch.quantifiedVars, tVars)), body, false, pve, v)((s2, tImplies, v1) =>
+              return evalImplies(s1, And(trig, IsPositive(ch.perm.replace(ch.quantifiedVars, tVars))), body, false, pve, v)((s2, tImplies, v1) =>
                 bindQuantRcvrsAndEvalBody(s2, chs.tail, args, tImplies +: ts, v1)(Q))
             }
 
@@ -540,7 +550,11 @@ object evaluator extends EvaluationRules with Immutable {
               val bc = IsPositive(ch.perm.replace(ch.quantifiedVars, ts1))
               val tTriggers = Seq(Trigger(ch.valueAt(ts1)))
 
-              evalImplies(s2, bc, body, false, pve, v1)((s3, tImplies, v2) => {
+              val trig = ch match {
+                case fc: QuantifiedFieldChunk => FieldTrigger(fc.id.name, fc.fvf, ts1.head)
+              }
+
+              evalImplies(s2, And(trig, bc), body, false, pve, v1)((s3, tImplies, v2) => {
                 val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
                 bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, v2)(Q)})
             })
@@ -954,7 +968,7 @@ object evaluator extends EvaluationRules with Immutable {
     }
   }
 
-  private def evalTriggers(s: State,
+  def evalTriggers(s: State,
                            silverTriggers: Seq[ast.Trigger],
                            pve: PartialVerificationError,
                            v: Verifier)
@@ -1134,21 +1148,74 @@ object evaluator extends EvaluationRules with Immutable {
                              (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
     var triggers: Seq[Term] = Seq()
     var triggerAxioms: Seq[Quantification] = Seq()
-    val r = exps map {
+
+    exps foreach {
       case fa: ast.FieldAccess => {
-        val relevantChunks = s.h.values.collect { case ch: QuantifiedFieldChunk if ch.id.name == fa.field.name => ch }
-        val dom = if (s.smDomainNeeded) ??? else None
-        val summarisedHeap = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), fa.field, dom, v)
-        triggerAxioms = triggerAxioms ++ summarisedHeap._2
-        val s1 = s.copy()
-        eval(s1, fa.rcv, pve, v)((s2, tRcv, v1) => {
-          triggers = triggers :+ FieldTrigger(fa.field.name, summarisedHeap._1, tRcv)
-          Success()}
-        )
+        val (axioms, trigs, _) = helper(fa, s, pve, v)
+        triggers = triggers ++ trigs
+        triggerAxioms = triggerAxioms ++ axioms
+
+//        val relevantChunks = s.h.values.collect { case ch: QuantifiedFieldChunk if ch.id.name == fa.field.name => ch }
+//        val dom = if (s.smDomainNeeded) ??? else None
+//        val summarisedHeap = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), fa.field, dom, v)
+//        triggerAxioms = triggerAxioms ++ summarisedHeap._2
+//        val s1 = s.copy()
+//        var rcvFVF: Term = null
+//        eval(s1, fa.rcv, pve, v)((s2, tRcv, v1) => {
+//          println("tRcv: " + tRcv)
+//          rcvFVF = tRcv match {
+//            case Lookup(field, fvf, at) => fvf
+//            case _ => null
+//          }
+//          triggers = triggers :+ FieldTrigger(fa.field.name, summarisedHeap._1, tRcv)
+//          Success()}
+//        )
+
+//        fa.rcv match {
+//          case fa: ast.FieldAccess => {
+//            val s1 = s.copy()
+//            eval(s1, fa.rcv, pve, v)((s2, tRcv, v1) => {
+//              triggers = triggers :+ FieldTrigger(fa.field.name, rcvFVF, tRcv)
+//              Success()}
+//            )
+//          }
+//          case _ =>
+//        }
       }
     }
-    triggerAxioms foreach v.decider.assume
-    r.foldLeft(Q(s, triggers, v))((c, q) => c && q)
+    println("Triggers evaluated: " + exps + " => " + triggers)
+    v.decider.assume(triggerAxioms)
+    Q(s, triggers, v)
+    //r.foldLeft(Q(s, triggers, v))((c, q) => c && q)
+  }
+
+  private def helper(fa: ast.FieldAccess, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Quantification], Seq[Term], FieldTrigger) = {
+    var axioms = Seq.empty[Quantification]
+    var triggers = Seq.empty[Term]
+    var mostRecentTrig: FieldTrigger = null
+    val relevantChunks = s.h.values.collect {case ch: QuantifiedFieldChunk if ch.id.name == fa.field.name => ch}
+    val dom = if (s.smDomainNeeded) ??? else None
+    val sumHeap = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), fa.field, dom, v)
+
+    fa.rcv match {
+      case acc: ast.FieldAccess => {
+        val rcvHelper = helper(acc, s, pve, v)
+        val rcvTrig = rcvHelper._3
+        axioms = axioms ++ sumHeap._2 ++ rcvHelper._1
+        mostRecentTrig = FieldTrigger(fa.field.name, sumHeap._1, Lookup(rcvTrig.field, rcvTrig.fvf, rcvTrig.at))
+        triggers = triggers ++ rcvHelper._2 :+ mostRecentTrig
+      }
+      case rcv => {
+        val s1 = s.copy()
+        eval(s1, rcv, pve, v)((s2, tRcv, v1) => {
+          axioms = axioms ++ sumHeap._2
+          mostRecentTrig = FieldTrigger(fa.field.name, sumHeap._1, tRcv)
+          triggers = triggers :+ mostRecentTrig
+          Success()
+        })
+      }
+    }
+    (axioms, triggers, mostRecentTrig)
   }
 
   private[silicon] case object FromShortCircuitingAnd extends Info {

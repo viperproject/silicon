@@ -13,12 +13,14 @@ import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.{Failure, Success, VerificationResult}
 import viper.silicon.resources.{QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.rules.evaluator.evalTriggers
+import viper.silver.verifier.errors.Internal
 import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
@@ -433,6 +435,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
             smDomainDefinitionCondition, /* Alternatively: codomainQVarsInDomainOfSummarisingSm */
             IsPositive(chunk.perm))
 
+//        val trig = FieldTrigger(resource.asInstanceOf[ast.Field].name, chunk.snapshotMap, codomainQVars.head)
+
         Forall(
           codomainQVars,
           Implies(effectiveCondition, lookupSummary === lookupChunk),
@@ -441,6 +445,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           isGlobal = true
         )
       })
+
+    val valueDefs2 = Forall(codomainQVars, And(relevantChunks map (chunk => {
+      FieldTrigger(resource.asInstanceOf[ast.Field].name, chunk.snapshotMap, codomainQVars.head)
+    })), Trigger(FieldTrigger(resource.asInstanceOf[ast.Field].name, sm, codomainQVars.head)))
 
     val optDomainDefinition =
       optSmDomainDefinitionCondition.map(condition =>
@@ -454,7 +462,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           isGlobal = true
         ))
 
-    (sm, valueDefinitions, optDomainDefinition)
+    (sm, valueDefinitions :+ valueDefs2, optDomainDefinition)
   }
 
   /** @inheritdoc */
@@ -508,9 +516,34 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         v                    = v)
     val (effectiveTriggers, effectiveTriggersQVars) =
       optTrigger match {
-        case Some(_) =>
+        case Some(eTriggers) =>
           /* Explicit triggers were provided */
-          (tTriggers, qvars)
+
+//          var evaledTrigs: Seq[Trigger] = Seq()
+//          val s1 = s.copy(h = s.h + ch, g = s.g + Store((forall.variables map (_.localVar)) zip qvars))
+//          v.decider.setCurrentBranchCondition(tCond)
+//          evalTriggers(s1, eTriggers, Internal(), v)((s2, tTrigs, v1) => {
+//            evaledTrigs = evaledTrigs ++ tTrigs
+//            Success()
+//          })
+
+//          val evaledTrigs = (tTriggers map (_.p)) map (trigs => Trigger(trigs map {
+//            case ft: FieldTrigger => FieldTrigger(ft.field, tSnap, ft.at)
+//            case t => t
+//          }))
+
+          println("tTriggers: " + tTriggers)
+
+          val trig = tTriggers.head.p.head match {
+            case ft: FieldTrigger => if (ft.field == rec.asInstanceOf[ast.Field].name) FieldTrigger(ft.field, tSnap, ft.at) else ft
+            case t => t
+          }
+
+          val evaledTrigs = Trigger(trig +: tTriggers.head.p.tail) +: tTriggers.tail
+
+          println("Final Triggers: " + evaledTrigs)
+
+          (evaledTrigs, qvars)
         case None =>
           /* No explicit triggers were provided and we resort to those from the inverse
            * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
@@ -520,6 +553,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           (inverseFunctions.axiomInversesOfInvertibles.triggers,
             inverseFunctions.axiomInversesOfInvertibles.vars)
       }
+
+//    effectiveTriggers foreach (t => t.p foreach {
+//      case ft: FieldTrigger => {
+//        val axiom = Forall(qvars, FieldTrigger(ft.field, tSnap, ft.at),
+//          Trigger(Lookup(ft.field, tSnap, ft.at)))
+//        //Forall(`?r`, Implies(tCond.replace(qvars, inverseFunctions.inversesOf(`?r`)), FieldTrigger(ft.field, tSnap, `?r`)), Trigger(inverseFunctions.inversesOf(`?r`)))
+//        v.decider.assume(axiom)
+//      }
+//      case _ =>
+//    })
 
     if (effectiveTriggers.isEmpty) {
       val msg = s"No triggers available for quantifier at ${forall.pos}"
@@ -544,7 +587,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     v.decider.prover.comment("Definitional axioms for inverse functions")
     val definitionalAxiomMark = v.decider.setPathConditionMark()
-    v.decider.assume(inverseFunctions.definitionalAxioms)
+    val ax = inverseFunctions.axiomInversesOfInvertibles
+    v.decider.assume(Forall(ax.vars, ax.body, effectiveTriggers))
+    v.decider.assume(inverseFunctions.axiomInvertiblesOfInverses)
     val conservedPcs =
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
@@ -553,11 +598,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 //    val summarisedHeap = summarise(s.copy(h = s.h + ch), relevantChunks.toSeq, Seq(`?r`), rec, None,v)
 //    v.decider.assume(summarisedHeap._2)
 
-    val heapTriggers: Seq[FieldTrigger] = ((tTriggers flatMap  (_.p)) filter (t => t.isInstanceOf[FieldTrigger])).asInstanceOf[Seq[FieldTrigger]]
-    if (heapTriggers.nonEmpty) {
-      val trig = heapTriggers.head
-      v.decider.assume(Forall(ch.quantifiedVars, Implies(tCond, Lookup(trig.field, trig.fvf, ch.quantifiedVars.head) === Lookup(trig.field, tSnap, ch.quantifiedVars.head)), Seq(Trigger(Lookup(trig.field, trig.fvf, ch.quantifiedVars.head)), Trigger(Lookup(trig.field, tSnap, ch.quantifiedVars.head)))))
-    }
+//    val heapTriggers: Seq[FieldTrigger] = ((tTriggers flatMap  (_.p)) filter (t => t.isInstanceOf[FieldTrigger])).asInstanceOf[Seq[FieldTrigger]]
+//    if (heapTriggers.nonEmpty) {
+//      val trig = heapTriggers.head
+//      v.decider.assume(Forall(ch.quantifiedVars,
+//        Implies(tCond.replace(qvars, inverseFunctions.inversesOf(ch.quantifiedVars)),
+//          Lookup(trig.field, trig.fvf, ch.quantifiedVars.head)
+//            === Lookup(trig.field, tSnap, ch.quantifiedVars.head)),
+//        Seq(Trigger(Lookup(trig.field, trig.fvf, ch.quantifiedVars.head)),
+//          Trigger(Lookup(trig.field, tSnap, ch.quantifiedVars.head)))))
+//    }
 
     val resource = Resources.resourceDescriptions(ch.resourceID)
     val interpreter = new QuantifiedPropertyInterpreter(v)

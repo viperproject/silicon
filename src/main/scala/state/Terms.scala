@@ -1680,10 +1680,10 @@ case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigg
 }
 
 case class FieldTrigger(field: String, fvf: Term, at: Term) extends Term {
-  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+  //utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
   utils.assertSort(at, "receiver", sorts.Ref)
 
-  val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+  val sort = if (fvf.isInstanceOf[sorts.FieldValueFunction]) fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort else fvf.sort
 }
 
 

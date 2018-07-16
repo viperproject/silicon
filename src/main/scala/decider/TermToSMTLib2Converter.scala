@@ -12,6 +12,7 @@ import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
+import viper.silicon.state.terms.sorts.FieldValueFunction
 
 class TermToSMTLib2Converter
     extends FastPrettyPrinterBase
@@ -224,7 +225,10 @@ class TermToSMTLib2Converter
 //        sys.error(s"Unexpected sort '${fvf.sort}' of field value function '$fvf' in lookup term '$term'")
 //    }
 
-    case FieldTrigger(field, fvf, at) => parens(text("$FVF.loc_") <> field <+> render(Lookup(field, fvf, at)) <+> render(at))
+    case FieldTrigger(field, fvf, at) => parens(text("$FVF.loc_") <> field <+> (fvf.sort match {
+      case sorts.FieldValueFunction(_) => render(Lookup(field, fvf, at)) <+> render(at)
+      case _ => render(fvf) <+> render(at)
+    }))
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 

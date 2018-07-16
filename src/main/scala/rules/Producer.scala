@@ -265,6 +265,7 @@ object producer extends ProductionRules with Immutable {
             v.decider.prover.comment("Definitional axioms for singleton-SM's value")
             val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(smValueDef)
+            v.decider.assume(FieldTrigger(field.name, sm, rcvr))
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
               else s.conservedPcs

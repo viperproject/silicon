@@ -50,6 +50,9 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
     program visit {
       case QuantifiedPermissionAssertion(_, _, acc: ast.FieldAccessPredicate) =>
         collectedFields += acc.loc.field
+      case ast.Forall(_, triggers, _) => (triggers flatMap (_.exps)) foreach (_.deepCollect {
+        case fa: ast.FieldAccess => collectedFields += fa.field
+      })
     }
 
     collectedSorts = (

@@ -420,20 +420,32 @@ object consumer extends ConsumptionRules with Immutable {
                 v1.decider.prover.comment("Check receiver injectivity")
                 v1.decider.assert(receiverInjectivityCheck) {
                   case true =>
-                    v1.decider.prover.comment("Definitional axioms for inverse functions")
-                    v1.decider.assume(inverseFunctions.definitionalAxioms)
+
                     val (relevantChunks, otherChunks) =
                       quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, BasicChunkIdentifier(field.name))
                     val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(`?r`)
                     val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
                     val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
                     val fName = acc.loc.field.name
-                    val relChunks = s.h.values.collect { case ch: QuantifiedFieldChunk if ch.id.name == fName => ch}
-                    val sum = quantifiedChunkSupporter.summarise(s, relChunks.toSeq, Seq(`?r`), acc.loc.field, None, v1)
-                    println("TEST")
-                    v1.decider.prover.comment("TESTING EXHALE")
-                    sum._2 foreach v1.decider.assume
-                    v1.decider.assume(Forall(`?r`, Implies(condOfInvOfLoc, FieldTrigger(fName, sum._1 , tRcvr)), Trigger(inverseFunctions.inversesOf(`?r`))))
+                    val sum = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), acc.loc.field, None, v1)
+
+                    v1.decider.prover.comment("Definitional axioms for inverse functions")
+                    v1.decider.assume(inverseFunctions.definitionalAxioms)
+
+                    (tTriggers flatMap (_.p)) foreach {
+                      case ft: FieldTrigger =>  v1.decider.assume(Forall(`?r`, Implies(condOfInvOfLoc, FieldTrigger(fName, ft.fvf , `?r`)), Trigger(inverseFunctions.inversesOf(`?r`))))
+                      case _ =>
+                    }
+//
+//                    println("tTriggers: " + (tTriggers map (_.p)))
+
+//                    val ax = inverseFunctions.axiomInversesOfInvertibles
+//                    v1.decider.assume(Forall(ax.vars, ax.body, Trigger(FieldTrigger(fName, sum._1, tRcvr))))
+//                    v1.decider.assume(inverseFunctions.axiomInvertiblesOfInverses)
+
+//                    v1.decider.assume(sum._2)
+//                    v1.decider.assume(FieldTrigger(fName, sum._1, tRcvr))
+
                     val result = quantifiedChunkSupporter.removePermissions(
                       s1,
                       relevantChunks,
@@ -974,6 +986,10 @@ object consumer extends ConsumptionRules with Immutable {
 
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
+            val relevantChunks = s2.h.values.collect {case ch: QuantifiedFieldChunk if ch.id.name == field.name => ch}
+            val sum = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, Seq(`?r`), field, None, v2)
+            v2.decider.assume(sum._2)
+            v2.decider.assume(FieldTrigger(field.name, sum._1, tRcvr))
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
               s2,
