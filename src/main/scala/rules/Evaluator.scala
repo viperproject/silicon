@@ -544,15 +544,25 @@ object evaluator extends EvaluationRules with Immutable {
           case pa: ast.PredicateAccess => pa.args
           case w: ast.MagicWand => w.subexpressionsToEvaluate(Verifier.program)
         }
+        val usesQPChunks = resourceAccess.res(Verifier.program) match {
+          case _: ast.MagicWand => s1.qpMagicWands.contains(resIdent.asInstanceOf[MagicWandIdentifier])
+          case field: ast.Field => s1.qpFields.contains(field)
+          case pred: ast.Predicate => s1.qpPredicates.contains(pred)
+        }
 
-        val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](s1.h.values, resIdent)
-        bindRcvrsAndEvalBody(s1, chs, args, Seq.empty, v)((s2, ts, v1) => {
-          val qchs = s2.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }
-          bindQuantRcvrsAndEvalBody(s2, qchs, args, ts, v1)((s3, ts1, v2) => {
-            val s4 = s3.copy(h = s.h, g = s.g)
-            Q(s4, And(ts1), v2)
+        if (usesQPChunks) {
+            val chs = s1.h.values.collect { case ch: QuantifiedBasicChunk if ch.id == resIdent => ch }
+            bindQuantRcvrsAndEvalBody(s1, chs, args, Seq.empty, v)((s2, ts, v1) => {
+              val s3 = s2.copy(h = s.h, g = s.g)
+              Q(s3, And(ts), v1)
+            })
+        } else {
+          val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](s1.h.values, resIdent)
+          bindRcvrsAndEvalBody(s1, chs, args, Seq.empty, v)((s2, ts, v1) => {
+            val s3 = s2.copy(h = s.h, g = s.g)
+            Q(s3, And(ts), v1)
           })
-        })
+        }
 
       case sourceQuant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
         val (eQuant, qantOp, eTriggers) = sourceQuant match {
