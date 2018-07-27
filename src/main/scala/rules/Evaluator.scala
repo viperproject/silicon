@@ -1122,5 +1122,6 @@ object evaluator extends EvaluationRules with Immutable {
 
   private[silicon] case object FromShortCircuitingAnd extends Info {
     val comment = Nil
+    val isCached = false
   }
 }
