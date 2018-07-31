@@ -87,6 +87,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     statefulSubcomponents foreach (_.stop())
   }
 
+  def axiomsAfterAnalysis(): Iterable[Term] = this.domainsContributor.axiomsAfterAnalysis
+
   /* Verifier orchestration */
 
   private object allProvers extends ProverLike {
