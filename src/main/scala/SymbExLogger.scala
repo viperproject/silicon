@@ -414,62 +414,6 @@ class DotTreeRenderer extends Renderer[String] {
     var output = ""
 
     s match {
-      case ite: IfThenElseRecord => {
-        val ite_parent = previousNode
-        output += "    " + ite.thnCond.dotNode() + " [label=" + ite.thnCond.dotLabel() + "];\n"
-        output += "    " + previousNode + " -> " + ite.thnCond.dotNode() + ";\n"
-
-        // Activate either this or the next line (uncomment). If you use the first, the
-        // representation will not show the evaluation of the if-condition, knowing that
-        // it results in true anyway since the True-Branch is taken. If you want to see
-        // the whole representation without any simplification, use the second line with
-        // 'subsToDot(ite.thnCond).
-
-        // previousNode = ite.thnCond.dotNode()
-        output += subsToDot(ite.thnCond)
-
-        for (rec <- ite.thnSubs) {
-          output += "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
-          output += "    " + previousNode + " -> " + rec.dotNode() + ";\n"
-          output += subsToDot(rec)
-        }
-        previousNode = ite_parent
-        output += "    " + ite.elsCond.dotNode() + " [label=" + ite.elsCond.dotLabel() + "];\n"
-        output += "    " + previousNode + " -> " + ite.elsCond.dotNode() + ";\n"
-
-        // Same as above.
-        // previousNode = ite.elsCond.dotNode()
-        output += subsToDot(ite.elsCond)
-
-        for (rec <- ite.elsSubs) {
-          output += "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
-          output += "    " + previousNode + " -> " + rec.dotNode() + ";\n"
-          output += subsToDot(rec)
-        }
-      }
-      case ce: CondExpRecord => {
-
-        output += "    " + ce.cond.dotNode() + " [label=" + ce.cond.dotLabel() + "];\n"
-        output += "    " + previousNode + " -> " + ce.cond.dotNode() + ";\n"
-        previousNode = ce.cond.dotNode()
-
-        output += "    " + ce.thnExp.dotNode() + " [label=" + ce.thnExp.dotLabel() + "];\n"
-        output += "    " + previousNode + " -> " + ce.thnExp.dotNode() + ";\n"
-        output += subsToDot(ce.thnExp)
-        val thnExp_end = previousNode
-
-        previousNode = ce.cond.dotNode()
-        output += "    " + ce.elsExp.dotNode() + " [label=" + ce.elsExp.dotLabel() + "];\n"
-        output += "    " + previousNode + " -> " + ce.elsExp.dotNode() + ";\n"
-        output += subsToDot(ce.elsExp)
-        val elsExp_end = previousNode
-
-        val join_node = unique_node_number().toString()
-        output += "    " + join_node + " [label=\"Join\"];\n"
-        output += "    " + thnExp_end + " -> " + join_node + ";\n"
-        output += "    " + elsExp_end + " -> " + join_node + ";\n"
-        previousNode = join_node
-      }
       case imp: GlobalBranchRecord => {
         val imp_parent = previousNode
         for (rec <- imp.thnSubs) {
@@ -569,25 +513,6 @@ class JSTreeRenderer extends Renderer[String] {
     val open = JsonHelper.pair("open", true)
 
     s match {
-      case ite: IfThenElseRecord => {
-        output += "{" + ite.toJson() + "," + open
-        output += "\n," + children + ": [\n"
-        output += "{" + JsonHelper.pair(kind, "If") + "," + ite.thnCond.toJson() + "," + open + printState(ite.thnCond)
-        output += ",\n" + children + ": [\n"
-        output += combine(ite.thnSubs)
-        output += "]},\n"
-        output += "{" + JsonHelper.pair(kind, "Else") + "," + ite.elsCond.toJson() + "," + open + printState(ite.elsCond)
-        output += ",\n" + children + ": [\n"
-        output += combine(ite.elsSubs)
-        output += "]}\n"
-        output += "]}"
-      }
-      case ce: CondExpRecord => {
-        output += "{" + ce.toJson() + "," + open + printState(ce)
-        output += "\n," + children + ": [\n"
-        output += recordToJS(ce.thnExp) + ", \n"
-        output += recordToJS(ce.elsExp) + "]}"
-      }
       case gb: GlobalBranchRecord => {
         output += "{" + gb.toJson() + "," + open + printState(gb)
         output += "\n," + children + ": [\n"
@@ -676,24 +601,6 @@ class SimpleTreeRenderer extends Renderer[String] {
     }
     var str = ""
     s match {
-      case ite: IfThenElseRecord => {
-        str = str + "if " + ite.thnCond.toSimpleString() + "\n"
-        str = str + indent + toSimpleTree(ite.thnCond, n + 1)
-        for (sub <- ite.thnSubs) {
-          str = str + indent + toSimpleTree(sub, n + 1)
-        }
-        str = str + indent.substring(2) + "else " + ite.elsCond.toSimpleString() + "\n"
-        str = str + indent + toSimpleTree(ite.elsCond, n + 1)
-        for (sub <- ite.elsSubs) {
-          str = str + indent + toSimpleTree(sub, n + 1)
-        }
-      }
-      case ce: CondExpRecord => {
-        str = str + ce.toString() + "\n"
-        str = str + indent + toSimpleTree(ce.thnExp, n + 1)
-        str = str + indent + toSimpleTree(ce.elsExp, n + 1)
-        return str
-      }
       case gb: GlobalBranchRecord => {
         str = str + "Branch 1:\n"
         for (sub <- gb.thnSubs) {
@@ -745,24 +652,6 @@ class TypeTreeRenderer extends Renderer[String] {
     var str = ""
 
     s match {
-      case ite: IfThenElseRecord => {
-        str = str + "if\n"
-        str = str + indent + toTypeTree(ite.thnCond, n + 1)
-        for (sub <- ite.thnSubs) {
-          str = str + indent + toTypeTree(sub, n + 1)
-        }
-
-        str = str + indent.substring(2) + "else\n"
-        str = str + indent + toTypeTree(ite.elsCond, n + 1)
-        for (sub <- ite.elsSubs) {
-          str = str + indent + toTypeTree(sub, n + 1)
-        }
-      }
-      case ce: CondExpRecord => {
-        str = str + "CondExp\n"
-        str = str + indent + toTypeTree(ce.thnExp, n + 1)
-        str = str + indent + toTypeTree(ce.elsExp, n + 1)
-      }
       case gb: GlobalBranchRecord => {
         str = str + gb.toTypeString + "\n"
         for (sub <- gb.thnSubs) {
@@ -978,121 +867,6 @@ class WellformednessCheckRecord(v: Seq[ast.Exp], s: State, p: PathConditionStack
 
   override def toJson(): String = {
     JsonHelper.pair("kind", "WellformednessCheck")
-  }
-}
-
-class IfThenElseRecord(v: ast.Exp, s: State, p: PathConditionStack)
-  extends MultiChildUnorderedRecord {
-  val value = v
-  //meaningless since there is no directly usable if-then-else structure in the AST
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-
-  def toTypeString(): String = {
-    "IfThenElse"
-  }
-
-  var thnCond: SymbolicRecord = new CommentRecord("Unreachable", null, null)
-  var elsCond: SymbolicRecord = new CommentRecord("Unreachable", null, null)
-  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
-  var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
-
-  override def toString(): String = {
-    "if " + thnCond.toSimpleString()
-  }
-
-  override def toSimpleString(): String = {
-    "if " + thnCond.toSimpleString()
-  }
-
-  override def toJson(): String = {
-    if (value != null) JsonHelper.pair("kind", "IfThenElse")
-    else ""
-  }
-
-  @elidable(INFO)
-  def finish_thnCond(): Unit = {
-    if (!subs.isEmpty)
-      thnCond = subs(0)
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_elsCond(): Unit = {
-    if (!subs.isEmpty)
-      elsCond = subs(0)
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_thnSubs(): Unit = {
-    if (!subs.isEmpty)
-      thnSubs = subs
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_elsSubs(): Unit = {
-    if (!subs.isEmpty)
-      elsSubs = subs
-    subs = List[SymbolicRecord]()
-  }
-}
-
-class CondExpRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
-  extends MultiChildOrderedRecord {
-  val value = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-  val environment = env
-
-  def toTypeString(): String = {
-    "CondExp"
-  }
-
-  var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null)
-  // thn/els Exp is Unreachable by default. If this is not the case, it will be overwritten
-  var thnExp: SymbolicRecord = new CommentRecord("Unreachable", null, null)
-  var elsExp: SymbolicRecord = new CommentRecord("Unreachable", null, null)
-
-  override def toString(): String = {
-    if (value != null)
-      environment + " " + value.toString()
-    else
-      "CondExp <null>"
-  }
-
-  override def toSimpleString(): String = {
-    if (value != null)
-      value.toString()
-    else
-      "CondExp <Null>"
-  }
-
-  override def toJson(): String = {
-    if (value != null) JsonHelper.pair("kind", "CondExp") + "," + JsonHelper.pair("value", value.toString())
-    else ""
-  }
-
-  @elidable(INFO)
-  def finish_cond(): Unit = {
-    if (!subs.isEmpty)
-      cond = subs(0)
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_thnExp(): Unit = {
-    if (!subs.isEmpty)
-      thnExp = subs(0)
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_elsExp(): Unit = {
-    if (!subs.isEmpty)
-      elsExp = subs(0)
-    subs = List[SymbolicRecord]()
   }
 }
 
