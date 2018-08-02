@@ -197,7 +197,7 @@ package object utils {
 
     def check(program: silver.ast.Program) = (
          checkPermissions(program)
-      //++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program))
+      ++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program))
       ++ checkInhaleExhaleAssertions(program))
 
     def createUnsupportedPermissionExpressionError(offendingNode: errors.ErrorNode) = {
@@ -234,7 +234,7 @@ package object utils {
             ts.exps.flatMap(_.collect {
               case fa: silver.ast.FieldAccess
                    if qvars.exists(fa.contains) &&
-                      !(quantifiedFields.contains(fa.field) && forall.exp.contains(fa))
+                      !(quantifiedFields.contains(fa.field))
                 => fa
             })
           } match {

@@ -26,7 +26,7 @@ import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.InternalWarningMessage
 
-class InverseFunctions(val condition: Term,
+case class InverseFunctions(val condition: Term,
                        val invertibles: Seq[Term],
                        val additionalArguments: Vector[Var],
                        val axiomInversesOfInvertibles: Quantification,
@@ -544,6 +544,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
           val trig = tTriggers.head.p.head match {
             case ft: FieldTrigger => if (ft.field == rec.asInstanceOf[ast.Field].name) FieldTrigger(ft.field, tSnap, ft.at) else ft
+            case pt: PredicateTrigger => rec match {
+              case p: ast.Predicate => if (pt.predname == p.name) PredicateTrigger(pt.predname, tSnap, pt.args) else pt
+              case wand: ast.MagicWand => if (pt.predname == MagicWandIdentifier(wand, Verifier.program).toString) PredicateTrigger(pt.predname, tSnap, pt.args) else pt
+            }
             case t => t
           }
 
@@ -593,11 +597,24 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         v.decider.assume(auxNonGlobals)
     }
 
+    val ax = inverseFunctions.axiomInversesOfInvertibles
+    val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
+//      getFreshInverseFunctions(
+//      qvars,
+//      And(tCond, IsPositive(gain)),
+//      tArgs,
+//      formalQVars,
+//      s.relevantQuantifiedVariables(tArgs),
+//      Some(effectiveTriggers),
+//      qid,
+//      v
+//    )
+
     v.decider.prover.comment("Definitional axioms for inverse functions")
     val definitionalAxiomMark = v.decider.setPathConditionMark()
-    val ax = inverseFunctions.axiomInversesOfInvertibles
-    v.decider.assume(Forall(ax.vars, ax.body, effectiveTriggers))
-    v.decider.assume(inverseFunctions.axiomInvertiblesOfInverses)
+//    v.decider.assume(Forall(ax.vars, ax.body, effectiveTriggers))
+//    v.decider.assume(inverseFunctions.axiomInvertiblesOfInverses)
+    v.decider.assume(inv.definitionalAxioms)
     val conservedPcs =
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
@@ -633,8 +650,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       )
     }
 
+//    val relevantChunks = s.h.values.collect { case ch1: QuantifiedFieldChunk if ch1.id == ch.id => ch1 }.toSeq :+ ch
+//    val sum = summarise(s, relevantChunks, Seq(`?r`), rec, None, v)
+//    val qvarsToInvOfLoc = inv.qvarsToInversesOf(`?r`)
+//    val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
+//
+//    v.decider.assume(sum._2)
+//    v.decider.assume(Forall(`?r`, Implies(condOfInvOfLoc, FieldTrigger(rec.asInstanceOf[ast.Field].name, sum._1, `?r`)), Trigger(inv.inversesOf(`?r`))))
+
     val s1 = s.copy(h = s.h + ch,
-      functionRecorder = s.functionRecorder.recordFieldInv(inverseFunctions),
+      functionRecorder = s.functionRecorder.recordFieldInv(inv),
       conservedPcs = conservedPcs)
     Q(s1, v)
   }

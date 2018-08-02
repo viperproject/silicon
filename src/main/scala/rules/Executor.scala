@@ -440,29 +440,50 @@ object executor extends ExecutionRules with Immutable {
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
+          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
+
+            if (s2.qpPredicates.contains(predicate)) {
+              val relevantChunks = s2.h.values.collect { case ch: QuantifiedPredicateChunk if ch.id.name == predicateName => ch }
+              val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s2.predicateFormalVarMap(predicate), predicate, None, v2)
+              v2.decider.assume(summary._2)
+              v2.decider.assume(PredicateTrigger(predicateName, summary._1, tArgs))
+            }
+
             v2.decider.assert(IsNonNegative(tPerm)){
               case true =>
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                 predicateSupporter.fold(s2, predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
               case false =>
-                Failure(pve dueTo NegativePermission(ePerm))}))
+                Failure(pve dueTo NegativePermission(ePerm))
+            }
+          }))
 
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
+          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
+
+            if (s2.qpPredicates.contains(predicate)) {
+              val relevantChunks = s2.h.values.collect { case ch: QuantifiedPredicateChunk if ch.id.name == predicateName => ch }
+              val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s2.predicateFormalVarMap(predicate), predicate, None, v2)
+              v2.decider.assume(summary._2)
+              v2.decider.assume(PredicateTrigger(predicateName, summary._1, tArgs))
+            }
+
             v2.decider.assert(IsNonNegative(tPerm)){
               case true =>
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                 predicateSupporter.unfold(s2, predicate, tArgs, tPerm, wildcards, pve, v2, pa)(Q)
               case false =>
-                Failure(pve dueTo NegativePermission(ePerm))}))
+                Failure(pve dueTo NegativePermission(ePerm))
+            }
+          }))
 
       case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
           magicWandSupporter.packageWand(s, wand, proofScript, pve, v)((s1, chWand, v1) => {
+
             val hOps = s1.reserveHeaps.head + chWand
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
             val s2 = if (s.exhaleExt)
@@ -482,6 +503,19 @@ object executor extends ExecutionRules with Immutable {
                       exhaleExt = false,
                       reserveHeaps = Nil)
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
+
+            chWand match {
+              case ch: QuantifiedMagicWandChunk => {
+                val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+                val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+                val relevantChunks = s2.h.values.collect {case ch1: QuantifiedMagicWandChunk if ch1.id == ch.id => ch1}
+                val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, formalVars, wand, None, v1)
+                v1.decider.assume(summary._2)
+                v1.decider.assume(PredicateTrigger(ch.id.toString, summary._1, ch.singletonArgs.get))
+              }
+              case _ =>
+            }
+
             continuation(s2, v1)
           })
 

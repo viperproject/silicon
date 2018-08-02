@@ -29,3 +29,7 @@
               )
     :qid |qp.$FVF<$S$>-eq-outer|
     )))
+
+(assert (forall ((r $Ref) (f $S$)) (!
+    (= ($FVF.loc_$FLD$ f r) true)
+    :pattern ($FVF.loc_$FLD$ f r))))

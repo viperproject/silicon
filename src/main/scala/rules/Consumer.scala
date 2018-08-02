@@ -388,6 +388,7 @@ object consumer extends ConsumptionRules with Immutable {
                   (inverseFunctions.axiomInversesOfInvertibles.triggers,
                    inverseFunctions.axiomInversesOfInvertibles.vars)
               }
+
             v1.decider.prover.comment("Nested auxiliary terms: globals")
             v1.decider.assume(auxGlobals)
             v1.decider.prover.comment("Nested auxiliary terms: non-globals")
@@ -409,14 +410,21 @@ object consumer extends ConsumptionRules with Immutable {
                   quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                 val loss = PermTimes(tPerm, s1.permissionScalingFactor)
                 /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+
+                val relChunks = s1.h.values.collect {case ch: QuantifiedFieldChunk if ch.id == BasicChunkIdentifier(field.name) => ch}
+                val sum = quantifiedChunkSupporter.summarise(s1, relChunks.toSeq, Seq(`?r`), field, None, v1)
+                v1.decider.assume(sum._2)
+//                v1.decider.assume(FieldTrigger(field.name, sum._1, tRcvr))
+
                 val receiverInjectivityCheck =
                   quantifiedChunkSupporter.injectivityAxiom(
                     qvars     = qvars,
-                    condition = tCond,
+                    condition = And(tCond, FieldTrigger(field.name, sum._1, tRcvr)),
                     perms     = tPerm,
                     arguments = Seq(tRcvr),
                     triggers  = Nil,
                     qidPrefix = qid.name)
+
                 v1.decider.prover.comment("Check receiver injectivity")
                 v1.decider.assert(receiverInjectivityCheck) {
                   case true =>
@@ -426,16 +434,19 @@ object consumer extends ConsumptionRules with Immutable {
                     val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(`?r`)
                     val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
                     val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
-                    val fName = acc.loc.field.name
-                    val sum = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), acc.loc.field, None, v1)
 
                     v1.decider.prover.comment("Definitional axioms for inverse functions")
                     v1.decider.assume(inverseFunctions.definitionalAxioms)
 
-                    (tTriggers flatMap (_.p)) foreach {
-                      case ft: FieldTrigger =>  v1.decider.assume(Forall(`?r`, Implies(condOfInvOfLoc, FieldTrigger(fName, ft.fvf , `?r`)), Trigger(inverseFunctions.inversesOf(`?r`))))
-                      case _ =>
-                    }
+                    val summary = quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), field, None, v1)
+                    v1.decider.assume(summary._2)
+//                    v1.decider.assume(FieldTrigger(field.name, summary._1, tRcvr))
+                    v1.decider.assume(Forall(`?r`, Implies(condOfInvOfLoc, FieldTrigger(field.name, summary._1, `?r`)), Trigger(inverseFunctions.inversesOf(`?r`))))
+
+//                    (tTriggers flatMap (_.p)) foreach {
+//                      case ft: FieldTrigger =>  v1.decider.assume(Forall(`?r`, Implies(condOfInvOfLoc, FieldTrigger(field.name, summary._1 , `?r`)), Trigger(inverseFunctions.inversesOf(`?r`))))
+//                      case _ =>
+//                    }
 //
 //                    println("tTriggers: " + (tTriggers map (_.p)))
 
@@ -1014,6 +1025,12 @@ object consumer extends ConsumptionRules with Immutable {
 
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
+
+            val relevantChunks = s.h.values.collect {case ch: QuantifiedPredicateChunk if ch.id.name == predname => ch}
+            val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s.predicateFormalVarMap(predicate) , predicate, None, v2)
+            v2.decider.assume(summary._2)
+            v2.decider.assume(PredicateTrigger(predname, summary._1, tArgs))
+
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
               s2,
@@ -1059,6 +1076,12 @@ object consumer extends ConsumptionRules with Immutable {
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
 
         evals(s, bodyVars, _ => pve, v)((s1, tArgs, v1) => {
+
+          val relevantChunks = s1.h.values.collect {case ch: QuantifiedMagicWandChunk if ch.id == MagicWandIdentifier(wand, Verifier.program) => ch}
+          val summary = quantifiedChunkSupporter.summarise(s1, relevantChunks.toSeq, formalVars, wand, None, v1)
+          v1.decider.assume(summary._2)
+          v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, summary._1, tArgs))
+
           val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
           quantifiedChunkSupporter.consumeSingleLocation(
             s1,
