@@ -540,8 +540,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 //            case t => t
 //          }))
 
-          println("tTriggers: " + tTriggers)
-
           val trig = tTriggers.head.p.head match {
             case ft: FieldTrigger => if (ft.field == rec.asInstanceOf[ast.Field].name) FieldTrigger(ft.field, tSnap, ft.at) else ft
             case pt: PredicateTrigger => rec match {
@@ -552,8 +550,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           }
 
           val evaledTrigs = Trigger(trig +: tTriggers.head.p.tail) +: tTriggers.tail
-
-          println("Final Triggers: " + evaledTrigs)
 
           (evaledTrigs, qvars)
         case None =>

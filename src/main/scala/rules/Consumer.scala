@@ -412,14 +412,19 @@ object consumer extends ConsumptionRules with Immutable {
                 /* TODO: Can we omit/simplify the injectivity check in certain situations? */
 
                 val relChunks = s1.h.values.collect {case ch: QuantifiedFieldChunk if ch.id == BasicChunkIdentifier(field.name) => ch}
-                val sum = quantifiedChunkSupporter.summarise(s1, relChunks.toSeq, Seq(`?r`), field, None, v1)
-                v1.decider.assume(sum._2)
-//                v1.decider.assume(FieldTrigger(field.name, sum._1, tRcvr))
+                val fvf = s1.smCache.get(field, relChunks.toSeq) match {
+                  case Some((fvfDef, _)) => fvfDef.sm
+                  case _ => {
+                    val sum = quantifiedChunkSupporter.summarise(s1, relChunks.toSeq, Seq(`?r`), field, None, v1)
+                    v1.decider.assume(sum._2)
+                    sum._1
+                  }
+                }
 
                 val receiverInjectivityCheck =
                   quantifiedChunkSupporter.injectivityAxiom(
                     qvars     = qvars,
-                    condition = And(tCond, FieldTrigger(field.name, sum._1, tRcvr)),
+                    condition = And(tCond, FieldTrigger(field.name, fvf, tRcvr)),
                     perms     = tPerm,
                     arguments = Seq(tRcvr),
                     triggers  = Nil,
@@ -438,24 +443,14 @@ object consumer extends ConsumptionRules with Immutable {
                     v1.decider.prover.comment("Definitional axioms for inverse functions")
                     v1.decider.assume(inverseFunctions.definitionalAxioms)
 
-                    val summary = quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), field, None, v1)
-                    v1.decider.assume(summary._2)
-//                    v1.decider.assume(FieldTrigger(field.name, summary._1, tRcvr))
-                    v1.decider.assume(Forall(`?r`, Implies(condOfInvOfLoc, FieldTrigger(field.name, summary._1, `?r`)), Trigger(inverseFunctions.inversesOf(`?r`))))
-
-//                    (tTriggers flatMap (_.p)) foreach {
-//                      case ft: FieldTrigger =>  v1.decider.assume(Forall(`?r`, Implies(condOfInvOfLoc, FieldTrigger(field.name, summary._1 , `?r`)), Trigger(inverseFunctions.inversesOf(`?r`))))
-//                      case _ =>
-//                    }
-//
-//                    println("tTriggers: " + (tTriggers map (_.p)))
-
-//                    val ax = inverseFunctions.axiomInversesOfInvertibles
-//                    v1.decider.assume(Forall(ax.vars, ax.body, Trigger(FieldTrigger(fName, sum._1, tRcvr))))
-//                    v1.decider.assume(inverseFunctions.axiomInvertiblesOfInverses)
-
-//                    v1.decider.assume(sum._2)
-//                    v1.decider.assume(FieldTrigger(fName, sum._1, tRcvr))
+                    s1.smCache.get(field, relevantChunks) match {
+                      case Some((fvfDef, _)) => v1.decider.assume(Forall(`?r`, Implies(condOfInvOfLoc, FieldTrigger(field.name, fvfDef.sm, `?r`)), Trigger(inverseFunctions.inversesOf(`?r`))))
+                      case _ => {
+                        val summary = quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), field, None, v1)
+                        v1.decider.assume(summary._2)
+                        v1.decider.assume(Forall(`?r`, Implies(condOfInvOfLoc, FieldTrigger(field.name, summary._1, `?r`)), Trigger(inverseFunctions.inversesOf(`?r`))))
+                      }
+                    }
 
                     val result = quantifiedChunkSupporter.removePermissions(
                       s1,
@@ -998,9 +993,14 @@ object consumer extends ConsumptionRules with Immutable {
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
             val relevantChunks = s2.h.values.collect {case ch: QuantifiedFieldChunk if ch.id.name == field.name => ch}
-            val sum = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, Seq(`?r`), field, None, v2)
-            v2.decider.assume(sum._2)
-            v2.decider.assume(FieldTrigger(field.name, sum._1, tRcvr))
+            s2.smCache.get(field, relevantChunks.toSeq) match {
+              case Some((fvfDef, _)) => v2.decider.assume(FieldTrigger(field.name, fvfDef.sm, tRcvr))
+              case _ => {
+                val sum = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, Seq(`?r`), field, None, v2)
+                v2.decider.assume(sum._2)
+                v2.decider.assume(FieldTrigger(field.name, sum._1, tRcvr))
+              }
+            }
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
               s2,
@@ -1027,9 +1027,14 @@ object consumer extends ConsumptionRules with Immutable {
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
 
             val relevantChunks = s.h.values.collect {case ch: QuantifiedPredicateChunk if ch.id.name == predname => ch}
-            val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s.predicateFormalVarMap(predicate) , predicate, None, v2)
-            v2.decider.assume(summary._2)
-            v2.decider.assume(PredicateTrigger(predname, summary._1, tArgs))
+            s2.smCache.get(predicate, relevantChunks.toSeq) match {
+              case Some((psfDef, _)) => v2.decider.assume(PredicateTrigger(predname, psfDef.sm, tArgs))
+              case _ => {
+                val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s.predicateFormalVarMap(predicate) , predicate, None, v2)
+                v2.decider.assume(summary._2)
+                v2.decider.assume(PredicateTrigger(predname, summary._1, tArgs))
+              }
+            }
 
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
@@ -1078,9 +1083,14 @@ object consumer extends ConsumptionRules with Immutable {
         evals(s, bodyVars, _ => pve, v)((s1, tArgs, v1) => {
 
           val relevantChunks = s1.h.values.collect {case ch: QuantifiedMagicWandChunk if ch.id == MagicWandIdentifier(wand, Verifier.program) => ch}
-          val summary = quantifiedChunkSupporter.summarise(s1, relevantChunks.toSeq, formalVars, wand, None, v1)
-          v1.decider.assume(summary._2)
-          v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, summary._1, tArgs))
+          s1.smCache.get(wand, relevantChunks.toSeq) match {
+            case Some((psfDef, _)) => v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, psfDef.sm, tArgs))
+            case _ => {
+              val summary = quantifiedChunkSupporter.summarise(s1, relevantChunks.toSeq, formalVars, wand, None, v1)
+              v1.decider.assume(summary._2)
+              v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, summary._1, tArgs))
+            }
+          }
 
           val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
           quantifiedChunkSupporter.consumeSingleLocation(
