@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.{Location, Resource}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
-import viper.silicon.Map
+import viper.silicon.{Map, SymbExLogger}
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.resources.{QuantifiedPropertyInterpreter, Resources}
@@ -726,6 +726,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm())
       val permsTakenMacro = v.decider.freshMacro("pTaken", codomainQVars, permsTakenBody)
       val permsTaken = App(permsTakenMacro, codomainQVars)
+      SymbExLogger.currentLog().addMacro(permsTaken, permsTakenBody)
 
       permsNeeded = PermMinus(permsNeeded, permsTaken)
 

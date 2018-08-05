@@ -232,6 +232,8 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     case default => null
   }
 
+  // Maps macros to their body
+  private var _macros = Map[App, Term]()
   private var stack = List[SymbolicRecord](main)
   private var sepCounter = 0
   private var sepSet = InsertionOrderedSet[Int]()
@@ -324,6 +326,12 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
   @elidable(INFO)
   def prepareOtherBranch(s: SymbolicRecord) {
     stack = s :: stack
+  }
+
+  def macros() = _macros
+
+  def addMacro(m: App, body: Term): Unit = {
+    _macros = _macros + (m -> body)
   }
 
   private def isRecordedDifferently(s: SymbolicRecord): Boolean = {
