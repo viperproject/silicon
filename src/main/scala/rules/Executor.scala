@@ -22,7 +22,7 @@ import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ExecuteRecord, MethodCallRecord, SymbExLogger}
+import viper.silicon.{ExecuteRecord, Map, MethodCallRecord, SymbExLogger}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -401,20 +401,23 @@ object executor extends ExecutionRules with Immutable {
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = Verifier.program.findMethod(methodName)
-        val pvefCall = (_: ast.Exp) =>  CallFailed(call)
-        val pvefPre = (_: ast.Exp) =>  PreconditionInCallFalse(call)
+        val fargs = meth.formalArgs.map(_.localVar)
+        val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+        val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
+        val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
+        val pvePre = PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer)
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
-        evals(s, eArgs, pvefCall, v)((s1, tArgs, v1) => {
+        evals(s, eArgs, _ => pveCall, v)((s1, tArgs, v1) => {
           mcLog.finish_parameters()
-          val s2 = s1.copy(g = Store(meth.formalArgs.map(_.localVar).zip(tArgs)),
+          val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
                            recordVisited = true)
-          consumes(s2, meth.pres, pvefPre, v1)((s3, _, v2) => {
+          consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
             mcLog.finish_precondition()
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
-            produces(s4, freshSnap, meth.posts, pvefCall, v2)((s5, v3) => {
+            produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
               mcLog.finish_postcondition()
               v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)

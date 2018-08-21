@@ -8,6 +8,8 @@ package viper.silicon.rules
 
 import viper.silver.ast
 import viper.silver.ast.Info
+import viper.silver.ast.utility.Rewriter.Traverse
+import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import viper.silver.verifier.reasons._
@@ -588,36 +590,9 @@ object evaluator extends EvaluationRules with Immutable {
             Q(s1, tQuant, v1)}
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
-        val pvePre = PreconditionInAppFalse(fapp)
         val func = Verifier.program.findFunction(funcName)
         evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
 //          bookkeeper.functionApplications += 1
-          val pre = func.pres map (pre => {
-            /* Substitute actual for formal arguments in preconditions.
-             * However, doing this naively can result in invalid triggers.
-             * Consider the following example
-             *
-             *   function fun1(a: Int): Bool
-             *     requires forall b: Int {fun2(a, b)} ...
-             *
-             *   // client
-             *     assume fun1(x > y ? 1 : -1)
-             *
-             * where replacing `a` with `x > y ? 1 : -1` would yield an invalid trigger.
-             *
-             * For now, we simply remove all triggers that directly occur in the precondition.
-             * This is OK because the precondition is consumed (exhaled), and forall-triggers are
-             * therefore not relevant (and we don't yet support exists-triggers).
-             *
-             * However, this will not prevent prevent generating invalid triggers for quantifiers
-             * that only indirectly occur in the precondition, e.g. when unfolding a predicate
-             * instance in the precondition whose body contains a quantifier.
-             *
-             * See also https://bitbucket.org/viperproject/silicon/issues/276/.
-             */
-            val triggerFreePre = pre.transform{case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)}
-            ast.utility.Expressions.instantiateVariables(triggerFreePre, func.formalArgs, eArgs)
-          })
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
@@ -630,12 +605,37 @@ object evaluator extends EvaluationRules with Immutable {
            *       although the latter is not necessary.
            */
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) => {
-            val s3 = s2.copy(recordVisited = true,
+            val pres = func.pres.map(_.transform {
+              /* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
+               * for Carbon issue #210, fail if the subsequent code that strips out triggers from
+               * exhaled function preconditions, is commented. The code was originally a work-around
+               * for Silicon issue #276. Removing triggers from function preconditions is OK-ish
+               * because they are consumed (exhaled), i.e. asserted. However, the triggers are
+               * also used to internally generated quantifiers, e.g. related to QPs. My hope is that
+               * this hack is no longer needed once heap-dependent triggers are supported.
+               */
+              case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)
+            })
+            /* Formal function arguments are instantiated with the corresponding actual arguments
+             * by adding the corresponding bindings to the store. To avoid formals in error messages
+             * and to report actuals instead, we have two choices: the first is two attach a reason
+             * transformer to the partial verification error, as done below; the second is to attach
+             * a node transformer to every formal, as illustrated by NodeBacktranslationTests.scala.
+             * The first approach is slightly simpler and suffices here, though.
+             */
+            val fargs = func.formalArgs.map(_.localVar)
+            val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+            val pvePre =
+              PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
+                reasonOffendingNode.replace(formalsToActuals))
+            val s3 = s2.copy(g = Store(fargs.zip(tArgs)),
+                             recordVisited = true,
                              smDomainNeeded = true)
-            consumes(s3, pre, _ => pvePre, v2)((s4, snap, v3) => {
+            consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
               val snap1 = snap.convert(sorts.Snap)
               val tFApp = App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
-              val s5 = s4.copy(h = s2.h,
+              val s5 = s4.copy(g = s2.g,
+                               h = s2.h,
                                recordVisited = s2.recordVisited,
                                functionRecorder = s4.functionRecorder.recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1),
                                smDomainNeeded = s2.smDomainNeeded)
