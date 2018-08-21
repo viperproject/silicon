@@ -46,6 +46,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     private var functionData: Map[ast.Function, FunctionData] = Map.empty
     private var emittedFunctionAxioms: Vector[Term] = Vector.empty
     private var freshVars: Vector[Var] = Vector.empty
+    private var postConditionAxioms: Vector[Term] = Vector.empty
 
     private val expressionTranslator =
       new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh, reporter)
@@ -126,6 +127,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       Verifier.functionData = functionData
     }
 
+    def getPostConditionAxioms() = this.postConditionAxioms
+
     /* Verification and subsequent preamble contribution */
 
     def verify(sInit: State, function: ast.Function): Seq[VerificationResult] = {
@@ -157,6 +160,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
+          this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
 
           if (function.body.isEmpty)
             result1

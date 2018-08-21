@@ -236,6 +236,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   }
 
   def axioms(): Iterable[Term] = this.verifier.axiomsAfterAnalysis()
+  def postConditionAxioms(): Vector[Term] = this.verifier.postConditionAxioms()
 
   private def runVerifier(program: ast.Program): List[Failure] = {
 //    verifier.bookkeeper.branches = 1

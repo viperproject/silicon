@@ -89,6 +89,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   def axiomsAfterAnalysis(): Iterable[Term] = this.domainsContributor.axiomsAfterAnalysis
 
+  def postConditionAxioms() = functionsSupporter.getPostConditionAxioms()
+
   /* Verifier orchestration */
 
   private object allProvers extends ProverLike {
