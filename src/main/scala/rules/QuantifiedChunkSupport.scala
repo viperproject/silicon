@@ -435,8 +435,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
             smDomainDefinitionCondition, /* Alternatively: codomainQVarsInDomainOfSummarisingSm */
             IsPositive(chunk.perm))
 
-//        val trig = FieldTrigger(resource.asInstanceOf[ast.Field].name, chunk.snapshotMap, codomainQVars.head)
-
         Forall(
           codomainQVars,
           Implies(effectiveCondition, lookupSummary === lookupChunk),
@@ -470,7 +468,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           isGlobal = true
         ))
 
-    (sm, valueDefinitions :+ valueDefs2, optDomainDefinition)
+    val valueDefs3 = resource match {
+      case _: ast.Field => valueDefinitions :+ valueDefs2
+      case _ => valueDefinitions
+    }
+
+    (sm, valueDefs3, optDomainDefinition)
   }
 
   /** @inheritdoc */

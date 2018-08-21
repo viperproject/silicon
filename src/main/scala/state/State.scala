@@ -38,8 +38,7 @@ final case class State(g: Store = Store(),
                        recordPossibleTriggers: Boolean = false,
                        possibleTriggers: Map[ast.Exp, Term] = Map(),
 
-                       recordQuantifiedTriggers: Boolean = false,
-                       quantifiedTriggerArgs: Map[ast.Exp, Seq[Term]] = Map(),
+                       triggerExp: Boolean = false,
 
                        partiallyConsumedHeap: Option[Heap] = None,
                        permissionScalingFactor: Term = terms.FullPerm(),
@@ -134,7 +133,7 @@ object State {
                  functionRecorder1,
                  conservingSnapshotGeneration1,
                  recordPossibleTriggers1, possibleTriggers1,
-                 recordQuantifiedTriggers1, quantifiedTriggerArgs1,
+                 triggerExp1,
                  partiallyConsumedHeap1,
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
@@ -155,7 +154,7 @@ object State {
                      functionRecorder2,
                      `conservingSnapshotGeneration1`,
                      `recordPossibleTriggers1`, possibleTriggers2,
-                     recordQuantifiedTriggers2, quantifiedTriggerArgs2,
+                     triggerExp2,
                      `partiallyConsumedHeap1`,
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
@@ -164,8 +163,7 @@ object State {
                      `predicateSnapMap1`, `predicateFormalVarMap1`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
-            val recordQuantifiedTriggers3 = recordQuantifiedTriggers1 || recordQuantifiedTriggers2
-            val quantifiedTriggersArgs3 = quantifiedTriggerArgs1 ++ quantifiedTriggerArgs2
+            val triggerExp3 = triggerExp1 || triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
             val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
 
@@ -194,8 +192,7 @@ object State {
 
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
-                    recordQuantifiedTriggers = recordQuantifiedTriggers3,
-                    quantifiedTriggerArgs = quantifiedTriggersArgs3,
+                    triggerExp = triggerExp3,
                     constrainableARPs = constrainableARPs3,
                     smCache = smCache3)
 

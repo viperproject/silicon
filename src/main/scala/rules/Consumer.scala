@@ -685,10 +685,21 @@ object consumer extends ConsumptionRules with Immutable {
                   quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                 val loss = PermTimes(tPerm, s1.permissionScalingFactor)
                 /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+
+                val relChunks = s1.h.values.collect {case ch: QuantifiedPredicateChunk if ch.id == BasicChunkIdentifier(predicate.name) => ch}
+                val psf = s1.smCache.get(predicate, relChunks.toSeq) match {
+                  case Some((fvfDef, _)) => fvfDef.sm
+                  case _ => {
+                    val sum = quantifiedChunkSupporter.summarise(s1, relChunks.toSeq, formalVars, predicate, None, v1)
+                    v1.decider.assume(sum._2)
+                    sum._1
+                  }
+                }
+
                 val receiverInjectivityCheck =
                   quantifiedChunkSupporter.injectivityAxiom(
                     qvars     = qvars,
-                    condition = tCond,
+                    condition = And(tCond, PredicateTrigger(predicate.name, psf, tArgs)),
                     perms     = tPerm,
                     arguments = tArgs,
                     triggers  = Nil,
@@ -703,6 +714,16 @@ object consumer extends ConsumptionRules with Immutable {
                     val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalVars)
                     val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
                     val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
+
+                    s1.smCache.get(predicate, relevantChunks) match {
+                      case Some((psfDef, _)) => v1.decider.assume(Forall(formalVars, Implies(condOfInvOfLoc, PredicateTrigger(predicate.name, psfDef.sm, formalVars)), Trigger(inverseFunctions.inversesOf(formalVars))))
+                      case _ => {
+                        val summary = quantifiedChunkSupporter.summarise(s1, relevantChunks, formalVars, predicate, None, v1)
+                        v1.decider.assume(summary._2)
+                        v1.decider.assume(Forall(formalVars, Implies(condOfInvOfLoc, PredicateTrigger(predicate.name, summary._1, formalVars)), Trigger(inverseFunctions.inversesOf(formalVars))))
+                      }
+                    }
+
                     val result = quantifiedChunkSupporter.removePermissions(
                       s1,
                       relevantChunks,
@@ -929,10 +950,21 @@ object consumer extends ConsumptionRules with Immutable {
             quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
           val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
           /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+
+            val relChunks = s1.h.values.collect {case ch: QuantifiedMagicWandChunk if ch.id == MagicWandIdentifier(wand, Verifier.program) => ch}
+            val psf = s1.smCache.get(wand, relChunks.toSeq) match {
+              case Some((fvfDef, _)) => fvfDef.sm
+              case _ => {
+                val sum = quantifiedChunkSupporter.summarise(s1, relChunks.toSeq, formalVars, wand, None, v1)
+                v1.decider.assume(sum._2)
+                sum._1
+              }
+            }
+
           val receiverInjectivityCheck =
             quantifiedChunkSupporter.injectivityAxiom(
               qvars     = qvars,
-              condition = tCond,
+              condition = And(tCond, PredicateTrigger(qid, psf, tArgs)),
               perms     = FullPerm(),
               arguments = tArgs,
               triggers  = Nil,
@@ -947,6 +979,16 @@ object consumer extends ConsumptionRules with Immutable {
               val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalVars)
               val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
               val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
+
+              s1.smCache.get(wand, relevantChunks) match {
+                case Some((psfDef, _)) => v1.decider.assume(Forall(formalVars, Implies(condOfInvOfLoc, PredicateTrigger(qid, psfDef.sm, formalVars)), Trigger(inverseFunctions.inversesOf(formalVars))))
+                case _ => {
+                  val summary = quantifiedChunkSupporter.summarise(s1, relevantChunks, formalVars, wand, None, v1)
+                  v1.decider.assume(summary._2)
+                  v1.decider.assume(Forall(formalVars, Implies(condOfInvOfLoc, PredicateTrigger(qid, summary._1, formalVars)), Trigger(inverseFunctions.inversesOf(formalVars))))
+                }
+              }
+
               val result = quantifiedChunkSupporter.removePermissions(
                 s1,
                 relevantChunks,
