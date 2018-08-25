@@ -7,7 +7,6 @@
 package viper.silicon.supporters.functions
 
 import viper.silver.ast
-import viper.silver.ast.{FuncApp, LocationAccess}
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition}
@@ -143,9 +142,9 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
 
 case object NoopFunctionRecorder extends FunctionRecorder {
   val data = None
-  private[functions] val fappToSnaps: Map[FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
+  private[functions] val fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
   val fappToSnap: Map[ast.FuncApp, Term] = Map.empty
-  private[functions] val locToSnaps: Map[LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
+  private[functions] val locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
   val locToSnap: Map[ast.LocationAccess, Term] = Map.empty
   val freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
   val freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
@@ -159,10 +158,10 @@ case object NoopFunctionRecorder extends FunctionRecorder {
     this
   }
 
-  def recordSnapshot(loc: LocationAccess, guards: Stack[Term], snap: Term): FunctionRecorder = this
+  def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term): FunctionRecorder = this
   def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): FunctionRecorder = this
   def recordFieldInv(inv: InverseFunctions): FunctionRecorder = this
-  def recordSnapshot(fapp: FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder = this
+  def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder = this
   def recordArp(arp: Var, constraint: Term): FunctionRecorder = this
   def recordFreshSnapshot(snap: Function): FunctionRecorder = this
   def recordPathSymbol(symbol: Function): FunctionRecorder = this
