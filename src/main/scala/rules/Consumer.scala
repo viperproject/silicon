@@ -709,7 +709,7 @@ object consumer extends ConsumptionRules with Immutable {
                 val receiverInjectivityCheck =
                   quantifiedChunkSupporter.injectivityAxiom(
                     qvars     = qvars,
-                    condition = tCond,
+                    condition = And(tCond, PredicateTrigger(predicate.name, psf, tArgs)),
                     perms     = tPerm,
                     arguments = tArgs,
                     triggers  = Nil,
@@ -977,7 +977,7 @@ object consumer extends ConsumptionRules with Immutable {
           val receiverInjectivityCheck =
             quantifiedChunkSupporter.injectivityAxiom(
               qvars     = qvars,
-              condition = tCond,
+              condition = And(tCond, PredicateTrigger(qid, psf, tArgs)),
               perms     = FullPerm(),
               arguments = tArgs,
               triggers  = Nil,
