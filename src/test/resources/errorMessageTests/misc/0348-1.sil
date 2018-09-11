@@ -1,0 +1,13 @@
+/* See ErrorMessageTransformationTests.scala */
+
+function foo(x: Ref): Int
+
+function bar(i: Int): Bool
+  requires 0 < i
+
+method test(x: Ref) {
+  // assume bar(foo(x)) ~~> assert bar's precondition
+   var i: Int
+   i := foo(x)
+   exhale 0 < i // ~~> goal: report error "0 < foo(x)" might not hold
+}

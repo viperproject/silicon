@@ -164,18 +164,25 @@ object State {
 
             val smCache3 =
               viper.silicon.utils.conflictFreeUnion(smCache1, smCache2) match {
-                case Right(m3) => m3
-                case _ =>
-                  /* TODO: Comparing size is not sufficient - we should compare cache entries for
-                   *       equality modulo renaming of FVFs.
-                   *       Even better: when branching (locally/in general?), the fvfCache from the
-                   *       first branch should be made available to the second branch in order to avoid
-                   *       axiomatising a fresh but equivalent FVF.
-                   *       This should be sound because the branch condition (of a local branch?) cannot
-                   *       influence the available chunks.
+                case (m3, conflicts) if conflicts.isEmpty => m3
+                case (m3, conflicts) =>
+                  /* A "conflict" here means that two syntactically different snapshot maps have
+                   * been defined relative to the *same set of chunks*. It is therefore expected
+                   * that the two snapshots maps are semantically equivalent, and that it doesn't
+                   * matter which one is chosen for the merged cache.
+                   *
+                   * TODO: Add a runtime assertion that checks above hypothesis: e.g. check that the
+                   *       two snapshot maps are structurally equivalent modulo renaming.
+                   *
+                   * TODO: A possible optimisation to snapshot map caching might be the following:
+                   *       when branching (locally/in general?), the snapshot map cache from the
+                   *       first branch should be made available to the second branch in order to
+                   *       avoid axiomatising a fresh but equivalent snapshot map. This should be
+                   *       sound because the branch condition (of a local branch?) cannot influence
+                   *       the available chunks.
                    */
-                  assert(smCache1.size == smCache2.size)
-                  smCache1
+
+                  m3 ++ conflicts.map { case (k, (v1, _)) => k -> v1 }
                 }
 
             s1.copy(functionRecorder = functionRecorder3,
@@ -198,7 +205,7 @@ object State {
 
   def conflictFreeUnionOrAbort[K, V](m1: Map[K, V], m2: Map[K, V]): Map[K,V] =
     viper.silicon.utils.conflictFreeUnion(m1, m2) match {
-      case Right(m3) => m3
+      case (m3, conflicts) if conflicts.isEmpty => m3
       case _ => sys.error("Unexpected mismatch between contexts")
     }
 

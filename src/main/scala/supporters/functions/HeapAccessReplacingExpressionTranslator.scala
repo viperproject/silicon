@@ -17,6 +17,8 @@ import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                               fresh: (String, Sort) => Var,
+                                              resolutionFailureMessage: (ast.Positioned, FunctionData) => String,
+                                              stopOnResolutionFailure: (ast.Positioned, FunctionData) => Boolean,
                                               reporter: Reporter)
     extends ExpressionTranslator
        with LazyLogging {
@@ -116,7 +118,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         })()
 
-      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ), data.programFunction.name)
+      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ))
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
 
@@ -124,7 +126,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         val silverFunc = program.findFunction(eFApp.funcname)
         val fun = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(arg))
-        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, data.programFunction.name)
+        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap)
         val fapp = App(fun, snap +: args)
 
         val callerHeight = data.height
@@ -138,19 +140,24 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case _ => super.translate(symbolConverter.toSort)(e)
     }
 
-  def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort, fname: String): Term =
+  def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort): Term =
     map.get(key) match {
       case Some(s) =>
         s.convert(sort)
       case None =>
         if (!failed && data.verificationFailures.isEmpty) {
-          val msg = s"Could not resolve $key (${key.pos}) during the axiomatisation of function $fname"
+          val msg = resolutionFailureMessage(key, data)
+
           reporter report InternalWarningMessage(msg)
           logger warn msg
         }
 
-        failed = true
+        failed = failed || stopOnResolutionFailure(key, data)
 
+        /* TODO: Fresh symbol $unresolved must be a function of all currently quantified variables,
+         *       including the formal arguments of a function, if the unresolved expression is from
+         *       a function body.
+         */
         fresh("$unresolved", sort)
     }
 }

@@ -25,14 +25,16 @@ package object utils {
     else
       it.map(f).reduceLeft((t1, t2) => op(t1, t2))
 
-  def conflictFreeUnion[K, V](m1: Map[K, V], m2: Map[K, V]): Either[Seq[(K, V, V)], Map[K, V]] = {
-    m1 flatMap { case (k1, v1) => m2.get(k1) match {
-      case None | Some(`v1`) => None
-      case Some(v2) => Some((k1, v1, v2))
-    }} match {
-      case Seq() => Right(m1 ++ m2)
-      case conflicts => Left(conflicts.toSeq)
-    }
+  def conflictFreeUnion[K, V](m1: Map[K, V], m2: Map[K, V]): (Map[K, V], Map[K, (V, V)]) = {
+    var union = Map.empty[K, V]
+    var conflicts = Map.empty[K, (V, V)]
+
+    m1 foreach { case (k1, v1) => m2.get(k1) match {
+      case None | Some(`v1`) => union += k1 -> v1
+      case Some(v2) => conflicts += k1 -> (v1, v2)
+    }}
+
+    (union, conflicts)
   }
 
   def append[K1,       E1,       C1 <: Iterable[E1],

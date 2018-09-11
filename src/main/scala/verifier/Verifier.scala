@@ -6,7 +6,7 @@
 
 package viper.silicon.verifier
 
-import ch.qos.logback.classic.Logger
+import com.typesafe.scalalogging.Logger
 import viper.silver.ast
 import viper.silver.parser.FastParser
 import viper.silicon.{Config, Map}

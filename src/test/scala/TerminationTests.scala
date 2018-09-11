@@ -7,6 +7,6 @@
 package viper.silicon.tests
 
 class TerminationTests extends SiliconTests {
-  override val testDirectories = Seq("termination")
+  override val testDirectories = Seq.empty // Seq("termination")
   override val commandLineArguments = Seq("--enableFunctionTerminationChecks")
 }

@@ -6,7 +6,7 @@
 
 package viper.silicon.supporters.functions
 
-import ch.qos.logback.classic.Logger
+import com.typesafe.scalalogging.Logger
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
@@ -48,8 +48,18 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     private var freshVars: Vector[Var] = Vector.empty
     private var postConditionAxioms: Vector[Term] = Vector.empty
 
-    private val expressionTranslator =
-      new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh, reporter)
+    private val expressionTranslator = {
+      def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
+          s"Could not resolve expression $exp (${exp.pos}) during the axiomatisation of "
+        + s"function ${data.programFunction.name}. This typically happens if the expression is on "
+        +  "an infeasible path, i.e. is dead code. The unresolved expression will be replaced by "
+        +  "a fresh symbol, i.e. an arbitrary value.")
+
+      def stopOnResolutionFailure(exp: ast.Positioned, data: FunctionData): Boolean = false
+
+      new HeapAccessReplacingExpressionTranslator(
+        symbolConverter, fresh, resolutionFailureMessage, stopOnResolutionFailure, reporter)
+    }
 
     def units = functionData.keys.toSeq
 

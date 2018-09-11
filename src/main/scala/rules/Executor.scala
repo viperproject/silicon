@@ -22,7 +22,7 @@ import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ExecuteRecord, MethodCallRecord, SymbExLogger}
+import viper.silicon.{ExecuteRecord, Map, MethodCallRecord, SymbExLogger}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -324,13 +324,8 @@ object executor extends ExecutionRules with Immutable {
             BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
           }
         })
+        val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
         val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
-        val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s1, tRcvr)
-          /* Calling computeReferenceDisjointnesses with the updated state σ1 ensures that
-           * tRcvr is constrained to be different from (ref-typed) fields of tRcvr to which
-           * permissions have been gained.
-           * Note that we do not constrain the (ref-typed) fields to be mutually disjoint.
-           */
         v.decider.assume(ts)
         Q(s1, v)
 
@@ -406,20 +401,23 @@ object executor extends ExecutionRules with Immutable {
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = Verifier.program.findMethod(methodName)
-        val pvefCall = (_: ast.Exp) =>  CallFailed(call)
-        val pvefPre = (_: ast.Exp) =>  PreconditionInCallFalse(call)
+        val fargs = meth.formalArgs.map(_.localVar)
+        val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+        val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
+        val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
+        val pvePre = PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer)
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
-        evals(s, eArgs, pvefCall, v)((s1, tArgs, v1) => {
+        evals(s, eArgs, _ => pveCall, v)((s1, tArgs, v1) => {
           mcLog.finish_parameters()
-          val s2 = s1.copy(g = Store(meth.formalArgs.map(_.localVar).zip(tArgs)),
+          val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
                            recordVisited = true)
-          consumes(s2, meth.pres, pvefPre, v1)((s3, _, v2) => {
+          consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
             mcLog.finish_precondition()
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
-            produces(s4, freshSnap, meth.posts, pvefCall, v2)((s5, v3) => {
+            produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
               mcLog.finish_postcondition()
               v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
@@ -495,20 +493,26 @@ object executor extends ExecutionRules with Immutable {
     executed
   }
 
-   private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term =
+   private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term = {
      rhs match {
        case _: Var | _: Literal =>
-         /* Cheap (and likely to succeed) matches come first */
          rhs
 
-       case _ if rhs.existsDefined { case t if v.triggerGenerator.isForbiddenInTrigger(t) => true } =>
+       case _  =>
+         /* 2018-06-05 Malte:
+          *   This case was previously guarded by the condition
+          *     rhs.existsDefined {
+          *       case t if v.triggerGenerator.isForbiddenInTrigger(t) => true
+          *     }
+          *   and followed by a catch-all case in which rhs was returned.
+          *   However, reducing the number of fresh symbols does not appear to improve
+          *   performance; instead, it can cause an exponential blow-up in term size, as
+          *   reported by Silicon issue #328.
+          */
          val t = v.decider.fresh(name, v.symbolConverter.toSort(typ))
          v.decider.assume(t === rhs)
 
          t
-
-       case _ =>
-         /* Catch-all case */
-         rhs
      }
+   }
 }

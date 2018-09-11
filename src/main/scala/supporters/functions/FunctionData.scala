@@ -87,6 +87,7 @@ class FunctionData(val programFunction: ast.Function,
   private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   private[this] var freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   private[this] var freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
+  private[this] var freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
 
   private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunctions] = freshFieldInvs
@@ -108,11 +109,11 @@ class FunctionData(val programFunction: ast.Function,
     freshFieldInvs = mergedFunctionRecorder.freshFieldInvs
     freshArps = mergedFunctionRecorder.freshArps
     freshSnapshots = mergedFunctionRecorder.freshSnapshots
+    freshPathSymbols = mergedFunctionRecorder.freshPathSymbols
 
+    freshSymbolsAcrossAllPhases ++= freshPathSymbols
     freshSymbolsAcrossAllPhases ++= freshArps.map(_._1)
-
     freshSymbolsAcrossAllPhases ++= freshSnapshots
-
     freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(_.inverses)
 
     freshSymbolsAcrossAllPhases ++= freshFvfsAndDomains map (fvfDef =>
@@ -183,7 +184,7 @@ class FunctionData(val programFunction: ast.Function,
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
       val args = (
-           expressionTranslator.getOrFail(locToSnap, predacc, sorts.Snap, programFunction.name)
+           expressionTranslator.getOrFail(locToSnap, predacc, sorts.Snap)
         +: expressionTranslator.translatePrecondition(program, predacc.args, this))
 
       val fapp = App(triggerFunction, args)

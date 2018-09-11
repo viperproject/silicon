@@ -1,0 +1,22 @@
+/* See ErrorMessageTransformationTests.scala */
+
+field f: Int
+
+predicate P(x: Ref) { acc(x.f) }
+
+function inner(x: Ref): Int
+  requires P(x)
+
+function outer(x: Ref, v: Int): Bool
+  requires P(x)
+  requires unfolding P(x) in v == 0
+
+method test(y: Ref) {
+  inhale P(y)
+  // assume outer(x, inner(x)) ~~> assert outer's precondition
+   var x: Ref
+   x := y
+   var v: Int
+   v := inner(y)
+   exhale unfolding P(x) in v == 0 // ~~> goal: report error "inner(y) == 0" might not hold
+}
