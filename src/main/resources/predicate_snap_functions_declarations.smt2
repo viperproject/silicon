@@ -10,4 +10,5 @@
 (declare-fun $PSF.lookup_$PRD$ ($PSF<$S$> $Snap) $S$)
 (declare-fun $PSF.after_$PRD$ ($PSF<$S$> $PSF<$S$>) Bool)
 (declare-fun $PSF.loc_$PRD$ ($S$ $Snap) Bool)
+(declare-fun $PSF.perm_$PRD$ ($PPM $Snap) $Perm)
 (declare-const $psfTOP_$PRD$ $PSF<$S$>)

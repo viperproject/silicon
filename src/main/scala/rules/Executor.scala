@@ -270,18 +270,24 @@ object executor extends ExecutionRules with Immutable {
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            s2.smCache.get(field, relevantChunks) match {
-              case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) =>
+            val smCache1 = s2.smCache.get(field, relevantChunks) match {
+              case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) => {
                 v2.decider.assume(FieldTrigger(field.name, fvfDef.sm, tRcvr))
+                s2.smCache
+              }
               case _ => {
                 val (fvf, fvfValueDefs, None) =
                   quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), field, None, v1)
                 v2.decider.assume(fvfValueDefs)
                 v2.decider.assume(FieldTrigger(field.name, fvf, tRcvr))
+                val smDef = SnapshotMapDefinition(field, fvf, fvfValueDefs, Seq())
+                val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
+                if (Verifier.config.disableValueMapCaching()) s2.smCache
+                else s2.smCache + ((field, relevantChunks) -> (smDef, totalPermissions))
               }
             }
             val result = quantifiedChunkSupporter.removePermissions(
-              s2,
+              s2.copy(smCache = smCache1),
               relevantChunks,
               Seq(`?r`),
               `?r` === tRcvr,

@@ -11,7 +11,7 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.rules.SnapshotMapDefinition
+import viper.silicon.rules.{PermMapDefinition, SnapshotMapDefinition}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
@@ -58,6 +58,7 @@ final case class State(g: Store = Store(),
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
                        qpMagicWands: InsertionOrderedSet[MagicWandIdentifier] = InsertionOrderedSet.empty,
                        smCache: Map[(ast.Resource, Seq[QuantifiedBasicChunk]), (SnapshotMapDefinition, Term)] = Map.empty,
+                       pmCache: Map[(ast.Resource, Seq[QuantifiedBasicChunk]), PermMapDefinition] = Map.empty,
                        smDomainNeeded: Boolean = false,
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
@@ -139,7 +140,7 @@ object State {
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
-                 qpFields1, qpPredicates1, qpMagicWands1, smCache1, smDomainNeeded1,
+                 qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1) =>
 
         /* Decompose state s2: most values must match those of s1 */
@@ -160,7 +161,7 @@ object State {
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
-                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, `smDomainNeeded1`,
+                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
@@ -192,12 +193,15 @@ object State {
                   m3 ++ conflicts.map { case (k, (v1, _)) => k -> v1 }
                 }
 
+            val pmCache3 = pmCache1 ++ pmCache2
+
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     recordQuantifiedTriggers = recordQuantifiedTriggers3,
                     quantifiedTriggerArgs = quantifiedTriggersArgs3,
                     constrainableARPs = constrainableARPs3,
-                    smCache = smCache3)
+                    smCache = smCache3,
+                    pmCache = pmCache3)
 
           case _ =>
             sys.error("State merging failed: unexpected mismatch between symbolic states")

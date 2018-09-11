@@ -265,7 +265,7 @@ object producer extends ProductionRules with Immutable {
             v.decider.prover.comment("Definitional axioms for singleton-SM's value")
             val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(smValueDef)
-            v.decider.assume(FieldTrigger(field.name, sm, rcvr))
+//            v.decider.assume(FieldTrigger(field.name, sm, rcvr))
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
               else s.conservedPcs
@@ -369,6 +369,7 @@ object producer extends ProductionRules with Immutable {
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
+//            v.decider.assume(PermAtMost(tPerm, FullPerm()))
             quantifiedChunkSupporter.produce(
               s1,
               forall,

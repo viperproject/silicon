@@ -13,7 +13,7 @@ import viper.silver.verifier.errors.PreconditionInAppFalse
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
-import viper.silicon.state._
+import viper.silicon.state.{terms, _}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.{BigPermSum, IsNonNegative, IsPositive}
@@ -207,7 +207,7 @@ object evaluator extends EvaluationRules with Immutable {
                      * which is protected by a trigger term that we currently don't have.
                      */
                   val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
-                  val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
+                  val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
                   val s2 = s1.copy(functionRecorder = fr1)
                   Q(s2, fvfLookup, v1)}
             case _ =>
@@ -412,7 +412,7 @@ object evaluator extends EvaluationRules with Immutable {
             case _: ast.MagicWand => s1.qpMagicWands.contains(identifier.asInstanceOf[MagicWandIdentifier])
             case field: ast.Field => s1.qpFields.contains(field)
             case pred: ast.Predicate => s1.qpPredicates.contains(pred)}
-          val (perm, smCache1) =
+          val (perm, smCache1, pmCache1) =
             if (usesQPChunks) {
               res match {
                 case wand: ast.MagicWand =>
@@ -435,14 +435,31 @@ object evaluator extends EvaluationRules with Immutable {
                     }
                   }
 
-                  val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                    PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
-                  (perm, smCache1)
+                  val (pmCache1, perm) = s1.pmCache.get(wand, chs.toSeq) match {
+                    case Some(pmDef) =>
+                      v1.decider.assume(pmDef.valueDefinitions)
+                      (s1.pmCache, PredicatePermLookup(identifier.toString, pmDef.pm, args))
+                    case _ =>
+                      val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+                      val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+                      val (pm, valueDef) = quantifiedChunkSupporter.summarisePerm(s, chs.toSeq, formalVars, wand, v1)
+                      val pmDef = PermMapDefinition(wand, pm, valueDef)
+                      v1.decider.assume(valueDef)
+                      (s1.pmCache + ((wand, chs.toSeq) -> pmDef), PredicatePermLookup(identifier.toString, pm, args))
+                  }
+
+//                  v1.decider.assume(valueDef)
+//                  val perm = PredicatePermLookup(identifier.toString, pm, args)
+
+//                  val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
+//                    PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
+                  (perm, smCache1, pmCache1)
                 case field: ast.Field =>
                   val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.id == identifier => ch}
 
                   val smCache1 = s1.smCache.get(field, chs.toSeq) match {
                     case Some((fvfDef, _)) =>
+                      v1.decider.assume(fvfDef.valueDefinitions)
                       v1.decider.assume(FieldTrigger(field.name, fvfDef.sm, args.head))
                       s1.smCache
                     case _ => {
@@ -457,16 +474,32 @@ object evaluator extends EvaluationRules with Immutable {
                     }
                   }
 
-                  val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                    PermPlus(q, ch.perm.replace(`?r`, args.head)))
+                  val (pmCache1, perm) = s1.pmCache.get(field, chs.toSeq) match {
+                    case Some(pmDef) =>
+                      v1.decider.assume(pmDef.valueDefinitions)
+                      (s1.pmCache, PermLookup(field.name, pmDef.pm, args.head))
+                    case _ =>
+                      val (pm, valueDef) = quantifiedChunkSupporter.summarisePerm(s, chs.toSeq, Seq(`?r`), field, v1)
+                      val pmDef = PermMapDefinition(field, pm, valueDef)
+                      v1.decider.assume(valueDef)
+                      (s1.pmCache + ((field, chs.toSeq) -> pmDef), PermLookup(identifier.toString, pm, args.head))
+                  }
+
+//                  val (pm, valueDef) = quantifiedChunkSupporter.summarisePerm(s, chs.toSeq, Seq(`?r`), field, v1)
+//
+//                  v1.decider.assume(valueDef)
+//                  val perm = PermLookup(field.name, pm, args.head)
+
+//                  val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
+//                    PermPlus(q, ch.perm.replace(`?r`, args.head)))
                   /* TODO: Try again once Silicon fully supports field accesses as triggers.
                    *       Currently, adding these axioms makes several of the RSL examples
                    *       exhibit matching loops (potentially other examples as well).
                    */
-//                  v1.decider.prover.comment(s"perm($locacc)  ~~>  assume upper permission bound")
-//                  v1.decider.prover.comment(perm.toString)
-//                  v1.decider.assume(PermAtMost(perm, FullPerm()))
-                  (perm, smCache1)
+                  v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
+                  v1.decider.prover.comment(perm.toString)
+                  v1.decider.assume(PermAtMost(perm, FullPerm()))
+                  (perm, smCache1, pmCache1)
                 case pred: ast.Predicate =>
                   val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.id == identifier => ch }
 
@@ -485,9 +518,26 @@ object evaluator extends EvaluationRules with Immutable {
                     }
                   }
 
-                  val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                    PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
-                  (perm, smCache1)
+                  val (pmCache1, perm) = s1.pmCache.get(pred, chs.toSeq) match {
+                    case Some(pmDef) =>
+                      v1.decider.assume(pmDef.valueDefinitions)
+                      (s1.pmCache, PredicatePermLookup(identifier.toString, pmDef.pm, args))
+                    case _ =>
+                      val formalVars = s1.predicateFormalVarMap(pred)
+                      val (pm, valueDef) = quantifiedChunkSupporter.summarisePerm(s, chs.toSeq, formalVars, pred, v1)
+                      val pmDef = PermMapDefinition(pred, pm, valueDef)
+                      v1.decider.assume(valueDef)
+                      (s1.pmCache + ((pred, chs.toSeq) -> pmDef), PredicatePermLookup(pred.name, pm, args))
+                  }
+
+//                  val (pm, valueDef) = quantifiedChunkSupporter.summarisePerm(s, chs.toSeq, s1.predicateFormalVarMap(pred), pred, v1)
+//
+//                  v1.decider.assume(valueDef)
+//                  val perm = PredicatePermLookup(pred.name, pm, args)
+
+//                  val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
+//                    PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
+                  (perm, smCache1, pmCache1)
               }
             } else {
               val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
@@ -500,10 +550,10 @@ object evaluator extends EvaluationRules with Immutable {
 //              v1.decider.prover.comment(s"perm($locacc)  ~~>  assume upper permission bound")
 //              v1.decider.prover.comment(perm.toString)
 //              v1.decider.assume(PermAtMost(perm, FullPerm()))
-              (perm, s.smCache)
+              (perm, s.smCache, s.pmCache)
             }
 
-          val s2 = s1.copy(smCache = smCache1, quantifiedTriggerArgs =
+          val s2 = s1.copy(smCache = smCache1, pmCache = pmCache1, quantifiedTriggerArgs =
             if (usesQPChunks) {
               if (s1.recordQuantifiedTriggers) {
                 s1.quantifiedTriggerArgs +
@@ -666,43 +716,19 @@ object evaluator extends EvaluationRules with Immutable {
         val name = s"prog.l${viper.silicon.utils.ast.sourceLine(sourceQuant)}"
         evalQuantified(s.copy(recordQuantifiedTriggers = true), qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v){
           case (s1, tVars, _, Seq(tBody), tTriggers, (tAuxGlobal, tAux), v1) =>
+
+            val tlqGlobal = tAuxGlobal flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
+            val tlq = tAux flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
+
             v1.decider.prover.comment("Nested auxiliary terms: globals")
             v1.decider.assume(tAuxGlobal)
+            v1.decider.assume(tlqGlobal)
             v1.decider.prover.comment("Nested auxiliary terms: non-globals")
             v1.decider.assume(tAux)
+            v1.decider.assume(tlq)
 
-            val (tImplLeft, tImplRight) = tBody match {
-              case i:Implies => (i.p0, i.p1)
-              case _ => (True(), tBody)
-            }
-
-//            val resAccs = body.deepCollect {case resAcc: ast.ResourceAccess => resAcc}
-//            val trigTerms = resAccs map (r => {
-//              val args = s1.quantifiedTriggerArgs.getOrElse(r, Nil)
-//              println("TriggerArgs: " + s1.quantifiedTriggerArgs)
-//              r match {
-//                case fa: ast.FieldAccess => {
-//                  val relevantChunks = s1.h.values.collect {case ch: QuantifiedFieldChunk if ch.id.name == fa.field.name => ch}
-//                  val summary = quantifiedChunkSupporter.summarise(s1, relevantChunks.toSeq, Seq(`?r`), fa.field, None, v1)
-//                  v1.decider.assume(summary._2)
-//                  FieldTrigger(fa.field.name, summary._1, args.head)
-//                }
-//              }
-//            })
-//
-//            val trigs = Implies(tImplies, And(trigTerms))
-
-            //TODO: perm
-            //TODO: only generate triggers in forall?
-            val qtrigs = createQuantTriggers(s1, tBody, v1)
-            val trigs2 = qtrigs._2
-            val s2 = qtrigs._1
-
-            val trigs3 = trigs2.deepCollect {case trig: FieldTrigger => trig}
-
-            val trigQuant = Quantification(qantOp, tVars, trigs2, tTriggers, name)
-            val tQuant = Quantification(qantOp, tVars, Implies(tImplLeft, Implies(And(trigs3), tImplRight)), tTriggers, name)
-            Q(s2, tQuant, v1)}
+            val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
+            Q(s1, tQuant, v1)}
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val pvePre = PreconditionInAppFalse(fapp)
@@ -955,10 +981,10 @@ object evaluator extends EvaluationRules with Immutable {
             val additionalPossibleTriggers: Map[ast.Exp, Term] =
               if (s.recordPossibleTriggers) s5.possibleTriggers else Map()
             QB((s5, ts1, ts2, tTriggers, (auxGlobalQuants, auxNonGlobalQuants), additionalPossibleTriggers))})})})
-    }){case (s2, ts1, ts2, tTriggers, auxQuant, additionalPossibleTriggers) =>
+    }){case (s2, ts1, ts2, tTriggers, (tAuxGlobal, tAux), additionalPossibleTriggers) =>
       val s3 = s.copy(possibleTriggers = s.possibleTriggers ++ additionalPossibleTriggers)
                 .preserveAfterLocalEvaluation(s2)
-      Q(s3, tVars, ts1, ts2, tTriggers, auxQuant, v)
+      Q(s3, tVars, ts1, ts2, tTriggers, (tAuxGlobal, tAux), v)
     }
   }
 
@@ -1252,33 +1278,6 @@ object evaluator extends EvaluationRules with Immutable {
         val (axioms, trigs, _) = helper(fa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
-
-//        val relevantChunks = s.h.values.collect { case ch: QuantifiedFieldChunk if ch.id.name == fa.field.name => ch }
-//        val dom = if (s.smDomainNeeded) ??? else None
-//        val summarisedHeap = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), fa.field, dom, v)
-//        triggerAxioms = triggerAxioms ++ summarisedHeap._2
-//        val s1 = s.copy()
-//        var rcvFVF: Term = null
-//        eval(s1, fa.rcv, pve, v)((s2, tRcv, v1) => {
-//          println("tRcv: " + tRcv)
-//          rcvFVF = tRcv match {
-//            case Lookup(field, fvf, at) => fvf
-//            case _ => null
-//          }
-//          triggers = triggers :+ FieldTrigger(fa.field.name, summarisedHeap._1, tRcv)
-//          Success()}
-//        )
-
-//        fa.rcv match {
-//          case fa: ast.FieldAccess => {
-//            val s1 = s.copy()
-//            eval(s1, fa.rcv, pve, v)((s2, tRcv, v1) => {
-//              triggers = triggers :+ FieldTrigger(fa.field.name, rcvFVF, tRcv)
-//              Success()}
-//            )
-//          }
-//          case _ =>
-//        }
       }
       case pa: ast.PredicateAccess => {
         val (axioms, trigs, _) = helper(pa, s, pve, v)
@@ -1290,6 +1289,10 @@ object evaluator extends EvaluationRules with Immutable {
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
       }
+      case e => evalTrigger(s, Seq(e), pve, v)((s1, t, v1) => {
+        triggers = triggers ++ t
+        Success()
+      })
     }
     v.decider.assume(triggerAxioms)
     Q(s, triggers, v)
@@ -1322,7 +1325,7 @@ object evaluator extends EvaluationRules with Immutable {
 
     fa.rcv match {
       case acc: ast.FieldAccess => {
-        val rcvHelper = helper(acc, s.copy(smCache = smCache1), pve, v)
+        val rcvHelper = helper(acc, s, pve, v)
         val rcvTrig = rcvHelper._3
         axioms = axioms ++ smDef.valueDefinitions ++ rcvHelper._1
         mostRecentTrig = FieldTrigger(fa.field.name, smDef.sm, Lookup(rcvTrig.field, rcvTrig.fvf, rcvTrig.at))
@@ -1417,8 +1420,6 @@ object evaluator extends EvaluationRules with Immutable {
     val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
     val smCache1 = s.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
 
-
-
     val s1 = s.copy()
     evals(s1, wand.subexpressionsToEvaluate(Verifier.program), _ => pve, v)((s2, tArgs, v1) => {
       axioms = axioms ++ smDef.valueDefinitions
@@ -1427,45 +1428,6 @@ object evaluator extends EvaluationRules with Immutable {
       Success()
     })
     (axioms, triggers, mostRecentTrig)
-  }
-
-  //TODO: better caching
-  private def createQuantTriggers(s: State, body: Term, v: Verifier): (State, Term) = {
-
-    body match {
-      case _: Implies | _: And | _: Or | _: Ite | _: Iff => {
-        val subTrigs = body.subterms map (t => createQuantTriggers(s, t, v))
-        val s1 = (subTrigs map (_._1)).foldLeft(s)((s2, s3) => s2.merge(s3))
-        (s1, body.replace(body.subterms, subTrigs map (_._2)))
-      }
-      case _ => {
-        val lookups = body.deepCollect { case l: Lookup => l }
-        if (lookups.isEmpty) {
-          (s, body)
-        } else {
-          var trigs = Seq.empty[Term]
-          var s1 = s.copy()
-          val trigsWithField = lookups map (l => (FieldTrigger(l.field, l.fvf, l.at), Verifier.program.findField(l.field)))
-          for ((trig, field) <- trigsWithField) {
-            val relevantChunks = s1.h.values.collect {case ch: QuantifiedFieldChunk if ch.id.name == trig.field => ch}
-            val (ft, smCache1) = s1.smCache.get(field, relevantChunks.toSeq) match {
-              case Some((fvfDef, _)) => (FieldTrigger(trig.field, fvfDef.sm, trig.at), s1.smCache)
-              case _ => {
-                val summary = quantifiedChunkSupporter.summarise(s1, relevantChunks.toSeq, Seq(`?r`), field, None, v)
-                v.decider.assume(summary._2)
-                val smDef = SnapshotMapDefinition(field, summary._1, summary._2, Seq())
-                val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
-                if (Verifier.config.disableValueMapCaching()) (FieldTrigger(trig.field, summary._1, trig.at), s1.smCache)
-                else (FieldTrigger(trig.field, summary._1, trig.at), s1.smCache + ((field, relevantChunks.toSeq) -> (smDef, totalPermissions)))
-              }
-            }
-            trigs :+= trig
-            s1 = s1.copy(smCache = smCache1)
-          }
-          (s1, And(trigs))
-        }
-      }
-    }
   }
 
   private[silicon] case object FromShortCircuitingAnd extends Info {
