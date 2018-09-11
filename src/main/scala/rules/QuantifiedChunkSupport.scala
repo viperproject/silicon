@@ -509,8 +509,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val pm = freshPermMap(s, resource, Seq(), v)
 
     val permSummary = genericPermLookup(resource, pm, codomainQVars, v)
+    val p = v.decider.fresh(sorts.Perm)
     val valueDefinitions = Forall(codomainQVars,
-      permSummary === perms.BigPermSum(relevantChunks map (_.perm), Predef.identity),
+      And(p === BigPermSum(relevantChunks map (_.perm), Predef.identity),
+        Ite(Or(relevantChunks map (chunk =>
+          IsPositive(chunk.perm)
+//          chunk.perm match {
+//            case Ite(cond, _, _) => cond
+//            case other => println("Other: " + other.getClass + " " + other); ???}
+          )), permSummary === p, permSummary === NoPerm())),
+//      permSummary === perms.BigPermSum(relevantChunks map (_.perm), Predef.identity),
       Trigger(permSummary))
 
     // TODO: necessary?

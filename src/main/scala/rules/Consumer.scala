@@ -1060,7 +1060,7 @@ object consumer extends ConsumptionRules with Immutable {
                 else s1.smCache + ((field, relevantChunks.toSeq) -> (smDef, totalPermissions))
               }
             }
-            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
+//            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
               s2.copy(smCache = smCache1),
