@@ -1414,7 +1414,6 @@ object evaluator extends EvaluationRules with Immutable {
   }
 
   private def helper(wand: ast.MagicWand, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], PredicateTrigger) = {
-    println(wand.subexpressionsToEvaluate(Verifier.program))
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
