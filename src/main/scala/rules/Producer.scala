@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import com.sun.xml.internal.bind.v2.runtime.unmarshaller.LocatorEx.Snapshot
+
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
@@ -265,7 +267,6 @@ object producer extends ProductionRules with Immutable {
             v.decider.prover.comment("Definitional axioms for singleton-SM's value")
             val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(smValueDef)
-//            v.decider.assume(FieldTrigger(field.name, sm, rcvr))
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
               else s.conservedPcs
@@ -276,8 +277,26 @@ object producer extends ProductionRules with Immutable {
             val resource = Resources.resourceDescriptions(ch.resourceID)
             v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
 
+            val relevantChunks = h1.values.collect{case ch1: QuantifiedFieldChunk if ch1.id == ch.id => ch1}
+
+            val smCache1 = s.smCache.get(field, relevantChunks.toSeq) match {
+              case Some((fvfDef,_)) => {
+                v.decider.assume(FieldTrigger(field.name, fvfDef.sm, rcvr))
+                s.smCache
+              }
+              case _ => {
+                val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), field, None, v)
+                v.decider.assume(fvfValueDef)
+                v.decider.assume(FieldTrigger(field.name, fvf, rcvr))
+                val smDef = SnapshotMapDefinition(field, fvf, fvfValueDef, Seq())
+                val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
+                if (Verifier.config.disableValueMapCaching()) s.smCache
+                else s.smCache + ((field, relevantChunks.toSeq) -> (smDef, totalPermissions))
+              }
+            }
+
             val smDef = SnapshotMapDefinition(field, sm, Seq(smValueDef), Seq())
-            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef)), v)
+            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache1), v)
           } else {
             val ch = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(rcvr), snap, p)
             chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
