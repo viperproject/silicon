@@ -18,7 +18,7 @@ import viper.silicon.interfaces._
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.IsNonNegative
+import viper.silicon.state.terms.perms.{BigPermSum, IsNonNegative}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
@@ -270,8 +270,24 @@ object executor extends ExecutionRules with Immutable {
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+            val smCache1 = s2.smCache.get(field, relevantChunks) match {
+              case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) => {
+                v2.decider.assume(FieldTrigger(field.name, fvfDef.sm, tRcvr))
+                s2.smCache
+              }
+              case _ => {
+                val (fvf, fvfValueDefs, None) =
+                  quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), field, None, v1)
+                v2.decider.assume(fvfValueDefs)
+                v2.decider.assume(FieldTrigger(field.name, fvf, tRcvr))
+                val smDef = SnapshotMapDefinition(field, fvf, fvfValueDefs, Seq())
+                val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
+                if (Verifier.config.disableValueMapCaching()) s2.smCache
+                else s2.smCache + ((field, relevantChunks) -> (smDef, totalPermissions))
+              }
+            }
             val result = quantifiedChunkSupporter.removePermissions(
-              s2,
+              s2.copy(smCache = smCache1),
               relevantChunks,
               Seq(`?r`),
               `?r` === tRcvr,
@@ -287,6 +303,7 @@ object executor extends ExecutionRules with Immutable {
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 v1.decider.assume(smValueDef)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm)
+                v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
               case (Incomplete(_), _, _) =>
                 Failure(pve dueTo InsufficientPermission(fa))}}))
@@ -432,29 +449,74 @@ object executor extends ExecutionRules with Immutable {
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
+          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
+
+            val smCache1 = if (s2.qpPredicates.contains(predicate)) {
+              val relevantChunks = s2.h.values.collect { case ch: QuantifiedPredicateChunk if ch.id.name == predicateName => ch }
+              s2.smCache.get(predicate, relevantChunks.toSeq) match {
+                case Some((psfDef, _)) => {
+                  v2.decider.assume(PredicateTrigger(predicateName, psfDef.sm, tArgs))
+                  s2.smCache
+                }
+                case _ => {
+                  val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s2.predicateFormalVarMap(predicate), predicate, None, v2)
+                  v2.decider.assume(summary._2)
+                  v2.decider.assume(PredicateTrigger(predicateName, summary._1, tArgs))
+                  val smDef = SnapshotMapDefinition(predicate, summary._1, summary._2, Seq())
+                  val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
+                  if (Verifier.config.disableValueMapCaching()) s2.smCache
+                  else s2.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
+                }
+              }
+            } else s2.smCache
+
             v2.decider.assert(IsNonNegative(tPerm)){
               case true =>
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
-                predicateSupporter.fold(s2, predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
+                predicateSupporter.fold(s2.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
               case false =>
-                Failure(pve dueTo NegativePermission(ePerm))}))
+                Failure(pve dueTo NegativePermission(ePerm))
+            }
+          }))
 
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
+          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
+
+            val smCache1 = if (s2.qpPredicates.contains(predicate)) {
+              val relevantChunks = s2.h.values.collect { case ch: QuantifiedPredicateChunk if ch.id.name == predicateName => ch }
+              s2.smCache.get(predicate, relevantChunks.toSeq) match {
+                case Some((psfDef, _)) => {
+                  v2.decider.assume(PredicateTrigger(predicateName, psfDef.sm, tArgs))
+                  s2.smCache
+                }
+                case _ => {
+                  val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s2.predicateFormalVarMap(predicate), predicate, None, v2)
+                  v2.decider.assume(summary._2)
+                  v2.decider.assume(PredicateTrigger(predicateName, summary._1, tArgs))
+                  val smDef = SnapshotMapDefinition(predicate, summary._1, summary._2, Seq())
+                  val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
+                  if (Verifier.config.disableValueMapCaching()) s2.smCache
+                  else s2.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
+                }
+              }
+            } else s2.smCache
+
             v2.decider.assert(IsNonNegative(tPerm)){
               case true =>
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
-                predicateSupporter.unfold(s2, predicate, tArgs, tPerm, wildcards, pve, v2, pa)(Q)
+                predicateSupporter.unfold(s2.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v2, pa)(Q)
               case false =>
-                Failure(pve dueTo NegativePermission(ePerm))}))
+                Failure(pve dueTo NegativePermission(ePerm))
+            }
+          }))
 
       case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
           magicWandSupporter.packageWand(s, wand, proofScript, pve, v)((s1, chWand, v1) => {
+
             val hOps = s1.reserveHeaps.head + chWand
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
             val s2 = if (s.exhaleExt)
@@ -474,7 +536,32 @@ object executor extends ExecutionRules with Immutable {
                       exhaleExt = false,
                       reserveHeaps = Nil)
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
-            continuation(s2, v1)
+
+            val smCache1 = chWand match {
+              case ch: QuantifiedMagicWandChunk => {
+                val relevantChunks = s2.h.values.collect {case ch1: QuantifiedMagicWandChunk if ch1.id == ch.id => ch1}
+                s2.smCache.get(wand, relevantChunks.toSeq) match {
+                  case Some((psfDef, _)) => {
+                    v1.decider.assume(PredicateTrigger(ch.id.toString, psfDef.sm, ch.singletonArgs.get))
+                    s2.smCache
+                  }
+                  case _ => {
+                    val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+                    val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+                    val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, formalVars, wand, None, v1)
+                    v1.decider.assume(summary._2)
+                    v1.decider.assume(PredicateTrigger(ch.id.toString, summary._1, ch.singletonArgs.get))
+                    val smDef = SnapshotMapDefinition(wand, summary._1, summary._2, Seq())
+                    val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
+                    if (Verifier.config.disableValueMapCaching()) s2.smCache
+                    else s2.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
+                  }
+                }
+              }
+              case _ => s2.smCache
+            }
+
+            continuation(s2.copy(smCache = smCache1), v1)
           })
 
       case apply @ ast.Apply(e) =>
@@ -494,6 +581,8 @@ object executor extends ExecutionRules with Immutable {
   }
 
    private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term = {
+     val lookups = rhs.deepCollect[Lookup] {case l: Lookup => l}
+     lookups foreach {l => v.decider.assume(FieldTrigger(l.field, l.fvf, l.at))}
      rhs match {
        case _: Var | _: Literal =>
          rhs

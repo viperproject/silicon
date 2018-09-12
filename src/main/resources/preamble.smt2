@@ -21,6 +21,8 @@
 
 ; --- Permissions ---
 
+(declare-sort $FPM)
+(declare-sort $PPM)
 (define-sort $Perm () Real)
 
 (define-const $Perm.Write $Perm 1.0)
