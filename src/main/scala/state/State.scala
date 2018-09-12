@@ -164,7 +164,7 @@ object State {
                      `predicateSnapMap1`, `predicateFormalVarMap1`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
-            val triggerExp3 = triggerExp1 || triggerExp2
+            val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
             val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
 

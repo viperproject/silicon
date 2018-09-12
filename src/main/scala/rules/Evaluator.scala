@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silver.ast
-import viper.silver.ast.Info
+import viper.silver.ast.{Info, PredicateAccess}
 import viper.silver.ast.utility.Rewriter.Traverse
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.PartialVerificationError
@@ -252,8 +252,7 @@ object evaluator extends EvaluationRules with Immutable {
                     if (Verifier.config.disableValueMapCaching()) s1.smCache
                     else s1.smCache + ((fa.field, relevantChunks) -> (smDef, totalPermissions))
                   val s2 = s1.copy(functionRecorder = fr2,
-                                   smCache = smCache2,
-                    possibleTriggers = if (s1.recordPossibleTriggers) s1.possibleTriggers + (fa -> trigger) else s1.possibleTriggers)
+                                   smCache = smCache2)
                   Q(s2, smLookup, v1)}}}})
 
       case fa: ast.FieldAccess =>
@@ -471,9 +470,6 @@ object evaluator extends EvaluationRules with Immutable {
                       (s1.pmCache + ((wand, chs.toSeq) -> pmDef), PredicatePermLookup(identifier.toString, pm, args))
                   }
 
-//                  v1.decider.assume(valueDef)
-//                  val perm = PredicatePermLookup(identifier.toString, pm, args)
-
 //                  val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
 //                    PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
                   (perm, smCache1, pmCache1)
@@ -508,12 +504,6 @@ object evaluator extends EvaluationRules with Immutable {
                       v1.decider.assume(valueDef)
                       (s1.pmCache + ((field, chs.toSeq) -> pmDef), PermLookup(identifier.toString, pm, args.head))
                   }
-
-//                  val (pm, valueDef) = quantifiedChunkSupporter.summarisePerm(s, chs.toSeq, Seq(`?r`), field, v1)
-//
-//                  v1.decider.assume(valueDef)
-//                  val perm = PermLookup(field.name, pm, args.head)
-
 //                  val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
 //                    PermPlus(q, ch.perm.replace(`?r`, args.head)))
                   /* TODO: Try again once Silicon fully supports field accesses as triggers.
@@ -556,11 +546,6 @@ object evaluator extends EvaluationRules with Immutable {
                       (s1.pmCache + ((pred, chs.toSeq) -> pmDef), PredicatePermLookup(pred.name, pm, args))
                   }
 
-//                  val (pm, valueDef) = quantifiedChunkSupporter.summarisePerm(s, chs.toSeq, s1.predicateFormalVarMap(pred), pred, v1)
-//
-//                  v1.decider.assume(valueDef)
-//                  val perm = PredicatePermLookup(pred.name, pm, args)
-
 //                  val perm = chs.foldLeft(NoPerm(): Term)((q, ch) =>
 //                    PermPlus(q, ch.perm.replace(ch.quantifiedVars, args)))
                   (perm, smCache1, pmCache1)
@@ -579,7 +564,6 @@ object evaluator extends EvaluationRules with Immutable {
               (perm, s.smCache, s.pmCache)
             }
 
-//          val s2 = s1.copy(smCache = smCache1, possibleTriggers = if (s1.recordPossibleTriggers) s1.possibleTriggers + (resacc -> trigger) else s1.possibleTriggers)
           val s2 = s1.copy(smCache = smCache1, pmCache = pmCache1)
 
           Q(s2, perm, v1)})
@@ -1150,7 +1134,7 @@ object evaluator extends EvaluationRules with Immutable {
     if (eTriggerSets.isEmpty)
       Q(s, tTriggersSets, v)
     else {
-      if (eTriggerSets.head.head.isInstanceOf[ast.FieldAccess] || eTriggerSets.head.head.isInstanceOf[ast.PredicateAccess] || eTriggerSets.head.head.isInstanceOf[ast.MagicWand]) {
+      if (eTriggerSets.head.collect{case fa: ast.FieldAccess => fa; case pa: PredicateAccess => pa; case wand: ast.MagicWand => wand }.nonEmpty ) {
         evalHeapTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
           evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
       } else {
@@ -1291,17 +1275,17 @@ object evaluator extends EvaluationRules with Immutable {
 
     exps foreach {
       case fa: ast.FieldAccess => {
-        val (axioms, trigs, _) = helper(fa, s, pve, v)
+        val (axioms, trigs, _) = generateFieldTrigger(fa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
       }
       case pa: ast.PredicateAccess => {
-        val (axioms, trigs, _) = helper(pa, s, pve, v)
+        val (axioms, trigs, _) = generatePredicateTrigger(pa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
       }
       case wand: ast.MagicWand => {
-        val (axioms, trigs, _) = helper(wand, s, pve, v)
+        val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
       }
@@ -1315,10 +1299,7 @@ object evaluator extends EvaluationRules with Immutable {
     //r.foldLeft(Q(s, triggers, v))((c, q) => c && q)
   }
 
-  //TODO: handle uncached triggers better
-  //TODO: cache smDef after trigger evaluation
-
-  private def helper(fa: ast.FieldAccess, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], FieldTrigger) = {
+  private def generateFieldTrigger(fa: ast.FieldAccess, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], FieldTrigger) = {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: FieldTrigger = null
@@ -1341,7 +1322,7 @@ object evaluator extends EvaluationRules with Immutable {
 
     fa.rcv match {
       case acc: ast.FieldAccess => {
-        val rcvHelper = helper(acc, s, pve, v)
+        val rcvHelper = generateFieldTrigger(acc, s, pve, v)
         val rcvTrig = rcvHelper._3
         axioms = axioms ++ smDef.valueDefinitions ++ rcvHelper._1
         mostRecentTrig = FieldTrigger(fa.field.name, smDef.sm, Lookup(rcvTrig.field, rcvTrig.fvf, rcvTrig.at))
@@ -1382,7 +1363,7 @@ object evaluator extends EvaluationRules with Immutable {
     (axioms, triggers, mostRecentTrig)
   }
 
-  private def helper(pa: ast.PredicateAccess, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], PredicateTrigger) = {
+  private def generatePredicateTrigger(pa: ast.PredicateAccess, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], PredicateTrigger) = {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
@@ -1413,7 +1394,7 @@ object evaluator extends EvaluationRules with Immutable {
     (axioms, triggers, mostRecentTrig)
   }
 
-  private def helper(wand: ast.MagicWand, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], PredicateTrigger) = {
+  private def generateWandTrigger(wand: ast.MagicWand, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], PredicateTrigger) = {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null

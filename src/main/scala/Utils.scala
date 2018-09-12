@@ -197,7 +197,6 @@ package object utils {
 
     def check(program: silver.ast.Program) = (
          checkPermissions(program)
-      ++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program))
       ++ checkInhaleExhaleAssertions(program))
 
     def createUnsupportedPermissionExpressionError(offendingNode: errors.ErrorNode) = {
@@ -211,57 +210,6 @@ package object utils {
         case eps: silver.ast.EpsilonPerm => createUnsupportedPermissionExpressionError(eps) +: errors.flatten
         case _ => errors.flatten
       })
-
-    def createUnsupportedFieldAccessInTrigger(offendingNode: silver.ast.FieldAccess) = {
-      val message = (   "Silicon only supports field accesses as triggers if (1) permissions to the "
-                     +  "field come from quantified permissions, and if (2) the field access also "
-                     + s"occurs in the body of the quantification. $offendingNode is not such a "
-                     +  "field access.")
-
-      Internal(offendingNode, FeatureUnsupported(offendingNode, message))
-    }
-
-    def createUnsupportedTrigger(offendingNode: silver.ast.ResourceAccess) = {
-      val message = "Unsupported"
-      Internal(offendingNode, FeatureUnsupported(offendingNode, message))
-    }
-
-    //TODO: Update this
-
-    def checkFieldAccessesInTriggers(root: silver.ast.Member, program: silver.ast.Program)
-                                    : Seq[VerificationError] = {
-
-      val quantifiedFields = silver.ast.utility.QuantifiedPermissions.quantifiedFields(root, program)
-      val quantifiedPredicates = silver.ast.utility.QuantifiedPermissions.quantifiedPredicates(root, program)
-      val quantifiedWands = silver.ast.utility.QuantifiedPermissions.quantifiedMagicWands(root, program)
-
-      root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
-        case forall: silver.ast.Forall =>
-          val qvars = forall.variables.map(_.localVar)
-
-          forall.triggers.flatMap { ts =>
-            ts.exps.flatMap(_.collect {
-              case fa: silver.ast.FieldAccess
-                   if qvars.exists(fa.contains) &&
-                      !(quantifiedFields.contains(fa.field))
-                => fa
-              case pa: silver.ast.PredicateAccess
-                if qvars.exists(pa.contains) &&
-                  !(quantifiedPredicates.contains(pa.loc(program)))
-                => pa
-              case wand: silver.ast.MagicWand
-                if qvars.exists(wand.contains) &&
-                  !(quantifiedWands.contains(wand.structure(program)))
-                => wand
-            })
-          } match {
-            case Seq() => errors.flatten
-            case ras => errors.flatten //(ras map createUnsupportedTrigger) ++ errors.flatten
-          }
-
-        case _ => errors.flatten
-      })
-    }
 
     def createUnsupportedInhaleExhaleAssertion(offendingNode: silver.ast.InhaleExhaleExp) = {
       val message = (   "Silicon currently doesn't support inhale-exhale assertions in certain "

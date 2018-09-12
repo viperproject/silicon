@@ -8,30 +8,28 @@ package viper.silicon.rules
 
 import scala.reflect.ClassTag
 import viper.silver.ast
-import viper.silver.ast.{EqCmp, Location, Resource}
+import viper.silver.ast.{Location, Resource}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Failure, Success, VerificationResult}
+import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.resources.{QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.perms.BigPermSum
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.rules.evaluator.evalTriggers
-import viper.silver.verifier.errors.Internal
 import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.InternalWarningMessage
 
-case class InverseFunctions(val condition: Term,
-                       val invertibles: Seq[Term],
-                       val additionalArguments: Vector[Var],
-                       val axiomInversesOfInvertibles: Quantification,
-                       val axiomInvertiblesOfInverses: Quantification,
+case class InverseFunctions(condition: Term,
+                       invertibles: Seq[Term],
+                       additionalArguments: Vector[Var],
+                       axiomInversesOfInvertibles: Quantification,
+                       axiomInvertiblesOfInverses: Quantification,
                        qvarsToInverses: Map[Var, Function]) {
 
   val inverses: Iterable[Function] = qvarsToInverses.values
@@ -493,7 +491,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         ))
 
     val valueDefs3 = resource match {
-      case _: ast.Field => valueDefinitions :+ valueDefs2
+      case _: ast.Field | _: ast.Predicate => valueDefinitions :+ valueDefs2
       case _ => valueDefinitions
     }
 
@@ -510,18 +508,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     val permSummary = genericPermLookup(resource, pm, codomainQVars, v)
     val p = v.decider.fresh(sorts.Perm)
-    val valueDefinitions = Forall(codomainQVars,
-      And(p === BigPermSum(relevantChunks map (_.perm), Predef.identity),
-        Ite(Or(relevantChunks map (chunk =>
-          IsPositive(chunk.perm)
-//          chunk.perm match {
-//            case Ite(cond, _, _) => cond
-//            case other => println("Other: " + other.getClass + " " + other); ???}
-          )), permSummary === p, permSummary === NoPerm())),
-//      permSummary === perms.BigPermSum(relevantChunks map (_.perm), Predef.identity),
-      Trigger(permSummary))
+    val valueDefinitions = Forall(codomainQVars, permSummary === BigPermSum(relevantChunks map (_.perm), Predef.identity), Trigger(permSummary))
+//    val valueDefinitions = Forall(codomainQVars,
+//      And(p === BigPermSum(relevantChunks map (_.perm), Predef.identity),
+//        Ite(Or(relevantChunks map (chunk =>
+//          IsPositive(chunk.perm)
+//          )), permSummary === p, permSummary === NoPerm())),
+//      Trigger(permSummary))
 
-    // TODO: necessary?
     val trig = s.smCache.get(resource, relevantChunks) match {
       case Some((smDef, _)) => {
         v.decider.assume(smDef.valueDefinitions)
@@ -608,21 +602,19 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         v                    = v)
     val (effectiveTriggers, effectiveTriggersQVars) =
       optTrigger match {
-        case Some(eTriggers) =>
+        case Some(_) =>
           /* Explicit triggers were provided */
 
-          val trig = tTriggers.head.p.head match {
+          val trig = tTriggers map (t => Trigger(t.p map (t1 => t1 match {
             case ft: FieldTrigger => if (ft.field == rec.asInstanceOf[ast.Field].name) FieldTrigger(ft.field, tSnap, ft.at) else ft
             case pt: PredicateTrigger => rec match {
               case p: ast.Predicate => if (pt.predname == p.name) PredicateTrigger(pt.predname, tSnap, pt.args) else pt
               case wand: ast.MagicWand => if (pt.predname == MagicWandIdentifier(wand, Verifier.program).toString) PredicateTrigger(pt.predname, tSnap, pt.args) else pt
             }
-            case t => t
-          }
+            case t2 => t2
+          })))
 
-          val evaledTrigs = Trigger(trig +: tTriggers.head.p.tail) +: tTriggers.tail
-
-          (evaledTrigs, qvars)
+          (trig, qvars)
         case None =>
           /* No explicit triggers were provided and we resort to those from the inverse
            * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.

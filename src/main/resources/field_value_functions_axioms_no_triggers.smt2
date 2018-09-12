@@ -23,3 +23,11 @@
       (= vs ws))
     :qid |qp.$FVF<$S$>-eq-outer|
     )))
+
+(assert (forall ((r $Ref) (pm $FPM)) (!
+    ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))
+    )))
+
+(assert (forall ((r $Ref) (f $S$)) (!
+    (= ($FVF.loc_$FLD$ f r) true)
+    )))

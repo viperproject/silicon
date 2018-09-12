@@ -6,8 +6,6 @@
 
 package viper.silicon.rules
 
-import com.sun.xml.internal.bind.v2.runtime.unmarshaller.LocatorEx.Snapshot
-
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
@@ -333,8 +331,26 @@ object producer extends ProductionRules with Immutable {
             val resource = Resources.resourceDescriptions(ch.resourceID)
             v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
 
+            val relevantChunks = h1.values.collect{case ch1: QuantifiedPredicateChunk if ch1.id == ch.id => ch1}
+
+            val smCache1 = s.smCache.get(predicate, relevantChunks.toSeq) match {
+              case Some((fvfDef,_)) => {
+                v.decider.assume(PredicateTrigger(predicate.name, fvfDef.sm, args))
+                s.smCache
+              }
+              case _ => {
+                val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, formalArgs, predicate, None, v)
+                v.decider.assume(fvfValueDef)
+                v.decider.assume(PredicateTrigger(predicate.name, fvf, args))
+                val smDef = SnapshotMapDefinition(predicate, fvf, fvfValueDef, Seq())
+                val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
+                if (Verifier.config.disableValueMapCaching()) s.smCache
+                else s.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
+              }
+            }
+
             val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
-            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef)), v)
+            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache1), v)
           } else {
             val snap1 = snap.convert(sorts.Snap)
             val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), args, snap1, p)
@@ -367,8 +383,27 @@ object producer extends ProductionRules with Immutable {
             if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
             else s1.conservedPcs
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+
+          val relevantChunks = (s.h + ch).values.collect{case ch1: QuantifiedMagicWandChunk if ch1.id == ch.id => ch1}
+
+          val smCache1 = s.smCache.get(wand, relevantChunks.toSeq) match {
+            case Some((fvfDef,_)) => {
+              v.decider.assume(PredicateTrigger(ch.id.toString, fvfDef.sm, args))
+              s.smCache
+            }
+            case _ => {
+              val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, formalVars, wand, None, v)
+              v.decider.assume(fvfValueDef)
+              v.decider.assume(PredicateTrigger(ch.id.toString, fvf, args))
+              val smDef = SnapshotMapDefinition(wand, fvf, fvfValueDef, Seq())
+              val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
+              if (Verifier.config.disableValueMapCaching()) s.smCache
+              else s.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
+            }
+          }
+
           val smDef = SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq())
-          val s2 = s1.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
+          val s2 = s1.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache1)
         Q(s2.copy(h = s2.h + ch, conservedPcs = conservedPcs), v)})
 
       case wand: ast.MagicWand =>

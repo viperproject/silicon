@@ -450,30 +450,10 @@ object executor extends ExecutionRules with Immutable {
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-
-            val smCache1 = if (s2.qpPredicates.contains(predicate)) {
-              val relevantChunks = s2.h.values.collect { case ch: QuantifiedPredicateChunk if ch.id.name == predicateName => ch }
-              s2.smCache.get(predicate, relevantChunks.toSeq) match {
-                case Some((psfDef, _)) => {
-                  v2.decider.assume(PredicateTrigger(predicateName, psfDef.sm, tArgs))
-                  s2.smCache
-                }
-                case _ => {
-                  val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s2.predicateFormalVarMap(predicate), predicate, None, v2)
-                  v2.decider.assume(summary._2)
-                  v2.decider.assume(PredicateTrigger(predicateName, summary._1, tArgs))
-                  val smDef = SnapshotMapDefinition(predicate, summary._1, summary._2, Seq())
-                  val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
-                  if (Verifier.config.disableValueMapCaching()) s2.smCache
-                  else s2.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
-                }
-              }
-            } else s2.smCache
-
             v2.decider.assert(IsNonNegative(tPerm)){
               case true =>
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
-                predicateSupporter.fold(s2.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
+                predicateSupporter.fold(s2, predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
               case false =>
                 Failure(pve dueTo NegativePermission(ePerm))
             }
@@ -581,8 +561,6 @@ object executor extends ExecutionRules with Immutable {
   }
 
    private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term = {
-     val lookups = rhs.deepCollect[Lookup] {case l: Lookup => l}
-     lookups foreach {l => v.decider.assume(FieldTrigger(l.field, l.fvf, l.at))}
      rhs match {
        case _: Var | _: Literal =>
          rhs

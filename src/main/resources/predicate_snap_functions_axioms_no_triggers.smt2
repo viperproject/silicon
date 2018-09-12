@@ -23,3 +23,7 @@
       (= vs ws))
     :qid |qp.$PSF<$S$>-eq-outer|
     )))
+
+(assert (forall ((s $Snap) (f $S$)) (!
+    (= ($PSF.loc_$PRD$ f s) true)
+    )))
