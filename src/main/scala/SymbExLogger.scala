@@ -273,7 +273,9 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     * @param query The query to be recorded.
     */
   def setSMTQuery(query: Term): Unit = {
-    main.lastFailedProverQuery = Some(query)
+    if (main != null) {
+      main.lastFailedProverQuery = Some(query)
+    }
   }
 
   /** Discard the currently recorded SMT query.
@@ -283,7 +285,9 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     * been performed afterwards).
     */
   def discardSMTQuery(): Unit = {
-    main.lastFailedProverQuery = None
+    if (main != null) {
+      main.lastFailedProverQuery = None
+    }
   }
 
   /**
