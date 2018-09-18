@@ -52,12 +52,13 @@ class DefaultStateFormatter extends StateFormatter {
     oldHeaps.map{case (id, h) => s"$id: ${format(h)}"}.mkString("(", ",\n", ")")
   }
 
-  /** Attention: The current implementation hides combine terms! **/
+  /** Attention: The current implementation hides non-null and combine terms! **/
   def format(pcs: RecordedPathConditions): String = {
     pcs.assumptions.filterNot {
       case    c: BuiltinEquals if c.p0.isInstanceOf[Combine]
            || c.p1.isInstanceOf[Combine]
            => true
+      case Not(BuiltinEquals(_, Null())) => true
       case _ => false
     }.mkString("(", ", ", ")")
   }
@@ -87,10 +88,11 @@ class DefaultStateFormatter extends StateFormatter {
   }
 
   private def toJson(π: Set[Term]): String = {
-    /* Attention: Hides combine terms. */
+    /* Attention: Hides non-null and combine terms. */
     val filteredPcs = π.filterNot {
       case c: BuiltinEquals if c.p0.isInstanceOf[Combine]
         || c.p1.isInstanceOf[Combine] => true
+      case Not(BuiltinEquals(_, Null())) => true
       case _ => false
     }
     if (filteredPcs.isEmpty) "[]" else filteredPcs.mkString("[\"", "\",\"", "\"]")
