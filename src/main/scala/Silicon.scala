@@ -24,7 +24,6 @@ import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.reporting.condenseToViperResult
-import viper.silicon.state.terms.Term
 import viper.silicon.verifier.DefaultMasterVerifier
 import viper.silver.logger.ViperStdOutLogger
 
@@ -234,9 +233,6 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
       result.get
     }
   }
-
-  def axioms(): Iterable[Term] = this.verifier.axiomsAfterAnalysis()
-  def postConditionAxioms(): Vector[Term] = this.verifier.postConditionAxioms()
 
   private def runVerifier(program: ast.Program): List[Failure] = {
 //    verifier.bookkeeper.branches = 1

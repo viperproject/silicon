@@ -24,7 +24,7 @@ import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvide
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast.utility.Rewriter.Traverse
-import viper.silver.reporter.{ConfigurationConfirmation, Reporter, VerificationResultMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage}
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -221,6 +221,12 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       })
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
+
+    if (config.ideModeAdvanced()) {
+      reporter report ExecutionTraceReport(SymbExLogger.memberList,
+                                           this.axiomsAfterAnalysis().toList,
+                                           this.postConditionAxioms().toList)
+    }
 
     /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */
     SymbExLogger.writeJSFile()
