@@ -58,11 +58,10 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
       case QuantifiedPermissionAssertion(_, _, acc: ast.PredicateAccessPredicate) =>
         val predicate = program.findPredicate(acc.loc.predicateName)
         collectedPredicates += predicate
-      case ast.Forall(_, triggers, _) => {
+      case ast.Forall(_, triggers, _) =>
         val trigExps = triggers flatMap (_.exps)
         val predicateAccesses = trigExps flatMap (e => e.deepCollect {case pa: PredicateAccess => pa})
         collectedPredicates ++= (predicateAccesses map (_.loc(program)))
-      }
     }
 
     collectedSorts = (

@@ -271,11 +271,10 @@ object executor extends ExecutionRules with Immutable {
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             val smCache1 = s2.smCache.get(field, relevantChunks) match {
-              case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) => {
+              case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) =>
                 v2.decider.assume(FieldTrigger(field.name, fvfDef.sm, tRcvr))
                 s2.smCache
-              }
-              case _ => {
+              case _ =>
                 val (fvf, fvfValueDefs, None) =
                   quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), field, None, v1)
                 v2.decider.assume(fvfValueDefs)
@@ -284,7 +283,6 @@ object executor extends ExecutionRules with Immutable {
                 val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
                 if (Verifier.config.disableValueMapCaching()) s2.smCache
                 else s2.smCache + ((field, relevantChunks) -> (smDef, totalPermissions))
-              }
             }
             val result = quantifiedChunkSupporter.removePermissions(
               s2.copy(smCache = smCache1),
@@ -468,11 +466,10 @@ object executor extends ExecutionRules with Immutable {
             val smCache1 = if (s2.qpPredicates.contains(predicate)) {
               val relevantChunks = s2.h.values.collect { case ch: QuantifiedPredicateChunk if ch.id.name == predicateName => ch }
               s2.smCache.get(predicate, relevantChunks.toSeq) match {
-                case Some((psfDef, _)) => {
+                case Some((psfDef, _)) =>
                   v2.decider.assume(PredicateTrigger(predicateName, psfDef.sm, tArgs))
                   s2.smCache
-                }
-                case _ => {
+                case _ =>
                   val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s2.predicateFormalVarMap(predicate), predicate, None, v2)
                   v2.decider.assume(summary._2)
                   v2.decider.assume(PredicateTrigger(predicateName, summary._1, tArgs))
@@ -480,7 +477,6 @@ object executor extends ExecutionRules with Immutable {
                   val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
                   if (Verifier.config.disableValueMapCaching()) s2.smCache
                   else s2.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
-                }
               }
             } else s2.smCache
 
@@ -518,14 +514,13 @@ object executor extends ExecutionRules with Immutable {
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 
             val smCache1 = chWand match {
-              case ch: QuantifiedMagicWandChunk => {
+              case ch: QuantifiedMagicWandChunk =>
                 val relevantChunks = s2.h.values.collect {case ch1: QuantifiedMagicWandChunk if ch1.id == ch.id => ch1}
                 s2.smCache.get(wand, relevantChunks.toSeq) match {
-                  case Some((psfDef, _)) => {
+                  case Some((psfDef, _)) =>
                     v1.decider.assume(PredicateTrigger(ch.id.toString, psfDef.sm, ch.singletonArgs.get))
                     s2.smCache
-                  }
-                  case _ => {
+                  case _ =>
                     val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
                     val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
                     val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, formalVars, wand, None, v1)
@@ -535,9 +530,7 @@ object executor extends ExecutionRules with Immutable {
                     val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
                     if (Verifier.config.disableValueMapCaching()) s2.smCache
                     else s2.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
-                  }
                 }
-              }
               case _ => s2.smCache
             }
 

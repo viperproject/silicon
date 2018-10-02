@@ -18,7 +18,6 @@ import viper.silicon.state.terms.perms.{BigPermSum, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
 import viper.silicon.{ConsumeRecord, GlobalBranchRecord, SymbExLogger}
-import viper.silver.ast.MagicWand
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 
@@ -287,14 +286,13 @@ object consumer extends ConsumptionRules with Immutable {
                   quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, BasicChunkIdentifier(field.name))
                 val (fvf, smCache1) = s1.smCache.get(field, relevantChunks) match {
                   case Some((fvfDef, _)) => (fvfDef.sm, s1.smCache)
-                  case _ => {
+                  case _ =>
                     val sum = quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), field, None, v1)
                     v1.decider.assume(sum._2)
                     val smDef = SnapshotMapDefinition(field, sum._1, sum._2, Seq())
                     val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
                     if (Verifier.config.disableValueMapCaching()) (sum._1, s1.smCache)
                     else (sum._1, s1.smCache + ((field, relevantChunks) -> (smDef, totalPermissions)))
-                  }
                 }
 
                 val receiverInjectivityCheck =
@@ -341,7 +339,7 @@ object consumer extends ConsumptionRules with Immutable {
                       val smDef = SnapshotMapDefinition(field, fvf, fvfValueDefs, if (optFvfDomainDef.isEmpty) Seq() else Seq(optFvfDomainDef.get))
                       val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
                       val smCache2 = if (Verifier.config.disableValueMapCaching()) s2.smCache
-                      else s2.smCache + ((field, relevantChunks) -> (smDef, totalPermissions))
+                        else s2.smCache + ((field, relevantChunks) -> (smDef, totalPermissions))
                       if (s3.smDomainNeeded) {
                         v1.decider.prover.comment("Definitional axioms for SM domain")
                         v1.decider.assume(optFvfDomainDef.get)
@@ -437,14 +435,13 @@ object consumer extends ConsumptionRules with Immutable {
                   quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, BasicChunkIdentifier(field.name))
                 val (fvf, smCache1) = s1.smCache.get(field, relevantChunks) match {
                   case Some((fvfDef, _)) => (fvfDef.sm, s1.smCache)
-                  case _ => {
+                  case _ =>
                     val sum = quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), field, None, v1)
                     v1.decider.assume(sum._2)
                     val smDef = SnapshotMapDefinition(field, sum._1, sum._2, Seq())
                     val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
                     if (Verifier.config.disableValueMapCaching()) (sum._1, s1.smCache)
                     else (sum._1, s1.smCache + ((field, relevantChunks) -> (smDef, totalPermissions)))
-                  }
                 }
 
                 val receiverInjectivityCheck =
@@ -579,17 +576,15 @@ object consumer extends ConsumptionRules with Immutable {
                 val (relevantChunks, otherChunks) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h, BasicChunkIdentifier(predicate.name))
                 val (psf, smCache1) = s1.smCache.get(predicate, relevantChunks) match {
-                  case Some((psfDef, _)) => {
+                  case Some((psfDef, _)) =>
                     (psfDef.sm, s1.smCache)
-                  }
-                  case _ => {
+                  case _ =>
                     val (psf, psfDef, _) = quantifiedChunkSupporter.summarise(s1, relevantChunks, formalVars, predicate, None, v1)
                     v1.decider.assume(psfDef)
                     val smDef = SnapshotMapDefinition(predicate, psf, psfDef, Seq())
                     val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
                     if (Verifier.config.disableValueMapCaching()) (psf, s1.smCache)
                     else (psf, s1.smCache + ((predicate, relevantChunks) -> (smDef, totalPermissions)))
-                  }
                 }
 
                 val receiverInjectivityCheck =
@@ -636,7 +631,7 @@ object consumer extends ConsumptionRules with Immutable {
                       val smDef = SnapshotMapDefinition(predicate, fvf, fvfValueDefs, if (optFvfDomainDef.isEmpty) Seq() else Seq(optFvfDomainDef.get))
                       val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
                       val smCache2 = if (Verifier.config.disableValueMapCaching()) s3.smCache
-                      else s3.smCache + ((predicate, relevantChunks) -> (smDef, totalPermissions))
+                        else s3.smCache + ((predicate, relevantChunks) -> (smDef, totalPermissions))
                       if (s3.smDomainNeeded) {
                         v2.decider.prover.comment("Definitional axioms for SM domain")
                         v2.decider.assume(optFvfDomainDef.get)
@@ -711,11 +706,8 @@ object consumer extends ConsumptionRules with Immutable {
                    inverseFunctions.axiomInversesOfInvertibles.vars)
               }
             v1.decider.prover.comment("Nested auxiliary terms: globals")
-//            val tlqGlobal = auxGlobals flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
             v1.decider.assume(auxGlobals)
             v1.decider.prover.comment("Nested auxiliary terms: non-globals")
-//            val tlq = auxNonGlobals flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
-//            v.decider.assume(tlq)
             optTrigger match {
               case None =>
                 /* No explicit triggers provided */
@@ -738,17 +730,15 @@ object consumer extends ConsumptionRules with Immutable {
                 val (relevantChunks, otherChunks) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h, BasicChunkIdentifier(predicate.name))
                 val (psf, smCache1) = s1.smCache.get(predicate, relevantChunks) match {
-                  case Some((psfDef, _)) => {
+                  case Some((psfDef, _)) =>
                     (psfDef.sm, s1.smCache)
-                  }
-                  case _ => {
+                  case _ =>
                     val (psf, psfDef, _) = quantifiedChunkSupporter.summarise(s1, relevantChunks, formalVars, predicate, None, v1)
                     v1.decider.assume(psfDef)
                     val smDef = SnapshotMapDefinition(predicate, psf, psfDef, Seq())
                     val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
                     if (Verifier.config.disableValueMapCaching()) (psf, s1.smCache)
                     else (psf, s1.smCache + ((predicate, relevantChunks) -> (smDef, totalPermissions)))
-                  }
                 }
 
                 val receiverInjectivityCheck =
@@ -795,7 +785,7 @@ object consumer extends ConsumptionRules with Immutable {
                         val smDef = SnapshotMapDefinition(predicate, fvf, fvfValueDefs, if (optFvfDomainDef.isEmpty) Seq() else Seq(optFvfDomainDef.get))
                         val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
                         val smCache2 = if (Verifier.config.disableValueMapCaching()) s2.smCache
-                        else s2.smCache + ((predicate, relevantChunks) -> (smDef, totalPermissions))
+                          else s2.smCache + ((predicate, relevantChunks) -> (smDef, totalPermissions))
                         if (s2.smDomainNeeded) {
                           v1.decider.prover.comment("Definitional axioms for SM domain")
                           v1.decider.assume(optFvfDomainDef.get)
@@ -879,17 +869,15 @@ object consumer extends ConsumptionRules with Immutable {
             val (relevantChunks, otherChunks) =
               quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, MagicWandIdentifier(wand, Verifier.program))
             val (psf, smCache1) = s1.smCache.get(wand, relevantChunks) match {
-              case Some((psfDef, _)) => {
+              case Some((psfDef, _)) =>
                 (psfDef.sm, s1.smCache)
-              }
-              case _ => {
+              case _ =>
                 val (psf, psfDef, _) = quantifiedChunkSupporter.summarise(s1, relevantChunks, formalVars, wand, None, v1)
                 v1.decider.assume(psfDef)
                 val smDef = SnapshotMapDefinition(wand, psf, psfDef, Seq())
                 val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
                 if (Verifier.config.disableValueMapCaching()) (psf, s1.smCache)
                 else (psf, s1.smCache + ((wand, relevantChunks) -> (smDef, totalPermissions)))
-              }
             }
 
             val receiverInjectivityCheck =
@@ -936,7 +924,7 @@ object consumer extends ConsumptionRules with Immutable {
                   val smDef = SnapshotMapDefinition(wand, fvf, fvfValueDefs, if (optFvfDomainDef.isEmpty) Seq() else Seq(optFvfDomainDef.get))
                   val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
                   val smCache2 = if (Verifier.config.disableValueMapCaching()) s2.smCache
-                  else s2.smCache + ((wand, relevantChunks) -> (smDef, totalPermissions))
+                    else s2.smCache + ((wand, relevantChunks) -> (smDef, totalPermissions))
                   if (sRes.smDomainNeeded) {
                     v2.decider.prover.comment("Definitional axioms for SM domain")
                     v2.decider.assume(optFvfDomainDef.get)
@@ -1030,17 +1018,15 @@ object consumer extends ConsumptionRules with Immutable {
             val (relevantChunks, otherChunks) =
               quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, MagicWandIdentifier(wand, Verifier.program))
             val (psf, smCache1) = s1.smCache.get(wand, relevantChunks) match {
-              case Some((psfDef, _)) => {
+              case Some((psfDef, _)) =>
                 (psfDef.sm, s1.smCache)
-              }
-              case _ => {
+              case _ =>
                 val (psf, psfDef, _) = quantifiedChunkSupporter.summarise(s1, relevantChunks, formalVars, wand, None, v1)
                 v1.decider.assume(psfDef)
                 val smDef = SnapshotMapDefinition(wand, psf, psfDef, Seq())
                 val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
                 if (Verifier.config.disableValueMapCaching()) (psf, s1.smCache)
                 else (psf, s1.smCache + ((wand, relevantChunks) -> (smDef, totalPermissions)))
-              }
             }
 
           val receiverInjectivityCheck =
@@ -1087,7 +1073,7 @@ object consumer extends ConsumptionRules with Immutable {
                   val smDef = SnapshotMapDefinition(wand, fvf, fvfValueDefs, if (optFvfDomainDef.isEmpty) Seq() else Seq(optFvfDomainDef.get))
                   val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
                   val smCache2 = if (Verifier.config.disableValueMapCaching()) s2.smCache
-                  else s2.smCache + ((wand, relevantChunks) -> (smDef, totalPermissions))
+                    else s2.smCache + ((wand, relevantChunks) -> (smDef, totalPermissions))
                   if (s2.smDomainNeeded) {
                     v1.decider.prover.comment("Definitional axioms for SM domain")
                     v1.decider.assume(optFvfDomainDef.get)
@@ -1115,11 +1101,10 @@ object consumer extends ConsumptionRules with Immutable {
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
             val relevantChunks = s2.h.values.collect {case ch: QuantifiedFieldChunk if ch.id.name == field.name => ch}
             val smCache1 = s2.smCache.get(field, relevantChunks.toSeq) match {
-              case Some((fvfDef, _)) => {
+              case Some((fvfDef, _)) =>
                 v2.decider.assume(FieldTrigger(field.name, fvfDef.sm, tRcvr))
                 s2.smCache
-              }
-              case _ => {
+              case _ =>
                 val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, Seq(`?r`), field, None, v2)
                 v2.decider.assume(summary._2)
                 v2.decider.assume(FieldTrigger(field.name, summary._1, tRcvr))
@@ -1127,7 +1112,6 @@ object consumer extends ConsumptionRules with Immutable {
                 val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
                 if (Verifier.config.disableValueMapCaching()) s1.smCache
                 else s1.smCache + ((field, relevantChunks.toSeq) -> (smDef, totalPermissions))
-              }
             }
 //            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
@@ -1157,11 +1141,10 @@ object consumer extends ConsumptionRules with Immutable {
 
             val relevantChunks = s.h.values.collect {case ch: QuantifiedPredicateChunk if ch.id.name == predname => ch}
             val smCache1 = s2.smCache.get(predicate, relevantChunks.toSeq) match {
-              case Some((psfDef, _)) => {
+              case Some((psfDef, _)) =>
                 v2.decider.assume(PredicateTrigger(predname, psfDef.sm, tArgs))
                 s2.smCache
-              }
-              case _ => {
+              case _ =>
                 val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s.predicateFormalVarMap(predicate) , predicate, None, v2)
                 v2.decider.assume(summary._2)
                 v2.decider.assume(PredicateTrigger(predname, summary._1, tArgs))
@@ -1169,7 +1152,6 @@ object consumer extends ConsumptionRules with Immutable {
                 val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
                 if (Verifier.config.disableValueMapCaching()) s1.smCache
                 else s1.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
-              }
             }
 
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
@@ -1220,11 +1202,10 @@ object consumer extends ConsumptionRules with Immutable {
 
           val relevantChunks = s1.h.values.collect {case ch: QuantifiedMagicWandChunk if ch.id == MagicWandIdentifier(wand, Verifier.program) => ch}
           val smCache1 = s1.smCache.get(wand, relevantChunks.toSeq) match {
-            case Some((psfDef, _)) => {
+            case Some((psfDef, _)) =>
               v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, psfDef.sm, tArgs))
               s1.smCache
-            }
-            case _ => {
+            case _ =>
               val summary = quantifiedChunkSupporter.summarise(s1, relevantChunks.toSeq, formalVars, wand, None, v1)
               v1.decider.assume(summary._2)
               v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, summary._1, tArgs))
@@ -1232,7 +1213,6 @@ object consumer extends ConsumptionRules with Immutable {
               val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
               if (Verifier.config.disableValueMapCaching()) s1.smCache
               else s1.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
-            }
           }
 
           val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)

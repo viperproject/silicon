@@ -51,11 +51,10 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
     program visit {
       case QuantifiedPermissionAssertion(_, _, acc: ast.FieldAccessPredicate) =>
         collectedFields += acc.loc.field
-      case Forall(_, triggers, _) => {
+      case Forall(_, triggers, _) =>
         val trigExps = triggers flatMap (_.exps)
         val fieldAccesses = trigExps flatMap (e => e.deepCollect {case fa: FieldAccess => fa})
         collectedFields ++= (fieldAccesses map (_.field))
-      }
     }
 
     collectedSorts = (

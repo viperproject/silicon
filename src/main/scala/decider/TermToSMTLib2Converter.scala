@@ -12,7 +12,6 @@ import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.sorts.FieldValueFunction
 
 class TermToSMTLib2Converter
     extends FastPrettyPrinterBase

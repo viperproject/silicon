@@ -26,11 +26,11 @@ import viper.silicon.verifier.Verifier
 import viper.silver.reporter.InternalWarningMessage
 
 case class InverseFunctions(condition: Term,
-                       invertibles: Seq[Term],
-                       additionalArguments: Vector[Var],
-                       axiomInversesOfInvertibles: Quantification,
-                       axiomInvertiblesOfInverses: Quantification,
-                       qvarsToInverses: Map[Var, Function]) {
+                            invertibles: Seq[Term],
+                            additionalArguments: Vector[Var],
+                            axiomInversesOfInvertibles: Quantification,
+                            axiomInvertiblesOfInverses: Quantification,
+                            qvarsToInverses: Map[Var, Function]) {
 
   val inverses: Iterable[Function] = qvarsToInverses.values
 
@@ -490,12 +490,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           isGlobal = true
         ))
 
-    val valueDefs3 = resource match {
-      case _: ast.Field | _: ast.Predicate => valueDefinitions :+ valueDefs2
-      case _ => valueDefinitions
-    }
-
-    (sm, valueDefs3, optDomainDefinition)
+    (sm, valueDefinitions :+ valueDefs2, optDomainDefinition)
   }
 
   def summarisePerm(s: State,
@@ -509,23 +504,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val permSummary = genericPermLookup(resource, pm, codomainQVars, v)
     val p = v.decider.fresh(sorts.Perm)
     val valueDefinitions = Forall(codomainQVars, permSummary === BigPermSum(relevantChunks map (_.perm), Predef.identity), Trigger(permSummary))
-//    val valueDefinitions = Forall(codomainQVars,
-//      And(p === BigPermSum(relevantChunks map (_.perm), Predef.identity),
-//        Ite(Or(relevantChunks map (chunk =>
-//          IsPositive(chunk.perm)
-//          )), permSummary === p, permSummary === NoPerm())),
-//      Trigger(permSummary))
 
     val trig = s.smCache.get(resource, relevantChunks) match {
-      case Some((smDef, _)) => {
+      case Some((smDef, _)) =>
         v.decider.assume(smDef.valueDefinitions)
         resource match {
           case f: ast.Field => FieldTrigger(f.name, smDef.sm, codomainQVars.head)
           case p: ast.Predicate => PredicateTrigger(p.name, smDef.sm, codomainQVars)
           case w: ast.MagicWand => PredicateTrigger(MagicWandIdentifier(w, Verifier.program).toString, smDef.sm, codomainQVars)
         }
-      }
-      case None => {
+      case None =>
         val (sm, smValueDefs, _) = summarise(s, relevantChunks, codomainQVars, resource, None, v)
         v.decider.assume(smValueDefs)
         resource match {
@@ -533,7 +521,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           case p: ast.Predicate => PredicateTrigger(p.name, sm, codomainQVars)
           case w: ast.MagicWand => PredicateTrigger(MagicWandIdentifier(w, Verifier.program).toString, sm, codomainQVars)
         }
-      }
     }
 
     val valueDefs2 = Forall(codomainQVars, And(trig +: (relevantChunks map (chunk => {
@@ -675,24 +662,21 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val codomainVars = rec match {
       case f: ast.Field => Seq(`?r`)
       case p: ast.Predicate => s.predicateFormalVarMap(p)
-      case w: ast.MagicWand => {
+      case w: ast.MagicWand =>
         val bodyVars = w.subexpressionsToEvaluate(Verifier.program)
         bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-      }
     }
     val relevantChunks = s.h.values.collect {case ch1: QuantifiedBasicChunk if ch1.id == ch.id => ch1}.toSeq :+ ch
     val (sm, smCache1) = s.smCache.get(rec, relevantChunks) match {
-      case Some((smDef, _)) => {
+      case Some((smDef, _)) =>
         (smDef.sm, s.smCache)
-      }
-      case _ => {
+      case _ =>
         val (sm, smValueDef, _) = summarise(s, relevantChunks, codomainVars, rec, None, v)
         v.decider.assume(smValueDef)
         val smDef = SnapshotMapDefinition(rec, sm, smValueDef, Seq())
         val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
         if (Verifier.config.disableValueMapCaching()) (sm, s.smCache)
         else (sm, s.smCache + ((rec, relevantChunks) -> (smDef, totalPermissions)))
-      }
     }
 
     val trigger = rec match {
@@ -823,7 +807,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           val smDef = SnapshotMapDefinition(resource, sm, smValueDefs, optSmDomainDef.toSeq)
           val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
           val smCache2 = if (Verifier.config.disableValueMapCaching()) s1.smCache
-          else s1.smCache + ((resource, relevantChunks) -> (smDef, totalPermissions))
+            else s1.smCache + ((resource, relevantChunks) -> (smDef, totalPermissions))
           val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache2)
           val snap = genericLookup(resource, sm, arguments, v).convert(sorts.Snap)
           Q(s2, h1, snap, v)

@@ -80,11 +80,10 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
         val smCache = {
           val relevantChunks = (s2.h + ch).values.collect { case ch: QuantifiedPredicateChunk if ch.id.name == predicate.name => ch }
           s2.smCache.get(predicate, relevantChunks.toSeq) match {
-            case Some((psfDef, _)) => {
+            case Some((psfDef, _)) =>
               v1.decider.assume(PredicateTrigger(predicate.name, psfDef.sm, tArgs))
               s2.smCache
-            }
-            case _ => {
+            case _ =>
               val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s2.predicateFormalVarMap(predicate), predicate, None, v1)
               v1.decider.assume(summary._2)
               v1.decider.assume(PredicateTrigger(predicate.name, summary._1, tArgs))
@@ -92,7 +91,6 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
               val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
               if (Verifier.config.disableValueMapCaching()) s2.smCache
               else s2.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
-            }
           }
         }
 

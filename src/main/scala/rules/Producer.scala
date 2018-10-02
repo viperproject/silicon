@@ -278,11 +278,10 @@ object producer extends ProductionRules with Immutable {
             val relevantChunks = h1.values.collect{case ch1: QuantifiedFieldChunk if ch1.id == ch.id => ch1}
 
             val smCache1 = s.smCache.get(field, relevantChunks.toSeq) match {
-              case Some((fvfDef,_)) => {
+              case Some((fvfDef,_)) =>
                 v.decider.assume(FieldTrigger(field.name, fvfDef.sm, rcvr))
                 s.smCache
-              }
-              case _ => {
+              case _ =>
                 val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), field, None, v)
                 v.decider.assume(fvfValueDef)
                 v.decider.assume(FieldTrigger(field.name, fvf, rcvr))
@@ -290,7 +289,6 @@ object producer extends ProductionRules with Immutable {
                 val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
                 if (Verifier.config.disableValueMapCaching()) s.smCache
                 else s.smCache + ((field, relevantChunks.toSeq) -> (smDef, totalPermissions))
-              }
             }
 
             val smDef = SnapshotMapDefinition(field, sm, Seq(smValueDef), Seq())
@@ -334,11 +332,10 @@ object producer extends ProductionRules with Immutable {
             val relevantChunks = h1.values.collect{case ch1: QuantifiedPredicateChunk if ch1.id == ch.id => ch1}
 
             val smCache1 = s.smCache.get(predicate, relevantChunks.toSeq) match {
-              case Some((fvfDef,_)) => {
+              case Some((fvfDef,_)) =>
                 v.decider.assume(PredicateTrigger(predicate.name, fvfDef.sm, args))
                 s.smCache
-              }
-              case _ => {
+              case _ =>
                 val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, formalArgs, predicate, None, v)
                 v.decider.assume(fvfValueDef)
                 v.decider.assume(PredicateTrigger(predicate.name, fvf, args))
@@ -346,7 +343,6 @@ object producer extends ProductionRules with Immutable {
                 val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
                 if (Verifier.config.disableValueMapCaching()) s.smCache
                 else s.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
-              }
             }
 
             val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
@@ -387,11 +383,10 @@ object producer extends ProductionRules with Immutable {
           val relevantChunks = (s.h + ch).values.collect{case ch1: QuantifiedMagicWandChunk if ch1.id == ch.id => ch1}
 
           val smCache1 = s.smCache.get(wand, relevantChunks.toSeq) match {
-            case Some((fvfDef,_)) => {
+            case Some((fvfDef,_)) =>
               v.decider.assume(PredicateTrigger(ch.id.toString, fvfDef.sm, args))
               s.smCache
-            }
-            case _ => {
+            case _ =>
               val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, formalVars, wand, None, v)
               v.decider.assume(fvfValueDef)
               v.decider.assume(PredicateTrigger(ch.id.toString, fvf, args))
@@ -399,7 +394,6 @@ object producer extends ProductionRules with Immutable {
               val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
               if (Verifier.config.disableValueMapCaching()) s.smCache
               else s.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
-            }
           }
 
           val smDef = SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq())
