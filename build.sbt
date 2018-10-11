@@ -26,6 +26,13 @@ lazy val silicon = (project in file("."))
         Test / javaOptions ++= (run / javaOptions).value,
         Test / fork := true,
 
+
+//?             fork := true,
+//?              javaOptions in run ++= Seq("-Xss128M", "-Dfile.encoding=UTF-8"),
+//?              javaOptions in Test += "-Xss128M",
+
+
+
         // Assembly settings
         assembly / assemblyJarName := "silicon.jar",
         assembly / mainClass := Some("viper.silicon.SiliconRunner"),
