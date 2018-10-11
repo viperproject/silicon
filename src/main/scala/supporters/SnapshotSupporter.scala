@@ -41,7 +41,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
       case _ if a.isPure =>
         (sorts.Snap, true)
 
-      case ast.AccessPredicate(locacc, _) => locacc match {
+      case acc @ ast.AccessPredicate(resacc, _) => resacc match {
         case fa: ast.FieldAccess =>
           (symbolConverter.toSort(fa.field.typ), false)
 
@@ -56,6 +56,9 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
            * inspecting the predicate bodies.
            */
             (sorts.Snap, false)
+
+        case _: ast.MagicWand =>
+          (sorts.Snap, false)
       }
 
       case ast.Implies(_, a1) =>

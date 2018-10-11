@@ -252,5 +252,13 @@ package object utils {
 
       Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
     }
+
+    def createUnexpectedNodeError(offendingNode: errors.ErrorNode, explanation: String)
+                                 : Internal = {
+
+      val stackTrace = new Throwable().getStackTrace
+
+      Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
+    }
   }
 }

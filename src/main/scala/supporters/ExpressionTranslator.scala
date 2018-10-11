@@ -203,6 +203,7 @@ trait ExpressionTranslator {
              | _: ast.EpsilonPerm
              | _: ast.ForPerm
              | _: ast.MagicWand
+             | _: ast.ExtensionExp
              =>
 
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")

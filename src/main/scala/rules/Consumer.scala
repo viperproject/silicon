@@ -1175,7 +1175,7 @@ object consumer extends ConsumptionRules with Immutable {
           val s2 = s1.copy(g = s1.g + g1)
           consumeR(s2, h, body, pve, v1)(Q)})
 
-      case ast.AccessPredicate(locacc, perm) =>
+      case ast.AccessPredicate(locacc: ast.LocationAccess, perm) =>
         eval(s, perm, pve, v)((s1, tPerm, v1) =>
           evalLocationAccess(s1, locacc, pve, v1)((s2, name, tArgs, v2) =>
             v2.decider.assert(perms.IsNonNegative(tPerm)){
