@@ -78,7 +78,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
           (s, isPure)
         }
 
-        getOptimalSnapshotSortFromPair(a1, a2, findCommonSort, program, visited)
+        getOptimalSnapshotSortFromPair(a1, a2, findCommonSort _, program, visited)
 
       case QuantifiedPermissionAssertion(_, _, acc: ast.FieldAccessPredicate) =>
         (sorts.FieldValueFunction(symbolConverter.toSort(acc.loc.field.typ)), false)
