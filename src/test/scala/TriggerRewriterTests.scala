@@ -64,14 +64,16 @@ class TriggerRewriterTests extends FunSuite with Matchers {
 
     rewrite(
       Forall(x, f(x + `1`) === g(x - `2`) + f(x), Trigger(Seq(f(x + `1`), g(x - `2`))))
-    ) should be (Some(
+    ) should contain oneOf (
+      // TODO: Can we make the result deterministic?
+      Forall(Seq(x0, x1),
+             (x0 - `1` === x1 + `2`) ==> (f(x0) === g(x1) + f(x0 - `1`)),
+             Trigger(Seq(f(x0), g(x1))))
+    ,
       Forall(Seq(x0, x1),
              (x0 - `1` === x1 + `2`) ==> (f(x0) === g(x1) + f(x1 + `2`)),
-              /* TODO: Replacing f(x) by f(x1 + `2`) is arbitrary, could as well
-               *       be f(x + `1`). Can we make it the result more predictable?
-               */
              Trigger(Seq(f(x0), g(x1))))
-    ))
+    )
 
     rewrite(
       Forall(Seq(x, y, z), f(x, y + `1`) > z, Trigger(g(x, y + `1`, z)))
