@@ -62,6 +62,16 @@ object sorts {
     val id = Identifier(s"PSF[$codomainSort]")
     override lazy val toString = id.toString
   }
+
+  case class FieldPermFunction() extends Sort  {
+    val id = Identifier("FPM")
+    override lazy val toString = id.toString
+  }
+
+  case class PredicatePermFunction() extends Sort {
+    val id = Identifier("PPM")
+    override lazy val toString = id.toString
+  }
 }
 
 /*
@@ -1672,11 +1682,25 @@ case class Lookup(field: String, fvf: Term, at: Term) extends Term {
   val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
 }
 
+case class PermLookup(field: String, pm: Term, at: Term) extends Term {
+  utils.assertSort(pm, "field perm function", "FieldPermFunction", _.isInstanceOf[sorts.FieldPermFunction])
+  utils.assertSort(at, "receiver", sorts.Ref)
+
+  val sort = sorts.Perm
+}
+
 case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
 
   val elementsSort = sorts.Ref
   val sort = sorts.Set(elementsSort)
+}
+
+case class FieldTrigger(field: String, fvf: Term, at: Term) extends Term {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+  utils.assertSort(at, "receiver", sorts.Ref)
+
+  val sort = sorts.Bool
 }
 
 
@@ -1687,11 +1711,24 @@ case class PredicateLookup(predname: String, psf: Term, args: Seq[Term]) extends
   val sort = psf.sort.asInstanceOf[sorts.PredicateSnapFunction].codomainSort
 }
 
+case class PredicatePermLookup(predname: String, pm: Term, args: Seq[Term]) extends Term {
+  utils.assertSort(pm, "predicate perm function", "PredicatePermFunction", _.isInstanceOf[sorts.PredicatePermFunction])
+
+  val sort = sorts.Perm
+}
+
 case class PredicateDomain(predname: String, psf: Term) extends SetTerm /*with PossibleTrigger*/ {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
   val elementsSort = sorts.Snap
   val sort = sorts.Set(elementsSort)
 }
+
+case class PredicateTrigger(predname: String, psf: Term, args: Seq[Term]) extends Term {
+  utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
+
+  val sort = sorts.Bool
+}
+
 /* TODO: remove
 case class PsfAfterRelation(predname: String, psf2: Term, psf1: Term) extends BooleanTerm {
   utils.assertSameSorts[sorts.PredicateSnapFunction](psf2, psf1)

@@ -184,7 +184,7 @@ class FunctionData(val programFunction: ast.Function,
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
       val args = (
-           expressionTranslator.getOrFail(locToSnap, predacc, sorts.Snap, programFunction.name)
+           expressionTranslator.getOrFail(locToSnap, predacc, sorts.Snap)
         +: expressionTranslator.translatePrecondition(program, predacc.args, this))
 
       val fapp = App(triggerFunction, args)

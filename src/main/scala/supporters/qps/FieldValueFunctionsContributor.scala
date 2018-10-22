@@ -14,6 +14,7 @@ import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.{SortDecl, sorts}
+import viper.silver.ast.{FieldAccess, Forall}
 
 trait FieldValueFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 
@@ -50,6 +51,10 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
     program visit {
       case QuantifiedPermissionAssertion(_, _, acc: ast.FieldAccessPredicate) =>
         collectedFields += acc.loc.field
+      case Forall(_, triggers, _) =>
+        val trigExps = triggers flatMap (_.exps)
+        val fieldAccesses = trigExps flatMap (e => e.deepCollect {case fa: FieldAccess => fa})
+        collectedFields ++= (fieldAccesses map (_.field))
     }
 
     collectedSorts = (

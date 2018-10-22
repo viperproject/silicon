@@ -50,6 +50,9 @@ class TermToSMTLib2Converter
 
     case sorts.FieldValueFunction(codomainSort) => text("$FVF<") <> render(codomainSort) <> ">"
     case sorts.PredicateSnapFunction(codomainSort) => text("$PSF<") <> render(codomainSort) <> ">"
+
+    case sorts.FieldPermFunction() => text("$FPM")
+    case sorts.PredicatePermFunction() => text("$PPM")
   }
 
   def convert(d: Decl): String = {
@@ -224,7 +227,12 @@ class TermToSMTLib2Converter
 //        sys.error(s"Unexpected sort '${fvf.sort}' of field value function '$fvf' in lookup term '$term'")
 //    }
 
+    case FieldTrigger(field, fvf, at) => parens(text("$FVF.loc_") <> field <+> (fvf.sort match {
+      case sorts.FieldValueFunction(_) => render(Lookup(field, fvf, at)) <+> render(at)
+      case _ => render(fvf) <+> render(at)
+    }))
 
+    case PermLookup(field, pm, at) => parens(text("$FVF.perm_") <> field <+> render(pm) <+> render(at))
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
@@ -236,6 +244,24 @@ class TermToSMTLib2Converter
       }
 
       parens(text("$PSF.lookup_") <> id <+> render(psf) <+> render(snap))
+
+    case PredicateTrigger(id, psf, args) =>
+      val snap: Term = if (args.size == 1) {
+        args.head.convert(sorts.Snap)
+      } else {
+        args.reduce((arg1, arg2) => Combine(arg1, arg2))
+      }
+
+      parens(text("$PSF.loc_") <> id <+> render(PredicateLookup(id, psf, args)) <+> render(snap))
+
+    case PredicatePermLookup(predname, pm, args) =>
+      val snap: Term = if (args.size == 1) {
+        args.head.convert(sorts.Snap)
+      } else {
+        args.reduce((arg1: Term, arg2: Term) => Combine(arg1, arg2))
+      }
+
+      parens(text("$PSF.perm_") <> predname <+> render(pm) <+> render(snap))
 
     /* Other terms */
 

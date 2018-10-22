@@ -275,8 +275,24 @@ object producer extends ProductionRules with Immutable {
             val resource = Resources.resourceDescriptions(ch.resourceID)
             v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
 
+            val relevantChunks = h1.values.collect{case ch1: QuantifiedFieldChunk if ch1.id == ch.id => ch1}
+
+            val smCache1 = s.smCache.get(field, relevantChunks.toSeq) match {
+              case Some((fvfDef,_)) =>
+                v.decider.assume(FieldTrigger(field.name, fvfDef.sm, rcvr))
+                s.smCache
+              case _ =>
+                val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), field, None, v)
+                v.decider.assume(fvfValueDef)
+                v.decider.assume(FieldTrigger(field.name, fvf, rcvr))
+                val smDef = SnapshotMapDefinition(field, fvf, fvfValueDef, Seq())
+                val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
+                if (Verifier.config.disableValueMapCaching()) s.smCache
+                else s.smCache + ((field, relevantChunks.toSeq) -> (smDef, totalPermissions))
+            }
+
             val smDef = SnapshotMapDefinition(field, sm, Seq(smValueDef), Seq())
-            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef)), v)
+            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache1), v)
           } else {
             val ch = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(rcvr), snap, p)
             chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
@@ -313,8 +329,24 @@ object producer extends ProductionRules with Immutable {
             val resource = Resources.resourceDescriptions(ch.resourceID)
             v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
 
+            val relevantChunks = h1.values.collect{case ch1: QuantifiedPredicateChunk if ch1.id == ch.id => ch1}
+
+            val smCache1 = s.smCache.get(predicate, relevantChunks.toSeq) match {
+              case Some((fvfDef,_)) =>
+                v.decider.assume(PredicateTrigger(predicate.name, fvfDef.sm, args))
+                s.smCache
+              case _ =>
+                val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, formalArgs, predicate, None, v)
+                v.decider.assume(fvfValueDef)
+                v.decider.assume(PredicateTrigger(predicate.name, fvf, args))
+                val smDef = SnapshotMapDefinition(predicate, fvf, fvfValueDef, Seq())
+                val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
+                if (Verifier.config.disableValueMapCaching()) s.smCache
+                else s.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
+            }
+
             val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
-            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef)), v)
+            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache1), v)
           } else {
             val snap1 = snap.convert(sorts.Snap)
             val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), args, snap1, p)
@@ -347,8 +379,25 @@ object producer extends ProductionRules with Immutable {
             if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
             else s1.conservedPcs
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+
+          val relevantChunks = (s.h + ch).values.collect{case ch1: QuantifiedMagicWandChunk if ch1.id == ch.id => ch1}
+
+          val smCache1 = s.smCache.get(wand, relevantChunks.toSeq) match {
+            case Some((fvfDef,_)) =>
+              v.decider.assume(PredicateTrigger(ch.id.toString, fvfDef.sm, args))
+              s.smCache
+            case _ =>
+              val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, formalVars, wand, None, v)
+              v.decider.assume(fvfValueDef)
+              v.decider.assume(PredicateTrigger(ch.id.toString, fvf, args))
+              val smDef = SnapshotMapDefinition(wand, fvf, fvfValueDef, Seq())
+              val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
+              if (Verifier.config.disableValueMapCaching()) s.smCache
+              else s.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
+          }
+
           val smDef = SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq())
-          val s2 = s1.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
+          val s2 = s1.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache1)
         Q(s2.copy(h = s2.h + ch, conservedPcs = conservedPcs), v)})
 
       case wand: ast.MagicWand =>
@@ -368,6 +417,7 @@ object producer extends ProductionRules with Immutable {
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
+//            v.decider.assume(PermAtMost(tPerm, FullPerm()))
             quantifiedChunkSupporter.produce(
               s1,
               forall,

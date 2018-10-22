@@ -30,7 +30,8 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term])
      * TODO: It shouldn't be the responsibility of the sets contributor to add set types
      *       required by QPs
      */
-    if (program.existsDefined { case q: ast.QuantifiedExp if !q.isPure => }) {
+    if (program.existsDefined { case f: ast.Forall if (f.triggers flatMap (_.exps)) exists (e => e.existsDefined { case _: ast.ResourceAccess => }) =>
+      case q: ast.QuantifiedExp if !q.isPure => }) {
       program.fields foreach {f => setTypeInstances += ast.SetType(f.typ)}
 
       setTypeInstances += ast.SetType(ast.Ref) /* $FVF.domain_f is ref-typed */

@@ -6,51 +6,47 @@
 
 package viper.silicon.tests
 
-import java.nio.file.{Path, Paths}
 import org.scalatest.FunSuite
-import viper.silicon.Silicon
 import viper.silver.ast._
 import viper.silver.ast.utility.Rewriter._
 import viper.silver.ast.utility._
-import viper.silver.frontend.{SilFrontend, TranslatorState}
+import viper.silver.frontend.SilFrontend
 import viper.silver.verifier.errors._
-import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure => SilFailure}
 
 class ErrorMessageTests extends FunSuite {
   test("MeetingExample") {
-    val filePrefix = "ErrorMessageTests/MeetingExample/"
+    val filePrefix = "errorMessageTests/misc/"
     val files = Seq("simple")
+    val frontend = tests.instantiateFrontend()
 
-    val strat = ViperStrategy.Slim({
-      case a: Assert => Exhale(a.exp)(a.pos, a.info, ErrTrafo({ case ExhaleFailed(_, r, false) => AssertFailed(a, r) }))
-      case o@And(f: FalseLit, right) => FalseLit()()
-      case o@And(left, f: FalseLit) => FalseLit()()
+    val strategy = ViperStrategy.Slim({
+      case a: Assert =>
+        Exhale(a.exp)(a.pos, a.info, ErrTrafo({ case ExhaleFailed(_, r, false) => AssertFailed(a, r) }))
+      case And(f: FalseLit, _) =>
+        /* If `assert false && e` is replaced by just `assert false`, then the default error
+         * backtranslation will translate the message `Assertion false might not hold` back to
+         * `Assertion false && e` ...`. Since, without the transformation, Silicon would only report
+         * `Assertion false ...`, an explicit error-backtransformation is added such that
+         * `Assertion false ...` is "backtranslated" to itself, i.e. to `Assertion false ...`.
+         */
+        FalseLit()(f.pos, f.info, NodeTrafo(f))
+      case And(_, f: FalseLit) =>
+        /* Here, the automatically attached backtranslation function suffices */
+        f
     })
 
-    val frontend = new DummyFrontend
-    val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
-    backend.parseCommandLine(List("--ignoreFile", "dummy.sil"))
-    backend.start()
-
-    frontend.init(backend)
-
-    files foreach (executeTest(filePrefix, strat, frontend, backend, _))
+    files foreach (executeTest(filePrefix, _, strategy, frontend))
   }
 
   test("WhileToIfGoto") {
-    val filePrefix = "ErrorMessageTests/WhileToIfGoto/"
+    val filePrefix = "errorMessageTests/whileToIfGoto/"
     val files = Seq("simple"/*, "nested"*/)
-
-    val frontend = new DummyFrontend
-    val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
-    backend.parseCommandLine(List("--ignoreFile", "dummy.sil"))
-    backend.start()
-    frontend.init(backend)
+    val frontend = tests.instantiateFrontend()
 
     // Example of how to transform a while loop into if and goto
     // Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
     var count = 0
-    val strat = ViperStrategy.Slim({
+    val strategy = ViperStrategy.Slim({
       case w: While =>
         val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
         count = count + 1
@@ -65,49 +61,48 @@ class ErrorMessageTests extends FunSuite {
         ), Seq())()
     })
 
-    files foreach (executeTest(filePrefix, strat, frontend, backend, _))
+    files foreach (executeTest(filePrefix, _, strategy, frontend))
   }
 
   test("CombinedRewrites") {
-    val filePrefix = "ErrorMessageTests/CombinedRewrites/"
+    val filePrefix = "errorMessageTests/combinedRewrites/"
     val files = Seq("simple", "involved", "involved2")
+    val frontend = tests.instantiateFrontend()
 
-    val frontend = new DummyFrontend
-    val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
-    backend.parseCommandLine(List("--ignoreFile", "dummy.sil"))
-    backend.start()
-    frontend.init(backend)
-
-    val andStrat = ViperStrategy.Slim({
-      case a@And(l:BoolLit, r:BoolLit) => BoolLit(l.value && r.value)()
+    val andStrategy = ViperStrategy.Slim({
+      case And(l: BoolLit, r: BoolLit) => BoolLit(l.value && r.value)()
     })
 
-    val orStrat = ViperStrategy.Slim({
-      case o@Or(l:BoolLit, r:BoolLit) => BoolLit(l.value || r.value)()
+    val orStrategy = ViperStrategy.Slim({
+      case Or(l: BoolLit, r: BoolLit) => BoolLit(l.value || r.value)()
     })
 
-    val notStrat = ViperStrategy.Slim({
-      case n1@Not(n2@Not(e:Exp)) => e
+    val notStrategy = ViperStrategy.Slim({
+      case Not(Not(e: Exp)) => e
     })
 
-    val strat = andStrat + orStrat + notStrat
+    val strategy = andStrategy + orStrategy + notStrategy
 
-    files foreach (executeTest(filePrefix, strat, frontend, backend, _))
+    files foreach (executeTest(filePrefix, _, strategy, frontend))
   }
 
   test("MethodInlining") {
     // Careful: Don't use old inside postcondition. It is not yet supported. maybe I will update the testcase
-    val filePrefix = "ErrorMessageTests/MethodInlining/"
+    val filePrefix = "errorMessageTests/methodInlining/"
     val files = Seq("simple" , "withArgs", "withArgsNRes", "withFields")
+    val frontend = tests.instantiateFrontend()
 
-    val frontend = new DummyFrontend
-    val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
-    backend.parseCommandLine(List("--ignoreFile", "dummy.sil"))
-    backend.start()
-    frontend.init(backend)
-
-    val replaceStrat = ViperStrategy.Context[Map[Exp, Exp]]({
-      case (l: LocalVar, c) => if (c.c.contains(l)) c.c(l) else l
+    val replaceStrategy = ViperStrategy.Context[Map[Exp, Exp]]({
+      case (l: LocalVar, c) if c.c.contains(l) =>
+        val n = c.c(l)
+        /* We want to replace formal argument `l` by actual argument `n`, and we want to report
+         * `n` in error messages. The AST transformation framework, however, will by default
+         * attach an error back-transformer to the replacement node `n` such that the original
+         * node `l` will be reported. To prevent this, we currently need to manually attach an
+         * error back-transformer saying that `n` is to be reported.
+         */
+        val (pos, info, _) = n.getPrettyMetadata
+        c.c(l).duplicateMeta((pos, info, NodeTrafo(n)))
     }, Map.empty[Exp, Exp])
 
     val preError = (m: MethodCall) => ErrTrafo({
@@ -118,7 +113,7 @@ class ErrorMessageTests extends FunSuite {
       case InhaleFailed(_, r, false) => PostconditionViolated(x, m, r)
     })
 
-    val strat = ViperStrategy.Ancestor({
+    val strategy = ViperStrategy.Ancestor({
       case (m: MethodCall, a) =>
         // Get method declaration
         val mDecl = a.ancestorList.head.asInstanceOf[Program].methods.find(_.name == m.methodName).get
@@ -126,65 +121,32 @@ class ErrorMessageTests extends FunSuite {
         // Create an exhale statement for every precondition and replace parameters with arguments
         val replacer: Map[Exp, Exp] = mDecl.formalArgs.zip(m.args).map(x => x._1.localVar -> x._2).toMap
         val context = new PartialContextC[Node, Map[Exp, Exp]](replacer)
-        val exPres = mDecl.pres.map(replaceStrat.execute[Exp](_, context)).map(x => Exhale(x)(x.pos, x.info, preError(m)))
+        val exPres = mDecl.pres.map(replaceStrategy.execute[Exp](_, context)).map(x => Exhale(x)(x.pos, x.info, preError(m)))
 
         // Create an inhale statement for every postcondition, replace parameters with arguments and replace result parameters with receivers
         val replacer2: Map[Exp, Exp] = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap ++ replacer
         val context2 = new PartialContextC[Node, Map[Exp, Exp]](replacer2)
-        val inPosts = mDecl.posts.map(replaceStrat.execute[Exp](_, context2)).map(x => Inhale(x)(x.pos, x.info, postError(x, mDecl)))
+        val inPosts = mDecl.posts.map(replaceStrategy.execute[Exp](_, context2)).map(x => Inhale(x)(x.pos, x.info, postError(x, mDecl)))
 
         Seqn(exPres ++ inPosts, Seq())()
     }) traverse Traverse.Innermost
 
-    files foreach (executeTest(filePrefix, strat, frontend, backend, _))
+    files foreach (executeTest(filePrefix, _, strategy, frontend))
   }
 
-  def executeTest(filePrefix: String, strat: StrategyInterface[Node], frontend: DummyFrontend, backend: Silicon, fileName: String): Unit = {
-    val testFile = getClass.getClassLoader.getResource(filePrefix + fileName + ".sil")
-    assert(testFile != null, s"File $filePrefix$fileName not found")
-    val file = Paths.get(testFile.toURI)
+  def executeTest(filePrefix: String,
+                  fileName: String,
+                  strategy: StrategyInterface[Node],
+                  frontend: SilFrontend)
+                 : Unit = {
 
-    frontend.reset(file)
-    frontend.parse()
-    frontend.typecheck()
-    frontend.translate()
+    val program = tests.loadProgram(filePrefix, fileName, frontend)
+    val referenceResult = frontend.verifier.verify(program)
+    val transformedProgram = strategy.execute[Program](program)
+    val transformedResult = tests.verifyProgram(transformedProgram, frontend)
 
-    val targetNode: Program = frontend.translatorResult
-
-    val transformed = strat.execute[Program](targetNode)
-
-    val errorTransformed = backend.verify(transformed) match {
-      case SilFailure(errors) =>
-        SilFailure(errors.map {
-          case a: AbstractVerificationError => a.transformedError()
-          case rest => rest
-        })
-      case rest => rest
-    }
-
-    val errorRef = backend.verify(targetNode)
-
-    assert(errorTransformed.toString == errorRef.toString, "Files are not equal")
+    assert(transformedResult.toString == referenceResult.toString, "Files are not equal")
   }
 }
 
-class DummyFrontend extends SilFrontend {
-  def createVerifier(fullCmd: _root_.scala.Predef.String) =
-    sys.error("Implementation missing")
 
-  def configureVerifier(args: Seq[String]) =
-    sys.error("Implementation missing")
-
-  def translate(silverFile: Path): (Option[Program], Seq[AbstractError]) = {
-    _verifier = None
-    _state = TranslatorState.Initialized
-
-    reset(silverFile) //
-    translate()
-
-    //println(s"_program = ${_program}") /* Option[Program], set if parsing and translating worked */
-    //println(s"_errors = ${_errors}")   /*  Seq[AbstractError], contains errors, if encountered */
-
-    (_program, _errors)
-  }
-}
