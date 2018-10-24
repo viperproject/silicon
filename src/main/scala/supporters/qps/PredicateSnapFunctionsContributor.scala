@@ -17,7 +17,7 @@ import viper.silicon.{Config, Map}
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConverter
-import viper.silicon.state.terms.{Forall, Sort, SortDecl, sorts}
+import viper.silicon.state.terms.{Sort, SortDecl, sorts}
 import viper.silver.ast.PredicateAccess
 
 trait PredicateSnapFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]

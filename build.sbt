@@ -27,9 +27,8 @@ lazy val silicon = (project in file("."))
         Test / fork := true,
 
 
-//?             fork := true,
-//?              javaOptions in run ++= Seq("-Xss128M", "-Dfile.encoding=UTF-8"),
-//?              javaOptions in Test += "-Xss128M",
+//?              javaOptions in run ++= Seq("-Xss128M", "-Dfile.encoding=UTF-8"), //?
+//?              javaOptions in Test += "-Xss128M", //?
 
 
 
@@ -39,10 +38,6 @@ lazy val silicon = (project in file("."))
         assembly / test := {},                                          // Prevent testing before packaging
     )
 
-//import de.oakgrove.SbtBrand.{BrandKeys, brandSettings, Val}
-//import de.oakgrove.SbtHgId.{HgIdKeys, hgIdSettings}
-//import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
-//
 //object SiliconBuild extends Build {
 //
 //  /* Base settings */
@@ -51,14 +46,6 @@ lazy val silicon = (project in file("."))
 //       hgIdSettings
 //    ++ brandSettings
 //    ++ Seq(
-//          organization := "viper",
-//          version := "1.1-SNAPSHOT",
-//          scalaVersion := "2.11.8",
-//          scalacOptions in Compile ++= Seq(
-//            "-deprecation",
-//            "-unchecked",
-//            "-feature"
-//            /*"-Xfatal-warnings"*/),
 //          resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/",
 //          traceLevel := 10,
 //          maxErrors := 6))
@@ -66,26 +53,12 @@ lazy val silicon = (project in file("."))
 //  /* Projects */
 //
 //  lazy val silicon = {
-//    var p = Project(
-//      id = "silicon",
-//      base = file("."),
 //      settings = (
 //           baseSettings
 //        ++ Seq(
-//              mainClass in assembly := Some("viper.silicon.SiliconRunner"),
-//              jarName in assembly := "silicon.jar",
-//              test in assembly := {},
 //                /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
 //              // scalacOptions ++= Seq("-Xelide-below", "1000"),
 //                /* remove elidable method calls such as in SymbExLogger during compiling */
-//              fork := true,
-//                /* Fork Silicon when run and tested. Avoids problems with file
-//                 * handlers on Windows 7 that remain open until Sbt is closed,
-//                 * which makes it very annoying to work on test files.
-//                 *
-//                 * There have been reports about problems with forking. If you
-//                 * experience strange problems, disable forking and try again.
-//                 *
 //                 * Malte 2013-11-18: Jenkins failed with
 //                 * "OutOfMemoryError: unable to create new native thread".
 //                 * Reducing the stack size from 256M to 128M seems to resolve
@@ -165,12 +138,9 @@ lazy val silicon = (project in file("."))
 //      "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0")
 //
 //    lazy val scallop = "org.rogach" %% "scallop" % "2.0.7"
-//    lazy val jgrapht = "org.jgrapht" % "jgrapht-core" % "0.9.1"
 //
 //    lazy val commonsIO = "commons-io" % "commons-io" % "2.5"
 //    lazy val commonsPool = "org.apache.commons" % "commons-pool2" % "2.4.2"
 //
-//    lazy val sil = "viper" %% "silver" %  "0.1-SNAPSHOT"
-//    lazy val silSrc = RootProject(new java.io.File("../silver"))
 //  }
 //}

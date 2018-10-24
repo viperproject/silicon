@@ -8,8 +8,6 @@ package viper.silicon.rules
 
 import viper.silver.ast
 import viper.silver.ast.{Info, PredicateAccess}
-import viper.silver.ast.utility.Rewriter.Traverse
-import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import viper.silver.verifier.reasons._
