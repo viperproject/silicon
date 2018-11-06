@@ -9,15 +9,12 @@ package viper.silicon
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
 
-import scala.collection.immutable
-import scala.language.postfixOps
 import scala.reflect.runtime.universe
 import scala.util.{Left, Right, Try}
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import viper.silver.ast
-import viper.silver.ast.NoPosition
 import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silver.reporter._
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}

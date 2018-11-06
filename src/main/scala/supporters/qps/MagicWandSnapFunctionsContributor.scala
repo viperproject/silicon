@@ -17,7 +17,6 @@ import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.MagicWandIdentifier
 import viper.silicon.state.terms.{Sort, SortDecl, sorts}
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 
 trait MagicWandSnapFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 

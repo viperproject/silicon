@@ -13,6 +13,8 @@ import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
+import viper.silver.ast.LineCol
+import fastparse.all
 
 abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
   type BuiltinDomainType <: ast.GenericType
@@ -179,8 +181,9 @@ private object utils {
 
         program
 
-      case fastparse.core.Parsed.Failure(msg, _, extra) =>
-        sys.error(s"Failure: $msg, at ${viper.silver.parser.FilePosition(fromPath, extra.line, extra.col)}")
+      case fastparse.core.Parsed.Failure(msg, index, extra) =>
+        val (line, col) = LineCol(extra.input.asInstanceOf[all.ParserInput], index)
+        sys.error(s"Failure: $msg, at ${viper.silver.parser.FilePosition(fromPath, line, col)}")
     }
   }
 }
