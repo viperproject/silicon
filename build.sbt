@@ -10,9 +10,6 @@ lazy val silicon = (project in file("."))
     .dependsOn(common)
     .aggregate(common)
     .settings(
-        // Compilation settings
-        // scalacOptions ++= Seq("-Xelide-below", "1000"),
-        // Remove elidable method calls such as in SymbExLogger during compilation
 
         // General settings
         name := "Silicon",
@@ -20,6 +17,8 @@ lazy val silicon = (project in file("."))
         version := "1.1-SNAPSHOT",
 
         // Compilation settings
+        // Remove elidable method calls such as in SymbExLogger during compilation
+        // scalacOptions ++= Seq("-Xelide-below", "1000"),
         libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
         libraryDependencies += "org.apache.commons" % "commons-pool2" % "2.6.0",
 
