@@ -392,6 +392,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
             Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, name)(), ast.FullPerm()())())
           else
             None
+        case _ => sys.error("Unexpected case in pattern matching")
       }.toSeq
 
     predicateAccesses

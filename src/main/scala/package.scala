@@ -34,8 +34,8 @@ package object silicon {
   type MMap[K, V] = collection.mutable.LinkedHashMap[K, V]
   val MMap = collection.mutable.LinkedHashMap
 
-  type MStack[A] = collection.mutable.Stack[A]
-  val MStack = collection.mutable.Stack
+  type MStack[A] = collection.immutable.List[A]
+  val MStack = collection.immutable.List
 
   /* Implicits converting from Predef.Map/Set to the Map/Set types defined above */
 
