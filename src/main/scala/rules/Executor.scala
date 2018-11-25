@@ -414,6 +414,23 @@ object executor extends ExecutionRules with Immutable {
                 Q(s2, v1)})
         }
 
+      case ast.MethodCall(methodName, _, _) if methodName.startsWith("havoc_all_") =>
+        val resourceName = methodName.stripPrefix("havoc_all_")
+        val member = Verifier.program.collectFirst {
+          case m: ast.Field if m.name == resourceName => m
+          case m: ast.Predicate if m.name == resourceName => m
+        }.getOrElse(sys.error(s"Found $methodName, but no matching field or predicate $resourceName"))
+        val h1 = Heap(s.h.values.map {
+          case bc: BasicChunk if bc.id.name == member.name =>
+            bc.withSnap(freshSnap(bc.snap.sort, v))
+          case qfc: QuantifiedFieldChunk if qfc.id.name == member.name =>
+            qfc.withSnapshotMap(freshSnap(qfc.fvf.sort, v))
+          case qpc: QuantifiedPredicateChunk if qpc.id.name == member.name =>
+            qpc.withSnapshotMap(freshSnap(qpc.psf.sort, v))
+          case other =>
+            other})
+        Q(s.copy(h = h1), v)
+
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = Verifier.program.findMethod(methodName)
         val fargs = meth.formalArgs.map(_.localVar)
