@@ -6,7 +6,7 @@ lazy val common = (project in file("common"))
 
 // Silicon specific project settings
 lazy val silicon = (project in file("."))
-    .dependsOn(silver % "compile->compile;test->test") 
+    .dependsOn(silver % "compile->compile;test->test")
     .dependsOn(common)
     .aggregate(common)
     .settings(
@@ -36,7 +36,7 @@ lazy val silicon = (project in file("."))
         // You can inspect the settings in effect using via
         // "show javaOptions" on the Sbt console.
 
-        Test / fork := true,
+        fork := true,
         // Fork Silicon when run and tested. Avoids problems with file
         // handlers on Windows 7 that remain open until Sbt is closed,
         // which makes it very annoying to work on test files.
