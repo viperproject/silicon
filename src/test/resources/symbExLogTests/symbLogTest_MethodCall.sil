@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method twice(i: Int) returns (r: Int)
 requires i >= 0
 ensures r == 2*i
