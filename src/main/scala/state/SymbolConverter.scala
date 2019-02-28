@@ -1,13 +1,14 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silicon.state
 
 import viper.silver.ast
 import viper.silicon.state.terms.{Sort, sorts}
+import viper.silicon.verifier.Verifier
 
 trait SymbolConverter {
   def toSort(typ: ast.Type): Sort
@@ -20,7 +21,7 @@ trait SymbolConverter {
   def toFunction(function: ast.Function): terms.HeapDepFun
 }
 
-class DefaultSymbolConverter extends SymbolConverter with Immutable {
+class DefaultSymbolConverter extends SymbolConverter {
   def toSort(typ: ast.Type): Sort = typ match {
     case ast.Bool => sorts.Bool
     case ast.Int => sorts.Int
@@ -57,7 +58,8 @@ class DefaultSymbolConverter extends SymbolConverter with Immutable {
 
     val inSorts = sorts.init
     val outSort = sorts.last
-    val id = Identifier(function.name)
+    val domainFunc = Verifier.program.findDomainFunctionOptionally(function.name)
+    val id = if (domainFunc.isEmpty) Identifier(function.name) else toSortSpecificId(function.name, Seq(outSort))
 
     terms.DomainFun(id, inSorts, outSort)
   }

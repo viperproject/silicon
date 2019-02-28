@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 import java.io.{FileOutputStream, OutputStreamWriter, BufferedWriter}
 import scala.collection.mutable
 import scala.io.{Source, BufferedSource}

@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silicon.supporters
 
@@ -10,6 +10,7 @@ import viper.silver.ast
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 
 trait ExpressionTranslator {
   /* TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
@@ -18,6 +19,7 @@ trait ExpressionTranslator {
    *       was done before - but that is less efficient and creates lots of additional noise output
    *       in the prover log.
    */
+
   protected def translate(toSort: ast.Type => Sort)
                          (exp: ast.Exp)
                          : Term = {
@@ -123,7 +125,8 @@ trait ExpressionTranslator {
         val tArgs = args map f
         val inSorts = tArgs map (_.sort)
         val outSort = toSort(exp.typ)
-        val id = Identifier(funcName)
+        val domainFunc = Verifier.program.findDomainFunctionOptionally(funcName)
+        val id = if (domainFunc.isEmpty) Identifier(funcName) else Identifier(funcName + Seq(outSort).mkString("[",",","]"))
         val df = Fun(id, inSorts, outSort)
         App(df, tArgs)
 
