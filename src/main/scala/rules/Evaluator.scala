@@ -780,7 +780,7 @@ object evaluator extends EvaluationRules with Immutable {
                       val s7 = s6.scalePermissionFactor(tPerm)
                       produce(s7 /*\ insγ*/, toSf(snap), body, pve, v4)((s8, v5) => {
                         val s9 = s8.copy(recordVisited = s3.recordVisited,
-                                          permissionScalingFactor = s6.permissionScalingFactor)
+                                         permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
                         eval(s9, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
@@ -1208,7 +1208,10 @@ object evaluator extends EvaluationRules with Immutable {
     assert(entries.nonEmpty, "Expected at least one join data entry")
 
     entries match {
-      case Seq(entry) if entry.pathConditions.branchConditions.isEmpty =>
+      case Seq(entry) =>
+        /* If there is only one entry, i.e. one branch to join, it is assumed that the other
+         * branch was infeasible, and the branch conditions are therefore ignored.
+         */
         (entry.s, entry.data)
       case _ =>
         val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
