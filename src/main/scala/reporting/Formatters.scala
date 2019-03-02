@@ -64,12 +64,12 @@ class DefaultStateFormatter extends StateFormatter {
   }
 
   //Methods for SymbexLogger
-  def toJson(σ: State, π: Set[Term]): String = {
-    val γStr = toJson(σ.g)
-    val hStr = toJson(σ.h)
-    val gStr = σ.oldHeaps.get(Verifier.PRE_STATE_LABEL) match {
+  def toJson(s: State, π: Set[Term]): String = {
+    val γStr = toJson(s.g)
+    val hStr = toJson(s.h)
+    val gStr = s.oldHeaps.get(Verifier.PRE_STATE_LABEL) match {
       case Some(o) => toJson(o)
-      case _ => ""
+      case _ => "[]"
     }
     val πStr = toJson(π)
     s"""{"store":$γStr,"heap":$hStr,"oldHeap":$gStr,"pcs":$πStr}""".stripMargin
@@ -78,7 +78,7 @@ class DefaultStateFormatter extends StateFormatter {
   private def toJson(γ: Store): String = {
     val values: Map[AbstractLocalVar, Term] = γ.values
     if (values.isEmpty) "[]" else values.map((storeChunk:(AbstractLocalVar,Term)) => {
-      s"""{"value":"${storeChunk._1.toString()} -> ${storeChunk._2.toString()}","type":"${storeChunk._1.typ}"}"""
+      s"""{"value":"${storeChunk._1.toString()} -> ${storeChunk._2.toString}","type":"${storeChunk._1.typ}"}"""
     }).mkString("[", ",", "]")
   }
 
