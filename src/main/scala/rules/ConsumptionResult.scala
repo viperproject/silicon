@@ -26,8 +26,8 @@ private case class Incomplete(permsNeeded: Term) extends ConsumptionResult {
 }
 
 object ConsumptionResult {
-  def apply(term: Term, v: Verifier): ConsumptionResult = {
-    if (v.decider.check(IsNonPositive(term), Verifier.config.checkTimeout()))
+  def apply(term: Term, v: Verifier, timeout: Int): ConsumptionResult = {
+    if (v.decider.check(IsNonPositive(term), timeout))
       Complete()
     else
       Incomplete(term)
