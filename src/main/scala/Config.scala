@@ -310,7 +310,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   private val rawZ3Exe = opt[String]("z3Exe",
     descr = (  "Z3 executable. The environment variable %s can also "
              + "be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable),
-    default = Some("/usr/bin/z3"),
+    default = None,
     noshort = true,
     hidden = false
   )
