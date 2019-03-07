@@ -6,7 +6,7 @@
 
 import java.nio.file.{Path, Paths}
 import viper.silver.ast.Program
-import viper.silver.frontend.{SilFrontend, SilFrontendConfig, TranslatorState}
+import viper.silver.frontend.{SilFrontend, SilFrontendConfig, DefaultStates}
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, VerificationResult, Verifier, Failure => SilFailure}
 import viper.silicon.Silicon
 
@@ -20,10 +20,11 @@ package object tests {
 
     def translate(silverFile: Path): (Option[Program], Seq[AbstractError]) = {
       _verifier = None
-      _state = TranslatorState.Initialized
+      _state = DefaultStates.Initialized
 
       reset(silverFile) //
-      translate()
+
+      runTo("Translation")
 
       //println(s"_program = ${_program}") /* Option[Program], set if parsing and translating worked */
       //println(s"_errors = ${_errors}")   /*  Seq[AbstractError], contains errors, if encountered */
@@ -52,9 +53,7 @@ package object tests {
     val file = Paths.get(testFile.toURI)
 
     frontend.reset(file)
-    frontend.parse()
-    frontend.typecheck()
-    frontend.translate()
+    frontend.runTo("Translation")
 
     frontend.translatorResult
   }
