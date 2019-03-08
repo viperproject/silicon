@@ -793,7 +793,10 @@ object evaluator extends EvaluationRules with Immutable {
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
                     consume(s4, acc, pve, v3)((s5, snap, v4) => {
-                      val s6 = s5.copy(functionRecorder = s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap),
+                      val fr6 =
+                        s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap)
+                                           .changeDepthBy(+1)
+                      val s6 = s5.copy(functionRecorder = fr6,
                                        constrainableARPs = s1.constrainableARPs)
                         /* Recording the unfolded predicate's snapshot is necessary in order to create the
                          * additional predicate-based trigger function applications because these are applied
@@ -805,7 +808,8 @@ object evaluator extends EvaluationRules with Immutable {
                       val body = pa.predicateBody(Verifier.program).get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)
                       produce(s7 /*\ insγ*/, toSf(snap), body, pve, v4)((s8, v5) => {
-                        val s9 = s8.copy(recordVisited = s3.recordVisited,
+                        val s9 = s8.copy(functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                                         recordVisited = s3.recordVisited,
                                          permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
                         eval(s9, eIn, pve, v5)(QB)})})
