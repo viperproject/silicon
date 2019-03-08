@@ -278,7 +278,7 @@ object evaluator extends EvaluationRules with Immutable {
         s.oldHeaps.get(lbl) match {
           case None =>
             Failure(pve dueTo LabelledStateNotReached(old))
-          case Some(h) =>
+          case _ =>
             evalInOldState(s, lbl, e0, pve, v)(Q)}
 
       case ast.Let(x, e0, e1) =>
@@ -435,7 +435,7 @@ object evaluator extends EvaluationRules with Immutable {
                 case wand: ast.MagicWand =>
                   val chs = h.values.collect { case ch: QuantifiedMagicWandChunk if ch.id == identifier => ch }
 
-                  val (smCache1, trigger) = s1.smCache.get(wand, chs.toSeq) match {
+                  val (smCache1, _) = s1.smCache.get(wand, chs.toSeq) match {
                     case Some((psfDef, _)) =>
                       val trigger = PredicateTrigger(identifier.toString, psfDef.sm, args)
                       v1.decider.assume(trigger)
@@ -469,7 +469,7 @@ object evaluator extends EvaluationRules with Immutable {
                 case field: ast.Field =>
                   val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.id == identifier => ch}
 
-                  val (smCache1, trigger) = s1.smCache.get(field, chs.toSeq) match {
+                  val (smCache1, _) = s1.smCache.get(field, chs.toSeq) match {
                     case Some((fvfDef, _)) =>
                       val trigger = FieldTrigger(field.name, fvfDef.sm, args.head)
                       v1.decider.assume(trigger)
@@ -1248,7 +1248,7 @@ object evaluator extends EvaluationRules with Immutable {
         val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
-      case e => evalTrigger(s, Seq(e), pve, v)((s1, t, v1) => {
+      case e => evalTrigger(s, Seq(e), pve, v)((_, t, _) => {
         triggers = triggers ++ t
         Success()
       })
@@ -1287,7 +1287,7 @@ object evaluator extends EvaluationRules with Immutable {
       case rcv =>
         val s1 = s.copy(smCache = smCache1)
         val t = s1.possibleTriggers.get(fa)
-        val r = t match {
+        val r = t match { /* TODO: r isn't used - why? */
           case Some(cachedTrigger) =>
             cachedTrigger match {
               case l: Lookup =>
@@ -1295,7 +1295,7 @@ object evaluator extends EvaluationRules with Immutable {
                 mostRecentTrig = FieldTrigger(l.field, smDef.sm, l.at)
                 triggers = triggers :+ mostRecentTrig
               case _ =>
-                eval(s1.copy(triggerExp = true), rcv, pve, v)((s2, tRcv, v1) => {
+                eval(s1.copy(triggerExp = true), rcv, pve, v)((_, tRcv, _) => {
                   axioms = axioms ++ smDef.valueDefinitions
                   mostRecentTrig = FieldTrigger(fa.field.name, smDef.sm, tRcv)
                   triggers = triggers :+ mostRecentTrig
@@ -1335,7 +1335,7 @@ object evaluator extends EvaluationRules with Immutable {
     val smCache1 = s.smCache + ((pa.loc(Verifier.program), relevantChunks.toSeq) -> (smDef, totalPermissions))
 
     val s1 = s.copy(smCache = smCache1)
-    evals(s1, pa.args, _ => pve, v)((s2, tArgs, v1) => {
+    evals(s1, pa.args, _ => pve, v)((_, tArgs, _) => {
       axioms = axioms ++ smDef.valueDefinitions
       mostRecentTrig = PredicateTrigger(pa.predicateName, smDef.sm, tArgs)
       triggers = triggers :+ mostRecentTrig
@@ -1367,7 +1367,7 @@ object evaluator extends EvaluationRules with Immutable {
     val smCache1 = s.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
 
     val s1 = s.copy(smCache = smCache1)
-    evals(s1, wand.subexpressionsToEvaluate(Verifier.program), _ => pve, v)((s2, tArgs, v1) => {
+    evals(s1, wand.subexpressionsToEvaluate(Verifier.program), _ => pve, v)((_, tArgs, _) => {
       axioms = axioms ++ smDef.valueDefinitions
       mostRecentTrig = PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, smDef.sm, tArgs)
       triggers = triggers :+ mostRecentTrig
