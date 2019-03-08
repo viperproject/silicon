@@ -142,13 +142,12 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           val toTake = PermMin(ch.perm, perms)
           val newChunk = ch.withPerm(PermMinus(ch.perm, toTake))
           val takenChunk = Some(ch.withPerm(toTake))
-          if (v.decider.check(newChunk.perm === NoPerm(), Verifier.config.checkTimeout())) {
-            (ConsumptionResult(PermMinus(perms, toTake), v), s, h - ch, takenChunk)
-          } else {
-            val newHeap = h - ch + newChunk
+          var newHeap = h - ch
+          if (!v.decider.check(newChunk.perm === NoPerm(), Verifier.config.checkTimeout())) {
+            newHeap = newHeap + newChunk
             assumeProperties(newChunk, newHeap)
-            (ConsumptionResult(PermMinus(perms, toTake), v), s, newHeap, takenChunk)
           }
+          (ConsumptionResult(PermMinus(perms, toTake), v, 0), s, newHeap, takenChunk)
         } else {
           if (v.decider.check(ch.perm !== NoPerm(), Verifier.config.checkTimeout())) {
             v.decider.assume(PermLess(perms, ch.perm))
