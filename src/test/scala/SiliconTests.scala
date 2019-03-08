@@ -11,7 +11,7 @@ import java.nio.file.Path
 import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
 import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
 import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
-import viper.silver.frontend.TranslatorState
+import viper.silver.frontend.DefaultStates
 import viper.silver.reporter.NoopReporter
 
 class SiliconTests extends SilSuite {
@@ -62,7 +62,7 @@ class SiliconTests extends SilSuite {
 class SiliconFrontendWithUnitTesting extends SiliconFrontend(NoopReporter) {
   /** Is overridden only to append SymbExLogging-UnitTesting-Errors to the Result. **/
   override def result: SilVerificationResult = {
-    if(_state < TranslatorState.Verified) super.result
+    if(_state < DefaultStates.Verification) super.result
     else{
       val symbExLogUnitTestErrors = SymbExLogger.unitTestEngine.verify()
       symbExLogUnitTestErrors match{
