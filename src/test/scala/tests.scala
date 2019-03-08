@@ -55,7 +55,7 @@ package object tests {
     frontend.reset(file)
     frontend.runTo("Translation")
 
-    frontend.translatorResult
+    frontend.translationResult
   }
 
   def verifyProgram(program: Program, frontend: SilFrontend): VerificationResult = {

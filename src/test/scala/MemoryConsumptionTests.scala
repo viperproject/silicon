@@ -39,7 +39,7 @@ class MemoryTests extends FlatSpec {
     var lb = collection.mutable.ListBuffer[Long]()
 
     for (i <- 0 to 1000) {
-      silicon.verify(silver.translatorResult)
+      silicon.verify(silver.translationResult)
 
       if (i % 10 == 0) {
         rt.gc()
