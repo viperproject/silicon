@@ -31,6 +31,8 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def recordArp(arp: Var, constraint: Term): FunctionRecorder
   def recordFreshSnapshot(snap: Function): FunctionRecorder
   def recordPathSymbol(symbol: Function): FunctionRecorder
+  def depth: Int
+  def changeDepthBy(delta: Int): FunctionRecorder
 }
 
 case class ActualFunctionRecorder(private val _data: FunctionData,
@@ -40,7 +42,8 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
                                   freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet(),
                                   freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet(),
                                   freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet(),
-                                  freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet())
+                                  freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet(),
+                                  depth: Int = 0)
     extends FunctionRecorder {
 
   val data = Some(_data)
@@ -73,29 +76,47 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     }
   }
 
-  def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term) = {
-    val guardsToSnaps = locToSnaps.getOrElse(loc, InsertionOrderedSet()) + (guards -> snap)
-    copy(locToSnaps = locToSnaps + (loc -> guardsToSnaps))
+  def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term)
+                    : ActualFunctionRecorder = {
+
+    if (depth == 0) {
+      val guardsToSnaps = locToSnaps.getOrElse(loc, InsertionOrderedSet()) + (guards -> snap)
+      copy(locToSnaps = locToSnaps + (loc -> guardsToSnaps))
+    } else {
+      this
+    }
   }
 
-  def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term) = {
-    val guardsToSnaps = fappToSnaps.getOrElse(fapp, InsertionOrderedSet()) + (guards -> snap)
-    copy(fappToSnaps = fappToSnaps + (fapp -> guardsToSnaps))
+  def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term)
+                    : ActualFunctionRecorder = {
+
+    if (depth == 0) {
+      val guardsToSnaps = fappToSnaps.getOrElse(fapp, InsertionOrderedSet()) + (guards -> snap)
+      copy(fappToSnaps = fappToSnaps + (fapp -> guardsToSnaps))
+    } else {
+      this
+    }
   }
 
-  def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): FunctionRecorder =
+  def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): ActualFunctionRecorder =
     copy(freshFvfsAndDomains = freshFvfsAndDomains + fvfDef)
 
-  def recordFieldInv(inv: InverseFunctions): FunctionRecorder =
+  def recordFieldInv(inv: InverseFunctions): ActualFunctionRecorder =
     copy(freshFieldInvs = freshFieldInvs + inv)
 
-  def recordArp(arp: Var, constraint: Term) = copy(freshArps = freshArps + ((arp, constraint)))
+  def recordArp(arp: Var, constraint: Term): ActualFunctionRecorder =
+    copy(freshArps = freshArps + ((arp, constraint)))
 
-  def recordFreshSnapshot(snap: Function) = copy(freshSnapshots = freshSnapshots + snap)
+  def recordFreshSnapshot(snap: Function): ActualFunctionRecorder =
+    copy(freshSnapshots = freshSnapshots + snap)
 
-  def recordPathSymbol(symbol: Function): FunctionRecorder = copy(freshPathSymbols = freshPathSymbols + symbol)
+  def recordPathSymbol(symbol: Function): ActualFunctionRecorder =
+    copy(freshPathSymbols = freshPathSymbols + symbol)
 
-  def merge(other: FunctionRecorder): FunctionRecorder = {
+  def changeDepthBy(delta: Int): ActualFunctionRecorder =
+    copy(depth = depth + delta)
+
+  def merge(other: FunctionRecorder): ActualFunctionRecorder = {
     assert(other.getClass == this.getClass)
     assert(other.asInstanceOf[ActualFunctionRecorder]._data eq this._data)
 
@@ -126,7 +147,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
          freshPathSymbols = symbols)
   }
 
-  override lazy val toString = {
+  override lazy val toString: String = {
     val ltsStrs = locToSnaps map {case (k, v) => s"$k  |==>  $v"}
     val ftsStrs = fappToSnap map {case (k, v) => s"$k  |==>  $v"}
 
@@ -135,13 +156,14 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
         |    ${ltsStrs.mkString("\n    ")}
         |  fappToSnap:
         |    ${ftsStrs.mkString("\n    ")}
+        |  ...
         |)
      """.stripMargin
   }
 }
 
 case object NoopFunctionRecorder extends FunctionRecorder {
-  val data = None
+  val data: Option[FunctionData] = None
   private[functions] val fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
   val fappToSnap: Map[ast.FuncApp, Term] = Map.empty
   private[functions] val locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
@@ -151,18 +173,20 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   val freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   val freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   val freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
+  val depth = 0
 
-  def merge(other: FunctionRecorder): FunctionRecorder = {
+  def merge(other: FunctionRecorder): NoopFunctionRecorder.type = {
     assert(other == this)
 
     this
   }
 
-  def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term): FunctionRecorder = this
-  def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): FunctionRecorder = this
-  def recordFieldInv(inv: InverseFunctions): FunctionRecorder = this
-  def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder = this
-  def recordArp(arp: Var, constraint: Term): FunctionRecorder = this
-  def recordFreshSnapshot(snap: Function): FunctionRecorder = this
-  def recordPathSymbol(symbol: Function): FunctionRecorder = this
+  def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term): NoopFunctionRecorder.type = this
+  def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): NoopFunctionRecorder.type = this
+  def recordFieldInv(inv: InverseFunctions): NoopFunctionRecorder.type = this
+  def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): NoopFunctionRecorder.type = this
+  def recordArp(arp: Var, constraint: Term): NoopFunctionRecorder.type = this
+  def recordFreshSnapshot(snap: Function): NoopFunctionRecorder.type = this
+  def recordPathSymbol(symbol: Function): NoopFunctionRecorder.type = this
+  def changeDepthBy(delta: Int): NoopFunctionRecorder.type = this
 }

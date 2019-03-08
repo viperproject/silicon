@@ -729,14 +729,40 @@ object evaluator extends EvaluationRules with Immutable {
                 reasonOffendingNode.replace(formalsToActuals))
             val s3 = s2.copy(g = Store(fargs.zip(tArgs)),
                              recordVisited = true,
+                             functionRecorder = s2.functionRecorder.changeDepthBy(+1),
+                                /* Temporarily disable the recorder: when recording (to later on
+                                 * translate a particular function fun) and a function application
+                                 * fapp is hit, then there is no need to record any information
+                                 * about assertions from fapp's precondition since the latter is not
+                                 * translated as part of the translation of fun.
+                                 * Recording such information is even potentially harmful if formals
+                                 * are not syntactically replaced by actuals but rather bound to
+                                 * them via the store. Consider the following function:
+                                 *   function fun(x: Ref)
+                                 *     requires foo(x) // foo is another function
+                                 *     ...
+                                 *   { ... fun(x.next) ...}
+                                 * For fun(x)'s precondition, a mapping from foo(x) to a snapshot is
+                                 * recorded. When fun(x.next) is hit, its precondition is consumed,
+                                 * but without substituting actuals for formals, continuing to
+                                 * record mappings would add another mapping from foo(x) (which is
+                                 * actually foo(x.next)) to some potentially different snapshot.
+                                 * When translating fun(x) to an axiom, the snapshot of foo(x) from
+                                 * fun(x)'s precondition will be the branch-condition-dependent join
+                                 * of the recorded snapshots - which is wrong (probably only
+                                 * incomplete).
+                                 */
                              smDomainNeeded = true)
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
               val snap1 = snap.convert(sorts.Snap)
               val tFApp = App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
+              val fr5 =
+                s4.functionRecorder.changeDepthBy(-1)
+                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
               val s5 = s4.copy(g = s2.g,
                                h = s2.h,
                                recordVisited = s2.recordVisited,
-                               functionRecorder = s4.functionRecorder.recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1),
+                               functionRecorder = fr5,
                                smDomainNeeded = s2.smDomainNeeded)
               QB(s5, tFApp, v3)})
             /* TODO: The join-function is heap-independent, and it is not obvious how a
