@@ -8,13 +8,12 @@ package viper.silicon.rules
 
 import scala.reflect.ClassTag
 import viper.silver.ast
-import viper.silver.ast.{Location, Resource}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.resources.{QuantifiedPropertyInterpreter, Resources}
+import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
@@ -496,7 +495,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   def summarisePerm(s: State,
                     relevantChunks: Seq[QuantifiedBasicChunk],
                     codomainQVars: Seq[Var],
-                    resource: Resource,
+                    resource: ast.Resource,
                     v: Verifier): (Term, Seq[Quantification]) = {
 
     val pm = freshPermMap(s, resource, Seq(), v)
@@ -557,7 +556,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
   def produce(s: State,
               forall: ast.Forall,
-              rec: Resource,
+              rec: ast.Resource,
               qvars: Seq[Var],
               formalQVars: Seq[Var],
               qid: String,
@@ -702,6 +701,57 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     Q(s1, v)
   }
 
+  def produceSingleLocation(s: State,
+                            resource: ast.Resource,
+                            formalQVars: Seq[Var],
+                            tArgs: Seq[Term],
+                            tSnap: Term,
+                            tPerm: Term,
+                            resourceTriggerFactory: Term => Term, /* Trigger with some snapshot */
+                            v: Verifier)
+                           (Q: (State, Verifier) => VerificationResult)
+                           : VerificationResult = {
+
+    val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, resource, tArgs, tSnap, v)
+    v.decider.prover.comment("Definitional axioms for singleton-SM's value")
+    val definitionalAxiomMark = v.decider.setPathConditionMark()
+    v.decider.assume(smValueDef)
+    val conservedPcs =
+      if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
+      else s.conservedPcs
+    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalQVars, resource, tArgs, tPerm, sm)
+    val h1 = s.h + ch
+
+    val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
+    val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
+    val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties)
+    v.decider.assume(pcs)
+
+    val relevantChunks = h1.values.collect{case ch1: QuantifiedFieldChunk if ch1.id == ch.id => ch1}
+
+    val smCache1 = s.smCache.get(resource, relevantChunks.toSeq) match {
+      case Some((fvfDef,_)) =>
+        v.decider.assume(resourceTriggerFactory(fvfDef.sm))
+        s.smCache
+      case _ =>
+        val (fvf, fvfValueDef, _) =
+          quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, formalQVars, resource, None, v)
+        v.decider.assume(fvfValueDef)
+        v.decider.assume(resourceTriggerFactory(fvf))
+        val smDef = SnapshotMapDefinition(resource, fvf, fvfValueDef, Seq())
+        val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
+        if (Verifier.config.disableValueMapCaching()) s.smCache
+        else s.smCache + ((resource, relevantChunks.toSeq) -> (smDef, totalPermissions))
+    }
+
+    val smDef = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
+    val s1 = s.copy(h = h1,
+                    conservedPcs = conservedPcs,
+                    functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef),
+                    smCache = smCache1)
+    Q(s1, v)
+  }
+
   def consumeSingleLocation(s: State,
                             h: Heap,
                             codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
@@ -837,7 +887,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                        : (ConsumptionResult, State, Seq[QuantifiedBasicChunk]) = {
 
     val requiredId = resource match {
-      case l: Location => BasicChunkIdentifier(l.name)
+      case l: ast.Location => BasicChunkIdentifier(l.name)
       case wand: ast.MagicWand => MagicWandIdentifier(wand, Verifier.program)
       case _ => sys.error(s"Expected location to be quantifiable but found $resource.")
     }
@@ -1010,7 +1060,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   }
 
   def freshPermMap(s: State,
-                   resource: Resource,
+                   resource: ast.Resource,
                    appliedArgs: Seq[Term],
                    v: Verifier): Term = {
 
