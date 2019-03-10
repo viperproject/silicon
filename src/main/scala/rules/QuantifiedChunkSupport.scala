@@ -501,7 +501,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val pm = freshPermMap(s, resource, Seq(), v)
 
     val permSummary = genericPermLookup(resource, pm, codomainQVars, v)
-    val p = v.decider.fresh(sorts.Perm)
     val valueDefinitions = Forall(codomainQVars, permSummary === BigPermSum(relevantChunks map (_.perm), Predef.identity), Trigger(permSummary))
 
     val trig = s.smCache.get(resource, relevantChunks) match {
@@ -666,7 +665,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     }
 
     val codomainVars = rec match {
-      case f: ast.Field => Seq(`?r`)
+      case _: ast.Field => Seq(`?r`)
       case p: ast.Predicate => s.predicateFormalVarMap(p)
       case w: ast.MagicWand =>
         val bodyVars = w.subexpressionsToEvaluate(Verifier.program)
@@ -1213,13 +1212,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         isGlobal = true,
         v.axiomRewriter)
 
-    new InverseFunctions(
-          condition,
-          invertibles,
-          additionalInvArgs.toVector,
-          axInvOfFct,
-          axFctOfInv,
-          qvars.zip(inverseFunctions)(collection.breakOut))
+    InverseFunctions(
+      condition,
+      invertibles,
+      additionalInvArgs.toVector,
+      axInvOfFct,
+      axFctOfInv,
+      qvars.zip(inverseFunctions)(collection.breakOut))
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])
