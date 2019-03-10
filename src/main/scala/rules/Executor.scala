@@ -316,7 +316,7 @@ object executor extends ExecutionRules with Immutable {
             val description = s"consume ${ass.pos}: $ass"
             chunkSupporter.consume(s2, s2.h, id, Seq(tRcvr), FullPerm(), ve, v2, description)((s3, h3, _, v3) => {
               val tSnap = ssaifyRhs(tRhs, field.name, field.typ, v3)
-              val newChunk = BasicChunk(FieldID(), id, Seq(tRcvr), tSnap, FullPerm())
+              val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm())
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) =>
                 Q(s4.copy(h = h4), v4))
             })
@@ -336,7 +336,7 @@ object executor extends ExecutionRules with Immutable {
             v.decider.assume(smValueDef)
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm)
           } else {
-            BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
+            BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
           }
         })
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)

@@ -263,7 +263,7 @@ object producer extends ProductionRules with Immutable {
               val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
               quantifiedChunkSupporter.produceSingleLocation(s2, field, Seq(`?r`), Seq(tRcvr), snap, gain, trigger, v2)(Q)
             } else {
-              val ch = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(tRcvr), snap, gain)
+              val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, gain)
               chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
                 Q(s1.copy(h = h1), v1))
             }}))
@@ -283,7 +283,7 @@ object producer extends ProductionRules with Immutable {
                 s2, predicate, formalArgs, tArgs, snap, gain, trigger, v2)(Q)
             } else {
               val snap1 = snap.convert(sorts.Snap)
-              val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
+              val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
               chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) => {
                 if (Verifier.config.enablePredicateTriggersOnInhale() && s1.functionRecorder == NoopFunctionRecorder) {
                   v1.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs))

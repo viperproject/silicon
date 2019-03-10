@@ -26,16 +26,16 @@ case class BasicChunk(resourceID: BaseID,
 
   require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
   resourceID match {
-    case FieldID() => require(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
-    case PredicateID() => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
+    case FieldID => require(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
+    case PredicateID => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
   }
 
   override def withPerm(newPerm: Term) = BasicChunk(resourceID, id, args, snap, newPerm)
   override def withSnap(newSnap: Term) = BasicChunk(resourceID, id, args, newSnap, perm)
 
   override lazy val toString = resourceID match {
-    case FieldID() => s"${args.head}.$id -> $snap # $perm"
-    case PredicateID() => s"$id($snap; ${args.mkString(",")}) # $perm"
+    case FieldID => s"${args.head}.$id -> $snap # $perm"
+    case PredicateID => s"$id($snap; ${args.mkString(",")}) # $perm"
   }
 }
 
@@ -65,7 +65,7 @@ case class QuantifiedFieldChunk(id: BasicChunkIdentifier,
          s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
   require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
-  override val resourceID = FieldID()
+  override val resourceID = FieldID
   override val quantifiedVars = Seq(`?r`)
 
   override def snapshotMap: Term = fvf
@@ -98,7 +98,7 @@ case class QuantifiedPredicateChunk(id: BasicChunkIdentifier,
   require(psf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction], s"Quantified predicate chunk values must be of sort PredicateSnapFunction ($psf), but found ${psf.sort}")
   require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
-  override val resourceID = PredicateID()
+  override val resourceID = PredicateID
 
   override def snapshotMap: Term = psf
   override def singletonArguments: Option[Seq[Term]] = singletonArgs
@@ -124,7 +124,7 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
   require(wsf.sort == terms.sorts.PredicateSnapFunction(sorts.Snap), s"Quantified magic wand chunk values must be of sort MagicWandSnapFunction ($wsf), but found ${wsf.sort}")
   require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
-  override val resourceID = MagicWandID()
+  override val resourceID = MagicWandID
 
   override def snapshotMap: Term = wsf
   override def singletonArguments: Option[Seq[Term]] = singletonArgs
@@ -163,7 +163,7 @@ case class MagicWandChunk(id: MagicWandIdentifier,
 
   require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
-  override val resourceID = MagicWandID()
+  override val resourceID = MagicWandID
 
   override def withPerm(newPerm: Term) = MagicWandChunk(id, bindings, args, snap, newPerm)
   override def withSnap(newSnap: Term) = MagicWandChunk(id, bindings, args, MagicWandSnapshot(newSnap), perm)
