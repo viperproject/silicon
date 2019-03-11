@@ -7,7 +7,7 @@
 package viper.silicon.state.terms
 
 import scala.reflect.ClassTag
-import viper.silver.ast.utility.Visitor
+import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk}
@@ -232,37 +232,39 @@ sealed trait Term extends Node {
 
   def convert(to: Sort): Term = SortWrapper(this, to)
 
-  lazy val subterms = state.utils.subterms(this)
+  lazy val subterms: Seq[Term] = state.utils.subterms(this)
 
-  /** @see [[Visitor.visit()]] */
-  def visit(f: PartialFunction[Term, Any]) =
-    Visitor.visit(this, state.utils.subterms)(f)
+  /** @see [[ast.utility.Visitor.visit()]] */
+  def visit(f: PartialFunction[Term, Any]): Unit =
+    ast.utility.Visitor.visit(this, state.utils.subterms)(f)
 
-  /** @see [[Visitor.visitOpt()]] */
-  def visitOpt(f: Term => Boolean) =
-    Visitor.visitOpt(this, state.utils.subterms)(f)
+  /** @see [[ast.utility.Visitor.visitOpt()]] */
+  def visitOpt(f: Term => Boolean): Unit =
+    ast.utility.Visitor.visitOpt(this, state.utils.subterms)(f)
 
-  /** @see [[Visitor.reduceTree()]] */
-  def reduceTree[R](f: (Term, Seq[R]) => R) = Visitor.reduceTree(this, state.utils.subterms)(f)
+  /** @see [[ast.utility.Visitor.reduceTree()]] */
+  def reduceTree[R](f: (Term, Seq[R]) => R): R =
+    ast.utility.Visitor.reduceTree(this, state.utils.subterms)(f)
 
-  /** @see [[Visitor.existsDefined()]] */
+  /** @see [[ast.utility.Visitor.existsDefined()]] */
   def existsDefined(f: PartialFunction[Term, Any]): Boolean =
-    Visitor.existsDefined(this, state.utils.subterms)(f)
+    ast.utility.Visitor.existsDefined(this, state.utils.subterms)(f)
 
-  /** @see [[Visitor.hasSubnode()]] */
-  def hasSubterm(subterm: Term): Boolean = Visitor.hasSubnode(this, subterm, state.utils.subterms)
+  /** @see [[ast.utility.Visitor.hasSubnode()]] */
+  def hasSubterm(subterm: Term): Boolean =
+    ast.utility.Visitor.hasSubnode(this, subterm, state.utils.subterms)
 
-  /** @see [[Visitor.deepCollect()]] */
+  /** @see [[ast.utility.Visitor.deepCollect()]] */
   def deepCollect[R](f: PartialFunction[Term, R]) : Seq[R] =
-    Visitor.deepCollect(Seq(this), state.utils.subterms)(f)
+    ast.utility.Visitor.deepCollect(Seq(this), state.utils.subterms)(f)
 
-  /** @see [[Visitor.shallowCollect()]] */
+  /** @see [[ast.utility.Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[Term, R]): Seq[R] =
-    Visitor.shallowCollect(Seq(this), state.utils.subterms)(f)
+    ast.utility.Visitor.shallowCollect(Seq(this), state.utils.subterms)(f)
 
-  /** @see [[Visitor.find()]] */
+  /** @see [[ast.utility.Visitor.find()]] */
   def find[R](f: PartialFunction[Term, R]): Option[R] =
-    Visitor.find(this, state.utils.subterms)(f)
+    ast.utility.Visitor.find(this, state.utils.subterms)(f)
 
   /** @see [[state.utils.transform()]] */
   def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
@@ -293,7 +295,7 @@ sealed trait Term extends Node {
 
   def contains(t: Term): Boolean = this.existsDefined{case `t` =>}
 
-  lazy val freeVariables =
+  lazy val freeVariables: InsertionOrderedSet[Var] =
     this.reduceTree((t: Term, freeVarsChildren: Seq[Set[Var]]) => {
       val freeVars: InsertionOrderedSet[Var] = InsertionOrderedSet(freeVarsChildren.flatten)
 
