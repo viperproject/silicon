@@ -10,7 +10,8 @@ import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.{Map, Stack, state, toMap}
-import viper.silicon.state.{Identifier, MagicWandChunk}
+import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier}
+import viper.silicon.verifier.Verifier
 
 sealed trait Node {
   override def toString: String
@@ -1729,6 +1730,78 @@ case class PredicateTrigger(predname: String, psf: Term, args: Seq[Term]) extend
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
 
   val sort = sorts.Bool
+}
+
+object ResourceTriggerFunction {
+  def apply(resource: ast.Resource, sm: Term, args: Seq[Term]): Term = {
+    resource match {
+      case f: ast.Field =>
+        assert(args.size == 1)
+        apply(f, sm, args.head)
+      case p: ast.Predicate => apply(p, sm, args)
+      case w: ast.MagicWand => apply(w, sm, args)
+    }
+  }
+
+  def apply(field: ast.Field, sm: Term, rcvr: Term): FieldTrigger =
+    FieldTrigger(field.name, sm, rcvr)
+
+  def apply(predicate: ast.Predicate, sm: Term, args: Seq[Term]): PredicateTrigger =
+    PredicateTrigger(predicate.name, sm, args)
+
+  def apply(wand: ast.MagicWand, sm: Term, args: Seq[Term]): PredicateTrigger = {
+    val wandId = MagicWandIdentifier(wand, Verifier.program).toString
+
+    PredicateTrigger(wandId, sm, args)
+  }
+}
+
+object ResourceLookup {
+  def apply(resource: ast.Resource, sm: Term, args: Seq[Term]): Term = {
+    resource match {
+      case f: ast.Field =>
+        assert(args.size == 1)
+        apply(f, sm, args.head)
+      case p: ast.Predicate => apply(p, sm, args)
+      case w: ast.MagicWand => apply(w, sm, args)
+    }
+  }
+
+  def apply(field: ast.Field, sm: Term, rcvr: Term): Lookup =
+    Lookup(field.name, sm, rcvr)
+
+  def apply(predicate: ast.Predicate, sm: Term, args: Seq[Term]): PredicateLookup =
+    PredicateLookup(predicate.name, sm, args)
+
+  def apply(wand: ast.MagicWand, sm: Term, args: Seq[Term]): PredicateLookup = {
+    val wandId = MagicWandIdentifier(wand, Verifier.program).toString
+
+    PredicateLookup(wandId, sm, args)
+  }
+}
+
+object ResourcePermissionLookup {
+  def apply(resource: ast.Resource, sm: Term, args: Seq[Term]): Term = {
+    resource match {
+      case f: ast.Field =>
+        assert(args.size == 1)
+        apply(f, sm, args.head)
+      case p: ast.Predicate => apply(p, sm, args)
+      case w: ast.MagicWand => apply(w, sm, args)
+    }
+  }
+
+  def apply(field: ast.Field, sm: Term, rcvr: Term): PermLookup =
+    PermLookup(field.name, sm, rcvr)
+
+  def apply(predicate: ast.Predicate, sm: Term, args: Seq[Term]): PredicatePermLookup =
+    PredicatePermLookup(predicate.name, sm, args)
+
+  def apply(wand: ast.MagicWand, sm: Term, args: Seq[Term]): PredicatePermLookup = {
+    val wandId = MagicWandIdentifier(wand, Verifier.program).toString
+
+    PredicatePermLookup(wandId, sm, args)
+  }
 }
 
 /* TODO: remove
