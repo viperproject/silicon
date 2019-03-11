@@ -22,7 +22,6 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
 }
 
 object stateConsolidator extends StateConsolidationRules with Immutable {
-  
   def consolidate(s: State, v: Verifier): State = {
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)
@@ -56,9 +55,6 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
         v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
       }
 
-      /* TODO: It seems that the delayedProperties are independent of the current heaps, so why
-       *       are they assumed upon every state consolidation?
-       */
       Resources.resourceDescriptions foreach { case (id, desc) =>
         v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
       }
