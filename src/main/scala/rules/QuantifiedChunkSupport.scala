@@ -483,6 +483,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     (pm, Seq(valueDefinitions, valueDefs2))
   }
 
+  /* Snapshots */
+
   /** @inheritdoc */
   def singletonSnapshotMap(s: State,
                            resource: ast.Resource,
@@ -498,11 +500,34 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     (sm, smValueDef)
   }
 
+  def summarisingSnapshotMap(s: State,
+                             resource: ast.Resource,
+                             formalQVars: Seq[Var],
+                             relevantChunks: Seq[QuantifiedBasicChunk],
+                             v: Verifier)
+                            : (SnapshotMapDefinition, SmCache) = {
+
+    s.smCache.get(resource, relevantChunks) match {
+      case Some((smDef, _)) =>
+        (smDef, s.smCache)
+      case _ =>
+        val (sm, valueDefs, optDomainDefinition) = /* TODO: What about optDomainDefinition? */
+          quantifiedChunkSupporter.summarise(s, relevantChunks, formalQVars, resource, None, v)
+        val smDef = SnapshotMapDefinition(resource, sm, valueDefs, Seq()) /* TODO: Use optDomainDefinition as last argument? */
+        val totalPermissions = BigPermSum(relevantChunks.map(_.perm))
+        v.decider.assume(valueDefs)
+        if (Verifier.config.disableValueMapCaching())
+          (smDef, s.smCache)
+        else
+          (smDef, s.smCache + ((resource, relevantChunks) -> (smDef, totalPermissions)))
+    }
+  }
+
   /* Manipulating quantified chunks */
 
   def produce(s: State,
               forall: ast.Forall,
-              rec: ast.Resource,
+              resource: ast.Resource,
               qvars: Seq[Var],
               formalQVars: Seq[Var],
               qid: String,
@@ -523,7 +548,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       quantifiedChunkSupporter.createQuantifiedChunk(
         qvars                = qvars,
         condition            = tCond,
-        resource             = rec,
+        resource             = resource,
         arguments            = tArgs,
         permissions          = gain,
         codomainQVars        = formalQVars,
@@ -539,12 +564,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
           val trig = tTriggers map (t => Trigger(t.p map {
             case ft: FieldTrigger =>
-              if (ft.field == rec.asInstanceOf[ast.Field].name) FieldTrigger(ft.field, tSnap, ft.at)
+              if (ft.field == resource.asInstanceOf[ast.Field].name) FieldTrigger(ft.field, tSnap, ft.at)
               else ft
-            case pt: PredicateTrigger => rec match {
-              case p: ast.Predicate => if (pt.predname == p.name) PredicateTrigger(pt.predname, tSnap, pt.args) else pt
-              case wand: ast.MagicWand => if (pt.predname == MagicWandIdentifier(wand, Verifier.program).toString) PredicateTrigger(pt.predname, tSnap, pt.args) else pt
-            }
+            case pt: PredicateTrigger =>
+              resource match {
+                case p: ast.Predicate =>
+                  if (pt.predname == p.name) PredicateTrigger(pt.predname, tSnap, pt.args)
+                  else pt
+                case wand: ast.MagicWand =>
+                  if (pt.predname == MagicWandIdentifier(wand, Verifier.program).toString)
+                    PredicateTrigger(pt.predname, tSnap, pt.args)
+                  else pt
+              }
             case t2 => t2
           }))
 
@@ -583,9 +614,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
       else s.conservedPcs
 
-    val resource = Resources.resourceDescriptions(ch.resourceID)
+    val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
     val interpreter = new QuantifiedPropertyInterpreter(v)
-    resource.instanceProperties.foreach { property =>
+    resourceDescription.instanceProperties.foreach (property => {
       v.decider.prover.comment(property.description)
       v.decider.assume(interpreter.buildPathConditionForChunk(
         chunk = ch,
@@ -597,37 +628,30 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         triggers = effectiveTriggers,
         qidPrefix = qid)
       )
-    }
+    })
 
-    val codomainVars = rec match {
-      case _: ast.Field => Seq(`?r`)
-      case p: ast.Predicate => s.predicateFormalVarMap(p)
-      case w: ast.MagicWand =>
-        val bodyVars = w.subexpressionsToEvaluate(Verifier.program)
-        bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-    }
-    val relevantChunks = s.h.values.collect {case ch1: QuantifiedBasicChunk if ch1.id == ch.id => ch1}.toSeq :+ ch
-    val (sm, smCache1) = s.smCache.get(rec, relevantChunks) match {
-      case Some((smDef, _)) =>
-        (smDef.sm, s.smCache)
-      case _ =>
-        val (sm, smValueDef, _) = summarise(s, relevantChunks, codomainVars, rec, None, v)
-        v.decider.assume(smValueDef)
-        val smDef = SnapshotMapDefinition(rec, sm, smValueDef, Seq())
-        val totalPermissions = BigPermSum(relevantChunks map (_.perm))
-        if (Verifier.config.disableValueMapCaching()) (sm, s.smCache)
-        else (sm, s.smCache + ((rec, relevantChunks) -> (smDef, totalPermissions)))
-    }
-
-    val trigger = ResourceTriggerFunction(rec, sm, codomainVars)
+    val codomainVars =
+      resource match {
+        case _: ast.Field => Seq(`?r`)
+        case p: ast.Predicate => s.predicateFormalVarMap(p)
+        case w: ast.MagicWand =>
+          val bodyVars = w.subexpressionsToEvaluate(Verifier.program)
+          bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+      }
+    val h1 = s.h + ch
+    val (relevantChunks, _) =
+      quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, ch.id)
+    val (smDef1, smCache1) =
+      quantifiedChunkSupporter.summarisingSnapshotMap(s, resource, codomainVars, relevantChunks, v)
+    val trigger = ResourceTriggerFunction(resource, smDef1.sm, codomainVars)
     val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
     val condOfInv = tCond.replace(qvarsToInv)
     v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars)))) //effectiveTriggers map (t => Trigger(t.p map (_.replace(qvarsToInv))))))
-
-    val s1 = s.copy(h = s.h + ch,
-      functionRecorder = s.functionRecorder.recordFieldInv(inv),
-      conservedPcs = conservedPcs,
-      smCache = smCache1)
+    val s1 =
+      s.copy(h = h1,
+             functionRecorder = s.functionRecorder.recordFieldInv(inv),
+             conservedPcs = conservedPcs,
+             smCache = smCache1)
     Q(s1, v)
   }
 
@@ -657,27 +681,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties)
     v.decider.assume(pcs)
 
-    val relevantChunks = h1.values.collect{case ch1: QuantifiedFieldChunk if ch1.id == ch.id => ch1}
+    val (relevantChunks, _) =
+      quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h1, ch.id )
+    val (smDef1, smCache1) =
+      quantifiedChunkSupporter.summarisingSnapshotMap(s, resource, formalQVars, relevantChunks, v)
+    v.decider.assume(resourceTriggerFactory(smDef1.sm))
 
-    val smCache1 = s.smCache.get(resource, relevantChunks.toSeq) match {
-      case Some((fvfDef,_)) =>
-        v.decider.assume(resourceTriggerFactory(fvfDef.sm))
-        s.smCache
-      case _ =>
-        val (fvf, fvfValueDef, _) =
-          quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, formalQVars, resource, None, v)
-        v.decider.assume(fvfValueDef)
-        v.decider.assume(resourceTriggerFactory(fvf))
-        val smDef = SnapshotMapDefinition(resource, fvf, fvfValueDef, Seq())
-        val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm))
-        if (Verifier.config.disableValueMapCaching()) s.smCache
-        else s.smCache + ((resource, relevantChunks.toSeq) -> (smDef, totalPermissions))
-    }
-
-    val smDef = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
+    val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
     val s1 = s.copy(h = h1,
                     conservedPcs = conservedPcs,
-                    functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef),
+                    functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef2),
                     smCache = smCache1)
     Q(s1, v)
   }

@@ -303,27 +303,21 @@ object producer extends ProductionRules with Immutable {
           val conservedPcs =
             if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
             else s1.conservedPcs
-          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
-
-          val relevantChunks = (s.h + ch).values.collect{case ch1: QuantifiedMagicWandChunk if ch1.id == ch.id => ch1}
-
-          val smCache1 = s.smCache.get(wand, relevantChunks.toSeq) match {
-            case Some((fvfDef,_)) =>
-              v.decider.assume(PredicateTrigger(ch.id.toString, fvfDef.sm, args))
-              s.smCache
-            case _ =>
-              val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, formalVars, wand, None, v)
-              v.decider.assume(fvfValueDef)
-              v.decider.assume(PredicateTrigger(ch.id.toString, fvf, args))
-              val smDef = SnapshotMapDefinition(wand, fvf, fvfValueDef, Seq())
-              val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
-              if (Verifier.config.disableValueMapCaching()) s.smCache
-              else s.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
-          }
-
+          val ch =
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+          val h2 = s1.h + ch
+          val (relevantChunks, _) =
+            quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h2, ch.id)
+          val (smDef1, smCache1) =
+            quantifiedChunkSupporter.summarisingSnapshotMap(s1, wand, formalVars, relevantChunks, v1)
+          v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args))
           val smDef = SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq())
-          val s2 = s1.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache1)
-        Q(s2.copy(h = s2.h + ch, conservedPcs = conservedPcs), v)})
+          val s2 =
+            s1.copy(h = h2,
+                    functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef),
+                    smCache = smCache1,
+                    conservedPcs = conservedPcs)
+          Q(s2, v1)})
 
       case wand: ast.MagicWand =>
         val snap = sf(sorts.Snap, v)

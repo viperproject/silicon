@@ -18,7 +18,7 @@ import viper.silicon.interfaces._
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.{BigPermSum, IsNonNegative}
+import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
@@ -165,7 +165,7 @@ object executor extends ExecutionRules with Immutable {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (fatalResult: FatalResult, _) => fatalResult
-                    case (intermediateResult, (s1, pcs, ff1)) =>
+                    case (intermediateResult, (s1, pcs, ff1)) => /* [BRANCH-PARALLELISATION] ff1 */
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
                       intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
   //                    v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
@@ -270,20 +270,9 @@ object executor extends ExecutionRules with Immutable {
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            val smCache1 = s2.smCache.get(field, relevantChunks) match {
-              case Some((fvfDef: SnapshotMapDefinition, totalPermissions)) =>
-                v2.decider.assume(FieldTrigger(field.name, fvfDef.sm, tRcvr))
-                s2.smCache
-              case _ =>
-                val (fvf, fvfValueDefs, None) =
-                  quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), field, None, v1)
-                v2.decider.assume(fvfValueDefs)
-                v2.decider.assume(FieldTrigger(field.name, fvf, tRcvr))
-                val smDef = SnapshotMapDefinition(field, fvf, fvfValueDefs, Seq())
-                val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
-                if (Verifier.config.disableValueMapCaching()) s2.smCache
-                else s2.smCache + ((field, relevantChunks) -> (smDef, totalPermissions))
-            }
+            val (smDef1, smCache1) =
+              quantifiedChunkSupporter.summarisingSnapshotMap(s2, field, Seq(`?r`), relevantChunks, v1)
+            v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
             val result = quantifiedChunkSupporter.removePermissions(
               s2.copy(smCache = smCache1),
               relevantChunks,
@@ -463,21 +452,15 @@ object executor extends ExecutionRules with Immutable {
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
 
             val smCache1 = if (s2.qpPredicates.contains(predicate)) {
-              val relevantChunks = s2.h.values.collect { case ch: QuantifiedPredicateChunk if ch.id.name == predicateName => ch }
-              s2.smCache.get(predicate, relevantChunks.toSeq) match {
-                case Some((psfDef, _)) =>
-                  v2.decider.assume(PredicateTrigger(predicateName, psfDef.sm, tArgs))
-                  s2.smCache
-                case _ =>
-                  val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s2.predicateFormalVarMap(predicate), predicate, None, v2)
-                  v2.decider.assume(summary._2)
-                  v2.decider.assume(PredicateTrigger(predicateName, summary._1, tArgs))
-                  val smDef = SnapshotMapDefinition(predicate, summary._1, summary._2, Seq())
-                  val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
-                  if (Verifier.config.disableValueMapCaching()) s2.smCache
-                  else s2.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
-              }
-            } else s2.smCache
+              val (relevantChunks, _) =
+                quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s2.h, BasicChunkIdentifier(predicateName))
+              val (smDef1, smCache1) =
+                quantifiedChunkSupporter.summarisingSnapshotMap(s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
+              v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
+              smCache1
+            } else {
+              s2.smCache
+            }
 
             v2.decider.assert(IsNonNegative(tPerm)){
               case true =>
@@ -494,46 +477,40 @@ object executor extends ExecutionRules with Immutable {
 
             val hOps = s1.reserveHeaps.head + chWand
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
-            val s2 = if (s.exhaleExt)
-              s1.copy(h = Heap(),
-                  exhaleExt = true,
-                  /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
-                   * by the packageWand method. hUsed is normally used during transferring
-                   * consume to store permissions that have already been consumed. The
-                   * permissions on this heap should be discarded after a statement finishes
-                   * execution. hUsed should therefore be empty unless the package statement
-                   * was triggered by heuristics during a consume operation.
-                   */
-                  reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
-            else
-              /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
-              s1.copy(h = hOps,
-                      exhaleExt = false,
-                      reserveHeaps = Nil)
+            val s2 =
+              if (s.exhaleExt) {
+                s1.copy(h = Heap(),
+                        exhaleExt = true,
+                        /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
+                         * by the packageWand method. hUsed is normally used during transferring
+                         * consume to store permissions that have already been consumed. The
+                         * permissions on this heap should be discarded after a statement finishes
+                         * execution. hUsed should therefore be empty unless the package statement
+                         * was triggered by heuristics during a consume operation.
+                         */
+                        reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
+              } else {
+                /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
+                s1.copy(h = hOps,
+                        exhaleExt = false,
+                        reserveHeaps = Nil)
+              }
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 
-            val smCache1 = chWand match {
+            val smCache3 = chWand match {
               case ch: QuantifiedMagicWandChunk =>
-                val relevantChunks = s2.h.values.collect {case ch1: QuantifiedMagicWandChunk if ch1.id == ch.id => ch1}
-                s2.smCache.get(wand, relevantChunks.toSeq) match {
-                  case Some((psfDef, _)) =>
-                    v1.decider.assume(PredicateTrigger(ch.id.toString, psfDef.sm, ch.singletonArgs.get))
-                    s2.smCache
-                  case _ =>
-                    val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
-                    val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-                    val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, formalVars, wand, None, v1)
-                    v1.decider.assume(summary._2)
-                    v1.decider.assume(PredicateTrigger(ch.id.toString, summary._1, ch.singletonArgs.get))
-                    val smDef = SnapshotMapDefinition(wand, summary._1, summary._2, Seq())
-                    val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
-                    if (Verifier.config.disableValueMapCaching()) s2.smCache
-                    else s2.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
-                }
+                val (relevantChunks, _) =
+                  quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
+                val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+                val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
+                val (smDef, smCache) =
+                  quantifiedChunkSupporter.summarisingSnapshotMap(s2, wand, formalVars, relevantChunks, v1)
+                v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get))
+                smCache
               case _ => s2.smCache
             }
 
-            continuation(s2.copy(smCache = smCache1), v1)
+            continuation(s2.copy(smCache = smCache3), v1)
           })
 
       case apply @ ast.Apply(e) =>
