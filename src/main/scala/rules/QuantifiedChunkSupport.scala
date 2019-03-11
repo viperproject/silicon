@@ -459,7 +459,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val valueDefinitions =
       Forall(
         codomainQVars,
-        permSummary === BigPermSum(relevantChunks map (_.perm), Predef.identity),
+        permSummary === BigPermSum(relevantChunks map (_.perm)),
         Trigger(permSummary))
 
     val trig = s.smCache.get(resource, relevantChunks) match {
@@ -614,7 +614,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         val (sm, smValueDef, _) = summarise(s, relevantChunks, codomainVars, rec, None, v)
         v.decider.assume(smValueDef)
         val smDef = SnapshotMapDefinition(rec, sm, smValueDef, Seq())
-        val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
+        val totalPermissions = BigPermSum(relevantChunks map (_.perm))
         if (Verifier.config.disableValueMapCaching()) (sm, s.smCache)
         else (sm, s.smCache + ((rec, relevantChunks) -> (smDef, totalPermissions)))
     }
@@ -669,7 +669,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         v.decider.assume(fvfValueDef)
         v.decider.assume(resourceTriggerFactory(fvf))
         val smDef = SnapshotMapDefinition(resource, fvf, fvfValueDef, Seq())
-        val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
+        val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm))
         if (Verifier.config.disableValueMapCaching()) s.smCache
         else s.smCache + ((resource, relevantChunks.toSeq) -> (smDef, totalPermissions))
     }
@@ -792,7 +792,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           v.decider.prover.comment("Definitional axioms for singleton-SM's value")
           v.decider.assume(smValueDefs.map(_.body.replace(codomainQVars, arguments)))
           val smDef = SnapshotMapDefinition(resource, sm, smValueDefs, optSmDomainDef.toSeq)
-          val totalPermissions = BigPermSum(relevantChunks map (_.perm), Predef.identity)
+          val totalPermissions = BigPermSum(relevantChunks map (_.perm))
           val smCache2 = if (Verifier.config.disableValueMapCaching()) s1.smCache
             else s1.smCache + ((resource, relevantChunks) -> (smDef, totalPermissions))
           val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache2)
