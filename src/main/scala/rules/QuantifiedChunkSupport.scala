@@ -626,18 +626,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         vars = effectiveTriggersQVars,
         triggers = effectiveTriggers)))
 
-//    optTrigger match {
-//      case None =>
-//        /* No explicit triggers provided */
-//        v.decider.assume(
-//          auxNonGlobals.map(_.copy(
-//            vars = effectiveTriggersQVars,
-//            triggers = effectiveTriggers)))
-//      case Some(x) =>
-//        /* Explicit triggers were provided. */
-//        v.decider.assume(auxNonGlobals)
-//    }
-
     val ax = inverseFunctions.axiomInversesOfInvertibles
     val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
 
