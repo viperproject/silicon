@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silicon.supporters.functions
 
@@ -31,6 +31,8 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def recordArp(arp: Var, constraint: Term): FunctionRecorder
   def recordFreshSnapshot(snap: Function): FunctionRecorder
   def recordPathSymbol(symbol: Function): FunctionRecorder
+  def depth: Int
+  def changeDepthBy(delta: Int): FunctionRecorder
 }
 
 case class ActualFunctionRecorder(private val _data: FunctionData,
@@ -40,76 +42,140 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
                                   freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet(),
                                   freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet(),
                                   freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet(),
-                                  freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet())
+                                  freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet(),
+                                  depth: Int = 0)
     extends FunctionRecorder {
+
+  /* Depth is intended to reflect how often a nested function application or unfolding expression
+   * has been entered, where entered means, that a function application's precondition is consumed
+   * or that an unfolded preciate's body is produced (and similar for applying a magic wand).
+   * On depth 0, mappings from heap-dependent expressions to snapshots need to be recorded, but not
+   * on higher levels, since expressions encountered do not (directly) occur in the function for
+   * whose axiomatisation we currently record information.
+   * On depths 0 and 1, newly declared symbols, e.g. summarising snapshot maps, need to be recorded
+   * because both may occur in the snapshots to which heap-dependent expressions are mapped. Symbols
+   * declared on higher depths, however cannot occur in these snapshots, and therefore don't need to
+   * be recorded.
+   *
+   * Consider the following members:
+   *
+   *   function f()
+   *     ...
+   *   { ... unfolding P() in g() ... }
+   *
+   *   function g()
+   *     ...
+   *     requires ... unfolding Q() in h() ...
+   *
+   *   predicate P()
+   *   { ... unfolding Q() in h() ... }
+   *
+   * When recording data for axiomatising f(), the production of P's body happens on depth 1, as
+   * does the consumption of g's precondition, whereas the same happens for Q and g on depth 2.
+   * A snapshot introduced by P/g may occur in any snapshot to which heap-dependent expressions
+   * from f's body (or contract) are mapped.
+   * However, any snapshot introduced by Q/h cannot occur in a snapshot that is used to axiomatise
+   * f: for h, that is because these function applications are not part of f; for Q, that is because
+   * snapshots introduced by unfolding Q can only occur in heap-dependent expressions from the
+   * unfolding's in-clause, which, as argued before, are not part of f.
+   */
 
   val data = Some(_data)
 
-  def locToSnap: Map[ast.LocationAccess, Term] = {
-    locToSnaps.map { case (loc, guardsToSnap) =>
+  private def exprToSnap[E <: ast.Exp]
+                        (recordings: Map[E, InsertionOrderedSet[(Stack[Term], Term)]])
+                        : Map[E, Term] = {
+
+    recordings.map { case (expr, guardsToSnap) =>
       /* We (arbitrarily) make the snap of the head pair (guards -> snap) of
-       * guardsToSnap the inner-most else-clause, i.e., we drop the guards.
+       * guardsToSnap the inner-most else-clause, i.e. we drop the guards.
        */
       val conditionalSnap =
         guardsToSnap.tail.foldLeft(guardsToSnap.head._2) { case (tailSnap, (guards, snap)) =>
           Ite(And(guards.toSet), snap, tailSnap)
         }
 
-      loc -> conditionalSnap
+      expr -> conditionalSnap
     }
   }
 
-  def fappToSnap: Map[ast.FuncApp, Term] = {
-    fappToSnaps.map { case (fapp, guardsToSnap) =>
-      /* We (arbitrarily) make the snap of the head pair (guards -> snap) of
-       * guardsToSnap the inner-most else-clause, i.e., we drop the guards.
-       */
-      val conditionalSnap =
-        guardsToSnap.tail.foldLeft(guardsToSnap.head._2) { case (tailSnap, (guards, snap)) =>
-          Ite(And(guards.toSet), snap, tailSnap)
-        }
+  def locToSnap: Map[ast.LocationAccess, Term] = exprToSnap(locToSnaps)
+  def fappToSnap: Map[ast.FuncApp, Term] = exprToSnap(fappToSnaps)
 
-      fapp -> conditionalSnap
+  private def recordExpressionSnapshot[E <: ast.Exp]
+                                      (loc: E,
+                                       guards: Stack[Term],
+                                       snap: Term,
+                                       recordings: Map[E, InsertionOrderedSet[(Stack[Term], Term)]])
+                                      : Option[Map[E, InsertionOrderedSet[(Stack[Term], Term)]]] = {
+
+    if (depth == 0) {
+      val guardsToSnaps = recordings.getOrElse(loc, InsertionOrderedSet()) + (guards -> snap)
+      Some(recordings + (loc -> guardsToSnaps))
+    } else {
+      None
     }
   }
 
-  def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term) = {
-    val guardsToSnaps = locToSnaps.getOrElse(loc, InsertionOrderedSet()) + (guards -> snap)
-    copy(locToSnaps = locToSnaps + (loc -> guardsToSnaps))
+  def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term)
+                    : ActualFunctionRecorder = {
+
+    recordExpressionSnapshot(loc, guards, snap, locToSnaps)
+      .fold(this)(updatedLocToSnaps => copy(locToSnaps = updatedLocToSnaps))
   }
 
-  def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term) = {
-    val guardsToSnaps = fappToSnaps.getOrElse(fapp, InsertionOrderedSet()) + (guards -> snap)
-    copy(fappToSnaps = fappToSnaps + (fapp -> guardsToSnaps))
+  def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term)
+                    : ActualFunctionRecorder = {
+
+    recordExpressionSnapshot(fapp, guards, snap, fappToSnaps)
+      .fold(this)(updatedFAppToSnaps => copy(fappToSnaps = updatedFAppToSnaps))
   }
 
-  def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): FunctionRecorder =
-    copy(freshFvfsAndDomains = freshFvfsAndDomains + fvfDef)
+  def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): ActualFunctionRecorder =
+    if (depth <= 1) copy(freshFvfsAndDomains = freshFvfsAndDomains + fvfDef)
+    else this
 
-  def recordFieldInv(inv: InverseFunctions): FunctionRecorder =
-    copy(freshFieldInvs = freshFieldInvs + inv)
+  def recordFieldInv(inv: InverseFunctions): ActualFunctionRecorder =
+    if (depth <= 1) copy(freshFieldInvs = freshFieldInvs + inv)
+    else this
 
-  def recordArp(arp: Var, constraint: Term) = copy(freshArps = freshArps + ((arp, constraint)))
+  def recordArp(arp: Var, constraint: Term): ActualFunctionRecorder =
+    if (depth <= 1) copy(freshArps = freshArps + ((arp, constraint)))
+    else this
 
-  def recordFreshSnapshot(snap: Function) = copy(freshSnapshots = freshSnapshots + snap)
+  def recordFreshSnapshot(snap: Function): ActualFunctionRecorder =
+    if (depth <= 1) copy(freshSnapshots = freshSnapshots + snap)
+    else this
 
-  def recordPathSymbol(symbol: Function): FunctionRecorder = copy(freshPathSymbols = freshPathSymbols + symbol)
+  def recordPathSymbol(symbol: Function): ActualFunctionRecorder =
+    if (depth <= 1) copy(freshPathSymbols = freshPathSymbols + symbol)
+    else this
 
-  def merge(other: FunctionRecorder): FunctionRecorder = {
+  def changeDepthBy(delta: Int): ActualFunctionRecorder =
+    copy(depth = depth + delta)
+
+  def merge(other: FunctionRecorder): ActualFunctionRecorder = {
+    if (depth > 1) return this
+
     assert(other.getClass == this.getClass)
     assert(other.asInstanceOf[ActualFunctionRecorder]._data eq this._data)
 
-    val lts =
-      other.locToSnaps.foldLeft(locToSnaps){case (accLts, (loc, guardsToSnaps)) =>
-        val guardsToSnaps1 = accLts.getOrElse(loc, InsertionOrderedSet()) ++ guardsToSnaps
-        accLts + (loc -> guardsToSnaps1)
-      }
+    var lts = locToSnaps
+    var fts = fappToSnaps
 
-    val fts =
-      other.fappToSnaps.foldLeft(fappToSnaps){case (accFts, (fapp, guardsToSnaps)) =>
-        val guardsToSnaps1 = accFts.getOrElse(fapp, InsertionOrderedSet()) ++ guardsToSnaps
-        accFts + (fapp -> guardsToSnaps1)
-      }
+    if (depth == 0) {
+      lts =
+        other.locToSnaps.foldLeft(locToSnaps){case (accLts, (loc, guardsToSnaps)) =>
+          val guardsToSnaps1 = accLts.getOrElse(loc, InsertionOrderedSet()) ++ guardsToSnaps
+          accLts + (loc -> guardsToSnaps1)
+        }
+
+      fts =
+        other.fappToSnaps.foldLeft(fappToSnaps){case (accFts, (fapp, guardsToSnaps)) =>
+          val guardsToSnaps1 = accFts.getOrElse(fapp, InsertionOrderedSet()) ++ guardsToSnaps
+          accFts + (fapp -> guardsToSnaps1)
+        }
+    }
 
     val fvfs = freshFvfsAndDomains ++ other.freshFvfsAndDomains
     val fieldInvs = freshFieldInvs ++ other.freshFieldInvs
@@ -126,7 +192,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
          freshPathSymbols = symbols)
   }
 
-  override lazy val toString = {
+  override lazy val toString: String = {
     val ltsStrs = locToSnaps map {case (k, v) => s"$k  |==>  $v"}
     val ftsStrs = fappToSnap map {case (k, v) => s"$k  |==>  $v"}
 
@@ -135,13 +201,14 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
         |    ${ltsStrs.mkString("\n    ")}
         |  fappToSnap:
         |    ${ftsStrs.mkString("\n    ")}
+        |  ...
         |)
      """.stripMargin
   }
 }
 
 case object NoopFunctionRecorder extends FunctionRecorder {
-  val data = None
+  val data: Option[FunctionData] = None
   private[functions] val fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
   val fappToSnap: Map[ast.FuncApp, Term] = Map.empty
   private[functions] val locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
@@ -151,18 +218,20 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   val freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   val freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   val freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
+  val depth = 0
 
-  def merge(other: FunctionRecorder): FunctionRecorder = {
+  def merge(other: FunctionRecorder): NoopFunctionRecorder.type = {
     assert(other == this)
 
     this
   }
 
-  def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term): FunctionRecorder = this
-  def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): FunctionRecorder = this
-  def recordFieldInv(inv: InverseFunctions): FunctionRecorder = this
-  def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder = this
-  def recordArp(arp: Var, constraint: Term): FunctionRecorder = this
-  def recordFreshSnapshot(snap: Function): FunctionRecorder = this
-  def recordPathSymbol(symbol: Function): FunctionRecorder = this
+  def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term): NoopFunctionRecorder.type = this
+  def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): NoopFunctionRecorder.type = this
+  def recordFieldInv(inv: InverseFunctions): NoopFunctionRecorder.type = this
+  def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): NoopFunctionRecorder.type = this
+  def recordArp(arp: Var, constraint: Term): NoopFunctionRecorder.type = this
+  def recordFreshSnapshot(snap: Function): NoopFunctionRecorder.type = this
+  def recordPathSymbol(symbol: Function): NoopFunctionRecorder.type = this
+  def changeDepthBy(delta: Int): NoopFunctionRecorder.type = this
 }

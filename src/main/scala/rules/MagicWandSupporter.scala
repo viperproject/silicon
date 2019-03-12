@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silicon.rules
 
@@ -134,7 +134,17 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                               (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
                               (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
                               : VerificationResult = {
-    val initial = (ConsumptionResult(pLoss, v), s, Stack.empty[Heap], Stack.empty[Option[CH]])
+
+    val initialConsumptionResult = ConsumptionResult(pLoss, v, Verifier.config.checkTimeout())
+      /* TODO: Introduce a dedicated timeout for the permission check performed by ConsumptionResult,
+       *       instead of using checkTimeout. Reason: checkTimeout is intended for checks that are
+       *       optimisations, e.g. detecting if a chunk provided no permissions or if a branch is
+       *       infeasible. The situation is somewhat different here: the check should be time-bounded
+       *       because not all permissions need to come from this stack, but the bound should be
+       *       (significantly) higher to reduce the chances of missing a chunk that can provide
+       *       permissions.
+       */
+    val initial = (initialConsumptionResult, s, Stack.empty[Heap], Stack.empty[Option[CH]])
     val (result, s1, heaps, consumedChunks) =
       hs.foldLeft[(ConsumptionResult, State, Stack[Heap], Stack[Option[CH]])](initial)((partialResult, heap) =>
         partialResult match  {

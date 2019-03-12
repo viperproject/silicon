@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silicon.tests
 
@@ -34,14 +34,12 @@ class MemoryTests extends FlatSpec {
     silver.init(silicon)
     silver.reset(Paths.get("src/test/scala/linkedlist.silver"))
 
-    silver.parse()
-    silver.typecheck()
-    silver.translate()
+    silver.runTo("Translation")
 
     var lb = collection.mutable.ListBuffer[Long]()
 
     for (i <- 0 to 1000) {
-      silicon.verify(silver.translatorResult)
+      silicon.verify(silver.translationResult)
 
       if (i % 10 == 0) {
         rt.gc()

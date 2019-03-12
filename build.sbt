@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 // Import general settings from Silver
 lazy val silver = project in file("silver")
 
@@ -6,7 +12,7 @@ lazy val common = (project in file("common"))
 
 // Silicon specific project settings
 lazy val silicon = (project in file("."))
-    .dependsOn(silver % "compile->compile;test->test") 
+    .dependsOn(silver % "compile->compile;test->test")
     .dependsOn(common)
     .aggregate(common)
     .settings(
@@ -36,7 +42,7 @@ lazy val silicon = (project in file("."))
         // You can inspect the settings in effect using via
         // "show javaOptions" on the Sbt console.
 
-        Test / fork := true,
+        fork := true,
         // Fork Silicon when run and tested. Avoids problems with file
         // handlers on Windows 7 that remain open until Sbt is closed,
         // which makes it very annoying to work on test files.

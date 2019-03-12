@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silicon.rules
 
@@ -592,14 +592,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         case Some(_) =>
           /* Explicit triggers were provided */
 
-          val trig = tTriggers map (t => Trigger(t.p map (t1 => t1 match {
-            case ft: FieldTrigger => if (ft.field == rec.asInstanceOf[ast.Field].name) FieldTrigger(ft.field, tSnap, ft.at) else ft
+          val trig = tTriggers map (t => Trigger(t.p map {
+            case ft: FieldTrigger =>
+              if (ft.field == rec.asInstanceOf[ast.Field].name) FieldTrigger(ft.field, tSnap, ft.at)
+              else ft
             case pt: PredicateTrigger => rec match {
               case p: ast.Predicate => if (pt.predname == p.name) PredicateTrigger(pt.predname, tSnap, pt.args) else pt
               case wand: ast.MagicWand => if (pt.predname == MagicWandIdentifier(wand, Verifier.program).toString) PredicateTrigger(pt.predname, tSnap, pt.args) else pt
             }
             case t2 => t2
-          })))
+          }))
 
           (trig, qvars)
         case None =>
@@ -621,17 +623,22 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     v.decider.prover.comment("Nested auxiliary terms: globals")
     v.decider.assume(auxGlobals)
     v.decider.prover.comment("Nested auxiliary terms: non-globals")
-    optTrigger match {
-      case None =>
-        /* No explicit triggers provided */
-        v.decider.assume(
-          auxNonGlobals.map(_.copy(
-            vars = effectiveTriggersQVars,
-            triggers = effectiveTriggers)))
-      case Some(x) =>
-        /* Explicit triggers were provided. */
-        v.decider.assume(auxNonGlobals)
-    }
+    v.decider.assume(
+      auxNonGlobals.map(_.copy(
+        vars = effectiveTriggersQVars,
+        triggers = effectiveTriggers)))
+
+//    optTrigger match {
+//      case None =>
+//        /* No explicit triggers provided */
+//        v.decider.assume(
+//          auxNonGlobals.map(_.copy(
+//            vars = effectiveTriggersQVars,
+//            triggers = effectiveTriggers)))
+//      case Some(x) =>
+//        /* Explicit triggers were provided. */
+//        v.decider.assume(auxNonGlobals)
+//    }
 
     val ax = inverseFunctions.axiomInversesOfInvertibles
     val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))

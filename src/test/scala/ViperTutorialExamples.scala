@@ -4,12 +4,11 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silicon.interfaces.decider
+package viper.silicon.tests
 
-import viper.silicon.state.terms.{Term, Sort, Decl}
+import org.scalatest.DoNotDiscover
 
-trait TermConverter[T, S, D] {
-  def convert(term: Term): T
-  def convert(sort: Sort): S
-  def convert(decl: Decl): D
+@DoNotDiscover
+class ViperTutorialExamples extends SiliconTests {
+  override val testDirectories = Seq("viper_tutorial_examples")
 }

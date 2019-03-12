@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silicon.rules
 
@@ -278,7 +278,7 @@ object evaluator extends EvaluationRules with Immutable {
         s.oldHeaps.get(lbl) match {
           case None =>
             Failure(pve dueTo LabelledStateNotReached(old))
-          case Some(h) =>
+          case _ =>
             evalInOldState(s, lbl, e0, pve, v)(Q)}
 
       case ast.Let(x, e0, e1) =>
@@ -435,7 +435,7 @@ object evaluator extends EvaluationRules with Immutable {
                 case wand: ast.MagicWand =>
                   val chs = h.values.collect { case ch: QuantifiedMagicWandChunk if ch.id == identifier => ch }
 
-                  val (smCache1, trigger) = s1.smCache.get(wand, chs.toSeq) match {
+                  val (smCache1, _) = s1.smCache.get(wand, chs.toSeq) match {
                     case Some((psfDef, _)) =>
                       val trigger = PredicateTrigger(identifier.toString, psfDef.sm, args)
                       v1.decider.assume(trigger)
@@ -469,7 +469,7 @@ object evaluator extends EvaluationRules with Immutable {
                 case field: ast.Field =>
                   val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.id == identifier => ch}
 
-                  val (smCache1, trigger) = s1.smCache.get(field, chs.toSeq) match {
+                  val (smCache1, _) = s1.smCache.get(field, chs.toSeq) match {
                     case Some((fvfDef, _)) =>
                       val trigger = FieldTrigger(field.name, fvfDef.sm, args.head)
                       v1.decider.assume(trigger)
@@ -729,14 +729,40 @@ object evaluator extends EvaluationRules with Immutable {
                 reasonOffendingNode.replace(formalsToActuals))
             val s3 = s2.copy(g = Store(fargs.zip(tArgs)),
                              recordVisited = true,
+                             functionRecorder = s2.functionRecorder.changeDepthBy(+1),
+                                /* Temporarily disable the recorder: when recording (to later on
+                                 * translate a particular function fun) and a function application
+                                 * fapp is hit, then there is no need to record any information
+                                 * about assertions from fapp's precondition since the latter is not
+                                 * translated as part of the translation of fun.
+                                 * Recording such information is even potentially harmful if formals
+                                 * are not syntactically replaced by actuals but rather bound to
+                                 * them via the store. Consider the following function:
+                                 *   function fun(x: Ref)
+                                 *     requires foo(x) // foo is another function
+                                 *     ...
+                                 *   { ... fun(x.next) ...}
+                                 * For fun(x)'s precondition, a mapping from foo(x) to a snapshot is
+                                 * recorded. When fun(x.next) is hit, its precondition is consumed,
+                                 * but without substituting actuals for formals, continuing to
+                                 * record mappings would add another mapping from foo(x) (which is
+                                 * actually foo(x.next)) to some potentially different snapshot.
+                                 * When translating fun(x) to an axiom, the snapshot of foo(x) from
+                                 * fun(x)'s precondition will be the branch-condition-dependent join
+                                 * of the recorded snapshots - which is wrong (probably only
+                                 * incomplete).
+                                 */
                              smDomainNeeded = true)
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
               val snap1 = snap.convert(sorts.Snap)
               val tFApp = App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
+              val fr5 =
+                s4.functionRecorder.changeDepthBy(-1)
+                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
               val s5 = s4.copy(g = s2.g,
                                h = s2.h,
                                recordVisited = s2.recordVisited,
-                               functionRecorder = s4.functionRecorder.recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1),
+                               functionRecorder = fr5,
                                smDomainNeeded = s2.smDomainNeeded)
               QB(s5, tFApp, v3)})
             /* TODO: The join-function is heap-independent, and it is not obvious how a
@@ -767,7 +793,10 @@ object evaluator extends EvaluationRules with Immutable {
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
                     consume(s4, acc, pve, v3)((s5, snap, v4) => {
-                      val s6 = s5.copy(functionRecorder = s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap),
+                      val fr6 =
+                        s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap)
+                                           .changeDepthBy(+1)
+                      val s6 = s5.copy(functionRecorder = fr6,
                                        constrainableARPs = s1.constrainableARPs)
                         /* Recording the unfolded predicate's snapshot is necessary in order to create the
                          * additional predicate-based trigger function applications because these are applied
@@ -779,8 +808,9 @@ object evaluator extends EvaluationRules with Immutable {
                       val body = pa.predicateBody(Verifier.program).get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)
                       produce(s7 /*\ insγ*/, toSf(snap), body, pve, v4)((s8, v5) => {
-                        val s9 = s8.copy(recordVisited = s3.recordVisited,
-                                          permissionScalingFactor = s6.permissionScalingFactor)
+                        val s9 = s8.copy(functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                                         recordVisited = s3.recordVisited,
+                                         permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
                         eval(s9, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
@@ -1208,7 +1238,10 @@ object evaluator extends EvaluationRules with Immutable {
     assert(entries.nonEmpty, "Expected at least one join data entry")
 
     entries match {
-      case Seq(entry) if entry.pathConditions.branchConditions.isEmpty =>
+      case Seq(entry) =>
+        /* If there is only one entry, i.e. one branch to join, it is assumed that the other
+         * branch was infeasible, and the branch conditions are therefore ignored.
+         */
         (entry.s, entry.data)
       case _ =>
         val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
@@ -1245,7 +1278,7 @@ object evaluator extends EvaluationRules with Immutable {
         val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
-      case e => evalTrigger(s, Seq(e), pve, v)((s1, t, v1) => {
+      case e => evalTrigger(s, Seq(e), pve, v)((_, t, _) => {
         triggers = triggers ++ t
         Success()
       })
@@ -1284,7 +1317,7 @@ object evaluator extends EvaluationRules with Immutable {
       case rcv =>
         val s1 = s.copy(smCache = smCache1)
         val t = s1.possibleTriggers.get(fa)
-        val r = t match {
+        val r = t match { /* TODO: r isn't used - why? */
           case Some(cachedTrigger) =>
             cachedTrigger match {
               case l: Lookup =>
@@ -1292,7 +1325,7 @@ object evaluator extends EvaluationRules with Immutable {
                 mostRecentTrig = FieldTrigger(l.field, smDef.sm, l.at)
                 triggers = triggers :+ mostRecentTrig
               case _ =>
-                eval(s1.copy(triggerExp = true), rcv, pve, v)((s2, tRcv, v1) => {
+                eval(s1.copy(triggerExp = true), rcv, pve, v)((_, tRcv, _) => {
                   axioms = axioms ++ smDef.valueDefinitions
                   mostRecentTrig = FieldTrigger(fa.field.name, smDef.sm, tRcv)
                   triggers = triggers :+ mostRecentTrig
@@ -1332,7 +1365,7 @@ object evaluator extends EvaluationRules with Immutable {
     val smCache1 = s.smCache + ((pa.loc(Verifier.program), relevantChunks.toSeq) -> (smDef, totalPermissions))
 
     val s1 = s.copy(smCache = smCache1)
-    evals(s1, pa.args, _ => pve, v)((s2, tArgs, v1) => {
+    evals(s1, pa.args, _ => pve, v)((_, tArgs, _) => {
       axioms = axioms ++ smDef.valueDefinitions
       mostRecentTrig = PredicateTrigger(pa.predicateName, smDef.sm, tArgs)
       triggers = triggers :+ mostRecentTrig
@@ -1364,7 +1397,7 @@ object evaluator extends EvaluationRules with Immutable {
     val smCache1 = s.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
 
     val s1 = s.copy(smCache = smCache1)
-    evals(s1, wand.subexpressionsToEvaluate(Verifier.program), _ => pve, v)((s2, tArgs, v1) => {
+    evals(s1, wand.subexpressionsToEvaluate(Verifier.program), _ => pve, v)((_, tArgs, _) => {
       axioms = axioms ++ smDef.valueDefinitions
       mostRecentTrig = PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, smDef.sm, tArgs)
       triggers = triggers :+ mostRecentTrig

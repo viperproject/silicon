@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silicon
 
@@ -15,7 +15,7 @@ import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import viper.silver.ast
-import viper.silver.frontend.{SilFrontend, TranslatorState}
+import viper.silver.frontend.{SilFrontend, DefaultStates}
 import viper.silver.reporter._
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.common.config.Version
@@ -345,7 +345,7 @@ object SiliconRunner extends SiliconFrontend(StdIOReporter()) {
       execute(args)
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
 
-      if (state >= TranslatorState.Verified && result == SilSuccess) {
+      if (state >= DefaultStates.Verification && result == SilSuccess) {
         exitCode = 0
       }
     } catch { /* Catch exceptions and errors thrown at any point of the execution of Silicon */

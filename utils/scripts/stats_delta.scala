@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 import java.io.{FileOutputStream, OutputStreamWriter, BufferedWriter}
 import java.text.DecimalFormat
 import scala.collection.immutable.{SortedSet, SortedMap}
