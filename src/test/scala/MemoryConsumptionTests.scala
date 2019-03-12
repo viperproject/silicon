@@ -34,14 +34,12 @@ class MemoryTests extends FlatSpec {
     silver.init(silicon)
     silver.reset(Paths.get("src/test/scala/linkedlist.silver"))
 
-    silver.parse()
-    silver.typecheck()
-    silver.translate()
+    silver.runTo("Translation")
 
     var lb = collection.mutable.ListBuffer[Long]()
 
     for (i <- 0 to 1000) {
-      silicon.verify(silver.translatorResult)
+      silicon.verify(silver.translationResult)
 
       if (i % 10 == 0) {
         rt.gc()
