@@ -11,7 +11,6 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.rules.{PermMapDefinition, SnapshotMapDefinition}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
@@ -56,8 +55,8 @@ final case class State(g: Store = Store(),
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
                        qpMagicWands: InsertionOrderedSet[MagicWandIdentifier] = InsertionOrderedSet.empty,
-                       smCache: Map[(ast.Resource, Seq[QuantifiedBasicChunk]), (SnapshotMapDefinition, Term)] = Map.empty,
-                       pmCache: Map[(ast.Resource, Seq[QuantifiedBasicChunk]), PermMapDefinition] = Map.empty,
+                       smCache: SmCache = Map.empty,
+                       pmCache: PmCache = Map.empty,
                        smDomainNeeded: Boolean = false,
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,

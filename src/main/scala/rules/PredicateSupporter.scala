@@ -14,7 +14,6 @@ import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.PredicateID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.BigPermSum
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 
@@ -75,32 +74,25 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
         val ch =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
             formalArgs, predicate, tArgs, tPerm, sm)
+        val h3 = s2.h + ch
         val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
-
         val smCache = {
-          val relevantChunks = (s2.h + ch).values.collect { case ch: QuantifiedPredicateChunk if ch.id.name == predicate.name => ch }
-          s2.smCache.get(predicate, relevantChunks.toSeq) match {
-            case Some((psfDef, _)) =>
-              v1.decider.assume(PredicateTrigger(predicate.name, psfDef.sm, tArgs))
-              s2.smCache
-            case _ =>
-              val summary = quantifiedChunkSupporter.summarise(s2, relevantChunks.toSeq, s2.predicateFormalVarMap(predicate), predicate, None, v1)
-              v1.decider.assume(summary._2)
-              v1.decider.assume(PredicateTrigger(predicate.name, summary._1, tArgs))
-              val smDef = SnapshotMapDefinition(predicate, summary._1, summary._2, Seq())
-              val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
-              if (Verifier.config.disableValueMapCaching()) s2.smCache
-              else s2.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
-          }
+          val (relevantChunks, _) =
+            quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h3, BasicChunkIdentifier(predicate.name))
+          val (smDef1, smCache1) =
+            quantifiedChunkSupporter.summarisingSnapshotMap(s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v1)
+          v1.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
+
+          smCache1
         }
 
         val s3 = s2.copy(g = s.g,
-                         h = s2.h + ch,
+                         h = h3,
                          smCache = smCache,
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
         Q(s3, v1)
       } else {
-        val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), tArgs, snap.convert(sorts.Snap), tPerm)
+        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap.convert(sorts.Snap), tPerm)
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor)

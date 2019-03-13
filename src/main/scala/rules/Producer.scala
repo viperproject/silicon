@@ -11,9 +11,9 @@ import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.resources._
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.state.terms.{App, _}
+import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -255,116 +255,41 @@ object producer extends ProductionRules with Immutable {
           produceR(s1.copy(g = s1.g + g1), sf, body, pve, v1)(Q))
 
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
-        /* TODO: Verify similar to the code in DefaultExecutor/ast.NewStmt - unify */
-        def addNewChunk(s: State, rcvr: Term, snap: Term, p: Term, v: Verifier)
-                       (Q: (State, Verifier) => VerificationResult)
-                       : VerificationResult = {
-
-          if (s.qpFields.contains(field)) {
-            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(rcvr), snap, v)
-            v.decider.prover.comment("Definitional axioms for singleton-SM's value")
-            val definitionalAxiomMark = v.decider.setPathConditionMark()
-            v.decider.assume(smValueDef)
-            val conservedPcs =
-              if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
-              else s.conservedPcs
-            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(rcvr), p, sm)
-            val h1 = s.h + ch
-
-            val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
-            val resource = Resources.resourceDescriptions(ch.resourceID)
-            v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
-
-            val relevantChunks = h1.values.collect{case ch1: QuantifiedFieldChunk if ch1.id == ch.id => ch1}
-
-            val smCache1 = s.smCache.get(field, relevantChunks.toSeq) match {
-              case Some((fvfDef,_)) =>
-                v.decider.assume(FieldTrigger(field.name, fvfDef.sm, rcvr))
-                s.smCache
-              case _ =>
-                val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, Seq(`?r`), field, None, v)
-                v.decider.assume(fvfValueDef)
-                v.decider.assume(FieldTrigger(field.name, fvf, rcvr))
-                val smDef = SnapshotMapDefinition(field, fvf, fvfValueDef, Seq())
-                val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
-                if (Verifier.config.disableValueMapCaching()) s.smCache
-                else s.smCache + ((field, relevantChunks.toSeq) -> (smDef, totalPermissions))
-            }
-
-            val smDef = SnapshotMapDefinition(field, sm, Seq(smValueDef), Seq())
-            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache1), v)
-          } else {
-            val ch = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(rcvr), snap, p)
-            chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
-              Q(s1.copy(h = h1), v1))
-          }
-        }
-
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
             val snap = sf(v2.symbolConverter.toSort(field.typ), v2)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
-            addNewChunk(s2, tRcvr, snap, gain, v2)(Q)}))
+            if (s.qpFields.contains(field)) {
+              val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
+              quantifiedChunkSupporter.produceSingleLocation(s2, field, Seq(`?r`), Seq(tRcvr), snap, gain, trigger, v2)(Q)
+            } else {
+              val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, gain)
+              chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
+                Q(s1.copy(h = h1), v1))
+            }}))
+
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
         val predicate = Verifier.program.findPredicate(predicateName)
-
-        def addNewChunk(s: State, args: Seq[Term], snap: Term, p: Term, v: Verifier)
-                       (Q: (State, Verifier) => VerificationResult)
-                       : VerificationResult = {
-
-          if (s.qpPredicates.contains(predicate)) {
-            val formalArgs = s.predicateFormalVarMap(predicate)
-            val (sm, smValueDef) =
-              quantifiedChunkSupporter.singletonSnapshotMap(s, predicate, args, snap, v)
-            v.decider.prover.comment("Definitional axioms for singleton-SM's value")
-            val definitionalAxiomMark = v.decider.setPathConditionMark()
-            v.decider.assume(smValueDef)
-            val conservedPcs =
-              if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
-              else s.conservedPcs
-            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalArgs, predicate, args, p, sm)
-            val h1 = s.h + ch
-
-            val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
-            val resource = Resources.resourceDescriptions(ch.resourceID)
-            v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
-
-            val relevantChunks = h1.values.collect{case ch1: QuantifiedPredicateChunk if ch1.id == ch.id => ch1}
-
-            val smCache1 = s.smCache.get(predicate, relevantChunks.toSeq) match {
-              case Some((fvfDef,_)) =>
-                v.decider.assume(PredicateTrigger(predicate.name, fvfDef.sm, args))
-                s.smCache
-              case _ =>
-                val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, formalArgs, predicate, None, v)
-                v.decider.assume(fvfValueDef)
-                v.decider.assume(PredicateTrigger(predicate.name, fvf, args))
-                val smDef = SnapshotMapDefinition(predicate, fvf, fvfValueDef, Seq())
-                val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
-                if (Verifier.config.disableValueMapCaching()) s.smCache
-                else s.smCache + ((predicate, relevantChunks.toSeq) -> (smDef, totalPermissions))
-            }
-
-            val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
-            Q(s.copy(h = h1, conservedPcs = conservedPcs, functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache1), v)
-          } else {
-            val snap1 = snap.convert(sorts.Snap)
-            val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), args, snap1, p)
-            chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) => {
-              if (Verifier.config.enablePredicateTriggersOnInhale() && s1.functionRecorder == NoopFunctionRecorder)
-                v1.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: args))
-              Q(s1.copy(h = h1), v1)
-            })
-          }
-        }
-
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
             val snap = sf(
               predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1)
                             .getOrElse(sorts.Snap), v2)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
-            addNewChunk(s2, tArgs, snap, gain, v2)(Q)}))
+            if (s.qpPredicates.contains(predicate)) {
+              val formalArgs = s.predicateFormalVarMap(predicate)
+              val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
+              quantifiedChunkSupporter.produceSingleLocation(
+                s2, predicate, formalArgs, tArgs, snap, gain, trigger, v2)(Q)
+            } else {
+              val snap1 = snap.convert(sorts.Snap)
+              val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
+              chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) => {
+                if (Verifier.config.enablePredicateTriggersOnInhale() && s1.functionRecorder == NoopFunctionRecorder) {
+                  v1.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs))
+                }
+                Q(s1.copy(h = h1), v1)})
+            }}))
 
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
@@ -378,27 +303,21 @@ object producer extends ProductionRules with Immutable {
           val conservedPcs =
             if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
             else s1.conservedPcs
-          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
-
-          val relevantChunks = (s.h + ch).values.collect{case ch1: QuantifiedMagicWandChunk if ch1.id == ch.id => ch1}
-
-          val smCache1 = s.smCache.get(wand, relevantChunks.toSeq) match {
-            case Some((fvfDef,_)) =>
-              v.decider.assume(PredicateTrigger(ch.id.toString, fvfDef.sm, args))
-              s.smCache
-            case _ =>
-              val (fvf, fvfValueDef, _) = quantifiedChunkSupporter.summarise(s, relevantChunks.toSeq, formalVars, wand, None, v)
-              v.decider.assume(fvfValueDef)
-              v.decider.assume(PredicateTrigger(ch.id.toString, fvf, args))
-              val smDef = SnapshotMapDefinition(wand, fvf, fvfValueDef, Seq())
-              val totalPermissions = perms.BigPermSum(relevantChunks map (_.perm), Predef.identity)
-              if (Verifier.config.disableValueMapCaching()) s.smCache
-              else s.smCache + ((wand, relevantChunks.toSeq) -> (smDef, totalPermissions))
-          }
-
+          val ch =
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+          val h2 = s1.h + ch
+          val (relevantChunks, _) =
+            quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h2, ch.id)
+          val (smDef1, smCache1) =
+            quantifiedChunkSupporter.summarisingSnapshotMap(s1, wand, formalVars, relevantChunks, v1)
+          v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args))
           val smDef = SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq())
-          val s2 = s1.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache1)
-        Q(s2.copy(h = s2.h + ch, conservedPcs = conservedPcs), v)})
+          val s2 =
+            s1.copy(h = h2,
+                    functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef),
+                    smCache = smCache1,
+                    conservedPcs = conservedPcs)
+          Q(s2, v1)})
 
       case wand: ast.MagicWand =>
         val snap = sf(sorts.Snap, v)
