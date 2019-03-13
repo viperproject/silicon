@@ -450,7 +450,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                     relevantChunks: Seq[QuantifiedBasicChunk],
                     codomainQVars: Seq[Var],
                     resource: ast.Resource,
-                    v: Verifier): (Term, Seq[Quantification]) = {
+                    v: Verifier)
+                   : (Term, Seq[Quantification]) = {
 
     val pm = freshPermMap(s, resource, Seq(), v)
 
@@ -462,15 +463,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         permSummary === BigPermSum(relevantChunks map (_.perm)),
         Trigger(permSummary))
 
-    val trig = s.smCache.get(resource, relevantChunks) match {
-      case Some((smDef, _)) =>
-        v.decider.assume(smDef.valueDefinitions)
-        ResourceTriggerFunction(resource, smDef.sm, codomainQVars)
-      case None =>
-        val (sm, smValueDefs, _) = summarise(s, relevantChunks, codomainQVars, resource, None, v)
-        v.decider.assume(smValueDefs)
-        ResourceTriggerFunction(resource, sm, codomainQVars)
-    }
+    val trig =
+      s.smCache.get(resource, relevantChunks) match {
+        case Some((smDef, _)) =>
+          v.decider.assume(smDef.valueDefinitions)
+          ResourceTriggerFunction(resource, smDef.sm, codomainQVars)
+        case None =>
+          val (sm, smValueDefs, _) = summarise(s, relevantChunks, codomainQVars, resource, None, v)
+          v.decider.assume(smValueDefs)
+          ResourceTriggerFunction(resource, sm, codomainQVars)
+      }
 
     val valueDefs2 =
       Forall(
@@ -481,6 +483,26 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         Trigger(ResourcePermissionLookup(resource, pm, codomainQVars)))
 
     (pm, Seq(valueDefinitions, valueDefs2))
+  }
+
+  def summarisingPermissionMap(s: State,
+                             resource: ast.Resource,
+                             formalQVars: Seq[Var],
+                             relevantChunks: Seq[QuantifiedBasicChunk],
+                             v: Verifier)
+                            : (PermMapDefinition, PmCache) = {
+
+    s.pmCache.get(resource, relevantChunks) match {
+      case Some(pmDef) =>
+        v.decider.assume(pmDef.valueDefinitions)
+        (pmDef, s.pmCache)
+      case _ =>
+        val (pm, valueDef) =
+          quantifiedChunkSupporter.summarisePerm(s, relevantChunks, formalQVars, resource, v)
+        val pmDef = PermMapDefinition(resource, pm, valueDef)
+        v.decider.assume(valueDef)
+        (pmDef, s.pmCache + ((resource, relevantChunks) -> pmDef))
+    }
   }
 
   /* Snapshots */
