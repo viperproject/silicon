@@ -22,7 +22,6 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
 }
 
 object stateConsolidator extends StateConsolidationRules with Immutable {
-  
   def consolidate(s: State, v: Verifier): State = {
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)

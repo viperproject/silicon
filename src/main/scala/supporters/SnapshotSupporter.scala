@@ -41,7 +41,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
       case _ if a.isPure =>
         (sorts.Snap, true)
 
-      case acc @ ast.AccessPredicate(resacc, _) => resacc match {
+      case ast.AccessPredicate(resacc, _) => resacc match {
         case fa: ast.FieldAccess =>
           (symbolConverter.toSort(fa.field.typ), false)
 
@@ -81,7 +81,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
           (s, isPure)
         }
 
-        getOptimalSnapshotSortFromPair(a1, a2, findCommonSort _, program, visited)
+        getOptimalSnapshotSortFromPair(a1, a2, () => findCommonSort(), program, visited)
 
       case QuantifiedPermissionAssertion(_, _, acc: ast.FieldAccessPredicate) =>
         (sorts.FieldValueFunction(symbolConverter.toSort(acc.loc.field.typ)), false)
