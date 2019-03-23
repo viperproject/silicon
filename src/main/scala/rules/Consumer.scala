@@ -270,7 +270,7 @@ object consumer extends ConsumptionRules with Immutable {
                   auxNonGlobals.map(_.copy(
                     vars = effectiveTriggersQVars,
                     triggers = effectiveTriggers)))
-              case Some(x) =>
+              case Some(_) =>
                 /* Explicit triggers were provided. */
                 v1.decider.assume(auxNonGlobals)
             }
@@ -451,7 +451,7 @@ object consumer extends ConsumptionRules with Immutable {
                   auxNonGlobals.map(_.copy(
                     vars = effectiveTriggersQVars,
                     triggers = effectiveTriggers)))
-              case Some(x) =>
+              case Some(_) =>
                 /* Explicit triggers were provided. */
                 v1.decider.assume(auxNonGlobals)
             }
@@ -629,7 +629,7 @@ object consumer extends ConsumptionRules with Immutable {
                   auxNonGlobals.map(_.copy(
                     vars = effectiveTriggersQVars,
                     triggers = effectiveTriggers)))
-              case Some(x) =>
+              case Some(_) =>
                 /* Explicit triggers were provided. */
                 v1.decider.assume(auxNonGlobals)
             }
