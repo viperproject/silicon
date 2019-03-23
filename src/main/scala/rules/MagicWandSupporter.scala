@@ -372,7 +372,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
               val s6 = stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
               Q(s6, v3)})})})}
 
-  def transfer[CH <: Chunk](s: State,
+  def transfer[CH <: Chunk]
+              (s: State,
                perms: Term,
                failure: Failure,
                v: Verifier)
