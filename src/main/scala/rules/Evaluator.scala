@@ -565,11 +565,7 @@ object evaluator extends EvaluationRules with Immutable {
 
         val s1 = s.copy(h = s.partiallyConsumedHeap.getOrElse(s.h))
 
-        val resIdent = resourceAccess match {
-          case ast.FieldAccess(_, field) => BasicChunkIdentifier(field.name)
-          case ast.PredicateAccess(_, predicateName) => BasicChunkIdentifier(predicateName)
-          case w: ast.MagicWand => MagicWandIdentifier(w, Verifier.program)
-        }
+        val resIdent = ChunkIdentifier(resourceAccess.res(Verifier.program), Verifier.program)
         val args = resourceAccess match {
           case fa: ast.FieldAccess => Seq(fa.rcv)
           case pa: ast.PredicateAccess => pa.args
