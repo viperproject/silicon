@@ -13,6 +13,16 @@ import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 
+object ChunkIdentifier {
+  def apply(from: ast.Resource, program: ast.Program): ChunkIdentifer = {
+    from match {
+      case f: ast.Field => BasicChunkIdentifier(f.name)
+      case p: ast.Predicate => BasicChunkIdentifier(p.name)
+      case w: ast.MagicWand => MagicWandIdentifier(w, program)
+    }
+  }
+}
+
 case class BasicChunkIdentifier(name: String) extends ChunkIdentifer {
   override def toString = name
 }

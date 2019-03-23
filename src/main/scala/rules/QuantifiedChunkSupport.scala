@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import scala.reflect.ClassTag
 import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
@@ -717,6 +717,153 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     Q(s1, v)
   }
 
+  def consume(s: State,
+              h: Heap,
+              forall: ast.Forall,
+              acc: ast.AccessPredicate,
+              resource: ast.Resource,
+              qvars: Seq[Var],
+              formalQVars: Seq[Var],
+              qid: String,
+              optTrigger: Option[Seq[ast.Trigger]],
+              tTriggers: Seq[Trigger],
+              auxGlobals: Seq[Quantification],
+              auxNonGlobals: Seq[Quantification],
+              tCond: Term,
+              tArgs: Seq[Term],
+              tPerm: Term,
+              pve: PartialVerificationError,
+              negativePermissionReason: => ErrorReason,
+              notInjectiveReason: => ErrorReason,
+              insufficientPermissionReason: => ErrorReason,
+              v: Verifier)
+             (Q: (State, Heap, Term, Verifier) => VerificationResult)
+             : VerificationResult = {
+
+    val inverseFunctions =
+      quantifiedChunkSupporter.getFreshInverseFunctions(
+        qvars,
+        And(tCond, IsPositive(tPerm)),
+        tArgs,
+        formalQVars,
+        s.relevantQuantifiedVariables(tArgs),
+        optTrigger.map(_ => tTriggers),
+        qid,
+        v)
+    val (effectiveTriggers, effectiveTriggersQVars) =
+    optTrigger match {
+      case Some(_) =>
+        /* Explicit triggers were provided */
+        (tTriggers, qvars)
+      case None =>
+        /* No explicit triggers were provided and we resort to those from the inverse
+          * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
+          * Note that the trigger generation code might have added quantified variables
+          * to that axiom.
+          */
+        (inverseFunctions.axiomInversesOfInvertibles.triggers,
+         inverseFunctions.axiomInversesOfInvertibles.vars)
+    }
+    v.decider.prover.comment("Nested auxiliary terms: globals")
+    v.decider.assume(auxGlobals)
+    v.decider.prover.comment("Nested auxiliary terms: non-globals")
+    optTrigger match {
+      case None =>
+        /* No explicit triggers provided */
+        v.decider.assume(
+          auxNonGlobals.map(_.copy(
+            vars = effectiveTriggersQVars,
+            triggers = effectiveTriggers)))
+      case Some(x) =>
+        /* Explicit triggers were provided. */
+        v.decider.assume(auxNonGlobals)
+    }
+    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
+      case true =>
+        val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
+        val chunkOrderHeuristics =
+          quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+        val loss = PermTimes(tPerm, s.permissionScalingFactor)
+        val (relevantChunks, otherChunks) =
+          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
+            h, ChunkIdentifier(resource, Verifier.program))
+        val (smDef1, smCache1) =
+          quantifiedChunkSupporter.summarisingSnapshotMap(
+            s, resource, formalQVars, relevantChunks, v)
+
+        /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+        val receiverInjectivityCheck =
+          quantifiedChunkSupporter.injectivityAxiom(
+            qvars     = qvars,
+            condition = And(tCond, ResourceTriggerFunction(resource, smDef1.sm, tArgs)),
+            perms     = tPerm,
+            arguments = tArgs,
+            triggers  = Nil,
+            qidPrefix = qid)
+        v.decider.prover.comment("Check receiver injectivity")
+        v.decider.assert(receiverInjectivityCheck) {
+          case true =>
+            val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
+            val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
+            val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
+
+            v.decider.prover.comment("Definitional axioms for inverse functions")
+            v.decider.assume(inverseFunctions.definitionalAxioms)
+
+            v.decider.assume(
+              Forall(
+                formalQVars,
+                Implies(condOfInvOfLoc, ResourceTriggerFunction(resource, smDef1.sm, formalQVars)),
+                Trigger(inverseFunctions.inversesOf(formalQVars))))
+
+            val permissionRemovalResult =
+              quantifiedChunkSupporter.removePermissions(
+                s.copy(smCache = smCache1),
+                relevantChunks,
+                formalQVars,
+                condOfInvOfLoc,
+                resource,
+                lossOfInvOfLoc,
+                chunkOrderHeuristics,
+                v
+              )
+            permissionRemovalResult match {
+              case (Complete(), s2, remainingChunks) =>
+                val h3 = Heap(remainingChunks ++ otherChunks)
+                val (sm2, smValueDefs2, optFvfDomainDef2) =
+                  quantifiedChunkSupporter.summarise(
+                    s2,
+                    relevantChunks,
+                    formalQVars,
+                    resource,
+                    if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc))) else None,
+                    v)
+                val smDef2 = SnapshotMapDefinition(resource, sm2, smValueDefs2, optFvfDomainDef2.toSeq)
+                val totalPermissions = BigPermSum(relevantChunks map (_.perm))
+                val smCache2 =
+                  if (Verifier.config.disableValueMapCaching()) s2.smCache
+                  else s2.smCache + ((resource, relevantChunks) -> (smDef2, totalPermissions))
+                if (s2.smDomainNeeded) {
+                  v.decider.prover.comment("Definitional axioms for SM domain")
+                  v.decider.assume(optFvfDomainDef2.get)
+                }
+                v.decider.prover.comment("Definitional axioms for SM values")
+                v.decider.assume(smValueDefs2)
+                val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
+                                             .recordFieldInv(inverseFunctions)
+                val s3 = s2.copy(functionRecorder = fr3,
+                                 partiallyConsumedHeap = Some(h3),
+                                 constrainableARPs = s.constrainableARPs,
+                                 smCache = smCache2)
+                Q(s3, h3, sm2.convert(sorts.Snap), v)
+              case (Incomplete(_), _, _) =>
+                Failure(pve dueTo insufficientPermissionReason)}
+          case false =>
+            Failure(pve dueTo notInjectiveReason)}
+      case false =>
+        Failure(pve dueTo negativePermissionReason)}
+  }
+
   def consumeSingleLocation(s: State,
                             h: Heap,
                             codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
@@ -735,11 +882,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       case wand: ast.MagicWand => Failure(pve dueTo MagicWandChunkNotFound(wand))
       case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
     }
-    val chunkIdentifer = resource match {
-      case loc: ast.Location => BasicChunkIdentifier(loc.name)
-      case wand: ast.MagicWand => MagicWandIdentifier(wand, Verifier.program)
-      case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
-    }
+    val chunkIdentifer = ChunkIdentifier(resource, Verifier.program)
+//    val chunkIdentifer = resource match {
+//      case loc: ast.Location => BasicChunkIdentifier(loc.name)
+//      case wand: ast.MagicWand => MagicWandIdentifier(wand, Verifier.program)
+//      case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
+//    }
 
     val chunkOrderHeuristics = optChunkOrderHeuristic match {
       case Some(heuristics) =>
@@ -851,11 +999,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                         v: Verifier)
                        : (ConsumptionResult, State, Seq[QuantifiedBasicChunk]) = {
 
-    val requiredId = resource match {
-      case l: ast.Location => BasicChunkIdentifier(l.name)
-      case wand: ast.MagicWand => MagicWandIdentifier(wand, Verifier.program)
-      case _ => sys.error(s"Expected location to be quantifiable but found $resource.")
-    }
+    val requiredId = ChunkIdentifier(resource, Verifier.program)
     assert(
       relevantChunks forall (_.id == requiredId),
       s"Expected only chunks for resource $resource, but got: $relevantChunks")
