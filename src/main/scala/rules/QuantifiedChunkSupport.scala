@@ -956,7 +956,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       case wand: ast.MagicWand => Failure(pve dueTo MagicWandChunkNotFound(wand))
       case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
     }
-    val chunkIdentifer = ChunkIdentifier(resource, Verifier.program)
+    val chunkIdentifier = ChunkIdentifier(resource, Verifier.program)
 
     val chunkOrderHeuristics = optChunkOrderHeuristic match {
       case Some(heuristics) =>
@@ -969,7 +969,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     if (s.exhaleExt) {
       magicWandSupporter.transfer(s, permissions, failure, v)((s1, h1, rPerm, v1) => {
         val (relevantChunks, otherChunks) =
-          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifer)
+          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifier)
 
         val (result, s2, remainingChunks) = quantifiedChunkSupporter.removePermissions(
           s1,
@@ -1013,7 +1013,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       )
     } else {
       val (relevantChunks, otherChunks) =
-        quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, chunkIdentifer)
+        quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, chunkIdentifier)
 
       val result = quantifiedChunkSupporter.removePermissions(
         s,
