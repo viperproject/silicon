@@ -438,7 +438,8 @@ object evaluator extends EvaluationRules with Immutable {
                   val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
                   val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
                   val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(s1, wand, formalVars, relevantChunks, v1)
+                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                      s1, wand, formalVars, relevantChunks, None, v1)
                   v1.decider.assume(PredicateTrigger(identifier.toString, smDef1.sm, args))
                   val (pmDef1, pmCache1) =
                     quantifiedChunkSupporter.summarisingPermissionMap(s1, wand, formalVars, relevantChunks, v1)
@@ -448,7 +449,8 @@ object evaluator extends EvaluationRules with Immutable {
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, identifier)
                   val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(s1, field, Seq(`?r`), relevantChunks, v1)
+                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                      s1, field, Seq(`?r`), relevantChunks, None, v1)
                   v1.decider.assume(FieldTrigger(field.name, smDef1.sm, args.head))
                   val (pmDef1, pmCache1) =
                     quantifiedChunkSupporter.summarisingPermissionMap(s1, field, Seq(`?r`), relevantChunks, v1)
@@ -462,7 +464,8 @@ object evaluator extends EvaluationRules with Immutable {
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h, identifier)
                   val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
+                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                      s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, None, v1)
                   val trigger = PredicateTrigger(predicate.name, smDef1.sm, args)
                   v1.decider.assume(trigger)
                   val (pmDef1, pmCache1) =
@@ -1323,7 +1326,7 @@ object evaluator extends EvaluationRules with Immutable {
     val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
     val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
     val (smDef, smCache1) =
-      quantifiedChunkSupporter.summarisingSnapshotMap(s, wand, formalVars, relevantChunks, v)
+      quantifiedChunkSupporter.summarisingSnapshotMap(s, wand, formalVars, relevantChunks, None, v)
     val s1 = s.copy(smCache = smCache1)
     evals(s1, wand.subexpressionsToEvaluate(Verifier.program), _ => pve, v)((_, tArgs, _) => {
       axioms = axioms ++ smDef.valueDefinitions

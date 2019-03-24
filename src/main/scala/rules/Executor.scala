@@ -271,7 +271,8 @@ object executor extends ExecutionRules with Immutable {
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             val (smDef1, smCache1) =
-              quantifiedChunkSupporter.summarisingSnapshotMap(s2, field, Seq(`?r`), relevantChunks, v1)
+              quantifiedChunkSupporter.summarisingSnapshotMap(
+                s2, field, Seq(`?r`), relevantChunks, None, v1)
             v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
             val result = quantifiedChunkSupporter.removePermissions(
               s2.copy(smCache = smCache1),
@@ -455,7 +456,8 @@ object executor extends ExecutionRules with Immutable {
               val (relevantChunks, _) =
                 quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s2.h, BasicChunkIdentifier(predicateName))
               val (smDef1, smCache1) =
-                quantifiedChunkSupporter.summarisingSnapshotMap(s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
+                quantifiedChunkSupporter.summarisingSnapshotMap(
+                  s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, None, v2)
               v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
               smCache1
             } else {
@@ -504,7 +506,8 @@ object executor extends ExecutionRules with Immutable {
                 val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
                 val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
                 val (smDef, smCache) =
-                  quantifiedChunkSupporter.summarisingSnapshotMap(s2, wand, formalVars, relevantChunks, v1)
+                  quantifiedChunkSupporter.summarisingSnapshotMap(
+                    s2, wand, formalVars, relevantChunks, None, v1)
                 v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get))
                 smCache
               case _ => s2.smCache
