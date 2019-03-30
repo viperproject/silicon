@@ -55,7 +55,7 @@ final case class State(g: Store = Store(),
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
                        qpMagicWands: InsertionOrderedSet[MagicWandIdentifier] = InsertionOrderedSet.empty,
-                       smCache: SmCache = Map.empty,
+                       smCache: SnapshotMapCache = SnapshotMapCache.empty,
                        pmCache: PmCache = Map.empty,
                        smDomainNeeded: Boolean = false,
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
@@ -167,29 +167,7 @@ object State {
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
             val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
 
-            val smCache3 =
-              viper.silicon.utils.conflictFreeUnion(smCache1, smCache2) match {
-                case (m3, conflicts) if conflicts.isEmpty => m3
-                case (m3, conflicts) =>
-                  /* A "conflict" here means that two syntactically different snapshot maps have
-                   * been defined relative to the *same set of chunks*. It is therefore expected
-                   * that the two snapshots maps are semantically equivalent, and that it doesn't
-                   * matter which one is chosen for the merged cache.
-                   *
-                   * TODO: Add a runtime assertion that checks above hypothesis: e.g. check that the
-                   *       two snapshot maps are structurally equivalent modulo renaming.
-                   *
-                   * TODO: A possible optimisation to snapshot map caching might be the following:
-                   *       when branching (locally/in general?), the snapshot map cache from the
-                   *       first branch should be made available to the second branch in order to
-                   *       avoid axiomatising a fresh but equivalent snapshot map. This should be
-                   *       sound because the branch condition (of a local branch?) cannot influence
-                   *       the available chunks.
-                   */
-
-                  m3 ++ conflicts.map { case (k, (v1, _)) => k -> v1 }
-                }
-
+            val smCache3 = smCache1.union(smCache2)
             val pmCache3 = pmCache1 ++ pmCache2
 
             s1.copy(functionRecorder = functionRecorder3,

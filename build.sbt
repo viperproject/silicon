@@ -30,6 +30,9 @@ lazy val silicon = (project in file("."))
       libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
       libraryDependencies += "org.apache.commons" % "commons-pool2" % "2.6.0",
 
+        // Only get a few compilation errors at once
+        maxErrors := 5,
+
       // Run settings
       run / javaOptions += "-Xss128m",
 

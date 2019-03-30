@@ -464,7 +464,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         Trigger(permSummary))
 
     val trig =
-      s.smCache.get(resource, relevantChunks) match {
+      s.smCache.get((resource, relevantChunks)) match {
         case Some((smDef, _)) =>
           v.decider.assume(smDef.valueDefinitions)
           ResourceTriggerFunction(resource, smDef.sm, codomainQVars)
@@ -524,24 +524,75 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
   def summarisingSnapshotMap(s: State,
                              resource: ast.Resource,
-                             formalQVars: Seq[Var],
+                             codomainQVars: Seq[Var],
                              relevantChunks: Seq[QuantifiedBasicChunk],
-                             v: Verifier)
-                            : (SnapshotMapDefinition, SmCache) = {
+                             v: Verifier,
+                             optSmDomainDefinitionCondition: Option[Term] = None,
+                             optQVarsInstantiations: Option[Seq[Term]] = None)
+                            : (SnapshotMapDefinition, SnapshotMapCache) = {
 
-    s.smCache.get(resource, relevantChunks) match {
-      case Some((smDef, _)) =>
+    s.smCache.get(resource, relevantChunks, optSmDomainDefinitionCondition) match {
+      case Some((smDef, _)) if !s.exhaleExt =>
+        /* The commented code is kept in case it ever becomes necessary to re-assume cached
+         * snapshot map definitions. Compare with the code in the other case before using it!
+         */
+        if (s.smDomainNeeded) {
+          optQVarsInstantiations match {
+            case None =>
+              v.decider.prover.comment("Definitional axioms for snapshot map domain")
+              v.decider.assume(smDef.domainDefinitions)
+            case Some(instantiations) =>
+              v.decider.prover.comment("Definitional axioms for snapshot map domain (instantiated)")
+              v.decider.assume(smDef.domainDefinitions.map(_.asInstanceOf[Quantification].body.replace(codomainQVars, instantiations)))
+          }
+        }
+
+        optQVarsInstantiations match {
+          case None =>
+            v.decider.prover.comment("Definitional axioms for snapshot map values")
+            v.decider.assume(smDef.valueDefinitions)
+          case Some(instantiations) =>
+            v.decider.prover.comment("Definitional axioms for snapshot map values (instantiated)")
+            v.decider.assume(smDef.valueDefinitions.map(_.asInstanceOf[Quantification].body.replace(codomainQVars, instantiations)))
+        }
+
         (smDef, s.smCache)
+
       case _ =>
-        val (sm, valueDefs, optDomainDefinition) = /* TODO: What about optDomainDefinition? */
-          quantifiedChunkSupporter.summarise(s, relevantChunks, formalQVars, resource, None, v)
-        val smDef = SnapshotMapDefinition(resource, sm, valueDefs, Seq()) /* TODO: Use optDomainDefinition as last argument? */
+        val (sm, valueDefs, optDomainDefinition) =
+          quantifiedChunkSupporter.summarise(
+            s, relevantChunks, codomainQVars, resource, optSmDomainDefinitionCondition, v)
+        val smDef = SnapshotMapDefinition(resource, sm, valueDefs, optDomainDefinition.toSeq)
         val totalPermissions = BigPermSum(relevantChunks.map(_.perm))
-        v.decider.assume(valueDefs)
-        if (Verifier.config.disableValueMapCaching())
+
+        if (s.smDomainNeeded) {
+          optQVarsInstantiations match {
+            case None =>
+              v.decider.prover.comment("Definitional axioms for snapshot map domain")
+              v.decider.assume(optDomainDefinition.toSeq)
+            case Some(instantiations) =>
+              v.decider.prover.comment("Definitional axioms for snapshot map domain (instantiated)")
+              v.decider.assume(optDomainDefinition.get.body.replace(codomainQVars, instantiations))
+          }
+        }
+
+        optQVarsInstantiations match {
+          case None =>
+            v.decider.prover.comment("Definitional axioms for snapshot map values")
+            v.decider.assume(valueDefs)
+          case Some(instantiations) =>
+            v.decider.prover.comment("Definitional axioms for snapshot map values (instantiated)")
+            v.decider.assume(valueDefs.map(_.body.replace(codomainQVars, instantiations)))
+        }
+
+        if (Verifier.config.disableValueMapCaching()) {
           (smDef, s.smCache)
-        else
-          (smDef, s.smCache + ((resource, relevantChunks) -> (smDef, totalPermissions)))
+        } else {
+          /* TODO: smCache records total permissions, pmCache seems to do the same - why? */
+          val key = (resource, relevantChunks)
+          val value = (smDef, totalPermissions, optSmDomainDefinitionCondition)
+          (smDef, s.smCache + (key, value))
+        }
     }
   }
 
@@ -664,7 +715,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, ch.id)
     val (smDef1, smCache1) =
-      quantifiedChunkSupporter.summarisingSnapshotMap(s, resource, codomainVars, relevantChunks, v)
+      quantifiedChunkSupporter.summarisingSnapshotMap(
+        s, resource, codomainVars, relevantChunks, v)
     val trigger = ResourceTriggerFunction(resource, smDef1.sm, codomainVars)
     val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
     val condOfInv = tCond.replace(qvarsToInv)
@@ -706,7 +758,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h1, ch.id )
     val (smDef1, smCache1) =
-      quantifiedChunkSupporter.summarisingSnapshotMap(s, resource, formalQVars, relevantChunks, v)
+      quantifiedChunkSupporter.summarisingSnapshotMap(
+        s, resource, formalQVars, relevantChunks, v)
     v.decider.assume(resourceTriggerFactory(smDef1.sm))
 
     val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
@@ -774,7 +827,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           auxNonGlobals.map(_.copy(
             vars = effectiveTriggersQVars,
             triggers = effectiveTriggers)))
-      case Some(x) =>
+      case Some(_) =>
         /* Explicit triggers were provided. */
         v.decider.assume(auxNonGlobals)
     }
@@ -816,48 +869,90 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                 Implies(condOfInvOfLoc, ResourceTriggerFunction(resource, smDef1.sm, formalQVars)),
                 Trigger(inverseFunctions.inversesOf(formalQVars))))
 
-            val permissionRemovalResult =
-              quantifiedChunkSupporter.removePermissions(
-                s.copy(smCache = smCache1),
-                relevantChunks,
-                formalQVars,
-                condOfInvOfLoc,
-                resource,
-                lossOfInvOfLoc,
-                chunkOrderHeuristics,
-                v
-              )
-            permissionRemovalResult match {
-              case (Complete(), s2, remainingChunks) =>
-                val h3 = Heap(remainingChunks ++ otherChunks)
-                val (sm2, smValueDefs2, optFvfDomainDef2) =
-                  quantifiedChunkSupporter.summarise(
+            /* TODO: Try to unify the upcoming if/else-block, their code is rather similar */
+            if (s.exhaleExt) {
+              magicWandSupporter.transfer[QuantifiedBasicChunk](
+                                          s.copy(smCache = smCache1),
+                                          lossOfInvOfLoc,
+                                          Failure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/),
+                                          v)((s2, heap, rPerm, v2) => {
+                val (relevantChunks, otherChunks) =
+                  quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
+                    heap, ChunkIdentifier(resource, Verifier.program))
+                val (result, s3, remainingChunks) =
+                  quantifiedChunkSupporter.removePermissions(
                     s2,
                     relevantChunks,
                     formalQVars,
+                    condOfInvOfLoc,
                     resource,
-                    if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc))) else None,
-                    v)
-                val smDef2 = SnapshotMapDefinition(resource, sm2, smValueDefs2, optFvfDomainDef2.toSeq)
-                val totalPermissions = BigPermSum(relevantChunks map (_.perm))
-                val smCache2 =
-                  if (Verifier.config.disableValueMapCaching()) s2.smCache
-                  else s2.smCache + ((resource, relevantChunks) -> (smDef2, totalPermissions))
-                if (s2.smDomainNeeded) {
-                  v.decider.prover.comment("Definitional axioms for SM domain")
-                  v.decider.assume(optFvfDomainDef2.get)
+                    rPerm,
+                    chunkOrderHeuristics,
+                    v2)
+                val optSmDomainDefinitionCondition2 =
+                    if (s3.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc)))
+                    else None
+                  val (smDef2, smCache2) =
+                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                      s3, resource, formalQVars, relevantChunks, v2, optSmDomainDefinitionCondition2)
+                val permsTaken = result match {
+                  case Complete() => rPerm
+                  case Incomplete(remaining) => PermMinus(rPerm, remaining)
                 }
-                v.decider.prover.comment("Definitional axioms for SM values")
-                v.decider.assume(smValueDefs2)
-                val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
-                                             .recordFieldInv(inverseFunctions)
-                val s3 = s2.copy(functionRecorder = fr3,
-                                 partiallyConsumedHeap = Some(h3),
-                                 constrainableARPs = s.constrainableARPs,
-                                 smCache = smCache2)
-                Q(s3, h3, sm2.convert(sorts.Snap), v)
-              case (Incomplete(_), _, _) =>
-                Failure(pve dueTo insufficientPermissionReason)}
+                val (consumedChunk, _) = quantifiedChunkSupporter.createQuantifiedChunk(
+                  qvars,
+                  condOfInvOfLoc,
+                  resource,
+                  tArgs,
+                  permsTaken,
+                  formalQVars,
+                  smDef2.sm,
+                  s3.relevantQuantifiedVariables(tArgs),
+                  optTrigger.map(_ => tTriggers),
+                  qid,
+                  v2
+                )
+                val h2 = Heap(remainingChunks ++ otherChunks)
+                val s4 = s3.copy(smCache = smCache2,
+                                 constrainableARPs = s.constrainableARPs)
+                (result, s4, h2, Some(consumedChunk))
+              })((s4, optCh, v3) =>
+                optCh match {
+                  case Some(ch) => Q(s4, s4.h, ch.snapshotMap.convert(sorts.Snap), v3)
+                  case _ => Q(s4, s4.h, v3.decider.fresh(sorts.Snap), v3)
+                }
+              )
+            } else {
+              val permissionRemovalResult =
+                quantifiedChunkSupporter.removePermissions(
+                  s.copy(smCache = smCache1),
+                  relevantChunks,
+                  formalQVars,
+                  condOfInvOfLoc,
+                  resource,
+                  lossOfInvOfLoc,
+                  chunkOrderHeuristics,
+                  v
+                )
+              permissionRemovalResult match {
+                case (Complete(), s2, remainingChunks) =>
+                  val h3 = Heap(remainingChunks ++ otherChunks)
+                  val optSmDomainDefinitionCondition2 =
+                    if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc)))
+                    else None
+                  val (smDef2, smCache2) =
+                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                      s2, resource, formalQVars, relevantChunks, v, optSmDomainDefinitionCondition2)
+                  val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
+                                               .recordFieldInv(inverseFunctions)
+                  val s3 = s2.copy(functionRecorder = fr3,
+                                   partiallyConsumedHeap = Some(h3),
+                                   constrainableARPs = s.constrainableARPs,
+                                   smCache = smCache2)
+                  Q(s3, h3, smDef2.sm.convert(sorts.Snap), v)
+                case (Incomplete(_), _, _) =>
+                  Failure(pve dueTo insufficientPermissionReason)}
+            }
           case false =>
             Failure(pve dueTo notInjectiveReason)}
       case false =>
@@ -882,12 +977,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       case wand: ast.MagicWand => Failure(pve dueTo MagicWandChunkNotFound(wand))
       case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
     }
-    val chunkIdentifer = ChunkIdentifier(resource, Verifier.program)
-//    val chunkIdentifer = resource match {
-//      case loc: ast.Location => BasicChunkIdentifier(loc.name)
-//      case wand: ast.MagicWand => MagicWandIdentifier(wand, Verifier.program)
-//      case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
-//    }
+    val chunkIdentifier = ChunkIdentifier(resource, Verifier.program)
 
     val chunkOrderHeuristics = optChunkOrderHeuristic match {
       case Some(heuristics) =>
@@ -900,8 +990,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     if (s.exhaleExt) {
       magicWandSupporter.transfer(s, permissions, failure, v)((s1, h1, rPerm, v1) => {
         val (relevantChunks, otherChunks) =
-          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifer)
-
+          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifier)
         val (result, s2, remainingChunks) = quantifiedChunkSupporter.removePermissions(
           s1,
           relevantChunks,
@@ -912,8 +1001,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           chunkOrderHeuristics,
           v
         )
-
         val h2 = Heap(remainingChunks ++ otherChunks)
+//        val optSmDomainDefinitionCondition = if (s2.smDomainNeeded) Some(True()) else None
+//        val (smDef1, smCache1) =
+//          quantifiedChunkSupporter.summarisingSnapshotMap(
+//            s2, resource, codomainQVars, relevantChunks, optSmDomainDefinitionCondition, v1)
+        /* TODO: Replacing the next block of code with the commented code above isn't yet
+         *       possible because of the substitutions (arguments for codomainQVars) that is
+         *       performed before definitional axioms are assumed.
+         */
         val (sm, smValueDefs, optSmDomainDef) =
           quantifiedChunkSupporter.summarise(
             s2,
@@ -928,23 +1024,27 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         }
         v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
         v1.decider.assume(smValueDefs.map(_.body.replace(codomainQVars, arguments)))
+
         val permsTaken = result match {
           case Complete() => rPerm
           case Incomplete(remaining) => PermMinus(rPerm, remaining)
         }
-        val consumedChunk = quantifiedChunkSupporter.createSingletonQuantifiedChunk(codomainQVars, resource, arguments, permsTaken, sm)
+        val consumedChunk =
+          quantifiedChunkSupporter.createSingletonQuantifiedChunk(
+            codomainQVars, resource, arguments, permsTaken, sm)
         (result, s2, h2, Some(consumedChunk))
-      })((s3, oCh, v2) =>
-        oCh match {
+      })((s3, optCh, v2) =>
+        optCh match {
           case Some(ch) =>
             val snap = ResourceLookup(resource, ch.snapshotMap, arguments).convert(sorts.Snap)
             Q(s3, s3.h, snap, v2)
-          case _ => Q(s3, s3.h, v2.decider.fresh(sorts.Snap), v2)
+          case _ =>
+            Q(s3, s3.h, v2.decider.fresh(sorts.Snap), v2)
         }
       )
     } else {
       val (relevantChunks, otherChunks) =
-        quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, chunkIdentifer)
+        quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h, chunkIdentifier)
 
       val result = quantifiedChunkSupporter.removePermissions(
         s,
@@ -959,27 +1059,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       result match {
         case (Complete(), s1, remainingChunks) =>
           val h1 = Heap(remainingChunks ++ otherChunks)
-          val (sm, smValueDefs, optSmDomainDef) =
-            quantifiedChunkSupporter.summarise(
-              s1,
-              relevantChunks,
-              codomainQVars,
-              resource,
-              if (s1.smDomainNeeded) Some(True()) else None,
-              v)
-
-          if (s1.smDomainNeeded) {
-            v.decider.prover.comment("Definitional axioms for singleton-SM's domain")
-            v.decider.assume(optSmDomainDef.get.body.replace(codomainQVars, arguments))
-          }
-          v.decider.prover.comment("Definitional axioms for singleton-SM's value")
-          v.decider.assume(smValueDefs.map(_.body.replace(codomainQVars, arguments)))
-          val smDef = SnapshotMapDefinition(resource, sm, smValueDefs, optSmDomainDef.toSeq)
-          val totalPermissions = BigPermSum(relevantChunks map (_.perm))
-          val smCache2 = if (Verifier.config.disableValueMapCaching()) s1.smCache
-            else s1.smCache + ((resource, relevantChunks) -> (smDef, totalPermissions))
-          val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef), smCache = smCache2)
-          val snap = ResourceLookup(resource, sm, arguments).convert(sorts.Snap)
+          val (smDef1, smCache1) =
+            quantifiedChunkSupporter.summarisingSnapshotMap(
+              s = s1,
+              resource = resource,
+              codomainQVars = codomainQVars,
+              relevantChunks = relevantChunks,
+              optSmDomainDefinitionCondition = if (s1.smDomainNeeded) Some(True()) else None,
+              optQVarsInstantiations = Some(arguments),
+              v = v)
+          val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1),
+                           smCache = smCache1)
+          val snap = ResourceLookup(resource, smDef1.sm, arguments).convert(sorts.Snap)
           Q(s2, h1, snap, v)
         case (Incomplete(_), _, _) =>
           failure
