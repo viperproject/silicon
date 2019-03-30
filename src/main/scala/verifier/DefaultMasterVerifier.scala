@@ -146,7 +146,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
 
     allProvers.comment("Started: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()) /*bookkeeper.formattedStartTime*/)
-    allProvers.comment("Silicon.buildVersion: " + Silicon.buildVersion)
+    allProvers.comment("Silicon.version: " + Silicon.version)
     allProvers.comment(s"Input file: ${config.inputFile.getOrElse("<unknown>")}")
     allProvers.comment(s"Verifier id: $uniqueId")
     allProvers.comment("-" * 60)
