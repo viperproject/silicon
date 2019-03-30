@@ -194,7 +194,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def check(t: Term, timeout: Int) = deciderAssert(t, Some(timeout))
 
-    def assert(t: Term, timeout: Option[Int] = None)(Q: Boolean => VerificationResult) = {
+    def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
+              (Q: Boolean => VerificationResult)
+              : VerificationResult = {
+
       val success = deciderAssert(t, timeout)
 
       Q(success)

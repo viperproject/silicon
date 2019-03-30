@@ -213,6 +213,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )
 
+  val assertTimeout = opt[Int]("assertTimeout",
+    descr = "Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout).",
+    default = None,
+    noshort = true,
+    hidden = false
+  )
+
   val checkTimeout = opt[Int]("checkTimeout",
     descr = (  "Timeout (in ms) per SMT solver check. Solver checks differ from solver asserts "
              + "in that a failing assert always yields a verification error whereas a failing "
