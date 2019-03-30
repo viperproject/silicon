@@ -81,7 +81,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
             quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h3, BasicChunkIdentifier(predicate.name))
           val (smDef1, smCache1) =
             quantifiedChunkSupporter.summarisingSnapshotMap(
-              s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, None, v1)
+              s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v1)
           v1.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
 
           smCache1

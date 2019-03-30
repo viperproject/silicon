@@ -343,7 +343,7 @@ object consumer extends ConsumptionRules with Immutable {
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
             val (smDef1, smCache1) =
               quantifiedChunkSupporter.summarisingSnapshotMap(
-                s2, field, Seq(`?r`), relevantChunks, None, v2)
+                s2, field, Seq(`?r`), relevantChunks, v2)
             v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
 //            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
@@ -374,7 +374,7 @@ object consumer extends ConsumptionRules with Immutable {
               quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(predname))
             val (smDef1, smCache1) =
               quantifiedChunkSupporter.summarisingSnapshotMap(
-                s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, None, v2)
+                s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
             v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
 
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
@@ -426,7 +426,7 @@ object consumer extends ConsumptionRules with Immutable {
             quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s1.h, MagicWandIdentifier(wand, Verifier.program))
           val (smDef1, smCache1) =
             quantifiedChunkSupporter.summarisingSnapshotMap(
-              s1, wand, formalVars, relevantChunks, None, v1)
+              s1, wand, formalVars, relevantChunks, v1)
           v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, smDef1.sm, tArgs))
 
           val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
