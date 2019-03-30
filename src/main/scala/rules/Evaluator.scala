@@ -16,7 +16,7 @@ import viper.silicon.interfaces._
 import viper.silicon.state.{terms, _}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
-import viper.silicon.state.terms.perms.{BigPermSum, IsNonNegative, IsPositive}
+import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
@@ -194,13 +194,13 @@ object evaluator extends EvaluationRules with Immutable {
               /* The next assertion must be made if the FVF definition is taken from the cache;
                * in the other case it is part of quantifiedChunkSupporter.withValue.
                */
-              val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
               /* Re-emit definition since the previous definition could be nested under
                * an auxiliary quantifier (resulting from the evaluation of some Silver
                * quantifier in whose body field 'fa.field' was accessed)
                * which is protected by a trigger term that we currently don't have.
                */
               v1.decider.assume(fvfDef.valueDefinitions)
+              val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
               v1.decider.assume(trigger)
               if (s1.triggerExp) {
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
@@ -218,39 +218,37 @@ object evaluator extends EvaluationRules with Immutable {
                     Q(s2, fvfLookup, v1)}
               }
             case _ =>
-              val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
-              val (fvf, fvfValueDefs, None) =
-                quantifiedChunkSupporter.summarise(s1, relevantChunks, Seq(`?r`), fa.field, None, v1)
-              val trigger = FieldTrigger(fa.field.name, fvf, tRcvr)
-              v1.decider.assume(fvfValueDefs)
+              val (smDef1, smCache1) =
+                quantifiedChunkSupporter.summarisingSnapshotMap(
+                  s = s1,
+                  resource = fa.field,
+                  codomainQVars = Seq(`?r`),
+                  relevantChunks = relevantChunks,
+                  optSmDomainDefinitionCondition =  None,
+                  optQVarsInstantiations = None,
+                  v = v1)
+              val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
               v1.decider.assume(trigger)
-              if (s1.triggerExp) {
-                val smLookup = Lookup(fa.field.name, fvf, tRcvr)
-                val smDef = SnapshotMapDefinition(fa.field, fvf, fvfValueDefs, Seq())
-                val fr2 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
-                            .recordFvfAndDomain(smDef)
-                val smCache2 =
-                  if (Verifier.config.disableValueMapCaching()) s1.smCache
-                  else s1.smCache + ((fa.field, relevantChunks) -> (smDef, totalPermissions))
-                val s2 = s1.copy(functionRecorder = fr2,
-                                 smCache = smCache2)
-                Q(s2, smLookup, v1)
-              } else {
-              v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
+              val permCheck =
+                if (s1.triggerExp) {
+                  True()
+                } else {
+                  val totalPermissions = smCache1.get((fa.field, relevantChunks)).get._2
+                    /* TODO: Have totalPermissions returned by quantifiedChunkSupporter.summarisingSnapshotMap */
+                  IsPositive(totalPermissions.replace(`?r`, tRcvr))
+                }
+              v1.decider.assert(permCheck) {
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
                 case true =>
-
-                  val smLookup = Lookup(fa.field.name, fvf, tRcvr)
-                  val smDef = SnapshotMapDefinition(fa.field, fvf, fvfValueDefs, Seq())
-                  val fr2 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
-                                               .recordFvfAndDomain(smDef)
-                  val smCache2 =
-                    if (Verifier.config.disableValueMapCaching()) s1.smCache
-                    else s1.smCache + ((fa.field, relevantChunks) -> (smDef, totalPermissions))
+                  val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
+                  val fr2 =
+                    s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
+                                       .recordFvfAndDomain(smDef1)
                   val s2 = s1.copy(functionRecorder = fr2,
-                                   smCache = smCache2)
-                  Q(s2, smLookup, v1)}}}})
+                                   smCache = smCache1)
+                  Q(s2, smLookup, v1)}
+              }})
 
       case fa: ast.FieldAccess =>
         evalLocationAccess(s, fa, pve, v)((s1, name, tArgs, v1) => {
@@ -438,7 +436,8 @@ object evaluator extends EvaluationRules with Immutable {
                   val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
                   val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
                   val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(s1, wand, formalVars, relevantChunks, v1)
+                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                      s1, wand, formalVars, relevantChunks, v1)
                   v1.decider.assume(PredicateTrigger(identifier.toString, smDef1.sm, args))
                   val (pmDef1, pmCache1) =
                     quantifiedChunkSupporter.summarisingPermissionMap(s1, wand, formalVars, relevantChunks, v1)
@@ -448,7 +447,8 @@ object evaluator extends EvaluationRules with Immutable {
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, identifier)
                   val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(s1, field, Seq(`?r`), relevantChunks, v1)
+                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                      s1, field, Seq(`?r`), relevantChunks, v1)
                   v1.decider.assume(FieldTrigger(field.name, smDef1.sm, args.head))
                   val (pmDef1, pmCache1) =
                     quantifiedChunkSupporter.summarisingPermissionMap(s1, field, Seq(`?r`), relevantChunks, v1)
@@ -462,7 +462,8 @@ object evaluator extends EvaluationRules with Immutable {
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h, identifier)
                   val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
+                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                      s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
                   val trigger = PredicateTrigger(predicate.name, smDef1.sm, args)
                   v1.decider.assume(trigger)
                   val (pmDef1, pmCache1) =
@@ -1220,33 +1221,37 @@ object evaluator extends EvaluationRules with Immutable {
     Q(s, triggers, v)
   }
 
-  private def generateFieldTrigger(fa: ast.FieldAccess, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], FieldTrigger) = {
+  private def generateFieldTrigger(fa: ast.FieldAccess,
+                                   s: State,
+                                   pve: PartialVerificationError,
+                                   v: Verifier)
+                                  : (Seq[Term], Seq[Term], FieldTrigger) = {
+
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: FieldTrigger = null
+    val codomainQVars = Seq(`?r`)
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(fa.field.name))
-    val dom = if (s.smDomainNeeded) {
-      println("domain needed")
-      None
-    } else None
+    val optSmDomainDefinitionCondition =
+      if (s.smDomainNeeded) { println("domain needed"); None }
+      else None
+    val (smDef1, smCache1) =
+      quantifiedChunkSupporter.summarisingSnapshotMap(
+        s, fa.field, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
 
-    val smDef = s.smCache.get(fa.field, relevantChunks) match {
-      case Some((fvfDef, _)) => fvfDef
-      case _ =>
-        val sumHeap = quantifiedChunkSupporter.summarise(s, relevantChunks, Seq(`?r`), fa.field, dom, v)
-        SnapshotMapDefinition(fa.field, sumHeap._1, sumHeap._2, Seq())
-    }
-
-    val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
-    val smCache1 = s.smCache + ((fa.field, relevantChunks) -> (smDef, totalPermissions))
+    /* TODO: Reduce code duplication below */
+    /* TODO: Return updated snapshot caches (or let generateFieldTrigger take a continuation) */
 
     fa.rcv match {
       case acc: ast.FieldAccess =>
+        /* TODO: Is this *recursive* case even necessary? Wouldn't the eval(...) in the other case
+         *       recurse anyway?
+         */
         val rcvHelper = generateFieldTrigger(acc, s, pve, v)
         val rcvTrig = rcvHelper._3
-        axioms = axioms ++ smDef.valueDefinitions ++ rcvHelper._1
-        mostRecentTrig = FieldTrigger(fa.field.name, smDef.sm, Lookup(rcvTrig.field, rcvTrig.fvf, rcvTrig.at))
+        axioms = axioms ++ smDef1.valueDefinitions ++ rcvHelper._1
+        mostRecentTrig = FieldTrigger(fa.field.name, smDef1.sm, Lookup(rcvTrig.field, rcvTrig.fvf, rcvTrig.at))
         triggers = triggers ++ rcvHelper._2 :+ mostRecentTrig
       case rcv =>
         val s1 = s.copy(smCache = smCache1)
@@ -1255,82 +1260,81 @@ object evaluator extends EvaluationRules with Immutable {
           case Some(cachedTrigger) =>
             cachedTrigger match {
               case l: Lookup =>
-                axioms = axioms ++ smDef.valueDefinitions
-                mostRecentTrig = FieldTrigger(l.field, smDef.sm, l.at)
+                axioms = axioms ++ smDef1.valueDefinitions
+                mostRecentTrig = FieldTrigger(l.field, smDef1.sm, l.at)
                 triggers = triggers :+ mostRecentTrig
               case _ =>
                 eval(s1.copy(triggerExp = true), rcv, pve, v)((_, tRcv, _) => {
-                  axioms = axioms ++ smDef.valueDefinitions
-                  mostRecentTrig = FieldTrigger(fa.field.name, smDef.sm, tRcv)
+                  axioms = axioms ++ smDef1.valueDefinitions
+                  mostRecentTrig = FieldTrigger(fa.field.name, smDef1.sm, tRcv)
                   triggers = triggers :+ mostRecentTrig
                   Success()
                 })
             }
           case None =>
-            eval(s1.copy(triggerExp = true), rcv, pve, v)((s2, tRcv, v1) => {
-              axioms = axioms ++ smDef.valueDefinitions
-              mostRecentTrig = FieldTrigger(fa.field.name, smDef.sm, tRcv)
+            eval(s1.copy(triggerExp = true), rcv, pve, v)((_, tRcv, _) => {
+              axioms = axioms ++ smDef1.valueDefinitions
+              mostRecentTrig = FieldTrigger(fa.field.name, smDef1.sm, tRcv)
               triggers = triggers :+ mostRecentTrig
               Success()
             })
         }
     }
+
     (axioms, triggers, mostRecentTrig)
   }
 
+  /* TODO: Try to unify with generateFieldTrigger above, or at least with generateWandTrigger below */
   private def generatePredicateTrigger(pa: ast.PredicateAccess, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], PredicateTrigger) = {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
+    val codomainQVars = s.predicateFormalVarMap(pa.loc(Verifier.program))
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(pa.predicateName))
-    val dom = if (s.smDomainNeeded) {
-      println("domain needed")
-      None
-    } else None
-
-    val smDef = s.smCache.get(pa.loc(Verifier.program), relevantChunks) match {
-      case Some((psfDef, _)) => psfDef
-      case _ =>
-        val sumHeap = quantifiedChunkSupporter.summarise(s, relevantChunks, s.predicateFormalVarMap(pa.loc(Verifier.program)), pa.loc(Verifier.program), dom, v)
-        SnapshotMapDefinition(pa.loc(Verifier.program), sumHeap._1, sumHeap._2, Seq())
-    }
-
-    val totalPermissions = BigPermSum(relevantChunks.map(_.perm), Predef.identity)
-    val smCache1 = s.smCache + ((pa.loc(Verifier.program), relevantChunks) -> (smDef, totalPermissions))
-
+    val optSmDomainDefinitionCondition =
+      if (s.smDomainNeeded) { println("domain needed"); None }
+      else None
+    val (smDef1, smCache1) =
+      quantifiedChunkSupporter.summarisingSnapshotMap(
+        s, pa.loc(Verifier.program), codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
     val s1 = s.copy(smCache = smCache1)
+
     evals(s1, pa.args, _ => pve, v)((_, tArgs, _) => {
-      axioms = axioms ++ smDef.valueDefinitions
-      mostRecentTrig = PredicateTrigger(pa.predicateName, smDef.sm, tArgs)
+      axioms = axioms ++ smDef1.valueDefinitions
+      mostRecentTrig = PredicateTrigger(pa.predicateName, smDef1.sm, tArgs)
       triggers = triggers :+ mostRecentTrig
       Success()
     })
+
     (axioms, triggers, mostRecentTrig)
   }
 
+  /* TODO: See comments for generatePredicateTrigger above */
   private def generateWandTrigger(wand: ast.MagicWand, s: State, pve: PartialVerificationError, v: Verifier): (Seq[Term], Seq[Term], PredicateTrigger) = {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
+    val wandHoles = wand.subexpressionsToEvaluate(Verifier.program)
+    val codomainQVars =
+      wandHoles.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(wandHoles(i).typ)))
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s.h, MagicWandIdentifier(wand, Verifier.program))
-    val dom = if (s.smDomainNeeded) {
-      println("domain needed")
-      None
-    } else None
-
-    val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
-    val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-    val (smDef, smCache1) =
-      quantifiedChunkSupporter.summarisingSnapshotMap(s, wand, formalVars, relevantChunks, v)
+    val optSmDomainDefinitionCondition =
+      if (s.smDomainNeeded) { println("domain needed"); None }
+      else None
+    val (smDef1, smCache1) =
+      quantifiedChunkSupporter.summarisingSnapshotMap(
+        s, wand, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
     val s1 = s.copy(smCache = smCache1)
+
     evals(s1, wand.subexpressionsToEvaluate(Verifier.program), _ => pve, v)((_, tArgs, _) => {
-      axioms = axioms ++ smDef.valueDefinitions
-      mostRecentTrig = PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, smDef.sm, tArgs)
+      axioms = axioms ++ smDef1.valueDefinitions
+      mostRecentTrig = PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, smDef1.sm, tArgs)
       triggers = triggers :+ mostRecentTrig
       Success()
     })
+
     (axioms, triggers, mostRecentTrig)
   }
 

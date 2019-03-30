@@ -7,15 +7,9 @@
 package viper.silicon
 
 import viper.silver.ast
-import viper.silicon.rules.{PermMapDefinition, SnapshotMapDefinition}
-import viper.silicon.state.terms.Term
+import viper.silicon.rules.PermMapDefinition
 
 package object state {
-  type SmCache =
-    Map[
-      (ast.Resource, Seq[QuantifiedBasicChunk]),
-      (SnapshotMapDefinition, Term)]
-
   type PmCache =
     Map[
       (ast.Resource, Seq[QuantifiedBasicChunk]),
