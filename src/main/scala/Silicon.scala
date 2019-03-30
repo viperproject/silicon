@@ -8,9 +8,7 @@ package viper.silicon
 
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
-
-import scala.reflect.runtime.universe
-import scala.util.{Left, Right, Try}
+import scala.util.{Left, Right}
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
@@ -25,38 +23,16 @@ import viper.silicon.verifier.DefaultMasterVerifier
 import viper.silver.logger.ViperStdOutLogger
 
 object Silicon {
-  private val brandingDataObjectName = "viper.silicon.brandingData"
-  private val mirror = universe.runtimeMirror(getClass.getClassLoader)
-  private val optModuleSymbol = Try(mirror.staticModule(brandingDataObjectName)).toOption
-  private val optModuleMirror = optModuleSymbol.map(ms => mirror.reflectModule(ms))
-  private val optInstanceMirror = optModuleMirror.map(mm => mirror.reflect(mm.instance))
-
-  private def bd(name: String): Option[String] = {
-    optModuleSymbol.map(ms => {
-      val field = ms.typeSignature.decl(universe.TermName(name)).asTerm
-      val fieldMirror = optInstanceMirror.get.reflectField(field)
-
-      fieldMirror.get.toString
-    })
-  }
-
-  private val sbtProjectName = bd("sbtProjectName").getOrElse("Silicon")
-  private val sbtProjectVersion = bd("sbtProjectVersion").getOrElse("0.0")
-  private val buildDate = bd("buildDate").getOrElse("<unknown>")
-
-  private object hgid {
-    val version = bd("hgid_version").getOrElse("<unknown>")
-    val branch = bd("hgid_branch").getOrElse("<unknown>")
-  }
-
-  val name = sbtProjectName
-  val version = s"$sbtProjectVersion (${hgid.version})"
-  val buildVersion = s"$sbtProjectVersion ${hgid.version} ${hgid.branch} $buildDate"
-  val copyright = "(c) Copyright ETH Zurich 2012 - 2017"
+  val name = BuildInfo.projectName
+  val buildRevision = BuildInfo.hg("revision")
+  val buildBranch = BuildInfo.hg("branch")
+  val buildVersion = s"$buildRevision${if (buildBranch == "default") "" else s"@$buildBranch"}"
+  val version = s"${BuildInfo.projectVersion} ($buildVersion)"
+  val copyright = "(c) Copyright ETH Zurich 2012 - 2019"
   val z3ExeEnvironmentVariable = "Z3_EXE"
-  val z3MinVersion = Version("4.3.2")
-  val z3MaxVersion: Option[Version] = None // Some(Version("4.5.0")) /* X.Y.Z if that is the last *supported* version */
-  val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "http://z3.codeplex.com/"))
+  val z3MinVersion = Version("4.5.0")
+  val z3MaxVersion: Option[Version] = None // Some(Version("4.5.0")) /* X.Y.Z if that is the *last supported* version */
+  val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "https://github.com/Z3Prover/z3"))
 
   val hideInternalOptions = false
 
