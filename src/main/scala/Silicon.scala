@@ -24,8 +24,8 @@ import viper.silver.logger.ViperStdOutLogger
 
 object Silicon {
   val name = BuildInfo.projectName
-  val buildRevision = BuildInfo.hg("revision")
-  val buildBranch = BuildInfo.hg("branch")
+  val buildRevision = BuildInfo.hg._1
+  val buildBranch = BuildInfo.hg._2
   val buildVersion = s"$buildRevision${if (buildBranch == "default") "" else s"@$buildBranch"}"
   val version = s"${BuildInfo.projectVersion} ($buildVersion)"
   val copyright = "(c) Copyright ETH Zurich 2012 - 2019"
