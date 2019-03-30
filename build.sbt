@@ -70,6 +70,8 @@ lazy val silicon = (project in file("."))
       "projectVersion" -> version.value,
       scalaVersion,
       sbtVersion,
+      // TODO: Either make hg a named pair with fields hg.revision/hg.branch,
+      //       or replace by two direct fields, e.g. hgRevision/hgBranch
       BuildInfoKey.action("hg") {
         val Seq(revision, branch) =
           Try(
