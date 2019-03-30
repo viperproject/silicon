@@ -75,7 +75,8 @@ lazy val silicon = (project in file("."))
           Try(
             Process("hg id -ib").!!.trim.split(' ').toSeq
           ).getOrElse(Seq("<revision>", "<branch>"))
-        Map("revision" -> revision, "branch" -> branch)
+
+        (revision, branch)
       }
     ),
     buildInfoPackage := "viper.silicon")
