@@ -33,8 +33,7 @@ class MemoryTests extends FlatSpec {
 //    silver.configureVerifier(Nil)
     silver.init(silicon)
     silver.reset(Paths.get("src/test/scala/linkedlist.silver"))
-
-    silver.runTo("Translation")
+    silver.runTo(silver.Translation)
 
     var lb = collection.mutable.ListBuffer[Long]()
 
