@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.SymbExLogger
+
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 import viper.silver.verifier.VerificationError
@@ -216,6 +218,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm())
           val pTakenMacro = v.decider.freshMacro("complete_pTaken", Seq(), pTakenBody)
           val pTaken = App(pTakenMacro, Seq())
+          SymbExLogger.currentLog().addMacro(pTaken, pTakenBody)
           val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
           constraints.append((And(eq, IsPositive(ch.perm)), newChunk.snap))
           pNeeded = PermMinus(pNeeded, pTaken)
