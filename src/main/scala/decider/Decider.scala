@@ -11,7 +11,7 @@ import com.typesafe.scalalogging.Logger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError
-import viper.silicon.Silicon
+import viper.silicon.{Silicon, SymbExLogger}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.{Prover, Unsat}
@@ -199,6 +199,15 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
               : VerificationResult = {
 
       val success = deciderAssert(t, timeout)
+
+      // If the SMT query was not successful, store it (possibly "overwriting"
+      // any previously saved query), otherwise discard any query we had saved
+      // previously (it did not cause a verification failure) and ignore the
+      // current one, because it cannot cause a verification error.
+      if (success)
+        SymbExLogger.currentLog().discardSMTQuery()
+      else
+        SymbExLogger.currentLog().setSMTQuery(t)
 
       Q(success)
     }
