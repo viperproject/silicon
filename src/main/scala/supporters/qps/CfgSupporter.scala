@@ -7,17 +7,14 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.{SymbExLogger, WellformednessCheckRecord}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
-import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
-import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
+import viper.silicon.rules.{executionFlowController, executor}
 import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silicon.utils.freshSnap
 import viper.silver.cfg.silver.SilverCfg
 
 trait CfgVerificationUnit extends VerificationUnit[SilverCfg]
@@ -28,8 +25,6 @@ trait DefaultCfgVerificationUnitProvider extends VerifierComponent { v: Verifier
 
   object cfgSupporter extends CfgVerificationUnit with StatefulComponent {
     import executor._
-    import producer._
-    import consumer._
 
     private var _units: Seq[SilverCfg] = _
 
