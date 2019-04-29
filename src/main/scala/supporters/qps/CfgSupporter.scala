@@ -38,30 +38,24 @@ trait DefaultCfgVerificationUnitProvider extends VerifierComponent { v: Verifier
       logger.debug("\n\n" + "-" * 10 + " CFG " + "-" * 10 + "\n")
       decider.prover.comment("%s CFG %s".format("-" * 10, "-" * 10))
 
-//      SymbExLogger.insertMember(method, null, v.decider.pcs)
-
-//      val pres = method.pres
-//      val posts = method.posts
-
-//      val body = method.bodyOrAssumeFalse.toCfg()
-      val body = cfg
+//      SymbExLogger.insertMember(method, null, v.decider.pcs) TODO: Enable this.
 
       val g = Store()
 
       val s = sInit.copy(g = g,
         h = Heap(),
         oldHeaps = OldHeaps(),
-        methodCfg = body)  // TODO: ???
+        methodCfg = cfg)  // TODO: ???
 
       if (Verifier.config.printMethodCFGs()) {
         viper.silicon.common.io.toFile(
-          body.toDot,
+          cfg.toDot,
           new java.io.File(s"${Verifier.config.tempDirectory()}/CFG${System.identityHashCode(cfg)}.dot"))
       }
 
       val result = {
         executionFlowController.locally(s, v)((s3, v3) =>  {
-          exec(s3, body, v3)((_, _) =>
+          exec(s3, cfg, v3)((_, _) =>
             Success())}) }
 
       Seq(result)
@@ -78,4 +72,3 @@ trait DefaultCfgVerificationUnitProvider extends VerifierComponent { v: Verifier
     def stop() {}
   }
 }
-
