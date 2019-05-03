@@ -222,6 +222,23 @@ object SymbExLogger {
   def resetMemberList() {
     memberList = List[SymbLog]()
   }
+
+  /**
+    * Converts memberList to a tree of GenericNodes
+    */
+  def convertMemberList(): GenericNode = {
+    new GenericNodeRenderer().render(memberList)
+  }
+
+  def writeChromeTraceFile(): Unit = {
+    if (config.writeTraceFile()) {
+      val gn = convertMemberList()
+      val chromeTraceRenderer = new ChromeTraceRenderer()
+      val str = chromeTraceRenderer.render(List(gn))
+      val pw = new java.io.PrintWriter(new File(getOutputFolder() + "chromeTrace.json"))
+      try pw.write(str) finally pw.close()
+    }
+  }
 }
 
 //========================= SymbLog ========================
@@ -262,6 +279,9 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     if (!isUsed(s.value) || isRecordedDifferently(s))
       return -1
 
+    if (s.startTimeMs == 0) {
+      s.startTimeMs = System.currentTimeMillis()
+    }
     current().subs = current().subs ++ List(s)
     stack = s :: stack
     sepCounter = sepCounter + 1
@@ -309,6 +329,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     if (n != -1 && sepSet.contains(n)) {
       sepSet = sepSet - n
       if (isUsed(v))
+        current().endTimeMs = System.currentTimeMillis()
         stack = stack.tail
     }
   }
@@ -389,13 +410,13 @@ object NoopSymbLog extends SymbLog(null, null, null) {
 
 //===== Renderer Classes =====
 
-sealed trait Renderer[T] {
-  def renderMember(s: SymbLog): T
+sealed trait Renderer[S, T] {
+  def renderMember(s: S): T
 
-  def render(memberList: List[SymbLog]): T
+  def render(memberList: List[S]): T
 }
 
-class DotTreeRenderer extends Renderer[String] {
+class DotTreeRenderer extends Renderer[SymbLog, String] {
 
   def render(memberList: List[SymbLog]): String = {
     var str: String = "digraph {\n"
@@ -511,7 +532,7 @@ object JsonHelper {
   }
 }
 
-class JSTreeRenderer extends Renderer[String] {
+class JSTreeRenderer extends Renderer[SymbLog, String] {
 
   val stateFormatter: DefaultStateFormatter
   = new DefaultStateFormatter()
@@ -599,7 +620,7 @@ class JSTreeRenderer extends Renderer[String] {
   }
 }
 
-class SimpleTreeRenderer extends Renderer[String] {
+class SimpleTreeRenderer extends Renderer[SymbLog, String] {
   def render(memberList: List[SymbLog]): String = {
     var res = ""
     for (m <- memberList) {
@@ -649,7 +670,7 @@ class SimpleTreeRenderer extends Renderer[String] {
   }
 }
 
-class TypeTreeRenderer extends Renderer[String] {
+class TypeTreeRenderer extends Renderer[SymbLog, String] {
   def render(memberList: List[SymbLog]): String = {
     var res = ""
     for (m <- memberList) {
@@ -715,6 +736,9 @@ sealed trait SymbolicRecord {
   val pcs: Set[Term]
   var subs = List[SymbolicRecord]()
   var lastFailedProverQuery: Option[Term] = None
+
+  var startTimeMs: Long = 0
+  var endTimeMs: Long = 0
 
   def toTypeString(): String
 
@@ -941,6 +965,59 @@ class GlobalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: Strin
   }
 }
 
+class LocalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
+  extends MultiChildUnorderedRecord {
+  val value = v
+  val state = s
+  val pcs = if (p != null) p.assumptions else null
+  val environment = env
+
+  def toTypeString(): String = {
+    "LocalBranch"
+  }
+
+  var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null)
+  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+  var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+
+  override def toSimpleString(): String = {
+    if (value != null)
+      value.toString()
+    else
+      "LocalBranch<Null>"
+  }
+
+  override def toJson(): String = {
+    if (value != null) JsonHelper.pair("kind", "LocalBranch") + "," + JsonHelper.pair("value", value.toString())
+    else ""
+  }
+
+  override def toString(): String = {
+    environment + " " + toSimpleString()
+  }
+
+  @elidable(INFO)
+  def finish_cond(): Unit = {
+    if (!subs.isEmpty)
+      cond = subs(0)
+    subs = List[SymbolicRecord]()
+  }
+
+  @elidable(INFO)
+  def finish_thnSubs(): Unit = {
+    if (!subs.isEmpty)
+      thnSubs = subs
+    subs = List[SymbolicRecord]()
+  }
+
+  @elidable(INFO)
+  def finish_elsSubs(): Unit = {
+    if (!subs.isEmpty)
+      elsSubs = subs
+    subs = List[SymbolicRecord]()
+  }
+}
+
 class CommentRecord(str: String, s: State, p: PathConditionStack) extends SequentialRecord {
   val value = null
   val state = s
@@ -1020,6 +1097,176 @@ class MethodCallRecord(v: ast.MethodCall, s: State, p: PathConditionStack)
     if (!subs.isEmpty)
       postcondition = subs(0)
     subs = List[SymbolicRecord]()
+  }
+}
+
+class SmtAssertRecord(t: Term, timeout: Option[Int]) extends MemberRecord {
+  val value: ast.Node = null
+  val state: State = null
+  val pcs: Set[Term] = null
+  val term: Term = t
+  val timeoutOptions: Option[Int] = timeout
+
+  def toTypeString(): String = {
+    "SmtAssert"
+  }
+
+  override def toString(): String = {
+    if (term != null)
+      "SMT assert: " + term.toString()
+    else
+      "SMT assert: <null>"
+  }
+
+  override def toSimpleString(): String = {
+    if (term != null) term.toString()
+    else "SmtAssert <null>"
+  }
+}
+
+
+class GenericNode(val label: String, val startTimeMs: Long, val endTimeMs: Long, val isSmtQuery: Boolean = false) {
+
+  // ==== structural
+  var children = List[GenericNode]()
+  var successors = List[GenericNode]()
+  // ==== structural
+
+  override def toString(): String = {
+    label
+  }
+}
+
+class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
+
+  def render(memberList: List[SymbLog]): GenericNode = {
+    var children: List[GenericNode] = List()
+    for (m <- memberList) {
+      children = children ++ List(renderMember(m))
+    }
+    var startTimeMs: Long = 0
+    var endTimeMs: Long = 0
+    if (children.nonEmpty) {
+      startTimeMs = children.head.startTimeMs
+      endTimeMs = children.last.endTimeMs
+    }
+    val node = new GenericNode("Members", startTimeMs, endTimeMs)
+    node.children = children
+    node
+  }
+
+  def renderMember(s: SymbLog): GenericNode = {
+    // adjust start and end time of s.main:
+    if (s.main.subs.nonEmpty) {
+      s.main.startTimeMs = s.main.subs.head.startTimeMs
+      s.main.endTimeMs = s.main.subs.last.endTimeMs
+    }
+    renderRecord(s.main)
+  }
+
+  def renderRecord(r: SymbolicRecord): GenericNode = {
+    var node = new GenericNode(r.toString(), r.startTimeMs, r.endTimeMs)
+
+    // TODO replace CondExpr with corresponding Branch and Join records
+    r match {
+      case gb: GlobalBranchRecord => {
+        // insert condition as child
+        node.children = node.children ++ List(renderRecord(gb.cond))
+        // if and else branch are two successors
+        val (thnNode, elsNode) = renderBranch(gb, gb.thnSubs, gb.elsSubs)
+        node.successors = node.successors ++ List(thnNode, elsNode)
+      }
+
+      case lb: LocalBranchRecord => {
+        // node is the branch node having then and else nodes as successors.
+        // then and else nodes have themselves the join node as successor
+        node.children = node.children ++ List(renderRecord(lb.cond))
+        // if and else branch are two successors
+        val (thnNode, elsNode) = renderBranch(lb, lb.thnSubs, lb.elsSubs)
+        node.successors = node.successors ++ List(thnNode, elsNode)
+        // assign same node as successor of thnNode and elsNode:
+        // TODO get join duration
+        var joinNode = new GenericNode("Join Point", elsNode.startTimeMs, elsNode.endTimeMs)
+        thnNode.successors = thnNode.successors ++ List(joinNode)
+        elsNode.successors = elsNode.successors ++ List(joinNode)
+      }
+
+      case _ => {
+        for (sub <- r.subs) {
+          node.children = node.children ++ List(renderRecord(sub))
+        }
+      }
+    }
+
+    node
+  }
+
+  def renderBranch(parent: SymbolicRecord, thnSubs: List[SymbolicRecord], elsSubs: List[SymbolicRecord]): (GenericNode, GenericNode) = {
+    // checking for time == 0 is necessary because not reachable comment records do currently not have a start and end time associated
+    var thnStartTimeMs = parent.startTimeMs
+    var thnEndTimeMs = parent.startTimeMs
+    if (thnSubs.nonEmpty) {
+      thnStartTimeMs = if (thnSubs.head.startTimeMs == 0) thnStartTimeMs else thnSubs.head.startTimeMs
+      thnEndTimeMs = if (thnSubs.last.endTimeMs == 0) thnEndTimeMs else thnSubs.last.endTimeMs
+    }
+    var thnNode = new GenericNode("Then Branch", thnStartTimeMs, thnEndTimeMs)
+    for (sub <- thnSubs) {
+      thnNode.children = thnNode.children ++ List(renderRecord(sub))
+    }
+    var elsStartTimeMs = thnEndTimeMs
+    var elsEndTimeMs = thnEndTimeMs
+    if (elsSubs.nonEmpty) {
+      elsStartTimeMs = if (elsSubs.head.startTimeMs == 0) elsStartTimeMs else elsSubs.head.startTimeMs
+      elsEndTimeMs = if (elsSubs.last.endTimeMs == 0) elsEndTimeMs else elsSubs.last.endTimeMs
+    }
+    var elsNode = new GenericNode("Else Branch", elsStartTimeMs, elsEndTimeMs)
+    for (sub <- elsSubs) {
+      elsNode.children = elsNode.children ++ List(renderRecord(sub))
+    }
+
+    (thnNode, elsNode)
+  }
+}
+
+class ChromeTraceRenderer extends Renderer[GenericNode, String] {
+
+  def render(memberList: List[GenericNode]): String = {
+    val renderedMembers: Iterable[String] = memberList map renderMember
+    return "[" + renderedMembers.mkString(",") + "]"
+  }
+
+  // creates an event json object for each node
+  // {"name": "Asub", "cat": "PERF", "ph": "B", "pid": 22630, "tid": 22630, "ts": 829}
+  def renderMember(n: GenericNode): String = {
+    val renderedChildren = (n.children map renderMember) filter(p => p != null && p!= "")
+    val renderedSuccessors = (n.successors map renderMember) filter(p => p != null && p!= "")
+    val renderedNode = renderNode(n)
+    if (renderedNode == null) {
+      println("skipping node " + n.toString())
+      return ""
+    }
+    (List(renderedNode) ++ renderedChildren ++ renderedSuccessors).mkString(",")
+  }
+
+  // renders a node without considering its children or successors
+  def renderNode(n: GenericNode): String = {
+    if (n.startTimeMs == 0 || n.endTimeMs == 0) {
+      return null
+    }
+    // start event
+    "{" + "\"name\":\"" + n.label + "\"," +
+      "\"cat\": \"PERF\"," +
+      "\"ph\":\"B\"," +
+      "\"pid\":1," +
+      "\"tid\": 1," +
+      "\"ts\":" + n.startTimeMs + "}," +
+    // end event
+      "{" + "\"name\":\"" + n.label + "\"," +
+      "\"cat\": \"PERF\"," +
+      "\"ph\":\"E\"," +
+      "\"pid\":1," +
+      "\"tid\": 1," +
+      "\"ts\":" + n.endTimeMs + "}"
   }
 }
 

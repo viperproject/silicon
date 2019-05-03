@@ -22,7 +22,7 @@ import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ExecuteRecord, Map, MethodCallRecord, SymbExLogger}
+import viper.silicon.{ExecuteRecord, GlobalBranchRecord, Map, MethodCallRecord, SymbExLogger}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -61,13 +61,26 @@ object executor extends ExecutionRules with Immutable {
 
     edge match {
       case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
-        eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
+        val impLog = new GlobalBranchRecord(ce.condition, s1, v.decider.pcs, "conditional edge")
+        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+        // SymbExLogger.currentLog().initializeBranching()
+        eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) => {
           /* Using branch(...) here ensures that the edge condition is recorded
            * as a branch condition on the pathcondition stack.
            */
-          brancher.branch(s2, tCond, v1)(
-            (s3, v3) => exec(s3, ce.target, ce.kind, v3)(Q),
-            (_, _)  => Success()))
+          impLog.finish_cond()
+          val branch_res = brancher.branch(s2, tCond, v1)(
+            (s3, v3) => exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
+              val res1 = Q(s4, v4)
+              impLog.finish_thnSubs()
+              // SymbExLogger.currentLog().prepareOtherBranch(impLog)
+              res1}),
+            (_, _)  => {
+              val res2 = Success()
+              impLog.finish_elsSubs()
+              res2})
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          branch_res})
 
       case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
         exec(s1, ue.target, ue.kind, v)(Q)

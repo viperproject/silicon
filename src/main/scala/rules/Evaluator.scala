@@ -20,7 +20,7 @@ import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
-import viper.silicon.{EvaluateRecord, Map, SymbExLogger, TriggerSets}
+import viper.silicon.{EvaluateRecord, LocalBranchRecord, Map, SymbExLogger, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
@@ -313,12 +313,25 @@ object evaluator extends EvaluationRules with Immutable {
         eval(s, e0, pve, v)((s1, t0, v1) =>
           evalImplies(s1, t0, e1, implies.info == FromShortCircuitingAnd, pve, v1)(Q))
 
-      case ast.CondExp(e0, e1, e2) =>
-        eval(s, e0, pve, v)((s1, t0, v1) =>
+      case ast.CondExp(e0, e1, e2) => {
+        val impLog = new LocalBranchRecord(e0, s, v.decider.pcs, "CondExp")
+        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+        // SymbExLogger.currentLog().initializeBranching()
+        eval(s, e0, pve, v)((s1, t0, v1) => {
+          impLog.finish_cond()
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
             brancher.branch(s2, t0, v2)(
-              (s3, v3) => eval(s3, e1, pve, v3)(QB),
-              (s3, v3) => eval(s3, e2, pve, v3)(QB))
+              (s3, v3) => eval(s3, e1, pve, v3)((s4, t4, v4) => {
+                val res1 = QB(s4, t4, v4)
+                impLog.finish_thnSubs()
+                // SymbExLogger.currentLog().prepareOtherBranch(impLog)
+                res1
+              }),
+              (s3, v3) => eval(s3, e2, pve, v3)((s5, t5, v5) => {
+                val res2 = QB(s5, t5, v5)
+                impLog.finish_elsSubs()
+                res2
+              }))
           )(entries => {
             /* TODO: The next few lines could be made safer if branch(...) took orElse-continuations
              *       that are executed if a branch is dead */
@@ -334,9 +347,15 @@ object evaluator extends EvaluationRules with Immutable {
               case Seq(entry1, entry2) =>
                 (entry1.s.merge(entry2.s), entry1.data, entry2.data)
               case _ =>
-                sys.error(s"Unexpected join data entries: $entries")}
+                sys.error(s"Unexpected join data entries: $entries")
+            }
             (s2, Ite(t0, t1, t2))
-          })(Q))
+          })((s6, t6, v6) => {
+            // collapse before evaluating everything following the join point:
+            SymbExLogger.currentLog().collapse(null, sepIdentifier)
+            Q(s6, t6, v6)
+          })})
+      }
 
       /* Integers */
 

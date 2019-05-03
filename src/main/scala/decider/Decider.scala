@@ -11,7 +11,7 @@ import com.typesafe.scalalogging.Logger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError
-import viper.silicon.{Silicon, SymbExLogger}
+import viper.silicon.{Silicon, SmtAssertRecord, SymbExLogger}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.{Prover, Unsat}
@@ -227,8 +227,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def proverAssert(t: Term, timeout: Option[Int]) = {
+      val assertRecord = new SmtAssertRecord(t, timeout)
+      val sepIdentifier = SymbExLogger.currentLog().insert(assertRecord)
       val result = prover.assert(t, timeout)
-
+      SymbExLogger.currentLog().collapse(null, sepIdentifier)
       result
     }
 
