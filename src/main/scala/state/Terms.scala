@@ -681,6 +681,7 @@ object Or extends (Iterable[Term] => Term) {
     ts match {
       case Seq() => False()
       case Seq(t) => t
+      case _ if ts.contains(True()) => True()
       case _ => new Or(ts)
     }
   }
@@ -711,6 +712,7 @@ object And extends (Iterable[Term] => Term) {
     ts match {
       case Seq() => True()
       case Seq(t) => t
+      case _ if ts.contains(False()) => False()
       case _ => new And(ts)
     }
   }
