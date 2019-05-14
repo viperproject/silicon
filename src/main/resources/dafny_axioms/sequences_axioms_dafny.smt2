@@ -60,6 +60,7 @@
       (=> (< n ($Seq.length s0)) (= ($Seq.index ($Seq.append s0 s1) n) ($Seq.index s0 n)))
       (=> (<= ($Seq.length s0) n) (= ($Seq.index ($Seq.append s0 s1) n) ($Seq.index s1 (- n ($Seq.length s0)))))))
   :pattern ( ($Seq.index ($Seq.append s0 s1) n))
+  :pattern ( ($Seq.index s0 n) ($Seq.append s0 s1))
   )))
 (assert (forall ((s $Seq<$S$>) (i Int) (v $S$) ) (! (=> (and
   (<= 0 i)
