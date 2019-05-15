@@ -122,19 +122,41 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   // and returns the merged chunk or None, if the chunks could not be merged
   private def mergeChunks(chunk1: NonQuantifiedChunk, chunk2: NonQuantifiedChunk, v: Verifier) = (chunk1, chunk2) match {
     case (BasicChunk(rid1, id1, args1, snap1, perm1), BasicChunk(_, _, _, snap2, perm2)) =>
-      val (combinedSnap, snapEq) = combineSnapshots(snap1, snap2, perm1, perm2, v)
+      val (combinedSnap, snapEq) = combineSnapshots(snap1, snap2, perm1, perm2)
+
       Some(BasicChunk(rid1, id1, args1, combinedSnap, PermPlus(perm1, perm2)), snapEq)
-    case (_, _) => None
+    case (_, _) =>
+      None
   }
 
-  private def combineSnapshots(t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (Term, Term) = {
+  /** Merge the snapshots of two chunks that denote the same location, i.e. whose ids and arguments
+    * are known to be equal.
+    *
+    * @param t1 The first chunk's snapshot.
+    * @param t2 The second chunk's snapshot.
+    * @param p1 The first chunk's permission amount.
+    * @param p2 The second chunk's permission amount.
+    * @return A pair (snap, def) of a snapshot snap and a term def constraining snap.
+    */
+  private def combineSnapshots(t1: Term, t2: Term, p1: Term, p2: Term): (Term, Term) = {
     val (tSnap, tSnapDef) =
       (IsPositive(p1), IsPositive(p2)) match {
         case (True(), b2) => (t1, Implies(b2, t1 === t2))
         case (b1, True()) => (t2, Implies(b1, t2 === t1))
-        case (b1, b2) =>
-          val t3 = v.decider.fresh(t1.sort)
-          (t3, And(Implies(b1, t3 === t1), Implies(b2, t3 === t2)))
+        case (_, b2) =>
+          /* Previously, when merging two chunks whose permission values p1 and p2 are both not
+           * definitely known to be positive, the following happened:
+           *   1. A fresh snapshot t3 was introduced and returned
+           *   2. The constrain (0 < p1 ==> t3 == t1) && (0 < p2 ==> t3 == t2) was returned
+           *
+           * Introducing a fresh snapshot is not necessary, however, and forgetting to add it to
+           * as a fresh snapshot to the function recorder caused Silicon issue #379.
+           *
+           * Instead, it suffices to return t1, alongside the constrain 0 < p2 ==> t1 == t2
+           * (analogously, t2 could be returned).
+           */
+
+          (t1, Implies(b2, t1 === t2))
       }
 
     (tSnap, tSnapDef)

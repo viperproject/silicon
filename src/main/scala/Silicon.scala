@@ -8,18 +8,20 @@ package viper.silicon
 
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
+
 import scala.util.{Left, Right}
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import viper.silver.ast
-import viper.silver.frontend.{SilFrontend, DefaultStates}
+import viper.silver.frontend.{DefaultStates, SilFrontend}
 import viper.silver.reporter._
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.verifier.DefaultMasterVerifier
+import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
 
 object Silicon {
@@ -143,6 +145,10 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     * @return The verification result.
     */
   def verify(program: ast.Program): SilVerificationResult = {
+    verify(program, Seq())
+  }
+
+  def verify(program: ast.Program, cfgs: Seq[SilverCfg]): SilVerificationResult = {
     lifetimeState match {
       case LifetimeState.Instantiated => sys.error("Silicon hasn't been configured yet")
       case LifetimeState.Configured => sys.error("Silicon hasn't been started yet")
@@ -162,6 +168,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
       case _ => None
     }
 
+    // TODO: Check consistency of cfgs.
     val consistencyErrors = utils.consistency.check(program)
 
     if (consistencyErrors.nonEmpty) {
@@ -171,7 +178,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
       val executor = Executors.newSingleThreadExecutor()
 
       val future = executor.submit(new Callable[List[Failure]] {
-        def call(): List[Failure] = runVerifier(program)
+        def call(): List[Failure] = runVerifier(program, cfgs)
       })
 
       try {
@@ -207,11 +214,11 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     }
   }
 
-  private def runVerifier(program: ast.Program): List[Failure] = {
+  private def runVerifier(program: ast.Program, cfgs: Seq[SilverCfg]): List[Failure] = {
 //    verifier.bookkeeper.branches = 1
     /*verifier.bookkeeper.*/startTime = System.currentTimeMillis()
 
-    val results = verifier.verify(program)
+    val results = verifier.verify(program, cfgs)
 
     /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 

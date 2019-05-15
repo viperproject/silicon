@@ -14,10 +14,12 @@ class SlaveVerifier(master: MasterVerifier,
                     uniqueId: String,
                     override val reporter: Reporter)
     extends BaseVerifier(Verifier.config, uniqueId)
-       with DefaultMethodVerificationUnitProvider {
+       with DefaultMethodVerificationUnitProvider
+       with DefaultCfgVerificationUnitProvider {
 
   private val statefulSubcomponents = List[StatefulComponent](
-    methodSupporter
+    methodSupporter,
+    cfgSupporter
   )
 
   def verificationPoolManager: VerificationPoolManager = master.verificationPoolManager
