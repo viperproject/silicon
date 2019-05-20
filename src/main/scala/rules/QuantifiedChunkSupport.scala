@@ -636,20 +636,23 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           /* Explicit triggers were provided */
 
           val trig = tTriggers map (t => Trigger(t.p map {
+            /* TODO: Understand and document why the provided trigger ft/pt is sometimes,
+             *       but not always, replaced.
+             */
             case ft: FieldTrigger =>
-              if (ft.field == resource.asInstanceOf[ast.Field].name) FieldTrigger(ft.field, tSnap, ft.at)
-              else ft
+              resource match {
+                case field: ast.Field if ft.field == field.name => FieldTrigger(ft.field, tSnap, ft.at)
+                case _ => ft
+              }
             case pt: PredicateTrigger =>
               resource match {
-                case p: ast.Predicate =>
-                  if (pt.predname == p.name) PredicateTrigger(pt.predname, tSnap, pt.args)
-                  else pt
-                case wand: ast.MagicWand =>
-                  if (pt.predname == MagicWandIdentifier(wand, Verifier.program).toString)
-                    PredicateTrigger(pt.predname, tSnap, pt.args)
-                  else pt
+                case p: ast.Predicate if pt.predname == p.name =>
+                  PredicateTrigger(pt.predname, tSnap, pt.args)
+                case wand: ast.MagicWand if pt.predname == MagicWandIdentifier(wand, Verifier.program).toString =>
+                  PredicateTrigger(pt.predname, tSnap, pt.args)
+                case _ => pt
               }
-            case t2 => t2
+            case other => other
           }))
 
           (trig, qvars)
