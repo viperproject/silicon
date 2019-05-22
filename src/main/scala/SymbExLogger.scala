@@ -18,6 +18,7 @@ import viper.silicon.decider.PathConditionStack
 import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silver.cfg.silver.SilverCfg.SilverEdge
 
 /* TODO: InsertionOrderedSet is used by the logger, but the insertion order is
  *       probably irrelevant for logging. I.e. it might be ok if these sets were
@@ -236,6 +237,16 @@ object SymbExLogger {
       val chromeTraceRenderer = new ChromeTraceRenderer()
       val str = chromeTraceRenderer.render(List(gn))
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "chromeTrace.json"))
+      try pw.write(str) finally pw.close()
+    }
+  }
+
+  def writeGenericNodeJsonFile(): Unit = {
+    if (config.writeTraceFile()) {
+      val gn = convertMemberList()
+      val jsonRenderer = new JsonRenderer()
+      val str = jsonRenderer.render(List(gn))
+      val pw = new java.io.PrintWriter(new File(getOutputFolder() + "genericNodes.json"))
       try pw.write(str) finally pw.close()
     }
   }
@@ -513,6 +524,14 @@ object JsonHelper {
 
   def pair(name: String, value: Boolean): String = {
     "\"" + name + "\":" + value
+  }
+
+  def pair(name: String, value: Long): String = {
+    "\"" + name + "\":" + value
+  }
+
+  def pair(name: String, value: List[Int]): String = {
+    "\"" + name + "\":[" + value.mkString(",") + "]"
   }
 
   def escape(s: String): String = {
@@ -965,6 +984,88 @@ class GlobalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: Strin
   }
 }
 
+class CfgBranchRecord(v: Seq[SilverEdge], s: State, p: PathConditionStack, env: String)
+  extends MultiChildUnorderedRecord {
+  val value = null
+  val state = s
+  val pcs = if (p != null) p.assumptions else null
+  val environment = env
+
+  def toTypeString(): String = {
+    "CfgBranch"
+  }
+
+  var branchSubs = List[List[SymbolicRecord]]()
+
+  override def toSimpleString(): String = {
+    if (value != null)
+      value.toString()
+    else
+      "CfgBranch<Null>"
+  }
+
+  override def toJson(): String = {
+    if (value != null) JsonHelper.pair("kind", "CfgBranch") + "," + JsonHelper.pair("value", value.toString())
+    else ""
+  }
+
+  override def toString(): String = {
+    environment + " " + toSimpleString()
+  }
+
+  @elidable(INFO)
+  def finish_branchSubs(): Unit = {
+    if (!subs.isEmpty)
+      branchSubs = branchSubs ++ List(subs)
+    subs = List[SymbolicRecord]()
+  }
+}
+
+class ConditionalEdgeRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
+  extends MultiChildUnorderedRecord {
+  val value = v
+  val state = s
+  val pcs = if (p != null) p.assumptions else null
+  val environment = env
+
+  def toTypeString(): String = {
+    "ConditionalEdge"
+  }
+
+  var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null)
+  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+
+  override def toSimpleString(): String = {
+    if (value != null)
+      value.toString()
+    else
+      "ConditionalEdge<Null>"
+  }
+
+  override def toJson(): String = {
+    if (value != null) JsonHelper.pair("kind", "ConditionalEdge") + "," + JsonHelper.pair("value", value.toString())
+    else ""
+  }
+
+  override def toString(): String = {
+    environment + " " + toSimpleString()
+  }
+
+  @elidable(INFO)
+  def finish_cond(): Unit = {
+    if (!subs.isEmpty)
+      cond = subs(0)
+    subs = List[SymbolicRecord]()
+  }
+
+  @elidable(INFO)
+  def finish_thnSubs(): Unit = {
+    if (!subs.isEmpty)
+      thnSubs = subs
+    subs = List[SymbolicRecord]()
+  }
+}
+
 class LocalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
   extends MultiChildUnorderedRecord {
   val value = v
@@ -1132,6 +1233,8 @@ class GenericNode(val label: String, val startTimeMs: Long, val endTimeMs: Long,
   var successors = List[GenericNode]()
   // ==== structural
 
+  var isSyntactic: Boolean = false
+
   override def toString(): String = {
     label
   }
@@ -1165,15 +1268,35 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
   }
 
   def renderRecord(r: SymbolicRecord): GenericNode = {
-    var node = new GenericNode(r.toString(), r.startTimeMs, r.endTimeMs)
+    // set isSmtQuery flag:
+    var isSmtQuery: Boolean = false
+    r match {
+      case sq: SmtAssertRecord => isSmtQuery = true
+      case _ =>
+    }
+
+    var node = new GenericNode(r.toString(), r.startTimeMs, r.endTimeMs, isSmtQuery)
 
     // TODO replace CondExpr with corresponding Branch and Join records
     r match {
+      case cbRecord: CfgBranchRecord => {
+        // branches are successors
+        node.successors = node.successors ++ renderBranch(cbRecord, cbRecord.branchSubs)
+        node.isSyntactic = true
+      }
+
+      case ceRecord: ConditionalEdgeRecord => {
+        // insert condition as child
+        node.children = node.children ++ List(renderRecord(ceRecord.cond))
+        // if branch are two successors
+        node.successors = node.successors ++ renderBranch(ceRecord, List(ceRecord.thnSubs))
+      }
+
       case gb: GlobalBranchRecord => {
         // insert condition as child
         node.children = node.children ++ List(renderRecord(gb.cond))
         // if and else branch are two successors
-        val (thnNode, elsNode) = renderBranch(gb, gb.thnSubs, gb.elsSubs)
+        val (thnNode, elsNode) = renderIfElse(gb, gb.thnSubs, gb.elsSubs)
         node.successors = node.successors ++ List(thnNode, elsNode)
       }
 
@@ -1182,7 +1305,7 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
         // then and else nodes have themselves the join node as successor
         node.children = node.children ++ List(renderRecord(lb.cond))
         // if and else branch are two successors
-        val (thnNode, elsNode) = renderBranch(lb, lb.thnSubs, lb.elsSubs)
+        val (thnNode, elsNode) = renderIfElse(lb, lb.thnSubs, lb.elsSubs)
         node.successors = node.successors ++ List(thnNode, elsNode)
         // assign same node as successor of thnNode and elsNode:
         // TODO get join duration
@@ -1201,30 +1324,39 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
     node
   }
 
-  def renderBranch(parent: SymbolicRecord, thnSubs: List[SymbolicRecord], elsSubs: List[SymbolicRecord]): (GenericNode, GenericNode) = {
-    // checking for time == 0 is necessary because not reachable comment records do currently not have a start and end time associated
-    var thnStartTimeMs = parent.startTimeMs
-    var thnEndTimeMs = parent.startTimeMs
-    if (thnSubs.nonEmpty) {
-      thnStartTimeMs = if (thnSubs.head.startTimeMs == 0) thnStartTimeMs else thnSubs.head.startTimeMs
-      thnEndTimeMs = if (thnSubs.last.endTimeMs == 0) thnEndTimeMs else thnSubs.last.endTimeMs
-    }
-    var thnNode = new GenericNode("Then Branch", thnStartTimeMs, thnEndTimeMs)
-    for (sub <- thnSubs) {
-      thnNode.children = thnNode.children ++ List(renderRecord(sub))
-    }
-    var elsStartTimeMs = thnEndTimeMs
-    var elsEndTimeMs = thnEndTimeMs
-    if (elsSubs.nonEmpty) {
-      elsStartTimeMs = if (elsSubs.head.startTimeMs == 0) elsStartTimeMs else elsSubs.head.startTimeMs
-      elsEndTimeMs = if (elsSubs.last.endTimeMs == 0) elsEndTimeMs else elsSubs.last.endTimeMs
-    }
-    var elsNode = new GenericNode("Else Branch", elsStartTimeMs, elsEndTimeMs)
-    for (sub <- elsSubs) {
-      elsNode.children = elsNode.children ++ List(renderRecord(sub))
-    }
-
+  def renderIfElse(parent: SymbolicRecord, thnSubs: List[SymbolicRecord], elsSubs: List[SymbolicRecord]): (GenericNode, GenericNode) = {
+    val result = renderBranch(parent, List(thnSubs, elsSubs))
+    assert(result.length == 2)
+    val thnNode = result.head
+    val elsNode = result(1)
     (thnNode, elsNode)
+  }
+
+  def renderBranch(parent: SymbolicRecord, branches: List[List[SymbolicRecord]]): List[GenericNode] = {
+    var startTimeMs = parent.startTimeMs
+    var endTimeMs = parent.startTimeMs
+    // adjust parent's endTimeMs by the sum of execution times of each branch
+    var parentTimeAdjustmentMs = 0L
+    var results: List[GenericNode] = List()
+    for (branchSubs <- branches) {
+      var subsStartTimeMs = startTimeMs
+      var subsEndTimeMs = endTimeMs
+      if (branchSubs.nonEmpty) {
+        subsStartTimeMs = if (branchSubs.head.startTimeMs == 0) startTimeMs else branchSubs.head.startTimeMs
+        subsEndTimeMs = if (branchSubs.last.endTimeMs == 0) endTimeMs else branchSubs.last.endTimeMs
+      }
+      parentTimeAdjustmentMs += subsEndTimeMs - subsStartTimeMs
+      var subsNode = new GenericNode("Branch", subsStartTimeMs, subsEndTimeMs)
+      subsNode.isSyntactic = true
+      for (sub <- branchSubs) {
+        subsNode.children = subsNode.children ++ List(renderRecord(sub))
+      }
+      results = results ++ List(subsNode)
+      startTimeMs = subsEndTimeMs
+      endTimeMs = subsEndTimeMs
+    }
+    parent.endTimeMs = Math.max(parent.startTimeMs, parent.endTimeMs - parentTimeAdjustmentMs)
+    results
   }
 }
 
@@ -1232,7 +1364,7 @@ class ChromeTraceRenderer extends Renderer[GenericNode, String] {
 
   def render(memberList: List[GenericNode]): String = {
     val renderedMembers: Iterable[String] = memberList map renderMember
-    return "[" + renderedMembers.mkString(",") + "]"
+    "[" + renderedMembers.mkString(",") + "]"
   }
 
   // creates an event json object for each node
@@ -1254,19 +1386,58 @@ class ChromeTraceRenderer extends Renderer[GenericNode, String] {
       return null
     }
     // start event
-    "{" + "\"name\":\"" + n.label + "\"," +
-      "\"cat\": \"PERF\"," +
-      "\"ph\":\"B\"," +
-      "\"pid\":1," +
-      "\"tid\": 1," +
-      "\"ts\":" + n.startTimeMs + "}," +
+    "{" + JsonHelper.pair("name", n.label) + "," +
+      JsonHelper.pair("cat", "PERF") + "," +
+      JsonHelper.pair("ph", "B") + "," +
+      JsonHelper.pair("pid", 1) + "," +
+      JsonHelper.pair("tid", 1) + "," +
+      JsonHelper.pair("ts", n.startTimeMs) + "}," +
     // end event
-      "{" + "\"name\":\"" + n.label + "\"," +
-      "\"cat\": \"PERF\"," +
-      "\"ph\":\"E\"," +
-      "\"pid\":1," +
-      "\"tid\": 1," +
-      "\"ts\":" + n.endTimeMs + "}"
+      "{" + JsonHelper.pair("name", n.label) + "," +
+      JsonHelper.pair("cat", "PERF") + "," +
+      JsonHelper.pair("ph", "E") + "," +
+      JsonHelper.pair("pid", 1) + "," +
+      JsonHelper.pair("tid", 1) + "," +
+      JsonHelper.pair("ts", n.endTimeMs) + "}"
+  }
+}
+
+class JsonRenderer extends Renderer[GenericNode, String] {
+  // visit all nodes and insert them into an array such that each node can be referenced by its index
+  var nodes: List[GenericNode] = List()
+
+  override def render(memberList: List[GenericNode]): String = {
+    memberList foreach buildHierarchy
+
+    val renderedMembers: Iterable[String] = nodes map renderMember
+    "[" + renderedMembers.mkString(",") + "]"
+  }
+
+  def buildHierarchy(n: GenericNode): Unit = {
+    // add node to list of all nodes:
+    if (!nodes.contains(n)) {
+      nodes = nodes ++ List(n)
+    }
+
+    n.children foreach buildHierarchy
+    n.successors foreach buildHierarchy
+  }
+
+  override def renderMember(n: GenericNode): String = {
+    val childrenIndices = n.children map nodes.indexOf
+    val successorsIndices = n.successors map nodes.indexOf
+    if (childrenIndices.contains(-1) || successorsIndices.contains(-1)) {
+      println("unresolved node found; skipping node " + n.toString())
+      return "{" + JsonHelper.pair("label", n.label) + "}"
+    }
+    "{" + JsonHelper.pair("id", nodes.indexOf(n)) + "," +
+      JsonHelper.pair("label", n.label) + "," +
+      JsonHelper.pair("isSmtQuery", n.isSmtQuery) + "," +
+      JsonHelper.pair("isSyntactic", n.isSyntactic) + "," +
+      JsonHelper.pair("startTimeMs", n.startTimeMs) + "," +
+      JsonHelper.pair("endTimeMs", n.endTimeMs) + "," +
+      JsonHelper.pair("children", childrenIndices) + "," +
+      JsonHelper.pair("successors", successorsIndices) + "}"
   }
 }
 

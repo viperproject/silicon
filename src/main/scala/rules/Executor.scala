@@ -22,7 +22,7 @@ import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ExecuteRecord, GlobalBranchRecord, Map, MethodCallRecord, SymbExLogger}
+import viper.silicon.{CfgBranchRecord, ConditionalEdgeRecord, ExecuteRecord, GlobalBranchRecord, Map, MethodCallRecord, SymbExLogger}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -61,7 +61,7 @@ object executor extends ExecutionRules with Immutable {
 
     edge match {
       case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
-        val impLog = new GlobalBranchRecord(ce.condition, s1, v.decider.pcs, "conditional edge")
+        val impLog = new ConditionalEdgeRecord(ce.condition, s1, v.decider.pcs, "Conditional Edge")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
         // SymbExLogger.currentLog().initializeBranching()
         eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) => {
@@ -75,10 +75,7 @@ object executor extends ExecutionRules with Immutable {
               impLog.finish_thnSubs()
               // SymbExLogger.currentLog().prepareOtherBranch(impLog)
               res1}),
-            (_, _)  => {
-              val res2 = Success()
-              impLog.finish_elsSubs()
-              res2})
+            (_, _)  => Success())
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
@@ -96,11 +93,22 @@ object executor extends ExecutionRules with Immutable {
 
     if (edges.isEmpty) {
       Q(s, v)
-    } else
-      edges.foldLeft(Success(): VerificationResult) {
+    } else {
+      val gbRecord: CfgBranchRecord = new CfgBranchRecord(edges, s, v.decider.pcs, "Conditional Edge")
+      val sepIdentifier = SymbExLogger.currentLog().insert(gbRecord)
+      // SymbExLogger.currentLog().initializeBranching()
+      val res = edges.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
-        case (_, edge) => follow(s, edge, v)(Q)
+        case (_, edge) => {
+          val edge_res = follow(s, edge, v)(Q)
+          gbRecord.finish_branchSubs()
+          // SymbExLogger.currentLog().prepareOtherBranch(gbRecord)
+          edge_res
+        }
       }
+      SymbExLogger.currentLog().collapse(null, sepIdentifier)
+      res
+    }
   }
 
   def exec(s: State, graph: SilverCfg, v: Verifier)

@@ -235,6 +235,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     SymbExLogger.convertMemberList()
     logger info SymbExLogger.toSimpleTreeString
     SymbExLogger.writeChromeTraceFile()
+    SymbExLogger.writeGenericNodeJsonFile()
 
     (   functionVerificationResults
      ++ predicateVerificationResults
