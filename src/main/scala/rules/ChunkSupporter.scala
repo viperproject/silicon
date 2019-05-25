@@ -289,7 +289,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
              (Q: (State, Heap, Verifier) => VerificationResult) = {
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
-    Q(s, stateConsolidator.merge(h, ch, v), v)
+    val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, h, ch, v)
+    Q(s.copy(functionRecorder = fr1), h1, v)
   }
 
   def lookup(s: State,

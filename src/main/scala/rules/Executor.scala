@@ -51,7 +51,8 @@ object executor extends ExecutionRules with Immutable {
 
     val s1 = edge.kind match {
       case cfg.Kind.Out =>
-        val s1 = s.copy(h = stateConsolidator.merge(s.h, s.invariantContexts.head, v),
+        val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+        val s1 = s.copy(functionRecorder = fr1, h = h1,
                         invariantContexts = s.invariantContexts.tail)
         s1
       case _ =>
