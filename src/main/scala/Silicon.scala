@@ -23,6 +23,7 @@ import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.verifier.DefaultMasterVerifier
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
+import viper.silver.plugin.PluginAwareReporter
 
 object Silicon {
   val name = BuildInfo.projectName
@@ -59,7 +60,7 @@ object Silicon {
                                       debugInfo: Seq[(String, Any)] = Nil)
                                      : Silicon = {
 
-    val silicon = new Silicon(reporter, debugInfo)
+    val silicon = new Silicon(PluginAwareReporter(reporter), debugInfo)
 
     silicon.parseCommandLine(args :+ "dummy-file-to-prevent-cli-parser-from-complaining-about-missing-file-name.silver")
 
@@ -67,13 +68,13 @@ object Silicon {
   }
 }
 
-class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] = Nil)
+class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(String, Any)] = Nil)
     extends SilVerifier
        with LazyLogging {
 
-  def this(debugInfo: Seq[(String, Any)]) = this(StdIOReporter(), debugInfo)
+  def this(debugInfo: Seq[(String, Any)]) = this(PluginAwareReporter(StdIOReporter()), debugInfo)
 
-  def this() = this(StdIOReporter(), Nil)
+  def this() = this(PluginAwareReporter(StdIOReporter()), Nil)
 
   val name: String = Silicon.name
   val version = Silicon.version
@@ -281,8 +282,12 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   }
 }
 
-class SiliconFrontend(override val reporter: Reporter,
-                      override implicit val logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) extends SilFrontend {
+class SiliconFrontend(override val reporter: PluginAwareReporter,
+                      override implicit val logger: Logger) extends SilFrontend {
+
+  def this(reporter: Reporter, logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) =
+    this(PluginAwareReporter(reporter), logger)
+
   protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {
