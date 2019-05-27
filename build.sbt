@@ -47,6 +47,7 @@ lazy val silicon = (project in file("."))
     // "show javaOptions" on the Sbt console.
 
     fork := true,
+    fork in Test := false,
     // Fork Silicon when run and tested. Avoids problems with file
     // handlers on Windows 7 that remain open until Sbt is closed,
     // which makes it very annoying to work on test files.

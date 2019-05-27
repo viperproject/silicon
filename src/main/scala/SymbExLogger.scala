@@ -116,6 +116,13 @@ object SymbExLogger {
     else NoopSymbLog
   }
 
+  def endMember(): Unit = {
+    if (currentLog() != null
+      && currentLog().main != null) {
+      currentLog().main.endTimeMs = System.currentTimeMillis()
+    }
+  }
+
   /**
     * Passes config from Silicon to SymbExLogger.
     * Config is assigned only once, further calls are ignored.
@@ -231,21 +238,19 @@ object SymbExLogger {
     new GenericNodeRenderer().render(memberList)
   }
 
-  def writeChromeTraceFile(): Unit = {
+  def writeChromeTraceFile(genericNode: GenericNode): Unit = {
     if (config.writeTraceFile()) {
-      val gn = convertMemberList()
       val chromeTraceRenderer = new ChromeTraceRenderer()
-      val str = chromeTraceRenderer.render(List(gn))
+      val str = chromeTraceRenderer.render(List(genericNode))
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "chromeTrace.json"))
       try pw.write(str) finally pw.close()
     }
   }
 
-  def writeGenericNodeJsonFile(): Unit = {
+  def writeGenericNodeJsonFile(genericNode: GenericNode): Unit = {
     if (config.writeTraceFile()) {
-      val gn = convertMemberList()
       val jsonRenderer = new JsonRenderer()
-      val str = jsonRenderer.render(List(gn))
+      val str = jsonRenderer.render(List(genericNode))
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "genericNodes.json"))
       try pw.write(str) finally pw.close()
     }
@@ -264,6 +269,9 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     case p: ast.Predicate => new PredicateRecord(p, s, pcs)
     case f: ast.Function => new FunctionRecord(f, s, pcs)
     case default => null
+  }
+  if (main != null) {
+    main.startTimeMs = System.currentTimeMillis()
   }
 
   // Maps macros to their body
@@ -340,7 +348,9 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     if (n != -1 && sepSet.contains(n)) {
       sepSet = sepSet - n
       if (isUsed(v))
-        current().endTimeMs = System.currentTimeMillis()
+        if (current().endTimeMs == 0) {
+          current().endTimeMs = System.currentTimeMillis()
+        }
         stack = stack.tail
     }
   }
@@ -353,8 +363,16 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     * in Producer/Consumer).
     */
   @elidable(INFO)
-  def initializeBranching() {
+  def initializeBranching(): InsertionOrderedSet[Int] =  {
+    val oldSepSet = sepSet
     sepSet = InsertionOrderedSet[Int]()
+    oldSepSet
+  }
+
+  @elidable(INFO)
+  def restoreSepSet(oldSepSet: InsertionOrderedSet[Int]): Unit = {
+    assert(sepSet.isEmpty)
+    sepSet = oldSepSet
   }
 
   /**
@@ -367,6 +385,10 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     */
   @elidable(INFO)
   def prepareOtherBranch(s: SymbolicRecord) {
+    if (stack.head == s) {
+      // If-branch did not remove the branching-record
+      return
+    }
     stack = s :: stack
   }
 
@@ -652,6 +674,21 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     toSimpleTree(member.main, 1)
   }
 
+  def filter(s: SymbolicRecord): Boolean = {
+    s match {
+      case br: CfgBranchRecord =>
+        if (br.branchSubs.length == 1) {
+          br.branchSubs.head.forall(filter)
+        } else {
+          false
+        }
+      case ue: UnconditionalEdgeRecord => ue.subs.forall(filter)
+      case ce: ConditionalEdgeRecord =>
+        filter(ce.cond) && ce.thnSubs.forall(filter)
+      case _ => false
+    }
+  }
+
   def toSimpleTree(s: SymbolicRecord, n: Int): String = {
     var indent = ""
     for (i <- 1 to n) {
@@ -659,29 +696,112 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     }
     var str = ""
     s match {
+      case br: CfgBranchRecord => {
+        if (br.branchSubs.length == 1) {
+          // ignore this record
+          var branchSubCount = 0
+          for (subIndex <- br.branchSubs.head.indices) {
+            val branchSubs = br.branchSubs.head
+            if (!filter(branchSubs(subIndex))) {
+              var subIndent = ""
+              if (branchSubCount != 0) {
+                subIndent = indent.substring(2)
+              }
+              str = str + subIndent + toSimpleTree(br.branchSubs.head(subIndex), n)
+              branchSubCount = branchSubCount + 1
+            }
+          }
+        } else {
+          for (branchIndex <- br.branchSubs.indices) {
+            val branchSubs = br.branchSubs(branchIndex)
+            var branchIndent = ""
+            if (branchIndex != 0) {
+                branchIndent = indent.substring(2)
+            }
+            str = str + branchIndent + "Branch " + (branchIndex + 1).toString + ":\n"
+            for (sub <- branchSubs) {
+              if (!filter(sub)) {
+                str = str + indent + toSimpleTree(sub, n + 1)
+              }
+            }
+          }
+        }
+      }
+      case ce: ConditionalEdgeRecord => {
+        // ignore this record
+        if (!filter(ce.cond)) {
+          str = str + toSimpleTree(ce.cond, n)
+        }
+        for (sub <- ce.thnSubs) {
+          if (!filter(sub)) {
+            str = str + indent.substring(2) + toSimpleTree(sub, n)
+          }
+        }
+      }
+      case ue: UnconditionalEdgeRecord => {
+        // ignore this record
+        var subCount = 0
+        for (subIndex <- ue.subs.indices) {
+          var subIndent = ""
+          if (subCount != 0) {
+            subIndent = indent.substring(2)
+          }
+          if (!filter(ue.subs(subIndex))) {
+            str = str + subIndent + toSimpleTree(ue.subs(subIndex), n)
+            subCount = subCount + 1
+          }
+        }
+      }
       case gb: GlobalBranchRecord => {
         str = str + "Branch 1:\n"
         for (sub <- gb.thnSubs) {
-          str = str + indent + toSimpleTree(sub, n + 1)
+          if (!filter(sub)) {
+            str = str + indent + toSimpleTree(sub, n + 1)
+          }
         }
 
         str = str + indent.substring(2) + "Branch 2:\n"
         for (sub <- gb.elsSubs) {
-          str = str + indent + toSimpleTree(sub, n + 1)
+          if (!filter(sub)) {
+            str = str + indent + toSimpleTree(sub, n + 1)
+          }
+        }
+      }
+      case lb: LocalBranchRecord => {
+        str = str + "Local Branch 1:\n"
+        for (sub <- lb.thnSubs) {
+          if (!filter(sub)) {
+            str = str + indent + toSimpleTree(sub, n + 1)
+          }
+        }
+
+        str = str + indent.substring(2) + "Local Branch 2:\n"
+        for (sub <- lb.elsSubs) {
+          if (!filter(sub)) {
+            str = str + indent + toSimpleTree(sub, n + 1)
+          }
         }
       }
       case mc: MethodCallRecord => {
         str = str + mc.toString() + "\n"
-        str = str + indent + "precondition: " + toSimpleTree(mc.precondition, n + 1)
-        str = str + indent + "postcondition: " + toSimpleTree(mc.postcondition, n + 1)
+        if (!filter(mc.precondition)) {
+          str = str + indent + "precondition: " + toSimpleTree(mc.precondition, n + 1)
+        }
+        if (!filter(mc.postcondition)) {
+          str = str + indent + "postcondition: " + toSimpleTree(mc.postcondition, n + 1)
+        }
         for (p <- mc.parameters) {
-          str = str + indent + "parameter: " + toSimpleTree(p, n + 1)
+          if (!filter(p)) {
+            str = str + indent + "parameter: " + toSimpleTree(p, n + 1)
+          }
         }
       }
       case _ => {
         str = str + s.toString() + "\n"
         for (sub <- s.subs) {
-          str = str + indent + toSimpleTree(sub, n + 1)
+          if (!filter(sub)) {
+            str = str + indent + toSimpleTree(sub, n + 1)
+          }
         }
       }
     }
@@ -931,30 +1051,29 @@ class WellformednessCheckRecord(v: Seq[ast.Exp], s: State, p: PathConditionStack
   }
 }
 
-class GlobalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
+abstract class TwoBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
   extends MultiChildUnorderedRecord {
   val value = v
   val state = s
   val pcs = if (p != null) p.assumptions else null
   val environment = env
 
-  def toTypeString(): String = {
-    "GlobalBranch"
-  }
-
   var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null)
+  var condEndTimeMs: Long = 0
   var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+  var thnEndTimeMs: Long = 0
   var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+  var elsEndTimeMs: Long = 0
 
   override def toSimpleString(): String = {
     if (value != null)
       value.toString()
     else
-      "GlobalBranch<Null>"
+      toTypeString() + "<Null>"
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("kind", "GlobalBranch") + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("kind", toTypeString()) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 
@@ -964,6 +1083,7 @@ class GlobalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: Strin
 
   @elidable(INFO)
   def finish_cond(): Unit = {
+    condEndTimeMs = System.currentTimeMillis()
     if (!subs.isEmpty)
       cond = subs(0)
     subs = List[SymbolicRecord]()
@@ -971,6 +1091,7 @@ class GlobalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: Strin
 
   @elidable(INFO)
   def finish_thnSubs(): Unit = {
+    thnEndTimeMs = System.currentTimeMillis()
     if (!subs.isEmpty)
       thnSubs = subs
     subs = List[SymbolicRecord]()
@@ -978,9 +1099,37 @@ class GlobalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: Strin
 
   @elidable(INFO)
   def finish_elsSubs(): Unit = {
+    elsEndTimeMs = System.currentTimeMillis()
     if (!subs.isEmpty)
       elsSubs = subs
     subs = List[SymbolicRecord]()
+  }
+
+  /**
+    * hack such that endTimeMs is correctly set in the presence of initializeBranching, because identifier is not
+    * in sepSet when collapsing the record
+    */
+  @elidable(INFO)
+  def finish_record(): Unit = {
+    if (endTimeMs == 0) {
+      endTimeMs = System.currentTimeMillis()
+    }
+  }
+}
+
+class GlobalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
+  extends TwoBranchRecord(v, s, p, env) {
+
+  def toTypeString(): String = {
+    "GlobalBranch"
+  }
+}
+
+class LocalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
+  extends TwoBranchRecord(v, s, p, env) {
+
+  def toTypeString(): String = {
+    "LocalBranch"
   }
 }
 
@@ -996,6 +1145,7 @@ class CfgBranchRecord(v: Seq[SilverEdge], s: State, p: PathConditionStack, env: 
   }
 
   var branchSubs = List[List[SymbolicRecord]]()
+  // ar branchEndTimesMs: List[Long] = List[Long]()
 
   override def toSimpleString(): String = {
     if (value != null)
@@ -1017,6 +1167,7 @@ class CfgBranchRecord(v: Seq[SilverEdge], s: State, p: PathConditionStack, env: 
   def finish_branchSubs(): Unit = {
     if (!subs.isEmpty)
       branchSubs = branchSubs ++ List(subs)
+      // branchEndTimesMs = branchEndTimesMs ++ List(System.currentTimeMillis())
     subs = List[SymbolicRecord]()
   }
 }
@@ -1033,7 +1184,9 @@ class ConditionalEdgeRecord(v: ast.Exp, s: State, p: PathConditionStack, env: St
   }
 
   var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null)
+  var condEndTimeMs: Long = 0
   var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+  var thnEndTimeMs: Long = 0
 
   override def toSimpleString(): String = {
     if (value != null)
@@ -1053,6 +1206,7 @@ class ConditionalEdgeRecord(v: ast.Exp, s: State, p: PathConditionStack, env: St
 
   @elidable(INFO)
   def finish_cond(): Unit = {
+    condEndTimeMs = System.currentTimeMillis()
     if (!subs.isEmpty)
       cond = subs(0)
     subs = List[SymbolicRecord]()
@@ -1060,65 +1214,39 @@ class ConditionalEdgeRecord(v: ast.Exp, s: State, p: PathConditionStack, env: St
 
   @elidable(INFO)
   def finish_thnSubs(): Unit = {
+    thnEndTimeMs = System.currentTimeMillis()
     if (!subs.isEmpty)
       thnSubs = subs
     subs = List[SymbolicRecord]()
   }
 }
 
-class LocalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
-  extends MultiChildUnorderedRecord {
-  val value = v
+class UnconditionalEdgeRecord(s: State, p: PathConditionStack, env: String) extends SequentialRecord {
+  val value = null
   val state = s
   val pcs = if (p != null) p.assumptions else null
   val environment = env
 
   def toTypeString(): String = {
-    "LocalBranch"
+    "UnconditionalEdgeRecord"
   }
-
-  var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null)
-  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
-  var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
 
   override def toSimpleString(): String = {
     if (value != null)
       value.toString()
     else
-      "LocalBranch<Null>"
+      "UnconditionalEdgeRecord<Null>"
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("kind", "LocalBranch") + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("kind", "UnconditionalEdgeRecord") + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 
   override def toString(): String = {
     environment + " " + toSimpleString()
   }
-
-  @elidable(INFO)
-  def finish_cond(): Unit = {
-    if (!subs.isEmpty)
-      cond = subs(0)
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_thnSubs(): Unit = {
-    if (!subs.isEmpty)
-      thnSubs = subs
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_elsSubs(): Unit = {
-    if (!subs.isEmpty)
-      elsSubs = subs
-    subs = List[SymbolicRecord]()
-  }
 }
-
 class CommentRecord(str: String, s: State, p: PathConditionStack) extends SequentialRecord {
   val value = null
   val state = s
@@ -1226,7 +1354,7 @@ class SmtAssertRecord(t: Term, timeout: Option[Int]) extends MemberRecord {
 }
 
 
-class GenericNode(val label: String, val startTimeMs: Long, val endTimeMs: Long, val isSmtQuery: Boolean = false) {
+class GenericNode(val label: String) {
 
   // ==== structural
   var children = List[GenericNode]()
@@ -1234,6 +1362,9 @@ class GenericNode(val label: String, val startTimeMs: Long, val endTimeMs: Long,
   // ==== structural
 
   var isSyntactic: Boolean = false
+  var isSmtQuery: Boolean = false
+  var startTimeMs: Long = 0
+  var endTimeMs: Long = 0
 
   override def toString(): String = {
     label
@@ -1249,54 +1380,91 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
     }
     var startTimeMs: Long = 0
     var endTimeMs: Long = 0
-    if (children.nonEmpty) {
-      startTimeMs = children.head.startTimeMs
-      endTimeMs = children.last.endTimeMs
+    for (m <- memberList) {
+      if (m.main != null) {
+        if (startTimeMs == 0 || m.main.startTimeMs < startTimeMs) {
+          startTimeMs = m.main.startTimeMs
+        }
+        if (m.main.endTimeMs > endTimeMs) {
+          endTimeMs = m.main.endTimeMs
+        }
+      }
     }
-    val node = new GenericNode("Members", startTimeMs, endTimeMs)
+    val node = new GenericNode("Members")
+    node.startTimeMs = startTimeMs
+    node.endTimeMs = endTimeMs
     node.children = children
     node
   }
 
   def renderMember(s: SymbLog): GenericNode = {
+    /*
     // adjust start and end time of s.main:
+    // TODO this should not be necessary!
     if (s.main.subs.nonEmpty) {
       s.main.startTimeMs = s.main.subs.head.startTimeMs
       s.main.endTimeMs = s.main.subs.last.endTimeMs
     }
+    */
     renderRecord(s.main)
   }
 
   def renderRecord(r: SymbolicRecord): GenericNode = {
+
+    var node = new GenericNode(r.toString())
+    node.startTimeMs = r.startTimeMs
+    node.endTimeMs = r.endTimeMs
     // set isSmtQuery flag:
-    var isSmtQuery: Boolean = false
     r match {
-      case sq: SmtAssertRecord => isSmtQuery = true
+      case sq: SmtAssertRecord => node.isSmtQuery = true
       case _ =>
     }
-
-    var node = new GenericNode(r.toString(), r.startTimeMs, r.endTimeMs, isSmtQuery)
 
     // TODO replace CondExpr with corresponding Branch and Join records
     r match {
       case cbRecord: CfgBranchRecord => {
         // branches are successors
-        node.successors = node.successors ++ renderBranch(cbRecord, cbRecord.branchSubs)
+        for (branchSubs <- cbRecord.branchSubs) {
+          if (branchSubs.length != 1) {
+            throw new AssertionError("each branch should only have one sub which should be a ConditionalEdgeRecord")
+          }
+          val branchNode = renderRecord(branchSubs.head)
+          node.successors = node.successors ++ List(branchNode)
+        }
         node.isSyntactic = true
+        // end time corresponds to the start time of the first branch
+        for (successor <- node.successors) {
+          if (successor.startTimeMs < node.endTimeMs) {
+            node.endTimeMs = successor.startTimeMs
+          }
+        }
       }
 
       case ceRecord: ConditionalEdgeRecord => {
         // insert condition as child
         node.children = node.children ++ List(renderRecord(ceRecord.cond))
-        // if branch are two successors
-        node.successors = node.successors ++ renderBranch(ceRecord, List(ceRecord.thnSubs))
+        // the end time corresponds to the end time of the condition:
+        node.endTimeMs = ceRecord.condEndTimeMs
+        // stmts of the basic blocks (following the condition) are attached as a single branch node to the successors
+        val branchNode = renderBranch(ceRecord.thnSubs, ceRecord.condEndTimeMs, ceRecord.thnEndTimeMs)
+        node.successors = node.successors ++ List(branchNode)
+      }
+
+      case ueRecord: UnconditionalEdgeRecord => {
+        node.isSyntactic = true
+        for (sub <- r.subs) {
+          node.children = node.children ++ List(renderRecord(sub))
+        }
       }
 
       case gb: GlobalBranchRecord => {
         // insert condition as child
         node.children = node.children ++ List(renderRecord(gb.cond))
+        // the end time corresponds to the end time of the condition:
+        node.endTimeMs = gb.condEndTimeMs
         // if and else branch are two successors
-        val (thnNode, elsNode) = renderIfElse(gb, gb.thnSubs, gb.elsSubs)
+        val thnNode = renderBranch(gb.thnSubs, gb.condEndTimeMs, gb.thnEndTimeMs)
+        val elsNode = renderBranch(gb.elsSubs, gb.thnEndTimeMs, gb.elsEndTimeMs)
         node.successors = node.successors ++ List(thnNode, elsNode)
       }
 
@@ -1304,12 +1472,17 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
         // node is the branch node having then and else nodes as successors.
         // then and else nodes have themselves the join node as successor
         node.children = node.children ++ List(renderRecord(lb.cond))
+        // the end time corresponds to the end time of the condition:
+        node.endTimeMs = lb.condEndTimeMs
         // if and else branch are two successors
-        val (thnNode, elsNode) = renderIfElse(lb, lb.thnSubs, lb.elsSubs)
+        val thnNode = renderBranch(lb.thnSubs, lb.condEndTimeMs, lb.thnEndTimeMs)
+        val elsNode = renderBranch(lb.elsSubs, lb.thnEndTimeMs, lb.elsEndTimeMs)
         node.successors = node.successors ++ List(thnNode, elsNode)
         // assign same node as successor of thnNode and elsNode:
+        var joinNode = new GenericNode("Join Point")
         // TODO get join duration
-        var joinNode = new GenericNode("Join Point", elsNode.startTimeMs, elsNode.endTimeMs)
+        joinNode.startTimeMs = lb.elsEndTimeMs
+        joinNode.endTimeMs = lb.endTimeMs
         thnNode.successors = thnNode.successors ++ List(joinNode)
         elsNode.successors = elsNode.successors ++ List(joinNode)
       }
@@ -1324,39 +1497,15 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
     node
   }
 
-  def renderIfElse(parent: SymbolicRecord, thnSubs: List[SymbolicRecord], elsSubs: List[SymbolicRecord]): (GenericNode, GenericNode) = {
-    val result = renderBranch(parent, List(thnSubs, elsSubs))
-    assert(result.length == 2)
-    val thnNode = result.head
-    val elsNode = result(1)
-    (thnNode, elsNode)
-  }
-
-  def renderBranch(parent: SymbolicRecord, branches: List[List[SymbolicRecord]]): List[GenericNode] = {
-    var startTimeMs = parent.startTimeMs
-    var endTimeMs = parent.startTimeMs
-    // adjust parent's endTimeMs by the sum of execution times of each branch
-    var parentTimeAdjustmentMs = 0L
-    var results: List[GenericNode] = List()
-    for (branchSubs <- branches) {
-      var subsStartTimeMs = startTimeMs
-      var subsEndTimeMs = endTimeMs
-      if (branchSubs.nonEmpty) {
-        subsStartTimeMs = if (branchSubs.head.startTimeMs == 0) startTimeMs else branchSubs.head.startTimeMs
-        subsEndTimeMs = if (branchSubs.last.endTimeMs == 0) endTimeMs else branchSubs.last.endTimeMs
-      }
-      parentTimeAdjustmentMs += subsEndTimeMs - subsStartTimeMs
-      var subsNode = new GenericNode("Branch", subsStartTimeMs, subsEndTimeMs)
-      subsNode.isSyntactic = true
-      for (sub <- branchSubs) {
-        subsNode.children = subsNode.children ++ List(renderRecord(sub))
-      }
-      results = results ++ List(subsNode)
-      startTimeMs = subsEndTimeMs
-      endTimeMs = subsEndTimeMs
+  def renderBranch(branchSubs: List[SymbolicRecord], branchStartTimeMs: Long, branchEndTimeMs: Long): GenericNode = {
+    val branchNode = new GenericNode("Branch")
+    branchNode.startTimeMs = branchStartTimeMs
+    branchNode.endTimeMs = branchEndTimeMs
+    branchNode.isSyntactic = true
+    for (sub <- branchSubs) {
+      branchNode.children = branchNode.children ++ List(renderRecord(sub))
     }
-    parent.endTimeMs = Math.max(parent.startTimeMs, parent.endTimeMs - parentTimeAdjustmentMs)
-    results
+    branchNode
   }
 }
 
@@ -1544,7 +1693,8 @@ class SymbExLogUnitTest(f: Path) {
 
     if (testIsExecuted) {
       val pw = new java.io.PrintWriter(new File(actualPath))
-      try pw.write(SymbExLogger.toTypeTreeString()) finally pw.close()
+      errorMsg = errorMsg + SymbExLogger.enabled
+      try pw.write(SymbExLogger.toSimpleTreeString) finally pw.close()
 
       val expectedSource = scala.io.Source.fromFile(expectedPath)
       val expected = expectedSource.getLines()

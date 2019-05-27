@@ -93,6 +93,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     consumes(s4, posts, postViolated, v4)((_, _, _) =>
                       Success()))}) }  )})})
 
+      SymbExLogger.endMember()
       Seq(result)
     }
 

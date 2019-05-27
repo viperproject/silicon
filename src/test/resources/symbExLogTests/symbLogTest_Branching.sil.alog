@@ -1,74 +1,108 @@
-method
-  execute
-    CondExp
-      CondExp
-        evaluate
-        evaluate
-      CondExp
-        Comment
-        evaluate
-  execute
-    evaluate
-      evaluate
-        evaluate
-        CondExp
-          evaluate
-          evaluate
-      evaluate
-  execute
-    evaluate
+method m1
+  WellformednessCheck null
+  execute var a: Int
+  execute a := (b1 ? (b2 ? 2 : 3) : (b1 && b2 ? 4 : 5))
+    Local Branch 1:
+      SMT assert: !(b1@2@01)
+      SMT assert: b1@2@01
+      Local Branch 1:
+        SMT assert: !(b2@3@01)
+        SMT assert: b2@3@01
+        evaluate 2
+      Local Branch 2:
+        evaluate 3
+    Local Branch 2:
+      Local Branch 1:
+        comment: Unreachable
+      Local Branch 2:
+        SMT assert: !(b1@2@01 && b1@2@01 ==> b2@3@01)
+        evaluate 5
+  execute a := 1 + (b1 ? 1 : 2) + 2
+    evaluate 1 + (b1 ? 1 : 2) + 2
+      evaluate 1 + (b1 ? 1 : 2)
+        evaluate 1
+        Local Branch 1:
+          SMT assert: !(b1@2@01)
+          SMT assert: b1@2@01
+          evaluate 1
+        Local Branch 2:
+          evaluate 2
+      evaluate 2
+  execute a := 1
+    evaluate 1
 
-method
-  execute
-    evaluate
-  if
-    evaluate
-      evaluate
-      evaluate
-    execute
-      CondExp
-        CondExp
-          evaluate
-          Comment
-        CondExp
-          Comment
-          evaluate
-    if
-      evaluate
-        evaluate
-          evaluate
-      execute
-        evaluate
-      execute
-        evaluate
-    else
-      evaluate
-        evaluate
-          evaluate
-            evaluate
-      execute
-        evaluate
-      execute
-        evaluate
-  else
-    evaluate
-      evaluate
-        evaluate
-        evaluate
-    Comment
+method m2
+  WellformednessCheck null
+  execute a := 1
+    evaluate 1
+  Branch 1:
+    evaluate a == 1
+      evaluate a
+      evaluate 1
+    SMT assert: False
+    execute a := (b ? (a == 1 ? 2 : 3) : (a != 1 ? 4 : 5))
+      Local Branch 1:
+        SMT assert: !(b@11@01)
+        SMT assert: b@11@01
+        Local Branch 1:
+          SMT assert: False
+          evaluate 2
+        Local Branch 2:
+          comment: Unreachable
+      Local Branch 2:
+        Local Branch 1:
+          comment: Unreachable
+        Local Branch 2:
+          evaluate 5
+    Branch 1:
+      evaluate !!b
+        evaluate !b
+          evaluate b
+      SMT assert: !(b@11@01)
+      SMT assert: b@11@01
+      execute a := 2
+        evaluate 2
+      execute a := 4
+        evaluate 4
+    Branch 2:
+      evaluate !!!b
+        evaluate !!b
+          evaluate !b
+            evaluate b
+      SMT assert: b@11@01
+      SMT assert: !(b@11@01)
+      execute a := 3
+        evaluate 3
+      execute a := 4
+        evaluate 4
+  Branch 2:
+    evaluate !(a == 1)
+      evaluate a == 1
+        evaluate a
+        evaluate 1
+    comment: Unreachable
 
-method
-  if
-    evaluate
-    execute
-      CondExp
-        evaluate
-        evaluate
-  else
-    evaluate
-      evaluate
-    execute
-      evaluate
-        evaluate
-        evaluate
+method m3
+  WellformednessCheck null
+  execute var a: Int
+  Branch 1:
+    evaluate b
+    SMT assert: !(b@18@01)
+    SMT assert: b@18@01
+    execute a := (c ? 1 : 2)
+      Local Branch 1:
+        SMT assert: !(c@19@01)
+        SMT assert: c@19@01
+        evaluate 1
+      Local Branch 2:
+        evaluate 2
+  Branch 2:
+    evaluate !b
+      evaluate b
+    SMT assert: b@18@01
+    SMT assert: !(b@18@01)
+    execute a := 3 + 4
+      evaluate 3 + 4
+        evaluate 3
+        evaluate 4
 

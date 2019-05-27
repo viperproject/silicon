@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.{CommentRecord, SymbExLogger}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
@@ -25,6 +26,10 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   def consolidate(s: State, v: Verifier): State = {
     if (Verifier.config.enableMoreCompleteExhale())
       return s
+
+    val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
+    val sepIdentifier = SymbExLogger.currentLog().insert(comLog)
+
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)
 
@@ -64,7 +69,9 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       Heap(allChunks)
     }
 
-    s.copy(h = newHeaps.head, reserveHeaps = newHeaps.tail)
+    val res = s.copy(h = newHeaps.head, reserveHeaps = newHeaps.tail)
+    SymbExLogger.currentLog().collapse(null, sepIdentifier)
+    res
   }
 
   def consolidateIfRetrying(s: State, v: Verifier): State =

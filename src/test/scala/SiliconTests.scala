@@ -15,7 +15,7 @@ import viper.silver.frontend.DefaultStates
 import viper.silver.reporter.NoopReporter
 
 class SiliconTests extends SilSuite {
-  private val siliconTestDirectories = Seq("consistency")
+  private val siliconTestDirectories = Seq("consistency", "symbExLogTests")
   private val silTestDirectories = Seq("all", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
   val testDirectories = siliconTestDirectories ++ silTestDirectories
 
@@ -29,7 +29,8 @@ class SiliconTests extends SilSuite {
     SymbExLogger.reset()
     SymbExLogger.filePath = files.head
     SymbExLogger.initUnitTestEngine()
-    val fe = new SiliconFrontend(NoopReporter)//SiliconFrontendWithUnitTesting()
+    // val fe = new SiliconFrontend(NoopReporter)//SiliconFrontendWithUnitTesting()
+    val fe = new SiliconFrontendWithUnitTesting()
     fe.init(verifier)
     fe.reset(files.head)
     fe
@@ -48,9 +49,18 @@ class SiliconTests extends SilSuite {
   val commandLineArguments: Seq[String] = Seq.empty
 
   private def createSiliconInstance() = {
-    val args =
+    val configMap = prefixSpecificConfigMap.getOrElse("silicon", Map())
+    var args =
       commandLineArguments ++
-      Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap.getOrElse("silicon", Map()))
+      Silicon.optionsFromScalaTestConfigMap(configMap)
+    info("args:")
+    for (arg <- args) {
+      info(arg)
+    }
+    for (config <- prefixSpecificConfigMap) {
+      info(config._1)
+    }
+    args = args ++ Seq("--disableCaching", "--ideModeAdvanced", "--numberOfParallelVerifiers", "1")
     val reporter = NoopReporter
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
     val silicon = Silicon.fromPartialCommandLineArguments(args, reporter, debugInfo)

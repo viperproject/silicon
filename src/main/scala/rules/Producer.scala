@@ -207,7 +207,7 @@ object producer extends ProductionRules with Immutable {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impLog = new GlobalBranchRecord(imp, s, v.decider.pcs, "produce")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-        SymbExLogger.currentLog().initializeBranching()
+        val oldSepSet = SymbExLogger.currentLog().initializeBranching()
 
         eval(s, e0, pve, v)((s1, t0, v1) => {
           impLog.finish_cond()
@@ -227,13 +227,14 @@ object producer extends ProductionRules with Immutable {
                 val res2 = Q(s2, v2)
                 impLog.finish_elsSubs()
                 res2})
+          SymbExLogger.currentLog().restoreSepSet(oldSepSet)
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val gbLog = new GlobalBranchRecord(ite, s, v.decider.pcs, "produce")
         val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
-        SymbExLogger.currentLog().initializeBranching()
+        val oldSepSet = SymbExLogger.currentLog().initializeBranching()
         eval(s, e0, pve, v)((s1, t0, v1) => {
           gbLog.finish_cond()
           val branch_res =
@@ -247,6 +248,7 @@ object producer extends ProductionRules with Immutable {
                 val res2 = Q(s3, v3)
                 gbLog.finish_elsSubs()
                 res2}))
+          SymbExLogger.currentLog().restoreSepSet(oldSepSet)
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 

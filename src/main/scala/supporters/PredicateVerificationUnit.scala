@@ -107,6 +107,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                     Success())})
       }
 
+      SymbExLogger.endMember()
       Seq(result)
     }
 

@@ -22,7 +22,7 @@ import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.{CfgBranchRecord, ConditionalEdgeRecord, ExecuteRecord, GlobalBranchRecord, Map, MethodCallRecord, SymbExLogger}
+import viper.silicon.{CfgBranchRecord, ConditionalEdgeRecord, ExecuteRecord, Map, MethodCallRecord, SymbExLogger, UnconditionalEdgeRecord}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -80,7 +80,11 @@ object executor extends ExecutionRules with Immutable {
           branch_res})
 
       case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
-        exec(s1, ue.target, ue.kind, v)(Q)
+        val impLog = new UnconditionalEdgeRecord(s1, v.decider.pcs, "Unconditional Edge")
+        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+        val res = exec(s1, ue.target, ue.kind, v)(Q)
+        SymbExLogger.currentLog().collapse(null, sepIdentifier)
+        res
     }
   }
 
@@ -94,7 +98,7 @@ object executor extends ExecutionRules with Immutable {
     if (edges.isEmpty) {
       Q(s, v)
     } else {
-      val gbRecord: CfgBranchRecord = new CfgBranchRecord(edges, s, v.decider.pcs, "Conditional Edge")
+      val gbRecord: CfgBranchRecord = new CfgBranchRecord(edges, s, v.decider.pcs, "Branch Record")
       val sepIdentifier = SymbExLogger.currentLog().insert(gbRecord)
       // SymbExLogger.currentLog().initializeBranching()
       val res = edges.foldLeft(Success(): VerificationResult) {

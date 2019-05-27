@@ -316,7 +316,7 @@ object evaluator extends EvaluationRules with Immutable {
       case ast.CondExp(e0, e1, e2) => {
         val impLog = new LocalBranchRecord(e0, s, v.decider.pcs, "CondExp")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-        // SymbExLogger.currentLog().initializeBranching()
+        // val oldSepSet = SymbExLogger.currentLog().initializeBranching()
         eval(s, e0, pve, v)((s1, t0, v1) => {
           impLog.finish_cond()
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
@@ -352,6 +352,7 @@ object evaluator extends EvaluationRules with Immutable {
             (s2, Ite(t0, t1, t2))
           })((s6, t6, v6) => {
             // collapse before evaluating everything following the join point:
+            // SymbExLogger.currentLog().restoreSepSet(oldSepSet)
             SymbExLogger.currentLog().collapse(null, sepIdentifier)
             Q(s6, t6, v6)
           })})
