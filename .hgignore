@@ -19,3 +19,5 @@ utils/scripts/tidy_smtlib.jar
 silicon_classpath.txt
 lib/
 silver
+src/test/resources/symbExLogTests/*.alog
+.DS_Store

@@ -1,11 +1,14 @@
-predicate
-  GlobalBranch
-    produce
-      evaluate
-      evaluate
-    produce
-      evaluate
-      evaluate
+predicate P
+  Branch 1:
+    SMT assert: !(b@0@00)
+    SMT assert: b@0@00
+    produce acc(x.f, write)
+      evaluate x
+      evaluate write
+  Branch 2:
+    produce acc(x.g, write)
+      evaluate x
+      evaluate write
 
 method
   produce
@@ -96,26 +99,74 @@ method
                 evaluate
           Comment
 
-method
-  execute
-    GlobalBranch
-      produce
-        evaluate
-        evaluate
-      execute
-        evaluate
-      execute
-        evaluate
+method test3
+  WellformednessCheck null
+  execute var a: Int
+  execute inhale b ==> acc(x.f, write)
+    Branch 1:
+      SMT assert: !(b@18@01)
+      SMT assert: b@18@01
+      produce acc(x.f, write)
+        evaluate x
+        evaluate write
+      execute a := 1
+        evaluate 1
+    Branch 2:
+      execute a := 1
+        evaluate 1
 
-method
-  GlobalBranch
-    produce
-      evaluate
-      evaluate
-    execute
-      evaluate
-    execute
-      evaluate
+method test4
+  Branch 1:
+    SMT assert: !(b@25@01)
+    SMT assert: b@25@01
+    produce acc(x.f, write)
+      evaluate x
+      evaluate write
+    WellformednessCheck null
+    execute var a: Int
+    execute a := 1
+      evaluate 1
+  Branch 2:
+    WellformednessCheck null
+    execute var a: Int
+    execute a := 1
+      evaluate 1
+
+method test5
+  WellformednessCheck null
+  execute var a: Int
+  execute inhale b1 ==> acc(x.f, write)
+    Branch 1:
+      SMT assert: !(b1@3@01)
+      SMT assert: b1@3@01
+      produce acc(x.f, write)
+        evaluate x
+        evaluate write
+      execute inhale b2 ==> acc(x.f, write)
+        Branch 1:
+          SMT assert: !(b2@4@01)
+          SMT assert: b2@4@01
+          produce acc(x.f, write)
+            evaluate x
+            evaluate write
+          execute a := 1
+            evaluate 1
+        Branch 2:
+          execute a := 1
+            evaluate 1
+    Branch 2:
+      execute inhale b2 ==> acc(x.f, write)
+        Branch 1:
+          SMT assert: !(b2@4@01)
+          SMT assert: b2@4@01
+          produce acc(x.f, write)
+            evaluate x
+            evaluate write
+          execute a := 1
+            evaluate 1
+        Branch 2:
+          execute a := 1
+            evaluate 1
 
 method
   execute
@@ -130,31 +181,6 @@ method
             evaluate
           execute
             evaluate
-          execute
-            evaluate
-      execute
-        GlobalBranch
-          produce
-            evaluate
-            evaluate
-          execute
-            evaluate
-          execute
-            evaluate
-
-method
-  execute
-    GlobalBranch
-      produce
-        evaluate
-        evaluate
-      execute
-        GlobalBranch
-          produce
-            evaluate
-            evaluate
-          execute
-            evaluate
           produce
             evaluate
             evaluate
@@ -176,19 +202,24 @@ method
           execute
             evaluate
 
-method
-  execute
-    GlobalBranch
-      produce
-        evaluate
-        evaluate
-      execute
-        evaluate
-      produce
-        evaluate
-        evaluate
-      execute
-        evaluate
+method test7
+  WellformednessCheck null
+  execute var a: Int
+  execute inhale (b ? acc(x.f, write) : acc(x.g, write))
+    Branch 1:
+      SMT assert: !(b@59@01)
+      SMT assert: b@59@01
+      produce acc(x.f, write)
+        evaluate x
+        evaluate write
+      execute a := 1
+        evaluate 1
+    Branch 2:
+      produce acc(x.g, write)
+        evaluate x
+        evaluate write
+      execute a := 1
+        evaluate 1
 
 method
   execute

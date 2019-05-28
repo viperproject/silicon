@@ -372,7 +372,10 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
   @elidable(INFO)
   def restoreSepSet(oldSepSet: InsertionOrderedSet[Int]): Unit = {
     assert(sepSet.isEmpty)
-    sepSet = oldSepSet
+    sepSet = sepSet ++ oldSepSet
+    for (sep <- sepSet) {
+      collapse(null, sep)
+    }
   }
 
   /**
