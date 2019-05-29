@@ -231,6 +231,10 @@ object SymbExLogger {
     memberList = List[SymbLog]()
   }
 
+  def checkMemberList(): Unit = {
+    new ExecTimeChecker().render(memberList)
+  }
+
   /**
     * Converts memberList to a tree of GenericNodes
     */
@@ -278,7 +282,9 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
   private var _macros = Map[App, Term]()
   private var stack = List[SymbolicRecord](main)
   private var sepCounter = 0
-  private var sepSet = InsertionOrderedSet[Int]()
+  // private var sepSet = InsertionOrderedSet[Int]()
+  private var sepSet = Map[Int, SymbolicRecord]()
+  private var ignoredSepSet = InsertionOrderedSet[Int]()
 
   private def current(): SymbolicRecord = {
     stack.head
@@ -304,7 +310,8 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     current().subs = current().subs ++ List(s)
     stack = s :: stack
     sepCounter = sepCounter + 1
-    sepSet = sepSet + sepCounter
+    // sepSet = sepSet + sepCounter
+    sepSet = sepSet + ((sepCounter, s))
     sepCounter
   }
 
@@ -345,13 +352,31 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     */
   @elidable(INFO)
   def collapse(v: ast.Node, n: Int) {
-    if (n != -1 && sepSet.contains(n)) {
+    if (n == -1) {
+      return
+    }
+    if (sepSet.contains(n)) {
+      val record = sepSet(n)
       sepSet = sepSet - n
-      if (isUsed(v))
+      if (isUsed(v)) {
         if (current().endTimeMs == 0) {
           current().endTimeMs = System.currentTimeMillis()
         }
+        assert(record == stack.head)
         stack = stack.tail
+      }
+
+      // check if top of stack is in ignoredSepSet:
+      for (i <- sepSet.keys) {
+        if (stack.head equals sepSet(i)) {
+          if (ignoredSepSet contains i) {
+            collapse(null, i)
+            return
+          }
+        }
+      }
+    } else {
+      ignoredSepSet = ignoredSepSet + n
     }
   }
 
@@ -362,20 +387,48 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     * a branch due to continuation. Currently, this is only used for impure Branching (CondExp/Implies
     * in Producer/Consumer).
     */
+  /*
   @elidable(INFO)
-  def initializeBranching(): InsertionOrderedSet[Int] =  {
+  def initializeBranching(): Map[Int, SymbolicRecord] =  {
     val oldSepSet = sepSet
-    sepSet = InsertionOrderedSet[Int]()
+    // sepSet = InsertionOrderedSet[Int]()
+    sepSet = Map[Int, SymbolicRecord]()
     oldSepSet
   }
-
+  */
+  type LoggerState = (Map[Int, SymbolicRecord], // sepSet
+    List[SymbolicRecord],                       // stack
+    InsertionOrderedSet[Int])                   // ignoredSepSet
   @elidable(INFO)
-  def restoreSepSet(oldSepSet: InsertionOrderedSet[Int]): Unit = {
+  def newInitializeBranching(): LoggerState =  {
+    val state = (sepSet, stack, ignoredSepSet)
+    // sepSet = InsertionOrderedSet[Int]()
+    sepSet = Map[Int, SymbolicRecord]()
+    ignoredSepSet = InsertionOrderedSet[Int]()
+    state
+  }
+  /*
+  @elidable(INFO)
+  def restoreSepSet(oldSepSet: Map[Int, SymbolicRecord]): Unit = {
     assert(sepSet.isEmpty)
     sepSet = sepSet ++ oldSepSet
-    for (sep <- sepSet) {
-      collapse(null, sep)
+    // for (sep <- sepSet) {
+    //   collapse(null, sep)
+    // }
+  }
+  */
+  @elidable(INFO)
+  def newRestoreState(prevState: LoggerState, thnState: LoggerState, bothBranches: Boolean): Unit = {
+    // assert(thnState._1.equals(sepSet))
+   //  assert(thnState._2.equals(stack))
+    sepSet = prevState._1
+    stack = prevState._2
+    if (bothBranches) {
+      ignoredSepSet = ignoredSepSet.intersect(thnState._3)
+    } else {
+      ignoredSepSet = ignoredSepSet.union(thnState._3)
     }
+    ignoredSepSet = ignoredSepSet ++ prevState._3
   }
 
   /**
@@ -386,6 +439,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     *
     * @param s Record that should record the else-branch.
     */
+  /*
   @elidable(INFO)
   def prepareOtherBranch(s: SymbolicRecord) {
     if (stack.head == s) {
@@ -393,6 +447,16 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
       return
     }
     stack = s :: stack
+  }
+  */
+  @elidable(INFO)
+  def newPrepareOtherBranch(state: LoggerState): LoggerState = {
+    val thenState = (sepSet, stack, ignoredSepSet)
+    // sepSet = InsertionOrderedSet[Int]()
+    sepSet = Map[Int, SymbolicRecord]()
+    stack = state._2
+    ignoredSepSet = InsertionOrderedSet[Int]()
+    thenState
   }
 
   def macros() = _macros
@@ -664,6 +728,56 @@ class JSTreeRenderer extends Renderer[SymbLog, String] {
   }
 }
 
+class ExecTimeChecker extends Renderer[SymbLog, Unit] {
+  def render(memberList: List[SymbLog]) {
+    for (m <- memberList) {
+      renderMember(m) + "\n"
+    }
+  }
+
+  def renderMember(member: SymbLog) {
+    val res = checkRecord(member.main)
+    if (res != "") {
+      assert(false, res)
+    }
+  }
+
+  def checkRecord(s: SymbolicRecord): String = {
+    var checks = getSubs(s)
+      .map(checkRecord)
+      .filter(check => check != "")
+    // ignore unreachable records:
+    var ignore = false
+    s match {
+      case cr: CommentRecord =>
+        if (cr.comment.equals("Unreachable")) {
+          ignore = true
+        }
+      case _ =>
+    }
+    if (!ignore &&
+      (s.startTimeMs == 0
+      || s.endTimeMs == 0)) {
+      checks = checks :+ "incomplete exec timing: " + s.toString()
+    }
+    checks.mkString("\n")
+  }
+
+  def getSubs(s: SymbolicRecord): List[SymbolicRecord] = {
+    s match {
+      case ce: ConditionalEdgeRecord =>
+        ce.subs ++ List(ce.cond) ++ ce.thnSubs
+      case gb: GlobalBranchRecord =>
+        gb.subs ++ List(gb.cond) ++ gb.thnSubs ++ gb.elsSubs
+      case lb: LocalBranchRecord =>
+        lb.subs ++ List(lb.cond) ++ lb.thnSubs ++ lb.elsSubs
+      case mc: MethodCallRecord =>
+        mc.subs ++ List(mc.precondition, mc.postcondition) ++ mc.parameters
+      case _ => s.subs
+    }
+  }
+}
+
 class SimpleTreeRenderer extends Renderer[SymbLog, String] {
   def render(memberList: List[SymbLog]): String = {
     var res = ""
@@ -756,7 +870,11 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
         }
       }
       case gb: GlobalBranchRecord => {
-        str = str + "Branch 1:\n"
+        str = str + "GlobalBranch:\n"
+        if (!filter(gb.cond)) {
+          str = str + indent + toSimpleTree(gb.cond, n + 1)
+        }
+        str = str + indent.substring(2) + "Branch 1:\n"
         for (sub <- gb.thnSubs) {
           if (!filter(sub)) {
             str = str + indent + toSimpleTree(sub, n + 1)
@@ -771,14 +889,18 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
         }
       }
       case lb: LocalBranchRecord => {
-        str = str + "Local Branch 1:\n"
+        str = str + "LocalBranch:\n"
+        if (!filter(lb.cond)) {
+          str = str + indent + toSimpleTree(lb.cond, n + 1)
+        }
+        str = str + indent.substring(2) + "Branch 1:\n"
         for (sub <- lb.thnSubs) {
           if (!filter(sub)) {
             str = str + indent + toSimpleTree(sub, n + 1)
           }
         }
 
-        str = str + indent.substring(2) + "Local Branch 2:\n"
+        str = str + indent.substring(2) + "Branch 2:\n"
         for (sub <- lb.elsSubs) {
           if (!filter(sub)) {
             str = str + indent + toSimpleTree(sub, n + 1)
@@ -1064,8 +1186,10 @@ abstract class TwoBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env:
   var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null)
   var condEndTimeMs: Long = 0
   var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+  var thnExplored: Boolean = false
   var thnEndTimeMs: Long = 0
   var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+  var elsExplored: Boolean = false
   var elsEndTimeMs: Long = 0
 
   override def toSimpleString(): String = {
@@ -1094,6 +1218,7 @@ abstract class TwoBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env:
 
   @elidable(INFO)
   def finish_thnSubs(): Unit = {
+    thnExplored = true
     thnEndTimeMs = System.currentTimeMillis()
     if (!subs.isEmpty)
       thnSubs = subs
@@ -1102,6 +1227,7 @@ abstract class TwoBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env:
 
   @elidable(INFO)
   def finish_elsSubs(): Unit = {
+    elsExplored = true
     elsEndTimeMs = System.currentTimeMillis()
     if (!subs.isEmpty)
       elsSubs = subs
@@ -1117,6 +1243,11 @@ abstract class TwoBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env:
     if (endTimeMs == 0) {
       endTimeMs = System.currentTimeMillis()
     }
+  }
+
+  @elidable(INFO)
+  def hasExploredBothBranches(): Boolean = {
+    thnExplored && elsExplored
   }
 }
 
@@ -1696,8 +1827,9 @@ class SymbExLogUnitTest(f: Path) {
 
     if (testIsExecuted) {
       val pw = new java.io.PrintWriter(new File(actualPath))
-      errorMsg = errorMsg + SymbExLogger.enabled
       try pw.write(SymbExLogger.toSimpleTreeString) finally pw.close()
+
+      SymbExLogger.checkMemberList()
 
       val expectedSource = scala.io.Source.fromFile(expectedPath)
       val expected = expectedSource.getLines()

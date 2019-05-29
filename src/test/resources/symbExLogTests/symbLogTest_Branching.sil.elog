@@ -2,30 +2,42 @@ method m1
   WellformednessCheck null
   execute var a: Int
   execute a := (b1 ? (b2 ? 2 : 3) : (b1 && b2 ? 4 : 5))
-    Local Branch 1:
+    LocalBranch:
+      evaluate b1
+    Branch 1:
       SMT assert: !(b1@2@01)
       SMT assert: b1@2@01
-      Local Branch 1:
+      LocalBranch:
+        evaluate b2
+      Branch 1:
         SMT assert: !(b2@3@01)
         SMT assert: b2@3@01
         evaluate 2
-      Local Branch 2:
+      Branch 2:
         evaluate 3
-    Local Branch 2:
-      Local Branch 1:
+    Branch 2:
+      LocalBranch:
+        evaluate b1 && b2
+          evaluate b1
+          evaluate v@5@01 ==> b2
+            evaluate v@5@01
+            evaluate b2
+      Branch 1:
         comment: Unreachable
-      Local Branch 2:
+      Branch 2:
         SMT assert: !(b1@2@01 && b1@2@01 ==> b2@3@01)
         evaluate 5
   execute a := 1 + (b1 ? 1 : 2) + 2
     evaluate 1 + (b1 ? 1 : 2) + 2
       evaluate 1 + (b1 ? 1 : 2)
         evaluate 1
-        Local Branch 1:
+        LocalBranch:
+          evaluate b1
+        Branch 1:
           SMT assert: !(b1@2@01)
           SMT assert: b1@2@01
           evaluate 1
-        Local Branch 2:
+        Branch 2:
           evaluate 2
       evaluate 2
   execute a := 1
@@ -41,18 +53,28 @@ method m2
       evaluate 1
     SMT assert: False
     execute a := (b ? (a == 1 ? 2 : 3) : (a != 1 ? 4 : 5))
-      Local Branch 1:
+      LocalBranch:
+        evaluate b
+      Branch 1:
         SMT assert: !(b@11@01)
         SMT assert: b@11@01
-        Local Branch 1:
+        LocalBranch:
+          evaluate a == 1
+            evaluate a
+            evaluate 1
+        Branch 1:
           SMT assert: False
           evaluate 2
-        Local Branch 2:
+        Branch 2:
           comment: Unreachable
-      Local Branch 2:
-        Local Branch 1:
+      Branch 2:
+        LocalBranch:
+          evaluate a != 1
+            evaluate a
+            evaluate 1
+        Branch 1:
           comment: Unreachable
-        Local Branch 2:
+        Branch 2:
           evaluate 5
     Branch 1:
       evaluate !!b
@@ -90,11 +112,13 @@ method m3
     SMT assert: !(b@18@01)
     SMT assert: b@18@01
     execute a := (c ? 1 : 2)
-      Local Branch 1:
+      LocalBranch:
+        evaluate c
+      Branch 1:
         SMT assert: !(c@19@01)
         SMT assert: c@19@01
         evaluate 1
-      Local Branch 2:
+      Branch 2:
         evaluate 2
   Branch 2:
     evaluate !b

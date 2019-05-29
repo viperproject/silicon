@@ -22,7 +22,7 @@ import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.{CfgBranchRecord, ConditionalEdgeRecord, ExecuteRecord, Map, MethodCallRecord, SymbExLogger, UnconditionalEdgeRecord}
+import viper.silicon.{CfgBranchRecord, ConditionalEdgeRecord, ExecuteRecord, Map, MethodCallRecord, SymbExLogger, SymbolicRecord, UnconditionalEdgeRecord}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -63,7 +63,8 @@ object executor extends ExecutionRules with Immutable {
       case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
         val impLog = new ConditionalEdgeRecord(ce.condition, s1, v.decider.pcs, "Conditional Edge")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-        // SymbExLogger.currentLog().initializeBranching()
+        val state = SymbExLogger.currentLog().newInitializeBranching()
+        var thenState = (Map[Int, SymbolicRecord](), List[SymbolicRecord](), InsertionOrderedSet[Int]())
         eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) => {
           /* Using branch(...) here ensures that the edge condition is recorded
            * as a branch condition on the pathcondition stack.
@@ -73,9 +74,10 @@ object executor extends ExecutionRules with Immutable {
             (s3, v3) => exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
               val res1 = Q(s4, v4)
               impLog.finish_thnSubs()
-              // SymbExLogger.currentLog().prepareOtherBranch(impLog)
+              thenState = SymbExLogger.currentLog().newPrepareOtherBranch(state)
               res1}),
             (_, _)  => Success())
+          SymbExLogger.currentLog().newRestoreState(state, thenState, false)
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
@@ -100,16 +102,19 @@ object executor extends ExecutionRules with Immutable {
     } else {
       val gbRecord: CfgBranchRecord = new CfgBranchRecord(edges, s, v.decider.pcs, "Branch Record")
       val sepIdentifier = SymbExLogger.currentLog().insert(gbRecord)
-      // SymbExLogger.currentLog().initializeBranching()
+      val state = SymbExLogger.currentLog().newInitializeBranching()
+      var thenState = (Map[Int, SymbolicRecord](), List[SymbolicRecord](), InsertionOrderedSet[Int]())
       val res = edges.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (_, edge) => {
           val edge_res = follow(s, edge, v)(Q)
           gbRecord.finish_branchSubs()
-          // SymbExLogger.currentLog().prepareOtherBranch(gbRecord)
+          thenState = SymbExLogger.currentLog().newPrepareOtherBranch(state)
           edge_res
         }
       }
+      // TODO newRestoreState does not support more than 2 edges!
+      SymbExLogger.currentLog().newRestoreState(state, thenState, gbRecord.branchSubs.length == 2)
       SymbExLogger.currentLog().collapse(null, sepIdentifier)
       res
     }
