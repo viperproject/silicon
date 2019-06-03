@@ -231,7 +231,7 @@ object SymbExLogger {
     memberList = List[SymbLog]()
   }
 
-  def checkMemberList(): Unit = {
+  def checkMemberList(): String = {
     new ExecTimeChecker().render(memberList)
   }
 
@@ -342,6 +342,9 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     }
   }
 
+  def minimal1: Boolean = true
+  def minimal2: Boolean = minimal1 && true
+
   /**
     * 'Finishes' the recording at the current node and goes one level higher in the record tree.
     * There should be only one call of collapse per insert.
@@ -366,12 +369,14 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
         stack = stack.tail
       }
 
-      // check if top of stack is in ignoredSepSet:
-      for (i <- sepSet.keys) {
-        if (stack.head equals sepSet(i)) {
-          if (ignoredSepSet contains i) {
-            collapse(null, i)
-            return
+      if (minimal1) {
+        // check if top of stack is in ignoredSepSet:
+        for (i <- sepSet.keys) {
+          if (stack.head equals sepSet(i)) {
+            if (ignoredSepSet contains i) {
+              collapse(null, i)
+              return
+            }
           }
         }
       }
@@ -418,17 +423,29 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
   }
   */
   @elidable(INFO)
-  def newRestoreState(prevState: LoggerState, thnState: LoggerState, bothBranches: Boolean): Unit = {
+  def newRestoreState(prevState: LoggerState, otherBranchStates: List[LoggerState], branchesCount: Int): Unit = {
     // assert(thnState._1.equals(sepSet))
-   //  assert(thnState._2.equals(stack))
+    //  assert(thnState._2.equals(stack))
+    // assert(branchesCount >= otherBranchStates.length)
+    val branchStates = otherBranchStates :+ (sepSet, stack, ignoredSepSet)
+
     sepSet = prevState._1
     stack = prevState._2
-    if (bothBranches) {
-      ignoredSepSet = ignoredSepSet.intersect(thnState._3)
+
+    if (minimal2) {
+      // ignoredSepSet contains all elements that appear branchesCount-many times in branchStates and the set before branching (i.e. prevState._3)
+      val branchIgnoredSepSets = branchStates.map(state => state._3)
+      var ignoredSepCount: Map[Int, Int] = Map[Int, Int]() // maps sep to its count
+      branchIgnoredSepSets.foreach(ignoredSeps => ignoredSeps.foreach(sep => {
+        val sepCount = ignoredSepCount.get(sep)
+        ignoredSepCount = ignoredSepCount + ((sep, sepCount.getOrElse(0) + 1))
+      }))
+      // count of each sep is calculated, now filter based on branchesCount
+      ignoredSepSet = InsertionOrderedSet(ignoredSepCount.filter(entry => entry._2 >= branchesCount).keys)
+      ignoredSepSet = ignoredSepSet ++ prevState._3
     } else {
-      ignoredSepSet = ignoredSepSet.union(thnState._3)
+      // ignoredSepSet = prevState._3
     }
-    ignoredSepSet = ignoredSepSet ++ prevState._3
   }
 
   /**
@@ -728,18 +745,18 @@ class JSTreeRenderer extends Renderer[SymbLog, String] {
   }
 }
 
-class ExecTimeChecker extends Renderer[SymbLog, Unit] {
-  def render(memberList: List[SymbLog]) {
+class ExecTimeChecker extends Renderer[SymbLog, String] {
+  def render(memberList: List[SymbLog]): String = {
+    var res = List[String]()
     for (m <- memberList) {
-      renderMember(m) + "\n"
+      res = res :+ renderMember(m)
     }
+    res.filter(check => check != "")
+      .mkString("\n")
   }
 
-  def renderMember(member: SymbLog) {
-    val res = checkRecord(member.main)
-    if (res != "") {
-      assert(false, res)
-    }
+  def renderMember(member: SymbLog): String = {
+    checkRecord(member.main)
   }
 
   def checkRecord(s: SymbolicRecord): String = {
@@ -1246,8 +1263,8 @@ abstract class TwoBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env:
   }
 
   @elidable(INFO)
-  def hasExploredBothBranches(): Boolean = {
-    thnExplored && elsExplored
+  def exploredBranchesCount(): Int = {
+    (if (thnExplored) 1 else 0) + (if (elsExplored) 1 else 0)
   }
 }
 
@@ -1829,8 +1846,6 @@ class SymbExLogUnitTest(f: Path) {
       val pw = new java.io.PrintWriter(new File(actualPath))
       try pw.write(SymbExLogger.toSimpleTreeString) finally pw.close()
 
-      SymbExLogger.checkMemberList()
-
       val expectedSource = scala.io.Source.fromFile(expectedPath)
       val expected = expectedSource.getLines()
 
@@ -1856,6 +1871,12 @@ class SymbExLogUnitTest(f: Path) {
         errorMsg = errorMsg + "expected: " + expectedPath.toString() + "\n"
         errorMsg = errorMsg + "actual:   " + actualPath.toString() + "\n"
       }
+
+      val execTimeOutput = SymbExLogger.checkMemberList()
+      if (execTimeOutput != "") {
+        errorMsg = errorMsg + "ExecTimeChecker: " + execTimeOutput + "\n"
+      }
+
       actualSource.close()
       expectedSource.close()
     }

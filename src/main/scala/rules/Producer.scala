@@ -230,7 +230,7 @@ object producer extends ProductionRules with Immutable {
                 val res2 = Q(s2, v2)
                 impLog.finish_elsSubs()
                 res2})
-          SymbExLogger.currentLog().newRestoreState(state, thenState, impLog.hasExploredBothBranches())
+          SymbExLogger.currentLog().newRestoreState(state, List(thenState), impLog.exploredBranchesCount())
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
@@ -252,7 +252,7 @@ object producer extends ProductionRules with Immutable {
                 val res2 = Q(s3, v3)
                 gbLog.finish_elsSubs()
                 res2}))
-          SymbExLogger.currentLog().newRestoreState(state, thenState, gbLog.hasExploredBothBranches())
+          SymbExLogger.currentLog().newRestoreState(state, List(thenState), gbLog.exploredBranchesCount())
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 

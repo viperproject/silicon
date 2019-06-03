@@ -1,0 +1,63 @@
+field f: Int
+field g: Int
+
+predicate P2(b: Bool, x: Ref) {
+	b ? true : true
+}
+
+method minimal2(b: Bool, x: Ref)
+{
+    inhale b ? acc(x.f) : acc(x.g)
+	fold P2(b, x)
+}
+
+method minimal3(b: Bool, x: Ref)
+{
+	fold P2(b, x)
+}
+/*
+predicate P4(b: Bool, x: Ref) {
+	b ? acc(x.f) : true
+}
+
+method minimal4(b: Bool, x: Ref)
+{
+    // inhale acc(x.f)
+	fold P4(b, x)
+}
+
+output:
+predicate P4
+  GlobalBranch:
+    evaluate b
+  Branch 1:
+    SMT assert: !(b@0@00)
+    SMT assert: b@0@00
+    produce acc(x.f, write)
+      evaluate x
+      evaluate write
+  Branch 2:
+    produce true
+      evaluate true
+
+method minimal4
+  WellformednessCheck null
+  execute fold acc(P4(b, x), write)
+    evaluate b
+    evaluate x
+    evaluate write
+    SMT assert: W == Z || True
+    GlobalBranch:
+      evaluate b
+    Branch 1:
+      comment: Unreachable
+    Branch 2:
+      comment: Unreachable
+    comment: state consolidation
+    GlobalBranch:
+      evaluate b
+    Branch 1:
+      comment: Unreachable
+    Branch 2:
+      comment: Unreachable
+*/

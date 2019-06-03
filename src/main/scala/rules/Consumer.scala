@@ -207,7 +207,7 @@ object consumer extends ConsumptionRules with Immutable {
                 val res2 = Q(s2, h, Unit, v2)
                 impLog.finish_elsSubs()
                 res2})
-          SymbExLogger.currentLog().newRestoreState(state, thenState, impLog.hasExploredBothBranches())
+          SymbExLogger.currentLog().newRestoreState(state, List(thenState), impLog.exploredBranchesCount())
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
@@ -229,7 +229,7 @@ object consumer extends ConsumptionRules with Immutable {
                 val res2 = Q(s3, h3, snap3, v3)
                 gbLog.finish_elsSubs()
                 res2}))
-          SymbExLogger.currentLog().newRestoreState(state, thenState, gbLog.hasExploredBothBranches())
+          SymbExLogger.currentLog().newRestoreState(state, List(thenState), gbLog.exploredBranchesCount())
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 

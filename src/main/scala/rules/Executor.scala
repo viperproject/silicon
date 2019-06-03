@@ -77,7 +77,7 @@ object executor extends ExecutionRules with Immutable {
               thenState = SymbExLogger.currentLog().newPrepareOtherBranch(state)
               res1}),
             (_, _)  => Success())
-          SymbExLogger.currentLog().newRestoreState(state, thenState, false)
+          SymbExLogger.currentLog().newRestoreState(state, List(thenState), 1)
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
@@ -103,18 +103,18 @@ object executor extends ExecutionRules with Immutable {
       val gbRecord: CfgBranchRecord = new CfgBranchRecord(edges, s, v.decider.pcs, "Branch Record")
       val sepIdentifier = SymbExLogger.currentLog().insert(gbRecord)
       val state = SymbExLogger.currentLog().newInitializeBranching()
-      var thenState = (Map[Int, SymbolicRecord](), List[SymbolicRecord](), InsertionOrderedSet[Int]())
+      var branchStates = List[(Map[Int, SymbolicRecord], List[SymbolicRecord], InsertionOrderedSet[Int])]()
       val res = edges.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (_, edge) => {
           val edge_res = follow(s, edge, v)(Q)
           gbRecord.finish_branchSubs()
-          thenState = SymbExLogger.currentLog().newPrepareOtherBranch(state)
+          branchStates = SymbExLogger.currentLog().newPrepareOtherBranch(state) :: branchStates
           edge_res
         }
       }
-      // TODO newRestoreState does not support more than 2 edges!
-      SymbExLogger.currentLog().newRestoreState(state, thenState, gbRecord.branchSubs.length == 2)
+      // remove first element from branchStates because that corresponds to the current branch:
+      SymbExLogger.currentLog().newRestoreState(state, branchStates.tail, gbRecord.branchSubs.length)
       SymbExLogger.currentLog().collapse(null, sepIdentifier)
       res
     }

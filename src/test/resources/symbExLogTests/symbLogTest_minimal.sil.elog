@@ -1,0 +1,67 @@
+predicate P2
+  LocalBranch:
+    evaluate b
+  Branch 1:
+    SMT assert: !(b@0@00)
+    SMT assert: b@0@00
+    evaluate true
+  Branch 2:
+    evaluate true
+
+method minimal2
+  WellformednessCheck null
+  execute inhale (b ? acc(x.f, write) : acc(x.g, write))
+    GlobalBranch:
+      evaluate b
+    Branch 1:
+      SMT assert: !(b@2@01)
+      SMT assert: b@2@01
+      produce acc(x.f, write)
+        evaluate x
+        evaluate write
+      execute fold acc(P2(b, x), write)
+        evaluate b
+        evaluate x
+        evaluate write
+        SMT assert: W == Z || True
+        LocalBranch:
+          evaluate b
+        Branch 1:
+          SMT assert: !(b@2@01)
+          evaluate true
+        Branch 2:
+          comment: Unreachable
+        SMT assert: (b@2@01 ? True : dead_else@5@01)
+    Branch 2:
+      produce acc(x.g, write)
+        evaluate x
+        evaluate write
+      execute fold acc(P2(b, x), write)
+        evaluate b
+        evaluate x
+        evaluate write
+        SMT assert: W == Z || True
+        LocalBranch:
+          evaluate b
+        Branch 1:
+          comment: Unreachable
+        Branch 2:
+          evaluate true
+        SMT assert: (b@2@01 ? dead_then@7@01 : True)
+
+method minimal3
+  WellformednessCheck null
+  execute fold acc(P2(b, x), write)
+    evaluate b
+    evaluate x
+    evaluate write
+    SMT assert: W == Z || True
+    LocalBranch:
+      evaluate b
+    Branch 1:
+      SMT assert: !(b@10@01)
+      SMT assert: b@10@01
+      evaluate true
+    Branch 2:
+      evaluate true
+

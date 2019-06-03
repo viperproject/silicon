@@ -353,7 +353,7 @@ object evaluator extends EvaluationRules with Immutable {
             (s2, Ite(t0, t1, t2))
           })((s6, t6, v6) => {
             // collapse before evaluating everything following the join point:
-            SymbExLogger.currentLog().newRestoreState(state, thenState, impLog.hasExploredBothBranches())
+            SymbExLogger.currentLog().newRestoreState(state, List(thenState), impLog.exploredBranchesCount())
             SymbExLogger.currentLog().collapse(null, sepIdentifier)
             Q(s6, t6, v6)
           })})
