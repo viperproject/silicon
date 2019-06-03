@@ -342,8 +342,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     }
   }
 
-  def minimal1: Boolean = true
-  def minimal2: Boolean = minimal1 && true
+  def topOfStackInIgnoredSepSetCheck: Boolean = true
 
   /**
     * 'Finishes' the recording at the current node and goes one level higher in the record tree.
@@ -369,7 +368,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
         stack = stack.tail
       }
 
-      if (minimal1) {
+      if (topOfStackInIgnoredSepSetCheck) {
         // check if top of stack is in ignoredSepSet:
         for (i <- sepSet.keys) {
           if (stack.head equals sepSet(i)) {
@@ -385,6 +384,10 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     }
   }
 
+  type LoggerState = (Map[Int, SymbolicRecord], // sepSet
+    List[SymbolicRecord],                       // stack
+    InsertionOrderedSet[Int])                   // ignoredSepSet
+
   /**
     * Quite a hack. Is used for impure Branching, where 'redundant' collapses in the continuation
     * can mess up the logging-hierarchy. Idea: Just remove all identifiers from the collapse-Set, so
@@ -392,18 +395,6 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     * a branch due to continuation. Currently, this is only used for impure Branching (CondExp/Implies
     * in Producer/Consumer).
     */
-  /*
-  @elidable(INFO)
-  def initializeBranching(): Map[Int, SymbolicRecord] =  {
-    val oldSepSet = sepSet
-    // sepSet = InsertionOrderedSet[Int]()
-    sepSet = Map[Int, SymbolicRecord]()
-    oldSepSet
-  }
-  */
-  type LoggerState = (Map[Int, SymbolicRecord], // sepSet
-    List[SymbolicRecord],                       // stack
-    InsertionOrderedSet[Int])                   // ignoredSepSet
   @elidable(INFO)
   def newInitializeBranching(): LoggerState =  {
     val state = (sepSet, stack, ignoredSepSet)
@@ -412,16 +403,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     ignoredSepSet = InsertionOrderedSet[Int]()
     state
   }
-  /*
-  @elidable(INFO)
-  def restoreSepSet(oldSepSet: Map[Int, SymbolicRecord]): Unit = {
-    assert(sepSet.isEmpty)
-    sepSet = sepSet ++ oldSepSet
-    // for (sep <- sepSet) {
-    //   collapse(null, sep)
-    // }
-  }
-  */
+
   @elidable(INFO)
   def newRestoreState(prevState: LoggerState, otherBranchStates: List[LoggerState], branchesCount: Int): Unit = {
     // assert(thnState._1.equals(sepSet))
@@ -432,20 +414,16 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     sepSet = prevState._1
     stack = prevState._2
 
-    if (minimal2) {
-      // ignoredSepSet contains all elements that appear branchesCount-many times in branchStates and the set before branching (i.e. prevState._3)
-      val branchIgnoredSepSets = branchStates.map(state => state._3)
-      var ignoredSepCount: Map[Int, Int] = Map[Int, Int]() // maps sep to its count
-      branchIgnoredSepSets.foreach(ignoredSeps => ignoredSeps.foreach(sep => {
-        val sepCount = ignoredSepCount.get(sep)
-        ignoredSepCount = ignoredSepCount + ((sep, sepCount.getOrElse(0) + 1))
-      }))
-      // count of each sep is calculated, now filter based on branchesCount
-      ignoredSepSet = InsertionOrderedSet(ignoredSepCount.filter(entry => entry._2 >= branchesCount).keys)
-      ignoredSepSet = ignoredSepSet ++ prevState._3
-    } else {
-      // ignoredSepSet = prevState._3
-    }
+    // ignoredSepSet contains all elements that appear branchesCount-many times in branchStates and the set before branching (i.e. prevState._3)
+    val branchIgnoredSepSets = branchStates.map(state => state._3)
+    var ignoredSepCount: Map[Int, Int] = Map[Int, Int]() // maps sep to its count
+    branchIgnoredSepSets.foreach(ignoredSeps => ignoredSeps.foreach(sep => {
+      val sepCount = ignoredSepCount.get(sep)
+      ignoredSepCount = ignoredSepCount + ((sep, sepCount.getOrElse(0) + 1))
+    }))
+    // count of each sep is calculated, now filter based on branchesCount
+    ignoredSepSet = InsertionOrderedSet(ignoredSepCount.filter(entry => entry._2 >= branchesCount).keys)
+    ignoredSepSet = ignoredSepSet ++ prevState._3
   }
 
   /**
@@ -456,16 +434,6 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     *
     * @param s Record that should record the else-branch.
     */
-  /*
-  @elidable(INFO)
-  def prepareOtherBranch(s: SymbolicRecord) {
-    if (stack.head == s) {
-      // If-branch did not remove the branching-record
-      return
-    }
-    stack = s :: stack
-  }
-  */
   @elidable(INFO)
   def newPrepareOtherBranch(state: LoggerState): LoggerState = {
     val thenState = (sepSet, stack, ignoredSepSet)
@@ -1874,6 +1842,7 @@ class SymbExLogUnitTest(f: Path) {
 
       val execTimeOutput = SymbExLogger.checkMemberList()
       if (execTimeOutput != "") {
+        testFailed = true
         errorMsg = errorMsg + "ExecTimeChecker: " + execTimeOutput + "\n"
       }
 

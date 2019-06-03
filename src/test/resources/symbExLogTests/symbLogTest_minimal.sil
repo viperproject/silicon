@@ -1,20 +1,11 @@
 field f: Int
 field g: Int
 
-predicate P2(b: Bool, x: Ref) {
-	b ? true : true
+method topOfStackInIgnoredSepSetCheck(b: Bool, x: Ref)
+{
+	inhale b ? acc(x.f) : true
 }
 
-method minimal2(b: Bool, x: Ref)
-{
-    inhale b ? acc(x.f) : acc(x.g)
-	fold P2(b, x)
-}
-
-method minimal3(b: Bool, x: Ref)
-{
-	fold P2(b, x)
-}
 /*
 predicate P4(b: Bool, x: Ref) {
 	b ? acc(x.f) : true
