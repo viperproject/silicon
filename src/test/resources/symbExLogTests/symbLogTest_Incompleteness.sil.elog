@@ -1,0 +1,182 @@
+method m1_1
+  WellformednessCheck null
+  execute inhale acc(x.f, 1 / 2) && acc(x.f, 1 / 2)
+    produce acc(x.f, 1 / 2)
+      evaluate x
+      evaluate 1 / 2
+        evaluate 1
+        evaluate 2
+        SMT assert: 2 != 0
+    produce acc(x.f, 1 / 2)
+      evaluate x
+      evaluate 1 / 2
+        evaluate 1
+        evaluate 2
+        SMT assert: 2 != 0
+  execute assert acc(x.f, write)
+    consume acc(x.f, write)
+      evaluate write
+      evaluate x
+      SMT assert: W == Z || True
+
+method m1_2
+  WellformednessCheck null
+  execute inhale acc(x.f, 1 / 2) && acc(y.f, 1 / 2)
+    produce acc(x.f, 1 / 2)
+      evaluate x
+      evaluate 1 / 2
+        evaluate 1
+        evaluate 2
+        SMT assert: 2 != 0
+    produce acc(y.f, 1 / 2)
+      evaluate y
+      evaluate 1 / 2
+        evaluate 1
+        evaluate 2
+        SMT assert: 2 != 0
+      SMT assert: x@7@01 == y@8@01
+  execute inhale x == y
+    produce x == y
+      evaluate x == y
+        evaluate x
+        evaluate y
+  execute assert acc(x.f, write)
+    consume acc(x.f, write)
+      evaluate write
+      evaluate x
+      SMT assert: W == Z || True
+      SMT assert: False
+      comment: state consolidation
+
+method m1_3
+  WellformednessCheck null
+  execute inhale acc(x.f, write) && acc(y.f, write)
+    produce acc(x.f, write)
+      evaluate x
+      evaluate write
+    produce acc(y.f, write)
+      evaluate y
+      evaluate write
+      SMT assert: x@16@01 == y@17@01
+  execute inhale z == x || z == y
+    produce z == x || z == y
+      evaluate z == x || z == y
+        evaluate z == x
+          evaluate z
+          evaluate x
+        evaluate !v@23@01 && z == y
+          evaluate !v@23@01
+            evaluate v@23@01
+          evaluate v@24@01 ==> z == y
+            evaluate v@24@01
+            evaluate z == y
+              evaluate z
+              evaluate y
+
+method m2_1
+  WellformednessCheck null
+  execute inhale acc(x.f, 1 / 2) && (acc(x.f, 1 / 2) && x.f == 0)
+    produce acc(x.f, 1 / 2)
+      evaluate x
+      evaluate 1 / 2
+        evaluate 1
+        evaluate 2
+        SMT assert: 2 != 0
+    produce acc(x.f, 1 / 2)
+      evaluate x
+      evaluate 1 / 2
+        evaluate 1
+        evaluate 2
+        SMT assert: 2 != 0
+    produce x.f == 0
+      evaluate x.f == 0
+        evaluate x.f
+          evaluate x
+        evaluate 0
+  execute exhale acc(x.f, 1 / 2)
+    consume acc(x.f, 1 / 2)
+      evaluate 1 / 2
+        evaluate 1
+        evaluate 2
+        SMT assert: 2 != 0
+      evaluate x
+      SMT assert: 1/2 == Z || True
+      SMT assert: 1/2 == Z
+  execute assert x.f == 0
+    consume x.f == 0
+      evaluate x.f == 0
+        evaluate x.f
+          evaluate x
+        evaluate 0
+
+method m2_2
+  WellformednessCheck null
+  execute inhale acc(x.f, 1 / 2) && (acc(y.f, 1 / 2) && x.f == 0)
+    produce acc(x.f, 1 / 2)
+      evaluate x
+      evaluate 1 / 2
+        evaluate 1
+        evaluate 2
+        SMT assert: 2 != 0
+    produce acc(y.f, 1 / 2)
+      evaluate y
+      evaluate 1 / 2
+        evaluate 1
+        evaluate 2
+        SMT assert: 2 != 0
+      SMT assert: x@33@01 == y@34@01
+    produce x.f == 0
+      evaluate x.f == 0
+        evaluate x.f
+          evaluate x
+        evaluate 0
+  execute exhale acc(x.f, 1 / 2)
+    consume acc(x.f, 1 / 2)
+      evaluate 1 / 2
+        evaluate 1
+        evaluate 2
+        SMT assert: 2 != 0
+      evaluate x
+      SMT assert: 1/2 == Z || True
+  execute inhale x == y
+    produce x == y
+      evaluate x == y
+        evaluate x
+        evaluate y
+
+method m3_1
+  WellformednessCheck null
+  execute inhale acc(x.f, write) && (acc(y.f, write) && z == x)
+    produce acc(x.f, write)
+      evaluate x
+      evaluate write
+    produce acc(y.f, write)
+      evaluate y
+      evaluate write
+      SMT assert: x@43@01 == y@44@01
+    produce z == x
+      evaluate z == x
+        evaluate z
+        evaluate x
+  execute assert x != y
+    consume x != y
+      evaluate x != y
+        evaluate x
+        evaluate y
+      SMT assert: x@43@01 != y@44@01
+      comment: state consolidation
+        SMT assert: x@43@01 == y@44@01
+        SMT assert: $t@49@01 != $t@47@01
+        SMT assert: $t@47@01 != $t@49@01
+      evaluate x != y
+        evaluate x
+        evaluate y
+  execute inhale acc(z.f, 1 / 10)
+    produce acc(z.f, 1 / 10)
+      evaluate z
+      evaluate 1 / 10
+        evaluate 1
+        evaluate 10
+        SMT assert: 10 != 0
+      SMT assert: x@43@01 == z@45@01
+
