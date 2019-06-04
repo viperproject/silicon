@@ -6,18 +6,23 @@ method m1_1
       evaluate 1 / 2
         evaluate 1
         evaluate 2
-        SMT assert: 2 != 0
+        Decider assert: 2 != 0
+          Prover assert: 2 != 0
     produce acc(x.f, 1 / 2)
       evaluate x
       evaluate 1 / 2
         evaluate 1
         evaluate 2
-        SMT assert: 2 != 0
+        Decider assert: 2 != 0
+          Prover assert: 2 != 0
   execute assert acc(x.f, write)
     consume acc(x.f, write)
       evaluate write
       evaluate x
-      SMT assert: W == Z || True
+      Decider assert: W == Z || True
+        Prover assert: W == Z || True
+      Decider assert: True
+      Decider assert: True
 
 method m1_2
   WellformednessCheck null
@@ -27,14 +32,17 @@ method m1_2
       evaluate 1 / 2
         evaluate 1
         evaluate 2
-        SMT assert: 2 != 0
+        Decider assert: 2 != 0
+          Prover assert: 2 != 0
     produce acc(y.f, 1 / 2)
       evaluate y
       evaluate 1 / 2
         evaluate 1
         evaluate 2
-        SMT assert: 2 != 0
-      SMT assert: x@7@01 == y@8@01
+        Decider assert: 2 != 0
+          Prover assert: 2 != 0
+      Decider assert: x@7@01 == y@8@01
+        Prover assert: x@7@01 == y@8@01
   execute inhale x == y
     produce x == y
       evaluate x == y
@@ -44,9 +52,15 @@ method m1_2
     consume acc(x.f, write)
       evaluate write
       evaluate x
-      SMT assert: W == Z || True
-      SMT assert: False
+      Decider assert: W == Z || True
+        Prover assert: W == Z || True
+      Decider assert: True
+      Decider assert: False
+        Prover assert: False
       comment: state consolidation
+        Decider assert: x@7@01 == y@8@01
+      Decider assert: True
+      Decider assert: True
 
 method m1_3
   WellformednessCheck null
@@ -57,7 +71,8 @@ method m1_3
     produce acc(y.f, write)
       evaluate y
       evaluate write
-      SMT assert: x@16@01 == y@17@01
+      Decider assert: x@16@01 == y@17@01
+        Prover assert: x@16@01 == y@17@01
   execute inhale z == x || z == y
     produce z == x || z == y
       evaluate z == x || z == y
@@ -81,33 +96,42 @@ method m2_1
       evaluate 1 / 2
         evaluate 1
         evaluate 2
-        SMT assert: 2 != 0
+        Decider assert: 2 != 0
+          Prover assert: 2 != 0
     produce acc(x.f, 1 / 2)
       evaluate x
       evaluate 1 / 2
         evaluate 1
         evaluate 2
-        SMT assert: 2 != 0
+        Decider assert: 2 != 0
+          Prover assert: 2 != 0
     produce x.f == 0
       evaluate x.f == 0
         evaluate x.f
           evaluate x
+          Decider assert: True
         evaluate 0
   execute exhale acc(x.f, 1 / 2)
     consume acc(x.f, 1 / 2)
       evaluate 1 / 2
         evaluate 1
         evaluate 2
-        SMT assert: 2 != 0
+        Decider assert: 2 != 0
+          Prover assert: 2 != 0
       evaluate x
-      SMT assert: 1/2 == Z || True
-      SMT assert: 1/2 == Z
+      Decider assert: 1/2 == Z || True
+        Prover assert: 1/2 == Z || True
+      Decider assert: 1/2 == Z
+        Prover assert: 1/2 == Z
+      Decider assert: True
   execute assert x.f == 0
     consume x.f == 0
       evaluate x.f == 0
         evaluate x.f
           evaluate x
+          Decider assert: True
         evaluate 0
+      Decider assert: $t@28@01 == 0
 
 method m2_2
   WellformednessCheck null
@@ -117,27 +141,35 @@ method m2_2
       evaluate 1 / 2
         evaluate 1
         evaluate 2
-        SMT assert: 2 != 0
+        Decider assert: 2 != 0
+          Prover assert: 2 != 0
     produce acc(y.f, 1 / 2)
       evaluate y
       evaluate 1 / 2
         evaluate 1
         evaluate 2
-        SMT assert: 2 != 0
-      SMT assert: x@33@01 == y@34@01
+        Decider assert: 2 != 0
+          Prover assert: 2 != 0
+      Decider assert: x@33@01 == y@34@01
+        Prover assert: x@33@01 == y@34@01
     produce x.f == 0
       evaluate x.f == 0
         evaluate x.f
           evaluate x
+          Decider assert: True
         evaluate 0
   execute exhale acc(x.f, 1 / 2)
     consume acc(x.f, 1 / 2)
       evaluate 1 / 2
         evaluate 1
         evaluate 2
-        SMT assert: 2 != 0
+        Decider assert: 2 != 0
+          Prover assert: 2 != 0
       evaluate x
-      SMT assert: 1/2 == Z || True
+      Decider assert: 1/2 == Z || True
+        Prover assert: 1/2 == Z || True
+      Decider assert: True
+      Decider assert: True
   execute inhale x == y
     produce x == y
       evaluate x == y
@@ -153,7 +185,8 @@ method m3_1
     produce acc(y.f, write)
       evaluate y
       evaluate write
-      SMT assert: x@43@01 == y@44@01
+      Decider assert: x@43@01 == y@44@01
+        Prover assert: x@43@01 == y@44@01
     produce z == x
       evaluate z == x
         evaluate z
@@ -163,20 +196,29 @@ method m3_1
       evaluate x != y
         evaluate x
         evaluate y
-      SMT assert: x@43@01 != y@44@01
+      Decider assert: x@43@01 != y@44@01
+        Prover assert: x@43@01 != y@44@01
       comment: state consolidation
-        SMT assert: x@43@01 == y@44@01
-        SMT assert: $t@49@01 != $t@47@01
-        SMT assert: $t@47@01 != $t@49@01
+        Decider assert: x@43@01 == y@44@01
+          Prover assert: x@43@01 == y@44@01
+        Decider assert: True
+        Decider assert: True
+        Decider assert: $t@49@01 != $t@47@01
+          Prover assert: $t@49@01 != $t@47@01
+        Decider assert: $t@47@01 != $t@49@01
+          Prover assert: $t@47@01 != $t@49@01
       evaluate x != y
         evaluate x
         evaluate y
+      Decider assert: x@43@01 != y@44@01
   execute inhale acc(z.f, 1 / 10)
     produce acc(z.f, 1 / 10)
       evaluate z
       evaluate 1 / 10
         evaluate 1
         evaluate 10
-        SMT assert: 10 != 0
-      SMT assert: x@43@01 == z@45@01
+        Decider assert: 10 != 0
+          Prover assert: 10 != 0
+      Decider assert: x@43@01 == z@45@01
+        Prover assert: x@43@01 == z@45@01
 

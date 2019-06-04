@@ -5,13 +5,17 @@ method m1
     LocalBranch:
       evaluate b1
     Branch 1:
-      SMT assert: !(b1@2@01)
-      SMT assert: b1@2@01
+      Decider assert: !(b1@2@01)
+        Prover assert: !(b1@2@01)
+      Decider assert: b1@2@01
+        Prover assert: b1@2@01
       LocalBranch:
         evaluate b2
       Branch 1:
-        SMT assert: !(b2@3@01)
-        SMT assert: b2@3@01
+        Decider assert: !(b2@3@01)
+          Prover assert: !(b2@3@01)
+        Decider assert: b2@3@01
+          Prover assert: b2@3@01
         evaluate 2
       Branch 2:
         evaluate 3
@@ -25,7 +29,8 @@ method m1
       Branch 1:
         comment: Unreachable
       Branch 2:
-        SMT assert: !(b1@2@01 && b1@2@01 ==> b2@3@01)
+        Decider assert: !(b1@2@01 && b1@2@01 ==> b2@3@01)
+          Prover assert: !(b1@2@01 && b1@2@01 ==> b2@3@01)
         evaluate 5
   execute a := 1 + (b1 ? 1 : 2) + 2
     evaluate 1 + (b1 ? 1 : 2) + 2
@@ -34,8 +39,10 @@ method m1
         LocalBranch:
           evaluate b1
         Branch 1:
-          SMT assert: !(b1@2@01)
-          SMT assert: b1@2@01
+          Decider assert: !(b1@2@01)
+            Prover assert: !(b1@2@01)
+          Decider assert: b1@2@01
+            Prover assert: b1@2@01
           evaluate 1
         Branch 2:
           evaluate 2
@@ -51,19 +58,25 @@ method m2
     evaluate a == 1
       evaluate a
       evaluate 1
-    SMT assert: False
+    Decider assert: False
+      Prover assert: False
+    Decider assert: True
     execute a := (b ? (a == 1 ? 2 : 3) : (a != 1 ? 4 : 5))
       LocalBranch:
         evaluate b
       Branch 1:
-        SMT assert: !(b@11@01)
-        SMT assert: b@11@01
+        Decider assert: !(b@11@01)
+          Prover assert: !(b@11@01)
+        Decider assert: b@11@01
+          Prover assert: b@11@01
         LocalBranch:
           evaluate a == 1
             evaluate a
             evaluate 1
         Branch 1:
-          SMT assert: False
+          Decider assert: False
+            Prover assert: False
+          Decider assert: True
           evaluate 2
         Branch 2:
           comment: Unreachable
@@ -75,13 +88,16 @@ method m2
         Branch 1:
           comment: Unreachable
         Branch 2:
+          Decider assert: True
           evaluate 5
     Branch 1:
       evaluate !!b
         evaluate !b
           evaluate b
-      SMT assert: !(b@11@01)
-      SMT assert: b@11@01
+      Decider assert: !(b@11@01)
+        Prover assert: !(b@11@01)
+      Decider assert: b@11@01
+        Prover assert: b@11@01
       execute a := 2
         evaluate 2
       execute a := 4
@@ -91,8 +107,10 @@ method m2
         evaluate !!b
           evaluate !b
             evaluate b
-      SMT assert: b@11@01
-      SMT assert: !(b@11@01)
+      Decider assert: b@11@01
+        Prover assert: b@11@01
+      Decider assert: !(b@11@01)
+        Prover assert: !(b@11@01)
       execute a := 3
         evaluate 3
       execute a := 4
@@ -109,22 +127,28 @@ method m3
   execute var a: Int
   Branch 1:
     evaluate b
-    SMT assert: !(b@18@01)
-    SMT assert: b@18@01
+    Decider assert: !(b@18@01)
+      Prover assert: !(b@18@01)
+    Decider assert: b@18@01
+      Prover assert: b@18@01
     execute a := (c ? 1 : 2)
       LocalBranch:
         evaluate c
       Branch 1:
-        SMT assert: !(c@19@01)
-        SMT assert: c@19@01
+        Decider assert: !(c@19@01)
+          Prover assert: !(c@19@01)
+        Decider assert: c@19@01
+          Prover assert: c@19@01
         evaluate 1
       Branch 2:
         evaluate 2
   Branch 2:
     evaluate !b
       evaluate b
-    SMT assert: b@18@01
-    SMT assert: !(b@18@01)
+    Decider assert: b@18@01
+      Prover assert: b@18@01
+    Decider assert: !(b@18@01)
+      Prover assert: !(b@18@01)
     execute a := 3 + 4
       evaluate 3 + 4
         evaluate 3

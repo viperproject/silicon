@@ -49,5 +49,6 @@ method m2
           evaluate i
           evaluate 1
         evaluate 2
-      SMT assert: i@6@01 + 1 == 2
+      Decider assert: i@6@01 + 1 == 2
+        Prover assert: i@6@01 + 1 == 2
 

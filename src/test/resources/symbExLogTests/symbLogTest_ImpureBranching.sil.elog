@@ -2,8 +2,10 @@ predicate P
   GlobalBranch:
     evaluate b
   Branch 1:
-    SMT assert: !(b@0@00)
-    SMT assert: b@0@00
+    Decider assert: !(b@0@00)
+      Prover assert: !(b@0@00)
+    Decider assert: b@0@00
+      Prover assert: b@0@00
     produce acc(x.f, write)
       evaluate x
       evaluate write
@@ -22,8 +24,10 @@ method test1
     GlobalBranch:
       evaluate b
     Branch 1:
-      SMT assert: !(b@2@01)
-      SMT assert: b@2@01
+      Decider assert: !(b@2@01)
+        Prover assert: !(b@2@01)
+      Decider assert: b@2@01
+        Prover assert: b@2@01
       produce acc(x.f, write)
         evaluate x
         evaluate write
@@ -31,20 +35,29 @@ method test1
         evaluate b
         evaluate x
         evaluate write
-        SMT assert: W == Z || True
+        Decider assert: W == Z || True
+          Prover assert: W == Z || True
         GlobalBranch:
           evaluate b
         Branch 1:
-          SMT assert: !(b@2@01)
+          Decider assert: !(b@2@01)
+            Prover assert: !(b@2@01)
+          Decider assert: b@2@01
           consume acc(x.f, write)
             evaluate write
             evaluate x
-            SMT assert: W == Z || True
+            Decider assert: W == Z || True
+              Prover assert: W == Z || True
+            Decider assert: True
+            Decider assert: True
           consume acc(P(b, x), write)
             evaluate write
             evaluate b
             evaluate x
-            SMT assert: W == Z || True
+            Decider assert: W == Z || True
+              Prover assert: W == Z || True
+            Decider assert: True
+            Decider assert: True
         Branch 2:
           comment: Unreachable
     Branch 2:
@@ -55,21 +68,29 @@ method test1
         evaluate b
         evaluate x
         evaluate write
-        SMT assert: W == Z || True
+        Decider assert: W == Z || True
+          Prover assert: W == Z || True
         GlobalBranch:
           evaluate b
         Branch 1:
           comment: Unreachable
         Branch 2:
+          Decider assert: !(b@2@01)
           consume acc(x.g, write)
             evaluate write
             evaluate x
-            SMT assert: W == Z || True
+            Decider assert: W == Z || True
+              Prover assert: W == Z || True
+            Decider assert: True
+            Decider assert: True
           consume acc(P(b, x), write)
             evaluate write
             evaluate b
             evaluate x
-            SMT assert: W == Z || True
+            Decider assert: W == Z || True
+              Prover assert: W == Z || True
+            Decider assert: True
+            Decider assert: True
 
 method test2
   WellformednessCheck null
@@ -82,8 +103,10 @@ method test2
     GlobalBranch:
       evaluate b
     Branch 1:
-      SMT assert: !(b@9@01)
-      SMT assert: b@9@01
+      Decider assert: !(b@9@01)
+        Prover assert: !(b@9@01)
+      Decider assert: b@9@01
+        Prover assert: b@9@01
       produce acc(x.f, write)
         evaluate x
         evaluate write
@@ -93,26 +116,36 @@ method test2
       Branch 1:
         comment: Unreachable
       Branch 2:
+        Decider assert: b@9@01
         execute a := 1
           evaluate 1
         execute fold acc(P(b, x), write)
           evaluate b
           evaluate x
           evaluate write
-          SMT assert: W == Z || True
+          Decider assert: W == Z || True
+            Prover assert: W == Z || True
           GlobalBranch:
             evaluate b
           Branch 1:
-            SMT assert: !(b@9@01)
+            Decider assert: !(b@9@01)
+              Prover assert: !(b@9@01)
+            Decider assert: b@9@01
             consume acc(x.f, write)
               evaluate write
               evaluate x
-              SMT assert: W == Z || True
+              Decider assert: W == Z || True
+                Prover assert: W == Z || True
+              Decider assert: True
+              Decider assert: True
             consume acc(P(b, x), write)
               evaluate write
               evaluate b
               evaluate x
-              SMT assert: W == Z || True
+              Decider assert: W == Z || True
+                Prover assert: W == Z || True
+              Decider assert: True
+              Decider assert: True
           Branch 2:
             comment: Unreachable
     Branch 2:
@@ -120,7 +153,9 @@ method test2
         evaluate !b
           evaluate b
       Branch 1:
-        SMT assert: b@9@01
+        Decider assert: b@9@01
+          Prover assert: b@9@01
+        Decider assert: !(b@9@01)
         produce acc(x.g, write)
           evaluate x
           evaluate write
@@ -130,21 +165,29 @@ method test2
           evaluate b
           evaluate x
           evaluate write
-          SMT assert: W == Z || True
+          Decider assert: W == Z || True
+            Prover assert: W == Z || True
           GlobalBranch:
             evaluate b
           Branch 1:
             comment: Unreachable
           Branch 2:
+            Decider assert: !(b@9@01)
             consume acc(x.g, write)
               evaluate write
               evaluate x
-              SMT assert: W == Z || True
+              Decider assert: W == Z || True
+                Prover assert: W == Z || True
+              Decider assert: True
+              Decider assert: True
             consume acc(P(b, x), write)
               evaluate write
               evaluate b
               evaluate x
-              SMT assert: W == Z || True
+              Decider assert: W == Z || True
+                Prover assert: W == Z || True
+              Decider assert: True
+              Decider assert: True
       Branch 2:
         comment: Unreachable
 
@@ -155,8 +198,10 @@ method test3
     GlobalBranch:
       evaluate b
     Branch 1:
-      SMT assert: !(b@18@01)
-      SMT assert: b@18@01
+      Decider assert: !(b@18@01)
+        Prover assert: !(b@18@01)
+      Decider assert: b@18@01
+        Prover assert: b@18@01
       produce acc(x.f, write)
         evaluate x
         evaluate write
@@ -170,8 +215,10 @@ method test4
   GlobalBranch:
     evaluate b
   Branch 1:
-    SMT assert: !(b@25@01)
-    SMT assert: b@25@01
+    Decider assert: !(b@25@01)
+      Prover assert: !(b@25@01)
+    Decider assert: b@25@01
+      Prover assert: b@25@01
     produce acc(x.f, write)
       evaluate x
       evaluate write
@@ -192,8 +239,10 @@ method test5
     GlobalBranch:
       evaluate b1
     Branch 1:
-      SMT assert: !(b1@34@01)
-      SMT assert: b1@34@01
+      Decider assert: !(b1@34@01)
+        Prover assert: !(b1@34@01)
+      Decider assert: b1@34@01
+        Prover assert: b1@34@01
       produce acc(x.f, write)
         evaluate x
         evaluate write
@@ -201,8 +250,10 @@ method test5
         GlobalBranch:
           evaluate b2
         Branch 1:
-          SMT assert: !(b2@35@01)
-          SMT assert: b2@35@01
+          Decider assert: !(b2@35@01)
+            Prover assert: !(b2@35@01)
+          Decider assert: b2@35@01
+            Prover assert: b2@35@01
           produce acc(x.f, write)
             evaluate x
             evaluate write
@@ -216,8 +267,10 @@ method test5
         GlobalBranch:
           evaluate b2
         Branch 1:
-          SMT assert: !(b2@35@01)
-          SMT assert: b2@35@01
+          Decider assert: !(b2@35@01)
+            Prover assert: !(b2@35@01)
+          Decider assert: b2@35@01
+            Prover assert: b2@35@01
           produce acc(x.f, write)
             evaluate x
             evaluate write
@@ -232,16 +285,20 @@ method test5a
   execute var a: Int
   Branch 1:
     evaluate b1
-    SMT assert: !(b1@47@01)
-    SMT assert: b1@47@01
+    Decider assert: !(b1@47@01)
+      Prover assert: !(b1@47@01)
+    Decider assert: b1@47@01
+      Prover assert: b1@47@01
     execute inhale acc(x.f, write)
       produce acc(x.f, write)
         evaluate x
         evaluate write
     Branch 1:
       evaluate b2
-      SMT assert: !(b2@48@01)
-      SMT assert: b2@48@01
+      Decider assert: !(b2@48@01)
+        Prover assert: !(b2@48@01)
+      Decider assert: b2@48@01
+        Prover assert: b2@48@01
       execute inhale acc(x.f, write)
         produce acc(x.f, write)
           evaluate x
@@ -251,19 +308,25 @@ method test5a
     Branch 2:
       evaluate !b2
         evaluate b2
-      SMT assert: b2@48@01
-      SMT assert: !(b2@48@01)
+      Decider assert: b2@48@01
+        Prover assert: b2@48@01
+      Decider assert: !(b2@48@01)
+        Prover assert: !(b2@48@01)
       execute a := 1
         evaluate 1
   Branch 2:
     evaluate !b1
       evaluate b1
-    SMT assert: b1@47@01
-    SMT assert: !(b1@47@01)
+    Decider assert: b1@47@01
+      Prover assert: b1@47@01
+    Decider assert: !(b1@47@01)
+      Prover assert: !(b1@47@01)
     Branch 1:
       evaluate b2
-      SMT assert: !(b2@48@01)
-      SMT assert: b2@48@01
+      Decider assert: !(b2@48@01)
+        Prover assert: !(b2@48@01)
+      Decider assert: b2@48@01
+        Prover assert: b2@48@01
       execute inhale acc(x.f, write)
         produce acc(x.f, write)
           evaluate x
@@ -273,8 +336,10 @@ method test5a
     Branch 2:
       evaluate !b2
         evaluate b2
-      SMT assert: b2@48@01
-      SMT assert: !(b2@48@01)
+      Decider assert: b2@48@01
+        Prover assert: b2@48@01
+      Decider assert: !(b2@48@01)
+        Prover assert: !(b2@48@01)
       execute a := 1
         evaluate 1
 
@@ -285,8 +350,10 @@ method test5b
     GlobalBranch:
       evaluate b1
     Branch 1:
-      SMT assert: !(b1@57@01)
-      SMT assert: b1@57@01
+      Decider assert: !(b1@57@01)
+        Prover assert: !(b1@57@01)
+      Decider assert: b1@57@01
+        Prover assert: b1@57@01
       produce acc(x.f, write)
         evaluate x
         evaluate write
@@ -294,8 +361,10 @@ method test5b
         GlobalBranch:
           evaluate b2
         Branch 1:
-          SMT assert: !(b2@58@01)
-          SMT assert: b2@58@01
+          Decider assert: !(b2@58@01)
+            Prover assert: !(b2@58@01)
+          Decider assert: b2@58@01
+            Prover assert: b2@58@01
           produce acc(x.f, write)
             evaluate x
             evaluate write
@@ -313,8 +382,10 @@ method test5b
         GlobalBranch:
           evaluate b2
         Branch 1:
-          SMT assert: !(b2@58@01)
-          SMT assert: b2@58@01
+          Decider assert: !(b2@58@01)
+            Prover assert: !(b2@58@01)
+          Decider assert: b2@58@01
+            Prover assert: b2@58@01
           produce acc(x.f, write)
             evaluate x
             evaluate write
@@ -333,8 +404,10 @@ method test6
     GlobalBranch:
       evaluate b1
     Branch 1:
-      SMT assert: !(b1@70@01)
-      SMT assert: b1@70@01
+      Decider assert: !(b1@70@01)
+        Prover assert: !(b1@70@01)
+      Decider assert: b1@70@01
+        Prover assert: b1@70@01
       produce acc(x.f, write)
         evaluate x
         evaluate write
@@ -342,8 +415,10 @@ method test6
         GlobalBranch:
           evaluate b2
         Branch 1:
-          SMT assert: !(b2@71@01)
-          SMT assert: b2@71@01
+          Decider assert: !(b2@71@01)
+            Prover assert: !(b2@71@01)
+          Decider assert: b2@71@01
+            Prover assert: b2@71@01
           produce acc(x.f, write)
             evaluate x
             evaluate write
@@ -363,8 +438,10 @@ method test6
         GlobalBranch:
           evaluate b2
         Branch 1:
-          SMT assert: !(b2@71@01)
-          SMT assert: b2@71@01
+          Decider assert: !(b2@71@01)
+            Prover assert: !(b2@71@01)
+          Decider assert: b2@71@01
+            Prover assert: b2@71@01
           produce acc(x.f, write)
             evaluate x
             evaluate write
@@ -384,8 +461,10 @@ method test7
     GlobalBranch:
       evaluate b
     Branch 1:
-      SMT assert: !(b@82@01)
-      SMT assert: b@82@01
+      Decider assert: !(b@82@01)
+        Prover assert: !(b@82@01)
+      Decider assert: b@82@01
+        Prover assert: b@82@01
       produce acc(x.f, write)
         evaluate x
         evaluate write

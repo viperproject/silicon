@@ -424,6 +424,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     // count of each sep is calculated, now filter based on branchesCount
     ignoredSepSet = InsertionOrderedSet(ignoredSepCount.filter(entry => entry._2 >= branchesCount).keys)
     ignoredSepSet = ignoredSepSet ++ prevState._3
+    // TODO is a check whether top of stack is in ignoredSepSet here necessary? (similarly to collapse)
   }
 
   /**
@@ -1448,7 +1449,7 @@ class MethodCallRecord(v: ast.MethodCall, s: State, p: PathConditionStack)
   }
 }
 
-class SmtAssertRecord(t: Term, timeout: Option[Int]) extends MemberRecord {
+class DeciderAssertRecord(t: Term, timeout: Option[Int]) extends MemberRecord {
   val value: ast.Node = null
   val state: State = null
   val pcs: Set[Term] = null
@@ -1456,19 +1457,43 @@ class SmtAssertRecord(t: Term, timeout: Option[Int]) extends MemberRecord {
   val timeoutOptions: Option[Int] = timeout
 
   def toTypeString(): String = {
-    "SmtAssert"
+    "DeciderAssert"
   }
 
   override def toString(): String = {
     if (term != null)
-      "SMT assert: " + term.toString()
+      "Decider assert: " + term.toString()
     else
-      "SMT assert: <null>"
+      "Decider assert: <null>"
   }
 
   override def toSimpleString(): String = {
     if (term != null) term.toString()
-    else "SmtAssert <null>"
+    else "DeciderAssert <null>"
+  }
+}
+
+class ProverAssertRecord(t: Term, timeout: Option[Int]) extends MemberRecord {
+  val value: ast.Node = null
+  val state: State = null
+  val pcs: Set[Term] = null
+  val term: Term = t
+  val timeoutOptions: Option[Int] = timeout
+
+  def toTypeString(): String = {
+    "ProverAssert"
+  }
+
+  override def toString(): String = {
+    if (term != null)
+      "Prover assert: " + term.toString()
+    else
+      "Prover assert: <null>"
+  }
+
+  override def toSimpleString(): String = {
+    if (term != null) term.toString()
+    else "ProverAssert <null>"
   }
 }
 
@@ -1535,7 +1560,7 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
     node.endTimeMs = r.endTimeMs
     // set isSmtQuery flag:
     r match {
-      case sq: SmtAssertRecord => node.isSmtQuery = true
+      case sq: ProverAssertRecord => node.isSmtQuery = true
       case _ =>
     }
 

@@ -81,6 +81,9 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   def merge(h: Heap, ch: NonQuantifiedChunk, v: Verifier): Heap = merge(h, Heap(Seq(ch)), v)
 
   def merge(h: Heap, newH: Heap, v: Verifier): Heap = {
+    // TODO if moreCompleteExhaling is activated, just return h++newH
+    // TODO add merge record
+
     val (nonQuantifiedChunks, otherChunks) = partition(h)
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
     val (mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(nonQuantifiedChunks, newNonQuantifiedChunks, v)
@@ -100,6 +103,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
                          : (Seq[NonQuantifiedChunk], Seq[NonQuantifiedChunk], InsertionOrderedSet[Term]) = {
 
     // bookkeeper.heapMergeIterations += 1
+    // TODO add singleMerge record
 
     val initial = (destChunks, Seq[NonQuantifiedChunk](), InsertionOrderedSet[Term]())
 

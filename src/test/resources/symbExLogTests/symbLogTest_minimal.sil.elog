@@ -4,8 +4,10 @@ method topOfStackInIgnoredSepSetCheck
     GlobalBranch:
       evaluate b
     Branch 1:
-      SMT assert: !(b@2@01)
-      SMT assert: b@2@01
+      Decider assert: !(b@2@01)
+        Prover assert: !(b@2@01)
+      Decider assert: b@2@01
+        Prover assert: b@2@01
       produce acc(x.f, write)
         evaluate x
         evaluate write
