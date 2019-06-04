@@ -788,6 +788,7 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
       case ue: UnconditionalEdgeRecord => ue.subs.forall(filter)
       case ce: ConditionalEdgeRecord =>
         filter(ce.cond) && ce.thnSubs.forall(filter)
+      case da: DeciderAssumeRecord => true
       case _ => false
     }
   }
@@ -1494,6 +1495,29 @@ class ProverAssertRecord(t: Term, timeout: Option[Int]) extends MemberRecord {
   override def toSimpleString(): String = {
     if (term != null) term.toString()
     else "ProverAssert <null>"
+  }
+}
+
+class DeciderAssumeRecord(t: InsertionOrderedSet[Term]) extends MemberRecord {
+  val value: ast.Node = null
+  val state: State = null
+  val pcs: Set[Term] = null
+  val terms: InsertionOrderedSet[Term] = t
+
+  def toTypeString(): String = {
+    "DeciderAssume"
+  }
+
+  override def toString(): String = {
+    if (terms != null)
+      "Decider assume: " + terms.mkString(" ")
+    else
+      "Decider assume: <null>"
+  }
+
+  override def toSimpleString(): String = {
+    if (terms != null) terms.mkString(" ")
+    else "DeciderAssume <null>"
   }
 }
 

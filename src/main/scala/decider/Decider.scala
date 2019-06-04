@@ -179,12 +179,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term]) = {
+      val assumeRecord = new DeciderAssumeRecord(terms)
+      val sepIdentifier = SymbExLogger.currentLog().insert(assumeRecord)
+
       /* Add terms to Silicon-managed path conditions */
       terms foreach pathConditions.add
 
       /* Add terms to the prover's assumptions */
       terms foreach prover.assume
 
+      SymbExLogger.currentLog().collapse(null, sepIdentifier)
       None
     }
 
