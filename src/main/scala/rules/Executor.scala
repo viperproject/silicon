@@ -397,8 +397,12 @@ object executor extends ExecutionRules with Immutable {
         a match {
           /* "assert true" triggers a heap compression. */
           case _: ast.TrueLit =>
-            val s1 = stateConsolidator.consolidate(s, v)
-            Q(s1, v)
+            if (Verifier.config.ignoreAssertTrue()) {
+              Q(s, v)
+            } else {
+              val s1 = stateConsolidator.consolidate(s, v)
+              Q(s1, v)
+            }
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.FalseLit =>
