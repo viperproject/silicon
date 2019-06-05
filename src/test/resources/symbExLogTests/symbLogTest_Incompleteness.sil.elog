@@ -71,8 +71,9 @@ method m1_2
             Decider assert: x@7@01 == y@8@01
         comment: Round 1
           Single merge:  <= x@7@01.f -> $t@10@01 # W
-      Decider assert: True
-      Decider assert: True
+      comment: Retry
+        Decider assert: True
+        Decider assert: True
 
 method m1_3
   WellformednessCheck null
@@ -237,10 +238,11 @@ method m3_1
           Prover assert: $t@49@01 != $t@47@01
         Decider assert: $t@47@01 != $t@49@01
           Prover assert: $t@47@01 != $t@49@01
-      evaluate x != y
-        evaluate x
-        evaluate y
-      Decider assert: x@43@01 != y@44@01
+      comment: Retry
+        evaluate x != y
+          evaluate x
+          evaluate y
+        Decider assert: x@43@01 != y@44@01
   execute inhale acc(z.f, 1 / 10)
     produce acc(z.f, 1 / 10)
       evaluate z
