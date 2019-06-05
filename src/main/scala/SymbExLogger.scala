@@ -369,19 +369,23 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
         stack = stack.tail
       }
 
-      if (topOfStackInIgnoredSepSetCheck) {
-        // check if top of stack is in ignoredSepSet:
-        for (i <- sepSet.keys) {
-          if (stack.head equals sepSet(i)) {
-            if (ignoredSepSet contains i) {
-              collapse(null, i)
-              return
-            }
+      collapseIgnoredTopOfStack()
+    } else {
+      ignoredSepSet = ignoredSepSet + n
+    }
+  }
+
+  private def collapseIgnoredTopOfStack(): Unit = {
+    if (topOfStackInIgnoredSepSetCheck) {
+      // check if top of stack is in ignoredSepSet:
+      for (i <- sepSet.keys) {
+        if (stack.head equals sepSet(i)) {
+          if (ignoredSepSet contains i) {
+            collapse(null, i)
+            return
           }
         }
       }
-    } else {
-      ignoredSepSet = ignoredSepSet + n
     }
   }
 
@@ -426,6 +430,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     ignoredSepSet = InsertionOrderedSet(ignoredSepCount.filter(entry => entry._2 >= branchesCount).keys)
     ignoredSepSet = ignoredSepSet ++ prevState._3
     // TODO is a check whether top of stack is in ignoredSepSet here necessary? (similarly to collapse)
+    collapseIgnoredTopOfStack()
   }
 
   /**

@@ -1,0 +1,637 @@
+predicate lseg
+  GlobalBranch:
+    evaluate this != end
+      evaluate this
+      evaluate end
+  Branch 1:
+    Decider assert: this@0@00 == end@1@00
+      Prover assert: this@0@00 == end@1@00
+    Decider assert: this@0@00 != end@1@00
+      Prover assert: this@0@00 != end@1@00
+    produce acc(this.data, write)
+      evaluate this
+      evaluate write
+      comment: Merge
+        Single merge:  <= this@0@00.data -> $t@3@00 # W
+    produce acc(this.next, write)
+      evaluate this
+      evaluate write
+      comment: Merge
+        Single merge: this@0@00.data -> $t@3@00 # W <= this@0@00.next -> $t@5@00 # W
+    produce acc(lseg(this.next, end), write)
+      evaluate this.next
+        evaluate this
+        Decider assert: True
+      evaluate end
+      evaluate write
+      comment: Merge
+        Single merge: this@0@00.data -> $t@3@00 # W this@0@00.next -> $t@5@00 # W <= lseg($t@7@00; $t@5@00,end@1@00) # W
+    produce (unfolding acc(lseg(this.next, end), write) in this.next != end ==> this.data <= this.next.data)
+      evaluate (unfolding acc(lseg(this.next, end), write) in this.next != end ==> this.data <= this.next.data)
+        evaluate this.next
+          evaluate this
+          Decider assert: True
+        evaluate end
+        evaluate write
+        Decider assert: W == Z || True
+          Prover assert: W == Z || True
+        consume acc(lseg(this.next, end), write)
+          evaluate write
+          evaluate this.next
+            evaluate this
+            Decider assert: True
+          evaluate end
+          Decider assert: W == Z || True
+            Prover assert: W == Z || True
+          Decider assert: True
+          Decider assert: True
+        GlobalBranch:
+          evaluate this.next != end
+            evaluate this.next
+              evaluate this
+              Decider assert: True
+            evaluate end
+        Branch 1:
+          Decider assert: $t@5@00 == end@1@00
+            Prover assert: $t@5@00 == end@1@00
+          Decider assert: $t@5@00 != end@1@00
+            Prover assert: $t@5@00 != end@1@00
+          produce acc(this.next.data, write)
+            evaluate this.next
+              evaluate this
+              Decider assert: True
+            evaluate write
+            comment: Merge
+              Single merge: this@0@00.next -> $t@5@00 # W this@0@00.data -> $t@3@00 # W <= $t@5@00.data -> $t@8@00 # W
+                Decider assert: this@0@00 == $t@5@00
+                  Prover assert: this@0@00 == $t@5@00
+          produce acc(this.next.next, write)
+            evaluate this.next
+              evaluate this
+              Decider assert: True
+            evaluate write
+            comment: Merge
+              Single merge: this@0@00.data -> $t@3@00 # W this@0@00.next -> $t@5@00 # W $t@5@00.data -> $t@8@00 # W <= $t@5@00.next -> $t@10@00 # W
+                Decider assert: this@0@00 == $t@5@00
+                  Prover assert: this@0@00 == $t@5@00
+          produce acc(lseg(this.next.next, end), write)
+            evaluate this.next.next
+              evaluate this.next
+                evaluate this
+                Decider assert: True
+              Decider assert: True
+            evaluate end
+            evaluate write
+            comment: Merge
+              Single merge: $t@5@00.data -> $t@8@00 # W this@0@00.next -> $t@5@00 # W this@0@00.data -> $t@3@00 # W $t@5@00.next -> $t@10@00 # W <= lseg($t@12@00; $t@10@00,end@1@00) # W
+          produce (unfolding acc(lseg(this.next.next, end), write) in this.next.next != end ==> this.next.data <= this.next.next.data)
+            evaluate (unfolding acc(lseg(this.next.next, end), write) in this.next.next != end ==> this.next.data <= this.next.next.data)
+              evaluate this.next.next
+                evaluate this.next
+                  evaluate this
+                  Decider assert: True
+                Decider assert: True
+              evaluate end
+              evaluate write
+              Decider assert: W == Z || True
+                Prover assert: W == Z || True
+              consume acc(lseg(this.next.next, end), write)
+                evaluate write
+                evaluate this.next.next
+                  evaluate this.next
+                    evaluate this
+                    Decider assert: True
+                  Decider assert: True
+                evaluate end
+                Decider assert: W == Z || True
+                  Prover assert: W == Z || True
+                Decider assert: True
+                Decider assert: True
+              GlobalBranch:
+                evaluate this.next.next != end
+                  evaluate this.next.next
+                    evaluate this.next
+                      evaluate this
+                      Decider assert: True
+                    Decider assert: True
+                  evaluate end
+              Branch 1:
+                Decider assert: $t@10@00 == end@1@00
+                  Prover assert: $t@10@00 == end@1@00
+                Decider assert: $t@10@00 != end@1@00
+                  Prover assert: $t@10@00 != end@1@00
+                produce acc(this.next.next.data, write)
+                  evaluate this.next.next
+                    evaluate this.next
+                      evaluate this
+                      Decider assert: True
+                    Decider assert: True
+                  evaluate write
+                  comment: Merge
+                    Single merge: $t@5@00.next -> $t@10@00 # W this@0@00.data -> $t@3@00 # W this@0@00.next -> $t@5@00 # W $t@5@00.data -> $t@8@00 # W <= $t@10@00.data -> $t@13@00 # W
+                      Decider assert: this@0@00 == $t@10@00
+                        Prover assert: this@0@00 == $t@10@00
+                      Decider assert: $t@5@00 == $t@10@00
+                        Prover assert: $t@5@00 == $t@10@00
+                produce acc(this.next.next.next, write)
+                  evaluate this.next.next
+                    evaluate this.next
+                      evaluate this
+                      Decider assert: True
+                    Decider assert: True
+                  evaluate write
+                  comment: Merge
+                    Single merge: $t@5@00.data -> $t@8@00 # W this@0@00.next -> $t@5@00 # W this@0@00.data -> $t@3@00 # W $t@5@00.next -> $t@10@00 # W $t@10@00.data -> $t@13@00 # W <= $t@10@00.next -> $t@15@00 # W
+                      Decider assert: this@0@00 == $t@10@00
+                        Prover assert: this@0@00 == $t@10@00
+                      Decider assert: $t@5@00 == $t@10@00
+                        Prover assert: $t@5@00 == $t@10@00
+                produce acc(lseg(this.next.next.next, end), write)
+                  evaluate this.next.next.next
+                    evaluate this.next.next
+                      evaluate this.next
+                        evaluate this
+                        Decider assert: True
+                      Decider assert: True
+                    Decider assert: True
+                  evaluate end
+                  evaluate write
+                  comment: Merge
+                    Single merge: $t@10@00.data -> $t@13@00 # W $t@5@00.next -> $t@10@00 # W this@0@00.data -> $t@3@00 # W this@0@00.next -> $t@5@00 # W $t@5@00.data -> $t@8@00 # W $t@10@00.next -> $t@15@00 # W <= lseg($t@17@00; $t@15@00,end@1@00) # W
+                produce (unfolding acc(lseg(this.next.next.next, end), write) in this.next.next.next != end ==> this.next.next.data <= this.next.next.next.data)
+                  evaluate (unfolding acc(lseg(this.next.next.next, end), write) in this.next.next.next != end ==> this.next.next.data <= this.next.next.next.data)
+                evaluate this.next.next != end ==> this.next.data <= this.next.next.data
+                  LocalBranch:
+                    evaluate this.next.next != end
+                      evaluate this.next.next
+                        evaluate this.next
+                          evaluate this
+                          Decider assert: True
+                        Decider assert: True
+                      evaluate end
+                  Branch 1:
+                    Decider assert: $t@10@00 == end@1@00
+                      Prover assert: $t@10@00 == end@1@00
+                    Decider assert: $t@10@00 != end@1@00
+                    evaluate this.next.data <= this.next.next.data
+                      evaluate this.next.data
+                        evaluate this.next
+                          evaluate this
+                          Decider assert: True
+                        Decider assert: True
+                      evaluate this.next.next.data
+                        evaluate this.next.next
+                          evaluate this.next
+                            evaluate this
+                            Decider assert: True
+                          Decider assert: True
+                        Decider assert: True
+                  Branch 2:
+                    comment: Unreachable
+              Branch 2:
+                evaluate this.next.next != end ==> this.next.data <= this.next.next.data
+                  LocalBranch:
+                    evaluate this.next.next != end
+                      evaluate this.next.next
+                        evaluate this.next
+                          evaluate this
+                          Decider assert: True
+                        Decider assert: True
+                      evaluate end
+                  Branch 1:
+                    comment: Unreachable
+                  Branch 2:
+                    Decider assert: $t@10@00 == end@1@00
+          evaluate this.next != end ==> this.data <= this.next.data
+            LocalBranch:
+              evaluate this.next != end
+                evaluate this.next
+                  evaluate this
+                  Decider assert: True
+                evaluate end
+            Branch 1:
+              Decider assert: $t@5@00 == end@1@00
+                Prover assert: $t@5@00 == end@1@00
+              Decider assert: $t@5@00 != end@1@00
+              evaluate this.data <= this.next.data
+                evaluate this.data
+                  evaluate this
+                  Decider assert: True
+                evaluate this.next.data
+                  evaluate this.next
+                    evaluate this
+                    Decider assert: True
+                  Decider assert: True
+            Branch 2:
+              comment: Unreachable
+        Branch 2:
+          evaluate this.next != end ==> this.data <= this.next.data
+            LocalBranch:
+              evaluate this.next != end
+                evaluate this.next
+                  evaluate this
+                  Decider assert: True
+                evaluate end
+            Branch 1:
+              comment: Unreachable
+            Branch 2:
+              Decider assert: $t@5@00 == end@1@00
+  Branch 2:
+
+predicate List
+  produce acc(this.head, write)
+    evaluate this
+    evaluate write
+    comment: Merge
+      Single merge:  <= this@22@00.head -> $t@24@00 # W
+  produce acc(lseg(this.head, null), write)
+    evaluate this.head
+      evaluate this
+      Decider assert: True
+    evaluate null
+    evaluate write
+    comment: Merge
+      Single merge: this@22@00.head -> $t@24@00 # W <= lseg($t@25@00; $t@24@00,Null) # W
+
+method insert
+  produce acc(List(this), write)
+    evaluate this
+    evaluate write
+    comment: Merge
+      Single merge:  <= List($t@6@01; this@3@01) # W
+  WellformednessCheck null
+  execute var tmp: Ref
+  execute index := 0
+    evaluate 0
+  execute unfold acc(List(this), write)
+    evaluate this
+    evaluate write
+    Decider assert: W == Z || True
+      Prover assert: W == Z || True
+    Decider assert: True
+    Decider assert: True
+    produce acc(this.head, write)
+      evaluate this
+      evaluate write
+      comment: Merge
+        Single merge:  <= this@3@01.head -> $t@8@01 # W
+    produce acc(lseg(this.head, null), write)
+      evaluate this.head
+        evaluate this
+        Decider assert: True
+      evaluate null
+      evaluate write
+      comment: Merge
+        Single merge: this@3@01.head -> $t@8@01 # W <= lseg($t@9@01; $t@8@01,Null) # W
+  execute unfold acc(lseg(this.head, null), write)
+    evaluate this.head
+      evaluate this
+      Decider assert: True
+    evaluate null
+    evaluate write
+    Decider assert: W == Z || True
+      Prover assert: W == Z || True
+    Decider assert: True
+    Decider assert: True
+    GlobalBranch:
+      evaluate this != end
+        evaluate this
+        evaluate end
+    Branch 1:
+      Decider assert: $t@8@01 == Null
+        Prover assert: $t@8@01 == Null
+      Decider assert: $t@8@01 != Null
+        Prover assert: $t@8@01 != Null
+      produce acc(this.data, write)
+        evaluate this
+        evaluate write
+        comment: Merge
+          Single merge: this@3@01.head -> $t@8@01 # W <= $t@8@01.data -> $t@10@01 # W
+      produce acc(this.next, write)
+        evaluate this
+        evaluate write
+        comment: Merge
+          Single merge: this@3@01.head -> $t@8@01 # W $t@8@01.data -> $t@10@01 # W <= $t@8@01.next -> $t@12@01 # W
+      produce acc(lseg(this.next, end), write)
+        evaluate this.next
+          evaluate this
+          Decider assert: True
+        evaluate end
+        evaluate write
+        comment: Merge
+          Single merge: $t@8@01.data -> $t@10@01 # W this@3@01.head -> $t@8@01 # W $t@8@01.next -> $t@12@01 # W <= lseg($t@14@01; $t@12@01,Null) # W
+      produce (unfolding acc(lseg(this.next, end), write) in this.next != end ==> this.data <= this.next.data)
+        evaluate (unfolding acc(lseg(this.next, end), write) in this.next != end ==> this.data <= this.next.data)
+          evaluate this.next
+            evaluate this
+            Decider assert: True
+          evaluate end
+          evaluate write
+          Decider assert: W == Z || True
+            Prover assert: W == Z || True
+          consume acc(lseg(this.next, end), write)
+            evaluate write
+            evaluate this.next
+              evaluate this
+              Decider assert: True
+            evaluate end
+            Decider assert: W == Z || True
+              Prover assert: W == Z || True
+            Decider assert: True
+            Decider assert: True
+          GlobalBranch:
+            evaluate this.next != end
+              evaluate this.next
+                evaluate this
+                Decider assert: True
+              evaluate end
+          Branch 1:
+            Decider assert: $t@12@01 == Null
+              Prover assert: $t@12@01 == Null
+            Decider assert: $t@12@01 != Null
+              Prover assert: $t@12@01 != Null
+            produce acc(this.next.data, write)
+              evaluate this.next
+                evaluate this
+                Decider assert: True
+              evaluate write
+              comment: Merge
+                Single merge: $t@8@01.next -> $t@12@01 # W this@3@01.head -> $t@8@01 # W $t@8@01.data -> $t@10@01 # W <= $t@12@01.data -> $t@15@01 # W
+                  Decider assert: $t@8@01 == $t@12@01
+                    Prover assert: $t@8@01 == $t@12@01
+            produce acc(this.next.next, write)
+              evaluate this.next
+                evaluate this
+                Decider assert: True
+              evaluate write
+              comment: Merge
+                Single merge: $t@8@01.data -> $t@10@01 # W this@3@01.head -> $t@8@01 # W $t@8@01.next -> $t@12@01 # W $t@12@01.data -> $t@15@01 # W <= $t@12@01.next -> $t@17@01 # W
+                  Decider assert: $t@8@01 == $t@12@01
+                    Prover assert: $t@8@01 == $t@12@01
+            produce acc(lseg(this.next.next, end), write)
+              evaluate this.next.next
+                evaluate this.next
+                  evaluate this
+                  Decider assert: True
+                Decider assert: True
+              evaluate end
+              evaluate write
+              comment: Merge
+                Single merge: $t@12@01.data -> $t@15@01 # W $t@8@01.next -> $t@12@01 # W this@3@01.head -> $t@8@01 # W $t@8@01.data -> $t@10@01 # W $t@12@01.next -> $t@17@01 # W <= lseg($t@19@01; $t@17@01,Null) # W
+            produce (unfolding acc(lseg(this.next.next, end), write) in this.next.next != end ==> this.next.data <= this.next.next.data)
+              evaluate (unfolding acc(lseg(this.next.next, end), write) in this.next.next != end ==> this.next.data <= this.next.next.data)
+                evaluate this.next.next
+                  evaluate this.next
+                    evaluate this
+                    Decider assert: True
+                  Decider assert: True
+                evaluate end
+                evaluate write
+                Decider assert: W == Z || True
+                  Prover assert: W == Z || True
+                consume acc(lseg(this.next.next, end), write)
+                  evaluate write
+                  evaluate this.next.next
+                    evaluate this.next
+                      evaluate this
+                      Decider assert: True
+                    Decider assert: True
+                  evaluate end
+                  Decider assert: W == Z || True
+                    Prover assert: W == Z || True
+                  Decider assert: True
+                  Decider assert: True
+                GlobalBranch:
+                  evaluate this.next.next != end
+                    evaluate this.next.next
+                      evaluate this.next
+                        evaluate this
+                        Decider assert: True
+                      Decider assert: True
+                    evaluate end
+                Branch 1:
+                  Decider assert: $t@17@01 == Null
+                    Prover assert: $t@17@01 == Null
+                  Decider assert: $t@17@01 != Null
+                    Prover assert: $t@17@01 != Null
+                  produce acc(this.next.next.data, write)
+                    evaluate this.next.next
+                      evaluate this.next
+                        evaluate this
+                        Decider assert: True
+                      Decider assert: True
+                    evaluate write
+                    comment: Merge
+                      Single merge: $t@12@01.next -> $t@17@01 # W $t@8@01.data -> $t@10@01 # W this@3@01.head -> $t@8@01 # W $t@8@01.next -> $t@12@01 # W $t@12@01.data -> $t@15@01 # W <= $t@17@01.data -> $t@20@01 # W
+                        Decider assert: $t@8@01 == $t@17@01
+                          Prover assert: $t@8@01 == $t@17@01
+                        Decider assert: $t@12@01 == $t@17@01
+                          Prover assert: $t@12@01 == $t@17@01
+                  produce acc(this.next.next.next, write)
+                    evaluate this.next.next
+                      evaluate this.next
+                        evaluate this
+                        Decider assert: True
+                      Decider assert: True
+                    evaluate write
+                    comment: Merge
+                      Single merge: $t@12@01.data -> $t@15@01 # W $t@8@01.next -> $t@12@01 # W this@3@01.head -> $t@8@01 # W $t@8@01.data -> $t@10@01 # W $t@12@01.next -> $t@17@01 # W $t@17@01.data -> $t@20@01 # W <= $t@17@01.next -> $t@22@01 # W
+                        Decider assert: $t@8@01 == $t@17@01
+                          Prover assert: $t@8@01 == $t@17@01
+                        Decider assert: $t@12@01 == $t@17@01
+                          Prover assert: $t@12@01 == $t@17@01
+                  produce acc(lseg(this.next.next.next, end), write)
+                    evaluate this.next.next.next
+                      evaluate this.next.next
+                        evaluate this.next
+                          evaluate this
+                          Decider assert: True
+                        Decider assert: True
+                      Decider assert: True
+                    evaluate end
+                    evaluate write
+                    comment: Merge
+                      Single merge: $t@17@01.data -> $t@20@01 # W $t@12@01.next -> $t@17@01 # W $t@8@01.data -> $t@10@01 # W this@3@01.head -> $t@8@01 # W $t@8@01.next -> $t@12@01 # W $t@12@01.data -> $t@15@01 # W $t@17@01.next -> $t@22@01 # W <= lseg($t@24@01; $t@22@01,Null) # W
+                  produce (unfolding acc(lseg(this.next.next.next, end), write) in this.next.next.next != end ==> this.next.next.data <= this.next.next.next.data)
+                    evaluate (unfolding acc(lseg(this.next.next.next, end), write) in this.next.next.next != end ==> this.next.next.data <= this.next.next.next.data)
+                  evaluate this.next.next != end ==> this.next.data <= this.next.next.data
+                    LocalBranch:
+                      evaluate this.next.next != end
+                        evaluate this.next.next
+                          evaluate this.next
+                            evaluate this
+                            Decider assert: True
+                          Decider assert: True
+                        evaluate end
+                    Branch 1:
+                      Decider assert: $t@17@01 == Null
+                        Prover assert: $t@17@01 == Null
+                      Decider assert: $t@17@01 != Null
+                      evaluate this.next.data <= this.next.next.data
+                        evaluate this.next.data
+                          evaluate this.next
+                            evaluate this
+                            Decider assert: True
+                          Decider assert: True
+                        evaluate this.next.next.data
+                          evaluate this.next.next
+                            evaluate this.next
+                              evaluate this
+                              Decider assert: True
+                            Decider assert: True
+                          Decider assert: True
+                    Branch 2:
+                      comment: Unreachable
+                Branch 2:
+                  evaluate this.next.next != end ==> this.next.data <= this.next.next.data
+                    LocalBranch:
+                      evaluate this.next.next != end
+                        evaluate this.next.next
+                          evaluate this.next
+                            evaluate this
+                            Decider assert: True
+                          Decider assert: True
+                        evaluate end
+                    Branch 1:
+                      comment: Unreachable
+                    Branch 2:
+                      Decider assert: $t@17@01 == Null
+            evaluate this.next != end ==> this.data <= this.next.data
+              LocalBranch:
+                evaluate this.next != end
+                  evaluate this.next
+                    evaluate this
+                    Decider assert: True
+                  evaluate end
+              Branch 1:
+                Decider assert: $t@12@01 == Null
+                  Prover assert: $t@12@01 == Null
+                Decider assert: $t@12@01 != Null
+                evaluate this.data <= this.next.data
+                  evaluate this.data
+                    evaluate this
+                    Decider assert: True
+                  evaluate this.next.data
+                    evaluate this.next
+                      evaluate this
+                      Decider assert: True
+                    Decider assert: True
+              Branch 2:
+                comment: Unreachable
+          Branch 2:
+            evaluate this.next != end ==> this.data <= this.next.data
+              LocalBranch:
+                evaluate this.next != end
+                  evaluate this.next
+                    evaluate this
+                    Decider assert: True
+                  evaluate end
+              Branch 1:
+                comment: Unreachable
+              Branch 2:
+                Decider assert: $t@12@01 == Null
+      Branch 1:
+        evaluate !(this.head == null || elem <= this.head.data)
+          evaluate this.head == null || elem <= this.head.data
+            evaluate this.head == null
+              evaluate this.head
+                evaluate this
+                Decider assert: True
+              evaluate null
+            evaluate !v@28@01 && elem <= this.head.data
+              evaluate !v@28@01
+                evaluate v@28@01
+              evaluate v@29@01 ==> elem <= this.head.data
+                LocalBranch:
+                  evaluate v@29@01
+                Branch 1:
+                  evaluate elem <= this.head.data
+                    evaluate elem
+                    evaluate this.head.data
+                      evaluate this.head
+                        evaluate this
+                        Decider assert: True
+                      Decider assert: True
+                Branch 2:
+        Decider assert: $t@8@01 == Null || $t@8@01 != Null && $t@8@01 != Null ==> elem@4@01 <= $t@10@01
+          Prover assert: $t@8@01 == Null || $t@8@01 != Null && $t@8@01 != Null ==> elem@4@01 <= $t@10@01
+        Decider assert: !($t@8@01 == Null || $t@8@01 != Null && $t@8@01 != Null ==> elem@4@01 <= $t@10@01)
+          Prover assert: !($t@8@01 == Null || $t@8@01 != Null && $t@8@01 != Null ==> elem@4@01 <= $t@10@01)
+      Branch 2:
+        evaluate this.head == null || elem <= this.head.data
+          evaluate this.head == null
+            evaluate this.head
+              evaluate this
+              Decider assert: True
+            evaluate null
+          evaluate !v@30@01 && elem <= this.head.data
+            evaluate !v@30@01
+              evaluate v@30@01
+            evaluate v@31@01 ==> elem <= this.head.data
+              LocalBranch:
+                evaluate v@31@01
+              Branch 1:
+                evaluate elem <= this.head.data
+                  evaluate elem
+                  evaluate this.head.data
+                    evaluate this.head
+                      evaluate this
+                      Decider assert: True
+                    Decider assert: True
+              Branch 2:
+        Decider assert: !($t@8@01 == Null || $t@8@01 != Null && $t@8@01 != Null ==> elem@4@01 <= $t@10@01)
+          Prover assert: !($t@8@01 == Null || $t@8@01 != Null && $t@8@01 != Null ==> elem@4@01 <= $t@10@01)
+        Decider assert: $t@8@01 == Null || $t@8@01 != Null && $t@8@01 != Null ==> elem@4@01 <= $t@10@01
+          Prover assert: $t@8@01 == Null || $t@8@01 != Null && $t@8@01 != Null ==> elem@4@01 <= $t@10@01
+    Branch 2:
+      Branch 1:
+        evaluate !(this.head == null || elem <= this.head.data)
+          evaluate this.head == null || elem <= this.head.data
+            evaluate this.head == null
+              evaluate this.head
+                evaluate this
+                Decider assert: True
+              evaluate null
+            evaluate !v@32@01 && elem <= this.head.data
+              evaluate !v@32@01
+                evaluate v@32@01
+              evaluate v@33@01 ==> elem <= this.head.data
+                LocalBranch:
+                  evaluate v@33@01
+                Branch 1:
+                  comment: Unreachable
+                Branch 2:
+                  evaluate elem <= this.head.data
+                    evaluate elem
+                    evaluate this.head.data
+                      evaluate this.head
+                        evaluate this
+                        Decider assert: True
+        comment: Unreachable
+      Branch 2:
+        evaluate this.head == null || elem <= this.head.data
+          evaluate this.head == null
+            evaluate this.head
+              evaluate this
+              Decider assert: True
+            evaluate null
+          evaluate !v@34@01 && elem <= this.head.data
+            evaluate !v@34@01
+              evaluate v@34@01
+            evaluate v@35@01 ==> elem <= this.head.data
+              LocalBranch:
+                evaluate v@35@01
+              Branch 1:
+                comment: Unreachable
+              Branch 2:
+                evaluate elem <= this.head.data
+                  evaluate elem
+                  evaluate this.head.data
+                    evaluate this.head
+                      evaluate this
+                      Decider assert: True
+        Decider assert: !($t@8@01 == Null || $t@8@01 != Null)
+          Prover assert: !($t@8@01 == Null || $t@8@01 != Null)
+        Decider assert: $t@8@01 == Null || $t@8@01 != Null
+          Prover assert: $t@8@01 == Null || $t@8@01 != Null
+
