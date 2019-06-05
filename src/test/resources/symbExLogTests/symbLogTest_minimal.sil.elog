@@ -11,6 +11,8 @@ method topOfStackInIgnoredSepSetCheck
       produce acc(x.f, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@3@01.f -> $t@4@01 # W
     Branch 2:
       produce true
         evaluate true

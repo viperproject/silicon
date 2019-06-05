@@ -8,6 +8,8 @@ method m1_1
         evaluate 2
         Decider assert: 2 != 0
           Prover assert: 2 != 0
+      comment: Merge
+        Single merge:  <= x@1@01.f -> $t@3@01 # 1/2
     produce acc(x.f, 1 / 2)
       evaluate x
       evaluate 1 / 2
@@ -15,6 +17,8 @@ method m1_1
         evaluate 2
         Decider assert: 2 != 0
           Prover assert: 2 != 0
+      comment: Merge
+        Single merge: x@1@01.f -> $t@3@01 # 1/2 <= x@1@01.f -> $t@4@01 # 1/2
   execute assert acc(x.f, write)
     consume acc(x.f, write)
       evaluate write
@@ -34,6 +38,8 @@ method m1_2
         evaluate 2
         Decider assert: 2 != 0
           Prover assert: 2 != 0
+      comment: Merge
+        Single merge:  <= x@7@01.f -> $t@10@01 # 1/2
     produce acc(y.f, 1 / 2)
       evaluate y
       evaluate 1 / 2
@@ -41,8 +47,10 @@ method m1_2
         evaluate 2
         Decider assert: 2 != 0
           Prover assert: 2 != 0
-      Decider assert: x@7@01 == y@8@01
-        Prover assert: x@7@01 == y@8@01
+      comment: Merge
+        Single merge: x@7@01.f -> $t@10@01 # 1/2 <= y@8@01.f -> $t@11@01 # 1/2
+          Decider assert: x@7@01 == y@8@01
+            Prover assert: x@7@01 == y@8@01
   execute inhale x == y
     produce x == y
       evaluate x == y
@@ -58,7 +66,11 @@ method m1_2
       Decider assert: False
         Prover assert: False
       comment: state consolidation
-        Decider assert: x@7@01 == y@8@01
+        comment: Round 0
+          Single merge:  <= x@7@01.f -> $t@10@01 # 1/2 y@8@01.f -> $t@11@01 # 1/2
+            Decider assert: x@7@01 == y@8@01
+        comment: Round 1
+          Single merge:  <= x@7@01.f -> $t@10@01 # W
       Decider assert: True
       Decider assert: True
 
@@ -68,11 +80,15 @@ method m1_3
     produce acc(x.f, write)
       evaluate x
       evaluate write
+      comment: Merge
+        Single merge:  <= x@16@01.f -> $t@20@01 # W
     produce acc(y.f, write)
       evaluate y
       evaluate write
-      Decider assert: x@16@01 == y@17@01
-        Prover assert: x@16@01 == y@17@01
+      comment: Merge
+        Single merge: x@16@01.f -> $t@20@01 # W <= y@17@01.f -> $t@21@01 # W
+          Decider assert: x@16@01 == y@17@01
+            Prover assert: x@16@01 == y@17@01
   execute inhale z == x || z == y
     produce z == x || z == y
       evaluate z == x || z == y
@@ -98,6 +114,8 @@ method m2_1
         evaluate 2
         Decider assert: 2 != 0
           Prover assert: 2 != 0
+      comment: Merge
+        Single merge:  <= x@26@01.f -> $t@28@01 # 1/2
     produce acc(x.f, 1 / 2)
       evaluate x
       evaluate 1 / 2
@@ -105,6 +123,8 @@ method m2_1
         evaluate 2
         Decider assert: 2 != 0
           Prover assert: 2 != 0
+      comment: Merge
+        Single merge: x@26@01.f -> $t@28@01 # 1/2 <= x@26@01.f -> $t@30@01 # 1/2
     produce x.f == 0
       evaluate x.f == 0
         evaluate x.f
@@ -143,6 +163,8 @@ method m2_2
         evaluate 2
         Decider assert: 2 != 0
           Prover assert: 2 != 0
+      comment: Merge
+        Single merge:  <= x@33@01.f -> $t@36@01 # 1/2
     produce acc(y.f, 1 / 2)
       evaluate y
       evaluate 1 / 2
@@ -150,8 +172,10 @@ method m2_2
         evaluate 2
         Decider assert: 2 != 0
           Prover assert: 2 != 0
-      Decider assert: x@33@01 == y@34@01
-        Prover assert: x@33@01 == y@34@01
+      comment: Merge
+        Single merge: x@33@01.f -> $t@36@01 # 1/2 <= y@34@01.f -> $t@38@01 # 1/2
+          Decider assert: x@33@01 == y@34@01
+            Prover assert: x@33@01 == y@34@01
     produce x.f == 0
       evaluate x.f == 0
         evaluate x.f
@@ -182,11 +206,15 @@ method m3_1
     produce acc(x.f, write)
       evaluate x
       evaluate write
+      comment: Merge
+        Single merge:  <= x@43@01.f -> $t@47@01 # W
     produce acc(y.f, write)
       evaluate y
       evaluate write
-      Decider assert: x@43@01 == y@44@01
-        Prover assert: x@43@01 == y@44@01
+      comment: Merge
+        Single merge: x@43@01.f -> $t@47@01 # W <= y@44@01.f -> $t@49@01 # W
+          Decider assert: x@43@01 == y@44@01
+            Prover assert: x@43@01 == y@44@01
     produce z == x
       evaluate z == x
         evaluate z
@@ -199,8 +227,10 @@ method m3_1
       Decider assert: x@43@01 != y@44@01
         Prover assert: x@43@01 != y@44@01
       comment: state consolidation
-        Decider assert: x@43@01 == y@44@01
-          Prover assert: x@43@01 == y@44@01
+        comment: Round 0
+          Single merge:  <= x@43@01.f -> $t@47@01 # W y@44@01.f -> $t@49@01 # W
+            Decider assert: x@43@01 == y@44@01
+              Prover assert: x@43@01 == y@44@01
         Decider assert: True
         Decider assert: True
         Decider assert: $t@49@01 != $t@47@01
@@ -219,6 +249,8 @@ method m3_1
         evaluate 10
         Decider assert: 10 != 0
           Prover assert: 10 != 0
-      Decider assert: x@43@01 == z@45@01
-        Prover assert: x@43@01 == z@45@01
+      comment: Merge
+        Single merge: x@43@01.f -> $t@47@01 # W y@44@01.f -> $t@49@01 # W <= z@45@01.f -> $t@50@01 # 1/10
+          Decider assert: x@43@01 == z@45@01
+            Prover assert: x@43@01 == z@45@01
 

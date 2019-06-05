@@ -9,10 +9,14 @@ predicate P
     produce acc(x.f, write)
       evaluate x
       evaluate write
+      comment: Merge
+        Single merge:  <= x@1@00.f -> $t@2@00 # W
   Branch 2:
     produce acc(x.g, write)
       evaluate x
       evaluate write
+      comment: Merge
+        Single merge:  <= x@1@00.g -> $t@3@00 # W
 
 method test1
   WellformednessCheck null
@@ -20,6 +24,8 @@ method test1
       evaluate b
       evaluate x
       evaluate write
+      comment: Merge
+        Single merge:  <= P($t@4@01; b@2@01,x@3@01) # W
   execute inhale (b ? acc(x.f, write) : acc(x.g, write))
     GlobalBranch:
       evaluate b
@@ -31,6 +37,8 @@ method test1
       produce acc(x.f, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@3@01.f -> $t@5@01 # W
       execute fold acc(P(b, x), write)
         evaluate b
         evaluate x
@@ -50,6 +58,8 @@ method test1
               Prover assert: W == Z || True
             Decider assert: True
             Decider assert: True
+          comment: Merge
+            Single merge:  <= P($t@5@01; b@2@01,x@3@01) # W
           consume acc(P(b, x), write)
             evaluate write
             evaluate b
@@ -64,6 +74,8 @@ method test1
       produce acc(x.g, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@3@01.g -> $t@6@01 # W
       execute fold acc(P(b, x), write)
         evaluate b
         evaluate x
@@ -83,6 +95,8 @@ method test1
               Prover assert: W == Z || True
             Decider assert: True
             Decider assert: True
+          comment: Merge
+            Single merge:  <= P($t@6@01; b@2@01,x@3@01) # W
           consume acc(P(b, x), write)
             evaluate write
             evaluate b
@@ -98,6 +112,8 @@ method test2
       evaluate b
       evaluate x
       evaluate write
+      comment: Merge
+        Single merge:  <= P($t@11@01; b@9@01,x@10@01) # W
   execute var a: Int
   execute inhale (b ==> acc(x.f, write)) && (!b ==> acc(x.g, write))
     GlobalBranch:
@@ -110,6 +126,8 @@ method test2
       produce acc(x.f, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@10@01.f -> $t@14@01 # W
       GlobalBranch:
         evaluate !b
           evaluate b
@@ -138,6 +156,8 @@ method test2
                 Prover assert: W == Z || True
               Decider assert: True
               Decider assert: True
+            comment: Merge
+              Single merge:  <= P($t@14@01; b@9@01,x@10@01) # W
             consume acc(P(b, x), write)
               evaluate write
               evaluate b
@@ -159,6 +179,8 @@ method test2
         produce acc(x.g, write)
           evaluate x
           evaluate write
+          comment: Merge
+            Single merge:  <= x@10@01.g -> $t@15@01 # W
         execute a := 1
           evaluate 1
         execute fold acc(P(b, x), write)
@@ -180,6 +202,8 @@ method test2
                 Prover assert: W == Z || True
               Decider assert: True
               Decider assert: True
+            comment: Merge
+              Single merge:  <= P($t@15@01; b@9@01,x@10@01) # W
             consume acc(P(b, x), write)
               evaluate write
               evaluate b
@@ -205,6 +229,8 @@ method test3
       produce acc(x.f, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@19@01.f -> $t@21@01 # W
       execute a := 1
         evaluate 1
     Branch 2:
@@ -222,6 +248,8 @@ method test4
     produce acc(x.f, write)
       evaluate x
       evaluate write
+      comment: Merge
+        Single merge:  <= x@26@01.f -> $t@27@01 # W
     WellformednessCheck null
     execute var a: Int
     execute a := 1
@@ -246,6 +274,8 @@ method test5
       produce acc(x.f, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@36@01.f -> $t@38@01 # W
       execute inhale b2 ==> acc(x.f, write)
         GlobalBranch:
           evaluate b2
@@ -257,6 +287,8 @@ method test5
           produce acc(x.f, write)
             evaluate x
             evaluate write
+            comment: Merge
+              Single merge: x@36@01.f -> $t@38@01 # W <= x@36@01.f -> $t@39@01 # W
           execute a := 1
             evaluate 1
         Branch 2:
@@ -274,6 +306,8 @@ method test5
           produce acc(x.f, write)
             evaluate x
             evaluate write
+            comment: Merge
+              Single merge:  <= x@36@01.f -> $t@42@01 # W
           execute a := 1
             evaluate 1
         Branch 2:
@@ -293,6 +327,8 @@ method test5a
       produce acc(x.f, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@49@01.f -> $t@51@01 # W
     Branch 1:
       evaluate b2
       Decider assert: !(b2@48@01)
@@ -303,6 +339,8 @@ method test5a
         produce acc(x.f, write)
           evaluate x
           evaluate write
+          comment: Merge
+            Single merge: x@49@01.f -> $t@51@01 # W <= x@49@01.f -> $t@52@01 # W
       execute a := 1
         evaluate 1
     Branch 2:
@@ -331,6 +369,8 @@ method test5a
         produce acc(x.f, write)
           evaluate x
           evaluate write
+          comment: Merge
+            Single merge:  <= x@49@01.f -> $t@53@01 # W
       execute a := 1
         evaluate 1
     Branch 2:
@@ -357,6 +397,8 @@ method test5b
       produce acc(x.f, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@59@01.f -> $t@61@01 # W
       execute inhale (b2 ? acc(x.f, write) : true)
         GlobalBranch:
           evaluate b2
@@ -368,6 +410,8 @@ method test5b
           produce acc(x.f, write)
             evaluate x
             evaluate write
+            comment: Merge
+              Single merge: x@59@01.f -> $t@61@01 # W <= x@59@01.f -> $t@62@01 # W
           execute a := 1
             evaluate 1
         Branch 2:
@@ -389,6 +433,8 @@ method test5b
           produce acc(x.f, write)
             evaluate x
             evaluate write
+            comment: Merge
+              Single merge:  <= x@59@01.f -> $t@65@01 # W
           execute a := 1
             evaluate 1
         Branch 2:
@@ -411,6 +457,8 @@ method test6
       produce acc(x.f, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@72@01.f -> $t@74@01 # W
       execute inhale (b2 ? acc(x.f, write) : acc(x.g, write))
         GlobalBranch:
           evaluate b2
@@ -422,18 +470,24 @@ method test6
           produce acc(x.f, write)
             evaluate x
             evaluate write
+            comment: Merge
+              Single merge: x@72@01.f -> $t@74@01 # W <= x@72@01.f -> $t@75@01 # W
           execute a := 1
             evaluate 1
         Branch 2:
           produce acc(x.g, write)
             evaluate x
             evaluate write
+            comment: Merge
+              Single merge: x@72@01.f -> $t@74@01 # W <= x@72@01.g -> $t@76@01 # W
           execute a := 1
             evaluate 1
     Branch 2:
       produce acc(x.g, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@72@01.g -> $t@77@01 # W
       execute inhale (b2 ? acc(x.f, write) : acc(x.g, write))
         GlobalBranch:
           evaluate b2
@@ -445,12 +499,16 @@ method test6
           produce acc(x.f, write)
             evaluate x
             evaluate write
+            comment: Merge
+              Single merge: x@72@01.g -> $t@77@01 # W <= x@72@01.f -> $t@78@01 # W
           execute a := 1
             evaluate 1
         Branch 2:
           produce acc(x.g, write)
             evaluate x
             evaluate write
+            comment: Merge
+              Single merge: x@72@01.g -> $t@77@01 # W <= x@72@01.g -> $t@79@01 # W
           execute a := 1
             evaluate 1
 
@@ -468,12 +526,16 @@ method test7
       produce acc(x.f, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@83@01.f -> $t@85@01 # W
       execute a := 1
         evaluate 1
     Branch 2:
       produce acc(x.g, write)
         evaluate x
         evaluate write
+        comment: Merge
+          Single merge:  <= x@83@01.g -> $t@86@01 # W
       execute a := 1
         evaluate 1
 

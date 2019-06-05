@@ -15,6 +15,7 @@ import viper.silver.ast
 import viper.silver.verifier.AbstractError
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.PathConditionStack
+import viper.silicon.interfaces.state.NonQuantifiedChunk
 import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -1518,6 +1519,29 @@ class DeciderAssumeRecord(t: InsertionOrderedSet[Term]) extends MemberRecord {
   override def toSimpleString(): String = {
     if (terms != null) terms.mkString(" ")
     else "DeciderAssume <null>"
+  }
+}
+
+class SingleMergeRecord(val destChunks: Seq[NonQuantifiedChunk], val newChunks: Seq[NonQuantifiedChunk],
+                        p: PathConditionStack) extends MemberRecord {
+  val value: ast.Node = null
+  val state: State = null
+  val pcs = if (p != null) p.assumptions else null
+
+  def toTypeString(): String = {
+    "SingleMerge"
+  }
+
+  override def toString(): String = {
+    if (destChunks != null && newChunks != null)
+      "Single merge: " + destChunks.mkString(" ") + " <= " + newChunks.mkString(" ")
+    else
+      "Single merge: <null>"
+  }
+
+  override def toSimpleString(): String = {
+    if (destChunks != null && newChunks != null) (destChunks ++ newChunks).mkString(" ")
+    else "SingleMerge <null>"
   }
 }
 
