@@ -572,14 +572,18 @@ class DotTreeRenderer extends Renderer[SymbLog, String] {
         }
         previousNode = mc.dotNode()
 
-        output += "    " + mc.precondition.dotNode() + " [label=\"precondition: " + mc.precondition.toSimpleString() + "\"];\n"
-        output += "    " + previousNode + " -> " + mc.precondition.dotNode() + ";\n"
-        output += subsToDot(mc.precondition)
+        for (p <- mc.precondition) {
+          output += "    " + p.dotNode() + " [label=\"precondition: " + p.toSimpleString() + "\"];\n"
+          output += "    " + previousNode + " -> " + p.dotNode() + ";\n"
+          output += subsToDot(p)
+        }
         previousNode = mc.dotNode()
 
-        output += "    " + mc.postcondition.dotNode() + " [label=\"postcondition: " + mc.postcondition.toSimpleString() + "\"];\n"
-        output += "    " + previousNode + " -> " + mc.postcondition.dotNode() + ";\n"
-        output += subsToDot(mc.postcondition)
+        for (p <- mc.postcondition) {
+          output += "    " + p.dotNode() + " [label=\"postcondition: " + p.toSimpleString() + "\"];\n"
+          output += "    " + previousNode + " -> " + p.dotNode() + ";\n"
+          output += subsToDot(p)
+        }
         previousNode = mc.dotNode()
 
 
@@ -674,14 +678,14 @@ class JSTreeRenderer extends Renderer[SymbLog, String] {
         output += combine(mc.parameters)
         output += "]},"
 
-        output += "{" + JsonHelper.pair(kind, "precondition") + "," + open + printState(mc.precondition)
+        output += "{" + JsonHelper.pair(kind, "precondition") + "," + open + printState(mc.precondition(0))
         output += "\n," + children + ": [\n"
-        output += recordToJS(mc.precondition)
+        output += combine(mc.precondition)
         output += "]},"
 
-        output += "{" + JsonHelper.pair(kind, "postcondition") + "," + open + printState(mc.postcondition)
+        output += "{" + JsonHelper.pair(kind, "postcondition") + "," + open + printState(mc.postcondition(0))
         output += "\n," + children + ": [\n"
-        output += recordToJS(mc.postcondition)
+        output += combine(mc.postcondition)
         output += "]}"
 
         output += "]}"
@@ -695,7 +699,7 @@ class JSTreeRenderer extends Renderer[SymbLog, String] {
           innerValue += ","
         }
         output += "{" + innerValue + open + printState(s)
-        if (!s.subs.isEmpty) {
+        if (s.subs.nonEmpty) {
           output += ",\n" + children + ": [\n"
           output += combine(s.subs)
           output += "]"
@@ -758,13 +762,13 @@ class ExecTimeChecker extends Renderer[SymbLog, String] {
   def getSubs(s: SymbolicRecord): List[SymbolicRecord] = {
     s match {
       case ce: ConditionalEdgeRecord =>
-        ce.subs ++ List(ce.cond) ++ ce.thnSubs
+        ce.subs ++ ce.cond ++ ce.thnSubs
       case gb: GlobalBranchRecord =>
-        gb.subs ++ List(gb.cond) ++ gb.thnSubs ++ gb.elsSubs
+        gb.subs ++ gb.cond ++ gb.thnSubs ++ gb.elsSubs
       case lb: LocalBranchRecord =>
-        lb.subs ++ List(lb.cond) ++ lb.thnSubs ++ lb.elsSubs
+        lb.subs ++ lb.cond ++ lb.thnSubs ++ lb.elsSubs
       case mc: MethodCallRecord =>
-        mc.subs ++ List(mc.precondition, mc.postcondition) ++ mc.parameters
+        mc.subs ++ mc.precondition ++ mc.postcondition ++ mc.parameters
       case _ => s.subs
     }
   }
@@ -793,7 +797,7 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
         }
       case ue: UnconditionalEdgeRecord => ue.subs.forall(filter)
       case ce: ConditionalEdgeRecord =>
-        filter(ce.cond) && ce.thnSubs.forall(filter)
+        ce.cond.forall(filter) && ce.thnSubs.forall(filter)
       case da: DeciderAssumeRecord => true
       case _ => false
     }
@@ -839,8 +843,16 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
       }
       case ce: ConditionalEdgeRecord => {
         // ignore this record
-        if (!filter(ce.cond)) {
-          str = str + toSimpleTree(ce.cond, n)
+        var subCount = 0
+        for (sub <- ce.cond) {
+          if (!filter(sub)) {
+            var subIndent = ""
+            if (subCount != 0) {
+              subIndent = indent.substring(2)
+            }
+            str = str + subIndent + toSimpleTree(sub, n)
+            subCount = subCount + 1
+          }
         }
         for (sub <- ce.thnSubs) {
           if (!filter(sub)) {
@@ -864,8 +876,10 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
       }
       case gb: GlobalBranchRecord => {
         str = str + "GlobalBranch:\n"
-        if (!filter(gb.cond)) {
-          str = str + indent + toSimpleTree(gb.cond, n + 1)
+        for (sub <- gb.cond) {
+          if (!filter(sub)) {
+            str = str + indent + toSimpleTree(sub, n + 1)
+          }
         }
         str = str + indent.substring(2) + "Branch 1:\n"
         for (sub <- gb.thnSubs) {
@@ -883,8 +897,10 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
       }
       case lb: LocalBranchRecord => {
         str = str + "LocalBranch:\n"
-        if (!filter(lb.cond)) {
-          str = str + indent + toSimpleTree(lb.cond, n + 1)
+        for (sub <- lb.cond) {
+          if (!filter(sub)) {
+            str = str + indent + toSimpleTree(sub, n + 1)
+          }
         }
         str = str + indent.substring(2) + "Branch 1:\n"
         for (sub <- lb.thnSubs) {
@@ -902,11 +918,15 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
       }
       case mc: MethodCallRecord => {
         str = str + mc.toString() + "\n"
-        if (!filter(mc.precondition)) {
-          str = str + indent + "precondition: " + toSimpleTree(mc.precondition, n + 1)
+        for (p <- mc.precondition) {
+          if (!filter(p)) {
+            str = str + indent + "precondition: " + toSimpleTree(p, n + 1)
+          }
         }
-        if (!filter(mc.postcondition)) {
-          str = str + indent + "postcondition: " + toSimpleTree(mc.postcondition, n + 1)
+        for (p <- mc.postcondition) {
+          if (!filter(p)) {
+            str = str + indent + "postcondition: " + toSimpleTree(p, n + 1)
+          }
         }
         for (p <- mc.parameters) {
           if (!filter(p)) {
@@ -959,10 +979,14 @@ class TypeTreeRenderer extends Renderer[SymbLog, String] {
       }
       case mc: MethodCallRecord => {
         str = str + "MethodCall\n"
-        str = str + indent + "precondition\n"
-        str = str + indent + "  " + toTypeTree(mc.precondition, n + 2)
-        str = str + indent + "postcondition\n"
-        str = str + indent + "  " + toTypeTree(mc.postcondition, n + 2)
+        for (p <- mc.precondition) {
+          str = str + indent + "precondition\n"
+          str = str + indent + "  " + toTypeTree(p, n + 2)
+        }
+        for (p <- mc.postcondition) {
+          str = str + indent + "postcondition\n"
+          str = str + indent + "  " + toTypeTree(p, n + 2)
+        }
         for (p <- mc.parameters) {
           str = str + indent + "parameter\n"
           str = str + indent + "  " + toTypeTree(p, n + 2)
@@ -1176,7 +1200,7 @@ abstract class TwoBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env:
   val pcs = if (p != null) p.assumptions else null
   val environment = env
 
-  var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null)
+  var cond: List[SymbolicRecord] = List[SymbolicRecord](new CommentRecord("<missing condition>", null, null))
   var condEndTimeMs: Long = 0
   var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
   var thnExplored: Boolean = false
@@ -1205,7 +1229,7 @@ abstract class TwoBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env:
   def finish_cond(): Unit = {
     condEndTimeMs = System.currentTimeMillis()
     if (!subs.isEmpty)
-      cond = subs(0)
+      cond = subs
     subs = List[SymbolicRecord]()
   }
 
@@ -1310,7 +1334,7 @@ class ConditionalEdgeRecord(v: ast.Exp, s: State, p: PathConditionStack, env: St
     "ConditionalEdge"
   }
 
-  var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null)
+  var cond: List[SymbolicRecord] = List[SymbolicRecord](new CommentRecord("<missing condition>", null, null))
   var condEndTimeMs: Long = 0
   var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
   var thnEndTimeMs: Long = 0
@@ -1335,7 +1359,7 @@ class ConditionalEdgeRecord(v: ast.Exp, s: State, p: PathConditionStack, env: St
   def finish_cond(): Unit = {
     condEndTimeMs = System.currentTimeMillis()
     if (!subs.isEmpty)
-      cond = subs(0)
+      cond = subs
     subs = List[SymbolicRecord]()
   }
 
@@ -1415,8 +1439,8 @@ class MethodCallRecord(v: ast.MethodCall, s: State, p: PathConditionStack)
   }
 
   var parameters = List[SymbolicRecord]()
-  var precondition: SymbolicRecord = new ConsumeRecord(null, null, null)
-  var postcondition: SymbolicRecord = new ProduceRecord(null, null, null)
+  var precondition: List[SymbolicRecord] = List[SymbolicRecord](new ConsumeRecord(null, null, null))
+  var postcondition: List[SymbolicRecord] = List[SymbolicRecord](new ProduceRecord(null, null, null))
 
   override def toString(): String = {
     if (value != null)
@@ -1444,14 +1468,14 @@ class MethodCallRecord(v: ast.MethodCall, s: State, p: PathConditionStack)
   @elidable(INFO)
   def finish_precondition(): Unit = {
     if (!subs.isEmpty)
-      precondition = subs(0)
+      precondition = subs
     subs = List[SymbolicRecord]()
   }
 
   @elidable(INFO)
   def finish_postcondition(): Unit = {
     if (!subs.isEmpty)
-      postcondition = subs(0)
+      postcondition = subs
     subs = List[SymbolicRecord]()
   }
 }
@@ -1628,20 +1652,9 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
       case cbRecord: CfgBranchRecord => {
         // branches are successors
         for (branchSubs <- cbRecord.branchSubs) {
-          // in theory, each branch has just one sub, which is a ConditionalEdgeRecord.
-          // however, more subs can occur, e.g. a while loop leads to a state consolidation before following its out edge
-          /*
-          if (branchSubs.length == 1) {
-
-          } else if (branchSubs.length > 1) {
-
-          } else {
-            throw new AssertionError("branch has zero subs")
-          }
           if (branchSubs.length != 1) {
             throw new AssertionError("each branch should only have one sub which should be a ConditionalEdgeRecord")
           }
-          */
           val branchNode = renderRecord(branchSubs.head)
           node.successors = node.successors ++ List(branchNode)
         }
@@ -1656,7 +1669,7 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
 
       case ceRecord: ConditionalEdgeRecord => {
         // insert condition as child
-        node.children = node.children ++ List(renderRecord(ceRecord.cond))
+        node.children = node.children ++ (ceRecord.cond map renderRecord)
         // the end time corresponds to the end time of the condition:
         node.endTimeMs = ceRecord.condEndTimeMs
         // stmts of the basic blocks (following the condition) are attached as a single branch node to the successors
@@ -1666,14 +1679,12 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
 
       case ueRecord: UnconditionalEdgeRecord => {
         node.isSyntactic = true
-        for (sub <- r.subs) {
-          node.children = node.children ++ List(renderRecord(sub))
-        }
+        node.children = node.children ++ (r.subs map renderRecord)
       }
 
       case gb: GlobalBranchRecord => {
         // insert condition as child
-        node.children = node.children ++ List(renderRecord(gb.cond))
+        node.children = node.children ++ (gb.cond map renderRecord)
         // the end time corresponds to the end time of the condition:
         node.endTimeMs = gb.condEndTimeMs
         // if and else branch are two successors
@@ -1685,7 +1696,7 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
       case lb: LocalBranchRecord => {
         // node is the branch node having then and else nodes as successors.
         // then and else nodes have themselves the join node as successor
-        node.children = node.children ++ List(renderRecord(lb.cond))
+        node.children = node.children ++ (lb.cond map renderRecord)
         // the end time corresponds to the end time of the condition:
         node.endTimeMs = lb.condEndTimeMs
         // if and else branch are two successors
@@ -1702,9 +1713,7 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
       }
 
       case _ => {
-        for (sub <- r.subs) {
-          node.children = node.children ++ List(renderRecord(sub))
-        }
+        node.children = node.children ++ (r.subs map renderRecord)
       }
     }
 

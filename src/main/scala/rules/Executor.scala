@@ -49,22 +49,25 @@ object executor extends ExecutionRules with Immutable {
                     (Q: (State, Verifier) => VerificationResult)
                     : VerificationResult = {
 
-    val s1 = edge.kind match {
-      case cfg.Kind.Out =>
-        val s1 = s.copy(h = stateConsolidator.merge(s.h, s.invariantContexts.head, v),
-                        invariantContexts = s.invariantContexts.tail)
-        s1
-      case _ =>
-        /* No need to do anything special. See also the handling of loop heads in exec below. */
-        s
+    def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
+      edge.kind match {
+        case cfg.Kind.Out =>
+          val s1 = s.copy(h = stateConsolidator.merge(s.h, s.invariantContexts.head, v),
+            invariantContexts = s.invariantContexts.tail)
+          s1
+        case _ =>
+          /* No need to do anything special. See also the handling of loop heads in exec below. */
+          s
+      }
     }
 
     edge match {
       case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
-        val impLog = new ConditionalEdgeRecord(ce.condition, s1, v.decider.pcs, "Conditional Edge")
+        val impLog = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs, "Conditional Edge")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
         val state = SymbExLogger.currentLog().newInitializeBranching()
         var thenState = (Map[Int, SymbolicRecord](), List[SymbolicRecord](), InsertionOrderedSet[Int]())
+        val s1 = handleOutEdge(s, edge, v)
         eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) => {
           /* Using branch(...) here ensures that the edge condition is recorded
            * as a branch condition on the pathcondition stack.
@@ -83,8 +86,9 @@ object executor extends ExecutionRules with Immutable {
           branch_res})
 
       case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
-        val impLog = new UnconditionalEdgeRecord(s1, v.decider.pcs, "Unconditional Edge")
+        val impLog = new UnconditionalEdgeRecord(s, v.decider.pcs, "Unconditional Edge")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+        val s1 = handleOutEdge(s, edge, v)
         val res = exec(s1, ue.target, ue.kind, v)(Q)
         SymbExLogger.currentLog().collapse(null, sepIdentifier)
         res
