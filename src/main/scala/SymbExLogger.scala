@@ -1538,10 +1538,16 @@ class SingleMergeRecord(val destChunks: Seq[NonQuantifiedChunk], val newChunks: 
   }
 
   override def toString(): String = {
-    if (destChunks != null && newChunks != null)
-      "Single merge: " + destChunks.mkString(" ") + " <= " + newChunks.mkString(" ")
-    else
+    if (destChunks != null && newChunks != null) {
+      val newChunksString = newChunks.mkString(" ")
+      if (newChunksString == "") {
+        "Single merge: " + destChunks.mkString(" ") + " <="
+      } else {
+        "Single merge: " + destChunks.mkString(" ") + " <= " + newChunksString
+      }
+    } else {
       "Single merge: <null>"
+    }
   }
 
   override def toSimpleString(): String = {
@@ -1622,9 +1628,20 @@ class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
       case cbRecord: CfgBranchRecord => {
         // branches are successors
         for (branchSubs <- cbRecord.branchSubs) {
+          // in theory, each branch has just one sub, which is a ConditionalEdgeRecord.
+          // however, more subs can occur, e.g. a while loop leads to a state consolidation before following its out edge
+          /*
+          if (branchSubs.length == 1) {
+
+          } else if (branchSubs.length > 1) {
+
+          } else {
+            throw new AssertionError("branch has zero subs")
+          }
           if (branchSubs.length != 1) {
             throw new AssertionError("each branch should only have one sub which should be a ConditionalEdgeRecord")
           }
+          */
           val branchNode = renderRecord(branchSubs.head)
           node.successors = node.successors ++ List(branchNode)
         }

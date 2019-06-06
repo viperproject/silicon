@@ -15,10 +15,10 @@ method outEdgeStateConsolidation
     evaluate j < 2
       evaluate j
       evaluate 2
-    Decider assert: !(j@11@01 < 2)
-      Prover assert: !(j@11@01 < 2)
-    Decider assert: j@11@01 < 2
-      Prover assert: j@11@01 < 2
+    Decider assert: !(j@5@01 < 2)
+      Prover assert: !(j@5@01 < 2)
+    Decider assert: j@5@01 < 2
+      Prover assert: j@5@01 < 2
     execute res := 1
       evaluate 1
     execute j := j + 1
@@ -32,10 +32,10 @@ method outEdgeStateConsolidation
       evaluate j < 2
         evaluate j
         evaluate 2
-    Decider assert: j@11@01 < 2
-      Prover assert: j@11@01 < 2
-    Decider assert: !(j@11@01 < 2)
-      Prover assert: !(j@11@01 < 2)
+    Decider assert: j@5@01 < 2
+      Prover assert: j@5@01 < 2
+    Decider assert: !(j@5@01 < 2)
+      Prover assert: !(j@5@01 < 2)
     execute res := 2
       evaluate 2
 

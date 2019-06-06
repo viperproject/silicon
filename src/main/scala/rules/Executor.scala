@@ -71,11 +71,12 @@ object executor extends ExecutionRules with Immutable {
            */
           impLog.finish_cond()
           val branch_res = brancher.branch(s2, tCond, v1)(
-            (s3, v3) => exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
-              val res1 = Q(s4, v4)
+            (s3, v3) => {
+              val res1 = exec(s3, ce.target, ce.kind, v3)(Q)
               impLog.finish_thnSubs()
               thenState = SymbExLogger.currentLog().newPrepareOtherBranch(state)
-              res1}),
+              res1
+            },
             (_, _)  => Success())
           SymbExLogger.currentLog().newRestoreState(state, List(thenState), 1)
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
