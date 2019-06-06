@@ -100,10 +100,13 @@ method m1_3
           evaluate !v@23@01
             evaluate v@23@01
           evaluate v@24@01 ==> z == y
-            evaluate v@24@01
-            evaluate z == y
-              evaluate z
-              evaluate y
+            LocalBranch:
+              evaluate v@24@01
+            Branch 1:
+              evaluate z == y
+                evaluate z
+                evaluate y
+            Branch 2:
 
 method m2_1
   WellformednessCheck null

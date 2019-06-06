@@ -33,8 +33,12 @@ method m1
     evaluate false && true
       evaluate false
       evaluate v@4@01 ==> true
-        evaluate v@4@01
-        evaluate true
+        LocalBranch:
+          evaluate v@4@01
+        Branch 1:
+          evaluate true
+        Branch 2:
+          comment: Unreachable
 
 method m2
   produce i == 1

@@ -5,7 +5,6 @@ method topOfStackInIgnoredSepSetCheck(b: Bool, x: Ref)
 {
 	inhale b ? acc(x.f) : true
 }
-
 /*
 predicate P4(b: Bool, x: Ref) {
 	b ? acc(x.f) : true

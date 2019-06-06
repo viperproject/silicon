@@ -24,8 +24,12 @@ method m1
         evaluate b1 && b2
           evaluate b1
           evaluate v@5@01 ==> b2
-            evaluate v@5@01
-            evaluate b2
+            LocalBranch:
+              evaluate v@5@01
+            Branch 1:
+              evaluate b2
+            Branch 2:
+              comment: Unreachable
       Branch 1:
         comment: Unreachable
       Branch 2:
