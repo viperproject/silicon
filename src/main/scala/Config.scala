@@ -155,13 +155,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case other => other
   }
 
-  val ignoreAssertTrue = opt[Boolean]("ignoreAssertTrue",
-    descr = "assert(true) is ignored and does not trigger a state consolidation",
-    default  = Some(true),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
   val disableSubsumption = opt[Boolean]("disableSubsumption",
     descr = "Don't add assumptions gained by verifying an assert statement",
     default  = Some(false),

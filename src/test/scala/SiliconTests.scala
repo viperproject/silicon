@@ -60,7 +60,7 @@ class SiliconTests extends SilSuite {
     for (config <- prefixSpecificConfigMap) {
       info(config._1)
     }
-    args = args ++ Seq("--disableCaching", "--ideModeAdvanced", "--numberOfParallelVerifiers", "1")
+    args = args ++ Seq("--disableCaching", "--ideModeAdvanced", "--numberOfParallelVerifiers", "1", "--enableMoreCompleteExhale")
     val reporter = NoopReporter
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
     val silicon = Silicon.fromPartialCommandLineArguments(args, reporter, debugInfo)
