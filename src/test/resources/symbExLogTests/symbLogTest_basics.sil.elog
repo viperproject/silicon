@@ -29,22 +29,27 @@ method m1
     evaluate i != j
       evaluate i
       evaluate j
+    decider assume b@3@01 == 6 != 13
   execute b := false && true
     evaluate false && true
       evaluate false
       evaluate v@4@01 ==> true
-        LocalBranch:
+        implies v@4@01 ==> true
           evaluate v@4@01
         Branch 1:
+          decider assume False
           evaluate true
         Branch 2:
           comment: Unreachable
+        Join
 
 method m2
   produce i == 1
+    decider assume $t@7@01 == _
     evaluate i == 1
       evaluate i
       evaluate 1
+    decider assume i@6@01 == 1
   WellformednessCheck null
   execute assert i + 1 == 2
     consume i + 1 == 2
@@ -53,6 +58,7 @@ method m2
           evaluate i
           evaluate 1
         evaluate 2
-      Decider assert: i@6@01 + 1 == 2
-        Prover assert: i@6@01 + 1 == 2
+      decider assert i@6@01 + 1 == 2
+        prover assert i@6@01 + 1 == 2
+      decider assume i@6@01 + 1 == 2
 

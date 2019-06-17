@@ -8,9 +8,10 @@ package viper.silicon.tests
 
 import java.nio.file.Path
 
+import logger.SymbExLogger
 import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
 import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
-import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
+import viper.silicon.{Silicon, SiliconFrontend}
 import viper.silver.frontend.DefaultStates
 import viper.silver.reporter.NoopReporter
 

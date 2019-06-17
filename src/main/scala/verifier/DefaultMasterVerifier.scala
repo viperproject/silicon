@@ -9,6 +9,7 @@ package viper.silicon.verifier
 import java.text.SimpleDateFormat
 import java.util.concurrent._
 
+import logger.SymbExLogger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._

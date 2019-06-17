@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.SymbExLogger
+import logger.SymbExLogger
 
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag

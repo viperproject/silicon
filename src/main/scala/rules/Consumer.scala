@@ -6,7 +6,8 @@
 
 package viper.silicon.rules
 
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
+import logger.SymbExLogger
 
 import scala.collection.mutable
 import viper.silver.ast
@@ -18,7 +19,6 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
-import viper.silicon._
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 
@@ -189,48 +189,41 @@ object consumer extends ConsumptionRules with Immutable {
 
     val consumed = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
-        val impLog = new GlobalBranchRecord(imp, s, v.decider.pcs, "consume")
-        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-        val state = SymbExLogger.currentLog().newInitializeBranching()
-        var thenState = (Map[Int, SymbolicRecord](), List[SymbolicRecord](), InsertionOrderedSet[Int]())
+        val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
+        val uidImplies = SymbExLogger.currentLog().insert(impliesRecord)
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) => {
-          impLog.finish_cond()
+          SymbExLogger.currentLog().collapse(imp, uidImplies)
+          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(impliesRecord)
           val branch_res =
             branch(s1, t0, v1)(
               (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h3, snap3, v3) => {
                 val res1 = Q(s3, h3, snap3, v3)
-                impLog.finish_thnSubs()
-                thenState = SymbExLogger.currentLog().newPrepareOtherBranch(state)
+                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
                 res1}),
               (s2, v2) => {
                 val res2 = Q(s2, h, Unit, v2)
-                impLog.finish_elsSubs()
                 res2})
-          SymbExLogger.currentLog().newRestoreState(state, List(thenState), impLog.exploredBranchesCount())
-          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          SymbExLogger.currentLog().collapseBranchPoint(uidBranchPoint)
           branch_res})
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
-        val gbLog = new GlobalBranchRecord(ite, s, v.decider.pcs, "consume")
-        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
-        val state = SymbExLogger.currentLog().newInitializeBranching()
-        var thenState = (Map[Int, SymbolicRecord](), List[SymbolicRecord](), InsertionOrderedSet[Int]())
+        val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
+        val uidCondExp = SymbExLogger.currentLog().insert(condExpRecord)
+
         eval(s, e0, pve, v)((s1, t0, v1) => {
-          gbLog.finish_cond()
+          SymbExLogger.currentLog().collapse(ite, uidCondExp)
+          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(condExpRecord)
           val branch_res =
             branch(s1, t0, v1)(
               (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h3, snap3, v3) => {
                 val res1 = Q(s3, h3, snap3, v3)
-                gbLog.finish_thnSubs()
-                thenState = SymbExLogger.currentLog().newPrepareOtherBranch(state)
+                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
                 res1}),
               (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h3, snap3, v3) => {
                 val res2 = Q(s3, h3, snap3, v3)
-                gbLog.finish_elsSubs()
                 res2}))
-          SymbExLogger.currentLog().newRestoreState(state, List(thenState), gbLog.exploredBranchesCount())
-          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          SymbExLogger.currentLog().collapseBranchPoint(uidBranchPoint)
           branch_res})
 
       /* TODO: Initial handling of QPs is identical/very similar in consumer

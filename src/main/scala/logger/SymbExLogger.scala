@@ -4,22 +4,25 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silicon
+package logger
 
 import java.io.File
 import java.nio.file.{Files, Path, Paths}
 
-import scala.annotation.elidable
-import scala.annotation.elidable._
-import viper.silver.ast
-import viper.silver.verifier.AbstractError
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import logger.records.SymbolicRecord
+import logger.records.data.{DataRecord, FunctionRecord, MethodRecord, PredicateRecord}
+import logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
+import logger.records.structural.{BranchingRecord, JoiningRecord}
+import logger.renderer.SimpleTreeRenderer
 import viper.silicon.decider.PathConditionStack
-import viper.silicon.interfaces.state.NonQuantifiedChunk
-import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silver.cfg.silver.SilverCfg.SilverEdge
+import viper.silicon.{Config, Map}
+import viper.silver.ast
+import viper.silver.verifier.AbstractError
+
+import scala.annotation.elidable
+import scala.annotation.elidable._
 
 /* TODO: InsertionOrderedSet is used by the logger, but the insertion order is
  *       probably irrelevant for logging. I.e. it might be ok if these sets were
@@ -118,10 +121,8 @@ object SymbExLogger {
   }
 
   def endMember(): Unit = {
-    if (currentLog() != null
-      && currentLog().main != null) {
-      currentLog().main.endTimeMs = System.currentTimeMillis()
-    }
+    val closeRecord = new CloseScopeRecord(currentLog().main.id)
+    currentLog().insert(closeRecord)
   }
 
   /**
@@ -163,10 +164,13 @@ object SymbExLogger {
     * and not their values. Original purpose was usage for unit testing.
     */
   def toTypeTreeString(): String = {
+    /*
     if (enabled) {
       val typeTreeRenderer = new TypeTreeRenderer()
       typeTreeRenderer.render(memberList)
     } else ""
+     */
+    ""
   }
 
   /**
@@ -175,12 +179,14 @@ object SymbExLogger {
     */
   @elidable(INFO)
   def writeDotFile() {
+    /*
     if (config.writeTraceFile()) {
       val dotRenderer = new DotTreeRenderer()
       val str = dotRenderer.render(memberList)
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "dot_input.dot"))
       try pw.write(str) finally pw.close()
     }
+     */
   }
 
   /**
@@ -189,18 +195,21 @@ object SymbExLogger {
     */
   @elidable(INFO)
   def writeJSFile() {
+    /*
     if (config.writeTraceFile()) {
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "executionTreeData.js"))
       try pw.write(toJSString()) finally pw.close()
     }
+     */
   }
 
   /** A JSON representation of the log, used when sending back messages or when writing data to a
     * file.
     */
+  /*
   @elidable(INFO)
   def toJSString(): String = new JSTreeRenderer().render(memberList)
-
+  */
   protected def getOutputFolder(): String = {
     ""
   }
@@ -233,32 +242,42 @@ object SymbExLogger {
   }
 
   def checkMemberList(): String = {
+    /*
     new ExecTimeChecker().render(memberList)
+     */
+    ""
   }
 
   /**
     * Converts memberList to a tree of GenericNodes
     */
   def convertMemberList(): GenericNode = {
+    /*
     new GenericNodeRenderer().render(memberList)
+    */
+    null
   }
 
   def writeChromeTraceFile(genericNode: GenericNode): Unit = {
+    /*
     if (config.writeTraceFile()) {
       val chromeTraceRenderer = new ChromeTraceRenderer()
       val str = chromeTraceRenderer.render(List(genericNode))
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "chromeTrace.json"))
       try pw.write(str) finally pw.close()
     }
+     */
   }
 
   def writeGenericNodeJsonFile(genericNode: GenericNode): Unit = {
+    /*
     if (config.writeTraceFile()) {
       val jsonRenderer = new JsonRenderer()
       val str = jsonRenderer.render(List(genericNode))
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "genericNodes.json"))
       try pw.write(str) finally pw.close()
     }
+     */
   }
 }
 
@@ -269,51 +288,102 @@ object SymbExLogger {
   * is used in the SymbExLogger-object.
   */
 class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
+
+  var log = List[SymbolicRecord]()
+  var branchingStack = List[BranchingRecord]()
+
+  // Maps macros to their body
+  private var _macros = Map[App, Term]()
+  private var uidCounter = 0
+
   var main = v match {
     case m: ast.Method => new MethodRecord(m, s, pcs)
     case p: ast.Predicate => new PredicateRecord(p, s, pcs)
     case f: ast.Function => new FunctionRecord(f, s, pcs)
     case default => null
   }
-  if (main != null) {
-    main.startTimeMs = System.currentTimeMillis()
+  insert(main)
+
+  private def freshUid(): Int = {
+    val uid = uidCounter
+    uidCounter = uidCounter + 1
+    uid
   }
 
-  // Maps macros to their body
-  private var _macros = Map[App, Term]()
-  private var stack = List[SymbolicRecord](main)
-  private var sepCounter = 0
-  // private var sepSet = InsertionOrderedSet[Int]()
-  private var sepSet = Map[Int, SymbolicRecord]()
-  private var ignoredSepSet = InsertionOrderedSet[Int]()
+  private def appendLog(r: SymbolicRecord): Unit = {
+    if (branchingStack.isEmpty) {
+      log = log :+ r
+    } else {
+      branchingStack.head.appendLog(r)
+    }
+  }
 
-  private def current(): SymbolicRecord = {
-    stack.head
+  @elidable(INFO)
+  def insert(s: DataRecord): Int = {
+    s.id = freshUid()
+    appendLog(s)
+    val openRecord = new OpenScopeRecord(s)
+    insert(openRecord)
+    s.id
+  }
+
+  @elidable(INFO)
+  def insert(s: ScopingRecord): Int = {
+    s.id = freshUid()
+    appendLog(s)
+    s.id
+  }
+
+  @elidable(INFO)
+  def insertBranchPoint(ref: DataRecord): Int = {
+    val branchingRecord = new BranchingRecord(ref)
+    branchingRecord.id = freshUid()
+    appendLog(branchingRecord)
+    branchingStack = branchingRecord :: branchingStack
+    branchingRecord.id
+  }
+
+  @elidable(INFO)
+  def switchToNextBranch(uidBranchPoint: Int): Unit = {
+    // TODO get correct branch in case of enclosed branches
+    assert(branchingStack.nonEmpty)
+    // close current branch:
+    val closeRecord = new CloseScopeRecord(uidBranchPoint)
+    insert(closeRecord)
+    val branchingRecord = branchingStack.head
+    branchingRecord.switchToNextBranch()
+  }
+
+  @elidable(INFO)
+  def insertJoinPoint(): Unit = {
+    assert(branchingStack.nonEmpty)
+    val branchingRecord = branchingStack.head
+    collapseBranchPoint(branchingRecord.id)
+    val joiningRecord = new JoiningRecord(branchingRecord)
+    joiningRecord.id = freshUid()
+    appendLog(joiningRecord)
+  }
+
+  // TODO legacy
+  @elidable(INFO)
+  def collapse(v: ast.Node, n: Int): Unit = {
+    val closeRecord = new CloseScopeRecord(n)
+    insert(closeRecord)
   }
 
   /**
-    * Inserts a record. For usage of custom records, take a look at the guidelines in SymbExLogger.scala.
-    * For every insert, there MUST be a call of collapse at the appropriate place in the code. The order
-    * of insert/collapse-calls defines the record-hierarchy.
-    *
-    * @param s Record for symbolic execution primitive.
-    * @return Identifier of the inserted record, must be given as argument to the
-    *         respective call of collapse.
+    * Only necessary in case no joining (i.e. call to insertJoinPoint) occurs
+    * @param uidBranchPoint
     */
-  def insert(s: SymbolicRecord): Int = {
-
-    if (!isUsed(s.value) || isRecordedDifferently(s))
-      return -1
-
-    if (s.startTimeMs == 0) {
-      s.startTimeMs = System.currentTimeMillis()
-    }
-    current().subs = current().subs ++ List(s)
-    stack = s :: stack
-    sepCounter = sepCounter + 1
-    // sepSet = sepSet + sepCounter
-    sepSet = sepSet + ((sepCounter, s))
-    sepCounter
+  @elidable(INFO)
+  // TODO legacy
+  def collapseBranchPoint(uidBranchPoint: Int): Unit = {
+    assert(branchingStack.nonEmpty)
+    val branchingRecord = branchingStack.head
+    assert(branchingRecord.id == uidBranchPoint)
+    val closeRecord = new CloseScopeRecord(uidBranchPoint)
+    insert(closeRecord)
+    branchingStack = branchingStack.tail
   }
 
   /** Record the last prover query that failed.
@@ -325,6 +395,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     *
     * @param query The query to be recorded.
     */
+  @elidable(INFO)
   def setSMTQuery(query: Term): Unit = {
     if (main != null) {
       main.lastFailedProverQuery = Some(query)
@@ -337,176 +408,34 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     * have been the reason for a verification failure (e.g. a new query has
     * been performed afterwards).
     */
+  @elidable(INFO)
   def discardSMTQuery(): Unit = {
     if (main != null) {
       main.lastFailedProverQuery = None
     }
   }
 
-  def topOfStackInIgnoredSepSetCheck: Boolean = true
-
-  /**
-    * 'Finishes' the recording at the current node and goes one level higher in the record tree.
-    * There should be only one call of collapse per insert.
-    *
-    * @param v The node that will be 'collapsed'. Is only used for filtering-purposes, can be null.
-    * @param n The identifier of the node (can NOT be null). The identifier is created by insert (return
-    *          value).
-    */
-  @elidable(INFO)
-  def collapse(v: ast.Node, n: Int) {
-    if (n == -1) {
-      return
-    }
-    if (sepSet.contains(n)) {
-      val record = sepSet(n)
-      sepSet = sepSet - n
-      if (isUsed(v)) {
-        if (current().endTimeMs == 0) {
-          current().endTimeMs = System.currentTimeMillis()
-        }
-        assert(record == stack.head)
-        stack = stack.tail
-      }
-
-      collapseIgnoredTopOfStack()
-    } else {
-      ignoredSepSet = ignoredSepSet + n
-    }
-  }
-
-  private def collapseIgnoredTopOfStack(): Unit = {
-    if (topOfStackInIgnoredSepSetCheck) {
-      // check if top of stack is in ignoredSepSet:
-      for (i <- sepSet.keys) {
-        if (stack.head equals sepSet(i)) {
-          if (ignoredSepSet contains i) {
-            collapse(null, i)
-            return
-          }
-        }
-      }
-    }
-  }
-
-  type LoggerState = (Map[Int, SymbolicRecord], // sepSet
-    List[SymbolicRecord],                       // stack
-    InsertionOrderedSet[Int])                   // ignoredSepSet
-
-  /**
-    * Quite a hack. Is used for impure Branching, where 'redundant' collapses in the continuation
-    * can mess up the logging-hierarchy. Idea: Just remove all identifiers from the collapse-Set, so
-    * collapse will NOT collapse records that were inserted outside of branching but collapsed inside
-    * a branch due to continuation. Currently, this is only used for impure Branching (CondExp/Implies
-    * in Producer/Consumer).
-    */
-  @elidable(INFO)
-  def newInitializeBranching(): LoggerState =  {
-    val state = (sepSet, stack, ignoredSepSet)
-    // sepSet = InsertionOrderedSet[Int]()
-    sepSet = Map[Int, SymbolicRecord]()
-    ignoredSepSet = InsertionOrderedSet[Int]()
-    state
-  }
-
-  @elidable(INFO)
-  def newRestoreState(prevState: LoggerState, otherBranchStates: List[LoggerState], branchesCount: Int): Unit = {
-    // assert(thnState._1.equals(sepSet))
-    //  assert(thnState._2.equals(stack))
-    // assert(branchesCount >= otherBranchStates.length)
-    val branchStates = otherBranchStates :+ (sepSet, stack, ignoredSepSet)
-
-    sepSet = prevState._1
-    stack = prevState._2
-
-    // ignoredSepSet contains all elements that appear branchesCount-many times in branchStates and the set before branching (i.e. prevState._3)
-    val branchIgnoredSepSets = branchStates.map(state => state._3)
-    var ignoredSepCount: Map[Int, Int] = Map[Int, Int]() // maps sep to its count
-    branchIgnoredSepSets.foreach(ignoredSeps => ignoredSeps.foreach(sep => {
-      val sepCount = ignoredSepCount.get(sep)
-      ignoredSepCount = ignoredSepCount + ((sep, sepCount.getOrElse(0) + 1))
-    }))
-    // count of each sep is calculated, now filter based on branchesCount
-    ignoredSepSet = InsertionOrderedSet(ignoredSepCount.filter(entry => entry._2 >= branchesCount).keys)
-    ignoredSepSet = ignoredSepSet ++ prevState._3
-    // TODO is a check whether top of stack is in ignoredSepSet here necessary? (similarly to collapse)
-    collapseIgnoredTopOfStack()
-  }
-
-  /**
-    * Quite a hack, similar purpose as initializeBranching. Is used to make sure that an else-branch
-    * is logged correctly, which is sometimes not the case in branching when collapses from the continuation
-    * in the If-branch remove the branching-record itself from the stack. Currently only used for impure
-    * Branching (CondExp/Implies in Producer/Consumer).
-    *
-    * @param s Record that should record the else-branch.
-    */
-  @elidable(INFO)
-  def newPrepareOtherBranch(state: LoggerState): LoggerState = {
-    val thenState = (sepSet, stack, ignoredSepSet)
-    // sepSet = InsertionOrderedSet[Int]()
-    sepSet = Map[Int, SymbolicRecord]()
-    stack = state._2
-    ignoredSepSet = InsertionOrderedSet[Int]()
-    thenState
-  }
-
   def macros() = _macros
 
+  @elidable(INFO)
   def addMacro(m: App, body: Term): Unit = {
     _macros = _macros + (m -> body)
-  }
-
-  private def isRecordedDifferently(s: SymbolicRecord): Boolean = {
-    s.value match {
-      case v: ast.MethodCall =>
-        s match {
-          case _: MethodCallRecord => false
-          case _ => true
-        }
-      case v: ast.CondExp =>
-        s match {
-          case _: EvaluateRecord | _: ConsumeRecord | _: ProduceRecord => true
-          case _ => false
-        }
-      case v: ast.Implies =>
-        s match {
-          case _: ConsumeRecord | _: ProduceRecord => true
-          case _ => false
-        }
-
-      case _ => false
-    }
-  }
-
-  private def isUsed(node: ast.Node): Boolean = {
-    node match {
-      case stmt: ast.Stmt => {
-        stmt match {
-          case _: ast.Seqn =>
-            false
-          case _ =>
-            true
-        }
-      }
-      case _ => true
-    }
   }
 
   override def toString: String = new SimpleTreeRenderer().renderMember(this)
 }
 
 object NoopSymbLog extends SymbLog(null, null, null) {
-  override def insert(s: SymbolicRecord): Int = 0
+  override def insert(s: DataRecord): Int = 0
+  override def insert(s: ScopingRecord): Int = 0
+  override def insertBranchPoint(ref: DataRecord): Int = 0
+  override def switchToNextBranch(uidBranchPoint: Int): Unit = {}
+  override def insertJoinPoint(): Unit = {}
+  override def collapse(v: ast.Node, n: Int): Unit = {}
 }
 
 //===== Renderer Classes =====
-
-sealed trait Renderer[S, T] {
-  def renderMember(s: S): T
-
-  def render(memberList: List[S]): T
-}
+/*
 
 class DotTreeRenderer extends Renderer[SymbLog, String] {
 
@@ -774,179 +703,6 @@ class ExecTimeChecker extends Renderer[SymbLog, String] {
   }
 }
 
-class SimpleTreeRenderer extends Renderer[SymbLog, String] {
-  def render(memberList: List[SymbLog]): String = {
-    var res = ""
-    for (m <- memberList) {
-      res = res + renderMember(m) + "\n"
-    }
-    res
-  }
-
-  def renderMember(member: SymbLog): String = {
-    toSimpleTree(member.main, 1)
-  }
-
-  def filter(s: SymbolicRecord): Boolean = {
-    s match {
-      case br: CfgBranchRecord =>
-        if (br.branchSubs.length == 1) {
-          br.branchSubs.head.forall(filter)
-        } else {
-          false
-        }
-      case ue: UnconditionalEdgeRecord => ue.subs.forall(filter)
-      case ce: ConditionalEdgeRecord =>
-        ce.cond.forall(filter) && ce.thnSubs.forall(filter)
-      case da: DeciderAssumeRecord => true
-      case _ => false
-    }
-  }
-
-  def toSimpleTree(s: SymbolicRecord, n: Int): String = {
-    var indent = ""
-    for (i <- 1 to n) {
-      indent = "  " + indent
-    }
-    var str = ""
-    s match {
-      case br: CfgBranchRecord => {
-        if (br.branchSubs.length == 1) {
-          // ignore this record
-          var branchSubCount = 0
-          for (subIndex <- br.branchSubs.head.indices) {
-            val branchSubs = br.branchSubs.head
-            if (!filter(branchSubs(subIndex))) {
-              var subIndent = ""
-              if (branchSubCount != 0) {
-                subIndent = indent.substring(2)
-              }
-              str = str + subIndent + toSimpleTree(br.branchSubs.head(subIndex), n)
-              branchSubCount = branchSubCount + 1
-            }
-          }
-        } else {
-          for (branchIndex <- br.branchSubs.indices) {
-            val branchSubs = br.branchSubs(branchIndex)
-            var branchIndent = ""
-            if (branchIndex != 0) {
-                branchIndent = indent.substring(2)
-            }
-            str = str + branchIndent + "Branch " + (branchIndex + 1).toString + ":\n"
-            for (sub <- branchSubs) {
-              if (!filter(sub)) {
-                str = str + indent + toSimpleTree(sub, n + 1)
-              }
-            }
-          }
-        }
-      }
-      case ce: ConditionalEdgeRecord => {
-        // ignore this record
-        var subCount = 0
-        for (sub <- ce.cond) {
-          if (!filter(sub)) {
-            var subIndent = ""
-            if (subCount != 0) {
-              subIndent = indent.substring(2)
-            }
-            str = str + subIndent + toSimpleTree(sub, n)
-            subCount = subCount + 1
-          }
-        }
-        for (sub <- ce.thnSubs) {
-          if (!filter(sub)) {
-            str = str + indent.substring(2) + toSimpleTree(sub, n)
-          }
-        }
-      }
-      case ue: UnconditionalEdgeRecord => {
-        // ignore this record
-        var subCount = 0
-        for (subIndex <- ue.subs.indices) {
-          var subIndent = ""
-          if (subCount != 0) {
-            subIndent = indent.substring(2)
-          }
-          if (!filter(ue.subs(subIndex))) {
-            str = str + subIndent + toSimpleTree(ue.subs(subIndex), n)
-            subCount = subCount + 1
-          }
-        }
-      }
-      case gb: GlobalBranchRecord => {
-        str = str + "GlobalBranch:\n"
-        for (sub <- gb.cond) {
-          if (!filter(sub)) {
-            str = str + indent + toSimpleTree(sub, n + 1)
-          }
-        }
-        str = str + indent.substring(2) + "Branch 1:\n"
-        for (sub <- gb.thnSubs) {
-          if (!filter(sub)) {
-            str = str + indent + toSimpleTree(sub, n + 1)
-          }
-        }
-
-        str = str + indent.substring(2) + "Branch 2:\n"
-        for (sub <- gb.elsSubs) {
-          if (!filter(sub)) {
-            str = str + indent + toSimpleTree(sub, n + 1)
-          }
-        }
-      }
-      case lb: LocalBranchRecord => {
-        str = str + "LocalBranch:\n"
-        for (sub <- lb.cond) {
-          if (!filter(sub)) {
-            str = str + indent + toSimpleTree(sub, n + 1)
-          }
-        }
-        str = str + indent.substring(2) + "Branch 1:\n"
-        for (sub <- lb.thnSubs) {
-          if (!filter(sub)) {
-            str = str + indent + toSimpleTree(sub, n + 1)
-          }
-        }
-
-        str = str + indent.substring(2) + "Branch 2:\n"
-        for (sub <- lb.elsSubs) {
-          if (!filter(sub)) {
-            str = str + indent + toSimpleTree(sub, n + 1)
-          }
-        }
-      }
-      case mc: MethodCallRecord => {
-        str = str + mc.toString() + "\n"
-        for (p <- mc.precondition) {
-          if (!filter(p)) {
-            str = str + indent + "precondition: " + toSimpleTree(p, n + 1)
-          }
-        }
-        for (p <- mc.postcondition) {
-          if (!filter(p)) {
-            str = str + indent + "postcondition: " + toSimpleTree(p, n + 1)
-          }
-        }
-        for (p <- mc.parameters) {
-          if (!filter(p)) {
-            str = str + indent + "parameter: " + toSimpleTree(p, n + 1)
-          }
-        }
-      }
-      case _ => {
-        str = str + s.toString() + "\n"
-        for (sub <- s.subs) {
-          if (!filter(sub)) {
-            str = str + indent + toSimpleTree(sub, n + 1)
-          }
-        }
-      }
-    }
-    str
-  }
-}
-
 class TypeTreeRenderer extends Renderer[SymbLog, String] {
   def render(memberList: List[SymbLog]): String = {
     var res = ""
@@ -1002,35 +758,11 @@ class TypeTreeRenderer extends Renderer[SymbLog, String] {
     str
   }
 }
-
+*/
 
 //=========== Records =========
-
+/*
 sealed trait SymbolicRecord {
-  val value: ast.Node
-  val state: State
-  // TODO: It would be nicer to use the PathConditionStack instead of the
-  // Decider's internal representation for the pcs.
-  // However, the recording happens to early such that the wrong
-  // PathConditionStack Object is stored when using the PathConditionStack
-  // TODO: Oops.
-  val pcs: Set[Term]
-  var subs = List[SymbolicRecord]()
-  var lastFailedProverQuery: Option[Term] = None
-
-  var startTimeMs: Long = 0
-  var endTimeMs: Long = 0
-
-  def toTypeString(): String
-
-  override def toString(): String = {
-    toTypeString() + " " + toSimpleString()
-  }
-
-  def toSimpleString(): String = {
-    if (value != null) value.toString()
-    else "null"
-  }
 
   def toJson(): String = {
     if (value != null) JsonHelper.pair("value", value.toString())
@@ -1046,30 +778,7 @@ sealed trait SymbolicRecord {
   }
 }
 
-trait MemberRecord extends SymbolicRecord
-
-trait MultiChildRecord extends SymbolicRecord
-
-trait MultiChildOrderedRecord extends MultiChildRecord
-
-trait MultiChildUnorderedRecord extends MultiChildRecord
-
-trait SequentialRecord extends SymbolicRecord
-
 class MethodRecord(v: ast.Method, s: State, p: PathConditionStack) extends MemberRecord {
-  val value = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-
-  def toTypeString(): String = {
-    "method"
-  }
-
-  override def toSimpleString(): String = {
-    if (value != null) value.name
-    else "null"
-  }
-
   override def toJson(): String = {
     if (value != null) JsonHelper.pair("kind", "Method") + "," + JsonHelper.pair("value", value.name)
     else ""
@@ -1077,19 +786,6 @@ class MethodRecord(v: ast.Method, s: State, p: PathConditionStack) extends Membe
 }
 
 class PredicateRecord(v: ast.Predicate, s: State, p: PathConditionStack) extends MemberRecord {
-  val value = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-
-  def toTypeString(): String = {
-    "predicate"
-  }
-
-  override def toSimpleString(): String = {
-    if (value != null) value.name
-    else "null"
-  }
-
   override def toJson(): String = {
     if (value != null) JsonHelper.pair("kind", "Predicate") + "," + JsonHelper.pair("value", value.name)
     else ""
@@ -1097,19 +793,6 @@ class PredicateRecord(v: ast.Predicate, s: State, p: PathConditionStack) extends
 }
 
 class FunctionRecord(v: ast.Function, s: State, p: PathConditionStack) extends MemberRecord {
-  val value = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-
-  def toTypeString(): String = {
-    "function"
-  }
-
-  override def toSimpleString(): String = {
-    if (value != null) value.name
-    else "null"
-  }
-
   override def toJson(): String = {
     if (value != null) JsonHelper.pair("kind", "Function") + "," + JsonHelper.pair("value", value.name)
     else ""
@@ -1117,14 +800,6 @@ class FunctionRecord(v: ast.Function, s: State, p: PathConditionStack) extends M
 }
 
 class ExecuteRecord(v: ast.Stmt, s: State, p: PathConditionStack) extends SequentialRecord {
-  val value = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-
-  def toTypeString(): String = {
-    "execute"
-  }
-
   override def toJson(): String = {
     if (value != null) JsonHelper.pair("type", "execute") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
@@ -1132,14 +807,6 @@ class ExecuteRecord(v: ast.Stmt, s: State, p: PathConditionStack) extends Sequen
 }
 
 class EvaluateRecord(v: ast.Exp, s: State, p: PathConditionStack) extends SequentialRecord {
-  val value = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-
-  def toTypeString(): String = {
-    "evaluate"
-  }
-
   override def toJson(): String = {
     if (value != null) JsonHelper.pair("type", "evaluate") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
@@ -1147,14 +814,6 @@ class EvaluateRecord(v: ast.Exp, s: State, p: PathConditionStack) extends Sequen
 }
 
 class ProduceRecord(v: ast.Exp, s: State, p: PathConditionStack) extends SequentialRecord {
-  val value = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-
-  def toTypeString(): String = {
-    "produce"
-  }
-
   override def toJson(): String = {
     if (value != null) JsonHelper.pair("type", "produce") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
@@ -1162,15 +821,6 @@ class ProduceRecord(v: ast.Exp, s: State, p: PathConditionStack) extends Sequent
 }
 
 class ConsumeRecord(v: ast.Exp, s: State, p: PathConditionStack)
-  extends SequentialRecord {
-  val value = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-
-  def toTypeString(): String = {
-    "consume"
-  }
-
   override def toJson(): String = {
     if (value != null) JsonHelper.pair("type", "consume") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
@@ -1178,16 +828,6 @@ class ConsumeRecord(v: ast.Exp, s: State, p: PathConditionStack)
 }
 
 class WellformednessCheckRecord(v: Seq[ast.Exp], s: State, p: PathConditionStack)
-  extends MultiChildUnorderedRecord {
-  val value = null
-  val conditions = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-
-  def toTypeString(): String = {
-    "WellformednessCheck"
-  }
-
   override def toJson(): String = {
     JsonHelper.pair("kind", "WellformednessCheck")
   }
@@ -1195,26 +835,6 @@ class WellformednessCheckRecord(v: Seq[ast.Exp], s: State, p: PathConditionStack
 
 abstract class TwoBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
   extends MultiChildUnorderedRecord {
-  val value = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-  val environment = env
-
-  var cond: List[SymbolicRecord] = List[SymbolicRecord](new CommentRecord("<missing condition>", null, null))
-  var condEndTimeMs: Long = 0
-  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
-  var thnExplored: Boolean = false
-  var thnEndTimeMs: Long = 0
-  var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
-  var elsExplored: Boolean = false
-  var elsEndTimeMs: Long = 0
-
-  override def toSimpleString(): String = {
-    if (value != null)
-      value.toString()
-    else
-      toTypeString() + "<Null>"
-  }
 
   override def toJson(): String = {
     if (value != null) JsonHelper.pair("kind", toTypeString()) + "," + JsonHelper.pair("value", value.toString())
@@ -1224,199 +844,27 @@ abstract class TwoBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env:
   override def toString(): String = {
     environment + " " + toSimpleString()
   }
-
-  @elidable(INFO)
-  def finish_cond(): Unit = {
-    condEndTimeMs = System.currentTimeMillis()
-    if (!subs.isEmpty)
-      cond = subs
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_thnSubs(): Unit = {
-    thnExplored = true
-    thnEndTimeMs = System.currentTimeMillis()
-    if (!subs.isEmpty)
-      thnSubs = subs
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_elsSubs(): Unit = {
-    elsExplored = true
-    elsEndTimeMs = System.currentTimeMillis()
-    if (!subs.isEmpty)
-      elsSubs = subs
-    subs = List[SymbolicRecord]()
-  }
-
-  /**
-    * hack such that endTimeMs is correctly set in the presence of initializeBranching, because identifier is not
-    * in sepSet when collapsing the record
-    */
-  @elidable(INFO)
-  def finish_record(): Unit = {
-    if (endTimeMs == 0) {
-      endTimeMs = System.currentTimeMillis()
-    }
-  }
-
-  @elidable(INFO)
-  def exploredBranchesCount(): Int = {
-    (if (thnExplored) 1 else 0) + (if (elsExplored) 1 else 0)
-  }
-}
-
-class GlobalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
-  extends TwoBranchRecord(v, s, p, env) {
-
-  def toTypeString(): String = {
-    "GlobalBranch"
-  }
-}
-
-class LocalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
-  extends TwoBranchRecord(v, s, p, env) {
-
-  def toTypeString(): String = {
-    "LocalBranch"
-  }
 }
 
 class CfgBranchRecord(v: Seq[SilverEdge], s: State, p: PathConditionStack, env: String)
   extends MultiChildUnorderedRecord {
-  val value = null
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-  val environment = env
-
-  def toTypeString(): String = {
-    "CfgBranch"
-  }
-
-  var branchSubs = List[List[SymbolicRecord]]()
-  // ar branchEndTimesMs: List[Long] = List[Long]()
-
-  override def toSimpleString(): String = {
-    if (value != null)
-      value.toString()
-    else
-      "CfgBranch<Null>"
-  }
 
   override def toJson(): String = {
     if (value != null) JsonHelper.pair("kind", "CfgBranch") + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
-
-  override def toString(): String = {
-    environment + " " + toSimpleString()
-  }
-
-  @elidable(INFO)
-  def finish_branchSubs(): Unit = {
-    if (!subs.isEmpty)
-      branchSubs = branchSubs ++ List(subs)
-      // branchEndTimesMs = branchEndTimesMs ++ List(System.currentTimeMillis())
-    subs = List[SymbolicRecord]()
-  }
 }
 
 class ConditionalEdgeRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
   extends MultiChildUnorderedRecord {
-  val value = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-  val environment = env
-
-  def toTypeString(): String = {
-    "ConditionalEdge"
-  }
-
-  var cond: List[SymbolicRecord] = List[SymbolicRecord](new CommentRecord("<missing condition>", null, null))
-  var condEndTimeMs: Long = 0
-  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
-  var thnEndTimeMs: Long = 0
-
-  override def toSimpleString(): String = {
-    if (value != null)
-      value.toString()
-    else
-      "ConditionalEdge<Null>"
-  }
 
   override def toJson(): String = {
     if (value != null) JsonHelper.pair("kind", "ConditionalEdge") + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
-
-  override def toString(): String = {
-    environment + " " + toSimpleString()
-  }
-
-  @elidable(INFO)
-  def finish_cond(): Unit = {
-    condEndTimeMs = System.currentTimeMillis()
-    if (!subs.isEmpty)
-      cond = subs
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_thnSubs(): Unit = {
-    thnEndTimeMs = System.currentTimeMillis()
-    if (!subs.isEmpty)
-      thnSubs = subs
-    subs = List[SymbolicRecord]()
-  }
 }
 
-class UnconditionalEdgeRecord(s: State, p: PathConditionStack, env: String) extends SequentialRecord {
-  val value = null
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-  val environment = env
-
-  def toTypeString(): String = {
-    "UnconditionalEdgeRecord"
-  }
-
-  override def toSimpleString(): String = {
-    if (value != null)
-      value.toString()
-    else
-      "UnconditionalEdgeRecord<Null>"
-  }
-
-  override def toJson(): String = {
-    if (value != null) JsonHelper.pair("kind", "UnconditionalEdgeRecord") + "," + JsonHelper.pair("value", value.toString())
-    else ""
-  }
-
-  override def toString(): String = {
-    environment + " " + toSimpleString()
-  }
-}
 class CommentRecord(str: String, s: State, p: PathConditionStack) extends SequentialRecord {
-  val value = null
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-
-  def toTypeString(): String = {
-    "Comment"
-  }
-
-  val comment = str
-
-  override def toSimpleString(): String = {
-    if (comment != null) comment
-    else "null"
-  }
-
-  override def toString(): String = {
-    "comment: " + toSimpleString()
-  }
 
   override def toJson(): String = {
     if (comment != null) JsonHelper.pair("value", comment)
@@ -1430,17 +878,6 @@ class CommentRecord(str: String, s: State, p: PathConditionStack) extends Sequen
 
 class MethodCallRecord(v: ast.MethodCall, s: State, p: PathConditionStack)
   extends MultiChildOrderedRecord {
-  val value = v
-  val state = s
-  val pcs = if (p != null) p.assumptions else null
-
-  def toTypeString(): String = {
-    "MethodCall"
-  }
-
-  var parameters = List[SymbolicRecord]()
-  var precondition: List[SymbolicRecord] = List[SymbolicRecord](new ConsumeRecord(null, null, null))
-  var postcondition: List[SymbolicRecord] = List[SymbolicRecord](new ProduceRecord(null, null, null))
 
   override def toString(): String = {
     if (value != null)
@@ -1449,105 +886,9 @@ class MethodCallRecord(v: ast.MethodCall, s: State, p: PathConditionStack)
       "execute: MethodCall <null>"
   }
 
-  override def toSimpleString(): String = {
-    if (v != null) v.toString()
-    else "MethodCall <null>"
-  }
-
   override def toJson(): String = {
     if (v != null) JsonHelper.pair("kind", "MethodCall") + "," + JsonHelper.pair("value", v.toString())
     else ""
-  }
-
-  @elidable(INFO)
-  def finish_parameters(): Unit = {
-    parameters = subs // No check for emptyness. empty subs = no parameters, which is perfectly fine.
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_precondition(): Unit = {
-    if (!subs.isEmpty)
-      precondition = subs
-    subs = List[SymbolicRecord]()
-  }
-
-  @elidable(INFO)
-  def finish_postcondition(): Unit = {
-    if (!subs.isEmpty)
-      postcondition = subs
-    subs = List[SymbolicRecord]()
-  }
-}
-
-class DeciderAssertRecord(t: Term, timeout: Option[Int]) extends MemberRecord {
-  val value: ast.Node = null
-  val state: State = null
-  val pcs: Set[Term] = null
-  val term: Term = t
-  val timeoutOptions: Option[Int] = timeout
-
-  def toTypeString(): String = {
-    "DeciderAssert"
-  }
-
-  override def toString(): String = {
-    if (term != null)
-      "Decider assert: " + term.toString()
-    else
-      "Decider assert: <null>"
-  }
-
-  override def toSimpleString(): String = {
-    if (term != null) term.toString()
-    else "DeciderAssert <null>"
-  }
-}
-
-class ProverAssertRecord(t: Term, timeout: Option[Int]) extends MemberRecord {
-  val value: ast.Node = null
-  val state: State = null
-  val pcs: Set[Term] = null
-  val term: Term = t
-  val timeoutOptions: Option[Int] = timeout
-
-  def toTypeString(): String = {
-    "ProverAssert"
-  }
-
-  override def toString(): String = {
-    if (term != null)
-      "Prover assert: " + term.toString()
-    else
-      "Prover assert: <null>"
-  }
-
-  override def toSimpleString(): String = {
-    if (term != null) term.toString()
-    else "ProverAssert <null>"
-  }
-}
-
-class DeciderAssumeRecord(t: InsertionOrderedSet[Term]) extends MemberRecord {
-  val value: ast.Node = null
-  val state: State = null
-  val pcs: Set[Term] = null
-  val terms: InsertionOrderedSet[Term] = t
-
-  def toTypeString(): String = {
-    "DeciderAssume"
-  }
-
-  override def toString(): String = {
-    if (terms != null)
-      "Decider assume: " + terms.mkString(" ")
-    else
-      "Decider assume: <null>"
-  }
-
-  override def toSimpleString(): String = {
-    if (terms != null) terms.mkString(" ")
-    else "DeciderAssume <null>"
   }
 }
 
@@ -1573,13 +914,8 @@ class SingleMergeRecord(val destChunks: Seq[NonQuantifiedChunk], val newChunks: 
       "Single merge: <null>"
     }
   }
-
-  override def toSimpleString(): String = {
-    if (destChunks != null && newChunks != null) (destChunks ++ newChunks).mkString(" ")
-    else "SingleMerge <null>"
-  }
 }
-
+*/
 
 class GenericNode(val label: String) {
 
@@ -1597,7 +933,7 @@ class GenericNode(val label: String) {
     label
   }
 }
-
+/*
 class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
 
   def render(memberList: List[SymbLog]): GenericNode = {
@@ -1812,7 +1148,7 @@ class JsonRenderer extends Renderer[GenericNode, String] {
       JsonHelper.pair("successors", successorsIndices) + "}"
   }
 }
-
+*/
 
 /**
   * ================================

@@ -7,11 +7,12 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
+import logger.SymbExLogger
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
-import viper.silicon.{Map, SymbExLogger, toMap}
+import viper.silicon.{Map, toMap}
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.interfaces._
 import viper.silicon.state._

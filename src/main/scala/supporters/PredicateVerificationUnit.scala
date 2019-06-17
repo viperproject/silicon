@@ -7,12 +7,13 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
+import logger.SymbExLogger
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.decider.Decider
-import viper.silicon.{Map, SymbExLogger, toMap}
+import viper.silicon.{Map, toMap}
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state._
 import viper.silicon.state.State.OldHeaps

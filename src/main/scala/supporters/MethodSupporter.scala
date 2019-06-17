@@ -7,7 +7,8 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.{SymbExLogger, WellformednessCheckRecord}
+import logger.SymbExLogger
+import logger.records.data.WellformednessCheckRecord
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._

@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import logger.records.data.{ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
+import logger.SymbExLogger
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.PartialVerificationError
@@ -22,7 +24,6 @@ import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.{CfgBranchRecord, ConditionalEdgeRecord, ExecuteRecord, Map, MethodCallRecord, SymbExLogger, SymbolicRecord, UnconditionalEdgeRecord}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -63,35 +64,24 @@ object executor extends ExecutionRules with Immutable {
 
     edge match {
       case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
-        val impLog = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs, "Conditional Edge")
-        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-        val state = SymbExLogger.currentLog().newInitializeBranching()
-        var thenState = (Map[Int, SymbolicRecord](), List[SymbolicRecord](), InsertionOrderedSet[Int]())
+        val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
+        val sepIdentifier = SymbExLogger.currentLog().insert(condEdgeRecord)
         val s1 = handleOutEdge(s, edge, v)
         eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) => {
           /* Using branch(...) here ensures that the edge condition is recorded
            * as a branch condition on the pathcondition stack.
            */
-          impLog.finish_cond()
+          SymbExLogger.currentLog().collapse(ce.condition, sepIdentifier)
           val branch_res = brancher.branch(s2, tCond, v1)(
             (s3, v3) => {
-              val res1 = exec(s3, ce.target, ce.kind, v3)(Q)
-              impLog.finish_thnSubs()
-              thenState = SymbExLogger.currentLog().newPrepareOtherBranch(state)
-              res1
+              exec(s3, ce.target, ce.kind, v3)(Q)
             },
             (_, _)  => Success())
-          SymbExLogger.currentLog().newRestoreState(state, List(thenState), 1)
-          SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
       case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
-        val impLog = new UnconditionalEdgeRecord(s, v.decider.pcs, "Unconditional Edge")
-        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
         val s1 = handleOutEdge(s, edge, v)
-        val res = exec(s1, ue.target, ue.kind, v)(Q)
-        SymbExLogger.currentLog().collapse(null, sepIdentifier)
-        res
+        exec(s1, ue.target, ue.kind, v)(Q)
     }
   }
 
@@ -104,23 +94,19 @@ object executor extends ExecutionRules with Immutable {
 
     if (edges.isEmpty) {
       Q(s, v)
+    } else if (edges.length == 1) {
+      follow(s, edges.head, v)(Q)
     } else {
-      val gbRecord: CfgBranchRecord = new CfgBranchRecord(edges, s, v.decider.pcs, "Branch Record")
-      val sepIdentifier = SymbExLogger.currentLog().insert(gbRecord)
-      val state = SymbExLogger.currentLog().newInitializeBranching()
-      var branchStates = List[(Map[Int, SymbolicRecord], List[SymbolicRecord], InsertionOrderedSet[Int])]()
+      val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(null)
       val res = edges.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (_, edge) => {
           val edge_res = follow(s, edge, v)(Q)
-          gbRecord.finish_branchSubs()
-          branchStates = SymbExLogger.currentLog().newPrepareOtherBranch(state) :: branchStates
+          SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
           edge_res
         }
       }
-      // remove first element from branchStates because that corresponds to the current branch:
-      SymbExLogger.currentLog().newRestoreState(state, branchStates.tail, gbRecord.branchSubs.length)
-      SymbExLogger.currentLog().collapse(null, sepIdentifier)
+      SymbExLogger.currentLog().collapseBranchPoint(uidBranchPoint)
       res
     }
   }
@@ -452,16 +438,16 @@ object executor extends ExecutionRules with Immutable {
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
         evals(s, eArgs, _ => pveCall, v)((s1, tArgs, v1) => {
-          mcLog.finish_parameters()
+          // mcLog.finish_parameters()
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
                            recordVisited = true)
           consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
-            mcLog.finish_precondition()
+            // mcLog.finish_precondition()
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
-              mcLog.finish_postcondition()
+              // mcLog.finish_postcondition()
               v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
                               .map(p => (p._1, s5.g(p._2))).toMap)

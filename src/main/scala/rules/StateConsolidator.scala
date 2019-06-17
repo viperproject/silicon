@@ -6,7 +6,8 @@
 
 package viper.silicon.rules
 
-import viper.silicon.{CommentRecord, SingleMergeRecord, SymbExLogger}
+import logger.records.data.{CommentRecord, SingleMergeRecord}
+import logger.SymbExLogger
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}

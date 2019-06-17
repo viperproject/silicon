@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
+import logger.SymbExLogger
 import viper.silver.ast
 import viper.silver.ast.{Info, PredicateAccess}
 import viper.silver.verifier.PartialVerificationError
@@ -20,7 +22,7 @@ import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
-import viper.silicon.{EvaluateRecord, LocalBranchRecord, Map, SymbExLogger, SymbolicRecord, TriggerSets}
+import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
@@ -310,32 +312,28 @@ object evaluator extends EvaluationRules with Immutable {
             Q(s2, Or(t0, t1), v2))})
 
       case implies @ ast.Implies(e0, e1) =>
-        val impLog = new LocalBranchRecord(e0, s, v.decider.pcs, "Implies")
-        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-        val state = SymbExLogger.currentLog().newInitializeBranching()
+        val impliesRecord = new ImpliesRecord(implies, s, v.decider.pcs, "Implies")
+        val uidImplies = SymbExLogger.currentLog().insert(impliesRecord)
         eval(s, e0, pve, v)((s1, t0, v1) => {
-          impLog.finish_cond()
-          evalImplies(s1, t0, e1, implies.info == FromShortCircuitingAnd, pve, v1, impLog, sepIdentifier, state)(Q)
+          SymbExLogger.currentLog().collapse(implies, uidImplies)
+          evalImplies(s1, t0, e1, implies.info == FromShortCircuitingAnd, pve, v1, impliesRecord)(Q)
         })
 
-      case ast.CondExp(e0, e1, e2) => {
-        val impLog = new LocalBranchRecord(e0, s, v.decider.pcs, "CondExp")
-        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-        val state = SymbExLogger.currentLog().newInitializeBranching()
-        var thenState = (Map[Int, SymbolicRecord](), List[SymbolicRecord](), InsertionOrderedSet[Int]())
+      case condExp @ ast.CondExp(e0, e1, e2) => {
+        val condExpRecord = new CondExpRecord(condExp, s, v.decider.pcs, "CondExp")
+        val uidCondExp = SymbExLogger.currentLog().insert(condExpRecord)
         eval(s, e0, pve, v)((s1, t0, v1) => {
-          impLog.finish_cond()
+          SymbExLogger.currentLog().collapse(condExp, uidCondExp)
+          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(condExpRecord)
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
             brancher.branch(s2, t0, v2)(
               (s3, v3) => eval(s3, e1, pve, v3)((s4, t4, v4) => {
                 val res1 = QB(s4, t4, v4)
-                impLog.finish_thnSubs()
-                thenState = SymbExLogger.currentLog().newPrepareOtherBranch(state)
+                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
                 res1
               }),
               (s3, v3) => eval(s3, e2, pve, v3)((s5, t5, v5) => {
                 val res2 = QB(s5, t5, v5)
-                impLog.finish_elsSubs()
                 res2
               }))
           )(entries => {
@@ -357,9 +355,7 @@ object evaluator extends EvaluationRules with Immutable {
             }
             (s2, Ite(t0, t1, t2))
           })((s6, t6, v6) => {
-            // collapse before evaluating everything following the join point:
-            SymbExLogger.currentLog().newRestoreState(state, List(thenState), impLog.exploredBranchesCount())
-            SymbExLogger.currentLog().collapse(null, sepIdentifier)
+            SymbExLogger.currentLog().insertJoinPoint()
             Q(s6, t6, v6)
           })})
       }
@@ -549,17 +545,16 @@ object evaluator extends EvaluationRules with Immutable {
             val indices = nonQuantArgs map (a => args.indexOf(a))
 
             // TODO: record all nonQuantArgs
-            val impLog = new LocalBranchRecord(nonQuantArgs.head, s2, v.decider.pcs, "bindRcvrsAndEvalBody")
-            val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-            val state = SymbExLogger.currentLog().newInitializeBranching()
+            val impliesRecord = new ImpliesRecord(null, s2, v.decider.pcs, "bindRcvrsAndEvalBody")
+            val uidImplies = SymbExLogger.currentLog().insert(impliesRecord)
 
             evals(s2, nonQuantArgs, _ => pve, v)((s3, tArgs, v1) => {
               val argsWithIndex = tArgs zip indices
               val zippedArgs = argsWithIndex map (ai => (ai._1, ch.args(ai._2)))
               val argsPairWiseEqual = And(zippedArgs map {case (a1, a2) => a1 === a2})
 
-              impLog.finish_cond()
-              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), body, false, pve, v1, impLog, sepIdentifier, state)((s4, tImplies, v2) =>
+              SymbExLogger.currentLog().collapse(null, uidImplies)
+              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), body, false, pve, v1, impliesRecord)((s4, tImplies, v2) =>
                 bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, v2)(Q))
             })
           }
@@ -580,9 +575,8 @@ object evaluator extends EvaluationRules with Immutable {
             val s1 = s.copy(s.g + gVars, quantifiedVariables = tVars ++ s.quantifiedVariables)
 
             // TODO: record all args
-            val impLog = new LocalBranchRecord(args.head, s1, v.decider.pcs, "bindQuantRcvrsAndEvalBody")
-            val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-            val state = SymbExLogger.currentLog().newInitializeBranching()
+            val impliesRecord = new ImpliesRecord(null, s1, v.decider.pcs, "bindQuantRcvrsAndEvalBody")
+            val uidImplies = SymbExLogger.currentLog().insert(impliesRecord)
 
             evals(s1, args, _ => pve, v)((s2, ts1, v1) => {
               val bc = IsPositive(ch.perm.replace(ch.quantifiedVars, ts1))
@@ -594,8 +588,8 @@ object evaluator extends EvaluationRules with Immutable {
                 case wc: QuantifiedMagicWandChunk => PredicateTrigger(wc.id.toString, wc.wsf, ts1)
               }
 
-              impLog.finish_cond()
-              evalImplies(s2, And(trig, bc), body, false, pve, v1, impLog, sepIdentifier, state)((s3, tImplies, v2) => {
+              SymbExLogger.currentLog().collapse(null, uidImplies)
+              evalImplies(s2, And(trig, bc), body, false, pve, v1, impliesRecord)((s3, tImplies, v2) => {
                 val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
                 bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, v2)(Q)})
             })
@@ -955,25 +949,21 @@ object evaluator extends EvaluationRules with Immutable {
                           fromShortCircuitingAnd: Boolean,
                           pve: PartialVerificationError,
                           v: Verifier,
-                          impLog: LocalBranchRecord,
-                          sepIdentifier: Int,
-                          state: (Map[Int, SymbolicRecord], List[SymbolicRecord], InsertionOrderedSet[Int]))
+                          impliesRecord: ImpliesRecord)
                          (Q: (State, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
 
-    var thenState = (Map[Int, SymbolicRecord](), List[SymbolicRecord](), InsertionOrderedSet[Int]())
+    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(impliesRecord)
 
     joiner.join[Term, Term](s, v)((s1, v1, QB) =>
       brancher.branch(s1, tLhs, v1, fromShortCircuitingAnd)(
         (s2, v2) => eval(s2, eRhs, pve, v2)((s3, t3, v3) => {
           val res1 = QB(s3, t3, v3)
-          impLog.finish_thnSubs()
-          thenState = SymbExLogger.currentLog().newPrepareOtherBranch(state)
+          SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
           res1
         }),
         (s2, v2) => {
           val res2 = QB(s2, True(), v2)
-          impLog.finish_elsSubs()
           res2
         })
     )(entries => {
@@ -982,9 +972,7 @@ object evaluator extends EvaluationRules with Immutable {
       val t = Implies(tLhs, entries.headOption.map(_.data).getOrElse(True()))
       (s1, t)
     })((s4, t4, v4) => {
-      // collapse before evaluating everything following the join point:
-      SymbExLogger.currentLog().newRestoreState(state, List(thenState), impLog.exploredBranchesCount())
-      SymbExLogger.currentLog().collapse(null, sepIdentifier)
+      SymbExLogger.currentLog().insertJoinPoint()
       Q(s4, t4, v4)
     })
   }
