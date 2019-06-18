@@ -22,4 +22,17 @@ class SingleMergeRecord(val destChunks: Seq[NonQuantifiedChunk],
     if (destChunks != null && newChunks != null) (destChunks ++ newChunks).mkString(" ")
     else "SingleMerge <null>"
   }
+
+  override def toString(): String = {
+    if (destChunks != null && newChunks != null) {
+      val newChunksString = newChunks.mkString(" ")
+      if (newChunksString == "") {
+        "single merge " + destChunks.mkString(" ") + " <="
+      } else {
+        "single merge " + destChunks.mkString(" ") + " <= " + newChunksString
+      }
+    } else {
+      "SingleMerge <null>"
+    }
+  }
 }

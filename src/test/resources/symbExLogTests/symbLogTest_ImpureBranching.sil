@@ -15,7 +15,7 @@ method test1(b: Bool, x: Ref)
 
 	fold P(b, x)
 }
-
+/*
 method test2(b: Bool, x: Ref)
     ensures acc(P(b, x))
 {
@@ -88,3 +88,4 @@ method test8(b: Bool, x: Ref)
   inhale (true && true && true && (b ? acc(x.f) : acc(x.g)))
   a := 1
 }
+*/

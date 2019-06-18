@@ -13,7 +13,7 @@ import logger.records.SymbolicRecord
 import logger.records.data.{DataRecord, FunctionRecord, MethodRecord, PredicateRecord}
 import logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
 import logger.records.structural.{BranchingRecord, JoiningRecord}
-import logger.renderer.SimpleTreeRenderer
+import logger.renderer.{ExecTimeChecker, PathChecker, PathRenderer, SimpleTreeRenderer}
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -242,10 +242,12 @@ object SymbExLogger {
   }
 
   def checkMemberList(): String = {
-    /*
     new ExecTimeChecker().render(memberList)
-     */
-    ""
+  }
+
+  def checkPaths(): String = {
+    val paths = new PathRenderer().render(memberList)
+    new PathChecker().render(paths)
   }
 
   /**
@@ -330,13 +332,14 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
   @elidable(INFO)
   def insert(s: ScopingRecord): Int = {
     s.id = freshUid()
+    s.timeMs = System.currentTimeMillis()
     appendLog(s)
     s.id
   }
 
   @elidable(INFO)
-  def insertBranchPoint(ref: DataRecord): Int = {
-    val branchingRecord = new BranchingRecord(ref)
+  def insertBranchPoint(ref: DataRecord, possibleBranchesCount: Int): Int = {
+    val branchingRecord = new BranchingRecord(ref, possibleBranchesCount)
     branchingRecord.id = freshUid()
     appendLog(branchingRecord)
     branchingStack = branchingRecord :: branchingStack
@@ -345,13 +348,21 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 
   @elidable(INFO)
   def switchToNextBranch(uidBranchPoint: Int): Unit = {
-    // TODO get correct branch in case of enclosed branches
     assert(branchingStack.nonEmpty)
+    val branchingRecord = branchingStack.head
+    assert(branchingRecord.id == uidBranchPoint)
     // close current branch:
     val closeRecord = new CloseScopeRecord(uidBranchPoint)
     insert(closeRecord)
-    val branchingRecord = branchingStack.head
     branchingRecord.switchToNextBranch()
+  }
+
+  @elidable(INFO)
+  def markReachable(uidBranchPoint: Int): Unit = {
+    assert(branchingStack.nonEmpty)
+    val branchingRecord = branchingStack.head
+    assert(branchingRecord.id == uidBranchPoint)
+    branchingRecord.markReachable()
   }
 
   @elidable(INFO)
@@ -428,7 +439,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 object NoopSymbLog extends SymbLog(null, null, null) {
   override def insert(s: DataRecord): Int = 0
   override def insert(s: ScopingRecord): Int = 0
-  override def insertBranchPoint(ref: DataRecord): Int = 0
+  override def insertBranchPoint(ref: DataRecord, possibleBranchesCount: Int): Int = 0
   override def switchToNextBranch(uidBranchPoint: Int): Unit = {}
   override def insertJoinPoint(): Unit = {}
   override def collapse(v: ast.Node, n: Int): Unit = {}
@@ -1278,6 +1289,12 @@ class SymbExLogUnitTest(f: Path) {
         errorMsg = errorMsg + "Compared Files:\n"
         errorMsg = errorMsg + "expected: " + expectedPath.toString() + "\n"
         errorMsg = errorMsg + "actual:   " + actualPath.toString() + "\n"
+      }
+
+      val pathCheckOutput = SymbExLogger.checkPaths()
+      if (pathCheckOutput != "") {
+        testFailed = true
+        errorMsg = errorMsg + "PathChecker: " + pathCheckOutput + "\n"
       }
 
       val execTimeOutput = SymbExLogger.checkMemberList()

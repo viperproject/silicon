@@ -324,18 +324,18 @@ object evaluator extends EvaluationRules with Immutable {
         val uidCondExp = SymbExLogger.currentLog().insert(condExpRecord)
         eval(s, e0, pve, v)((s1, t0, v1) => {
           SymbExLogger.currentLog().collapse(condExp, uidCondExp)
-          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(condExpRecord)
+          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(condExpRecord, 2)
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
             brancher.branch(s2, t0, v2)(
-              (s3, v3) => eval(s3, e1, pve, v3)((s4, t4, v4) => {
-                val res1 = QB(s4, t4, v4)
+              (s3, v3) => {
+                SymbExLogger.currentLog().markReachable(uidBranchPoint)
+                eval(s3, e1, pve, v3)(QB)
+              },
+              (s3, v3) => {
                 SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-                res1
-              }),
-              (s3, v3) => eval(s3, e2, pve, v3)((s5, t5, v5) => {
-                val res2 = QB(s5, t5, v5)
-                res2
-              }))
+                SymbExLogger.currentLog().markReachable(uidBranchPoint)
+                eval(s3, e2, pve, v3)(QB)
+              })
           )(entries => {
             /* TODO: The next few lines could be made safer if branch(...) took orElse-continuations
              *       that are executed if a branch is dead */
@@ -953,18 +953,18 @@ object evaluator extends EvaluationRules with Immutable {
                          (Q: (State, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
 
-    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(impliesRecord)
+    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(impliesRecord, 2)
 
     joiner.join[Term, Term](s, v)((s1, v1, QB) =>
       brancher.branch(s1, tLhs, v1, fromShortCircuitingAnd)(
-        (s2, v2) => eval(s2, eRhs, pve, v2)((s3, t3, v3) => {
-          val res1 = QB(s3, t3, v3)
-          SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-          res1
-        }),
         (s2, v2) => {
-          val res2 = QB(s2, True(), v2)
-          res2
+          SymbExLogger.currentLog().markReachable(uidBranchPoint)
+          eval(s2, eRhs, pve, v2)(QB)
+        },
+        (s2, v2) => {
+          SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+          SymbExLogger.currentLog().markReachable(uidBranchPoint)
+          QB(s2, True(), v2)
         })
     )(entries => {
       assert(entries.length <= 2)

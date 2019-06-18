@@ -16,10 +16,11 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
   }
 
   def renderMember(member: SymbLog): String = {
-    val filteredLog = filterEmptyScopes(member.log)
-    toSimpleTree(filteredLog, 0)
+    // val filteredLog = filterEmptyScopes(member.log)
+    toSimpleTree(member.log, 0)
   }
 
+  /*
   private def filterEmptyScopes(log: List[SymbolicRecord]): List[SymbolicRecord] = {
     var res = List[SymbolicRecord]()
 
@@ -32,7 +33,7 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
       } else {
         currentRecord match {
           case br: BranchingRecord => {
-            br.branches = br.branches.map(filterEmptyScopes)
+            br.branches = br.getBranches().map(filterEmptyScopes)
           }
           case _ =>
         }
@@ -43,6 +44,7 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
 
     res
   }
+   */
 
   private def discardBoth(currentRecord: SymbolicRecord, nextRecord: SymbolicRecord): Boolean = {
     // check if close scope record directly follows open scope record and both have same id:
@@ -88,13 +90,14 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
   private def toSimpleTree(br: BranchingRecord, n: Int): String = {
     val indent = getIndent(n)
     var res = ""
-    for (branchIndex <- br.branches.indices) {
+    val branches = br.getBranches()
+    for (branchIndex <- branches.indices) {
       res = res + indent + "Branch " + (branchIndex + 1) + ":\n"
-      val branch = br.branches(branchIndex)
-      if (br.isUnreachable(branch)) {
-        res = res + getIndent(n + 1) + "comment: Unreachable\n"
-      } else {
+      val branch = branches(branchIndex)
+      if (br.isReachable(branchIndex)) {
         res = res + toSimpleTree(branch, n + 1)
+      } else {
+        res = res + getIndent(n + 1) + "comment: Unreachable\n"
       }
     }
     res

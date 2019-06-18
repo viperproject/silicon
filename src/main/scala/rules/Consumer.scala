@@ -194,16 +194,18 @@ object consumer extends ConsumptionRules with Immutable {
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) => {
           SymbExLogger.currentLog().collapse(imp, uidImplies)
-          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(impliesRecord)
+          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(impliesRecord, 2)
           val branch_res =
             branch(s1, t0, v1)(
-              (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h3, snap3, v3) => {
-                val res1 = Q(s3, h3, snap3, v3)
-                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-                res1}),
               (s2, v2) => {
-                val res2 = Q(s2, h, Unit, v2)
-                res2})
+                SymbExLogger.currentLog().markReachable(uidBranchPoint)
+                consumeR(s2, h, a0, pve, v2)(Q)
+              },
+              (s2, v2) => {
+                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+                SymbExLogger.currentLog().markReachable(uidBranchPoint)
+                Q(s2, h, Unit, v2)
+              })
           SymbExLogger.currentLog().collapseBranchPoint(uidBranchPoint)
           branch_res})
 
@@ -213,16 +215,18 @@ object consumer extends ConsumptionRules with Immutable {
 
         eval(s, e0, pve, v)((s1, t0, v1) => {
           SymbExLogger.currentLog().collapse(ite, uidCondExp)
-          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(condExpRecord)
+          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(condExpRecord, 2)
           val branch_res =
             branch(s1, t0, v1)(
-              (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h3, snap3, v3) => {
-                val res1 = Q(s3, h3, snap3, v3)
+              (s2, v2) => {
+                SymbExLogger.currentLog().markReachable(uidBranchPoint)
+                consumeR(s2, h, a1, pve, v2)(Q)
+              },
+              (s2, v2) => {
                 SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-                res1}),
-              (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h3, snap3, v3) => {
-                val res2 = Q(s3, h3, snap3, v3)
-                res2}))
+                SymbExLogger.currentLog().markReachable(uidBranchPoint)
+                consumeR(s2, h, a2, pve, v2)(Q)
+              })
           SymbExLogger.currentLog().collapseBranchPoint(uidBranchPoint)
           branch_res})
 

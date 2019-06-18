@@ -212,14 +212,16 @@ object producer extends ProductionRules with Immutable {
 
         eval(s, e0, pve, v)((s1, t0, v1) => {
           SymbExLogger.currentLog().collapse(imp, uidImplies)
-          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(impliesRecord)
+          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(impliesRecord, 2)
           val branch_res =
             branch(s1, t0, v1)(
-              (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
-                val res1 = Q(s3, v3)
-                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-                res1}),
               (s2, v2) => {
+                SymbExLogger.currentLog().markReachable(uidBranchPoint)
+                produceR(s2, sf, a0, pve, v2)(Q)
+              },
+              (s2, v2) => {
+                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+                SymbExLogger.currentLog().markReachable(uidBranchPoint)
                 v2.decider.assume(sf(sorts.Snap, v2) === Unit)
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
@@ -236,14 +238,18 @@ object producer extends ProductionRules with Immutable {
 
         eval(s, e0, pve, v)((s1, t0, v1) => {
           SymbExLogger.currentLog().collapse(ite, uidCondExp)
-          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(condExpRecord)
+          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(condExpRecord, 2)
           val branch_res =
             branch(s1, t0, v1)(
-              (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
-                val res1 = Q(s3, v3)
+              (s2, v2) => {
+                SymbExLogger.currentLog().markReachable(uidBranchPoint)
+                produceR(s2, sf, a1, pve, v2)(Q)
+              },
+              (s2, v2) => {
                 SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-                res1}),
-              (s2, v2) => produceR(s2, sf, a2, pve, v2)(Q))
+                SymbExLogger.currentLog().markReachable(uidBranchPoint)
+                produceR(s2, sf, a2, pve, v2)(Q)
+              })
           SymbExLogger.currentLog().collapseBranchPoint(uidBranchPoint)
           branch_res})
 

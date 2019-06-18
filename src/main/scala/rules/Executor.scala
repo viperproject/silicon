@@ -97,13 +97,15 @@ object executor extends ExecutionRules with Immutable {
     } else if (edges.length == 1) {
       follow(s, edges.head, v)(Q)
     } else {
-      val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(null)
-      val res = edges.foldLeft(Success(): VerificationResult) {
+      val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(null, edges.length)
+      val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
-        case (_, edge) => {
-          val edge_res = follow(s, edge, v)(Q)
-          SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-          edge_res
+        case (_, (edge, edgeIndex)) => {
+          if (edgeIndex != 0) {
+            SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+          }
+          SymbExLogger.currentLog().markReachable(uidBranchPoint)
+          follow(s, edge, v)(Q)
         }
       }
       SymbExLogger.currentLog().collapseBranchPoint(uidBranchPoint)
