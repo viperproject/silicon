@@ -194,20 +194,10 @@ object consumer extends ConsumptionRules with Immutable {
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) => {
           SymbExLogger.currentLog().collapse(imp, uidImplies)
-          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(impliesRecord, 2)
-          val branch_res =
-            branch(s1, t0, v1)(
-              (s2, v2) => {
-                SymbExLogger.currentLog().markReachable(uidBranchPoint)
-                consumeR(s2, h, a0, pve, v2)(Q)
-              },
-              (s2, v2) => {
-                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-                SymbExLogger.currentLog().markReachable(uidBranchPoint)
-                Q(s2, h, Unit, v2)
-              })
-          SymbExLogger.currentLog().collapseBranchPoint(uidBranchPoint)
-          branch_res})
+          branch(s1, t0, v1)(
+            (s2, v2) => consumeR(s2, h, a0, pve, v2)(Q),
+            (s2, v2) => Q(s2, h, Unit, v2))
+        })
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
@@ -215,20 +205,10 @@ object consumer extends ConsumptionRules with Immutable {
 
         eval(s, e0, pve, v)((s1, t0, v1) => {
           SymbExLogger.currentLog().collapse(ite, uidCondExp)
-          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(condExpRecord, 2)
-          val branch_res =
-            branch(s1, t0, v1)(
-              (s2, v2) => {
-                SymbExLogger.currentLog().markReachable(uidBranchPoint)
-                consumeR(s2, h, a1, pve, v2)(Q)
-              },
-              (s2, v2) => {
-                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-                SymbExLogger.currentLog().markReachable(uidBranchPoint)
-                consumeR(s2, h, a2, pve, v2)(Q)
-              })
-          SymbExLogger.currentLog().collapseBranchPoint(uidBranchPoint)
-          branch_res})
+          branch(s1, t0, v1)(
+            (s2, v2) => consumeR(s2, h, a1, pve, v2)(Q),
+            (s2, v2) => consumeR(s2, h, a2, pve, v2)(Q))
+        })
 
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.

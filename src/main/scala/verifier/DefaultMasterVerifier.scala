@@ -233,12 +233,11 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     SymbExLogger.writeJSFile()
     /** Write DOT-Representation of the log if the SymbExLogger is enabled */
     SymbExLogger.writeDotFile()
-    SymbExLogger.checkMemberList()
     SymbExLogger.checkPaths()
-    val genericNode = SymbExLogger.convertMemberList()
+    val genericNodes = SymbExLogger.convertMemberList()
     logger info SymbExLogger.toSimpleTreeString
-    SymbExLogger.writeChromeTraceFile(genericNode)
-    SymbExLogger.writeGenericNodeJsonFile(genericNode)
+    SymbExLogger.writeChromeTraceFile(genericNodes)
+    SymbExLogger.writeGenericNodeJsonFile(genericNodes)
     SymbExLogger.toTypeTreeString()
 
     (   functionVerificationResults

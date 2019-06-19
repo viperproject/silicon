@@ -25,18 +25,21 @@ class PathRenderer extends Renderer[SymbLog, List[MemberPath]] {
           val branchingResult = br.getBranches()
             .map(getPaths)
             .foldLeft(List[List[SymbolicRecord]]())((prevVal, curVal) => prevVal ++ curVal)
-          // extend res to the same number of paths
-          // insert each elem of branchingResult on a path
-          val branchingPaths = branchingResult.map(branchRes => {
-            if (keepBranchingRecords) {
-              res.last ++ List(br) ++ branchRes
-            } else {
-              res.last ++ branchRes
-            }
-          })
-          res = res.init ++ branchingPaths
+          // prepend each res to each branchingResult:
+          // res does not need to have length 1 e.g. in case of joining
+          res = res
+            .map(r => branchingResult
+              .map(branchRes => {
+                if (keepBranchingRecords) {
+                  r ++ List(br) ++ branchRes
+                } else {
+                  r ++ branchRes
+                }
+              }))
+            .foldLeft(List[List[SymbolicRecord]]())((prevVal, curVal) => prevVal ++ curVal)
         }
         case _ => {
+          // add it to all path in the current context:
           res = res.map(r => r :+ record)
         }
       }

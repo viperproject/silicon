@@ -12,8 +12,8 @@ import java.nio.file.{Files, Path, Paths}
 import logger.records.SymbolicRecord
 import logger.records.data.{DataRecord, FunctionRecord, MethodRecord, PredicateRecord}
 import logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
-import logger.records.structural.{BranchingRecord, JoiningRecord}
-import logger.renderer.{ExecTimeChecker, PathChecker, PathRenderer, SimpleTreeRenderer}
+import logger.records.structural.BranchingRecord
+import logger.renderer.{GenericNodeJsonRenderer, GenericNodeRenderer, PathChecker, PathRenderer, SimpleTreeRenderer}
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -90,11 +90,18 @@ import scala.annotation.elidable._
 object SymbExLogger {
   /** List of logged Method/Predicates/Functions. **/
   var memberList = List[SymbLog]()
+  private var uidCounter = 0
 
   var enabled = false
 
   /** Config of Silicon. Used by StateFormatters. **/
   private var config: Config = _
+
+  def freshUid(): Int = {
+    val uid = uidCounter
+    uidCounter = uidCounter + 1
+    uid
+  }
 
   /** Add a new log for a method, function or predicate (member).
     *
@@ -232,6 +239,7 @@ object SymbExLogger {
     */
   def reset() {
     memberList = List[SymbLog]()
+    uidCounter = 0
     unitTestEngine = null
     filePath = null
     config = null
@@ -239,10 +247,6 @@ object SymbExLogger {
 
   def resetMemberList() {
     memberList = List[SymbLog]()
-  }
-
-  def checkMemberList(): String = {
-    new ExecTimeChecker().render(memberList)
   }
 
   def checkPaths(): String = {
@@ -253,33 +257,28 @@ object SymbExLogger {
   /**
     * Converts memberList to a tree of GenericNodes
     */
-  def convertMemberList(): GenericNode = {
-    /*
+  def convertMemberList(): List[GenericNode] = {
     new GenericNodeRenderer().render(memberList)
-    */
-    null
   }
 
-  def writeChromeTraceFile(genericNode: GenericNode): Unit = {
+  def writeChromeTraceFile(nodes: List[GenericNode]): Unit = {
     /*
     if (config.writeTraceFile()) {
       val chromeTraceRenderer = new ChromeTraceRenderer()
-      val str = chromeTraceRenderer.render(List(genericNode))
+      val str = chromeTraceRenderer.render(nodes)
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "chromeTrace.json"))
       try pw.write(str) finally pw.close()
     }
      */
   }
 
-  def writeGenericNodeJsonFile(genericNode: GenericNode): Unit = {
-    /*
+  def writeGenericNodeJsonFile(nodes: List[GenericNode]): Unit = {
     if (config.writeTraceFile()) {
-      val jsonRenderer = new JsonRenderer()
-      val str = jsonRenderer.render(List(genericNode))
+      val jsonRenderer = new GenericNodeJsonRenderer()
+      val str = jsonRenderer.render(nodes)
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "genericNodes.json"))
       try pw.write(str) finally pw.close()
     }
-     */
   }
 }
 
@@ -296,7 +295,6 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 
   // Maps macros to their body
   private var _macros = Map[App, Term]()
-  private var uidCounter = 0
 
   var main = v match {
     case m: ast.Method => new MethodRecord(m, s, pcs)
@@ -305,12 +303,6 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     case default => null
   }
   insert(main)
-
-  private def freshUid(): Int = {
-    val uid = uidCounter
-    uidCounter = uidCounter + 1
-    uid
-  }
 
   private def appendLog(r: SymbolicRecord): Unit = {
     if (branchingStack.isEmpty) {
@@ -322,7 +314,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 
   @elidable(INFO)
   def insert(s: DataRecord): Int = {
-    s.id = freshUid()
+    s.id = SymbExLogger.freshUid()
     appendLog(s)
     val openRecord = new OpenScopeRecord(s)
     insert(openRecord)
@@ -331,16 +323,16 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 
   @elidable(INFO)
   def insert(s: ScopingRecord): Int = {
-    s.id = freshUid()
+    s.id = SymbExLogger.freshUid()
     s.timeMs = System.currentTimeMillis()
     appendLog(s)
     s.id
   }
 
   @elidable(INFO)
-  def insertBranchPoint(ref: DataRecord, possibleBranchesCount: Int): Int = {
-    val branchingRecord = new BranchingRecord(ref, possibleBranchesCount)
-    branchingRecord.id = freshUid()
+  def insertBranchPoint(possibleBranchesCount: Int): Int = {
+    val branchingRecord = new BranchingRecord(possibleBranchesCount)
+    branchingRecord.id = SymbExLogger.freshUid()
     appendLog(branchingRecord)
     branchingStack = branchingRecord :: branchingStack
     branchingRecord.id
@@ -351,9 +343,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     assert(branchingStack.nonEmpty)
     val branchingRecord = branchingStack.head
     assert(branchingRecord.id == uidBranchPoint)
-    // close current branch:
-    val closeRecord = new CloseScopeRecord(uidBranchPoint)
-    insert(closeRecord)
+    // no close scope is inserted because branches are not considered scopes
     branchingRecord.switchToNextBranch()
   }
 
@@ -365,16 +355,6 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     branchingRecord.markReachable()
   }
 
-  @elidable(INFO)
-  def insertJoinPoint(): Unit = {
-    assert(branchingStack.nonEmpty)
-    val branchingRecord = branchingStack.head
-    collapseBranchPoint(branchingRecord.id)
-    val joiningRecord = new JoiningRecord(branchingRecord)
-    joiningRecord.id = freshUid()
-    appendLog(joiningRecord)
-  }
-
   // TODO legacy
   @elidable(INFO)
   def collapse(v: ast.Node, n: Int): Unit = {
@@ -382,18 +362,13 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     insert(closeRecord)
   }
 
-  /**
-    * Only necessary in case no joining (i.e. call to insertJoinPoint) occurs
-    * @param uidBranchPoint
-    */
   @elidable(INFO)
   // TODO legacy
   def collapseBranchPoint(uidBranchPoint: Int): Unit = {
     assert(branchingStack.nonEmpty)
     val branchingRecord = branchingStack.head
     assert(branchingRecord.id == uidBranchPoint)
-    val closeRecord = new CloseScopeRecord(uidBranchPoint)
-    insert(closeRecord)
+    // no close scope is inserted because branches are not considered scopes
     branchingStack = branchingStack.tail
   }
 
@@ -439,10 +414,10 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 object NoopSymbLog extends SymbLog(null, null, null) {
   override def insert(s: DataRecord): Int = 0
   override def insert(s: ScopingRecord): Int = 0
-  override def insertBranchPoint(ref: DataRecord, possibleBranchesCount: Int): Int = 0
+  override def insertBranchPoint(possibleBranchesCount: Int): Int = 0
   override def switchToNextBranch(uidBranchPoint: Int): Unit = {}
-  override def insertJoinPoint(): Unit = {}
   override def collapse(v: ast.Node, n: Int): Unit = {}
+  override def collapseBranchPoint(uidBranchPoint: Int): Unit = {}
 }
 
 //===== Renderer Classes =====
@@ -926,7 +901,7 @@ class SingleMergeRecord(val destChunks: Seq[NonQuantifiedChunk], val newChunks: 
     }
   }
 }
-*/
+
 
 class GenericNode(val label: String) {
 
@@ -944,7 +919,7 @@ class GenericNode(val label: String) {
     label
   }
 }
-/*
+
 class GenericNodeRenderer extends Renderer[SymbLog, GenericNode] {
 
   def render(memberList: List[SymbLog]): GenericNode = {
@@ -1120,45 +1095,6 @@ class ChromeTraceRenderer extends Renderer[GenericNode, String] {
       JsonHelper.pair("ts", n.endTimeMs) + "}"
   }
 }
-
-class JsonRenderer extends Renderer[GenericNode, String] {
-  // visit all nodes and insert them into an array such that each node can be referenced by its index
-  var nodes: List[GenericNode] = List()
-
-  override def render(memberList: List[GenericNode]): String = {
-    memberList foreach buildHierarchy
-
-    val renderedMembers: Iterable[String] = nodes map renderMember
-    "[" + renderedMembers.mkString(",") + "]"
-  }
-
-  def buildHierarchy(n: GenericNode): Unit = {
-    // add node to list of all nodes:
-    if (!nodes.contains(n)) {
-      nodes = nodes ++ List(n)
-    }
-
-    n.children foreach buildHierarchy
-    n.successors foreach buildHierarchy
-  }
-
-  override def renderMember(n: GenericNode): String = {
-    val childrenIndices = n.children map nodes.indexOf
-    val successorsIndices = n.successors map nodes.indexOf
-    if (childrenIndices.contains(-1) || successorsIndices.contains(-1)) {
-      println("unresolved node found; skipping node " + n.toString())
-      return "{" + JsonHelper.pair("label", n.label) + "}"
-    }
-    "{" + JsonHelper.pair("id", nodes.indexOf(n)) + "," +
-      JsonHelper.pair("label", n.label) + "," +
-      JsonHelper.pair("isSmtQuery", n.isSmtQuery) + "," +
-      JsonHelper.pair("isSyntactic", n.isSyntactic) + "," +
-      JsonHelper.pair("startTimeMs", n.startTimeMs) + "," +
-      JsonHelper.pair("endTimeMs", n.endTimeMs) + "," +
-      JsonHelper.pair("children", childrenIndices) + "," +
-      JsonHelper.pair("successors", successorsIndices) + "}"
-  }
-}
 */
 
 /**
@@ -1295,12 +1231,6 @@ class SymbExLogUnitTest(f: Path) {
       if (pathCheckOutput != "") {
         testFailed = true
         errorMsg = errorMsg + "PathChecker: " + pathCheckOutput + "\n"
-      }
-
-      val execTimeOutput = SymbExLogger.checkMemberList()
-      if (execTimeOutput != "") {
-        testFailed = true
-        errorMsg = errorMsg + "ExecTimeChecker: " + execTimeOutput + "\n"
       }
 
       actualSource.close()

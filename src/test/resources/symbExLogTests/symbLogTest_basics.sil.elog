@@ -36,12 +36,11 @@ method m1
       evaluate v@4@01 ==> true
         implies v@4@01 ==> true
           evaluate v@4@01
-        Branch 1:
-          decider assume False
-          evaluate true
-        Branch 2:
-          comment: Unreachable
         Join
+          Branch 1:
+            decider assume False
+            evaluate true
+          Branch 2:
 
 method m2
   produce i == 1

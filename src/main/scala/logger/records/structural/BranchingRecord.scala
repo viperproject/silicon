@@ -1,9 +1,8 @@
 package logger.records.structural
 
 import logger.records.SymbolicRecord
-import logger.records.data.DataRecord
 
-class BranchingRecord(val ref: DataRecord, possibleBranchesCount: Int) extends StructuralRecord {
+class BranchingRecord(possibleBranchesCount: Int) extends StructuralRecord {
   type Log = (Boolean, List[SymbolicRecord])
   private var currentBranchIndex = 0
   private var branches: List[Log] = List.fill(possibleBranchesCount)((false, List[SymbolicRecord]()))
@@ -42,5 +41,13 @@ class BranchingRecord(val ref: DataRecord, possibleBranchesCount: Int) extends S
   def isReachable(branchIndex: Int): Boolean = {
     assert(branchIndex < branches.length)
     branches(branchIndex)._1
+  }
+
+  override def toTypeString(): String = {
+    "branching"
+  }
+
+  override def toSimpleString(): String = {
+    branches.length.toString
   }
 }

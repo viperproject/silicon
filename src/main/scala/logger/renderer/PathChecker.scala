@@ -3,8 +3,14 @@ package logger.renderer
 import logger.records.SymbolicRecord
 import logger.records.data.DataRecord
 import logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
-import logger.records.structural.BranchingRecord
 
+/**
+  * Checks whether the given paths respect the following properties:
+  * - each record has a unique id
+  * - each open scope record is preceded by a data record
+  * - each open scope record has a single close scope record
+  * - scopes are either contained in each other or beside each other (but not overlapping)
+  */
 class PathChecker extends Renderer[MemberPath, String] {
 
   def render(memberList: List[MemberPath]): String = {
@@ -27,35 +33,47 @@ class PathChecker extends Renderer[MemberPath, String] {
 
   def renderPath(path: List[SymbolicRecord]): List[String] = {
     var checks = List[String]()
-    // check if each open scope has a single corrsponding close record
-    // check if each branching record has a close scope record too
-    var currentScope = List[SymbolicRecord]()
+    checks = checks ++ checkIdUniqueness(path)
+    checks = checks ++ checkScopesExist(path)
+    checks = checks ++ checkScopeClosings(path)
+    checks = checks ++ checkScopeNesting(path)
+    checks
+  }
+
+  // checks: - each record has a unique id
+  private def checkIdUniqueness(path: List[SymbolicRecord]): List[String] = {
+    var checks = List[String]()
+    var ids = List[Int]()
 
     for (record <- path) {
-      record match {
-        case dr: DataRecord => {
-          if (countRecord(currentScope, dr.id) != 0) {
-            checks = checks :+ "id " + dr.id + " already exists in the current scope"
+      if (ids.contains(record.id)) {
+        checks = checks :+ "id " + record.id + " is not unique"
+      } else {
+        ids = ids :+ record.id
+      }
+    }
+
+    checks
+  }
+
+  // checks: - each open scope record is preceded by a data record
+  private def checkScopesExist(path: List[SymbolicRecord]): List[String] = {
+    var checks = List[String]()
+
+    for (index <- path.indices) {
+      val currentRecord = path(index)
+      val prevRecord = if (index - 1 >= 0) path(index - 1) else null
+
+      currentRecord match {
+        case os: OpenScopeRecord =>
+          prevRecord match {
+            case dr: DataRecord =>
+              if (os.refId != dr.id) {
+                checks = checks :+ "record " + dr.id + " is followed by a open scope record with invalid refId"
+              }
+            case _ =>
+              checks = checks :+ "open scope record " + os.id + " has no preceeding data record"
           }
-          currentScope = currentScope :+ dr
-        }
-        case br: BranchingRecord => {
-          if (countRecord(currentScope, br.id) != 0) {
-            checks = checks :+ "id " + br.id + " already exists in the current scope"
-          }
-          currentScope = currentScope :+ br
-        }
-        case os: OpenScopeRecord => {
-          if (countRecord(currentScope, os.refId) != 1) {
-            checks = checks :+ "refId " + os.refId + " not found for open scope record"
-          }
-        }
-        case cs: CloseScopeRecord => {
-          if (countRecord(currentScope, cs.refId) != 1) {
-            checks = checks :+ "refId " + cs.refId + " not found for close scope record"
-          }
-          currentScope = removeRecord(currentScope, cs.refId)
-        }
         case _ =>
       }
     }
@@ -63,23 +81,49 @@ class PathChecker extends Renderer[MemberPath, String] {
     checks
   }
 
-  private def countRecord(scope: List[SymbolicRecord], id: Int): Int = {
-    var res = 0
-    for (record <- scope) {
-      if (record.id == id) {
-        res = res + 1
+  // checks: - each open scope record has a single close scope record
+  private def checkScopeClosings(path: List[SymbolicRecord]): List[String] = {
+    var checks = List[String]()
+    var scopes = List[OpenScopeRecord]()
+
+    for (record <- path) {
+      record match {
+        case os: OpenScopeRecord => scopes = scopes :+ os
+        case cs: CloseScopeRecord =>
+          val oldScopesCount = scopes.length
+          scopes = scopes.filterNot(scope => cs.refId == scope.refId)
+          val newScopesCount = scopes.length
+          if (newScopesCount == oldScopesCount) {
+            checks = checks :+ "close scope " + cs.id + " has no matching open scope record"
+          } else if (newScopesCount < oldScopesCount - 1) {
+            checks = checks :+ "close scope " + cs.id + " has more than one open scope record"
+          }
+        case _ =>
       }
     }
-    res
+
+    checks
   }
 
-  private def removeRecord(scope: List[SymbolicRecord], id: Int): List[SymbolicRecord] = {
-    var res = List[SymbolicRecord]()
-    for (record <- scope) {
-      if (record.id != id) {
-        res = res :+ record
+  // checks: - scopes are either contained in each other or beside each other (but not overlapping)
+  private def checkScopeNesting(path: List[SymbolicRecord]): List[String] = {
+    var checks = List[String]()
+    var scopeStack = List[OpenScopeRecord]()
+
+    for (record <- path) {
+      record match {
+        case os: OpenScopeRecord => scopeStack = os :: scopeStack
+        case cs: CloseScopeRecord =>
+          val topScope = scopeStack.head
+          if (topScope.refId != cs.refId) {
+            checks = checks :+ "scope with refId " + cs.refId + " violates nesting (top refId" + topScope.refId + ")"
+          } else {
+            scopeStack = scopeStack.tail
+          }
+        case _ =>
       }
     }
-    res
+
+    checks
   }
 }

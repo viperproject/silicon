@@ -19,9 +19,7 @@ trait DataRecord extends SymbolicRecord {
     toTypeString() + " " + toSimpleString()
   }
 
-  def toTypeString(): String
-
-  def toSimpleString(): String = {
+  override def toSimpleString(): String = {
     if (value != null) value.toString()
     else "null"
   }
