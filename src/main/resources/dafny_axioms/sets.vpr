@@ -93,7 +93,7 @@ domain $Set[E] {
   // }   
 
   axiom in_intersection_in_both {
-    forall s1: $Set[E], s2: $Set[E], e: E :: {Set_in(e, Set_intersection(s1, s2))}
+    forall s1: $Set[E], s2: $Set[E], e: E :: {Set_in(e, Set_intersection(s1, s2))} {Set_intersection(s1, s2), Set_in(e, s1)} {Set_intersection(s1, s2), Set_in(e, s2)}
            Set_in(e, Set_intersection(s1, s2))
       <==> Set_in(e, s1) && Set_in(e, s2)
   } 
