@@ -302,11 +302,12 @@ object executor extends ExecutionRules with Immutable {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
-            val id = BasicChunkIdentifier(field.name)
+            val resource = fa.res(Verifier.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            chunkSupporter.consume(s2, s2.h, id, Seq(tRcvr), FullPerm(), ve, v2, description)((s3, h3, _, v3) => {
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm(), ve, v2, description)((s3, h3, _, v3) => {
               val tSnap = ssaifyRhs(tRhs, field.name, field.typ, v3)
+              val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm())
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) =>
                 Q(s4.copy(h = h4), v4))
