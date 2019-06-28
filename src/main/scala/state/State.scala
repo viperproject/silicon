@@ -96,8 +96,11 @@ final case class State(g: Store = Store(),
   def preserveAfterLocalEvaluation(post: State): State =
     State.preserveAfterLocalEvaluation(this, post)
 
+  def functionRecorderQuantifiedVariables(): Seq[Var] =
+    functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+
   def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[Var] = (
-       functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+       functionRecorderQuantifiedVariables()
     ++ quantifiedVariables.filter(filterPredicate)
   )
 

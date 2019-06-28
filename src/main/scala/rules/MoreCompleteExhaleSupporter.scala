@@ -25,7 +25,7 @@ object moreCompleteExhaleSupporter extends Immutable {
                         resource: ast.Resource,
                         args: Seq[Term],
                         v: Verifier)
-                       : (Var, Seq[Term], Term) = {
+                       : (App, Seq[Term], Term) = {
 
     val sort: Sort =
       resource match {
@@ -34,22 +34,24 @@ object moreCompleteExhaleSupporter extends Immutable {
         case _: ast.MagicWand => sorts.Snap
       }
 
-    val summarisingSnapshot = v.decider.fresh(sort)
-    var summarisingSnapshotDefinition: Seq[Term] = Vector.empty
+//    val summarisingSnapshot = v.decider.fresh(sort)
+//    val summarisingSnapshot = v.decider.appliedFresh("ss", sort, s.relevantQuantifiedVariables)
+    val summarisingSnapshot = v.decider.appliedFresh("ss", sort, s.functionRecorderQuantifiedVariables())
+    var summarisingSnapshotDefinitions: Seq[Term] = Vector.empty
     var permissionSum: Term = NoPerm()
 
     relevantChunks.foreach(ch => {
       val argumentEqualities =
         And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
 
-      summarisingSnapshotDefinition :+=
+      summarisingSnapshotDefinitions :+=
         Implies(And(argumentEqualities, IsPositive(ch.perm)), summarisingSnapshot === ch.snap)
 
       permissionSum =
         PermPlus(permissionSum, Ite(argumentEqualities, ch.perm, NoPerm()))
     })
 
-    (summarisingSnapshot, summarisingSnapshotDefinition, permissionSum)
+    (summarisingSnapshot, summarisingSnapshotDefinitions, permissionSum)
   }
 
   def lookupComplete(s: State,
@@ -71,12 +73,12 @@ object moreCompleteExhaleSupporter extends Immutable {
         Failure(ve).withLoad(args)
       }
     } else {
-      val (snap, snapDef, pSum) = summarise(s, relevantChunks, resource, args, v)
+      val (snap, snapDefs, pSum) = summarise(s, relevantChunks, resource, args, v)
 
       v.decider.assert(IsPositive(pSum)) {
         case true =>
-          v.decider.assume(And(snapDef))
-          val fr1 = s.functionRecorder.recordFreshSnapshot(snap.applicable)
+          v.decider.assume(And(snapDefs))
+          val fr1 = s.functionRecorder.recordFvfAndDomain(SnapshotMapDefinition(resource, snap, snapDefs, Seq.empty))
           val s1 = s.copy(functionRecorder = fr1)
           Q(s1, snap, v)
         case false =>
@@ -157,13 +159,15 @@ object moreCompleteExhaleSupporter extends Immutable {
 
       val newHeap = Heap(allChunks)
       val (snap, snapDefs, _) = summarise(s, relevantChunks, resource, args, v)
+      val fr1 = s.functionRecorder.recordFvfAndDomain(SnapshotMapDefinition(resource, snap, snapDefs, Seq.empty))
+      val s1 = s.copy(functionRecorder = fr1)
 
       if (!moreNeeded) {
         if (!consumeExact) {
           v.decider.assume(PermLess(perms, pSum))
         }
         v.decider.assume(And(snapDefs))
-        Q(s, newHeap, Some(snap), v)
+        Q(s1, newHeap, Some(snap), v)
       } else {
         val toAssert = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
         v.decider.assert(toAssert) {
@@ -172,7 +176,7 @@ object moreCompleteExhaleSupporter extends Immutable {
               v.decider.assume(PermLess(perms, pSum))
             }
             v.decider.assume(And(snapDefs))
-            Q(s, newHeap, Some(snap), v)
+            Q(s1, newHeap, Some(snap), v)
           case false =>
             Failure(ve).withLoad(args)
         }

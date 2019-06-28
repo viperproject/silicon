@@ -1,0 +1,15 @@
+field f: Int
+field g: Int
+field h: Ref
+
+function fun0(x: Ref): Int
+  requires acc(x.h) && acc(x.h.g)
+{  x.h.g }
+
+predicate Q(x: Ref) {
+  acc(x.f) && acc(x.h) && (x.h != null ==> acc(x.h.g))
+}
+
+function fun5(x: Ref): Int
+  requires acc(Q(x))
+{ unfolding acc(Q(x)) in x.f + (x.h == null ? 0 : x.h.g) }
