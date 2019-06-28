@@ -259,13 +259,13 @@ object producer extends ProductionRules with Immutable {
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
             val snap = sf(v2.symbolConverter.toSort(field.typ), v2)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
-            if (s.qpFields.contains(field)) {
+            if (s2.qpFields.contains(field)) {
               val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
               quantifiedChunkSupporter.produceSingleLocation(s2, field, Seq(`?r`), Seq(tRcvr), snap, gain, trigger, v2)(Q)
             } else {
               val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, gain)
-              chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
-                Q(s1.copy(h = h1), v1))
+              chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) =>
+                Q(s3.copy(h = h3), v3))
             }}))
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
