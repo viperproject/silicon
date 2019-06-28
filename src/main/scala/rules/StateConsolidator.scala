@@ -26,6 +26,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   def consolidate(s: State, v: Verifier): State = {
     if (Verifier.config.enableMoreCompleteExhale())
       return s
+
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)
 
@@ -94,8 +95,14 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     (fr2, Heap(mergedChunks ++ otherChunks ++ newOtherChunk))
   }
 
-  private def singleMerge(fr: FunctionRecorder, destChunks: Seq[NonQuantifiedChunk], newChunks: Seq[NonQuantifiedChunk], v: Verifier)
-  : (FunctionRecorder, Seq[NonQuantifiedChunk], Seq[NonQuantifiedChunk], InsertionOrderedSet[Term]) = {
+  private def singleMerge(fr: FunctionRecorder,
+                          destChunks: Seq[NonQuantifiedChunk],
+                          newChunks: Seq[NonQuantifiedChunk],
+                          v: Verifier)
+                         : (FunctionRecorder,
+                            Seq[NonQuantifiedChunk],
+                            Seq[NonQuantifiedChunk],
+                            InsertionOrderedSet[Term]) = {
 
     // bookkeeper.heapMergeIterations += 1
 

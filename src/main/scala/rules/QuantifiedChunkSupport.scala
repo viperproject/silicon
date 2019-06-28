@@ -533,9 +533,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     s.smCache.get(resource, relevantChunks, optSmDomainDefinitionCondition) match {
       case Some((smDef, _)) if !s.exhaleExt =>
-        /* The commented code is kept in case it ever becomes necessary to re-assume cached
-         * snapshot map definitions. Compare with the code in the other case before using it!
-         */
         if (s.smDomainNeeded) {
           optQVarsInstantiations match {
             case None =>
