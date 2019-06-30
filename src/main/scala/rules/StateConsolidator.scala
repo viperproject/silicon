@@ -24,8 +24,14 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
 
 object stateConsolidator extends StateConsolidationRules with Immutable {
   def consolidate(s: State, v: Verifier): State = {
-    if (Verifier.config.enableMoreCompleteExhale())
+    if (Verifier.config.enableMoreCompleteExhale()) {
+      if (s.retrying) {
+        /* NOTE: Doing this regardless of s.retrying might improve completeness in certain (rare) cases */
+        moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds(s, s.h, v)
+      }
+
       return s
+    }
 
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)

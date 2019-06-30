@@ -7,10 +7,10 @@
 package viper.silicon.rules
 
 import scala.collection.mutable.ListBuffer
-import viper.silicon.SymbExLogger
+import viper.silicon.{MList, MMap, SymbExLogger}
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, Success, VerificationResult}
-import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
+import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.rules.chunkSupporter.findChunksWithID
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -66,7 +66,7 @@ object moreCompleteExhaleSupporter extends Immutable {
     val (snap, snapDefs, permSum) = summariseOnly(s, relevantChunks, resource, args, v)
 
     v.decider.assume(And(snapDefs))
-    v.decider.assume(PermAtMost(permSum, FullPerm()))
+//    v.decider.assume(PermAtMost(permSum, FullPerm())) /* Done in StateConsolidator instead */
 
     val fr1 = s.functionRecorder.recordFvfAndDomain(SnapshotMapDefinition(resource, snap, snapDefs, Seq.empty))
     val s1 = s.copy(functionRecorder = fr1)
@@ -230,6 +230,34 @@ object moreCompleteExhaleSupporter extends Immutable {
               Failure(ve).withLoad(args)
           }
         })
+    }
+  }
+
+  private val freeReceiver = terms.predef.`?r`
+
+  def assumeFieldPermissionUpperBounds(s: State, h: Heap, v: Verifier): Unit = {
+    // TODO: Instead of "manually" assuming such upper bounds, appropriate PropertyInterpreters
+    //       should be used, see StateConsolidator
+    val relevantChunksPerField = MMap.empty[String, MList[BasicChunk]]
+
+    h.values foreach {
+      case ch: BasicChunk if ch.resourceID == FieldID =>
+        val relevantChunks = relevantChunksPerField.getOrElseUpdate(ch.id.name, MList.empty)
+        relevantChunks += ch
+      case _ => /* Ignore */
+    }
+
+    relevantChunksPerField foreach { case (_, relevantChunks) =>
+      val permissionSum =
+        relevantChunks.foldLeft(NoPerm(): Term) { case (permSum, chunk) =>
+          val eq = freeReceiver === chunk.args.head /* For field chunks, the receiver is the only argument */
+          PermPlus(permSum, Ite(eq, chunk.perm, NoPerm()))
+        }
+
+      relevantChunks foreach (chunk => {
+        val instantiatedPermSum = permissionSum.replace(freeReceiver, chunk.args.head)
+        v.decider.assume(PermAtMost(instantiatedPermSum, FullPerm()))
+      })
     }
   }
 }
