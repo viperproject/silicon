@@ -1,0 +1,8 @@
+field f: Int
+
+method test(x: Ref, y: Ref, z: Ref) {
+  inhale acc(x.f) && acc(y.f)
+  inhale z == x || z == y
+  assert acc(z.f)
+  z.f := 123
+}

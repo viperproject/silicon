@@ -21,12 +21,19 @@ import viper.silver.ast
 import viper.silver.verifier.VerificationError
 
 object moreCompleteExhaleSupporter extends Immutable {
+  sealed trait TaggedSummarisingSnapshot {
+    def snapshot: Term
+  }
+
+  final case class FreshSummarisingSnapshot(snapshot: Term) extends TaggedSummarisingSnapshot
+  final case class ReusedSummarisingSnapshot(snapshot: Term) extends TaggedSummarisingSnapshot
+
   private def summariseOnly(s: State,
                             relevantChunks: Seq[NonQuantifiedChunk],
                             resource: ast.Resource,
                             args: Seq[Term],
                             v: Verifier)
-                           : (App, Seq[Term], Term) = {
+                           : (TaggedSummarisingSnapshot, Seq[Term], Term) = {
 
     val sort: Sort =
       resource match {
@@ -35,9 +42,7 @@ object moreCompleteExhaleSupporter extends Immutable {
         case _: ast.MagicWand => sorts.Snap
       }
 
-//    val summarisingSnapshot = v.decider.fresh(sort)
-//    val summarisingSnapshot = v.decider.appliedFresh("ss", sort, s.relevantQuantifiedVariables)
-    val summarisingSnapshot = v.decider.appliedFresh("ss", sort, s.functionRecorderQuantifiedVariables())
+    val `?s` = Var(Identifier("?s"), sort)
     var summarisingSnapshotDefinitions: Seq[Term] = Vector.empty
     var permissionSum: Term = NoPerm()
 
@@ -46,13 +51,28 @@ object moreCompleteExhaleSupporter extends Immutable {
         And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
 
       summarisingSnapshotDefinitions :+=
-        Implies(And(argumentEqualities, IsPositive(ch.perm)), summarisingSnapshot === ch.snap)
+        Implies(And(argumentEqualities, IsPositive(ch.perm)), `?s` === ch.snap)
 
       permissionSum =
         PermPlus(permissionSum, Ite(argumentEqualities, ch.perm, NoPerm()))
     })
 
-    (summarisingSnapshot, summarisingSnapshotDefinitions, permissionSum)
+    val taggedSummarisingSnapshot =
+      summarisingSnapshotDefinitions
+        .collectFirst {
+          case Equals(`?s`, snap) => ReusedSummarisingSnapshot(snap)
+        }.getOrElse({
+          // val ss = v.decider.appliedFresh("ss", sort, s.relevantQuantifiedVariables)
+          val ss = v.decider.appliedFresh("ss", sort, s.functionRecorderQuantifiedVariables())
+          FreshSummarisingSnapshot(ss)
+        })
+
+    val summarisingSnapshot = taggedSummarisingSnapshot.snapshot
+
+    summarisingSnapshotDefinitions =
+      summarisingSnapshotDefinitions map (_.replace(`?s`, summarisingSnapshot))
+
+    (taggedSummarisingSnapshot, summarisingSnapshotDefinitions, permissionSum)
   }
 
   private def summarise(s: State,
@@ -60,18 +80,26 @@ object moreCompleteExhaleSupporter extends Immutable {
                         resource: ast.Resource,
                         args: Seq[Term],
                         v: Verifier)
-                       (Q: (State, App, Seq[Term], Term, Verifier) => VerificationResult)
+                       (Q: (State, Term, Seq[Term], Term, Verifier) => VerificationResult)
                        : VerificationResult = {
 
-    val (snap, snapDefs, permSum) = summariseOnly(s, relevantChunks, resource, args, v)
+    val (taggedSnap, snapDefs, permSum) = summariseOnly(s, relevantChunks, resource, args, v)
 
     v.decider.assume(And(snapDefs))
 //    v.decider.assume(PermAtMost(permSum, FullPerm())) /* Done in StateConsolidator instead */
 
-    val fr1 = s.functionRecorder.recordFvfAndDomain(SnapshotMapDefinition(resource, snap, snapDefs, Seq.empty))
-    val s1 = s.copy(functionRecorder = fr1)
+    val s1 =
+      taggedSnap match {
+        case _: FreshSummarisingSnapshot =>
+          val smd = SnapshotMapDefinition(resource, taggedSnap.snapshot, snapDefs, Seq.empty)
+          val fr1 = s.functionRecorder.recordFvfAndDomain(smd)
 
-    Q(s1, snap, snapDefs, permSum, v)
+          s.copy(functionRecorder = fr1)
+        case _ =>
+          s
+      }
+
+    Q(s1, taggedSnap.snapshot, snapDefs, permSum, v)
   }
 
   def lookupComplete(s: State,
@@ -233,7 +261,7 @@ object moreCompleteExhaleSupporter extends Immutable {
     }
   }
 
-  private val freeReceiver = terms.predef.`?r`
+  private val freeReceiver = Var(Identifier("?rcvr"), sorts.Ref)
 
   def assumeFieldPermissionUpperBounds(s: State, h: Heap, v: Verifier): Unit = {
     // TODO: Instead of "manually" assuming such upper bounds, appropriate PropertyInterpreters
