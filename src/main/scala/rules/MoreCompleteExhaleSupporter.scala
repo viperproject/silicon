@@ -21,12 +21,12 @@ import viper.silver.ast
 import viper.silver.verifier.VerificationError
 
 object moreCompleteExhaleSupporter extends Immutable {
-  private def summarise(s: State,
-                        relevantChunks: Seq[NonQuantifiedChunk],
-                        resource: ast.Resource,
-                        args: Seq[Term],
-                        v: Verifier)
-                       : (App, Seq[Term], Term) = {
+  private def summariseOnly(s: State,
+                            relevantChunks: Seq[NonQuantifiedChunk],
+                            resource: ast.Resource,
+                            args: Seq[Term],
+                            v: Verifier)
+                           : (App, Seq[Term], Term) = {
 
     val sort: Sort =
       resource match {
@@ -55,6 +55,25 @@ object moreCompleteExhaleSupporter extends Immutable {
     (summarisingSnapshot, summarisingSnapshotDefinitions, permissionSum)
   }
 
+  private def summarise(s: State,
+                        relevantChunks: Seq[NonQuantifiedChunk],
+                        resource: ast.Resource,
+                        args: Seq[Term],
+                        v: Verifier)
+                       (Q: (State, App, Seq[Term], Term, Verifier) => VerificationResult)
+                       : VerificationResult = {
+
+    val (snap, snapDefs, permSum) = summariseOnly(s, relevantChunks, resource, args, v)
+
+    v.decider.assume(And(snapDefs))
+    v.decider.assume(PermAtMost(permSum, FullPerm()))
+
+    val fr1 = s.functionRecorder.recordFvfAndDomain(SnapshotMapDefinition(resource, snap, snapDefs, Seq.empty))
+    val s1 = s.copy(functionRecorder = fr1)
+
+    Q(s1, snap, snapDefs, permSum, v)
+  }
+
   def lookupComplete(s: State,
                      h: Heap,
                      resource: ast.Resource,
@@ -74,17 +93,13 @@ object moreCompleteExhaleSupporter extends Immutable {
         Failure(ve).withLoad(args)
       }
     } else {
-      val (snap, snapDefs, pSum) = summarise(s, relevantChunks, resource, args, v)
-
-      v.decider.assert(IsPositive(pSum)) {
-        case true =>
-          v.decider.assume(And(snapDefs))
-          val fr1 = s.functionRecorder.recordFvfAndDomain(SnapshotMapDefinition(resource, snap, snapDefs, Seq.empty))
-          val s1 = s.copy(functionRecorder = fr1)
-          Q(s1, snap, v)
-        case false =>
-          Failure(ve).withLoad(args)
-      }
+      summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
+        v.decider.assert(IsPositive(permSum)) {
+          case true =>
+            Q(s1, snap, v1)
+          case false =>
+            Failure(ve).withLoad(args)
+        })
     }
   }
 
@@ -115,20 +130,15 @@ object moreCompleteExhaleSupporter extends Immutable {
                                               : VerificationResult = {
 
     val id = ChunkIdentifier(resource, Verifier.program)
-    val relevantChunks: Vector[NonQuantifiedChunk] =
-      h.values.collect({ case c: NonQuantifiedChunk if id == c.id => c })(collection.breakOut)
+    val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
-    val (snap, snapDefs, permSum) = summarise(s, relevantChunks, resource, args, v)
-    v.decider.assume(And(snapDefs))
-    val fr1 = s.functionRecorder.recordFvfAndDomain(SnapshotMapDefinition(resource, snap, snapDefs, Seq.empty))
-    val s1 = s.copy(functionRecorder = fr1)
-
-    v.decider.assert(IsPositive(permSum)) {
-      case true =>
-        Q(s1, h, Some(snap), v)
-      case false =>
-        Failure(ve).withLoad(args)
-    }
+    summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
+      v.decider.assert(IsPositive(permSum)) {
+        case true =>
+          Q(s1, h, Some(snap), v1)
+        case false =>
+          Failure(ve).withLoad(args)
+      })
   }
 
   private def actualConsumeComplete(s: State,
@@ -200,31 +210,26 @@ object moreCompleteExhaleSupporter extends Immutable {
         val resource = Resources.resourceDescriptions(ch.resourceID)
         v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
       }
-
       val newHeap = Heap(allChunks)
-      val (snap, snapDefs, _) = summarise(s, relevantChunks, resource, args, v)
-      val fr1 = s.functionRecorder.recordFvfAndDomain(SnapshotMapDefinition(resource, snap, snapDefs, Seq.empty))
-      val s1 = s.copy(functionRecorder = fr1)
 
-      if (!moreNeeded) {
-        if (!consumeExact) {
-          v.decider.assume(PermLess(perms, pSum))
-        }
-        v.decider.assume(And(snapDefs))
-        Q(s1, newHeap, Some(snap), v)
-      } else {
-        val toAssert = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
-        v.decider.assert(toAssert) {
-          case true =>
-            if (!consumeExact) {
-              v.decider.assume(PermLess(perms, pSum))
-            }
-            v.decider.assume(And(snapDefs))
-            Q(s1, newHeap, Some(snap), v)
-          case false =>
-            Failure(ve).withLoad(args)
-        }
-      }
+      summarise(s, relevantChunks, resource, args, v)((s1, snap, _, _, v1) =>
+        if (!moreNeeded) {
+          if (!consumeExact) {
+            v1.decider.assume(PermLess(perms, pSum))
+          }
+          Q(s1, newHeap, Some(snap), v1)
+        } else {
+          val toAssert = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
+          v1.decider.assert(toAssert) {
+            case true =>
+              if (!consumeExact) {
+                v1.decider.assume(PermLess(perms, pSum))
+              }
+              Q(s1, newHeap, Some(snap), v1)
+            case false =>
+              Failure(ve).withLoad(args)
+          }
+        })
     }
   }
 }
