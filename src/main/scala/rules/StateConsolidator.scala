@@ -25,8 +25,17 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
 object stateConsolidator extends StateConsolidationRules with Immutable {
   def consolidate(s: State, v: Verifier): State = {
     if (Verifier.config.enableMoreCompleteExhale()) {
+      // TODO: Skipping most of what the regular state consolidation performs results in
+      //       incompletenesses. E.g. when using quantified permissions, the state consolidation
+      //       will, among other things, assume non-aliasing for receivers of *singleton quantified
+      //       field chunks* whose permissions would sum up to more than full permission.
+      //       This, e.g. causes method test15 from test
+      //       silver\src\test\resources\quantifiedpermissions\sets\generalised_shape.sil
+      //       to fail.
+
       if (s.retrying) {
-        /* NOTE: Doing this regardless of s.retrying might improve completeness in certain (rare) cases */
+        // TODO: apply to all heaps (s.h +: s.reserveHeaps, as done below)
+        // NOTE: Doing this regardless of s.retrying might improve completeness in certain (rare) cases
         moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds(s, s.h, v)
       }
 
