@@ -15,6 +15,7 @@ import viper.silicon.rules.chunkSupporter.findChunksWithID
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
+import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.VerificationError
@@ -96,6 +97,49 @@ object moreCompleteExhaleSupporter extends Immutable {
                       v: Verifier)
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
+
+    if (s.functionRecorder == NoopFunctionRecorder && !s.hackIssue387DisablePermissionConsumption)
+      actualConsumeComplete(s, h, resource, args, perms, ve, v)(Q)
+    else
+      summariseHeapAndAssertReadAccess(s, h, resource, args, perms, ve, v)(Q)
+  }
+
+  private def summariseHeapAndAssertReadAccess(s: State,
+                                               h: Heap,
+                                               resource: ast.Resource,
+                                               args: Seq[Term],
+                                               perms: Term,
+                                               ve: VerificationError,
+                                               v: Verifier)
+                                              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
+                                              : VerificationResult = {
+
+    val id = ChunkIdentifier(resource, Verifier.program)
+    val relevantChunks: Vector[NonQuantifiedChunk] =
+      h.values.collect({ case c: NonQuantifiedChunk if id == c.id => c })(collection.breakOut)
+
+    val (snap, snapDefs, permSum) = summarise(s, relevantChunks, resource, args, v)
+    v.decider.assume(And(snapDefs))
+    val fr1 = s.functionRecorder.recordFvfAndDomain(SnapshotMapDefinition(resource, snap, snapDefs, Seq.empty))
+    val s1 = s.copy(functionRecorder = fr1)
+
+    v.decider.assert(IsPositive(permSum)) {
+      case true =>
+        Q(s1, h, Some(snap), v)
+      case false =>
+        Failure(ve).withLoad(args)
+    }
+  }
+
+  private def actualConsumeComplete(s: State,
+                                    h: Heap,
+                                    resource: ast.Resource,
+                                    args: Seq[Term],
+                                    perms: Term,
+                                    ve: VerificationError,
+                                    v: Verifier)
+                                   (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
+                                   : VerificationResult = {
 
     val id = ChunkIdentifier(resource, Verifier.program)
     val relevantChunks = ListBuffer[NonQuantifiedChunk]()

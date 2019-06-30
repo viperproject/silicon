@@ -52,6 +52,8 @@ final case class State(g: Store = Store(),
                        heuristicsDepth: Int = 0,
                        triggerAction: AnyRef = null,
 
+                       hackIssue387DisablePermissionConsumption: Boolean = false,
+
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
                        qpMagicWands: InsertionOrderedSet[MagicWandIdentifier] = InsertionOrderedSet.empty,
@@ -141,6 +143,7 @@ object State {
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
+                 hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1) =>
 
@@ -162,6 +165,7 @@ object State {
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
+                     `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`) =>
 
