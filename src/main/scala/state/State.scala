@@ -52,6 +52,7 @@ final case class State(g: Store = Store(),
                        heuristicsDepth: Int = 0,
                        triggerAction: AnyRef = null,
 
+                       ssCache: SsCache = Map.empty,
                        hackIssue387DisablePermissionConsumption: Boolean = false,
 
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
@@ -143,7 +144,7 @@ object State {
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
-                 hackIssue387DisablePermissionConsumption1,
+                 ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1) =>
 
@@ -165,7 +166,7 @@ object State {
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
-                     `hackIssue387DisablePermissionConsumption1`,
+                     ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`) =>
 
@@ -177,10 +178,13 @@ object State {
             val smCache3 = smCache1.union(smCache2)
             val pmCache3 = pmCache1 ++ pmCache2
 
+            val ssCache3 = ssCache1 ++ ssCache2
+
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
                     constrainableARPs = constrainableARPs3,
+                    ssCache = ssCache3,
                     smCache = smCache3,
                     pmCache = pmCache3)
 

@@ -33,7 +33,22 @@ object moreCompleteExhaleSupporter extends Immutable {
                             resource: ast.Resource,
                             args: Seq[Term],
                             v: Verifier)
-                           : (TaggedSummarisingSnapshot, Seq[Term], Term) = {
+                           : (State, TaggedSummarisingSnapshot, Seq[Term], Term) = {
+
+    // TODO: Since relevantChunks is a sequence, the order of the chunks affects caching, but shouldn't.
+    //       An order-agnostic way of caching, would be better. A simple benchmark should reveal how
+    //       many cache misses are due to order changes.
+
+    // TODO: Caching would be more effective if the summary were created independently of the provided
+    //       args. E.g. the summary could be created with free arguments ?a1, ?a2, ...; this summary
+    //       could be cached, and ?a1 etc. would be replaced before returning the summary to the caller.
+
+    s.ssCache.get((resource, relevantChunks, args)) match {
+      case Some((_taggedSummarisingSnapshot, _summarisingSnapshotDefinitions, _permissionSum)) =>
+        return (s, _taggedSummarisingSnapshot, _summarisingSnapshotDefinitions, _permissionSum)
+      case _ =>
+        /* Cache miss */
+    }
 
     val sort: Sort =
       resource match {
@@ -72,7 +87,10 @@ object moreCompleteExhaleSupporter extends Immutable {
     summarisingSnapshotDefinitions =
       summarisingSnapshotDefinitions map (_.replace(`?s`, summarisingSnapshot))
 
-    (taggedSummarisingSnapshot, summarisingSnapshotDefinitions, permissionSum)
+    val ssc1 = s.ssCache + ((resource, relevantChunks, args) -> (taggedSummarisingSnapshot, summarisingSnapshotDefinitions, permissionSum))
+    val s1 = s.copy(ssCache = ssc1)
+
+    (s1, taggedSummarisingSnapshot, summarisingSnapshotDefinitions, permissionSum)
   }
 
   private def summarise(s: State,
@@ -83,23 +101,23 @@ object moreCompleteExhaleSupporter extends Immutable {
                        (Q: (State, Term, Seq[Term], Term, Verifier) => VerificationResult)
                        : VerificationResult = {
 
-    val (taggedSnap, snapDefs, permSum) = summariseOnly(s, relevantChunks, resource, args, v)
+    val (s1, taggedSnap, snapDefs, permSum) = summariseOnly(s, relevantChunks, resource, args, v)
 
     v.decider.assume(And(snapDefs))
 //    v.decider.assume(PermAtMost(permSum, FullPerm())) /* Done in StateConsolidator instead */
 
-    val s1 =
+    val s2 =
       taggedSnap match {
         case _: FreshSummarisingSnapshot =>
           val smd = SnapshotMapDefinition(resource, taggedSnap.snapshot, snapDefs, Seq.empty)
-          val fr1 = s.functionRecorder.recordFvfAndDomain(smd)
+          val fr2 = s1.functionRecorder.recordFvfAndDomain(smd)
 
-          s.copy(functionRecorder = fr1)
+          s1.copy(functionRecorder = fr2)
         case _ =>
-          s
+          s1
       }
 
-    Q(s1, taggedSnap.snapshot, snapDefs, permSum, v)
+    Q(s2, taggedSnap.snapshot, snapDefs, permSum, v)
   }
 
   def lookupComplete(s: State,
@@ -267,6 +285,8 @@ object moreCompleteExhaleSupporter extends Immutable {
     // TODO: Instead of "manually" assuming such upper bounds, appropriate PropertyInterpreters
     //       should be used, see StateConsolidator
     val relevantChunksPerField = MMap.empty[String, MList[BasicChunk]]
+
+    // TODO: Consider caching results, e.g. as mapping from relevant chunks to permission sum
 
     h.values foreach {
       case ch: BasicChunk if ch.resourceID == FieldID =>
