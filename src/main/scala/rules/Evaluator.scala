@@ -57,6 +57,7 @@ trait EvaluationRules extends SymbolicExecutionRules {
                     : VerificationResult
 }
 
+
 object evaluator extends EvaluationRules with Immutable {
   import consumer._
   import producer._
@@ -288,26 +289,52 @@ object evaluator extends EvaluationRules with Immutable {
         evalBinOp(s, e0, e1, (t1, t2) => And(t1, t2), pve, v)(Q)
 
       /* Short-circuiting evaluation of AND */
-      case ast.And(e0, e1) =>
-        /* Evaluate `e0 && e1` as `e0 && (e0 ==> e1)`, but without evaluating `e0` twice */
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          val lv = ast.LocalVar(v1.identifierFactory.fresh("v").name)(e0.typ, e0.pos, e0.info)
-          val e1Short = ast.Implies(lv, e1)(e1.pos, FromShortCircuitingAnd)
-          eval(s1.copy(g = s1.g + (lv, t0)), e1Short, pve, v1)((s2, t1, v2) =>
-            Q(s2, And(t0, t1), v2))})
+      case ae @ ast.And(_, _) =>
+        eval(s, flattenAnds(ae), pve, v)(Q)
+
+      /* Short-circuiting evaluation of variable length conjunction */
+      case va @ variadicAnd(es) => 
+        if(es.isEmpty)
+          Q(s, True(), v)
+        else
+          eval(s, es.head, pve, v)((s1, t0, v1) =>
+              t0 match {
+                case False() => Q(s1, t0, v1)
+                case _ => 
+                  joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
+                      brancher.branch(s2, t0, v2, true)(
+                        (s3, v3) => eval(s3, variadicAnd(es.tail)(va.pos, va.info), pve, v3)(QB),
+                        (s3, v3) => QB(s3, And(Seq(t0)), v3))
+                    ){case Seq(ent) => (ent.s, ent.data)
+                      case Seq(ent1, ent2) => (ent1.s.merge(ent2.s), And(ent1.data, ent2.data))
+                      case ents => sys.error(s"Unexpected join data entries $ents")
+                    }(Q)})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if Verifier.config.disableShortCircuitingEvaluations() =>
         evalBinOp(s, e0, e1, (t1, t2) => Or(t1, t2), pve, v)(Q)
 
       /* Short-circuiting evaluation of OR */
-      case ast.Or(e0, e1) =>
-        /* Evaluate `e0 || e1` as `e0 || (!e0 && e1)`, but without evaluating `e0` twice */
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          val lv = ast.LocalVar(v1.identifierFactory.fresh("v").name)(e0.typ, e0.pos, e0.info)
-          val e1Short = ast.And(ast.Not(lv)(e0.pos, e0.info), e1)(e1.pos, e1.info)
-          eval(s1.copy(g = s1.g + (lv, t0)), e1Short, pve, v1)((s2, t1, v2) =>
-            Q(s2, Or(t0, t1), v2))})
+      case oe @ ast.Or(_, _) =>
+        eval(s, flattenOrs(oe), pve, v)(Q)
+
+      /* Short-circuiting evaluation of variable length disjunction */
+      case vo @ variadicOr(es) => 
+        if(es.isEmpty)
+          Q(s, False(), v)
+        else
+          eval(s, es.head, pve, v)((s1, t0, v1) =>
+              t0 match {
+                case True() => Q(s1, t0, v1)
+                case _ => 
+                  joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
+                      brancher.branch(s2, t0, v2, true)(
+                        (s3, v3) => QB(s3, Or(Seq(t0)), v3),
+                        (s3, v3) => eval(s3, variadicOr(es.tail)(vo.pos, vo.info), pve, v3)(QB))
+                    ){case Seq(ent) => (ent.s, ent.data)
+                      case Seq(ent1, ent2) => (ent1.s.merge(ent2.s), Or(ent1.data, ent2.data))
+                      case ents => sys.error(s"Unexpected join data entries $ents")
+                    }(Q)})
 
       case implies @ ast.Implies(e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
@@ -1337,9 +1364,59 @@ object evaluator extends EvaluationRules with Immutable {
 
     (axioms, triggers, mostRecentTrig)
   }
+  /* flatten nested ORs */
+  private def flattenOrs(e: ast.Exp): ast.Exp = {
+    val f = flattenOrs _ andThen {
+      case variadicOr(es) => es
+      case e => Seq(e)
+    }
+    e match {
+      case ast.Or(e0, e1) => variadicOr(f(e0) ++ f(e1))(e.pos, e.info)
+      case _ => e
+    }
+  }
+
+  /* flatten nested ANDs */
+  private def flattenAnds(e: ast.Exp): ast.Exp = {
+    val f = flattenAnds _ andThen {
+      case variadicAnd(es) => es
+      case e => Seq(e)
+    }
+    e match {
+      case ast.And(e0, e1) => variadicAnd(f(e0) ++ f(e1))(e.pos, e.info)
+      case _ => e
+    }
+  }
 
   private[silicon] case object FromShortCircuitingAnd extends Info {
     val comment = Nil
     val isCached = false
   }
 }
+
+/* Common behaviour of variadic AND and OR */
+abstract class variadicLogical(exps: Seq[ast.Exp], name:String) extends ast.ExtensionExp {
+  def extensionIsPure: Boolean = {
+    exps forall {_.isPure}
+  }
+  def extensionSubnodes = exps
+  def typ = ast.Bool
+  def prettyPrint = {
+    import ast.pretty.FastPrettyPrinter._
+    text(name) <> parens(ssep(exps map show, char(',') <> space))
+  }
+}
+
+/* A conjunction of any number of expressions */
+case class variadicAnd(exps: Seq[ast.Exp])(
+  val pos: ast.Position = ast.NoPosition, 
+  val info: ast.Info = ast.NoInfo, 
+  val errT: ast.ErrorTrafo = ast.NoTrafos) 
+extends variadicLogical(exps, "variadicAnd") {}
+
+/* A disjunction of any number of expressions */
+case class variadicOr(exps: Seq[ast.Exp])(
+  val pos: ast.Position = ast.NoPosition, 
+  val info: ast.Info = ast.NoInfo, 
+  val errT: ast.ErrorTrafo = ast.NoTrafos) 
+extends variadicLogical(exps,"variadicOr") {}
