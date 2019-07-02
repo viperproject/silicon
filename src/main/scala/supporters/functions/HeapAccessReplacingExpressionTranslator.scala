@@ -43,6 +43,8 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
 
     val result = func.body map translate
 
+	println(result)
+
     if (failed) None else result
   }
 
