@@ -138,6 +138,14 @@ object moreCompleteExhaleSupporter extends Immutable {
       } else {
         Failure(ve).withLoad(args)
       }
+    } else if (relevantChunks.size == 1) {
+      val chunk = relevantChunks.head
+      v.decider.assert(IsPositive(chunk.perm)){
+        case true =>
+          Q(s, chunk.snap, v)
+        case false =>
+          Failure(ve).withLoad(args)
+      }
     } else {
       summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
         v.decider.assert(IsPositive(permSum)) {
@@ -178,13 +186,23 @@ object moreCompleteExhaleSupporter extends Immutable {
     val id = ChunkIdentifier(resource, Verifier.program)
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
-    summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
-      v.decider.assert(IsPositive(permSum)) {
+    if (relevantChunks.size == 1) {
+      val chunk = relevantChunks.head
+      v.decider.assert(IsPositive(chunk.perm)){
         case true =>
-          Q(s1, h, Some(snap), v1)
+          Q(s, h, Some(chunk.snap), v)
         case false =>
           Failure(ve).withLoad(args)
-      })
+      }
+    } else {
+      summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
+        v.decider.assert(IsPositive(permSum)) {
+          case true =>
+            Q(s1, h, Some(snap), v1)
+          case false =>
+            Failure(ve).withLoad(args)
+        })
+    }
   }
 
   private def actualConsumeComplete(s: State,
