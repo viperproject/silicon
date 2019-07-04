@@ -101,6 +101,14 @@ object moreCompleteExhaleSupporter extends Immutable {
                        (Q: (State, Term, Seq[Term], Term, Verifier) => VerificationResult)
                        : VerificationResult = {
 
+    if (relevantChunks.size == 1) {
+      val chunk = relevantChunks.head
+      if (v.decider.check(And(chunk.args.zip(args).map { case (t1, t2) => t1 === t2 }), Verifier.config.checkTimeout())) {
+        return Q(s, chunk.snap, Seq(), chunk.perm, v)
+      } else {
+        return Q(s, chunk.snap, Seq(), NoPerm(), v)
+      }
+    }
     val (s1, taggedSnap, snapDefs, permSum) = summariseOnly(s, relevantChunks, resource, args, v)
 
     v.decider.assume(And(snapDefs))
@@ -137,14 +145,6 @@ object moreCompleteExhaleSupporter extends Immutable {
         Success() // TODO: Mark branch as dead?
       } else {
         Failure(ve).withLoad(args)
-      }
-    } else if (relevantChunks.size == 1) {
-      val chunk = relevantChunks.head
-      v.decider.assert(IsPositive(chunk.perm)){
-        case true =>
-          Q(s, chunk.snap, v)
-        case false =>
-          Failure(ve).withLoad(args)
       }
     } else {
       summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
@@ -186,23 +186,13 @@ object moreCompleteExhaleSupporter extends Immutable {
     val id = ChunkIdentifier(resource, Verifier.program)
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
-    if (relevantChunks.size == 1) {
-      val chunk = relevantChunks.head
-      v.decider.assert(IsPositive(chunk.perm)){
+    summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
+      v.decider.assert(IsPositive(permSum)) {
         case true =>
-          Q(s, h, Some(chunk.snap), v)
+          Q(s1, h, Some(snap), v1)
         case false =>
           Failure(ve).withLoad(args)
-      }
-    } else {
-      summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
-        v.decider.assert(IsPositive(permSum)) {
-          case true =>
-            Q(s1, h, Some(snap), v1)
-          case false =>
-            Failure(ve).withLoad(args)
-        })
-    }
+      })
   }
 
   private def actualConsumeComplete(s: State,
