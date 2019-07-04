@@ -255,7 +255,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           qpMagicWands = quantifiedMagicWands,
           applyHeuristics = applyHeuristics,
           predicateSnapMap = predSnapGenerator.snapMap,
-          predicateFormalVarMap = predSnapGenerator.formalVarMap)
+          predicateFormalVarMap = predSnapGenerator.formalVarMap,
+          hack = false)
   }
 
   private def createInitialState(cfg: SilverCfg, program: ast.Program): State = {
