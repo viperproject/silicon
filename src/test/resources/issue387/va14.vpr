@@ -1,0 +1,76 @@
+field discriminant: Int
+
+field enum_None: Ref
+
+field enum_Some: Ref
+
+field f$0: Ref
+
+field f$elem: Ref
+
+field f$next: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field tuple_2: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+
+function contains(_pure_1: Ref, _pure_2: Int, _pure_3: Int): Bool
+  requires acc(List(_pure_1))
+{
+   (unfolding acc(List(_pure_1) ) in (
+    unfolding acc(BoxList(_pure_1.f$next) ) in _pure_1.f$next.discriminant == 0)) &&
+    (unfolding acc(List(_pure_1) ) in
+    (unfolding acc(BoxList(_pure_1.f$next) ) in
+    contains(_pure_1.f$next.enum_Some, _pure_2, _pure_3)))
+}
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate isize(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate BoxyList(self: Ref) {
+  acc(self.val_ref, write) && acc(List(self.val_ref), write)
+}
+
+predicate BoxList(self: Ref) {
+  acc(self.discriminant, write) && (0 <= self.discriminant && self.discriminant <= 1 && (acc(self.enum_Some, write) && (acc(List(self.enum_Some), write))))
+}
+
+predicate BoxListSome(self: Ref) {
+  acc(self.f$0, write) && acc(List(self.f$0), write)
+}
+
+predicate List(self: Ref) {
+  acc(self.f$next, write) && (acc(BoxList(self.f$next), write) && (acc(self.f$elem, write) && acc(tuple3$i32$i32$i32(self.f$elem), write)))
+}
+
+predicate ref$BoxList(self: Ref) {
+  acc(self.val_ref, write) && acc(BoxList(self.val_ref), write)
+}
+
+predicate ref$List(self: Ref) {
+  acc(self.val_ref, write) && acc(List(self.val_ref), write)
+}
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple3$i32$i32$i32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(i32(self.tuple_0), write) && (acc(self.tuple_1, write) && (acc(i32(self.tuple_1), write) && (acc(self.tuple_2, write) && acc(i32(self.tuple_2), write)))))
+}
+
+predicate DeadBorrowToken$(borrow: Int)

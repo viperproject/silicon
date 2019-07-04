@@ -1,0 +1,8 @@
+field next: Ref
+
+method test02(t1: Ref, t2: Ref)
+  requires acc(t1.next, wildcard)
+  requires acc(t2.next)
+{
+  assert t1 != t2
+}

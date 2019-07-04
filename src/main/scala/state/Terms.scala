@@ -1832,7 +1832,8 @@ class SortWrapper(val t: Term, val to: Sort)
          s"Unexpected sort wrapping of $t from ${t.sort} to $to")
 
   val equalityDefiningMembers = t :: to :: Nil
-  override lazy val toString = s"$t"
+//  override lazy val toString = s"SortWrapper($t, $to)"
+  override lazy val toString = t.toString
   override val sort = to
 }
 

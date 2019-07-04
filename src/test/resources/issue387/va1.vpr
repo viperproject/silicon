@@ -1,0 +1,51 @@
+field val: Int
+
+define read 1/8
+
+method test_fields(x: Ref, y: Ref) {
+  inhale acc(y.val, 1/2)
+  inhale acc(x.val, 1/2)
+  inhale y == x
+
+  inhale 5 < y.val
+  assert 5 < x.val
+
+  exhale acc(y.val, 2/3)
+  assert 5 < y.val
+  assert 5 < x.val
+}
+
+method test_fields2(x: Ref, y: Ref, z: Ref) {
+  inhale acc(z.val, 1/3)
+  inhale acc(y.val, 1/3)
+  inhale acc(x.val, 1/3)
+  inhale x == y
+
+  inhale 5 < y.val
+  inhale y == z
+
+  exhale acc(x.val, 1/3)
+  assert 5 < z.val
+}
+
+predicate usize(self: Ref) {
+  acc(self.val, write)
+}
+
+function get(self: Ref, p: Perm): Int
+  requires none < p
+  requires acc(usize(self), p)
+
+
+method test_predicates(x: Ref, y: Ref) {
+  inhale acc(usize(y), 1/2)
+  inhale acc(usize(x), 1/2)
+  inhale y == x
+
+  inhale 5 < get(y, 1/100)
+  assert 5 < get(x, 1/100)
+
+  // exhale acc(usize(x), 2/3)
+  // assert 5 < get(x, 1/100)
+  // assert 5 < get(y, 1/100)
+}

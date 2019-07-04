@@ -1,0 +1,15 @@
+field f: Int
+
+method t10(r: Ref, o: Ref)
+    requires acc(r.f) && acc(o.f)
+    ensures acc(r.f) && acc(o.f)
+{
+    r.f := 2
+    o.f := 2
+    assert o != r
+    exhale acc(o.f)
+    inhale acc(o.f)
+    assert r.f == 2
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert o.f == 2
+}

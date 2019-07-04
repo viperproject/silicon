@@ -190,6 +190,14 @@ package object utils {
       case pos: silver.ast.HasLineColumn => s"${pos.line}:${pos.column}"
       case _ => node.pos.toString
     }
+
+    def toUnambiguousShortString(resource: silver.ast.Resource): String = {
+      resource match {
+        case l: silver.ast.Location => l.name
+        case m: silver.ast.MagicWand => m.toString()
+        case m @ silver.ast.MagicWandOp => s"${m.op}@${sourceLineColumn(m)}"
+      }
+    }
   }
 
   object consistency {
