@@ -253,9 +253,9 @@ object evaluator extends EvaluationRules with Immutable {
 
       case fa: ast.FieldAccess =>
         evalLocationAccess(s, fa, pve, v)((s1, name, tArgs, v1) => {
-          val id = BasicChunkIdentifier(name)
           val ve = pve dueTo InsufficientPermission(fa)
-          chunkSupporter.lookup(s1, s1.h, id, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
+          val resource = fa.res(Verifier.program)
+          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
             Q(s3, tSnap, v1)
@@ -618,7 +618,8 @@ object evaluator extends EvaluationRules with Immutable {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = Verifier.program.findFunction(funcName)
-        evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
+        val s0 = s.copy(hackIssue387DisablePermissionConsumption = Verifier.config.enableMoreCompleteExhale())
+        evals2(s0, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
@@ -691,7 +692,8 @@ object evaluator extends EvaluationRules with Immutable {
                                h = s2.h,
                                recordVisited = s2.recordVisited,
                                functionRecorder = fr5,
-                               smDomainNeeded = s2.smDomainNeeded)
+                               smDomainNeeded = s2.smDomainNeeded,
+                               hackIssue387DisablePermissionConsumption = s.hackIssue387DisablePermissionConsumption)
               QB(s5, tFApp, v3)})
             /* TODO: The join-function is heap-independent, and it is not obvious how a
              *       joined snapshot could be defined and represented
@@ -1344,7 +1346,7 @@ object evaluator extends EvaluationRules with Immutable {
                                  (Q: (State, Term, Verifier) => VerificationResult)
                                   : VerificationResult = {
     if(constructor != Or && constructor != And) {
-      sys.error("only Or and And are supported for evalVariadic")
+      sys.error("Only Or and And are supported as constructors for evalSeqShortCircuit")
     }
     type brFun = (State, Verifier) => VerificationResult
     val (default, stop, swapIfAnd) = 

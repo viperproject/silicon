@@ -1,0 +1,25 @@
+method test() {
+
+  var _1: Ref
+  var _preserve: Ref
+  var read: Perm := 1/8
+
+  inhale acc(usize(_preserve), write-read)
+  inhale acc(_1.val_ref, read) && acc(usize(_1.val_ref), read)
+  inhale _preserve == _1.val_ref
+  assert acc(usize(_1.val_ref), write)
+  inhale 5 < (unfolding acc(usize(_1.val_ref), read) in _1.val_ref.val_int)
+
+  assert 5 < (unfolding acc(usize(_1.val_ref), read) in _1.val_ref.val_int)
+  exhale acc(usize(_1.val_ref), 2/8)
+  assert 5 < (unfolding acc(usize(_1.val_ref), 3/8) in _1.val_ref.val_int)  // Fails with --enableMoreCompleteExhale
+  assert acc(usize(_1.val_ref), 6/8)
+}
+
+field val_int: Int
+
+field val_ref: Ref
+
+predicate usize(self: Ref) {
+  acc(self.val_int, write)
+}

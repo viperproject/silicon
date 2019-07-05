@@ -1,0 +1,14 @@
+field Cell_x: Int
+
+function Cell_get(this: Ref): Int
+	requires acc(this.Cell_x, write)
+{ this.Cell_x }
+
+method forallCellGet10(c: Ref) returns (d: Ref)
+	requires c != null
+	requires acc(c.Cell_x, write)
+	requires forall i1: Int :: (0 <= i1 && i1 < Cell_get(c)) ==> (Cell_get(c) > i1)
+	ensures acc(c.Cell_x, write)
+	ensures forall i2: Int :: (0 <= i2 && i2 < Cell_get(c)) ==> (Cell_get(c) > i2)
+	// ensures forall i3: Int :: (0 <= i3 && i3 < Cell_get(c)) ==> (Cell_get(c) != i3)
+{}

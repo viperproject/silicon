@@ -199,6 +199,14 @@ package object utils {
                         : Seq[silver.ast.Exp] = 
 
       getArgs andThen {_ flatMap {flattenOperator(_, getArgs)}} applyOrElse(e, {Seq(_:silver.ast.Exp)})
+
+    def toUnambiguousShortString(resource: silver.ast.Resource): String = {
+      resource match {
+        case l: silver.ast.Location => l.name
+        case m: silver.ast.MagicWand => m.toString()
+        case m @ silver.ast.MagicWandOp => s"${m.op}@${sourceLineColumn(m)}"
+      }
+    }
   }
 
   object consistency {
