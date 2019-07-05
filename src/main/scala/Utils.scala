@@ -190,6 +190,15 @@ package object utils {
       case pos: silver.ast.HasLineColumn => s"${pos.line}:${pos.column}"
       case _ => node.pos.toString
     }
+
+    /** Flattens an Exp into a list of subexpressions
+      * getArgs controls which kinds of expression are flattened 
+      */
+    def flattenOperator(e: silver.ast.Exp, 
+                        getArgs: PartialFunction[silver.ast.Exp, Seq[silver.ast.Exp]])
+                        : Seq[silver.ast.Exp] = 
+
+      getArgs andThen {_ flatMap {flattenOperator(_, getArgs)}} applyOrElse(e, {Seq(_:silver.ast.Exp)})
   }
 
   object consistency {
