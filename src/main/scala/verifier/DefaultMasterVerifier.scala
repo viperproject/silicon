@@ -55,6 +55,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
   protected val multisetsContributor = new DefaultMultisetsContributor(domainTranslator)
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
+  protected val pheapsContributor = new DefaultPHeapsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
   protected val predicateSnapFunctionsContributor = new DefaultPredicateSnapFunctionsContributor(preambleReader, symbolConverter, termConverter, predSnapGenerator, config)
   protected val magicWandSnapFunctionsContributor = new DefaultMagicWandSnapFunctionsContributor(preambleReader, termConverter)
@@ -66,6 +67,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     uniqueIdCounter,
     sequencesContributor, setsContributor, multisetsContributor, domainsContributor,
     fieldValueFunctionsContributor,
+	pheapsContributor,
     predSnapGenerator, predicateSnapFunctionsContributor, magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     _verificationPoolManager
@@ -308,7 +310,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     predicateSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
-    predicateSupporter
+    predicateSupporter,
+	pheapsContributor
   )
 
   private val sortDeclarationOrder: Seq[PreambleContributor[_, _, _]] = Seq(
@@ -320,7 +323,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     predicateSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
-    predicateSupporter
+    predicateSupporter,
+	pheapsContributor
   )
 
   private val sortWrapperDeclarationOrder: Seq[PreambleContributor[Sort, _, _]] = Seq(
@@ -332,7 +336,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     predicateSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
-    predicateSupporter
+    predicateSupporter,
+	pheapsContributor
   )
 
   private val symbolDeclarationOrder: Seq[PreambleContributor[_, _, _]] = Seq(
@@ -348,7 +353,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     predicateSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
-    predicateSupporter
+    predicateSupporter,
+	pheapsContributor
   )
 
   private val axiomDeclarationOrder: Seq[PreambleContributor[Sort, _, _]] = Seq(
@@ -360,7 +366,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     predicateSnapFunctionsContributor,
     magicWandSnapFunctionsContributor,
     functionsSupporter,
-    predicateSupporter
+    predicateSupporter,
+	pheapsContributor
   )
 
   private def analyzeProgramAndEmitPreambleContributions(program: ast.Program, sink: ProverLike) {

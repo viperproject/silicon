@@ -120,7 +120,17 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         })()
 
-      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ))
+      case loc: ast.LocationAccess => {
+	  	val snap = data.arguments(0)
+
+		def lookup_f(snap: Term, loc: ast.LocationAccess) : Term = {
+			snap
+		}
+	  	
+		lookup_f(snap, loc)
+	  	getOrFail(data.locToSnap, loc, toSort(loc.typ))
+	  }
+      //case loc: ast.LocationAccess => PHeap_lookup(data.snap, loc)
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
 

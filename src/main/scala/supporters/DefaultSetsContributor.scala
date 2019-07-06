@@ -24,18 +24,12 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term])
   override def computeGroundTypeInstances(program: Program): InsertionOrderedSet[SetType] = {
     var setTypeInstances = super.computeGroundTypeInstances(program)
 
-    /* Axioms generated for quantified permissions depend on sets.
-     * Hence, we add the appropriate set types iff quantified permissions are used in the program.
+    /* 
+     * PHeap snapshots depend on Set<$Ref> for domains, just like quantified permission snapshot maps
      *
-     * TODO: It shouldn't be the responsibility of the sets contributor to add set types
-     *       required by QPs
+     * TODO: It shouldn't be the responsibility of the sets contributor to add set types required by QPs and PHeaps
      */
-    if (program.existsDefined { case f: ast.Forall if (f.triggers flatMap (_.exps)) exists (e => e.existsDefined { case _: ast.ResourceAccess => }) =>
-      case q: ast.QuantifiedExp if !q.isPure => }) {
-      program.fields foreach {f => setTypeInstances += ast.SetType(f.typ)}
-
-      setTypeInstances += ast.SetType(ast.Ref) /* $FVF.domain_f is ref-typed */
-    }
+    setTypeInstances += ast.SetType(ast.Ref)
 
     setTypeInstances
   }

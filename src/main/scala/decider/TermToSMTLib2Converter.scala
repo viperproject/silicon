@@ -33,6 +33,8 @@ class TermToSMTLib2Converter
 
   protected def render(sort: Sort): Cont = sort match {
     case sorts.Int => "Int"
+    case sorts.Loc => "Loc"
+    case sorts.PHeap => "PHeap"
     case sorts.Bool => "Bool"
     case sorts.Perm => "$Perm"
     case sorts.Snap => "$Snap"

@@ -5,6 +5,7 @@ import scala.util.Try
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // Copyright (c) 2011-2019 ETH Zurich.
+cancelable in Global := true
 
 // Import general settings from Silver
 lazy val silver = project in file("silver")
@@ -22,6 +23,7 @@ lazy val silicon = (project in file("."))
     name := "Silicon",
     organization := "viper",
     version := "1.1-SNAPSHOT",
+
 
     // Compilation settings
     // Remove elidable method calls such as in SymbExLogger during compilation
