@@ -64,7 +64,7 @@ final case class State(g: Store = Store(),
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
                        predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
-                       hack: Boolean = true)
+                       isMethodVerification: Boolean = false)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =

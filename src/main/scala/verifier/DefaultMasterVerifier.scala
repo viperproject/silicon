@@ -256,7 +256,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           applyHeuristics = applyHeuristics,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
-          hack = member.isInstanceOf[ast.Method])
+          isMethodVerification = member.isInstanceOf[ast.Method])
   }
 
   private def createInitialState(cfg: SilverCfg, program: ast.Program): State = {
