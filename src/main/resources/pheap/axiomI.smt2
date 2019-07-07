@@ -4,7 +4,6 @@
 		(and
 			$ALL_EXT_EQ_FIELD$
 			$ALL_EXT_EQ_PREDICATE$
-		)
-	)
-:patterns (PHeap_equal $H1$ $H2$))))
+		))
+		:pattern (PHeap_equal $H1$ $H2$))))
 

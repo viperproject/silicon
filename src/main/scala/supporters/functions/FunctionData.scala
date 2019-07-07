@@ -57,10 +57,13 @@ class FunctionData(val programFunction: ast.Function,
   val formalResult = Var(identifierFactory.fresh(programFunction.result.name),
                          symbolConverter.toSort(programFunction.result.typ))
 
-  val arguments = Seq(`?s`) ++ formalArgs.values
+  println(programFunction.formalArgs)
+  println(`?h`)
 
-  val functionApplication = App(function, `?s` +: formalArgs.values.toSeq)
-  val limitedFunctionApplication = App(limitedFunction, `?s` +: formalArgs.values.toSeq)
+  val arguments = Seq(`?h`) ++ formalArgs.values
+
+  val functionApplication = App(function, `?h` +: formalArgs.values.toSeq)
+  val limitedFunctionApplication = App(limitedFunction, `?h` +: formalArgs.values.toSeq)
   val triggerFunctionApplication = App(statelessFunction, formalArgs.values.toSeq)
 
   val limitedAxiom =

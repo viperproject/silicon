@@ -97,27 +97,27 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
     })
   }
 
-  def ext_eq_field(field: ast.Field): Iterable[String] = {
+  def ext_eq_field(field: ast.Field, h1: String, h2: String): Iterable[String] = {
     val templateFile = "/pheap/partials/ext_eq_field.smt2"
 
     val id = field.name
     val substitutions = Map(
  	  "$FLD$" -> id,
-	  "$H1$" -> "h1",
-	  "$H2$" -> "h2",
+	  "$H1$" -> h1,
+	  "$H2$" -> h2,
 	)
 
     preambleReader.readParametricPreamble(templateFile, substitutions)
   }
 
-  def ext_eq_predicate(predicate: ast.Predicate): Iterable[String] = {
+  def ext_eq_predicate(predicate: ast.Predicate, h1: String, h2: String): Iterable[String] = {
     val templateFile = "/pheap/partials/ext_eq_predicate.smt2"
 
     val id = predicate.name
     val substitutions = Map(
  	  "$PRD$" -> id,
-	  "$H1$" -> "h1",
-	  "$H2$" -> "h2",
+	  "$H1$" -> h1,
+	  "$H2$" -> h2,
 	)
 
     preambleReader.readParametricPreamble(templateFile, substitutions)
@@ -126,11 +126,14 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
   def axiomI(fields: Seq[ast.Field], predicates: Seq[ast.Predicate]): Iterable[PreambleBlock] = {
     val templateFile = "/pheap/axiomI.smt2"
 
+	val h1 = "h1"
+	val h2 = "h2"
+
     val substitutions = Map(
- 	  "$ALL_EXT_EQ_FIELD$" -> (fields flatMap (f => this.ext_eq_field(f))).mkString("\n"),
- 	  "$ALL_EXT_EQ_PREDICATE$" -> (predicates flatMap (p => this.ext_eq_predicate(p))).mkString("\n"),
-	  "$H1$" -> "h1",
-	  "$H2$" -> "h2",
+ 	  "$ALL_EXT_EQ_FIELD$" -> (fields flatMap (f => this.ext_eq_field(f, h1, h2))).mkString("\n"),
+ 	  "$ALL_EXT_EQ_PREDICATE$" -> (predicates flatMap (p => this.ext_eq_predicate(p, h1, h2))).mkString("\n"),
+	  "$H1$" -> h1,
+	  "$H2$" -> h2,
 	)
 
 	Seq(("pheap I", (preambleReader.readParametricPreamble(templateFile, substitutions))))

@@ -1925,7 +1925,10 @@ object Let extends ((Map[Var, Term], Term) => Term) {
 
 object predef {
   val `?s` = Var(Identifier("s@$"), sorts.Snap) // with SnapshotTerm
+  val `?h` = Var(Identifier("h@$"), sorts.PHeap)
   val `?r` = Var(Identifier("r"), sorts.Ref)
+
+  val Emp = Var(Identifier("emp"), sorts.PHeap)
 
   val Zero = IntLiteral(0)
   val One = IntLiteral(1)

@@ -65,7 +65,7 @@ class DefaultSymbolConverter extends SymbolConverter with Immutable {
   }
 
   def toFunction(function: ast.Function): terms.HeapDepFun = {
-    val inSorts = terms.sorts.Snap +: (function.formalArgs map (_.typ) map toSort)
+    val inSorts = terms.sorts.PHeap +: (function.formalArgs map (_.typ) map toSort)
     val outSort = toSort(function.typ)
 
     terms.HeapDepFun(Identifier(function.name), inSorts, outSort)
