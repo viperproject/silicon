@@ -101,6 +101,14 @@ object moreCompleteExhaleSupporter extends Immutable {
                        (Q: (State, Term, Seq[Term], Term, Verifier) => VerificationResult)
                        : VerificationResult = {
 
+    if (relevantChunks.size == 1) {
+      val chunk = relevantChunks.head
+      if (v.decider.check(And(chunk.args.zip(args).map { case (t1, t2) => t1 === t2 }), Verifier.config.checkTimeout())) {
+        return Q(s, chunk.snap, Seq(), chunk.perm, v)
+      } else {
+        return Q(s, chunk.snap, Seq(), NoPerm(), v)
+      }
+    }
     val (s1, taggedSnap, snapDefs, permSum) = summariseOnly(s, relevantChunks, resource, args, v)
 
     v.decider.assume(And(snapDefs))
