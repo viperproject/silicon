@@ -3,5 +3,5 @@
 		(PHeap_equal h1 h2)
 		(= ($FUN$ h1 $FUN_ARGS$) ($FUN$ h2 $FUN_ARGS$))
 	)
-	: pattern ())))
+	:pattern (($FUN$ h2 $FUN_ARGS$) ($FUN$ h1 $FUN_ARGS$)))))
 
