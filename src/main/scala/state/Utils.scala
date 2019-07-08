@@ -82,6 +82,8 @@ package object utils {
     case l: Let =>
       val (vs, ts) = l.bindings.toSeq.unzip
       vs ++ ts :+ l.body
+    case PHeapLookup(_,_,h,at) => h :: at :: Nil
+    case PHeapDom(_,h) => h :: Nil
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
     case PermLookup(_, pm, at) => pm :: at :: Nil

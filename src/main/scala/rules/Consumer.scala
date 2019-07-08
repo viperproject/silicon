@@ -410,19 +410,15 @@ object consumer extends ConsumptionRules with Immutable {
                 val description = s"consume ${a.pos}: $a"
                 chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), tArgs, loss, ve, v2, description)((s3, h1, snap1, v3) => {
 				  val hsnap = v2.decider.fresh("h", sorts.PHeap)
-				  // TODO Add path constraint defining 'hsnap'
 				  val v = snap1.asInstanceOf[terms.SortWrapper].t
 
-				  val sort = v3.symbolConverter.toSort(locacc.asInstanceOf[ast.FieldAccess].field.typ)
-
-				  val lookup_f = App(
-				  	Fun(SimpleIdentifier(s"lookup_$name"), Seq(sorts.PHeap, sorts.Ref), sort),
-					Seq(hsnap, tArgs(0))
+				  val lookup_f = PHeapLookup(
+				  	name,
+					v3.symbolConverter.toSort(locacc.asInstanceOf[ast.FieldAccess].field.typ),
+					hsnap,
+					tArgs(0)
 				  )
-				  val dom_f = App(
-				  	Fun(SimpleIdentifier(s"dom_$name"), Seq(sorts.PHeap), sorts.Set(sorts.Ref)),
-					Seq(hsnap)
-				  )
+				  val dom_f = PHeapDom(name, hsnap)
 
 				  v3.decider.assume(Equals(
 				  	lookup_f,

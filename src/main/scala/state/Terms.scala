@@ -1680,6 +1680,12 @@ object Second extends (Term => Term) {
   def unapply(s: Second) = Some(s.p)
 }
 
+/* PHeaps */
+case class PHeapLookup(name: String, sort: Sort, h: Term, at: Term) extends Term {}
+case class PHeapDom(name: String, h: Term) extends Term {
+  val sort = sorts.Set(sorts.Ref)
+}
+
 /* Quantified permissions */
 
 case class Lookup(field: String, fvf: Term, at: Term) extends Term {

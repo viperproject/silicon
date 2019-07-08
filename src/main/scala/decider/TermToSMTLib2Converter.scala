@@ -215,6 +215,11 @@ class TermToSMTLib2Converter
     case bop: MultisetSubset => renderApp("Multiset_subset", Seq(bop.p0, bop.p1), bop.sort)
     case bop: MultisetCount => renderApp("Multiset_count", Seq(bop.p0, bop.p1), bop.sort)
 
+	/* PHeaps */
+
+	case PHeapLookup(f, _, h, x) => parens(text("lookup_") <> f <+> render(h) <+> render(x))
+	case PHeapDom(f, h) => parens(text("dom_") <> f <+> render(h))
+
     /* Quantified Permissions */
 
     case Domain(id, fvf) => parens(text("$FVF.domain_") <> id <+> render(fvf))
