@@ -1,3 +1,10 @@
+;
+; Extensional equality between PHeaps over a predicate
+; 
+; Parametrization:
+;	$PRD$		=> Predicate identifier
+;   $H1$, $H2$  => Variable name for free PHeap variables,
+
 (and
 	(Set.equal (dom_$PRD$ $H1$) (dom_$PRD$ $H2$))
 	(forall ((l Loc)) (!

@@ -1,3 +1,10 @@
+;
+; PHeap III: Field lookup in 'combine'
+; 
+; Parametrization:
+;   $FLD$ => Field identifier
+;
+
 (assert (forall ((h1 PHeap) (h2 PHeap) (x $Ref))
 	(!
 		(=>

@@ -1,3 +1,10 @@
+;
+; PHeap V: Field domain of 'combine'
+; 
+; Parametrization:
+;   $FLD$ => Field identifier
+;
+
 (assert (forall ((h1 PHeap) (h2 PHeap))
 	(Set_equal
 		(dom_$FLD$ (combine h1 h2))
