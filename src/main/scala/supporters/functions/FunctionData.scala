@@ -57,9 +57,6 @@ class FunctionData(val programFunction: ast.Function,
   val formalResult = Var(identifierFactory.fresh(programFunction.result.name),
                          symbolConverter.toSort(programFunction.result.typ))
 
-  println(programFunction.formalArgs)
-  println(`?h`)
-
   val arguments = Seq(`?h`) ++ formalArgs.values
 
   val functionApplication = App(function, `?h` +: formalArgs.values.toSeq)

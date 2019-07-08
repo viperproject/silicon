@@ -121,8 +121,10 @@ object consumer extends ConsumptionRules with Immutable {
         wrappedConsumeTlc(s, h, a, pve, v)(Q)
       else
         wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) =>
-          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, snap2, v2) =>
-            Q(s2, h2, Combine(snap1, snap2), v2)))
+          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, snap2, v2) => {
+			val combinedSnap = App(Fun(SimpleIdentifier("combine"), Seq(sorts.PHeap, sorts.PHeap), sorts.PHeap), Seq(snap2,snap1))
+            Q(s2, h2, combinedSnap, v2)
+	      }))
     }
   }
 
@@ -407,9 +409,34 @@ object consumer extends ConsumptionRules with Immutable {
                 val ve = pve dueTo InsufficientPermission(locacc)
                 val description = s"consume ${a.pos}: $a"
                 chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), tArgs, loss, ve, v2, description)((s3, h1, snap1, v3) => {
+				  val hsnap = v2.decider.fresh("h", sorts.PHeap)
+				  // TODO Add path constraint defining 'hsnap'
+				  val v = snap1.asInstanceOf[terms.SortWrapper].t
+
+				  val sort = v3.symbolConverter.toSort(locacc.asInstanceOf[ast.FieldAccess].field.typ)
+
+				  val lookup_f = App(
+				  	Fun(SimpleIdentifier(s"lookup_$name"), Seq(sorts.PHeap, sorts.Ref), sort),
+					Seq(hsnap, tArgs(0))
+				  )
+				  val dom_f = App(
+				  	Fun(SimpleIdentifier(s"dom_$name"), Seq(sorts.PHeap), sorts.Set(sorts.Ref)),
+					Seq(hsnap)
+				  )
+
+				  v3.decider.assume(Equals(
+				  	lookup_f,
+					v
+				  ))
+
+				  v3.decider.assume(Equals(
+                    dom_f,
+					SingletonSet(tArgs(0))
+				  ))
+
                   val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
                                    constrainableARPs = s.constrainableARPs)
-                  Q(s4, h1, snap1, v3)})
+                  Q(s4, h1, hsnap, v3)})
               case false =>
                 Failure(pve dueTo NegativePermission(perm))}))
 

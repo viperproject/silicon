@@ -690,13 +690,10 @@ object evaluator extends EvaluationRules with Immutable {
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
               //val snap1 = snap.convert(sorts.Snap)
 
-			  // TODO This is just a placeholder to make the sorts work out
-              val snap1 = predef.Emp
-
-              val tFApp = App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
+              val tFApp = App(v3.symbolConverter.toFunction(func), snap :: tArgs)
               val fr5 =
                 s4.functionRecorder.changeDepthBy(-1)
-                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
+                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap)
               val s5 = s4.copy(g = s2.g,
                                h = s2.h,
                                recordVisited = s2.recordVisited,

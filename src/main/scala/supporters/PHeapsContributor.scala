@@ -50,7 +50,7 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
 	// collectedFields = program.fields
 
     collectedFunctionDecls = generatePHeapFunctions ++ generateFieldFunctionDecls(program.fields) ++ generatePredicateFunctionDecls(program.predicates)
-    collectedAxioms = setLocAxioms ++ axiomIII(program.fields) ++ axiomV(program.fields) ++ axiomVI(program.predicates)++ axiomVII() ++ axiomII(program.functions.filter(_.isAbstract)) ++ axiomIV(program.predicates) ++ axiomI(program.fields, program.predicates)
+    collectedAxioms = setLocAxioms ++ axiomIII(program.fields) ++ axiomV(program.fields) ++ axiomVI(program.predicates)++ axiomVII() ++ axiomII(program.functions.filter(_.isAbstract)) ++ axiomIV(program.predicates) ++ axiomI(program.fields, program.predicates) ++ axiomVIII()
   }
 
   private def extractPreambleLines(from: Iterable[PreambleBlock]*): Iterable[String] =
@@ -217,6 +217,11 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
   def axiomVII(): Iterable[PreambleBlock] = {
 	val templateFile = "/pheap/axiomVII.smt2"
     Seq((s"pheap VII", preambleReader.readPreamble(templateFile)))
+  }
+  
+  def axiomVIII(): Iterable[PreambleBlock] = {
+	val templateFile = "/pheap/axiomVIII.smt2"
+    Seq((s"pheap VIII", preambleReader.readPreamble(templateFile)))
   }
 
   def setLocDeclarations: Iterable[PreambleBlock] = {
