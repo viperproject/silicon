@@ -50,7 +50,7 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
 	// collectedFields = program.fields
 
     collectedFunctionDecls = generatePHeapFunctions ++ generateFieldFunctionDecls(program.fields) ++ generatePredicateFunctionDecls(program.predicates)
-    collectedAxioms = setLocAxioms ++ axiomIII(program.fields) ++ axiomV(program.fields) ++ axiomVI(program.predicates)++ axiomVII() ++ axiomII(program.functions.filter(_.isAbstract)) ++ axiomIV(program.predicates) ++ axiomI(program.fields, program.predicates) ++ axiomVIII()
+    collectedAxioms = axiomIII(program.fields) ++ axiomV(program.fields) ++ axiomVI(program.predicates)++ axiomVII() ++ axiomII(program.functions.filter(_.isAbstract)) ++ axiomIV(program.predicates) ++ axiomI(program.fields, program.predicates) ++ axiomVIII()
   }
 
   private def extractPreambleLines(from: Iterable[PreambleBlock]*): Iterable[String] =
@@ -224,38 +224,10 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
     Seq((s"pheap VIII", preambleReader.readPreamble(templateFile)))
   }
 
-  def setLocDeclarations: Iterable[PreambleBlock] = {
-	val templateFile = "/dafny_axioms/sets_declarations_dafny.smt2"
-
-  	val substitution = Map(
-		"$S$" -> termConverter.convert(sorts.Loc),
-		"$Set" -> "Set"
-	)
-	val declarations = preambleReader.readParametricPreamble(templateFile, substitution)
-
-    Seq((s"$templateFile [Loc]", declarations))
-  }
-
-  def setLocAxioms: Iterable[PreambleBlock] = {
-	val templateFile = "/dafny_axioms/sets_axioms_dafny.smt2"
-
-  	val substitution = Map(
-		"$S$" -> termConverter.convert(sorts.Loc),
-		"$Set" -> "Set"
-	)
-	val declarations = preambleReader.readParametricPreamble(templateFile, substitution)
-
-    Seq((s"$templateFile [Loc]", declarations))
-  }
-
   def sortsAfterAnalysis: InsertionOrderedSet[sorts.FieldValueFunction] = InsertionOrderedSet.empty
 
   def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
-  	// TODO: Remove this hacking
-  	sink.emit("(declare-sort Set<Loc>)")
   	Seq(sorts.PHeap, sorts.Loc) foreach (s => sink.declare(SortDecl(s)))
-
-    emitPreambleLines(sink, setLocDeclarations)
   }
 
   val symbolsAfterAnalysis: Iterable[String] =

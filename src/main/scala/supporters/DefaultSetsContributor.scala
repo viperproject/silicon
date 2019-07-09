@@ -30,6 +30,7 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term])
      * TODO: It shouldn't be the responsibility of the sets contributor to add set types required by QPs and PHeaps
      */
     setTypeInstances += ast.SetType(ast.Ref)
+	setTypeInstances += ast.SetType((new ast.DomainType("Loc", Map.empty[ast.TypeVar, ast.Type])(Seq())))
 
     setTypeInstances
   }

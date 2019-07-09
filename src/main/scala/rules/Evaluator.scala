@@ -688,8 +688,6 @@ object evaluator extends EvaluationRules with Immutable {
                                  */
                              smDomainNeeded = true)
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
-              //val snap1 = snap.convert(sorts.Snap)
-
               val tFApp = App(v3.symbolConverter.toFunction(func), snap :: tArgs)
               val fr5 =
                 s4.functionRecorder.changeDepthBy(-1)

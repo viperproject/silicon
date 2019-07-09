@@ -11,5 +11,5 @@
 ; TODO: move this
 (assert (Set_equal
   (dom_$PRD$ emp)
-  Set.empty<Loc>))
+  (as Set_empty Set<Loc>)))
 

@@ -19,4 +19,4 @@
 ; TODO: move this
 (assert (Set_equal
 	(dom_$FLD$ emp)
-	Set_empty))
+	(as Set_empty Set<$Ref>)))
