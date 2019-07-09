@@ -84,6 +84,7 @@ package object utils {
       vs ++ ts :+ l.body
     case PHeapLookup(_,_,h,at) => h :: at :: Nil
     case PHeapDom(_,h) => h :: Nil
+    case PHeapSingleton(_,x,v) => x :: v :: Nil
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
     case PermLookup(_, pm, at) => pm :: at :: Nil

@@ -1681,9 +1681,12 @@ object Second extends (Term => Term) {
 }
 
 /* PHeaps */
-case class PHeapLookup(name: String, sort: Sort, h: Term, at: Term) extends Term {}
-case class PHeapDom(name: String, h: Term) extends Term {
+case class PHeapLookup(field: String, sort: Sort, h: Term, at: Term) extends Term {}
+case class PHeapDom(field: String, h: Term) extends Term {
   val sort = sorts.Set(sorts.Ref)
+}
+case class PHeapSingleton(field: String, x: Term, v: Term) extends Term {
+  val sort = sorts.PHeap
 }
 
 /* Quantified permissions */

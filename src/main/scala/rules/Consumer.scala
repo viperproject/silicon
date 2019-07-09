@@ -409,26 +409,8 @@ object consumer extends ConsumptionRules with Immutable {
                 val ve = pve dueTo InsufficientPermission(locacc)
                 val description = s"consume ${a.pos}: $a"
                 chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), tArgs, loss, ve, v2, description)((s3, h1, snap1, v3) => {
-				  val hsnap = v2.decider.fresh("h", sorts.PHeap)
 				  val v = snap1.asInstanceOf[terms.SortWrapper].t
-
-				  val lookup_f = PHeapLookup(
-				  	name,
-					v3.symbolConverter.toSort(locacc.asInstanceOf[ast.FieldAccess].field.typ),
-					hsnap,
-					tArgs(0)
-				  )
-				  val dom_f = PHeapDom(name, hsnap)
-
-				  v3.decider.assume(Equals(
-				  	lookup_f,
-					v
-				  ))
-
-				  v3.decider.assume(Equals(
-                    dom_f,
-					SingletonSet(tArgs(0))
-				  ))
+				  val hsnap = PHeapSingleton(name, tArgs(0), v)
 
                   val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
                                    constrainableARPs = s.constrainableARPs)
