@@ -111,8 +111,8 @@ object consumer extends ConsumptionRules with Immutable {
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
 
-    if (tlcs.isEmpty)
-      Q(s, h, Unit, v)
+    if (tlcs.isEmpty) {
+      Q(s, h, predef.Emp, v) }
     else {
       val a = tlcs.head
       val pve = pves.head
