@@ -130,8 +130,8 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
 	val h2 = "h2"
 
     val substitutions = Map(
- 	  "$ALL_EXT_EQ_FIELD$" -> (fields flatMap (f => this.ext_eq_field(f, h1, h2))).mkString("\n"),
- 	  "$ALL_EXT_EQ_PREDICATE$" -> (predicates flatMap (p => this.ext_eq_predicate(p, h1, h2))).mkString("\n"),
+ 	  "$ALL_EXT_EQ_FIELD$" -> (if (fields.isEmpty) "true" else (fields flatMap (f => this.ext_eq_field(f, h1, h2))).mkString("\n")),
+ 	  "$ALL_EXT_EQ_PREDICATE$" -> (if (predicates.isEmpty) "true" else (predicates flatMap (p => this.ext_eq_predicate(p, h1, h2))).mkString("\n")),
 	  "$H1$" -> h1,
 	  "$H2$" -> h2,
 	)
