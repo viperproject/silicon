@@ -17,7 +17,7 @@ import viper.silicon.interfaces._
 import viper.silicon.state._
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.predef.`?s`
+import viper.silicon.state.terms.predef.{`?s`, `?h`}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
@@ -121,6 +121,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       sink.comment("Snapshot variable to be used during function verification")
       sink.declare(ConstDecl(`?s`))
+      sink.declare(ConstDecl(`?h`))
 
       /* The analysis phase should not have introduced any fresh (via decider.fresh)
        * variables. If it needs to, freshVars might need to be reset after the

@@ -8,3 +8,8 @@
 (declare-fun dom_$PRD$ (PHeap) Set<Loc>)
 (declare-fun loc_$PRD$ ($PRD_ARGS$) Loc)
 
+; TODO: move this
+(assert (Set_equal
+  (dom_$PRD$ emp)
+  Set.empty<Loc>))
+

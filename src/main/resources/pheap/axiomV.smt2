@@ -10,4 +10,4 @@
 		(dom_$FLD$ (combine h1 h2))
 		(Set_union (dom_$FLD$ h1) (dom_$FLD$ h2))
 	)
-	:pattern (dom_g (combine h1 h2)))))
+	:pattern (dom_$FLD$ (combine h1 h2)))))

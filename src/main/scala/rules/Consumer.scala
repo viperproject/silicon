@@ -477,7 +477,8 @@ object consumer extends ConsumptionRules with Immutable {
 
       case _ =>
         evalAndAssert(s, a, pve, v)((s1, t, v1) => {
-          Q(s1, h, t, v1)
+		  //println(a, " gives snapshot:", t)
+          Q(s1, h, predef.Emp, v1)
         })
     }
 
