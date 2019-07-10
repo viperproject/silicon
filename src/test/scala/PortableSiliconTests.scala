@@ -88,6 +88,7 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
     fe
   }
 
+  override def name = "Silicon Statistics"
   override def warmupLocationEnvVarName = "SILICONTESTS_WARMUP"
   override def targetLocationEnvVarName = "SILICONTESTS_TARGET"
 
