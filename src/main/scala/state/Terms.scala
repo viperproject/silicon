@@ -1437,11 +1437,12 @@ object SetSubset extends ((Term, Term) => BooleanTerm) {
   def unapply(ss: SetSubset) = Some((ss.p0, ss.p1))
 }
 
-class SetDisjoint(val p0: Term, val p1: Term) extends BinarySetOp {
+class SetDisjoint(val p0: Term, val p1: Term) extends BooleanTerm
+    with StructuralEqualityBinaryOp[Term] {
   override val op = "disj"
 }
 
-object SetDisjoint extends ((Term, Term) => SetTerm) {
+object SetDisjoint extends ((Term, Term) => BooleanTerm) {
   def apply(t0: Term, t1: Term) = {
     utils.assertSameSorts[sorts.Set](t0, t1)
     new SetDisjoint(t0, t1)
