@@ -78,7 +78,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       consume(s1, h1, id, args, perms, ve, v1)((s2, h2, optSnap, v2) =>
         optSnap match {
           case Some(snap) =>
-            QS(s2, h2, snap.convert(sorts.Snap), v2)
+            QS(s2, h2, snap, v2)
           case None =>
             /* Not having consumed anything could mean that we are in an infeasible
              * branch, or that the permission amount to consume was zero.

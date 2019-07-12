@@ -956,7 +956,6 @@ object evaluator extends EvaluationRules with Immutable {
                          v: Verifier)
                         (Q: (State, String, Seq[Term], Verifier) => VerificationResult)
                         : VerificationResult = {
-
     locacc match {
       case ast.FieldAccess(eRcvr, field) =>
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>

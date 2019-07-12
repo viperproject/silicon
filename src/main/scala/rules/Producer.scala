@@ -12,7 +12,7 @@ import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssert
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.state.terms.predef.{`?r`, `?h`}
 import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
@@ -257,7 +257,8 @@ object producer extends ProductionRules with Immutable {
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-            val snap = sf(v2.symbolConverter.toSort(field.typ), v2)
+            //val snap = sf(v2.symbolConverter.toSort(field.typ), v2)
+			val snap = PHeapLookup(field.name, v2.symbolConverter.toSort(field.typ), `?h`, tRcvr)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s.qpFields.contains(field)) {
               val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)

@@ -203,7 +203,7 @@ object consumer extends ConsumptionRules with Immutable {
                 SymbExLogger.currentLog().prepareOtherBranch(impLog)
                 res1}),
               (s2, v2) => {
-                val res2 = Q(s2, h, Unit, v2)
+                val res2 = Q(s2, h, predef.Emp, v2)
                 impLog.finish_elsSubs()
                 res2})
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
@@ -409,8 +409,7 @@ object consumer extends ConsumptionRules with Immutable {
                 val ve = pve dueTo InsufficientPermission(locacc)
                 val description = s"consume ${a.pos}: $a"
                 chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), tArgs, loss, ve, v2, description)((s3, h1, snap1, v3) => {
-				  val v = snap1.asInstanceOf[terms.SortWrapper].t
-				  val hsnap = PHeapSingleton(name, tArgs(0), v)
+				  val hsnap = PHeapSingleton(name, tArgs(0), snap1)
 
                   val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
                                    constrainableARPs = s.constrainableARPs)
@@ -497,7 +496,7 @@ object consumer extends ConsumptionRules with Immutable {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt)
-      Q(s5, Unit, v4)
+      Q(s5, predef.Emp, v4)
     })
   }
 }

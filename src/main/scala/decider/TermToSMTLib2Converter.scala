@@ -220,6 +220,7 @@ class TermToSMTLib2Converter
 	case PHeapLookup(f, _, h, x) => parens(text("lookup_") <> f <+> render(h) <+> render(x))
 	case PHeapDom(f, h) => parens(text("dom_") <> f <+> render(h))
 	case PHeapSingleton(f, x, v) => parens(text("singleton_") <> f <+> render(x) <+> render(v))
+	case PHeapRestrict(fun, h) => parens(text("restrict_") <> fun <+> render(h))
 
     /* Quantified Permissions */
 

@@ -12,6 +12,7 @@ import viper.silicon.Map
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
+import viper.silicon.state.terms.predef.`?h`
 import viper.silicon.supporters.ExpressionTranslator
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
@@ -118,17 +119,12 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           }
         })()
 
-      case loc: ast.LocationAccess => {
+      case ast.FieldAccess(rcv, field) => {
 	  	val h = data.arguments(0)
 
-		def lookup_f(f: ast.Field) : Fun = {
-			Fun(SimpleIdentifier(s"lookup_${f.name}"), Seq(sorts.PHeap, sorts.Ref), symbolConverter.toSort(f.typ))
-		}
-	  	
-		App(lookup_f(loc.asInstanceOf[ast.FieldAccess].field), Seq(h, translate(loc.asInstanceOf[ast.FieldAccess].rcv)))
-	  	//getOrFail(data.locToSnap, loc, toSort(loc.typ))
+		PHeapLookup(field.name, symbolConverter.toSort(field.typ), h, translate(rcv))
 	  }
-      //case loc: ast.LocationAccess => PHeap_lookup(data.snap, loc)
+
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
 
@@ -136,9 +132,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         val silverFunc = program.findFunction(eFApp.funcname)
         val fun = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(arg))
-        //val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap)
-		// TODO Replace this with a 'RestrictHeap_fun' term
-        val fapp = App(fun, predef.Emp +: args)
+        val fapp = App(fun, PHeapRestrict(fun.id.name, `?h`) +: args)
 
 
         val callerHeight = data.height
