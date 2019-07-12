@@ -408,12 +408,20 @@ object consumer extends ConsumptionRules with Immutable {
                 val loss = PermTimes(tPerm, s2.permissionScalingFactor)
                 val ve = pve dueTo InsufficientPermission(locacc)
                 val description = s"consume ${a.pos}: $a"
-                chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), tArgs, loss, ve, v2, description)((s3, h1, snap1, v3) => {
-				  val hsnap = PHeapSingleton(name, tArgs(0), snap1)
-
-                  val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
-                                   constrainableARPs = s.constrainableARPs)
-                  Q(s4, h1, hsnap, v3)})
+                chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), tArgs, loss, ve, v2, description)((s3, h1, snap1, v3) => locacc match {
+				  case _: ast.FieldAccess => {
+					  val hsnap = PHeapSingleton(name, tArgs(0), snap1)
+					  val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
+									   constrainableARPs = s.constrainableARPs)
+					  Q(s4, h1, hsnap, v3)
+				  }
+				  case _: ast.PredicateAccess => {
+					  val hsnap = snap1
+					  val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
+									   constrainableARPs = s.constrainableARPs)
+					  Q(s4, h1, hsnap, v3)
+				  }
+			  })
               case false =>
                 Failure(pve dueTo NegativePermission(perm))}))
 

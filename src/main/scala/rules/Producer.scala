@@ -273,9 +273,10 @@ object producer extends ProductionRules with Immutable {
         val predicate = Verifier.program.findPredicate(predicateName)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-            val snap = sf(
+            /*val snap = sf(
               predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1)
-                            .getOrElse(sorts.Snap), v2)
+                            .getOrElse(sorts.Snap), v2)*/
+			val snap = predef.Emp
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s.qpPredicates.contains(predicate)) {
               val formalArgs = s.predicateFormalVarMap(predicate)
