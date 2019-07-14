@@ -71,7 +71,14 @@ case class InverseFunctions(condition: Term,
 case class SnapshotMapDefinition(resource: ast.Resource,
                                  sm: Term,
                                  valueDefinitions: Seq[Term],
-                                 domainDefinitions: Seq[Term])
+                                 domainDefinitions: Seq[Term]) {
+
+  override lazy val toString: String = {
+    val resourceRepr = viper.silicon.utils.ast.toUnambiguousShortString(resource)
+
+    s"SnapshotMapDefinition($resourceRepr, $sm, ${valueDefinitions.toString()}, ${domainDefinitions.toString()})"
+  }
+}
 
 case class PermMapDefinition(resource: ast.Resource,
                              pm: Term,

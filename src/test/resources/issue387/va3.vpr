@@ -1,0 +1,21 @@
+/* An excerpt from test file quantifiedpermissions/misc/functions.sil that at some point failed
+ * while working on a fix for Silicon issue #387.
+ */
+
+field f: Int
+field ss: Seq[Ref]
+
+predicate P01(x: Ref, n: Int) {
+     acc(x.ss)
+  && |x.ss| == n
+  && 3 <= n
+  && (forall j: Int :: 0 <= j && j < 3 ==> acc(x.ss[j].f))
+  && (forall j: Int :: 3 <= j && j < n ==> acc(x.ss[j].f))
+}
+
+function fun04(x: Ref, n: Int, i: Int): Int
+  requires acc(P01(x, n))
+  requires 0 < i && i < n
+{
+  unfolding acc(P01(x, n)) in x.ss[i].f
+}

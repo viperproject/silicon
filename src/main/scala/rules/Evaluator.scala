@@ -19,6 +19,7 @@ import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.toSf
+import viper.silicon.utils.ast.flattenOperator
 import viper.silicon.verifier.Verifier
 import viper.silicon.{EvaluateRecord, Map, SymbExLogger, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
@@ -252,9 +253,9 @@ object evaluator extends EvaluationRules with Immutable {
 
       case fa: ast.FieldAccess =>
         evalLocationAccess(s, fa, pve, v)((s1, name, tArgs, v1) => {
-          val id = BasicChunkIdentifier(name)
           val ve = pve dueTo InsufficientPermission(fa)
-          chunkSupporter.lookup(s1, s1.h, id, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
+          val resource = fa.res(Verifier.program)
+          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
             Q(s3, tSnap, v1)
@@ -288,26 +289,19 @@ object evaluator extends EvaluationRules with Immutable {
         evalBinOp(s, e0, e1, (t1, t2) => And(t1, t2), pve, v)(Q)
 
       /* Short-circuiting evaluation of AND */
-      case ast.And(e0, e1) =>
-        /* Evaluate `e0 && e1` as `e0 && (e0 ==> e1)`, but without evaluating `e0` twice */
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          val lv = ast.LocalVar(v1.identifierFactory.fresh("v").name)(e0.typ, e0.pos, e0.info)
-          val e1Short = ast.Implies(lv, e1)(e1.pos, FromShortCircuitingAnd)
-          eval(s1.copy(g = s1.g + (lv, t0)), e1Short, pve, v1)((s2, t1, v2) =>
-            Q(s2, And(t0, t1), v2))})
+      case ae @ ast.And(_, _) =>
+        val flattened = flattenOperator(ae, {case ast.And(e0, e1) => Seq(e0, e1)})
+        evalSeqShortCircuit(And, s, flattened, pve, v)(Q)
+
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if Verifier.config.disableShortCircuitingEvaluations() =>
         evalBinOp(s, e0, e1, (t1, t2) => Or(t1, t2), pve, v)(Q)
 
       /* Short-circuiting evaluation of OR */
-      case ast.Or(e0, e1) =>
-        /* Evaluate `e0 || e1` as `e0 || (!e0 && e1)`, but without evaluating `e0` twice */
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          val lv = ast.LocalVar(v1.identifierFactory.fresh("v").name)(e0.typ, e0.pos, e0.info)
-          val e1Short = ast.And(ast.Not(lv)(e0.pos, e0.info), e1)(e1.pos, e1.info)
-          eval(s1.copy(g = s1.g + (lv, t0)), e1Short, pve, v1)((s2, t1, v2) =>
-            Q(s2, Or(t0, t1), v2))})
+      case oe @ ast.Or(_, _) =>
+        val flattened = flattenOperator(oe, {case ast.Or(e0, e1) => Seq(e0, e1)})
+        evalSeqShortCircuit(Or, s, flattened, pve, v)(Q)
 
       case implies @ ast.Implies(e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
@@ -624,7 +618,8 @@ object evaluator extends EvaluationRules with Immutable {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = Verifier.program.findFunction(funcName)
-        evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
+        val s0 = s.copy(hackIssue387DisablePermissionConsumption = Verifier.config.enableMoreCompleteExhale())
+        evals2(s0, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
@@ -696,7 +691,8 @@ object evaluator extends EvaluationRules with Immutable {
                                h = s2.h,
                                recordVisited = s2.recordVisited,
                                functionRecorder = fr5,
-                               smDomainNeeded = s2.smDomainNeeded)
+                               smDomainNeeded = s2.smDomainNeeded,
+                               hackIssue387DisablePermissionConsumption = s.hackIssue387DisablePermissionConsumption)
               QB(s5, tFApp, v3)})
             /* TODO: The join-function is heap-independent, and it is not obvious how a
              *       joined snapshot could be defined and represented
@@ -1334,6 +1330,43 @@ object evaluator extends EvaluationRules with Immutable {
     })
 
     (axioms, triggers, mostRecentTrig)
+  }
+
+  /* Evaluate a sequence of expressions in Order 
+   * The constructor determines when the evaluation stops
+   * Only Or and And are supported for the constructor
+   */
+  private def evalSeqShortCircuit(constructor: Seq[Term] => Term, 
+                                  s: State, 
+                                  exps: Seq[ast.Exp], 
+                                  pve: PartialVerificationError, 
+                                  v: Verifier)
+                                 (Q: (State, Term, Verifier) => VerificationResult)
+                                  : VerificationResult = {
+    if(constructor != Or && constructor != And) {
+      sys.error("Only Or and And are supported as constructors for evalSeqShortCircuit")
+    }
+    type brFun = (State, Verifier) => VerificationResult
+    val (default, stop, swapIfAnd) = 
+      if(constructor == Or) (False(), True(), (a: brFun, b: brFun) => (a,b)) 
+      else (True(), False(), (a: brFun, b: brFun) => (b,a))
+    if(exps.size==0)
+      Q(s, default, v)
+    else
+      eval(s, exps.head, pve, v)((s1, t0, v1) =>
+          t0 match {
+            case `stop` => Q(s1, t0, v1)
+            case _ => 
+              joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
+                  brancher.branch(s2, t0, v2, true) _ tupled swapIfAnd(
+                    (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
+                    (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
+                  ){case Seq(ent) => (ent.s, ent.data)
+                    case Seq(ent1, ent2) => (ent1.s.merge(ent2.s), 
+                      constructor(Seq(ent1.data, ent2.data)))
+                    case ents => sys.error(s"Unexpected join data entries $ents")
+                  }(Q)
+          })
   }
 
   private[silicon] case object FromShortCircuitingAnd extends Info {

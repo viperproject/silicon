@@ -405,10 +405,11 @@ object consumer extends ConsumptionRules with Immutable {
           evalLocationAccess(s1, locacc, pve, v1)((s2, name, tArgs, v2) =>
             v2.decider.assert(perms.IsNonNegative(tPerm)){
               case true =>
+			    val resource = locacc.res(Verifier.program)
                 val loss = PermTimes(tPerm, s2.permissionScalingFactor)
                 val ve = pve dueTo InsufficientPermission(locacc)
                 val description = s"consume ${a.pos}: $a"
-                chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), tArgs, loss, ve, v2, description)((s3, h1, snap1, v3) => locacc match {
+                chunkSupporter.consume(s2, h, resource, tArgs, loss, ve, v2, description)((s3, h1, snap1, v3) => locacc match {
 				  case _: ast.FieldAccess => {
 					  val hsnap = PHeapSingleton(name, tArgs(0), snap1)
 					  val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
@@ -461,12 +462,11 @@ object consumer extends ConsumptionRules with Immutable {
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val ve = pve dueTo MagicWandChunkNotFound(wand)
           val description = s"consume wand $wand"
-          chunkSupporter.consume(s1, h, MagicWandIdentifier(wand, Verifier.program), tArgs, FullPerm(), ve, v1, description)(Q)
+          chunkSupporter.consume(s1, h, wand, tArgs, FullPerm(), ve, v1, description)(Q)
         })
 
       case _ =>
         evalAndAssert(s, a, pve, v)((s1, t, v1) => {
-		  //println(a, " gives snapshot:", t)
           Q(s1, h, predef.Emp, v1)
         })
     }

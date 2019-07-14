@@ -1425,11 +1425,12 @@ object SetIntersection extends ((Term, Term) => SetTerm) {
   def unapply(si: SetIntersection) = Some((si.p0, si.p1))
 }
 
-class SetSubset(val p0: Term, val p1: Term) extends BinarySetOp {
+class SetSubset(val p0: Term, val p1: Term) extends BooleanTerm 
+    with StructuralEqualityBinaryOp[Term] {
   override val op = "⊂"
 }
 
-object SetSubset extends ((Term, Term) => SetTerm) {
+object SetSubset extends ((Term, Term) => BooleanTerm) {
   def apply(t0: Term, t1: Term) = {
     utils.assertSameSorts[sorts.Set](t0, t1)
     new SetSubset(t0, t1)
@@ -1438,11 +1439,12 @@ object SetSubset extends ((Term, Term) => SetTerm) {
   def unapply(ss: SetSubset) = Some((ss.p0, ss.p1))
 }
 
-class SetDisjoint(val p0: Term, val p1: Term) extends BinarySetOp {
+class SetDisjoint(val p0: Term, val p1: Term) extends BooleanTerm
+    with StructuralEqualityBinaryOp[Term] {
   override val op = "disj"
 }
 
-object SetDisjoint extends ((Term, Term) => SetTerm) {
+object SetDisjoint extends ((Term, Term) => BooleanTerm) {
   def apply(t0: Term, t1: Term) = {
     utils.assertSameSorts[sorts.Set](t0, t1)
     new SetDisjoint(t0, t1)
@@ -1569,11 +1571,12 @@ object MultisetIntersection extends ((Term, Term) => MultisetTerm) {
   def unapply(mi: MultisetIntersection) = Some((mi.p0, mi.p1))
 }
 
-class MultisetSubset(val p0: Term, val p1: Term) extends BinaryMultisetOp {
+class MultisetSubset(val p0: Term, val p1: Term) extends BooleanTerm
+    with StructuralEqualityBinaryOp[Term] {
   override val op = "⊂"
 }
 
-object MultisetSubset extends ((Term, Term) => MultisetTerm) {
+object MultisetSubset extends ((Term, Term) => BooleanTerm) {
   def apply(t0: Term, t1: Term) = {
     utils.assertSameSorts[sorts.Multiset](t0, t1)
     new MultisetSubset(t0, t1)
@@ -1846,7 +1849,8 @@ class SortWrapper(val t: Term, val to: Sort)
          s"Unexpected sort wrapping of $t from ${t.sort} to $to")
 
   val equalityDefiningMembers = t :: to :: Nil
-  override lazy val toString = s"$t"
+//  override lazy val toString = s"SortWrapper($t, $to)"
+  override lazy val toString = t.toString
   override val sort = to
 }
 
