@@ -61,7 +61,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
               .scalePermissionFactor(tPerm)
     consume(s1, body, pve, v)((s1a, snap, v1) => {
       val predTrigger = App(Verifier.predicateData(predicate).triggerFunction,
-                            snap.convert(terms.sorts.Snap) +: tArgs)
+                            snap +: tArgs)
       v1.decider.assume(predTrigger)
       val s2 = s1a.setConstrainable(constrainableWildcards, false)
       if (s2.qpPredicates.contains(predicate)) {
@@ -93,7 +93,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
         Q(s3, v1)
       } else {
-        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap.convert(sorts.Snap), tPerm)
+        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap, tPerm)
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor)
@@ -136,7 +136,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
           v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
           val predicateTrigger =
             App(Verifier.predicateData(predicate).triggerFunction,
-                snap.convert(terms.sorts.Snap) +: tArgs)
+                snap +: tArgs)
           v2.decider.assume(predicateTrigger)
           Q(s4.copy(g = s.g), v2)})
       })

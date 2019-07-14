@@ -702,7 +702,6 @@ object evaluator extends EvaluationRules with Immutable {
       case ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
               eIn) =>
-
         val predicate = Verifier.program.findPredicate(predicateName)
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
           evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
@@ -732,7 +731,7 @@ object evaluator extends EvaluationRules with Immutable {
                          * to the function arguments and the predicate snapshot
                          * (see 'predicateTriggers' in FunctionData.scala).
                          */
-                      v4.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
+                      v4.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap +: tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(Verifier.program).get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)

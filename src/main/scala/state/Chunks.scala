@@ -36,8 +36,8 @@ case class BasicChunk(resourceID: BaseID,
 
   require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
   resourceID match {
-    case FieldID => require(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
-    case PredicateID => require(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
+    case FieldID => require(snap.sort != sorts.Snap && snap.sort != sorts.PHeap, s"A field chunk's value ($snap) is not expected to be of sort Snap or PHeap")
+    case PredicateID => require(snap.sort == sorts.PHeap, s"A predicate chunk's snapshot ($snap) is expected to be of sort PHeap, but found ${snap.sort}")
   }
 
   override def withPerm(newPerm: Term) = BasicChunk(resourceID, id, args, snap, newPerm)

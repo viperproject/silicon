@@ -125,7 +125,9 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
 		PHeapLookup(field.name, symbolConverter.toSort(field.typ), h, translate(rcv))
 	  }
 
-      case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
+      case ast.Unfolding(_, eIn) => {
+	  	translate(toSort)(eIn)
+	  }
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
 
       case eFApp: ast.FuncApp =>

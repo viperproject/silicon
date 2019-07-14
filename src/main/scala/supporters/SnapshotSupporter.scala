@@ -140,7 +140,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
       val snapshotEq = (snap, snap0, snap1) match {
         case (Unit, Unit, Unit) => True()
         case (Unit, _, _) => sys.error(s"Unexpected equality between $s and ($snap0, $snap1)")
-        case _ => snap === Combine(snap0, snap1)
+        case _ => True() //snap === Combine(snap0, snap1)
       }
 
       v.decider.assume(snapshotEq)

@@ -219,7 +219,7 @@ object producer extends ProductionRules with Immutable {
                 SymbExLogger.currentLog().prepareOtherBranch(impLog)
                 res1}),
               (s2, v2) => {
-                v2.decider.assume(sf(sorts.Snap, v2) === Unit)
+                v2.decider.assume(`?h` === predef.Emp)
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -284,7 +284,7 @@ object producer extends ProductionRules with Immutable {
               quantifiedChunkSupporter.produceSingleLocation(
                 s2, predicate, formalArgs, tArgs, snap, gain, trigger, v2)(Q)
             } else {
-              val snap1 = snap.convert(sorts.Snap)
+              val snap1 = snap
               val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
               chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
                 if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder) {
@@ -420,7 +420,7 @@ object producer extends ProductionRules with Immutable {
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
-        v.decider.assume(sf(sorts.Snap, v) === Unit) /* TODO: See comment for case ast.Implies above */
+        v.decider.assume(`?h` === predef.Emp) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, v1) => {
           v1.decider.assume(t)
           Q(s1, v1)})

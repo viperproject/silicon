@@ -32,7 +32,7 @@ class PredicateData(predicate: ast.Predicate)
   val argumentSorts = predicate.formalArgs map (fm => symbolConvert.toSort(fm.typ))
 
   val triggerFunction =
-    Fun(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
+    Fun(Identifier(s"${predicate.name}%trigger"), sorts.PHeap +: argumentSorts, sorts.Bool)
 }
 
 trait PredicateVerificationUnit
