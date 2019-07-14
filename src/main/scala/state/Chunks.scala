@@ -129,7 +129,7 @@ case class QuantifiedMagicWandChunk(id: MagicWandIdentifier,
                                     initialCond: Option[Term],
                                     singletonArgs: Option[Seq[Term]],
                                     hints: Seq[Term] = Nil)
-  extends QuantifiedBasicChunk {
+    extends QuantifiedBasicChunk {
 
   require(wsf.sort == terms.sorts.PredicateSnapFunction(sorts.Snap), s"Quantified magic wand chunk values must be of sort MagicWandSnapFunction ($wsf), but found ${wsf.sort}")
   require(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")

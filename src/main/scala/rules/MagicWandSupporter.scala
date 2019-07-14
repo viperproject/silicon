@@ -399,9 +399,9 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 
       val usedChunks = chs2.flatten
-      val hUsed = stateConsolidator.merge(s2.reserveHeaps.head, Heap(usedChunks), v2)
+      val (fr4, hUsed) = stateConsolidator.merge(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
 
-      val s4 = s3.copy(reserveHeaps = hUsed +: s3.reserveHeaps.tail)
+      val s4 = s3.copy(functionRecorder = fr4, reserveHeaps = hUsed +: s3.reserveHeaps.tail)
 
       /* Returning the last of the usedChunks should be fine w.r.t to the snapshot
        * of the chunk, since consumeFromMultipleHeaps should have equated the
@@ -444,8 +444,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
        * is consumed from hOps and permissions for the predicate are added to the state's
        * heap. After a statement is executed those permissions are transferred to hOps.
        */
-      val hOpsJoinUsed = stateConsolidator.merge(newState.reserveHeaps(1), newState.h, v)
-      newState.copy(h = Heap(),
+      val (fr, hOpsJoinUsed) = stateConsolidator.merge(newState.functionRecorder, newState.reserveHeaps(1), newState.h, v)
+      newState.copy(functionRecorder = fr, h = Heap(),
           reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
     } else newState
 

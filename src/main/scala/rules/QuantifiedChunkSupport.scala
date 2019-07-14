@@ -71,7 +71,14 @@ case class InverseFunctions(condition: Term,
 case class SnapshotMapDefinition(resource: ast.Resource,
                                  sm: Term,
                                  valueDefinitions: Seq[Term],
-                                 domainDefinitions: Seq[Term])
+                                 domainDefinitions: Seq[Term]) {
+
+  override lazy val toString: String = {
+    val resourceRepr = viper.silicon.utils.ast.toUnambiguousShortString(resource)
+
+    s"SnapshotMapDefinition($resourceRepr, $sm, ${valueDefinitions.toString()}, ${domainDefinitions.toString()})"
+  }
+}
 
 case class PermMapDefinition(resource: ast.Resource,
                              pm: Term,
@@ -533,9 +540,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     s.smCache.get(resource, relevantChunks, optSmDomainDefinitionCondition) match {
       case Some((smDef, _)) if !s.exhaleExt =>
-        /* The commented code is kept in case it ever becomes necessary to re-assume cached
-         * snapshot map definitions. Compare with the code in the other case before using it!
-         */
         if (s.smDomainNeeded) {
           optQVarsInstantiations match {
             case None =>
@@ -636,20 +640,23 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           /* Explicit triggers were provided */
 
           val trig = tTriggers map (t => Trigger(t.p map {
+            /* TODO: Understand and document why the provided trigger ft/pt is sometimes,
+             *       but not always, replaced.
+             */
             case ft: FieldTrigger =>
-              if (ft.field == resource.asInstanceOf[ast.Field].name) FieldTrigger(ft.field, tSnap, ft.at)
-              else ft
+              resource match {
+                case field: ast.Field if ft.field == field.name => FieldTrigger(ft.field, tSnap, ft.at)
+                case _ => ft
+              }
             case pt: PredicateTrigger =>
               resource match {
-                case p: ast.Predicate =>
-                  if (pt.predname == p.name) PredicateTrigger(pt.predname, tSnap, pt.args)
-                  else pt
-                case wand: ast.MagicWand =>
-                  if (pt.predname == MagicWandIdentifier(wand, Verifier.program).toString)
-                    PredicateTrigger(pt.predname, tSnap, pt.args)
-                  else pt
+                case p: ast.Predicate if pt.predname == p.name =>
+                  PredicateTrigger(pt.predname, tSnap, pt.args)
+                case wand: ast.MagicWand if pt.predname == MagicWandIdentifier(wand, Verifier.program).toString =>
+                  PredicateTrigger(pt.predname, tSnap, pt.args)
+                case _ => pt
               }
-            case t2 => t2
+            case other => other
           }))
 
           (trig, qvars)
