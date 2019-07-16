@@ -1,4 +1,4 @@
-(declare-fun combine (PHeap PHeap) PHeap)
-(declare-fun PHeap_equal (PHeap PHeap) Bool)
-(declare-const emp PHeap)
+(declare-fun PHeap.combine (PHeap PHeap) PHeap)
+(declare-fun PHeap.equal (PHeap PHeap) Bool)
+(declare-const PHeap.emp PHeap)
 

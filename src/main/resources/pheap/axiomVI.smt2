@@ -7,7 +7,7 @@
 
 (assert (forall ((h1 PHeap) (h2 PHeap)) (!
 	(Set_equal
-		(dom_$PRD$ (combine h1 h2))
-		(Set_union (dom_$PRD$ h1) (dom_$PRD$ h2))
+		(PHeap.dom_$PRD$ (PHeap.combine h1 h2))
+		(Set_union (PHeap.dom_$PRD$ h1) (PHeap.dom_$PRD$ h2))
 	)
-	:pattern ((dom_$PRD$ (combine h1 h2))))))
+	:pattern ((PHeap.dom_$PRD$ (PHeap.combine h1 h2))))))

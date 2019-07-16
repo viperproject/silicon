@@ -50,7 +50,7 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
 	// collectedFields = program.fields
 
     collectedFunctionDecls = generatePHeapFunctions ++ generateFieldFunctionDecls(program.fields) ++ generatePredicateFunctionDecls(program.predicates) /*++ generateFunctionFunctionDecls(program.functions)*/
-    collectedAxioms = axiomIII(program.fields) ++ axiomV(program.fields) ++ axiomVI(program.predicates)++ axiomVII() ++ axiomII(program.functions.filter(_.isAbstract)) ++ axiomIV(program.predicates) ++ axiomI(program.fields, program.predicates) ++ axiomVIII()
+    collectedAxioms = axiomIII(program.fields) ++ axiomV(program.fields) ++ axiomVI(program.predicates)++ axiomVII() ++ axiomII(program.functions.filter(_.isAbstract)) ++ axiomIV(program.predicates) /*++ axiomI(program.fields, program.predicates)*/ ++ axiomVIII()
   }
 
   private def extractPreambleLines(from: Iterable[PreambleBlock]*): Iterable[String] =

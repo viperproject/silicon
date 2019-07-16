@@ -1941,7 +1941,7 @@ object predef {
   val `?h` = Var(Identifier("h@$"), sorts.PHeap)
   val `?r` = Var(Identifier("r"), sorts.Ref)
 
-  val Emp = Var(Identifier("emp"), sorts.PHeap)
+  val Emp = Var(Identifier("PHeap.emp"), sorts.PHeap)
 
   val Zero = IntLiteral(0)
   val One = IntLiteral(1)

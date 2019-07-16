@@ -122,7 +122,7 @@ object consumer extends ConsumptionRules with Immutable {
       else
         wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) =>
           consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, snap2, v2) => {
-			val combinedSnap = App(Fun(SimpleIdentifier("combine"), Seq(sorts.PHeap, sorts.PHeap), sorts.PHeap), Seq(snap1,snap2))
+			val combinedSnap = App(Fun(SimpleIdentifier("PHeap.combine"), Seq(sorts.PHeap, sorts.PHeap), sorts.PHeap), Seq(snap1,snap2))
             Q(s2, h2, combinedSnap, v2)
 	      }))
     }
