@@ -106,7 +106,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     private def generateFunctionSymbolsAfterAnalysis: Iterable[Either[String, Function]] = (
          Seq(Left("Declaring symbols related to program functions (from program analysis)"))
       ++ functionData.values.flatMap(data =>
-            Seq(data.function, data.limitedFunction, data.statelessFunction)
+            Seq(data.function, data.limitedFunction, data.statelessFunction, data.restrictHeapFunction)
          ).map(Right(_))
     )
 
@@ -170,6 +170,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
+          //emitAndRecordFunctionAxioms(data.restrictHeapAxiom)
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
 
@@ -209,8 +210,13 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
-        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, _) => {
-          phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
+        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, vv) => {
+		  // Consume pres again to obtain snapshot term for restrictHeapAxiom
+		  consumes(s1, pres, ContractNotWellformed /* Whatever */, vv)((s2,snap,_) => {
+			emitAndRecordFunctionAxioms(data.restrictHeapAxiom(snap))
+			Success()
+		  })
+		  phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
             produces(s1, toSf(`?s`), posts, ContractNotWellformed, v)((s2, _) => {
             recorders :+= s2.functionRecorder
             Success()})})})

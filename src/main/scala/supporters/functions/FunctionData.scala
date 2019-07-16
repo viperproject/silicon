@@ -46,6 +46,7 @@ class FunctionData(val programFunction: ast.Function,
   val function: HeapDepFun = symbolConverter.toFunction(programFunction)
   val limitedFunction = functionSupporter.limitedVersion(function)
   val statelessFunction = functionSupporter.statelessVersion(function)
+  val restrictHeapFunction = functionSupporter.restrictHeapFunction(function)
 
   val formalArgs: Map[ast.AbstractLocalVar, Var] = toMap(
     for (arg <- programFunction.formalArgs;
@@ -62,6 +63,7 @@ class FunctionData(val programFunction: ast.Function,
   val functionApplication = App(function, `?h` +: formalArgs.values.toSeq)
   val limitedFunctionApplication = App(limitedFunction, `?h` +: formalArgs.values.toSeq)
   val triggerFunctionApplication = App(statelessFunction, formalArgs.values.toSeq)
+  val restrictHeapApplication = App(restrictHeapFunction, arguments)
 
   val limitedAxiom =
     Forall(arguments,
@@ -70,6 +72,8 @@ class FunctionData(val programFunction: ast.Function,
 
   val triggerAxiom =
     Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication))
+  
+  def restrictHeapAxiom(dom: Term) : Term = Forall(arguments, restrictHeapApplication === dom, Trigger(restrictHeapApplication))
 
   /*
    * Data collected during phases 1 (well-definedness checking) and 2 (verification)
@@ -184,10 +188,9 @@ class FunctionData(val programFunction: ast.Function,
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
       val args = (
-           expressionTranslator.getOrFail(locToSnap, predacc, sorts.PHeap)
+	       predef.`?h`
+           //expressionTranslator.getOrFail(locToSnap, predacc, sorts.PHeap)
         +: expressionTranslator.translatePrecondition(program, predacc.args, this))
-	  
-	  println(args)
 
       val fapp = App(triggerFunction, args)
 

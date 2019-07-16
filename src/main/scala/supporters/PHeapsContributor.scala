@@ -49,7 +49,7 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
 	// collectedPredicates = program.predicates
 	// collectedFields = program.fields
 
-    collectedFunctionDecls = generatePHeapFunctions ++ generateFieldFunctionDecls(program.fields) ++ generatePredicateFunctionDecls(program.predicates) ++ generateFunctionFunctionDecls(program.functions)
+    collectedFunctionDecls = generatePHeapFunctions ++ generateFieldFunctionDecls(program.fields) ++ generatePredicateFunctionDecls(program.predicates) /*++ generateFunctionFunctionDecls(program.functions)*/
     collectedAxioms = axiomIII(program.fields) ++ axiomV(program.fields) ++ axiomVI(program.predicates)++ axiomVII() ++ axiomII(program.functions.filter(_.isAbstract)) ++ axiomIV(program.predicates) ++ axiomI(program.fields, program.predicates) ++ axiomVIII()
   }
 

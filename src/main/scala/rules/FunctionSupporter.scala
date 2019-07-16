@@ -19,4 +19,9 @@ object functionSupporter extends Immutable {
     val id = function.id.withSuffix("%", "stateless")
     Fun(id, function.argSorts.tail, terms.sorts.Bool)
   }
+
+  def restrictHeapFunction(function: HeapDepFun): Fun = {
+    val id = SimpleIdentifier("restrict_" + function.id.name)
+	Fun(id, function.argSorts, sorts.PHeap)
+  }
 }

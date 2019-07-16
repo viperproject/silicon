@@ -134,7 +134,8 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         val silverFunc = program.findFunction(eFApp.funcname)
         val fun = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(arg))
-        val fapp = App(fun, PHeapRestrict(fun.id.name, `?h`) +: args)
+        val fapp = App(fun, App(
+		  Fun(SimpleIdentifier("restrict_" + fun.id.name), sorts.PHeap +: args.map(x => x.sort), sorts.PHeap),`?h` +: args) +: args)
 
 
         val callerHeight = data.height

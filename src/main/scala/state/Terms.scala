@@ -1691,9 +1691,6 @@ case class PHeapDom(field: String, h: Term) extends Term {
 case class PHeapSingleton(field: String, x: Term, v: Term) extends Term {
   val sort = sorts.PHeap
 }
-case class PHeapRestrict(function: String, h: Term) extends Term {
-  val sort = sorts.PHeap
-}
 
 /* Quantified permissions */
 
