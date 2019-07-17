@@ -96,11 +96,17 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
     val templateFile = "/pheap/predicate_functions.smt2"
 
     predicates map (p => {
+      val pArgs_q = (p.formalArgs map (a => 
+	  	"(" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
+	  )).mkString(" ")
+      val pArgs = (p.formalArgs map (a => a.name)).mkString(" ")
       val argSorts = (p.formalArgs map (a => termConverter.convert(symbolConverter.toSort(a.typ)))).mkString(" ")
       val id = p.name
       val substitutions = Map(
 	  	"$PRD$" -> id,
-		"$PRD_ARGS$" -> argSorts
+		"$PRD_ARGS_S$" -> argSorts,
+		"$PRD_ARGS_Q$" -> pArgs_q,
+		"$PRD_ARGS$" -> pArgs,
 	  )
       val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
 

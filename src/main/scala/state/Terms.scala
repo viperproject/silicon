@@ -1685,10 +1685,23 @@ object Second extends (Term => Term) {
 
 /* PHeaps */
 case class PHeapLookup(field: String, sort: Sort, h: Term, at: Term) extends Term {}
+case class PHeapCombine(h1: Term, h2: Term) extends Term {
+  val sort = sorts.PHeap
+}
+case class PHeapLookupPredicate(predicate: String, h: Term, args: Seq[Term]) extends Term {
+  val sort = sorts.PHeap
+}
+
 case class PHeapDom(field: String, h: Term) extends Term {
   val sort = sorts.Set(sorts.Ref)
 }
+
+// TODO: Rename to PHeapSingletonField
 case class PHeapSingleton(field: String, x: Term, v: Term) extends Term {
+  val sort = sorts.PHeap
+}
+
+case class PHeapSingletonPredicate(predicate: String, args: Seq[Term], h: Term) extends Term {
   val sort = sorts.PHeap
 }
 

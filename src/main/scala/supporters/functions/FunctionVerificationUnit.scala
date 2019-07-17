@@ -210,14 +210,13 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
-        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, vv) => {
-		  // Consume pres again to obtain snapshot term for restrictHeapAxiom
-		  consumes(s1, pres, ContractNotWellformed /* Whatever */, vv)((s2,snap,_) => {
-			emitAndRecordFunctionAxioms(data.restrictHeapAxiom(snap))
-			Success()
-		  })
+        produces(s0, (_,_) => `?h`, pres, ContractNotWellformed, v)((s1, vv) => {
+
+		  // TODO Move this and compute correct restrictHeap term
+	      emitAndRecordFunctionAxioms(data.restrictHeapAxiom(`?h`))
+
 		  phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
-            produces(s1, toSf(`?s`), posts, ContractNotWellformed, v)((s2, _) => {
+            produces(s1, (_,_) => `?h`, posts, ContractNotWellformed, v)((s2, _) => {
             recorders :+= s2.functionRecorder
             Success()})})})
 

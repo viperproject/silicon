@@ -114,12 +114,12 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
                          v: Verifier)
                         : ((Sort, Verifier) => Term, (Sort, Verifier) => Term) = {
 
-    val (snap0, snap1) = createSnapshotPair(s, sf(sorts.Snap, v), a0, a1, v)
+    //val (snap0, snap1) = createSnapshotPair(s, sf(sorts.Snap, v), a0, a1, v)
 
-    val sf0 = toSf(snap0)
-    val sf1 = toSf(snap1)
+    //val sf0 = toSf(snap0)
+    //val sf1 = toSf(snap1)
 
-    (sf0, sf1)
+    (sf, sf)
   }
 
   def createSnapshotPair(s: State, snap: Term, a0: ast.Exp, a1: ast.Exp, v: Verifier): (Term, Term) = {

@@ -29,6 +29,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
   private var data: FunctionData = _
   private var ignoreAccessPredicates = false
   private var failed = false
+  private var snap: Term = `?h`
 
   var functionData: Map[ast.Function, FunctionData] = _
 
@@ -41,6 +42,9 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
     this.program = program
     this.data = data
     this.failed = false
+
+	// Unfoldings can update this variable to flatten heap this during body translation
+	this.snap = `?h`
 
     val result = func.body map translate
 
@@ -120,12 +124,14 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         })()
 
       case ast.FieldAccess(rcv, field) => {
-	  	val h = data.arguments(0)
-
-		PHeapLookup(field.name, symbolConverter.toSort(field.typ), h, translate(rcv))
+		PHeapLookup(field.name, symbolConverter.toSort(field.typ), this.snap, translate(rcv))
 	  }
 
-      case ast.Unfolding(_, eIn) => {
+      case ast.Unfolding(ast.PredicateAccessPredicate(ast.PredicateAccess(args, predicate), _), eIn) => {
+	    this.snap = PHeapCombine(
+		  PHeapLookupPredicate(predicate, this.snap, args map translate),
+	      this.snap
+		)
 	  	translate(toSort)(eIn)
 	  }
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
@@ -135,7 +141,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         val fun = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(arg))
         val fapp = App(fun, App(
-		  Fun(SimpleIdentifier("restrict_" + fun.id.name), sorts.PHeap +: args.map(x => x.sort), sorts.PHeap),`?h` +: args) +: args)
+		  Fun(SimpleIdentifier("restrict_" + fun.id.name), sorts.PHeap +: args.map(x => x.sort), sorts.PHeap),this.snap +: args) +: args)
 
 
         val callerHeight = data.height
