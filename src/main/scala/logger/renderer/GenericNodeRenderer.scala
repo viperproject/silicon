@@ -1,9 +1,9 @@
 package logger.renderer
 
-import logger.{GenericNode, SymbLog}
+import logger.{GenericBranchInfo, GenericNode, SymbLog}
 import logger.records.SymbolicRecord
 import logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
-import logger.records.structural.{BranchingRecord, JoiningRecord}
+import logger.records.structural.{BranchInfo, BranchingRecord, JoiningRecord}
 
 class GenericNodeRenderer extends Renderer[SymbLog, List[GenericNode]] {
 
@@ -28,9 +28,7 @@ class GenericNodeRenderer extends Renderer[SymbLog, List[GenericNode]] {
     node.data = record.getNodeData()
 
     record match {
-      case br: BranchingRecord =>
-        val branches = br.getBranches().map(branch => branch.map(renderRecord))
-        node.branches = branches
+      case br: BranchingRecord => node.branches = br.getBranchInfos().map(renderBranch)
       case jr: JoiningRecord => node.isJoinPoint = true
       case os: OpenScopeRecord => node.isScopeOpen = true
       case cs: CloseScopeRecord => node.isScopeClose = true
@@ -38,5 +36,12 @@ class GenericNodeRenderer extends Renderer[SymbLog, List[GenericNode]] {
     }
 
     node
+  }
+
+  def renderBranch(info: BranchInfo): GenericBranchInfo = {
+    new GenericBranchInfo(
+      info.isReachable,
+      info.startTimeMs,
+      info.records.map(renderRecord))
   }
 }

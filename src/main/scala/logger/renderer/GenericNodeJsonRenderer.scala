@@ -1,6 +1,6 @@
 package logger.renderer
 
-import logger.{GenericNode, GenericNodeData}
+import logger.{GenericBranchInfo, GenericNode, GenericNodeData}
 
 class GenericNodeJsonRenderer extends JsonRenderer[GenericNode] {
 
@@ -16,7 +16,9 @@ class GenericNodeJsonRenderer extends JsonRenderer[GenericNode] {
 
   def getAllNodes(r: GenericNode): List[GenericNode] = {
     if (r.branches != null) {
-      r.branches.foldLeft(List(r))((prevVal, branch) => prevVal ++ getAllNodes(branch))
+      r.branches
+          .map(branch => branch.records)
+          .foldLeft(List(r))((prevVal, branch) => prevVal ++ getAllNodes(branch))
     } else {
       List(r)
     }
@@ -30,9 +32,8 @@ class GenericNodeJsonRenderer extends JsonRenderer[GenericNode] {
     val isScopeCloseJson = if (s.isScopeClose) pair("isScopeClose", s.isScopeClose) else null
     val isSyntacticJson = if (s.isSyntactic) pair("isSyntactic", s.isSyntactic) else null
 
-    val branches: List[List[Int]] = if (s.branches == null) null else s.branches
-      .map(branch => branch.map(n => n.id))
-    val branchesJson = if (branches != null) pairDoubleList("branches", branches) else null
+    val branches: String = if (s.branches == null) null else "[" + s.branches.map(renderBranch).mkString(",") + "]"
+    val branchesJson = if (branches != null) pairJsonObject("branches", branches) else null
 
     val dataValueJson = if (s.data != null) render(s.data) else null
     val dataJson = if (dataValueJson != null) pairJsonObject("data", dataValueJson) else null
@@ -63,5 +64,16 @@ class GenericNodeJsonRenderer extends JsonRenderer[GenericNode] {
     } else {
       "{" + properties.mkString(",") + "}"
     }
+  }
+
+  def renderBranch(info: GenericBranchInfo): String = {
+    val isReachableJson = pair("isReachable", info.isReachable)
+    val startTimeMsJson = pair("startTimeMs", info.startTimeMs)
+    val recordsJson = pairJsonObject("records", renderJsonArray(info.records.map(record => record.id)))
+
+    val properties = List(isReachableJson, startTimeMsJson, recordsJson)
+      .filterNot(jsonProperty => jsonProperty == null)
+
+    "{" + properties.mkString(",") + "}"
   }
 }
