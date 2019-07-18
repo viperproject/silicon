@@ -15,6 +15,7 @@ import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.predef.{`?r`, `?h`}
 import viper.silicon.state.terms._
 import viper.silicon.state._
+import viper.silicon.utils.freshSnap
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
@@ -257,8 +258,10 @@ object producer extends ProductionRules with Immutable {
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-            val snap = PHeapLookup(field.name, v2.symbolConverter.toSort(field.typ), 
-			sf(v2.symbolConverter.toSort(field.typ), v2), tRcvr)
+
+		    // TODO Stop hacking, start programming...
+            val snap = if (sf == freshSnap)  sf(v2.symbolConverter.toSort(field.typ), v2) else PHeapLookup(field.name, v2.symbolConverter.toSort(field.typ), sf(v2.symbolConverter.toSort(field.typ), v2), tRcvr)
+
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s2.qpFields.contains(field)) {
               val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
@@ -273,8 +276,8 @@ object producer extends ProductionRules with Immutable {
         val predicate = Verifier.program.findPredicate(predicateName)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-            val snap = PHeapLookupPredicate(predicate.name, sf(
-              predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1).getOrElse(sorts.Snap), v2), tArgs)
+            val snap = PHeapSingletonPredicate(predicateName,tArgs, sf(
+              predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1).getOrElse(sorts.Snap), v2))
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s2.qpPredicates.contains(predicate)) {
               val formalArgs = s2.predicateFormalVarMap(predicate)

@@ -93,7 +93,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
         Q(s3, v1)
       } else {
-        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, PHeapSingletonPredicate(predicate.name, tArgs, snap), tPerm)
+        val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, /*PHeapSingletonPredicate(predicate.name, tArgs, snap)*/ snap, tPerm)
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor)
@@ -146,7 +146,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
       chunkSupporter.consume(s1, s1.h, predicate, tArgs, s1.permissionScalingFactor, ve, v, description)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
-        produce(s3, (_,_) => PHeapLookupPredicate(predicate.name, snap, tArgs), body, pve, v1)((s4, v2) => {
+        produce(s3, (_,_) => snap, body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
           val predicateTrigger =
             App(Verifier.predicateData(predicate).triggerFunction, snap +: tArgs)
