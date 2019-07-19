@@ -44,6 +44,24 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
   import consumer._
   import producer._
 
+  /**
+   * Returns a fresh PHeap and defines its domain in the verifiers path conditions
+   */
+  def freshSnap(predicate: ast.Predicate, tArgs: Seq[Term], v: Verifier) {
+    val h = v.decider.fresh(sorts.PHeap)
+	if (! predicate.isAbstract) {
+      addDom(predicateName, predicate.body.get, h)
+	}
+	h
+  }
+
+  def addDom(predicateName: String, a: ast.Exp, h: Term, v: Verifier) : Term = a match {
+    case ast.PredicateAccessPredicate(ast.PredicateAccess(args, p), _) => {
+      val tArgs = expressionTranslator.translatePrecondition(program, args, this)
+	  PHeapSingletonPredicate(p, tArgs, PHeapLookupPredicate(p, `?h`, tArgs))
+	}
+  }
+
   def fold(s: State,
            predicate: ast.Predicate,
            tArgs: List[Term],

@@ -277,7 +277,7 @@ object producer extends ProductionRules with Immutable {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
 		    // TODO Stop hacking, start programming...
-            val snap = if (sf == freshSnap) v2.decider.fresh(sorts.PHeap)  else PHeapLookupPredicate(predicateName, sf(
+            val snap = if (sf == freshSnap) v2.decider.fresh(sorts.PHeap) else PHeapLookupPredicate(predicateName, sf(
               predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1).getOrElse(sorts.Snap), v2), tArgs)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s2.qpPredicates.contains(predicate)) {

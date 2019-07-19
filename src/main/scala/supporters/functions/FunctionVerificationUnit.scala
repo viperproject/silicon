@@ -170,7 +170,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
-          //emitAndRecordFunctionAxioms(data.restrictHeapAxiom)
+          emitAndRecordFunctionAxioms(data.restrictHeapAxiom)
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
 
@@ -211,10 +211,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
         produces(s0, (_,_) => `?h`, pres, ContractNotWellformed, v)((s1, vv) => {
-
-		  // TODO Move this and compute correct restrictHeap term
-	      emitAndRecordFunctionAxioms(data.restrictHeapAxiom(`?h`))
-
 		  phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
             produces(s1, (_,_) => `?h`, posts, ContractNotWellformed, v)((s2, _) => {
             recorders :+= s2.functionRecorder
