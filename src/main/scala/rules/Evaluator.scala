@@ -735,7 +735,7 @@ object evaluator extends EvaluationRules with Immutable {
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(Verifier.program).get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)
-                      produce(s7 /*\ insγ*/, (_,_) => PHeapLookupPredicate(predicateName, snap, tArgs), body, pve, v4)((s8, v5) => {
+                      produce(s7 /*\ insγ*/, (_,_) => PHeapCombine(snap, PHeapLookupPredicate(predicateName, snap, tArgs)), body, pve, v4)((s8, v5) => {
                         val s9 = s8.copy(functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                          recordVisited = s3.recordVisited,
                                          permissionScalingFactor = s6.permissionScalingFactor)

@@ -44,15 +44,13 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
   import consumer._
   import producer._
 
-  /**
-   * Returns a fresh PHeap and defines its domain in the verifiers path conditions
-   */
   def freshSnap(predicate: ast.Predicate, tArgs: Seq[Term], v: Verifier) : Term = {
-	if (predicate.isAbstract) {
+	/*if (predicate.isAbstract) {
       v.decider.fresh(sorts.PHeap)
 	} else {
       PHeapFreshPredicateSnap(predicate.name, tArgs)
-	}
+	}*/
+    v.decider.fresh(sorts.PHeap)
   }
 
   def fold(s: State,

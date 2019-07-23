@@ -221,7 +221,7 @@ object producer extends ProductionRules with Immutable {
                 SymbExLogger.currentLog().prepareOtherBranch(impLog)
                 res1}),
               (s2, v2) => {
-                v2.decider.assume(`?h` === predef.Emp)
+                //v2.decider.assume(`?h` === predef.Emp)
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -278,7 +278,7 @@ object producer extends ProductionRules with Immutable {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
 		    // TODO Stop hacking, start programming...
-            val snap = if (sf == freshSnap) predicateSupporter.freshSnap(predicate, tArgs, v2) else PHeapLookupPredicate(predicateName, sf(
+            val snap = if (sf == freshSnap) freshSnap(sorts.PHeap, v2) else PHeapLookupPredicate(predicateName, sf(
               predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1).getOrElse(sorts.Snap), v2), tArgs)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s2.qpPredicates.contains(predicate)) {
@@ -423,7 +423,7 @@ object producer extends ProductionRules with Immutable {
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
-        v.decider.assume(`?h` === predef.Emp) /* TODO: See comment for case ast.Implies above */
+        //v.decider.assume(`?h` === predef.Emp) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, v1) => {
           v1.decider.assume(t)
           Q(s1, v1)})
