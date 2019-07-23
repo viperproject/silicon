@@ -54,6 +54,10 @@ object sorts {
     override lazy val toString = id.toString
   }
 
+  case class SMTSort(id: Identifier) extends Sort {
+    override lazy val toString = id.toString
+  }
+
   case class FieldValueFunction(codomainSort: Sort) extends Sort {
     val id = Identifier(s"FVF[$codomainSort]")
     override lazy val toString = id.toString
@@ -172,6 +176,17 @@ class DomainFun(val id: Identifier, val argSorts: Seq[Sort], val resultSort: Sor
 
 object DomainFun extends ((Identifier, Seq[Sort], Sort) => DomainFun) with GenericFunctionCompanion[DomainFun] {
   def apply(id: Identifier, argSorts: Seq[Sort], resultSort: Sort) = new DomainFun(id, argSorts, resultSort)
+}
+
+class SMTFun(val id: Identifier, val argSorts: Seq[Sort], val resultSort: Sort)
+  extends GenericFunction[SMTFun] {
+
+  def copy(id: Identifier = id, argSorts: Seq[Sort] = argSorts, resultSort: Sort = resultSort) =
+   SMTFun(id, argSorts, resultSort)
+}
+
+object SMTFun extends ((Identifier, Seq[Sort], Sort) => SMTFun) with GenericFunctionCompanion[SMTFun] {
+  def apply(id: Identifier, argSorts: Seq[Sort], resultSort: Sort) = new SMTFun(id, argSorts, resultSort)
 }
 
 case class Macro(id: Identifier, argSorts: Seq[Sort], resultSort: Sort) extends Applicable

@@ -31,16 +31,19 @@ class TermToSMTLib2Converter
     super.pretty(defaultWidth, render(s))
   }
 
-  protected def render(sort: Sort): Cont = sort match {
+  protected def render(sort: Sort) = doRender(sort, false)
+
+  protected def doRender(sort: Sort, alwaysSanitize: Boolean = false): Cont = sort match {
     case sorts.Int => "Int"
     case sorts.Bool => "Bool"
     case sorts.Perm => "$Perm"
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
-    case sorts.Seq(elementSort) => text("$Seq<") <> render(elementSort) <> ">"
-    case sorts.Set(elementSort) => text("Set<") <> render(elementSort) <> ">"
-    case sorts.Multiset(elementSort) => text("Multiset<") <> render(elementSort) <> ">"
+    case sorts.Seq(elementSort) => text("$Seq<") <> doRender(elementSort, true) <> ">"
+    case sorts.Set(elementSort) => text("Set<") <> doRender(elementSort, true) <> ">"
+    case sorts.Multiset(elementSort) => text("Multiset<") <> doRender(elementSort, true) <> ">"
     case sorts.UserSort(id) => sanitize(id)
+    case sorts.SMTSort(id) => if (alwaysSanitize) sanitize(id) else id.name
 
     case sorts.Unit =>
       /* Sort Unit corresponds to Scala's Unit type and is used, e.g., as the
@@ -48,8 +51,8 @@ class TermToSMTLib2Converter
        */
       ""
 
-    case sorts.FieldValueFunction(codomainSort) => text("$FVF<") <> render(codomainSort) <> ">"
-    case sorts.PredicateSnapFunction(codomainSort) => text("$PSF<") <> render(codomainSort) <> ">"
+    case sorts.FieldValueFunction(codomainSort) => text("$FVF<") <> doRender(codomainSort, true) <> ">"
+    case sorts.PredicateSnapFunction(codomainSort) => text("$PSF<") <> doRender(codomainSort, true) <> ">"
 
     case sorts.FieldPermFunction() => text("$FPM")
     case sorts.PredicatePermFunction() => text("$PPM")
@@ -101,8 +104,13 @@ class TermToSMTLib2Converter
     case x: Var =>
       sanitize(x.id)
 
-    case fapp: Application[_] =>
-      renderApp(fapp.applicable.id.name, fapp.args, fapp.sort)
+    case fapp: Application[_] => {
+      fapp.applicable match {
+        case _: SMTFun => renderSMTApp(fapp.applicable.id.name, fapp.args, fapp.sort)
+        case _ => renderApp(fapp.applicable.id.name, fapp.args, fapp.sort)
+      }
+    }
+
 
     /* Split axioms with more than one trigger set into multiple copies of the same
      * axiom, each with a single trigger. This can avoid incompletenesses due to Z3
@@ -312,6 +320,17 @@ class TermToSMTLib2Converter
 
     val docAppNoParens =
       text(sanitize(functionName)) <+> ssep((args map render).to[collection.immutable.Seq], space)
+
+    if (args.nonEmpty)
+      parens(docAppNoParens)
+    else
+      parens(text("as") <+> docAppNoParens <+> render(outSort))
+  }
+
+  @inline
+  protected def renderSMTApp(functionName: String, args: Seq[Term], outSort: Sort) = {
+    val docAppNoParens =
+      text(functionName) <+> ssep((args map render).to[collection.immutable.Seq], space)
 
     if (args.nonEmpty)
       parens(docAppNoParens)

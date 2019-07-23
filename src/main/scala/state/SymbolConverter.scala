@@ -18,6 +18,8 @@ trait SymbolConverter {
   def toFunction(function: ast.DomainFunc): terms.DomainFun
   def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.DomainFun
 
+  def toFunction(function: ast.SMTFunc): terms.SMTFun
+
   def toFunction(function: ast.Function): terms.HeapDepFun
 }
 
@@ -36,6 +38,8 @@ class DefaultSymbolConverter extends SymbolConverter with Immutable {
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
       sorts.UserSort(Identifier(dt.toString()))
 
+    case st : ast.SMTType => sorts.SMTSort(Identifier(st.smtName))
+
     case   ast.InternalType
          | _: ast.TypeVar
          | ast.Wand
@@ -51,6 +55,15 @@ class DefaultSymbolConverter extends SymbolConverter with Immutable {
     val outSort = toSort(function.typ)
 
     toFunction(function, inSorts :+ outSort)
+  }
+
+  def toFunction(function: ast.SMTFunc): terms.SMTFun = {
+    val inSorts = function.formalArgs map (_.typ) map toSort
+    val outSort = toSort(function.typ)
+
+    val id = Identifier(function.smtName)
+
+    terms.SMTFun(id, inSorts, outSort)
   }
 
   def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.DomainFun = {

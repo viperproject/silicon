@@ -410,6 +410,11 @@ object evaluator extends EvaluationRules with Immutable {
           val fi = v1.symbolConverter.toFunction(Verifier.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(s1, App(fi, tArgs), v1)})
 
+      case sfa @ ast.SMTFuncApp(func, eArgs) =>
+        evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) => {
+          val fi = v1.symbolConverter.toFunction(func)
+          Q(s1, App(fi, tArgs), v1)})
+
       case ast.CurrentPerm(resacc) =>
         val h = s.partiallyConsumedHeap.getOrElse(s.h)
         evalResourceAccess(s, resacc, pve, v)((s1, identifier, args, v1) => {
