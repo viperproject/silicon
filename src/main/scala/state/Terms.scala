@@ -1696,12 +1696,20 @@ case class PHeapDom(field: String, h: Term) extends Term {
   val sort = sorts.Set(sorts.Ref)
 }
 
+case class PHeapFreshPredicateSnap(predicate: String, args: Seq[Term]) extends Term {
+  val sort = sorts.PHeap
+}
+
 // TODO: Rename to PHeapSingletonField
 case class PHeapSingleton(field: String, x: Term, v: Term) extends Term {
   val sort = sorts.PHeap
 }
 
 case class PHeapSingletonPredicate(predicate: String, args: Seq[Term], h: Term) extends Term {
+  val sort = sorts.PHeap
+}
+
+case class PHeapRestrict(fun: String, snap: Term, args: Seq[Term]) extends Term {
   val sort = sorts.PHeap
 }
 

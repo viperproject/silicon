@@ -13,7 +13,7 @@ import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.decider.Decider
 import viper.silicon.{Map, SymbExLogger, toMap}
-import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state._
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms._
@@ -45,6 +45,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
   def logger: Logger
   def decider: Decider
   def symbolConverter: SymbolConverter
+  def termConverter: TermConverter[String,String,String]
 
   object predicateSupporter extends PredicateVerificationUnit with StatefulComponent {
     import viper.silicon.rules.producer._
@@ -53,12 +54,21 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
     def data = predicateData
     def units = predicateData.keys.toSeq
+	def axioms = scala.collection.mutable.ListBuffer.empty[String]
 
     /* Preamble contribution */
 
     def analyze(program: Program): Unit = {
+      program.predicates.map(pred =>
+		if(!pred.isAbstract) {
+	      axioms ++= bodyToDomainAxioms(pred, pred.body.get)
+		}
+      )
+
+
       this.predicateData = toMap(
         program.predicates map (pred => pred -> new PredicateData(pred)(symbolConverter)))
+
     }
 
     /* Predicate supporter generates no sorts */
@@ -75,12 +85,26 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
     }
 
     /* Predicate supporter generates no axioms */
-    val axiomsAfterAnalysis: Iterable[Term] = Seq.empty
+    val axiomsAfterAnalysis: Iterable[Term] = Seq()
     def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = ()
 
     def updateGlobalStateAfterAnalysis(): Unit = {
+      axioms.map(a => decider.prover.emit(a))
       Verifier.predicateData = predicateData
     }
+
+	def bodyToDomainAxioms(p: ast.Predicate, a: ast.Exp) : Seq[String] = a match {
+      case ast.And(a1, a2) => bodyToDomainAxioms(p, a1) ++ bodyToDomainAxioms(p, a2)
+	  case ast.FieldAccessPredicate(ast.FieldAccess(ast.LocalVar(x), ast.Field(f,_)), _) => {
+	    // TODO This is straight up hacking
+		val args_q = p.formalArgs.map(y => "(" + y.name + " " + termConverter.convert(symbolConverter.toSort(y.typ)) + ")").mkString(" ")
+		val args = p.formalArgs.map(y => y.name).mkString(" ")
+		val predname = p.name
+        Seq(s"(assert (forall ($args_q) (! (Set_in $x (PHeap.dom_$f (PHeap.freshSnap_$predname $args))) :pattern(PHeap.dom_$f (PHeap.freshSnap_$predname $args)))))")
+	  }
+	  case a => sys.error("Cannot translate assertion " + a.toString + " in predicate body of type " + a.getClass)
+	}
+	  
 
     /* Verification and subsequent preamble contribution */
 
@@ -95,6 +119,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                          h = Heap(),
                          oldHeaps = OldHeaps())
       val err = PredicateNotWellformed(predicate)
+      
 
       val result = predicate.body match {
         case None =>

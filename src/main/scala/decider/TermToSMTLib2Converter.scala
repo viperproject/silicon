@@ -223,6 +223,8 @@ class TermToSMTLib2Converter
 	case PHeapCombine(h1,h2) => parens(text("PHeap.combine") <+> render(h1) <+> render(h2) )
 	case PHeapSingleton(f, x, v) => parens(text("PHeap.singleton_") <> f <+> render(x) <+> render(v))
 	case PHeapSingletonPredicate(p, args, h) => parens(text("PHeap.singleton_") <> p <+> args.map(a => convert(a)).mkString(" ") <+> render(h))
+	case PHeapFreshPredicateSnap(p, args) => parens(text("PHeap.freshSnap_") <> p <+> args.map(a => convert(a)).mkString(" "))
+	case PHeapRestrict(f, h, args) => parens(text("PHeap.restrict_") <> f <+> convert(h) <+> args.map(a => convert(a)).mkString(" "))
 
     /* Quantified Permissions */
 
