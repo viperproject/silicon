@@ -22,4 +22,5 @@ class GenericNodeData {
   var refId: Option[Int] = None
   var isSmtQuery: Boolean = false
   var timeMs: Option[Long] = None
+  var pos: Option[String] = None
 }

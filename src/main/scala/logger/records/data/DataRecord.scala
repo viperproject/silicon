@@ -1,9 +1,12 @@
 package logger.records.data
 
+import logger.GenericNodeData
 import logger.records.SymbolicRecord
 import viper.silicon.state.State
 import viper.silicon.state.terms.Term
+import viper.silicon.utils
 import viper.silver.ast
+import viper.silver.ast.Positioned
 
 trait DataRecord extends SymbolicRecord {
   val value: ast.Node
@@ -22,5 +25,14 @@ trait DataRecord extends SymbolicRecord {
   override def toSimpleString(): String = {
     if (value != null) value.toString()
     else "null"
+  }
+
+  override def getNodeData(): GenericNodeData = {
+    val data = super.getNodeData()
+    value match {
+      case posValue: ast.Node with Positioned => data.pos = Some(utils.ast.sourceLineColumn(posValue))
+      case _ =>
+    }
+    data
   }
 }

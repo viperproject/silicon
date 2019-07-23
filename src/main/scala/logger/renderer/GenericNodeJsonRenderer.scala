@@ -55,8 +55,12 @@ class GenericNodeJsonRenderer extends JsonRenderer[GenericNode] {
       case Some(timeMs) => pair("timeMs", timeMs)
       case _ => null
     }
+    val posJson = data.pos match {
+      case Some(pos) => pair("pos", pos)
+      case _ => null
+    }
 
-    val properties = List(refIdJson, isSmtQueryJson, timeMsJson)
+    val properties = List(refIdJson, isSmtQueryJson, timeMsJson, posJson)
       .filterNot(jsonProperty => jsonProperty == null)
 
     if (properties.isEmpty) {
