@@ -1,7 +1,5 @@
 package logger.records
 
-import logger.GenericNodeData
-
 trait SymbolicRecord {
   var id: Int = -1
 
@@ -13,7 +11,7 @@ trait SymbolicRecord {
 
   def toSimpleString(): String
 
-  def getNodeData(): GenericNodeData = {
-    new GenericNodeData()
+  def getData(): RecordData = {
+    new RecordData()
   }
 }

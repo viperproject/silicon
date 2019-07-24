@@ -8,7 +8,7 @@ import viper.silver.ast
 class DeciderAssumeRecord(val terms: InsertionOrderedSet[Term]) extends DataRecord {
   val value: ast.Node = null
   val state: State = null
-  val pcs: Set[Term] = null
+  val pcs: InsertionOrderedSet[Term] = null
 
   override def toTypeString(): String = {
     "decider assume"

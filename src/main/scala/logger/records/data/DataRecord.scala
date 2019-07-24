@@ -1,10 +1,11 @@
 package logger.records.data
 
-import logger.GenericNodeData
-import logger.records.SymbolicRecord
+import logger.records.{RecordData, SymbolicRecord}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.State
 import viper.silicon.state.terms.Term
 import viper.silicon.utils
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Positioned
 
@@ -16,7 +17,7 @@ trait DataRecord extends SymbolicRecord {
   // However, the recording happens to early such that the wrong
   // PathConditionStack Object is stored when using the PathConditionStack
   // TODO: Oops.
-  val pcs: Set[Term]
+  val pcs: InsertionOrderedSet[Term]
 
   override def toString(): String = {
     toTypeString() + " " + toSimpleString()
@@ -27,11 +28,19 @@ trait DataRecord extends SymbolicRecord {
     else "null"
   }
 
-  override def getNodeData(): GenericNodeData = {
-    val data = super.getNodeData()
+  override def getData(): RecordData = {
+    val data = super.getData()
     value match {
       case posValue: ast.Node with Positioned => data.pos = Some(utils.ast.sourceLineColumn(posValue))
       case _ =>
+    }
+    if (state != null) {
+      data.store = Some(state.g)
+      data.heap = Some(state.h)
+      data.oldHeap = state.oldHeaps.get(Verifier.PRE_STATE_LABEL)
+    }
+    if (pcs != null) {
+      data.pcs = Some(pcs)
     }
     data
   }

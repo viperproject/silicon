@@ -229,15 +229,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
                                            this.postConditionAxioms().toList)
     }
 
-    /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */
-    SymbExLogger.writeJSFile()
-    /** Write DOT-Representation of the log if the SymbExLogger is enabled */
-    SymbExLogger.writeDotFile()
-    // SymbExLogger.checkPaths()
-    val genericNodes = SymbExLogger.convertMemberList()
     logger info SymbExLogger.toSimpleTreeString
-    SymbExLogger.writeChromeTraceFile(genericNodes)
-    SymbExLogger.writeGenericNodeJsonFile(genericNodes)
     SymbExLogger.toTypeTreeString()
 
     (   functionVerificationResults

@@ -1,6 +1,7 @@
 package logger.records.data
 
-import logger.GenericNodeData
+import logger.records.RecordData
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.State
 import viper.silicon.state.terms.Term
 import viper.silver.ast
@@ -8,7 +9,7 @@ import viper.silver.ast
 class ProverAssertRecord(val term: Term, val timeout: Option[Int]) extends DataRecord {
   val value: ast.Node = null
   val state: State = null
-  val pcs: Set[Term] = null
+  val pcs: InsertionOrderedSet[Term] = null
 
   override def toTypeString(): String = {
     "prover assert"
@@ -19,8 +20,8 @@ class ProverAssertRecord(val term: Term, val timeout: Option[Int]) extends DataR
     else "null"
   }
 
-  override def getNodeData(): GenericNodeData = {
-    val data = super.getNodeData()
+  override def getData(): RecordData = {
+    val data = super.getData()
     data.isSmtQuery = true
     data
   }
