@@ -4,17 +4,17 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package logger
+package viper.silicon.logger
 
 import java.io.File
 import java.nio.file.{Files, Path, Paths}
 
-import logger.records.SymbolicRecord
-import logger.records.data.{DataRecord, FunctionRecord, MethodRecord, PredicateRecord}
-import logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
-import logger.records.structural.BranchingRecord
-import logger.renderer.{PathChecker, PathRenderer, SimpleTreeRenderer}
 import viper.silicon.decider.PathConditionStack
+import viper.silicon.logger.records.SymbolicRecord
+import viper.silicon.logger.records.data.{DataRecord, FunctionRecord, MethodRecord, PredicateRecord}
+import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
+import viper.silicon.logger.records.structural.BranchingRecord
+import viper.silicon.logger.renderer.{PathChecker, PathRenderer, SimpleTreeRenderer}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.{Config, Map}

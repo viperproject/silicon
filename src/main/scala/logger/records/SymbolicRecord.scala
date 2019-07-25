@@ -1,4 +1,4 @@
-package logger.records
+package viper.silicon.logger.records
 
 trait SymbolicRecord {
   var id: Int = -1

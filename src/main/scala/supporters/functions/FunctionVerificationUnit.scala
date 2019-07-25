@@ -7,7 +7,6 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.Logger
-import logger.SymbExLogger
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
@@ -21,6 +20,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.toSf

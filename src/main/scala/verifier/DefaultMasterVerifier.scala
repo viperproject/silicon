@@ -9,7 +9,6 @@ package viper.silicon.verifier
 import java.text.SimpleDateFormat
 import java.util.concurrent._
 
-import logger.SymbExLogger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._
@@ -17,6 +16,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}

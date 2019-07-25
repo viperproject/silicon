@@ -7,13 +7,13 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import logger.SymbExLogger
-import logger.records.data.WellformednessCheckRecord
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
 import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps

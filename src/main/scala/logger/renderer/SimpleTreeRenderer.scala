@@ -1,10 +1,10 @@
-package logger.renderer
+package viper.silicon.logger.renderer
 
-import logger.SymbLog
-import logger.records.SymbolicRecord
-import logger.records.data.DataRecord
-import logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
-import logger.records.structural.{BranchingRecord, JoiningRecord}
+import viper.silicon.logger.SymbLog
+import viper.silicon.logger.records.SymbolicRecord
+import viper.silicon.logger.records.data.DataRecord
+import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
+import viper.silicon.logger.records.structural.{BranchingRecord, JoiningRecord}
 
 class SimpleTreeRenderer extends Renderer[SymbLog, String] {
   def render(memberList: List[SymbLog]): String = {

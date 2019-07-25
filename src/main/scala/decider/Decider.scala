@@ -8,8 +8,6 @@ package viper.silicon.decider
 
 import scala.reflect.{ClassTag, classTag}
 import com.typesafe.scalalogging.Logger
-import logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
-import logger.SymbExLogger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError
@@ -17,6 +15,8 @@ import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.{Prover, Unsat}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.{Verifier, VerifierComponent}

@@ -6,10 +6,10 @@
 
 package viper.silicon.rules
 
-import logger.SymbExLogger
-import logger.records.structural.JoiningRecord
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 

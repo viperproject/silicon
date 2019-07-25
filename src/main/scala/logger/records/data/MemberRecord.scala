@@ -1,6 +1,6 @@
-package logger.records.data
+package viper.silicon.logger.records.data
 
-import logger.records.RecordData
+import viper.silicon.logger.records.RecordData
 import viper.silicon.state.terms.Term
 
 trait MemberRecord extends DataRecord {

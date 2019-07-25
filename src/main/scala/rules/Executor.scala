@@ -6,8 +6,6 @@
 
 package viper.silicon.rules
 
-import logger.records.data.{ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
-import logger.SymbExLogger
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.PartialVerificationError
@@ -17,6 +15,8 @@ import viper.silver.{ast, cfg}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._

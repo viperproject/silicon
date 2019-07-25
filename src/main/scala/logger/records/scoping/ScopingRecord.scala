@@ -1,6 +1,6 @@
-package logger.records.scoping
+package viper.silicon.logger.records.scoping
 
-import logger.records.{RecordData, SymbolicRecord}
+import viper.silicon.logger.records.{RecordData, SymbolicRecord}
 
 trait ScopingRecord extends SymbolicRecord {
   val refId: Int

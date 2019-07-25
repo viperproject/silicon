@@ -6,8 +6,6 @@
 
 package viper.silicon.rules
 
-import logger.SymbExLogger
-
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
@@ -15,6 +13,7 @@ import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotF
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._

@@ -1,8 +1,8 @@
-package logger.renderer
+package viper.silicon.logger.renderer
 
-import logger.SymbLog
-import logger.records.SymbolicRecord
-import logger.records.structural.BranchingRecord
+import viper.silicon.logger.SymbLog
+import viper.silicon.logger.records.SymbolicRecord
+import viper.silicon.logger.records.structural.BranchingRecord
 
 class PathRenderer extends Renderer[SymbLog, List[MemberPath]] {
 

@@ -1,6 +1,6 @@
-package logger.records.structural
+package viper.silicon.logger.records.structural
 
-import logger.records.SymbolicRecord
+import viper.silicon.logger.records.SymbolicRecord
 
 class BranchingRecord(possibleBranchesCount: Int) extends StructuralRecord {
   private var currentBranchIndex = 0

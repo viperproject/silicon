@@ -6,15 +6,14 @@
 
 package viper.silicon.rules
 
-import logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
-import logger.SymbExLogger
-
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
 import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`

@@ -6,11 +6,11 @@
 
 package viper.silicon.rules
 
-import logger.SymbExLogger
 import scala.collection.mutable.ListBuffer
 import viper.silicon.{MList, MMap}
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, Success, VerificationResult}
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.rules.chunkSupporter.findChunksWithID
 import viper.silicon.state._

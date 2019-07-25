@@ -6,9 +6,9 @@
 
 package viper.silicon.rules
 
-import logger.SymbExLogger
-import logger.records.data.CommentRecord
 import viper.silicon.interfaces._
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 

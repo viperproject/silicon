@@ -1,8 +1,8 @@
-package logger.renderer
+package viper.silicon.logger.renderer
 
-import logger.records.SymbolicRecord
-import logger.records.data.DataRecord
-import logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
+import viper.silicon.logger.records.SymbolicRecord
+import viper.silicon.logger.records.data.DataRecord
+import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
 
 /**
   * Checks whether the given paths respect the following properties:

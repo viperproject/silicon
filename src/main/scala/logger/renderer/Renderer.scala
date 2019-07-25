@@ -1,4 +1,4 @@
-package logger.renderer
+package viper.silicon.logger.renderer
 
 trait Renderer[S, T] {
   def renderMember(s: S): T

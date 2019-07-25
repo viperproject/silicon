@@ -1,4 +1,4 @@
-package logger.records.data
+package viper.silicon.logger.records.data
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state._

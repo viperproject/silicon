@@ -7,7 +7,6 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import logger.SymbExLogger
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent
@@ -19,6 +18,7 @@ import viper.silicon.state._
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms._
 import viper.silicon.interfaces._
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.rules.executionFlowController
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap

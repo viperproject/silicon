@@ -8,9 +8,9 @@ package viper.silicon.rules
 
 import java.util.concurrent._
 
-import logger.SymbExLogger
 import viper.silicon.common.concurrency._
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Not, Term}
 import viper.silicon.verifier.Verifier
