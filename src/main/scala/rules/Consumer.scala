@@ -416,7 +416,7 @@ object consumer extends ConsumptionRules with Immutable {
 					  Q(s4, h1, hsnap, v3)
 				  }
 				  case _: ast.PredicateAccess => {
-					  val hsnap = /*snap1*/ PHeapSingletonPredicate(name, tArgs, snap1)
+					  val hsnap = PHeapSingletonPredicate(name, tArgs, snap1)
 					  val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
 									   constrainableARPs = s.constrainableARPs)
 					  Q(s4, h1, hsnap, v3)
