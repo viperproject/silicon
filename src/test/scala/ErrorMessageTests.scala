@@ -93,16 +93,7 @@ class ErrorMessageTests extends FunSuite {
     val frontend = tests.instantiateFrontend()
 
     val replaceStrategy = ViperStrategy.Context[Map[Exp, Exp]]({
-      case (l: LocalVar, c) if c.c.contains(l) =>
-        val n = c.c(l)
-        /* We want to replace formal argument `l` by actual argument `n`, and we want to report
-         * `n` in error messages. The AST transformation framework, however, will by default
-         * attach an error back-transformer to the replacement node `n` such that the original
-         * node `l` will be reported. To prevent this, we currently need to manually attach an
-         * error back-transformer saying that `n` is to be reported.
-         */
-        val (pos, info, _) = n.getPrettyMetadata
-        c.c(l).duplicateMeta((pos, info, NodeTrafo(n)))
+      case (l: LocalVar, c) if c.c.contains(l) => c.c(l)
     }, Map.empty[Exp, Exp])
 
     val preError = (m: MethodCall) => ErrTrafo({
