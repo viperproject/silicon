@@ -8,7 +8,7 @@ package viper.silicon.tests
 
 import org.scalatest.FunSuite
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter._
+import viper.silver.ast.utility.rewriter._
 import viper.silver.ast.utility._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier.errors._

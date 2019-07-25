@@ -1,0 +1,18 @@
+field discriminant: Int
+
+field next: Ref
+
+function contains(_pure_1: Ref): Bool
+  requires acc(BoxList(_pure_1), read$())
+{
+  !(unfolding acc(BoxList(_pure_1), read$()) in _pure_1.discriminant == 0) &&
+  (unfolding acc(BoxList(_pure_1), read$()) in contains(_pure_1.next))
+}
+
+predicate BoxList(self: Ref) {
+  acc(self.discriminant) && acc(self.next) && acc(BoxList(self.next))
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write

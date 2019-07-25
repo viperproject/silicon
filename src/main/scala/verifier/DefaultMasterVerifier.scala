@@ -24,7 +24,8 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
-import viper.silver.ast.utility.Rewriter.Traverse
+import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.cfg.silver.SilverCfg
 import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage}
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
@@ -128,7 +129,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   /* Program verification */
 
-  def verify(_program: ast.Program): List[VerificationResult] = {
+  def verify(_program: ast.Program, cfgs: Seq[SilverCfg]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
       * This is done bottom-up to ensure that nested quantifiers are transformed as well
@@ -138,8 +139,12 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     val program =
       _program.transform({
         case forall: ast.Forall if forall.isPure =>
-          viper.silicon.utils.ast.autoTrigger(forall)
+          viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
+        case exists: ast.Exists =>
+          viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
       }, Traverse.BottomUp)
+
+    // TODO: Autotrigger for cfgs.
 
     if (config.printTranslatedProgram()) {
       println(program)
@@ -160,7 +165,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     allProvers.comment("/" * 10 + " Static preamble")
     emitStaticPreamble(allProvers)
 
-    analyzeProgramAndEmitPreambleContributions(program, allProvers)
+    analyzeProgramAndEmitPreambleContributions(program, allProvers) // TODO: Add support for cfgs.
 
     allProvers.comment("End preamble")
     allProvers.comment("-" * 60)
@@ -219,6 +224,19 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
           results
         })
+      }) ++ cfgs.map(cfg => {
+        val s = createInitialState(cfg, program)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
+
+        _verificationPoolManager.queueVerificationTask(v => {
+          val startTime = System.currentTimeMillis()
+          val results = v.cfgSupporter.verify(s, cfg)
+          val elapsed = System.currentTimeMillis() - startTime
+
+          reporter report VerificationResultMessage(s"silicon"/*, cfg*/, elapsed, condenseToViperResult(results))
+          logger debug s"Silicon finished verification of method `CFG` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
+
+          results
+        })
       })
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
@@ -248,7 +266,22 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           qpMagicWands = quantifiedMagicWands,
           applyHeuristics = applyHeuristics,
           predicateSnapMap = predSnapGenerator.snapMap,
-          predicateFormalVarMap = predSnapGenerator.formalVarMap)
+          predicateFormalVarMap = predSnapGenerator.formalVarMap,
+          isMethodVerification = member.isInstanceOf[ast.Method])
+  }
+
+  private def createInitialState(cfg: SilverCfg, program: ast.Program): State = {
+    val quantifiedFields = InsertionOrderedSet(program.fields)
+    val quantifiedPredicates = InsertionOrderedSet(program.predicates)
+    val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.
+    val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
+
+    State(qpFields = quantifiedFields,
+      qpPredicates = quantifiedPredicates,
+      qpMagicWands = quantifiedMagicWands,
+      applyHeuristics = applyHeuristics,
+      predicateSnapMap = predSnapGenerator.snapMap,
+      predicateFormalVarMap = predSnapGenerator.formalVarMap)
   }
 
   private def excludeMethod(method: ast.Method) = (

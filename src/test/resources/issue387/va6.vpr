@@ -1,0 +1,36 @@
+field f: Int
+
+predicate P02(xs: Seq[Ref], n: Int) {
+     |xs| == n
+  && 3 <= n
+  && (forall j: Int :: 0 <= j && j < 3 ==> acc(xs[j].f))
+  && (forall j: Int :: 3 <= j && j < n ==> acc(xs[j].f))
+}
+
+function fun06(xs: Seq[Ref], n: Int, i: Int): Int
+  requires acc(P02(xs, n))
+  requires 0 < i && i < n
+{
+  unfolding acc(P02(xs, n)) in xs[i].f
+}
+
+method test05(xs: Seq[Ref], n: Int, i: Int) {
+  inhale acc(P02(xs, n))
+  inhale 6 < n
+  inhale i == 4
+
+  unfold acc(P02(xs, n))
+  var v1: Int := xs[i].f
+  fold acc(P02(xs, n))
+
+  assert v1 == fun06(xs, n, i)
+
+  unfold acc(P02(xs, n))
+  xs[i].f := 0
+  fold acc(P02(xs, n))
+
+  var v2: Int := fun06(xs, n, i)
+  assert v2 == 0
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert v2 == v1
+}

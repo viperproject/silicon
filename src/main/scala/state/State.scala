@@ -52,6 +52,9 @@ final case class State(g: Store = Store(),
                        heuristicsDepth: Int = 0,
                        triggerAction: AnyRef = null,
 
+                       ssCache: SsCache = Map.empty,
+                       hackIssue387DisablePermissionConsumption: Boolean = false,
+
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
                        qpMagicWands: InsertionOrderedSet[MagicWandIdentifier] = InsertionOrderedSet.empty,
@@ -60,7 +63,8 @@ final case class State(g: Store = Store(),
                        smDomainNeeded: Boolean = false,
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
-                       predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty)
+                       predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
+                       isMethodVerification: Boolean = false)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =
@@ -96,8 +100,11 @@ final case class State(g: Store = Store(),
   def preserveAfterLocalEvaluation(post: State): State =
     State.preserveAfterLocalEvaluation(this, post)
 
+  def functionRecorderQuantifiedVariables(): Seq[Var] =
+    functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+
   def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[Var] = (
-       functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+       functionRecorderQuantifiedVariables()
     ++ quantifiedVariables.filter(filterPredicate)
   )
 
@@ -138,8 +145,9 @@ object State {
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
+                 ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
-                 predicateSnapMap1, predicateFormalVarMap1) =>
+                 predicateSnapMap1, predicateFormalVarMap1, hack) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -159,8 +167,9 @@ object State {
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
+                     ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
-                     `predicateSnapMap1`, `predicateFormalVarMap1`) =>
+                     `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -170,10 +179,13 @@ object State {
             val smCache3 = smCache1.union(smCache2)
             val pmCache3 = pmCache1 ++ pmCache2
 
+            val ssCache3 = ssCache1 ++ ssCache2
+
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
                     constrainableARPs = constrainableARPs3,
+                    ssCache = ssCache3,
                     smCache = smCache3,
                     pmCache = pmCache3)
 

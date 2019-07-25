@@ -16,7 +16,7 @@ import viper.silver.frontend.DefaultStates
 import viper.silver.reporter.NoopReporter
 
 class SiliconTests extends SilSuite {
-  private val siliconTestDirectories = Seq("consistency", "symbExLogTests")
+  private val siliconTestDirectories = Seq("consistency", "issue387", "symbExLogTests")
   private val silTestDirectories = Seq("all", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
   val testDirectories = siliconTestDirectories ++ silTestDirectories
 

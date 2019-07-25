@@ -111,6 +111,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
 
     if (depth == 0) {
       val guardsToSnaps = recordings.getOrElse(loc, InsertionOrderedSet()) + (guards -> snap)
+
       Some(recordings + (loc -> guardsToSnaps))
     } else {
       None

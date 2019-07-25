@@ -53,8 +53,9 @@ object executor extends ExecutionRules with Immutable {
     def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
       edge.kind match {
         case cfg.Kind.Out =>
-          val s1 = s.copy(h = stateConsolidator.merge(s.h, s.invariantContexts.head, v),
-            invariantContexts = s.invariantContexts.tail)
+          val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+          val s1 = s.copy(functionRecorder = fr1, h = h1,
+                          invariantContexts = s.invariantContexts.tail)
           s1
         case _ =>
           /* No need to do anything special. See also the handling of loop heads in exec below. */
@@ -324,11 +325,12 @@ object executor extends ExecutionRules with Immutable {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
-            val id = BasicChunkIdentifier(field.name)
+            val resource = fa.res(Verifier.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            chunkSupporter.consume(s2, s2.h, id, Seq(tRcvr), FullPerm(), ve, v2, description)((s3, h3, _, v3) => {
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm(), ve, v2, description)((s3, h3, _, v3) => {
               val tSnap = ssaifyRhs(tRhs, field.name, field.typ, v3)
+              val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm())
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) =>
                 Q(s4.copy(h = h4), v4))

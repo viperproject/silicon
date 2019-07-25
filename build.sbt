@@ -74,10 +74,16 @@ lazy val silicon = (project in file("."))
       // TODO: Either make hg a named pair with fields hg.revision/hg.branch,
       //       or replace by two direct fields, e.g. hgRevision/hgBranch
       BuildInfoKey.action("hg") {
+        val defaults = Seq("<revision>", "<branch>")
+
         val Seq(revision, branch) =
           Try(
-            Process("hg id -ib").!!.trim.split(' ').toSeq
-          ).getOrElse(Seq("<revision>", "<branch>"))
+            Process("hg id -ib").!!.trim.split(' ').toSeq match {
+              case Seq() => defaults
+              case Seq(rev) => Seq(rev, defaults(1))
+              case Seq(rev, bra, _*) => Seq(rev, bra)
+            }
+          ).getOrElse(defaults)
 
         (revision, branch)
       }
