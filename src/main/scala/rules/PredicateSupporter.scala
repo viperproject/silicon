@@ -44,15 +44,6 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
   import consumer._
   import producer._
 
-  def freshSnap(predicate: ast.Predicate, tArgs: Seq[Term], v: Verifier) : Term = {
-	/*if (predicate.isAbstract) {
-      v.decider.fresh(sorts.PHeap)
-	} else {
-      PHeapFreshPredicateSnap(predicate.name, tArgs)
-	}*/
-    v.decider.fresh(sorts.PHeap)
-  }
-
   def fold(s: State,
            predicate: ast.Predicate,
            tArgs: List[Term],

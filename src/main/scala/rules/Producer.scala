@@ -273,13 +273,17 @@ object producer extends ProductionRules with Immutable {
                 Q(s3.copy(h = h3), v3))
             }}))
 
-      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
+      case loc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
         val predicate = Verifier.program.findPredicate(predicateName)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
 		    // TODO Stop hacking, start programming...
-            val snap = if (sf == freshSnap) freshSnap(sorts.PHeap, v2) else PHeapLookupPredicate(predicateName, sf(
-              predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1).getOrElse(sorts.Snap), v2), tArgs)
+            val snap = if (sf == freshSnap && !predicate.isAbstract) {
+			    freshSnap(sorts.PHeap, v2)
+			} else {
+			  PHeapLookupPredicate(predicateName, sf(
+                predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1).getOrElse(sorts.Snap), v2), tArgs)
+			}
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s2.qpPredicates.contains(predicate)) {
               val formalArgs = s2.predicateFormalVarMap(predicate)
