@@ -8,8 +8,9 @@ package viper.silicon.tests
 
 import java.nio.file.Path
 
+import logger.SymbExLogger
 import org.scalatest.DoNotDiscover
-import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
+import viper.silicon.{Silicon, SiliconFrontend}
 import viper.silver.reporter.NoopReporter
 import viper.silver.testing.{SilSuite, StatisticalTestSuite}
 import viper.silver.verifier.Verifier

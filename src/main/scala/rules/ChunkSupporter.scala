@@ -6,8 +6,6 @@
 
 package viper.silicon.rules
 
-import logger.SymbExLogger
-import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silver.verifier.VerificationError

@@ -6,8 +6,9 @@
 
 package viper.silicon.rules
 
+import logger.SymbExLogger
 import scala.collection.mutable.ListBuffer
-import viper.silicon.{MList, MMap, SymbExLogger}
+import viper.silicon.{MList, MMap}
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, Success, VerificationResult}
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
