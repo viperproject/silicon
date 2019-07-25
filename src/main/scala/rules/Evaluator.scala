@@ -594,7 +594,7 @@ object evaluator extends EvaluationRules with Immutable {
              */
             (forall, Forall, forall.triggers)
           case exists: ast.Exists =>
-            (exists, Exists, Seq())
+            (exists, Exists, exists.triggers)
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
 
@@ -734,11 +734,13 @@ object evaluator extends EvaluationRules with Immutable {
                          * (see 'predicateTriggers' in FunctionData.scala).
                          */
                       v4.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
-//                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val body = pa.predicateBody(Verifier.program).get /* Only non-abstract predicates can be unfolded */
+                      val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)
-                      produce(s7 /*\ insγ*/, toSf(snap), body, pve, v4)((s8, v5) => {
-                        val s9 = s8.copy(functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                      val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
+                      val s7a = s7.copy(g = insg)
+                      produce(s7a, toSf(snap), body, pve, v4)((s8, v5) => {
+                        val s9 = s8.copy(g = s7.g,
+                                         functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                          recordVisited = s3.recordVisited,
                                          permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
