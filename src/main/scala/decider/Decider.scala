@@ -88,6 +88,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
 //    private var _freshFunctions: InsertionOrderedSet[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
 //    private var _freshMacros: Vector[MacroDecl] = _
+    private var prevStatistics: Map[String, String] = new Map()
 
     def prover: Prover = z3
 
@@ -242,9 +243,58 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val sepIdentifier = SymbExLogger.currentLog().insert(assertRecord)
 
       val result = prover.assert(t, timeout)
+      val statistics = prover.statistics()
+      assertRecord.statistics = Some(addDelta(statistics))
 
       SymbExLogger.currentLog().collapse(null, sepIdentifier)
       result
+    }
+
+    /**
+      * Calculates delta for each key value pair if value is of type double
+      * @param statistics
+      * @return input statistics and added deltas
+      */
+    private def addDelta(statistics: Map[String, String]) : Map[String, String] = {
+      val deltaStatistics = (statistics map getDelta filter { case (_, value) => value.nonEmpty } map {
+        case (key, Some(value)) => (key + "-delta", value) })
+      // set prevStatistics:
+      prevStatistics = statistics
+      statistics ++ deltaStatistics
+    }
+
+    private def getDelta(pair: (String, String)): (String, Option[String]) = {
+      val curValInt = toInt(pair._2)
+      val prevValInt = prevStatistics.get(pair._1) match {
+        case Some(value) => toInt(value)
+        case _ => Some(0) // value not found
+      }
+      val curValDouble = toDouble(pair._2)
+      val prevValDouble = prevStatistics.get(pair._1) match {
+        case Some(value) => toDouble(value)
+        case _ => Some(0.0) // value not found
+      }
+      (curValInt, prevValInt, curValDouble, prevValDouble) match {
+        case (Some(curInt), Some(prevInt), _, _) => (pair._1, Some((curInt - prevInt).toString))
+        case (_, _, Some(curDouble), Some(prevDouble)) => (pair._1, Some((curDouble - prevDouble).toString))
+        case _ => (pair._1, None)
+      }
+    }
+
+    private def toInt(str: String): Option[Int] = {
+      try {
+        Some(str.toInt)
+      } catch {
+        case e: NumberFormatException => None
+      }
+    }
+
+    private def toDouble(str: String): Option[Double] = {
+      try {
+        Some(str.toDouble)
+      } catch {
+        case e: NumberFormatException => None
+      }
     }
 
     /* Fresh symbols */

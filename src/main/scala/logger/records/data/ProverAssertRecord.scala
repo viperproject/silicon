@@ -10,6 +10,7 @@ class ProverAssertRecord(val term: Term, val timeout: Option[Int]) extends DataR
   val value: ast.Node = null
   val state: State = null
   val pcs: InsertionOrderedSet[Term] = null
+  var statistics: Option[Map[String, String]] = None
 
   override def toTypeString(): String = {
     "prover assert"
@@ -23,6 +24,7 @@ class ProverAssertRecord(val term: Term, val timeout: Option[Int]) extends DataR
   override def getData(): RecordData = {
     val data = super.getData()
     data.isSmtQuery = true
+    data.smtStatistics = statistics
     data
   }
 }
