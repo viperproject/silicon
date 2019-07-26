@@ -33,10 +33,7 @@ class NodeBacktranslationTests extends FunSuite {
             .map(lva => lva.lhs -> lva.rhs)(collection.breakOut)
 
     val backtranslationTransformer = ViperStrategy.Slim({
-      case lv: LocalVar if assignments.contains(lv) =>
-        val (pos, info, _) = lv.getPrettyMetadata
-            /* Note: lv might already have an error transformer set. It will be replaced. */
-        lv.duplicateMeta((pos, info, NodeTrafo(assignments(lv))))
+      case lv: LocalVar if assignments.contains(lv) => lv
     })
 
     val substitutionTransformer = ViperStrategy.Slim({
