@@ -37,6 +37,7 @@ lazy val silicon = (project in file("."))
 
     // Test settings
     Test / javaOptions ++= (run / javaOptions).value,
+    Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-u", "target/test-reports", "-oD"),
     // Options passed to JVMs forked by test-related Sbt command.
     // See http://www.scala-sbt.org/0.12.4/docs/Detailed-Topics/Forking.html
     // In contrast to what the documentation states, it seemed
@@ -64,6 +65,7 @@ lazy val silicon = (project in file("."))
     assembly / mainClass := Some("viper.silicon.SiliconRunner"),
     assembly / test := {})
   .enablePlugins(BuildInfoPlugin)
+  .disablePlugins(plugins.JUnitXmlReportPlugin)
   .settings(
     buildInfoKeys := Seq[BuildInfoKey](
       "projectName" -> name.value,
