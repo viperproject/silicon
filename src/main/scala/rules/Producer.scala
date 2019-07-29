@@ -146,16 +146,21 @@ object producer extends ProductionRules with Immutable {
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v)(Q)
       else {
-        val (sf0, sf1) =
-          v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
+        /*val (sf0, sf1) =
+          v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)*/
           /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
            *       then remove use of BigAnd; for one it is not efficient since
            *       the tail of the (decreasing list parameter as) is BigAnd-ed
            *       over and over again.
            */
 
-        wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
-          produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
+		val h0 = v.decider.fresh(sorts.PHeap)
+		val h1 = v.decider.fresh(sorts.PHeap)
+
+		v.decider.assume(Equals(sf(sorts.PHeap, v), PHeapCombine(h0,h1)))
+
+        wrappedProduceTlc(s, (_,_) => h0, a, pve, v)((s1, v1) =>
+          produceTlcs(s1, (_,_) => h1, as.tail, pves.tail, v1)(Q))
       }
     }
   }
@@ -259,9 +264,12 @@ object producer extends ProductionRules with Immutable {
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
+		  	// TODO Remove this `sf` stuff
+		  	val hGiven = sf(v2.symbolConverter.toSort(field.typ), v2)
+			val snap = PHeapLookup(field.name, v2.symbolConverter.toSort(field.typ),hGiven ,tRcvr)
 
-		    // TODO Stop hacking, start programming...
-            val snap = if (sf == freshSnap)  sf(v2.symbolConverter.toSort(field.typ), v2) else PHeapLookup(field.name, v2.symbolConverter.toSort(field.typ), sf(v2.symbolConverter.toSort(field.typ), v2), tRcvr)
+			// Learn that `hGiven` is a field singleton
+			v2.decider.assume(Equals(hGiven, PHeapSingleton(field.name, tRcvr, snap)))
 
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s2.qpFields.contains(field)) {
@@ -277,13 +285,14 @@ object producer extends ProductionRules with Immutable {
         val predicate = Verifier.program.findPredicate(predicateName)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-		    // TODO Stop hacking, start programming...
-            val snap = if (sf == freshSnap && !predicate.isAbstract) {
-			    freshSnap(sorts.PHeap, v2)
-			} else {
-			  PHeapLookupPredicate(predicateName, sf(
-                predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1).getOrElse(sorts.Snap), v2), tArgs)
-			}
+		  	// TODO Remove this `sf` stuff
+		    val hGiven = sf(sorts.PHeap, v2) 
+			val snap = PHeapLookupPredicate(predicateName, hGiven, tArgs)
+			v2.decider.assume(Equals(hGiven, PHeapSingletonPredicate(predicateName, tArgs, snap)))
+
+			// Learn that `hGiven` is a predicate singleton
+
+
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s2.qpPredicates.contains(predicate)) {
               val formalArgs = s2.predicateFormalVarMap(predicate)

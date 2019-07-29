@@ -208,10 +208,11 @@ class FunctionData(val programFunction: ast.Function,
       val triggerFunction = predicateData(predicate).triggerFunction
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
+	  val tArgs = expressionTranslator.translatePrecondition(program, predacc.args, this)
       val args = (
-	       predef.`?h`
+	       PHeapLookupPredicate(predacc.predicateName, predef.`?h`, tArgs)
            //expressionTranslator.getOrFail(locToSnap, predacc, sorts.PHeap)
-        +: expressionTranslator.translatePrecondition(program, predacc.args, this))
+        +: tArgs)
 
       val fapp = App(triggerFunction, args)
 

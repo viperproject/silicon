@@ -61,7 +61,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
               .scalePermissionFactor(tPerm)
     consume(s1, body, pve, v)((s1a, snap, v1) => {
       val predTrigger = App(Verifier.predicateData(predicate).triggerFunction,
-                            PHeapSingletonPredicate(predicate.name, tArgs, snap) +: tArgs)
+                            snap +: tArgs)
       v1.decider.assume(predTrigger)
       val s2 = s1a.setConstrainable(constrainableWildcards, false)
       if (s2.qpPredicates.contains(predicate)) {
@@ -149,7 +149,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
         produce(s3, (_,_) => snap, body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
           val predicateTrigger =
-            App(Verifier.predicateData(predicate).triggerFunction, PHeapSingletonPredicate(predicate.name, tArgs, snap) +: tArgs)
+            App(Verifier.predicateData(predicate).triggerFunction, snap +: tArgs)
           v2.decider.assume(predicateTrigger)
           val s5 = s4.copy(g = s2.g,
                            permissionScalingFactor = s.permissionScalingFactor)
