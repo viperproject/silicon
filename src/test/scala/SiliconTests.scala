@@ -45,7 +45,7 @@ class SiliconTests extends SilSuite {
 
   lazy val verifiers = List(createSiliconInstance())
 
-  val commandLineArguments: Seq[String] = Seq.empty
+  val commandLineArguments: Seq[String] = Seq("--enableMoreCompleteExhale")
 
   private def createSiliconInstance() = {
     val args =
