@@ -93,6 +93,7 @@ class FunctionData(val programFunction: ast.Function,
 	}
 	case ast.CondExp(iff, thn, els) => Ite(expressionTranslator.translatePrecondition(program, Seq(iff), this)(0), translatePreconditionToDomain(thn), translatePreconditionToDomain(els))
 	case ast.Implies(prem, conc) => Ite(expressionTranslator.translatePrecondition(program, Seq(prem), this)(0), translatePreconditionToDomain(conc), predef.Emp)
+	case e: ast.InhaleExhaleExp => translatePreconditionToDomain(e.whenExhaling)
 	case a => if (a.isPure) predef.Emp else sys.error("Cannot translatePreconditionToDomain() of " + a.toString + " of type " + a.getClass)
   }
 

@@ -16,5 +16,6 @@
 			$ALL_EXT_EQ_FIELD$
 			$ALL_EXT_EQ_PREDICATE$
 		))
-		:pattern (PHeap_equal $H1$ $H2$))))
+		:pattern (PHeap_equal $H1$ $H2$)
+		:qid |pheap_axiomI|)))
 

@@ -731,7 +731,7 @@ object evaluator extends EvaluationRules with Immutable {
                          * to the function arguments and the predicate snapshot
                          * (see 'predicateTriggers' in FunctionData.scala).
                          */
-                      v4.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap +: tArgs))
+                      v4.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, PHeapLookupPredicate(predicateName, snap, tArgs) +: tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(Verifier.program).get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)

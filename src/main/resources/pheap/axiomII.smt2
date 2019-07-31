@@ -15,5 +15,6 @@
 		(PHeap.equal h1 h2)
 		(= ($FUN$ h1 $FUN_ARGS$) ($FUN$ h2 $FUN_ARGS$))
 	)
-	:pattern (($FUN$ h2 $FUN_ARGS$) ($FUN$ h1 $FUN_ARGS$)))))
+	:pattern (($FUN$ h2 $FUN_ARGS$) ($FUN$ h1 $FUN_ARGS$))
+	:qid |pheapII($FUN$)|)))
 

@@ -7,5 +7,6 @@
 		(PHeap.combine h1 h2)
 		(PHeap.combine h2 h1)
 	)
-	:pattern (PHeap.combine h1 h2))))
+	:pattern (PHeap.combine h1 h2)
+	:qid |pheapVIII|)))
 

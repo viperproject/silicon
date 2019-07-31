@@ -7,4 +7,5 @@
 		(PHeap.equal h1 h2)
 		(= h1 h2)
 	)
-	:pattern (PHeap.equal h1 h2))))
+	:pattern (PHeap.equal h1 h2)
+	:qid |pheapVII|)))

@@ -10,4 +10,5 @@
 		(PHeap.dom_$FLD$ (PHeap.combine h1 h2))
 		(Set_union (PHeap.dom_$FLD$ h1) (PHeap.dom_$FLD$ h2))
 	)
-	:pattern (PHeap.dom_$FLD$ (PHeap.combine h1 h2)))))
+	:pattern (PHeap.dom_$FLD$ (PHeap.combine h1 h2))
+	:qid |pheapV($FLD$)|)))

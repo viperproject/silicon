@@ -240,14 +240,14 @@ package object utils {
         root.deepCollect{case ie: silver.ast.InhaleExhaleExp if !ie.isPure => ie}
 
       root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
-        case fun: silver.ast.Function =>
+        /*case fun: silver.ast.Function =>
           val newErrs = fun.pres.flatMap(collectInhaleExhaleAssertions)
                                 .map(createUnsupportedInhaleExhaleAssertion)
           newErrs ++ errors.flatten
         case pred: silver.ast.Predicate if pred.body.nonEmpty =>
           val newErrs = collectInhaleExhaleAssertions(pred.body.get)
                           .map(createUnsupportedInhaleExhaleAssertion)
-          newErrs ++ errors.flatten
+          newErrs ++ errors.flatten*/
         case _ => errors.flatten
       })
     }
