@@ -6,5 +6,6 @@
 
 (assert (forall ($PRD_ARGS_Q$ (h PHeap)) (!
 	(= (PHeap.dom_$PRD2$ (PHeap.singleton_$PRD$ $PRD_ARGS$ h)) (as Set_empty Set<Loc>))
-	:pattern (PHeap.dom_$PRD2$ (PHeap.singleton_$PRD$ $PRD_ARGS$ h)))))
+	:pattern (PHeap.dom_$PRD2$ (PHeap.singleton_$PRD$ $PRD_ARGS$ h))
+	:qid |singleton_$PRD$_dom_$PRD2$|)))
 

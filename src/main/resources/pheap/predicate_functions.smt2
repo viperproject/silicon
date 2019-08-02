@@ -13,11 +13,13 @@
 
 (assert (forall ($PRD_ARGS_Q$ (h PHeap)) (!
 	(= (PHeap.dom_$PRD$ (PHeap.singleton_$PRD$ $PRD_ARGS$ h)) (Set_singleton (PHeap.loc_$PRD$ $PRD_ARGS$)))
-	:pattern (PHeap.dom_$PRD$ (PHeap.singleton_$PRD$ $PRD_ARGS$ h)))))
+	:pattern (PHeap.dom_$PRD$ (PHeap.singleton_$PRD$ $PRD_ARGS$ h))
+	:qid |singleton_$PRD$_dom_$PRD$|)))
 
 (assert (forall ($PRD_ARGS_Q$ (h PHeap)) (!
 	(= (PHeap.lookup_$PRD$ (PHeap.singleton_$PRD$ $PRD_ARGS$ h) (PHeap.loc_$PRD$ $PRD_ARGS$)) h)
-	:pattern (PHeap.lookup_$PRD$ (PHeap.singleton_$PRD$ $PRD_ARGS$ h) (PHeap.loc_$PRD$ $PRD_ARGS$)))))
+	:pattern (PHeap.lookup_$PRD$ (PHeap.singleton_$PRD$ $PRD_ARGS$ h) (PHeap.loc_$PRD$ $PRD_ARGS$))
+	:qid |singleton_$PRD$_lookup_$PRD$|)))
 
 ; TODO: move this
 (assert (Set_equal

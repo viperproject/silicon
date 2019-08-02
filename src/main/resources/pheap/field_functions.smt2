@@ -10,11 +10,13 @@
 (declare-fun PHeap.singleton_$FLD$ ($Ref $S$) PHeap)
 (assert (forall ((x $Ref) (v $S$)) (!
 	(= (PHeap.dom_$FLD$ (PHeap.singleton_$FLD$ x v)) (Set_singleton x))
-	:pattern (PHeap.dom_$FLD$ (PHeap.singleton_$FLD$ x v)))))
+	:pattern (PHeap.dom_$FLD$ (PHeap.singleton_$FLD$ x v))
+	:qid |singleton_$FLD$_dom_$FLD$|)))
 
 (assert (forall ((x $Ref) (v $S$)) (!
 	(= (PHeap.lookup_$FLD$ (PHeap.singleton_$FLD$ x v) x) v)
-	:pattern (PHeap.lookup_$FLD$ (PHeap.singleton_$FLD$ x v) x))))
+	:pattern (PHeap.lookup_$FLD$ (PHeap.singleton_$FLD$ x v) x)
+	:qid |singleton_$FLD$_lookup_$FLD$|)))
 
 ; TODO: move this
 (assert (Set_equal
