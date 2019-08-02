@@ -36,7 +36,7 @@ class Z3ProverStdIO(uniqueId: String,
   /* private */ var z3Path: Path = _
 
   def z3Version(): Version = {
-    val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
+    val versionPattern = """\(?\s*:version\s+"(.*?)(?:\s*-.*?)?"\)?""".r
     var line = ""
 
     writeLine("(get-info :version)")

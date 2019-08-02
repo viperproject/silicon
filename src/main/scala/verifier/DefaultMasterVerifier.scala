@@ -136,7 +136,9 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     val program =
       _program.transform({
         case forall: ast.Forall if forall.isPure =>
-          viper.silicon.utils.ast.autoTrigger(forall)
+          viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
+        case exists: ast.Exists =>
+          viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
       }, Traverse.BottomUp)
 
     // TODO: Autotrigger for cfgs.
