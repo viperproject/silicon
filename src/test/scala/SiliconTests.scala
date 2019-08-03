@@ -29,6 +29,12 @@ class SiliconTests extends SilSuite {
     SymbExLogger.reset()
     SymbExLogger.filePath = files.head
     SymbExLogger.initUnitTestEngine()
+
+    /* If needed, Silicon reads the filename of the program under verification from Verifier.inputFile.
+    When the test suite is executed (sbt test/testOnly), Verifier.inputFile is set here. When Silicon is
+    run from the command line, Verifier.inputFile is set in src/main/scala/Silicon.scala. */
+    viper.silicon.verifier.Verifier.inputFile = Some(files.head)
+
     val fe = new SiliconFrontend(NoopReporter)//SiliconFrontendWithUnitTesting()
     fe.init(verifier)
     fe.reset(files.head)
