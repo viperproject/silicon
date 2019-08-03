@@ -68,7 +68,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateSnapFunctionsContributor, magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
-    _verificationPoolManager
+    _verificationPoolManager,
+    viper.silicon.reporting.MultiRunLoggers /* In lieu of a better place, include MultiRunLoggers singleton here */
   )
 
   /* Lifetime */
@@ -152,7 +153,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     allProvers.comment("Started: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()) /*bookkeeper.formattedStartTime*/)
     allProvers.comment("Silicon.version: " + Silicon.version)
-    allProvers.comment(s"Input file: ${config.inputFile.getOrElse("<unknown>")}")
+    allProvers.comment(s"Input file: ${Verifier.inputFile.getOrElse("<unknown>")}")
     allProvers.comment(s"Verifier id: $uniqueId")
     allProvers.comment("-" * 60)
     allProvers.comment("Begin preamble")
