@@ -6,7 +6,7 @@
 
 package viper.silicon
 
-import java.nio.file.Path
+import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
 
@@ -170,7 +170,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
      * TODO: Figure out what happens when ViperServer is used. */
     config.file.foreach(filename => {
       if (filename != Silicon.dummyInputFilename) {
-        viper.silicon.verifier.Verifier.inputFile = Some(Path.of(filename))
+        viper.silicon.verifier.Verifier.inputFile = Some(Paths.get(filename))
       }
     })
 
