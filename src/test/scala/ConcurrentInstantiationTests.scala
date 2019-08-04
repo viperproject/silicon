@@ -27,7 +27,7 @@ class ConcurrentInstantiationTests extends FunSuite {
 
     val aggregated: Future[Seq[Unit]] = Future.sequence(tasks)
 
-    Await.result(aggregated, Duration.create("5s"))
+    Await.result(aggregated, Duration.create("20s"))
   }
 
   test("ConcurrentInstantiationTest2") {
@@ -44,6 +44,6 @@ class ConcurrentInstantiationTests extends FunSuite {
 
     val aggregated: Future[Seq[Unit]] = Future.sequence(tasks)
 
-    Await.result(aggregated, Duration.create("5s"))
+    Await.result(aggregated, Duration.create("20s"))
   }
 }
