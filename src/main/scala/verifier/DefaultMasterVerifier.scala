@@ -16,7 +16,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.reporting.condenseToViperResult
+import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
@@ -69,7 +69,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     predSnapGenerator, predicateSnapFunctionsContributor, magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     _verificationPoolManager,
-    viper.silicon.reporting.MultiRunLoggers /* In lieu of a better place, include MultiRunLoggers singleton here */
+    MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
   )
 
   /* Lifetime */
