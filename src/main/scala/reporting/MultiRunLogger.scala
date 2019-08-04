@@ -21,6 +21,7 @@ import viper.silver.components.StatefulComponent
 
 /* WARNING: Not thread-safe!
  * TODO: Investigate if it is possible to base this class on a logging framework (e.g. slf4j) or a Viper reporter
+ * TODO: Unify these loggers with those that are used if command-line option -L<logger> is provided
  */
 class MultiRunLogger(sink: PrintWriter, source: () => Option[String]) {
   private var lastSeenSource: Either[_, Option[String]] = Left(())
@@ -66,7 +67,6 @@ object MultiRunLoggers extends StatefulComponent {
   private def config: Config = Verifier.config
   private def source: Option[String] = Verifier.inputFile.map(_.toString)
 
-  /* TODO: Unify these loggers with those that are used if command-line option -L<logger> is provided */
   var logfiles: scala.collection.immutable.Map[String, MultiRunLogger] =
     scala.collection.immutable.Map[String, MultiRunLogger]().withDefault(name => {
       val writer =
