@@ -16,6 +16,11 @@ class CommentRecord(str: String, s: State, p: PathConditionStack) extends DataRe
     "comment"
   }
 
+  override def toSimpleString(): String = {
+    if (comment != null) comment
+    else "null"
+  }
+
   override def toString(): String = {
     if (comment != null) {
       "comment " + comment
