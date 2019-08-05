@@ -29,13 +29,13 @@ sealed trait Sort extends Symbol
 
 object sorts {
   object PHeap extends Sort { val id = Identifier("PHeap"); override lazy val toString = id.toString }
-  object Loc extends Sort { val id = Identifier("Loc"); override lazy val toString = id.toString }
-  object Snap  extends Sort { val id = Identifier("Snap"); override lazy val toString = id.toString }
-  object Int   extends Sort { val id = Identifier("Int");  override lazy val toString = id.toString }
-  object Bool  extends Sort { val id = Identifier("Bool"); override lazy val toString = id.toString }
-  object Ref   extends Sort { val id = Identifier("Ref");  override lazy val toString = id.toString }
-  object Perm  extends Sort { val id = Identifier("Perm"); override lazy val toString = id.toString }
-  object Unit  extends Sort { val id = Identifier("()");   override lazy val toString = id.toString }
+  object Loc   extends Sort { val id = Identifier("Loc");   override lazy val toString = id.toString }
+  object Snap  extends Sort { val id = Identifier("Snap");  override lazy val toString = id.toString }
+  object Int   extends Sort { val id = Identifier("Int");   override lazy val toString = id.toString }
+  object Bool  extends Sort { val id = Identifier("Bool");  override lazy val toString = id.toString }
+  object Ref   extends Sort { val id = Identifier("Ref");   override lazy val toString = id.toString }
+  object Perm  extends Sort { val id = Identifier("Perm");  override lazy val toString = id.toString }
+  object Unit  extends Sort { val id = Identifier("()");    override lazy val toString = id.toString }
 
   case class Seq(elementsSort: Sort) extends Sort {
     val id = Identifier(s"Seq[$elementsSort]")
@@ -1684,20 +1684,16 @@ object Second extends (Term => Term) {
 }
 
 /* PHeaps */
-case class PHeapLookup(field: String, sort: Sort, h: Term, at: Term) extends Term {}
 case class PHeapCombine(h1: Term, h2: Term) extends Term {
   val sort = sorts.PHeap
 }
+
+case class PHeapLookupField(field: String, sort: Sort, h: Term, at: Term) extends Term {}
 case class PHeapLookupPredicate(predicate: String, h: Term, args: Seq[Term]) extends Term {
   val sort = sorts.PHeap
 }
 
-case class PHeapDom(field: String, h: Term) extends Term {
-  val sort = sorts.Set(sorts.Ref)
-}
-
-// TODO: Rename to PHeapSingletonField
-case class PHeapSingleton(field: String, x: Term, v: Term) extends Term {
+case class PHeapSingletonField(field: String, x: Term, v: Term) extends Term {
   val sort = sorts.PHeap
 }
 

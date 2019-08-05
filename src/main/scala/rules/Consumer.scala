@@ -410,7 +410,7 @@ object consumer extends ConsumptionRules with Immutable {
                 val description = s"consume ${a.pos}: $a"
                 chunkSupporter.consume(s2, h, resource, tArgs, loss, ve, v2, description)((s3, h1, snap1, v3) => locacc match {
 				  case _: ast.FieldAccess => {
-					  val hsnap = PHeapSingleton(name, tArgs(0), snap1)
+					  val hsnap = PHeapSingletonField(name, tArgs(0), snap1)
 					  val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
 									   constrainableARPs = s.constrainableARPs)
 					  Q(s4, h1, hsnap, v3)

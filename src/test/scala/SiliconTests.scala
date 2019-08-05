@@ -16,7 +16,7 @@ import viper.silver.reporter.NoopReporter
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = Seq("consistency", "issue387")
-  private val silTestDirectories = Seq("all", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
+  private val silTestDirectories = Seq("all", "custom", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
   val testDirectories = siliconTestDirectories ++ silTestDirectories
 
   override def frontend(verifier: Verifier, files: Seq[Path]) = {

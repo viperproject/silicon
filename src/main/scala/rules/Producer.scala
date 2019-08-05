@@ -266,10 +266,10 @@ object producer extends ProductionRules with Immutable {
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
 		  	// TODO Remove this `sf` stuff
 		  	val hGiven = sf(v2.symbolConverter.toSort(field.typ), v2)
-			val snap = PHeapLookup(field.name, v2.symbolConverter.toSort(field.typ),hGiven ,tRcvr)
+			val snap = PHeapLookupField(field.name, v2.symbolConverter.toSort(field.typ),hGiven ,tRcvr)
 
 			// Learn that `hGiven` is a field singleton
-			v2.decider.assume(Equals(hGiven, PHeapSingleton(field.name, tRcvr, snap)))
+			v2.decider.assume(Equals(hGiven, PHeapSingletonField(field.name, tRcvr, snap)))
 
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s2.qpFields.contains(field)) {
@@ -285,13 +285,11 @@ object producer extends ProductionRules with Immutable {
         val predicate = Verifier.program.findPredicate(predicateName)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-		  	// TODO Remove this `sf` stuff
 		    val hGiven = sf(sorts.PHeap, v2) 
 			val snap = PHeapLookupPredicate(predicateName, hGiven, tArgs)
-			v2.decider.assume(Equals(hGiven, PHeapSingletonPredicate(predicateName, tArgs, snap)))
 
 			// Learn that `hGiven` is a predicate singleton
-
+			v2.decider.assume(Equals(hGiven, PHeapSingletonPredicate(predicateName, tArgs, snap)))
 
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s2.qpPredicates.contains(predicate)) {
@@ -300,11 +298,10 @@ object producer extends ProductionRules with Immutable {
               quantifiedChunkSupporter.produceSingleLocation(
                 s2, predicate, formalArgs, tArgs, snap, gain, trigger, v2)(Q)
             } else {
-              val snap1 = snap
-              val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
+              val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap, gain)
               chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
                 if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder) {
-                  v3.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs))
+                  v3.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap +: tArgs))
                 }
                 Q(s3.copy(h = h3), v3)})
             }}))

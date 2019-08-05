@@ -124,7 +124,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         })()
 
       case ast.FieldAccess(rcv, field) => {
-		PHeapLookup(field.name, symbolConverter.toSort(field.typ), this.snap, translate(rcv))
+		PHeapLookupField(field.name, symbolConverter.toSort(field.typ), this.snap, translate(rcv))
 	  }
 
       case ast.Unfolding(ast.PredicateAccessPredicate(ast.PredicateAccess(args, predicate), _), eIn) => {

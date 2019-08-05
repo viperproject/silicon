@@ -89,7 +89,7 @@ class FunctionData(val programFunction: ast.Function,
 	case ast.And(e1, e2) => PHeapCombine(translatePreconditionToDomain(e1), translatePreconditionToDomain(e2))
 	case ast.FieldAccessPredicate(ast.FieldAccess(x, f), _) => {
       val tx = expressionTranslator.translatePrecondition(program, Seq(x), this)(0)
-	  PHeapSingleton(f.name,tx, PHeapLookup(f.name, symbolConverter.toSort(f.typ), `?h`, tx))
+	  PHeapSingletonField(f.name,tx, PHeapLookupField(f.name, symbolConverter.toSort(f.typ), `?h`, tx))
 	}
 	case ast.CondExp(iff, thn, els) => Ite(expressionTranslator.translatePrecondition(program, Seq(iff), this)(0), translatePreconditionToDomain(thn), translatePreconditionToDomain(els))
 	case ast.Implies(prem, conc) => Ite(expressionTranslator.translatePrecondition(program, Seq(prem), this)(0), translatePreconditionToDomain(conc), predef.Emp)
