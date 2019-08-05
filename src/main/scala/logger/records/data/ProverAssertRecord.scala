@@ -2,6 +2,7 @@ package viper.silicon.logger.records.data
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.logger.records.RecordData
+import viper.silicon.Map
 import viper.silicon.state.State
 import viper.silicon.state.terms.Term
 import viper.silver.ast

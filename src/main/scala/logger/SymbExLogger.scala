@@ -103,6 +103,11 @@ object SymbExLogger {
     uid
   }
 
+  /**
+    * stores the last SMT solver statistics to calculate the diff
+    */
+  private var prevSmtStatistics: Map[String, String] = new Map()
+
   /** Add a new log for a method, function or predicate (member).
     *
     * @param member Either a MethodRecord, PredicateRecord or a FunctionRecord.
@@ -211,6 +216,54 @@ object SymbExLogger {
   def checkPaths(): String = {
     val paths = new PathRenderer().render(memberList)
     new PathChecker().render(paths)
+  }
+
+  /**
+    * Calculates diff between `currentStatistics` and the statistics from a previous call.
+    * The difference is calculated if value can be converted to an int or double
+    * @param currentStatistics most recent statistics from the SMT solver
+    * @return map with differences (only containing values that could be converted) and keys with appended "-delta"
+    */
+  def getDeltaSmtStatistics(currentStatistics: Map[String, String]) : Map[String, String] = {
+    val deltaStatistics = (currentStatistics map getDelta filter { case (_, value) => value.nonEmpty } map {
+      case (key, Some(value)) => (key + "-delta", value) })
+    // set prevStatistics (i.e. override values with same key or add):
+    prevSmtStatistics = prevSmtStatistics ++ currentStatistics
+    deltaStatistics
+  }
+
+  private def getDelta(pair: (String, String)): (String, Option[String]) = {
+    val curValInt = toInt(pair._2)
+    val prevValInt = prevSmtStatistics.get(pair._1) match {
+      case Some(value) => toInt(value)
+      case _ => Some(0) // value not found
+    }
+    val curValDouble = toDouble(pair._2)
+    val prevValDouble = prevSmtStatistics.get(pair._1) match {
+      case Some(value) => toDouble(value)
+      case _ => Some(0.0) // value not found
+    }
+    (curValInt, prevValInt, curValDouble, prevValDouble) match {
+      case (Some(curInt), Some(prevInt), _, _) => (pair._1, Some((curInt - prevInt).toString))
+      case (_, _, Some(curDouble), Some(prevDouble)) => (pair._1, Some((curDouble - prevDouble).toString))
+      case _ => (pair._1, None)
+    }
+  }
+
+  private def toInt(str: String): Option[Int] = {
+    try {
+      Some(str.toInt)
+    } catch {
+      case e: NumberFormatException => None
+    }
+  }
+
+  private def toDouble(str: String): Option[Double] = {
+    try {
+      Some(str.toDouble)
+    } catch {
+      case e: NumberFormatException => None
+    }
   }
 }
 
