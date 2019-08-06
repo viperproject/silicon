@@ -48,7 +48,7 @@ package object tests {
   }
 
   def loadProgram(filePrefix: String, fileName: String, frontend: SilFrontend): Program = {
-    val testFile = getClass.getClassLoader.getResource(filePrefix + fileName + ".sil")
+    val testFile = getClass.getClassLoader.getResource(filePrefix + fileName + ".vpr")
     assert(testFile != null, s"File $filePrefix$fileName not found")
     val file = Paths.get(testFile.toURI)
 
