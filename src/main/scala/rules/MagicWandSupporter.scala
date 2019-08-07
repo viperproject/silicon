@@ -17,7 +17,6 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms.{MagicWandSnapshot, _}
-import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 
 object magicWandSupporter extends SymbolicExecutionRules with Immutable {
@@ -87,7 +86,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                   v: Verifier)
                   (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                   : VerificationResult =
-    createChunk(s, wand, MagicWandSnapshot(freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v)), pve, v)(Q)
+    createChunk(s, wand, MagicWandSnapshot(v.decider.fresh(sorts.PHeap), v.decider.fresh(sorts.PHeap)), pve, v)(Q)
 
   def createChunk(s: State,
                   wand: ast.MagicWand,
@@ -258,8 +257,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
        * from consuming the lhs when applying the wand preserves values from the lhs
        * into the rhs.
        */
-      val freshSnapRoot = freshSnap(sorts.Snap, v1)
-      produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
+      val freshSnapRoot = v1.decider.fresh(sorts.PHeap)
+      produce(s1.copy(conservingSnapshotGeneration = true), freshSnapRoot, wand.left, pve, v1)((sLhs, v2) => {
 
         val proofScriptCfg = proofScript.toCfg()
 
@@ -367,7 +366,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             assert(snap.sort == sorts.Snap, s"expected snapshot but found: $snap")
             v2.decider.assume(snap === wandSnap.abstractLhs)
             val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
+            produce(s3.copy(conservingSnapshotGeneration = true), wandSnap.rhsSnapshot, wand.right, pve, v2)((s4, v3) => {
               val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
               val s6 = stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
               Q(s6, v3)})})})}

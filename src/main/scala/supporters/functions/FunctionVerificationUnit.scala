@@ -22,7 +22,6 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silicon.utils.toSf
 
 trait FunctionVerificationUnit[SO, SY, AX]
     extends VerifyingPreambleContributor[SO, SY, AX, ast.Function]
@@ -210,9 +209,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
-        produces(s0, (_,_) => `?h`, pres, ContractNotWellformed, v)((s1, vv) => {
+        produces(s0, `?h`, pres, ContractNotWellformed, v)((s1, vv) => {
 		  phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
-            produces(s1, (_,_) => `?h`, posts, ContractNotWellformed, v)((s2, _) => {
+            produces(s1, `?h`, posts, ContractNotWellformed, v)((s2, _) => {
             recorders :+= s2.functionRecorder
             Success()})})})
 

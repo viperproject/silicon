@@ -15,9 +15,9 @@ import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
 import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.state.terms.sorts
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silicon.utils.freshSnap
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -77,14 +77,14 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
          * rules in Smans' paper.
          */
         executionFlowController.locally(s, v)((s1, v1) => {
-          produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
+          produces(s1, v1.decider.fresh(sorts.PHeap), pres, ContractNotWellformed, v1)((s2, v2) => {
             v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
                   val s4 = s3.copy(h = Heap())
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-                  produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, v4) => {
+                  produces(s4, v3.decider.fresh(sorts.PHeap), posts, ContractNotWellformed, v3)((_, v4) => {
                     SymbExLogger.currentLog().collapse(null, sepIdentifier)
                     Success()})})
             && {

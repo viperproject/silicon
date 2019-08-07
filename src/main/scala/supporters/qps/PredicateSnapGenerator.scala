@@ -12,9 +12,8 @@ import viper.silicon.Map
 import viper.silicon.state.terms.{Var, sorts}
 import viper.silicon.state.{Identifier, SymbolConverter, terms}
 import viper.silver.components.StatefulComponent
-import viper.silicon.supporters.SnapshotSupporter
 
-class PredicateSnapGenerator(symbolConverter: SymbolConverter, snapshotSupporter: SnapshotSupporter)
+class PredicateSnapGenerator(symbolConverter: SymbolConverter)
     extends StatefulComponent {
 
   var snapMap: Map[Predicate, terms.Sort] = Map()
@@ -24,7 +23,7 @@ class PredicateSnapGenerator(symbolConverter: SymbolConverter, snapshotSupporter
     program visit {
       case ast.PredicateAccess(_, predname) =>
         val predicate = program.findPredicate(predname)
-        val sort = predicate -> predicate.body.map(snapshotSupporter.optimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap)
+        val sort = predicate -> terms.sorts.PHeap
         val formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ)))
         formalVarMap += predicate -> formalArgs
         snapMap += sort

@@ -20,7 +20,6 @@ import viper.silicon.state.terms._
 import viper.silicon.interfaces._
 import viper.silicon.rules.executionFlowController
 import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silicon.utils.freshSnap
 
 class PredicateData(predicate: ast.Predicate)
                    /* Note: Holding a reference to a fixed symbol converter (instead of going
@@ -106,7 +105,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
           /*    locallyXXX {
                 magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
           &&*/  executionFlowController.locally(s, v)((s1, _) => {
-                  produce(s1, freshSnap, body, err, v)((_, _) =>
+                  produce(s1, v.decider.fresh(sorts.PHeap), body, err, v)((_, _) =>
                     Success())})
       }
 

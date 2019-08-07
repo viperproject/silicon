@@ -16,9 +16,6 @@ import viper.silicon.state.terms.{Sort, Term, Var, sorts}
 import viper.silicon.verifier.Verifier
 
 package object utils {
-  def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sorts.PHeap)
-  def toSf(t: Term): (Sort, Verifier) => Term = (sort, _) => t.convert(sort)
-
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
     if (it.isEmpty)
       unit

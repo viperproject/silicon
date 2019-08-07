@@ -14,7 +14,6 @@ import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.PredicateID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
@@ -132,7 +131,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
       )((s2, h2, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
-        produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
+        produce(s3, snap, body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
           val predicateTrigger =
             App(Verifier.predicateData(predicate).triggerFunction,
@@ -146,7 +145,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
       chunkSupporter.consume(s1, s1.h, predicate, tArgs, s1.permissionScalingFactor, ve, v, description)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
-        produce(s3, (_,_) => snap, body, pve, v1)((s4, v2) => {
+        produce(s3, snap, body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
           val predicateTrigger =
             App(Verifier.predicateData(predicate).triggerFunction, snap +: tArgs)

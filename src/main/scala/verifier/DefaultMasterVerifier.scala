@@ -56,7 +56,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val pheapsContributor = new DefaultPHeapsContributor(preambleReader, symbolConverter, termConverter, config)
-  protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
+  protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter)
   protected val predicateSnapFunctionsContributor = new DefaultPredicateSnapFunctionsContributor(preambleReader, symbolConverter, termConverter, predSnapGenerator, config)
   protected val magicWandSnapFunctionsContributor = new DefaultMagicWandSnapFunctionsContributor(preambleReader, termConverter)
 

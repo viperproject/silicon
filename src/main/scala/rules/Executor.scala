@@ -20,7 +20,6 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silicon.{ExecuteRecord, Map, MethodCallRecord, SymbExLogger}
 
@@ -149,7 +148,7 @@ object executor extends ExecutionRules with Immutable {
             (executionFlowController.locally(sBody, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
                 val mark = v0.decider.setPathConditionMark()
-                produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
+                produces(s0, v0.decider.fresh(sorts.PHeap), invs, ContractNotWellformed, v0)((s1, v1) => {
                   phase1data = phase1data :+ (s1,
                                               v1.decider.pcs.after(mark),
                                               InsertionOrderedSet.empty[FunctionDecl] /*v2.decider.freshFunctions*/ /* [BRANCH-PARALLELISATION] */)
@@ -353,7 +352,7 @@ object executor extends ExecutionRules with Immutable {
           /* We're done */
           Success()
         case _ =>
-          produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
+          produce(s, v.decider.fresh(sorts.PHeap), a, InhaleFailed(inhale), v)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterInhale)
             Q(s1, v1)})
       }
@@ -423,7 +422,7 @@ object executor extends ExecutionRules with Immutable {
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
-            produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
+            produces(s4, v2.decider.fresh(sorts.PHeap), meth.posts, _ => pveCall, v2)((s5, v3) => {
               mcLog.finish_postcondition()
               v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
