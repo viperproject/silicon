@@ -512,8 +512,7 @@ object Quantification
 
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String)
            : Quantification = {
-
-    apply(q, vars, tBody, triggers, "", false)
+    apply(q, vars, tBody, triggers, name, false)
   }
 
   def apply(q: Quantifier,

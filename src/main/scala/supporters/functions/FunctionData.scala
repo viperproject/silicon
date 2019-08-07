@@ -68,17 +68,18 @@ class FunctionData(val programFunction: ast.Function,
   val limitedAxiom =
     Forall(arguments,
            limitedFunctionApplication === functionApplication,
-           Trigger(functionApplication))
+           Trigger(functionApplication),
+		   s"limitedAxiom [${function.id.name}]")
 
   val triggerAxiom =
-    Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication))
+    Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication), s"triggerAxiom [${function.id.name}]")
   
   def restrictHeapAxiom() : Term = {
     val dom = if (programFunction.pres.isEmpty) `?h` else programFunction.pres.map(pre => {
 	  translatePreconditionToDomain(pre)
 	}).reduce((h1, h2) => PHeapCombine(h1,h2))
 
-    Forall(arguments, restrictHeapApplication === dom, Trigger(restrictHeapApplication))
+    Forall(arguments, restrictHeapApplication === dom, Trigger(restrictHeapApplication), s"restrictHeapAxiom [${function.id.name}]")
   }
 
   def translatePreconditionToDomain(pre: ast.Exp): Term = pre match {
