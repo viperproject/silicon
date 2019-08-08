@@ -6,9 +6,9 @@
 
 package viper.silicon.logger
 
-import java.io.File
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.Path
 
+import logger.renderer.StructuralTreeRenderer
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.logger.records.SymbolicRecord
 import viper.silicon.logger.records.data.{DataRecord, FunctionRecord, MethodRecord, PredicateRecord}
@@ -19,7 +19,6 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.{Config, Map}
 import viper.silver.ast
-import viper.silver.verifier.AbstractError
 
 import scala.annotation.elidable
 import scala.annotation.elidable._
@@ -114,7 +113,7 @@ object SymbExLogger {
     * @param s      Current state. Since the body of the method (predicate/function) is not yet
     *               executed/logged, this is usually the empty state (use Σ(Ø, Ø, Ø) for empty
     *               state).
-    * @param c      Current context.
+    * @param pcs    Current path conditions.
     */
   @elidable(INFO)
   def insertMember(member: ast.Member, s: State, pcs: PathConditionStack) {
@@ -172,30 +171,19 @@ object SymbExLogger {
   }
 
   /**
-    * Simple string representation of the logs, but contains only the types of the records
-    * and not their values. Original purpose was usage for unit testing.
+    * Converts the recorded log to a representation which only contains MemberRecords and structural records.
+    * The intention of this representation is to ensure some form of robustness for unit test, because it is not
+    * affected by removal or addition of (other) data or scope nodes
     */
-  def toTypeTreeString(): String = {
-    /*
+  def toStructuralTreeString(): String = {
     if (enabled) {
-      val typeTreeRenderer = new TypeTreeRenderer()
-      typeTreeRenderer.render(memberList)
+      val structuralTreeRenderer = new StructuralTreeRenderer()
+      structuralTreeRenderer.render(memberList)
     } else ""
-     */
-    ""
   }
 
   /** Path to the file that is being executed. Is used for UnitTesting. **/
   var filePath: Path = null
-
-  /** Unit Testing **/
-  var unitTestEngine: SymbExLogUnitTest = null
-
-  /** Initialize Unit Testing. Should be done AFTER the file to be tested is known. **/
-  def initUnitTestEngine() {
-    if (filePath != null)
-      unitTestEngine = new SymbExLogUnitTest(filePath)
-  }
 
   /**
     * Resets the SymbExLogger-object, to make it ready for a new file.
@@ -204,7 +192,6 @@ object SymbExLogger {
   def reset() {
     memberList = List[SymbLog]()
     uidCounter = 0
-    unitTestEngine = null
     filePath = null
     config = null
   }
@@ -488,75 +475,3 @@ object NoopSymbLog extends SymbLog(null, null, null) {
   * which is done Renderer-Classes. Implement a new case in all renderer for the new
   * record.
   */
-
-class SymbExLogUnitTest(f: Path) {
-  private val originalFilePath: Path = f
-  private val fileName: Path = originalFilePath.getFileName()
-
-  /**
-    * If there is a predefined 'expected-output'-file (.elog) for the currently verified program,
-    * a 'actual output'-file is created (.alog) and then compared with the expected output. Should
-    * only be called if the whole verification process is already terminated.
-    */
-  def verify(): Seq[SymbExLogUnitTestError] = {
-    val expectedPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".elog").toString()
-    val actualPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".alog").toString()
-    var errorMsg = ""
-    var testFailed = false
-    val testIsExecuted = Files.exists(Paths.get(expectedPath))
-
-    if (testIsExecuted) {
-      val pw = new java.io.PrintWriter(new File(actualPath))
-      try pw.write(SymbExLogger.toSimpleTreeString) finally pw.close()
-
-      val expectedSource = scala.io.Source.fromFile(expectedPath)
-      val expected = expectedSource.getLines()
-
-      val actualSource = scala.io.Source.fromFile(actualPath)
-      val actual = actualSource.getLines()
-
-      var lineNumber = 0
-
-      while (!testFailed && expected.hasNext && actual.hasNext) {
-        if (!actual.next().equals(expected.next())) {
-          testFailed = true
-        }
-        lineNumber = lineNumber + 1
-      }
-      if (actual.hasNext != expected.hasNext)
-        testFailed = true
-
-      if (testFailed) {
-        errorMsg = errorMsg + "Unit Test failed, expected output "
-        errorMsg = errorMsg + "does not match actual output. "
-        errorMsg = errorMsg + "First occurrence at line " + lineNumber + ".\n"
-        errorMsg = errorMsg + "Compared Files:\n"
-        errorMsg = errorMsg + "expected: " + expectedPath.toString() + "\n"
-        errorMsg = errorMsg + "actual:   " + actualPath.toString() + "\n"
-      }
-
-      val pathCheckOutput = SymbExLogger.checkPaths()
-      if (pathCheckOutput != "") {
-        testFailed = true
-        errorMsg = errorMsg + "PathChecker: " + pathCheckOutput + "\n"
-      }
-
-      actualSource.close()
-      expectedSource.close()
-    }
-    if (testIsExecuted && testFailed) {
-      Seq(new SymbExLogUnitTestError(errorMsg))
-    }
-    else {
-      Nil
-    }
-  }
-}
-
-case class SymbExLogUnitTestError(msg: String) extends AbstractError {
-  def pos = ast.NoPosition
-
-  def fullId = "symbexlogunittest.error"
-
-  def readableMessage = msg
-}

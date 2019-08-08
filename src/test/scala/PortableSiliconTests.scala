@@ -8,8 +8,8 @@ package viper.silicon.tests
 
 import java.nio.file.Path
 
-import logger.SymbExLogger
 import org.scalatest.DoNotDiscover
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.{Silicon, SiliconFrontend}
 import viper.silver.reporter.NoopReporter
 import viper.silver.testing.{SilSuite, StatisticalTestSuite}
@@ -82,8 +82,7 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
     // tests at once, e.g. with the 'test'-sbt-command.
     SymbExLogger.reset()
     SymbExLogger.filePath = files.head
-    SymbExLogger.initUnitTestEngine()
-    val fe = new SiliconFrontend(NoopReporter)//SiliconFrontendWithUnitTesting()
+    val fe = new SiliconFrontend(NoopReporter)
     fe.init(verifier)
     fe.reset(files.head)
     fe

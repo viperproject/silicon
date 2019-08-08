@@ -49,6 +49,10 @@ class PathRenderer extends Renderer[SymbLog, List[MemberPath]] {
   }
 }
 
+/**
+  * Contains a list of records for each path of the corresponding member
+  * @param paths
+  */
 class MemberPath(val paths: List[List[SymbolicRecord]]) {
 
 }

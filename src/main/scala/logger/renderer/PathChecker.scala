@@ -35,7 +35,6 @@ class PathChecker extends Renderer[MemberPath, String] {
     var checks = List[String]()
     checks = checks ++ checkIdUniqueness(path)
     checks = checks ++ checkScopesExist(path)
-    checks = checks ++ checkScopeClosings(path)
     checks = checks ++ checkScopeNesting(path)
     checks
   }
@@ -81,31 +80,8 @@ class PathChecker extends Renderer[MemberPath, String] {
     checks
   }
 
-  // checks: - each open scope record has a single close scope record
-  private def checkScopeClosings(path: List[SymbolicRecord]): List[String] = {
-    var checks = List[String]()
-    var scopes = List[OpenScopeRecord]()
-
-    for (record <- path) {
-      record match {
-        case os: OpenScopeRecord => scopes = scopes :+ os
-        case cs: CloseScopeRecord =>
-          val oldScopesCount = scopes.length
-          scopes = scopes.filterNot(scope => cs.refId == scope.refId)
-          val newScopesCount = scopes.length
-          if (newScopesCount == oldScopesCount) {
-            checks = checks :+ "close scope " + cs.id + " has no matching open scope record"
-          } else if (newScopesCount < oldScopesCount - 1) {
-            checks = checks :+ "close scope " + cs.id + " has more than one open scope record"
-          }
-        case _ =>
-      }
-    }
-
-    checks
-  }
-
   // checks: - scopes are either contained in each other or beside each other (but not overlapping)
+  // checks: - each open scope record has a single close scope record
   private def checkScopeNesting(path: List[SymbolicRecord]): List[String] = {
     var checks = List[String]()
     var scopeStack = List[OpenScopeRecord]()
@@ -123,6 +99,11 @@ class PathChecker extends Renderer[MemberPath, String] {
         case _ =>
       }
     }
+
+    // the stack should be empty now
+    scopeStack.foreach((os: OpenScopeRecord) => {
+      checks = checks :+ "open scope " + os.id + " has no corresponding close scope record"
+    })
 
     checks
   }
