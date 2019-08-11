@@ -38,12 +38,12 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
   }
 
   private def predicateSubstitutions(p: ast.Predicate) : Map[String, String] = {
-      val pArgs_q = (p.formalArgs map (a => 
-	  	"(" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
-	  )).mkString(" ")
-      val pArgs = (p.formalArgs map (a => a.name)).mkString(" ")
-      val argSorts = (p.formalArgs map (a => termConverter.convert(symbolConverter.toSort(a.typ)))).mkString(" ")
       val id = p.name
+      val pArgs_q = (p.formalArgs map (a => 
+	  	"(" + id + "_" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
+	  )).mkString(" ")
+      val pArgs = (p.formalArgs map (a => id + "_" + a.name)).mkString(" ")
+      val argSorts = (p.formalArgs map (a => termConverter.convert(symbolConverter.toSort(a.typ)))).mkString(" ")
       Map(
 	  	"$PRD$" -> id,
 		"$PRD_ARGS_S$" -> argSorts,
@@ -231,7 +231,7 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
 	  	"(" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
 	  )).mkString(" ")
 	  predicates map (p2 => {
-	    if (p.name == p.name) {
+	    if (p.name == p2.name) {
           ("", Seq())
 		} else {
 		  val substitutions = predicateSubstitutions(p) ++ addKeySuffix(predicateSubstitutions(p2), "2")

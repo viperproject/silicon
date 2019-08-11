@@ -127,10 +127,19 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
 		PHeapLookupField(field.name, symbolConverter.toSort(field.typ), this.snap, translate(rcv))
 	  }
 
-      case ast.Unfolding(ast.PredicateAccessPredicate(ast.PredicateAccess(args, predicate), _), eIn) => {
+	  case ast.WildcardPerm() => {
+	    // TODO Does this really capture wildcard semantics?
+		// Do we need to add a constraint about non-negative?
+		fresh("p",  sorts.Perm)
+	  }
+
+      case ast.Unfolding(ast.PredicateAccessPredicate(ast.PredicateAccess(args, predicate), p), eIn) => {
 	    this.snap = PHeapCombine(
 		  PHeapLookupPredicate(predicate, this.snap, args map translate),
-	      this.snap
+	      Ite(Less(translate(p), FullPerm()),
+			this.snap,
+		  	PHeapRemovePredicate(predicate, this.snap, args map translate)
+		  )
 		)
 	  	translate(toSort)(eIn)
 	  }
