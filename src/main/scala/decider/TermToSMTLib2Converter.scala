@@ -206,14 +206,14 @@ class TermToSMTLib2Converter
     case bop: MultisetSubset => renderApp("Multiset_subset", Seq(bop.p0, bop.p1), bop.sort)
     case bop: MultisetCount => renderApp("Multiset_count", Seq(bop.p0, bop.p1), bop.sort)
 
-	/* PHeaps */
+    /* PHeaps */
 
-	case PHeapLookupField(f, _, h, x) => parens(text("PHeap.lookup_") <> f <+> render(h) <+> render(x))
-	case PHeapLookupPredicate(p, h, args) => parens(text("PHeap.lookup_") <> p <+> render(h) <+> parens(text("PHeap.loc_") <> p <+> args.map(a => convert(a)).mkString(" ")))
-	case PHeapCombine(h1,h2) => parens(text("PHeap.combine") <+> render(h1) <+> render(h2) )
-	case PHeapSingletonField(f, x, v) => parens(text("PHeap.singleton_") <> f <+> render(x) <+> render(v))
-	case PHeapSingletonPredicate(p, args, h) => parens(text("PHeap.singleton_") <> p <+> args.map(a => convert(a)).mkString(" ") <+> render(h))
-	case PHeapRestrict(f, h, args) => parens(text("PHeap.restrict_") <> f <+> convert(h) <+> args.map(a => convert(a)).mkString(" "))
+    case PHeapLookupField(f, _, h, x) => parens(text("PHeap.lookup_") <> f <+> render(h) <+> render(x))
+    case PHeapLookupPredicate(p, h, args) => parens(text("PHeap.lookup_") <> p <+> render(h) <+> parens(text("PHeap.loc_") <> p <+> args.map(a => convert(a)).mkString(" ")))
+    case PHeapCombine(h1,h2) => parens(text("PHeap.combine") <+> render(h1) <+> render(h2) )
+    case PHeapSingletonField(f, x, v) => parens(text("PHeap.singleton_") <> f <+> render(x) <+> render(v))
+    case PHeapSingletonPredicate(p, args, h) => parens(text("PHeap.singleton_") <> p <+> args.map(a => convert(a)).mkString(" ") <+> render(h))
+    case PHeapRestrict(f, h, args) => parens(text("PHeap.restrict_") <> f <+> convert(h) <+> args.map(a => convert(a)).mkString(" "))
 
     /* Quantified Permissions */
 

@@ -29,27 +29,27 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
 
   private def fieldSubstitutions(f: ast.Field) : Map[String, String] = {
-      val sort = symbolConverter.toSort(f.typ)
-      val id = f.name
-      Map(
-	  	"$FLD$" -> id,
-		"$S$" -> termConverter.convert(sort)
-	  )
+    val sort = symbolConverter.toSort(f.typ)
+    val id = f.name
+    Map(
+      "$FLD$" -> id,
+      "$S$" -> termConverter.convert(sort)
+    )
   }
 
   private def predicateSubstitutions(p: ast.Predicate) : Map[String, String] = {
-      val pArgs_q = (p.formalArgs map (a => 
-	  	"(" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
+    val pArgs_q = (p.formalArgs map (a => 
+	    "(" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
 	  )).mkString(" ")
-      val pArgs = (p.formalArgs map (a => a.name)).mkString(" ")
-      val argSorts = (p.formalArgs map (a => termConverter.convert(symbolConverter.toSort(a.typ)))).mkString(" ")
-      val id = p.name
-      Map(
-	  	"$PRD$" -> id,
-		"$PRD_ARGS_S$" -> argSorts,
-		"$PRD_ARGS_Q$" -> pArgs_q,
-		"$PRD_ARGS$" -> pArgs,
-	  )
+    val pArgs = (p.formalArgs map (a => a.name)).mkString(" ")
+    val argSorts = (p.formalArgs map (a => termConverter.convert(symbolConverter.toSort(a.typ)))).mkString(" ")
+    val id = p.name
+    Map(
+      "$PRD$" -> id,
+      "$PRD_ARGS_S$" -> argSorts,
+      "$PRD_ARGS_Q$" -> pArgs_q,
+      "$PRD_ARGS$" -> pArgs,
+    )
   }
 
   private def addKeySuffix(m : Map[String, String], s : String) : Map[String, String] = m.map {
@@ -69,23 +69,22 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
   /* Functionality */
 
   def analyze(program: ast.Program) {
-
     collectedFunctionDecls =
-		generatePHeapFunctions ++
-		generateFieldFunctionDecls(program.fields) ++
-		generatePredicateFunctionDecls(program.predicates)
+      generatePHeapFunctions ++
+      generateFieldFunctionDecls(program.fields) ++
+      generatePredicateFunctionDecls(program.predicates)
     collectedAxioms =
-		axiomIII(program.fields) ++ 
-		axiomV(program.fields) ++
-		axiomVI(program.predicates) ++
-		axiomVII() ++
-		axiomII(program.functions.filter(_.isAbstract)) ++
-		axiomIV(program.predicates) ++
-		axiomVIII() ++
-		predicateSingletonFieldDomains(program.predicates, program.fields) ++
-		predicateSingletonPredicateDomains(program.predicates) ++
-		fieldSingletonPredicateDomains(program.predicates, program. fields) ++
-		fieldSingletonFieldDomains(program.fields)
+      axiomIII(program.fields) ++ 
+      axiomV(program.fields) ++
+      axiomVI(program.predicates) ++
+      axiomVII() ++
+      axiomII(program.functions.filter(_.isAbstract)) ++
+      axiomIV(program.predicates) ++
+      axiomVIII() ++
+      predicateSingletonFieldDomains(program.predicates, program.fields) ++
+      predicateSingletonPredicateDomains(program.predicates) ++
+      fieldSingletonPredicateDomains(program.predicates, program. fields) ++
+      fieldSingletonFieldDomains(program.fields)
   }
 
   private def extractPreambleLines(from: Iterable[PreambleBlock]*): Iterable[String] =
@@ -100,7 +99,7 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
 
   def generatePHeapFunctions(): Iterable[PreambleBlock] = {
     val templateFile = "/pheap/pheap_functions.smt2"
-  	Seq(("basic pheap functions", preambleReader.readPreamble(templateFile)))	
+      Seq(("basic pheap functions", preambleReader.readPreamble(templateFile)))    
   }
 
   def generateFieldFunctionDecls(fields: Seq[ast.Field]): Iterable[PreambleBlock] = {
@@ -131,24 +130,24 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
   }
 
   def axiomII(abstractFuncs: Seq[ast.Function]): Iterable[PreambleBlock] = {
-	val templateFile = "/pheap/axiomII.smt2"
-	abstractFuncs map (f => {
+    val templateFile = "/pheap/axiomII.smt2"
+    abstractFuncs map (f => {
       val id = f.name
-	  val substitutions = Map(
-	    "$FUN_ARGS_Q$" -> (f.formalArgs map (a =>
-	      "(" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
-	      )).mkString(" "),
-	    "$FUN_ARGS$" -> (f.formalArgs map (_.name)).mkString(" "),
-	    "$FUN$" -> id,
-	  )
+      val substitutions = Map(
+        "$FUN_ARGS_Q$" -> (f.formalArgs map (a =>
+          "(" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
+          )).mkString(" "),
+        "$FUN_ARGS$" -> (f.formalArgs map (_.name)).mkString(" "),
+        "$FUN$" -> id,
+      )
       val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
 
       (s"pheap II($id)", declarations)
-	})
+    })
   }
 
   def axiomIII(fields: Seq[ast.Field]): Iterable[PreambleBlock] = {
-	val templateFile = "/pheap/axiomIII.smt2"
+    val templateFile = "/pheap/axiomIII.smt2"
 
     fields map (f => {
       val declarations = preambleReader.readParametricPreamble(templateFile, fieldSubstitutions(f))
@@ -157,7 +156,7 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
   }
 
   def axiomV(fields: Seq[ast.Field]): Iterable[PreambleBlock] = {
-	val templateFile = "/pheap/axiomV.smt2"
+    val templateFile = "/pheap/axiomV.smt2"
 
     fields map (f => {
       val declarations = preambleReader.readParametricPreamble(templateFile, fieldSubstitutions(f))
@@ -166,7 +165,7 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
   }
 
   def axiomVI(predicates: Seq[ast.Predicate]): Iterable[PreambleBlock] = {
-	val templateFile = "/pheap/axiomVI.smt2"
+    val templateFile = "/pheap/axiomVI.smt2"
 
     predicates map (p => {
       val declarations = preambleReader.readParametricPreamble(templateFile, predicateSubstitutions(p))
@@ -175,77 +174,77 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
   }
 
   def axiomVII(): Iterable[PreambleBlock] = {
-	val templateFile = "/pheap/axiomVII.smt2"
+    val templateFile = "/pheap/axiomVII.smt2"
     Seq((s"pheap VII", preambleReader.readPreamble(templateFile)))
   }
   
   def axiomVIII(): Iterable[PreambleBlock] = {
-	val templateFile = "/pheap/axiomVIII.smt2"
+    val templateFile = "/pheap/axiomVIII.smt2"
     Seq((s"pheap VIII", preambleReader.readPreamble(templateFile)))
   }
 
   def predicateSingletonFieldDomains(predicates: Seq[ast.Predicate], fields: Seq[ast.Field]): Iterable[PreambleBlock] = {
-	val templateFile = "/pheap/predicate_singleton_field_domain.smt2"
+    val templateFile = "/pheap/predicate_singleton_field_domain.smt2"
 
     predicates flatMap (p => {
-	  fields map (f => {
-		val declarations = preambleReader.readParametricPreamble(templateFile, fieldSubstitutions(f) ++ predicateSubstitutions(p))
-		(s"predicate_singleton_field_domain (${p.name}, ${f.name})", declarations)
-	  })
+      fields map (f => {
+        val declarations = preambleReader.readParametricPreamble(templateFile, fieldSubstitutions(f) ++ predicateSubstitutions(p))
+        (s"predicate_singleton_field_domain (${p.name}, ${f.name})", declarations)
+      })
     })
   }
 
   def fieldSingletonFieldDomains(fields: Seq[ast.Field]): Iterable[PreambleBlock] = {
-	val templateFile = "/pheap/field_singleton_field_domain.smt2"
+    val templateFile = "/pheap/field_singleton_field_domain.smt2"
     fields flatMap (f2 => {
-	  fields map (f => {
-	    if (f.name == f2.name) {
+      fields map (f => {
+        if (f.name == f2.name) {
           ("", Seq())
-		} else {
-		  val substitutions = fieldSubstitutions(f) ++ addKeySuffix(fieldSubstitutions(f2), "2")
-		  val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
-		  (s"field_singleton_field_domain (${f.name}, ${f2.name})", declarations)
-		}
-	  })
+        } else {
+          val substitutions = fieldSubstitutions(f) ++ addKeySuffix(fieldSubstitutions(f2), "2")
+          val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
+          (s"field_singleton_field_domain (${f.name}, ${f2.name})", declarations)
+        }
+      })
     })
   }
 
   def fieldSingletonPredicateDomains(predicates: Seq[ast.Predicate], fields: Seq[ast.Field]): Iterable[PreambleBlock] = {
-	val templateFile = "/pheap/field_singleton_predicate_domain.smt2"
+    val templateFile = "/pheap/field_singleton_predicate_domain.smt2"
 
     predicates flatMap (p => {
-	  fields map (f => {
-		val declarations = preambleReader.readParametricPreamble(templateFile, fieldSubstitutions(f) ++ predicateSubstitutions(p))
-		(s"field_singleton_predicate_domain (${p.name}, ${f.name})", declarations)
-	  })
+      fields map (f => {
+        val declarations = preambleReader.readParametricPreamble(templateFile, fieldSubstitutions(f) ++ predicateSubstitutions(p))
+        (s"field_singleton_predicate_domain (${p.name}, ${f.name})", declarations)
+      })
     })
   }
 
   def predicateSingletonPredicateDomains(predicates: Seq[ast.Predicate]): Iterable[PreambleBlock] = {
-	val templateFile = "/pheap/predicate_singleton_predicate_domain.smt2"
+    val templateFile = "/pheap/predicate_singleton_predicate_domain.smt2"
 
     predicates flatMap (p => {
       val pred_id = p.name
       val pArgs = (p.formalArgs map (a => a.name)).mkString(" ")
       val pArgs_q = (p.formalArgs map (a => 
-	  	"(" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
-	  )).mkString(" ")
-	  predicates map (p2 => {
-	    if (p.name == p.name) {
+          "(" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
+      )).mkString(" ")
+      predicates map (p2 => {
+        if (p.name == p.name) {
           ("", Seq())
-		} else {
-		  val substitutions = predicateSubstitutions(p) ++ addKeySuffix(predicateSubstitutions(p2), "2")
-		  val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
-		  (s"predicate_singleton_predicate_domain (${p.name}, ${p2.name})", declarations)
-		}
-	  })
+        } else {
+          val substitutions = predicateSubstitutions(p) ++ addKeySuffix(predicateSubstitutions(p2), "2")
+          val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
+          (s"predicate_singleton_predicate_domain (${p.name}, ${p2.name})", declarations)
+        }
+      })
     })
   }
 
   def sortsAfterAnalysis: InsertionOrderedSet[sorts.FieldValueFunction] = InsertionOrderedSet.empty
 
   def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
-  	Seq(sorts.PHeap, sorts.Loc) foreach (s => sink.declare(SortDecl(s)))
+    Seq(sorts.PHeap, sorts.Loc) foreach (s => sink.declare(SortDecl(s)))
   }
 
   val symbolsAfterAnalysis: Iterable[String] =

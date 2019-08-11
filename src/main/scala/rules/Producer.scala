@@ -145,10 +145,10 @@ object producer extends ProductionRules with Immutable {
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, snap, a, pve, v)(Q)
       else {
-		val h0 = v.decider.fresh(sorts.PHeap)
-		val h1 = v.decider.fresh(sorts.PHeap)
+        val h0 = v.decider.fresh(sorts.PHeap)
+        val h1 = v.decider.fresh(sorts.PHeap)
 
-		v.decider.assume(Equals(snap, PHeapCombine(h0,h1)))
+        v.decider.assume(Equals(snap, PHeapCombine(h0,h1)))
 
         wrappedProduceTlc(s, h0, a, pve, v)((s1, v1) =>
           produceTlcs(s1, h1, as.tail, pves.tail, v1)(Q))
@@ -217,7 +217,7 @@ object producer extends ProductionRules with Immutable {
                 SymbExLogger.currentLog().prepareOtherBranch(impLog)
                 res1}),
               (s2, v2) => {
-			    // TODO What here?
+                // TODO What here?
                 //v2.decider.assume(`?h` === predef.Emp)
 
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
@@ -257,10 +257,10 @@ object producer extends ProductionRules with Immutable {
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-			val fieldSnap = PHeapLookupField(field.name, v2.symbolConverter.toSort(field.typ),snap ,tRcvr)
+            val fieldSnap = PHeapLookupField(field.name, v2.symbolConverter.toSort(field.typ),snap ,tRcvr)
 
-			// Learn that `snap` is a field singleton
-			v2.decider.assume(Equals(snap, PHeapSingletonField(field.name, tRcvr, fieldSnap)))
+            // Learn that `snap` is a field singleton
+            v2.decider.assume(Equals(snap, PHeapSingletonField(field.name, tRcvr, fieldSnap)))
 
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s2.qpFields.contains(field)) {
@@ -276,10 +276,10 @@ object producer extends ProductionRules with Immutable {
         val predicate = Verifier.program.findPredicate(predicateName)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-			val predSnap = PHeapLookupPredicate(predicateName, snap, tArgs)
+            val predSnap = PHeapLookupPredicate(predicateName, snap, tArgs)
 
-			// Learn that `snap` is a predicate singleton
-			v2.decider.assume(Equals(snap, PHeapSingletonPredicate(predicateName, tArgs, predSnap)))
+            // Learn that `snap` is a predicate singleton
+            v2.decider.assume(Equals(snap, PHeapSingletonPredicate(predicateName, tArgs, predSnap)))
 
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             if (s2.qpPredicates.contains(predicate)) {

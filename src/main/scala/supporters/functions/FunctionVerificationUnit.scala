@@ -146,7 +146,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
-	    SymbExLogger.insertMember(function, null, v.decider.pcs)
+        SymbExLogger.insertMember(function, null, v.decider.pcs)
 
       val data = functionData(function)
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
@@ -210,7 +210,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
         produces(s0, `?h`, pres, ContractNotWellformed, v)((s1, vv) => {
-		  phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
+          phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
             produces(s1, `?h`, posts, ContractNotWellformed, v)((s2, _) => {
             recorders :+= s2.functionRecorder
             Success()})})})

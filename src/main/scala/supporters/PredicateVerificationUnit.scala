@@ -13,7 +13,7 @@ import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.decider.Decider
 import viper.silicon.{Map, SymbExLogger, toMap}
-import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
+import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state._
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms._
@@ -44,7 +44,6 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
   def logger: Logger
   def decider: Decider
   def symbolConverter: SymbolConverter
-  def termConverter: TermConverter[String,String,String]
 
   object predicateSupporter extends PredicateVerificationUnit with StatefulComponent {
     import viper.silicon.rules.producer._
@@ -59,7 +58,6 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
     def analyze(program: Program): Unit = {
       this.predicateData = toMap(
         program.predicates map (pred => pred -> new PredicateData(pred)(symbolConverter)))
-
     }
 
     /* Predicate supporter generates no sorts */
@@ -76,7 +74,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
     }
 
     /* Predicate supporter generates no axioms */
-    val axiomsAfterAnalysis: Iterable[Term] = Seq()
+    val axiomsAfterAnalysis: Iterable[Term] = Seq.empty
     def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = ()
 
     def updateGlobalStateAfterAnalysis(): Unit = {
@@ -96,7 +94,6 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                          h = Heap(),
                          oldHeaps = OldHeaps())
       val err = PredicateNotWellformed(predicate)
-      
 
       val result = predicate.body match {
         case None =>

@@ -22,6 +22,6 @@ object functionSupporter extends Immutable {
 
   def restrictHeapFunction(function: HeapDepFun): Fun = {
     val id = SimpleIdentifier("PHeap.restrict_" + function.id.name)
-	Fun(id, function.argSorts, sorts.PHeap)
+    Fun(id, function.argSorts, sorts.PHeap)
   }
 }

@@ -43,8 +43,8 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
     this.data = data
     this.failed = false
 
-	// Unfoldings can update this variable to flatten heap this during body translation
-	this.snap = `?h`
+    // Unfoldings can update this variable to flatten heap this during body translation
+    this.snap = `?h`
 
     val result = func.body map translate
 
@@ -124,23 +124,23 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         })()
 
       case ast.FieldAccess(rcv, field) => {
-		PHeapLookupField(field.name, symbolConverter.toSort(field.typ), this.snap, translate(rcv))
-	  }
+        PHeapLookupField(field.name, symbolConverter.toSort(field.typ), this.snap, translate(rcv))
+      }
 
       case ast.Unfolding(ast.PredicateAccessPredicate(ast.PredicateAccess(args, predicate), _), eIn) => {
-	    this.snap = PHeapCombine(
-		  PHeapLookupPredicate(predicate, this.snap, args map translate),
-	      this.snap
-		)
-	  	translate(toSort)(eIn)
-	  }
+        this.snap = PHeapCombine(
+          PHeapLookupPredicate(predicate, this.snap, args map translate),
+          this.snap
+        )
+          translate(toSort)(eIn)
+      }
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
         val fun = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(arg))
-		val fapp = App(fun, PHeapRestrict(fun.id.name, this.snap, args) +: args)
+        val fapp = App(fun, PHeapRestrict(fun.id.name, this.snap, args) +: args)
 
         val callerHeight = data.height
         val calleeHeight = functionData(eFApp.func(program)).height

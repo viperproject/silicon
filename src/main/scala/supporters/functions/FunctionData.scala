@@ -69,15 +69,15 @@ class FunctionData(val programFunction: ast.Function,
     Forall(arguments,
            limitedFunctionApplication === functionApplication,
            Trigger(functionApplication),
-		   s"limitedAxiom [${function.id.name}]")
+           s"limitedAxiom [${function.id.name}]")
 
   val triggerAxiom =
     Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication), s"triggerAxiom [${function.id.name}]")
   
   def restrictHeapAxiom() : Term = {
     val dom = if (programFunction.pres.isEmpty) `?h` else programFunction.pres.map(pre => {
-	  translatePreconditionToDomain(pre)
-	}).reduce((h1, h2) => PHeapCombine(h1,h2))
+      translatePreconditionToDomain(pre)
+    }).reduce((h1, h2) => PHeapCombine(h1,h2))
 
     Forall(arguments, restrictHeapApplication === dom, Trigger(restrictHeapApplication), s"restrictHeapAxiom [${function.id.name}]")
   }
@@ -85,17 +85,17 @@ class FunctionData(val programFunction: ast.Function,
   def translatePreconditionToDomain(pre: ast.Exp): Term = pre match {
     case ast.PredicateAccessPredicate(ast.PredicateAccess(args, p), _) => {
       val tArgs = expressionTranslator.translatePrecondition(program, args, this)
-	  PHeapSingletonPredicate(p, tArgs, PHeapLookupPredicate(p, `?h`, tArgs))
-	}
-	case ast.And(e1, e2) => PHeapCombine(translatePreconditionToDomain(e1), translatePreconditionToDomain(e2))
-	case ast.FieldAccessPredicate(ast.FieldAccess(x, f), _) => {
+      PHeapSingletonPredicate(p, tArgs, PHeapLookupPredicate(p, `?h`, tArgs))
+    }
+    case ast.And(e1, e2) => PHeapCombine(translatePreconditionToDomain(e1), translatePreconditionToDomain(e2))
+    case ast.FieldAccessPredicate(ast.FieldAccess(x, f), _) => {
       val tx = expressionTranslator.translatePrecondition(program, Seq(x), this)(0)
-	  PHeapSingletonField(f.name,tx, PHeapLookupField(f.name, symbolConverter.toSort(f.typ), `?h`, tx))
-	}
-	case ast.CondExp(iff, thn, els) => Ite(expressionTranslator.translatePrecondition(program, Seq(iff), this)(0), translatePreconditionToDomain(thn), translatePreconditionToDomain(els))
-	case ast.Implies(prem, conc) => Ite(expressionTranslator.translatePrecondition(program, Seq(prem), this)(0), translatePreconditionToDomain(conc), predef.Emp)
-	case e: ast.InhaleExhaleExp => translatePreconditionToDomain(e.whenExhaling)
-	case a => if (a.isPure) predef.Emp else sys.error("Cannot translatePreconditionToDomain() of " + a.toString + " of type " + a.getClass)
+      PHeapSingletonField(f.name,tx, PHeapLookupField(f.name, symbolConverter.toSort(f.typ), `?h`, tx))
+    }
+    case ast.CondExp(iff, thn, els) => Ite(expressionTranslator.translatePrecondition(program, Seq(iff), this)(0), translatePreconditionToDomain(thn), translatePreconditionToDomain(els))
+    case ast.Implies(prem, conc) => Ite(expressionTranslator.translatePrecondition(program, Seq(prem), this)(0), translatePreconditionToDomain(conc), predef.Emp)
+    case e: ast.InhaleExhaleExp => translatePreconditionToDomain(e.whenExhaling)
+    case a => if (a.isPure) predef.Emp else sys.error("Cannot translatePreconditionToDomain() of " + a.toString + " of type " + a.getClass)
   }
 
   /*
@@ -210,11 +210,10 @@ class FunctionData(val programFunction: ast.Function,
       val triggerFunction = predicateData(predicate).triggerFunction
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
-	  val tArgs = expressionTranslator.translatePrecondition(program, predacc.args, this)
+      val tArgs = expressionTranslator.translatePrecondition(program, predacc.args, this)
       val args = (
-	       PHeapLookupPredicate(predacc.predicateName, predef.`?h`, tArgs)
-           //expressionTranslator.getOrFail(locToSnap, predacc, sorts.PHeap)
-        +: tArgs)
+        PHeapLookupPredicate(predacc.predicateName, predef.`?h`, tArgs)
+      +: tArgs)
 
       val fapp = App(triggerFunction, args)
 
