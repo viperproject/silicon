@@ -24,7 +24,6 @@ lazy val silicon = (project in file("."))
     organization := "viper",
     version := "1.1-SNAPSHOT",
 
-
     // Compilation settings
     // Remove elidable method calls such as in SymbExLogger during compilation
     // scalacOptions ++= Seq("-Xelide-below", "1000"),

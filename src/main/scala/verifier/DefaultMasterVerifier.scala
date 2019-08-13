@@ -67,7 +67,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     uniqueIdCounter,
     sequencesContributor, setsContributor, multisetsContributor, domainsContributor,
     fieldValueFunctionsContributor,
-	pheapsContributor,
+    pheapsContributor,
     predSnapGenerator, predicateSnapFunctionsContributor, magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     _verificationPoolManager,
@@ -315,7 +315,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter,
-	pheapsContributor
+    pheapsContributor
   )
 
   private val sortDeclarationOrder: Seq[PreambleContributor[_, _, _]] = Seq(
@@ -328,7 +328,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter,
-	pheapsContributor
+    pheapsContributor
   )
 
   private val sortWrapperDeclarationOrder: Seq[PreambleContributor[Sort, _, _]] = Seq(
@@ -341,7 +341,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter,
-	pheapsContributor
+    pheapsContributor
   )
 
   private val symbolDeclarationOrder: Seq[PreambleContributor[_, _, _]] = Seq(
@@ -358,7 +358,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter,
-	pheapsContributor
+    pheapsContributor
   )
 
   private val axiomDeclarationOrder: Seq[PreambleContributor[Sort, _, _]] = Seq(
@@ -371,7 +371,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     magicWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter,
-	pheapsContributor
+    pheapsContributor
   )
 
   private def analyzeProgramAndEmitPreambleContributions(program: ast.Program, sink: ProverLike) {

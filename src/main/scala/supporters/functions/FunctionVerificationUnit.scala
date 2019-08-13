@@ -209,7 +209,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
-        produces(s0, `?h`, pres, ContractNotWellformed, v)((s1, vv) => {
+        produces(s0, `?h`, pres, ContractNotWellformed, v)((s1, _) => {
           phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
             produces(s1, `?h`, posts, ContractNotWellformed, v)((s2, _) => {
             recorders :+= s2.functionRecorder

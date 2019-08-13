@@ -8,7 +8,7 @@ package viper.silicon.tests
 
 import java.nio.file.Path
 
-import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput, AbstractOutput, AnnotatedTestInput}
+import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
 import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
 import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
 import viper.silver.frontend.DefaultStates
@@ -16,7 +16,7 @@ import viper.silver.reporter.NoopReporter
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = Seq("consistency", "issue387")
-  private val silTestDirectories = Seq("all", "custom", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
+  private val silTestDirectories = Seq("all", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
   val testDirectories = siliconTestDirectories ++ silTestDirectories
 
   override def frontend(verifier: Verifier, files: Seq[Path]) = {
