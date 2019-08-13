@@ -1,9 +1,3 @@
-;
-; Parametrization:
-;   $FLD$ => Field identifier
-;   $S$   => Sort corresponding to field type
-;
-
 (declare-fun PHeap.lookup_$FLD$ (PHeap $Ref) $S$)
 (declare-fun PHeap.dom_$FLD$ (PHeap) Set<$Ref>)
 
@@ -18,7 +12,6 @@
 	:pattern (PHeap.lookup_$FLD$ (PHeap.singleton_$FLD$ x v) x)
 	:qid |singleton_$FLD$_lookup_$FLD$|)))
 
-; TODO: move this
 (assert (Set_equal
 	(PHeap.dom_$FLD$ PHeap.emp)
 	(as Set_empty Set<$Ref>)))

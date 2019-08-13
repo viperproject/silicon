@@ -74,13 +74,11 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
       generateFieldFunctionDecls(program.fields) ++
       generatePredicateFunctionDecls(program.predicates)
     collectedAxioms =
-      axiomIII(program.fields) ++ 
-      axiomV(program.fields) ++
-      axiomVI(program.predicates) ++
-      axiomVII() ++
-      axiomII(program.functions.filter(_.isAbstract)) ++
-      axiomIV(program.predicates) ++
-      axiomVIII() ++
+      field_lookup_combine(program.fields) ++ 
+      field_dom_combine(program.fields) ++
+      pred_dom_combine(program.predicates) ++
+      pred_lookup_combine(program.predicates) ++
+      symmetry_combine() ++
       predicateSingletonFieldDomains(program.predicates, program.fields) ++
       predicateSingletonPredicateDomains(program.predicates) ++
       fieldSingletonPredicateDomains(program.predicates, program. fields) ++
@@ -120,8 +118,8 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
     })
   }
 
-  def axiomIV(predicates: Seq[ast.Predicate]): Iterable[PreambleBlock] = {
-    val templateFile = "/pheap/axiomIV.smt2"
+  def pred_lookup_combine(predicates: Seq[ast.Predicate]): Iterable[PreambleBlock] = {
+    val templateFile = "/pheap/pred_lookup_combine.smt2"
 
     predicates map (p => {
       val declarations = preambleReader.readParametricPreamble(templateFile, predicateSubstitutions(p))
@@ -129,58 +127,36 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
     })
   }
 
-  def axiomII(abstractFuncs: Seq[ast.Function]): Iterable[PreambleBlock] = {
-    val templateFile = "/pheap/axiomII.smt2"
-    abstractFuncs map (f => {
-      val id = f.name
-      val substitutions = Map(
-        "$FUN_ARGS_Q$" -> (f.formalArgs map (a =>
-          "(" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
-          )).mkString(" "),
-        "$FUN_ARGS$" -> (f.formalArgs map (_.name)).mkString(" "),
-        "$FUN$" -> id,
-      )
-      val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
-
-      (s"pheap II($id)", declarations)
-    })
-  }
-
-  def axiomIII(fields: Seq[ast.Field]): Iterable[PreambleBlock] = {
-    val templateFile = "/pheap/axiomIII.smt2"
+  def field_lookup_combine(fields: Seq[ast.Field]): Iterable[PreambleBlock] = {
+    val templateFile = "/pheap/field_lookup_combine.smt2"
 
     fields map (f => {
       val declarations = preambleReader.readParametricPreamble(templateFile, fieldSubstitutions(f))
-      (s"pheap III(${f.name})", declarations)
+      (s"PHeap.field_lookup_combine[${f.name}]", declarations)
     })
   }
 
-  def axiomV(fields: Seq[ast.Field]): Iterable[PreambleBlock] = {
-    val templateFile = "/pheap/axiomV.smt2"
+  def field_dom_combine(fields: Seq[ast.Field]): Iterable[PreambleBlock] = {
+    val templateFile = "/pheap/field_dom_combine.smt2"
 
     fields map (f => {
       val declarations = preambleReader.readParametricPreamble(templateFile, fieldSubstitutions(f))
-      (s"pheap V(${f.name})", declarations)
+      (s"PHeap.field_dom_combine[${f.name}]", declarations)
     })
   }
 
-  def axiomVI(predicates: Seq[ast.Predicate]): Iterable[PreambleBlock] = {
-    val templateFile = "/pheap/axiomVI.smt2"
+  def pred_dom_combine(predicates: Seq[ast.Predicate]): Iterable[PreambleBlock] = {
+    val templateFile = "/pheap/pred_dom_combine.smt2"
 
     predicates map (p => {
       val declarations = preambleReader.readParametricPreamble(templateFile, predicateSubstitutions(p))
-      (s"pheap VI(${p.name})", declarations)
+      (s"PHeap.pred_dom_combine[${p.name}]", declarations)
     })
   }
-
-  def axiomVII(): Iterable[PreambleBlock] = {
-    val templateFile = "/pheap/axiomVII.smt2"
-    Seq((s"pheap VII", preambleReader.readPreamble(templateFile)))
-  }
   
-  def axiomVIII(): Iterable[PreambleBlock] = {
-    val templateFile = "/pheap/axiomVIII.smt2"
-    Seq((s"pheap VIII", preambleReader.readPreamble(templateFile)))
+  def symmetry_combine(): Iterable[PreambleBlock] = {
+    val templateFile = "/pheap/symmetry_combine.smt2"
+    Seq((s"PHeap.symmetry_combine", preambleReader.readPreamble(templateFile)))
   }
 
   def predicateSingletonFieldDomains(predicates: Seq[ast.Predicate], fields: Seq[ast.Field]): Iterable[PreambleBlock] = {

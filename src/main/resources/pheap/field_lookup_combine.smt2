@@ -1,10 +1,3 @@
-;
-; PHeap III: Field lookup in 'combine'
-; 
-; Parametrization:
-;   $FLD$ => Field identifier
-;
-
 (assert (forall ((h1 PHeap) (h2 PHeap) (x $Ref))
 	(!
 		(=>
@@ -15,7 +8,7 @@
 			)
 		)
 		:pattern ((PHeap.lookup_$FLD$ (PHeap.combine h1 h2) x))
-		:qid |pheapIII($FLD$)trig1|)))
+		:qid |field_lookup_combine[$FLD$].trig1|)))
 
 (assert (forall ((h1 PHeap) (h2 PHeap) (x $Ref))
 	(!
@@ -27,4 +20,4 @@
 			)
 		)
 		:pattern ((PHeap.lookup_$FLD$ h1 x) (PHeap.combine h1 h2))
-		:qid |pheapIII($FLD$)trig2|)))
+		:qid |PHeap.field_lookup_combine[$FLD$].trig2|)))
