@@ -39,9 +39,9 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
 
   private def predicateSubstitutions(p: ast.Predicate) : Map[String, String] = {
     val pArgs_q = (p.formalArgs map (a => 
-	    "(" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
+	    "(" + p.name + "_" + a.name + " " + termConverter.convert(symbolConverter.toSort(a.typ)) + ")"
 	  )).mkString(" ")
-    val pArgs = (p.formalArgs map (a => a.name)).mkString(" ")
+    val pArgs = (p.formalArgs map (a => p.name + "_" + a.name)).mkString(" ")
     val argSorts = (p.formalArgs map (a => termConverter.convert(symbolConverter.toSort(a.typ)))).mkString(" ")
     val id = p.name
     Map(

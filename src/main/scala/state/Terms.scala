@@ -1692,6 +1692,10 @@ case class PHeapLookupPredicate(predicate: String, h: Term, args: Seq[Term]) ext
   val sort = sorts.PHeap
 }
 
+case class PHeapRemovePredicate(predicate: String, h: Term, args: Seq[Term]) extends Term {
+  val sort = sorts.PHeap
+}
+
 case class PHeapSingletonField(field: String, x: Term, v: Term) extends Term {
   val sort = sorts.PHeap
 }
@@ -1703,6 +1707,7 @@ case class PHeapSingletonPredicate(predicate: String, args: Seq[Term], h: Term) 
 case class PHeapRestrict(fun: String, snap: Term, args: Seq[Term]) extends Term {
   val sort = sorts.PHeap
 }
+
 
 /* Quantified permissions */
 

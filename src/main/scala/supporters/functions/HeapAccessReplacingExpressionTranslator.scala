@@ -127,13 +127,21 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         PHeapLookupField(field.name, symbolConverter.toSort(field.typ), this.snap, translate(rcv))
       }
 
-      case ast.Unfolding(ast.PredicateAccessPredicate(ast.PredicateAccess(args, predicate), _), eIn) => {
+      case ast.Unfolding(ast.PredicateAccessPredicate(ast.PredicateAccess(args, predicate), p), eIn) => {
+        var oldSnap = this.snap
+        val remainingSnapshot = p match {
+          case ast.WildcardPerm() => this.snap
+          case _ => Ite(AtLeast(translate(p), FullPerm()), PHeapRemovePredicate(predicate, this.snap, args map translate), this.snap)
+        }
         this.snap = PHeapCombine(
           PHeapLookupPredicate(predicate, this.snap, args map translate),
-          this.snap
+          remainingSnapshot
         )
-          translate(toSort)(eIn)
+        var teIn = translate(toSort)(eIn)
+        this.snap = oldSnap
+        teIn
       }
+
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
 
       case eFApp: ast.FuncApp =>
