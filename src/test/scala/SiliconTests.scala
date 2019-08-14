@@ -8,9 +8,10 @@ package viper.silicon.tests
 
 import java.nio.file.Path
 
-import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
-import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
+import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput, TestError, TestAdditionalOutputError, SilOutput}
+import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult, errors}
 import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
+import viper.silicon.interfaces.UnsupportedInputReason
 import viper.silver.frontend.DefaultStates
 import viper.silver.reporter.NoopReporter
 
@@ -18,6 +19,13 @@ class SiliconTests extends SilSuite {
   private val siliconTestDirectories = Seq("consistency", "issue387")
   private val silTestDirectories = Seq("all", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
   val testDirectories = siliconTestDirectories ++ silTestDirectories
+
+  override def errorShouldLeadToTestCancel(err: TestError) = err match {
+    case TestAdditionalOutputError(SilOutput(errors.Internal(_,UnsupportedInputReason,_))) => {
+      true
+    }
+    case _ => super.errorShouldLeadToTestCancel(err)
+  }
 
   override def frontend(verifier: Verifier, files: Seq[Path]) = {
     require(files.length == 1, "tests should consist of exactly one file")

@@ -54,7 +54,7 @@ class Z3ProverStdIO(uniqueId: String,
     pushPopScopeDepth = 0
     lastTimeout = -1
     logfileWriter = viper.silver.utility.Common.PrintWriter(Verifier.config.z3LogFile(uniqueId).toFile)
-    z3Path = Paths.get(Verifier.config.z3Exe)
+    z3Path = Paths.get("/usr/bin/z3") /*Paths.get(Verifier.config.z3Exe)*/
     z3 = createZ3Instance()
     input = new BufferedReader(new InputStreamReader(z3.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(z3.getOutputStream)), true)

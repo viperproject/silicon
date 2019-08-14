@@ -207,7 +207,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val timeout = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
             + "not per method or proof obligation (default: 0, i.e. no timeout)."),
-    default = Some(0),
+    default = Some(60),
     noshort = true,
     hidden = false
   )
