@@ -72,7 +72,7 @@ object brancher extends BranchingRules with Immutable {
     v.decider.prover.comment(thenBranchComment)
     v.decider.prover.comment(elseBranchComment)
 
-    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2)
+    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition))
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch) {

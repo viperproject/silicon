@@ -84,13 +84,11 @@ class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopRep
   private def verify(): Seq[SymbExLogUnitTestError] = {
     val expectedPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".elog").toString()
     val actualPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".alog").toString()
-    var errorMsg = ""
-    var testFailed = false
     val testIsExecuted = Files.exists(Paths.get(expectedPath))
 
     if (testIsExecuted) {
       val pw = new java.io.PrintWriter(new File(actualPath))
-      try pw.write(SymbExLogger.toStructuralTreeString()) finally pw.close()
+      try pw.write(SymbExLogger.toSimpleTreeString) finally pw.close()
 
       val expectedSource = scala.io.Source.fromFile(expectedPath)
       val expected = expectedSource.getLines()
@@ -98,36 +96,88 @@ class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopRep
       val actualSource = scala.io.Source.fromFile(actualPath)
       val actual = actualSource.getLines()
 
-      var lineNumber = 0
-
-      while (!testFailed && expected.hasNext && actual.hasNext) {
-        if (!actual.next().equals(expected.next())) {
-          testFailed = true
-        }
-        lineNumber = lineNumber + 1
-      }
-      if (actual.hasNext != expected.hasNext)
-        testFailed = true
-
-      if (testFailed) {
-        errorMsg = errorMsg + "Unit Test failed, expected output "
-        errorMsg = errorMsg + "does not match actual output. "
-        errorMsg = errorMsg + "First occurrence at line " + lineNumber + ".\n"
-        errorMsg = errorMsg + "Compared Files:\n"
-        errorMsg = errorMsg + "expected: " + expectedPath.toString() + "\n"
-        errorMsg = errorMsg + "actual:   " + actualPath.toString() + "\n"
-      }
+      val comparisonResult = compare(expected, actual)
 
       actualSource.close()
       expectedSource.close()
-    }
-    if (testIsExecuted && testFailed) {
-      Seq(new SymbExLogUnitTestError(errorMsg))
-    }
-    else {
+
+      comparisonResult match {
+        case cf: ComparisonFailed => {
+          var errorMsg = "Unit Test failed, expected output "
+          errorMsg = errorMsg + "does not match actual output. "
+          errorMsg = errorMsg + "First occurrence at line " + cf.lineNumber + ".\n"
+          errorMsg = errorMsg + "Compared Files:\n"
+          errorMsg = errorMsg + "expected: " + expectedPath.toString() + "\n"
+          errorMsg = errorMsg + "actual:   " + actualPath.toString() + "\n"
+          Seq(new SymbExLogUnitTestError(errorMsg))
+        }
+        case _ => Nil
+      }
+    } else {
       Nil
     }
   }
+
+  private def compare(expected: Iterator[String], actual: Iterator[String]): ComparisonResult = {
+    var currentExpected: String = null
+    var lineNumber = 0
+    while((currentExpected != null || expected.hasNext) && actual.hasNext) {
+      if (currentExpected == null) {
+        currentExpected = expected.next()
+        lineNumber = lineNumber + 1
+      }
+      val currentActual = actual.next()
+      val currentExpectedIndentationLength = getIndentationLength(currentExpected)
+      val currentActualIndentationLength = getIndentationLength(currentActual)
+      val currentExpectedStripped = currentExpected.substring(currentExpectedIndentationLength)
+      val currentActualStripped = currentActual.substring(currentActualIndentationLength)
+
+      // condition that currentExpectedStripped and currentActualStripped match:
+      // 1. the stripped versions are equal
+      // 2. currentActualIndentationLength >= currentExpectedIndentationLength
+      // notes:
+      // 2.: actual is expected to have the same content or more. Therefore, more scopes and hence
+      //      more indentation can occur.
+      // a check comparing the indentation difference to the last matched line is not possible:
+      // expected:
+      //          comment: Reachable
+      //  Join
+      // actual:
+      // comment: Reachable
+      //                decider assume !(b2@3@01 && b1@2@01)
+      //                evaluate 5
+      //    decider assume a@6@01 == (b1@2@01 ? (b2@3@01 ? 2 : 3) : (b2@3@01 && b1@2@01 ? dead_then@5@01 : 5))
+      //  execute a := 1 + (b1 ? 1 : 2) + 2
+      //    evaluate 1 + (b1 ? 1 : 2) + 2
+      //      evaluate 1 + (b1 ? 1 : 2)
+      //        evaluate 1
+      //        evaluate (b1 ? 1 : 2)
+      //          conditional expression (b1 ? 1 : 2)
+      //            evaluate b1
+      //          Join
+      // the indentation reduction can be larger (i.e. more negative) for actual, because more scopes might be undone.
+      // similary for indentation growth: actual might contain more scopes, hence more indentation is added.
+      // however, just considering the absolute value does not work either: in the above example,
+      // a mix of decrease and increase happens. The amount of indentation increase is arbitrary and depends on the
+      // scopes in actual (and cannot be inferred from expected). E.g. "Join" could either be more to the
+      // left (i.e. less indentation) or more the the right (i.e. more indentation)
+      // val expectedIndentationLengthDiff = currentExpectedIndentationLength - lastMatchedExpectedIndentationLength
+      // val actualIndentationLengthDiff = currentActualIndentationLength - lastMatchedActualIndentationLength
+      // Math.abs(actualIndentationLengthDiff) >= Math.abs(expectedIndentationLengthDiff) therefore does not work
+      if (currentExpectedStripped.equals(currentActualStripped)
+        && currentActualIndentationLength >= currentExpectedIndentationLength) {
+        // set currentExpected to null such that the next line is used in the next iteration
+        currentExpected = null
+      }
+    }
+    if (expected.hasNext) {
+      ComparisonFailed(lineNumber) // the current line could not be matched
+    } else {
+      ComparisonSuccessful()
+    }
+  }
+
+  private def getIndentationLength(s: String): Int = s.prefixLength(c => c == ' ')
 }
 
 case class SymbExLogUnitTestError(msg: String) extends AbstractError {
@@ -137,3 +187,7 @@ case class SymbExLogUnitTestError(msg: String) extends AbstractError {
 
   def readableMessage: String = msg
 }
+
+case class ComparisonFailed(lineNumber: Int) extends ComparisonResult
+case class ComparisonSuccessful() extends ComparisonResult
+trait ComparisonResult

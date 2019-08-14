@@ -5,6 +5,7 @@ import viper.silicon.logger.records.SymbolicRecord
 import viper.silicon.logger.records.data.DataRecord
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
 import viper.silicon.logger.records.structural.{BranchingRecord, JoiningRecord}
+import viper.silicon.state.terms.Not
 
 class SimpleTreeRenderer extends Renderer[SymbLog, String] {
   def render(memberList: List[SymbLog]): String = {
@@ -92,9 +93,15 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     var res = ""
     val branches = br.getBranches()
     for (branchIndex <- branches.indices) {
-      res = res + indent + "Branch " + (branchIndex + 1) + ":\n"
+      if (branches.length <= 2 && br.condition.isDefined) {
+        val condition = if (branchIndex == 0)  br.condition.get else Not(br.condition.get)
+        res = res + indent + "Branch " + condition.toString() + ":\n"
+      } else {
+        res = res + indent + "Branch " + (branchIndex + 1) + ":\n"
+      }
       val branch = branches(branchIndex)
       if (br.isReachable(branchIndex)) {
+        res = res + getIndent(n + 1) + "comment: Reachable\n"
         res = res + toSimpleTree(branch, n + 1)
       } else {
         res = res + getIndent(n + 1) + "comment: Unreachable\n"

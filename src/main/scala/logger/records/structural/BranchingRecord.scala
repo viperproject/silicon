@@ -1,8 +1,9 @@
 package viper.silicon.logger.records.structural
 
 import viper.silicon.logger.records.SymbolicRecord
+import viper.silicon.state.terms.Term
 
-class BranchingRecord(possibleBranchesCount: Int) extends StructuralRecord {
+class BranchingRecord(possibleBranchesCount: Int, val condition: Option[Term]) extends StructuralRecord {
   private var currentBranchIndex = 0
   private var branches: List[BranchInfo] = List.tabulate(possibleBranchesCount)(_ => new BranchInfo())
 
@@ -46,7 +47,10 @@ class BranchingRecord(possibleBranchesCount: Int) extends StructuralRecord {
   }
 
   override def toSimpleString(): String = {
-    branches.length.toString
+    condition match {
+      case Some(cond) => cond.toString()
+      case _ => "null"
+    }
   }
 }
 

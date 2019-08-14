@@ -1,189 +1,92 @@
 method m1
-  WellformednessCheck null
-  execute var a: Int
-  execute a := (b1 ? (b2 ? 2 : 3) : (b1 && b2 ? 4 : 5))
-    evaluate (b1 ? (b2 ? 2 : 3) : (b1 && b2 ? 4 : 5))
-      conditional expression (b1 ? (b2 ? 2 : 3) : (b1 && b2 ? 4 : 5))
-        evaluate b1
-      Branch 1:
-        decider assert !(b1@2@01)
-          prover assert !(b1@2@01)
-        decider assert b1@2@01
-          prover assert b1@2@01
-        decider assume b1@2@01
-        evaluate (b2 ? 2 : 3)
-          conditional expression (b2 ? 2 : 3)
-            evaluate b2
-          Branch 1:
-            decider assert !(b2@3@01)
-              prover assert !(b2@3@01)
-            decider assert b2@3@01
-              prover assert b2@3@01
-            decider assume b2@3@01
-            evaluate 2
-          Branch 2:
-            decider assume !(b2@3@01)
-            evaluate 3
-          Join
-      Branch 2:
-        decider assume !(b1@2@01)
-        evaluate (b1 && b2 ? 4 : 5)
-          conditional expression (b1 && b2 ? 4 : 5)
-            evaluate b1 && b2
-              evaluate b1
-              evaluate v@5@01 ==> b2
-                implies v@5@01 ==> b2
-                  evaluate v@5@01
-                Branch 1:
-                  decider assume b1@2@01
-                  evaluate b2
-                Branch 2:
-                  comment: Unreachable
-                Join
-          Branch 1:
-            decider assert !(b1@2@01 && b1@2@01 ==> b2@3@01)
-              prover assert !(b1@2@01 && b1@2@01 ==> b2@3@01)
-            decider assume !(b1@2@01 && b1@2@01 ==> b2@3@01)
-            evaluate 5
-          Join
+  Join
+    Branch b1@2@01:
+      comment: Reachable
       Join
-    decider assume a@7@01 == (b1@2@01 ? (b2@3@01 ? 2 : 3) : (b1@2@01 && b1@2@01 ==> b2@3@01 ? dead_then@6@01 : 5))
-  execute a := 1 + (b1 ? 1 : 2) + 2
-    evaluate 1 + (b1 ? 1 : 2) + 2
-      evaluate 1 + (b1 ? 1 : 2)
-        evaluate 1
-        evaluate (b1 ? 1 : 2)
-          conditional expression (b1 ? 1 : 2)
-            evaluate b1
-          Branch 1:
-            decider assert !(b1@2@01)
-              prover assert !(b1@2@01)
-            decider assert b1@2@01
-              prover assert b1@2@01
-            decider assume b1@2@01
-            evaluate 1
-          Branch 2:
-            decider assume !(b1@2@01)
-            evaluate 2
+        Branch b2@3@01:
+          comment: Reachable
+        Branch !(b2@3@01):
+          comment: Reachable
+    Branch !(b1@2@01):
+      comment: Reachable
+      Join
+        Branch b1@2@01:
+          comment: Reachable
           Join
-      evaluate 2
-    decider assume a@8@01 == 1 + (b1@2@01 ? 1 : 2) + 2
-  execute a := 1
-    evaluate 1
+            Branch b2@3@01:
+              comment: Reachable
+            Branch !(b2@3@01):
+              comment: Reachable
+        Branch !(b1@2@01):
+          comment: Reachable
+      Join
+        Branch b2@3@01 && b1@2@01:
+          comment: Unreachable
+        Branch !(b2@3@01 && b1@2@01):
+          comment: Reachable
+  Join
+    Branch b1@2@01:
+      comment: Reachable
+    Branch !(b1@2@01):
+      comment: Reachable
 
 method m2
-  WellformednessCheck null
-  execute a := 1
-    evaluate 1
   Branch 1:
-    conditional edge a == 1
-      evaluate a == 1
-        evaluate a
-        evaluate 1
-    decider assert False
-      prover assert False
-    decider assert True
-    execute a := (b ? (a == 1 ? 2 : 3) : (a != 1 ? 4 : 5))
-      LocalBranch:
-        evaluate b
+    comment: Reachable
+    Branch True:
+      comment: Reachable
+      Join
+        Branch b@10@01:
+          comment: Reachable
+          Join
+            Branch True:
+              comment: Reachable
+            Branch False:
+              comment: Unreachable
+        Branch !(b@10@01):
+          comment: Reachable
+          Join
+            Branch False:
+              comment: Unreachable
+            Branch True:
+              comment: Reachable
       Branch 1:
-        decider assert !(b@11@01)
-          prover assert !(b@11@01)
-        decider assert b@11@01
-          prover assert b@11@01
-        LocalBranch:
-          evaluate a == 1
-            evaluate a
-            evaluate 1
-        Branch 1:
-          decider assert False
-            prover assert False
-          decider assert True
-          evaluate 2
-        Branch 2:
-          comment: Unreachable
+        comment: Reachable
+        Branch b@10@01:
+          comment: Reachable
+        Branch !(b@10@01):
+          comment: Reachable
       Branch 2:
-        LocalBranch:
-          evaluate a != 1
-            evaluate a
-            evaluate 1
-        Branch 1:
-          comment: Unreachable
-        Branch 2:
-          decider assert True
-          evaluate 5
-    Branch 1:
-      evaluate !!b
-        evaluate !b
-          evaluate b
-      decider assert !(b@11@01)
-        prover assert !(b@11@01)
-      decider assert b@11@01
-        prover assert b@11@01
-      execute a := 2
-        evaluate 2
-      execute a := 4
-        evaluate 4
-    Branch 2:
-      evaluate !!!b
-        evaluate !!b
-          evaluate !b
-            evaluate b
-      decider assert b@11@01
-        prover assert b@11@01
-      decider assert !(b@11@01)
-        prover assert !(b@11@01)
-      execute a := 3
-        evaluate 3
-      execute a := 4
-        evaluate 4
+        comment: Reachable
+        Branch !(b@10@01):
+          comment: Reachable
+        Branch b@10@01:
+          comment: Reachable
+    Branch False:
+      comment: Unreachable
   Branch 2:
-    evaluate !(a == 1)
-      evaluate a == 1
-        evaluate a
-        evaluate 1
-    comment: Unreachable
+    comment: Reachable
+    Branch False:
+      comment: Unreachable
+    Branch True:
+      comment: Reachable
 
 method m3
-  WellformednessCheck null
-  execute var a: Int
   Branch 1:
-    conditional edge b
-      evaluate b
-    decider assert !(b@18@01)
-      prover assert !(b@18@01)
-    decider assert b@18@01
-      prover assert b@18@01
-    decider assume b@18@01
-    execute a := (c ? 1 : 2)
-      evaluate (c ? 1 : 2)
-        conditional expression (c ? 1 : 2)
-          evaluate c
-        Branch 1:
-          decider assert !(c@19@01)
-            prover assert !(c@19@01)
-          decider assert c@19@01
-            prover assert c@19@01
-          decider assume c@19@01
-          evaluate 1
-        Branch 2:
-          decider assume !(c@19@01)
-          evaluate 2
-        Join
-      decider assume a@21@01 == (c@19@01 ? 1 : 2)
-    decider assume !(b@18@01)
+    comment: Reachable
+    Branch b@17@01:
+      comment: Reachable
+      Join
+        Branch c@18@01:
+          comment: Reachable
+        Branch !(c@18@01):
+          comment: Reachable
+    Branch !(b@17@01):
+      comment: Reachable
   Branch 2:
-    conditional edge !b
-      evaluate !b
-        evaluate b
-    decider assert b@18@01
-      prover assert b@18@01
-    decider assert !(b@18@01)
-      prover assert !(b@18@01)
-    decider assume !(b@18@01)
-    execute a := 3 + 4
-      evaluate 3 + 4
-        evaluate 3
-        evaluate 4
-    decider assume b@18@01
+    comment: Reachable
+    Branch !(b@17@01):
+      comment: Reachable
+    Branch b@17@01:
+      comment: Reachable
 

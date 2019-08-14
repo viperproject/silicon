@@ -8,7 +8,6 @@ package viper.silicon.logger
 
 import java.nio.file.Path
 
-import logger.renderer.StructuralTreeRenderer
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.logger.records.SymbolicRecord
 import viper.silicon.logger.records.data.{DataRecord, FunctionRecord, MethodRecord, PredicateRecord}
@@ -170,18 +169,6 @@ object SymbExLogger {
     } else ""
   }
 
-  /**
-    * Converts the recorded log to a representation which only contains MemberRecords and structural records.
-    * The intention of this representation is to ensure some form of robustness for unit test, because it is not
-    * affected by removal or addition of (other) data or scope nodes
-    */
-  def toStructuralTreeString(): String = {
-    if (enabled) {
-      val structuralTreeRenderer = new StructuralTreeRenderer()
-      structuralTreeRenderer.render(memberList)
-    } else ""
-  }
-
   /** Path to the file that is being executed. Is used for UnitTesting. **/
   var filePath: Path = null
 
@@ -297,8 +284,8 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
   }
 
   @elidable(INFO)
-  def insertBranchPoint(possibleBranchesCount: Int): Int = {
-    val branchingRecord = new BranchingRecord(possibleBranchesCount)
+  def insertBranchPoint(possibleBranchesCount: Int, condition: Option[Term] = None): Int = {
+    val branchingRecord = new BranchingRecord(possibleBranchesCount, condition)
     branchingRecord.id = SymbExLogger.freshUid()
     appendLog(branchingRecord)
     branchingStack = branchingRecord :: branchingStack
@@ -381,7 +368,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 object NoopSymbLog extends SymbLog(null, null, null) {
   override def insert(s: DataRecord): Int = 0
   override def insert(s: ScopingRecord): Int = 0
-  override def insertBranchPoint(possibleBranchesCount: Int): Int = 0
+  override def insertBranchPoint(possibleBranchesCount: Int, condition: Option[Term]): Int = 0
   override def switchToNextBranch(uidBranchPoint: Int): Unit = {}
   override def collapse(v: ast.Node, n: Int): Unit = {}
   override def collapseBranchPoint(uidBranchPoint: Int): Unit = {}
