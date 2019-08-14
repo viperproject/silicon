@@ -118,12 +118,6 @@ class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopRep
         errorMsg = errorMsg + "actual:   " + actualPath.toString() + "\n"
       }
 
-      val pathCheckOutput = SymbExLogger.checkPaths()
-      if (pathCheckOutput != "") {
-        testFailed = true
-        errorMsg = errorMsg + "PathChecker: " + pathCheckOutput + "\n"
-      }
-
       actualSource.close()
       expectedSource.close()
     }

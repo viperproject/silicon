@@ -14,7 +14,7 @@ import viper.silicon.logger.records.SymbolicRecord
 import viper.silicon.logger.records.data.{DataRecord, FunctionRecord, MethodRecord, PredicateRecord}
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
 import viper.silicon.logger.records.structural.BranchingRecord
-import viper.silicon.logger.renderer.{PathChecker, PathRenderer, SimpleTreeRenderer}
+import viper.silicon.logger.renderer.SimpleTreeRenderer
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.{Config, Map}
@@ -200,11 +200,6 @@ object SymbExLogger {
     memberList = List[SymbLog]()
   }
 
-  def checkPaths(): String = {
-    val paths = new PathRenderer().render(memberList)
-    new PathChecker().render(paths)
-  }
-
   /**
     * Calculates diff between `currentStatistics` and the statistics from a previous call.
     * The difference is calculated if value can be converted to an int or double
@@ -272,7 +267,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     case m: ast.Method => new MethodRecord(m, s, pcs)
     case p: ast.Predicate => new PredicateRecord(p, s, pcs)
     case f: ast.Function => new FunctionRecord(f, s, pcs)
-    case default => null
+    case _ => null
   }
   insert(main)
 
