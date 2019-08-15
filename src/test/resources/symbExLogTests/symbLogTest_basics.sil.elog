@@ -1,63 +1,15 @@
 method m1
-  WellformednessCheck null
   execute var i: Int
   execute var j: Int
   execute var b: Bool
   execute i := 1
-    evaluate 1
   execute i := 1 + 2
-    evaluate 1 + 2
-      evaluate 1
-      evaluate 2
   execute i := 1 + 2 + 3
-    evaluate 1 + 2 + 3
-      evaluate 1 + 2
-        evaluate 1
-        evaluate 2
-      evaluate 3
   execute j := i * 2 + 1
-    evaluate i * 2 + 1
-      evaluate i * 2
-        evaluate i
-        evaluate 2
-      evaluate 1
   execute b := 1 == 1
-    evaluate 1 == 1
-      evaluate 1
-      evaluate 1
   execute b := i != j
-    evaluate i != j
-      evaluate i
-      evaluate j
-    decider assume b@3@01 == 6 != 13
   execute b := false && true
-    evaluate false && true
-      evaluate false
-      evaluate v@4@01 ==> true
-        implies v@4@01 ==> true
-          evaluate v@4@01
-        Join
-          Branch 1:
-            decider assume False
-            evaluate true
-          Branch 2:
 
 method m2
-  produce i == 1
-    decider assume $t@7@01 == _
-    evaluate i == 1
-      evaluate i
-      evaluate 1
-    decider assume i@6@01 == 1
-  WellformednessCheck null
   execute assert i + 1 == 2
-    consume i + 1 == 2
-      evaluate i + 1 == 2
-        evaluate i + 1
-          evaluate i
-          evaluate 1
-        evaluate 2
-      decider assert i@6@01 + 1 == 2
-        prover assert i@6@01 + 1 == 2
-      decider assume i@6@01 + 1 == 2
 
