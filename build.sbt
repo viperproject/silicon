@@ -28,6 +28,7 @@ lazy val silicon = (project in file("."))
     // scalacOptions ++= Seq("-Xelide-below", "1000"),
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
     libraryDependencies += "org.apache.commons" % "commons-pool2" % "2.6.0",
+    libraryDependencies += "io.spray" %%  "spray-json" % "1.3.4",
 
     // Only get a few compilation errors at once
     maxErrors := 5,

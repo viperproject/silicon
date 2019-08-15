@@ -6,9 +6,12 @@
 
 package viper.silicon.logger
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path, Paths}
+import spray.json._
 
+import LogConfigProtocol._
 import viper.silicon.decider.PathConditionStack
+import viper.silicon.logger.SymbExLogger.getRecordConfig
 import viper.silicon.logger.records.SymbolicRecord
 import viper.silicon.logger.records.data.{DataRecord, FunctionRecord, MethodRecord, PredicateRecord}
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
@@ -21,6 +24,7 @@ import viper.silver.ast
 
 import scala.annotation.elidable
 import scala.annotation.elidable._
+import scala.util.{Failure, Success, Try}
 
 /* TODO: InsertionOrderedSet is used by the logger, but the insertion order is
  *       probably irrelevant for logging. I.e. it might be ok if these sets were
@@ -91,14 +95,24 @@ object SymbExLogger {
   private var uidCounter = 0
 
   var enabled = false
-
-  /** Config of Silicon. Used by StateFormatters. **/
-  private var config: Config = _
+  var logConfig: LogConfig = LogConfig.default()
 
   def freshUid(): Int = {
     val uid = uidCounter
     uidCounter = uidCounter + 1
     uid
+  }
+
+  def getRecordConfig(d: DataRecord): Option[RecordConfig] = {
+    for (rc <- logConfig.recordConfigs) {
+      if (rc.kind.equals(d.toTypeString())) {
+        rc.value match {
+          case Some(value) => if (value.equals(d.toSimpleString())) return Some(rc)
+          case _ => return Some(rc)
+        }
+      }
+    }
+    None
   }
 
   /**
@@ -137,16 +151,12 @@ object SymbExLogger {
 
   /**
     * Passes config from Silicon to SymbExLogger.
-    * Config is assigned only once, further calls are ignored.
     *
     * @param c Config of Silicon.
     */
   def setConfig(c: Config) {
-    if (config == null) {
-      config = c
-      // In both cases we need to record the trace
-      setEnabled(config.ideModeAdvanced())
-    }
+    setEnabled(c.ideModeAdvanced())
+    logConfig = parseLogConfig(c)
   }
 
   @elidable(INFO)
@@ -154,9 +164,18 @@ object SymbExLogger {
     enabled = b
   }
 
-  /** Gives back config from Silicon **/
-  def getConfig(): Config = {
-    config
+  @elidable(INFO)
+  private def parseLogConfig(c: Config): LogConfig = {
+    var logConfigPath = Try(c.logConfig())
+    logConfigPath = logConfigPath.filter(path => Files.exists(Paths.get(path)))
+    val source = logConfigPath.map(path => scala.io.Source.fromFile(path))
+    val fileContent = source.map(s => s.getLines.mkString)
+    val jsonAst = fileContent.flatMap(content => Try(content.parseJson))
+    val logConfig = jsonAst.flatMap(ast => Try(ast.convertTo[LogConfig]))
+    logConfig match {
+      case Success(convertedConfig) => convertedConfig
+      case Failure(_) => LogConfig.default()
+    }
   }
 
   /**
@@ -180,7 +199,7 @@ object SymbExLogger {
     memberList = List[SymbLog]()
     uidCounter = 0
     filePath = null
-    config = null
+    logConfig = LogConfig.default()
   }
 
   def resetMemberList() {
@@ -246,6 +265,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 
   var log = List[SymbolicRecord]()
   var branchingStack = List[BranchingRecord]()
+  var ignoredDataRecords: Set[Int] = Set()
 
   // Maps macros to their body
   private var _macros = Map[App, Term]()
@@ -269,17 +289,30 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
   @elidable(INFO)
   def insert(s: DataRecord): Int = {
     s.id = SymbExLogger.freshUid()
-    appendLog(s)
-    val openRecord = new OpenScopeRecord(s)
-    insert(openRecord)
+    // check whether this record should be ignored:
+    val recordConfig = getRecordConfig(s)
+    val ignore = recordConfig match {
+      case Some(_) => SymbExLogger.logConfig.isBlackList
+      case _ => !SymbExLogger.logConfig.isBlackList
+    }
+    if (ignore) {
+      ignoredDataRecords = ignoredDataRecords + s.id
+    } else {
+      appendLog(s)
+      val openRecord = new OpenScopeRecord(s)
+      insert(openRecord)
+    }
     s.id
   }
 
   @elidable(INFO)
   def insert(s: ScopingRecord): Int = {
     s.id = SymbExLogger.freshUid()
-    s.timeMs = System.currentTimeMillis()
-    appendLog(s)
+    if (!ignoredDataRecords.contains(s.refId)) {
+      // the corresponding data record is not ignored
+      s.timeMs = System.currentTimeMillis()
+      appendLog(s)
+    }
     s.id
   }
 

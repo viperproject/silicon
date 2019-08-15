@@ -482,6 +482,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )
 
+  val logConfig = opt[String]("logConfig",
+    descr = "Path to config file specifying SymbExLogger options",
+    default = None,
+    noshort = true,
+    hidden = false
+  )
+
   val disableCatchingExceptions = opt[Boolean]("disableCatchingExceptions",
     descr =s"Don't catch exceptions (can be useful for debugging problems with ${Silicon.name})",
     default = Some(false),
