@@ -1,6 +1,7 @@
 package viper.silicon.logger.records.data
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.{RecordData, SymbolicRecord}
 import viper.silicon.state.State
 import viper.silicon.state.terms.Term
@@ -35,11 +36,17 @@ trait DataRecord extends SymbolicRecord {
       case _ =>
     }
     if (state != null) {
-      data.store = Some(state.g)
-      data.heap = Some(state.h)
-      data.oldHeap = state.oldHeaps.get(Verifier.PRE_STATE_LABEL)
+      if (SymbExLogger.logConfig.includeStore) {
+        data.store = Some(state.g)
+      }
+      if (SymbExLogger.logConfig.includeHeap) {
+        data.heap = Some(state.h)
+      }
+      if (SymbExLogger.logConfig.includeOldHeap) {
+        data.oldHeap = state.oldHeaps.get(Verifier.PRE_STATE_LABEL)
+      }
     }
-    if (pcs != null) {
+    if (pcs != null && SymbExLogger.logConfig.includePcs) {
       data.pcs = Some(pcs)
     }
     data
