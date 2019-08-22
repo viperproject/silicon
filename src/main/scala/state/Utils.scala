@@ -82,9 +82,10 @@ package object utils {
     case l: Let =>
       val (vs, ts) = l.bindings.toSeq.unzip
       vs ++ ts :+ l.body
-    case PHeapLookupField(_,_,h,at) => h :: at :: Nil
     case PHeapCombine(h1,h2) => h1 :: h2 :: Nil
+    case PHeapLookupField(_,_,h,at) => h :: at :: Nil
     case PHeapLookupPredicate(_,h,args) => Seq(h) ++ args
+    case PHeapRemovePredicate(_, h, args) => Seq(h) ++ args
     case PHeapSingletonField(_,x,v) => x :: v :: Nil
     case PHeapSingletonPredicate(_,args,h) => Seq(h) ++ args 
     case PHeapRestrict(_,h,args) => Seq(h) ++ args

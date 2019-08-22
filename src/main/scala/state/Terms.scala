@@ -1688,6 +1688,7 @@ case class PHeapCombine(h1: Term, h2: Term) extends Term {
 }
 
 case class PHeapLookupField(field: String, sort: Sort, h: Term, at: Term) extends Term {}
+
 case class PHeapLookupPredicate(predicate: String, h: Term, args: Seq[Term]) extends Term {
   val sort = sorts.PHeap
 }
