@@ -158,9 +158,6 @@ object consumer extends ConsumptionRules with Immutable {
       val h0 = s0.h /* h0 is h, but potentially consolidated */
       val s1 = s0.copy(h = s.h) /* s1 is s, but the retrying flag might be set */
 
-      /* TODO: To remove this cast: Add a type argument to the ConsumeRecord.
-       *       Globally the types match, but locally the type system does not know.
-       */
       val sepIdentifier = SymbExLogger.currentLog().openScope(new ConsumeRecord(a, s1, v.decider.pcs))
 
       consumeTlc(s1, h0, a, pve, v1)((s2, h2, snap2, v2) => {
@@ -191,23 +188,31 @@ object consumer extends ConsumptionRules with Immutable {
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
         val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
-        evaluator.eval(s, e0, pve, v)((s1, t0, v1) => {
-          SymbExLogger.currentLog().closeScope(uidImplies)
+        evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, v1)(
-            (s2, v2) => consumeR(s2, h, a0, pve, v2)(Q),
-            (s2, v2) => Q(s2, h, Unit, v2))
-        })
+            (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
+              SymbExLogger.currentLog().closeScope(uidImplies)
+              Q(s3, h1, t1, v3)
+            }),
+            (s2, v2) => {
+              SymbExLogger.currentLog().closeScope(uidImplies)
+              Q(s2, h, Unit, v2)
+            }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
         val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
 
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          SymbExLogger.currentLog().closeScope(uidCondExp)
+        eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, v1)(
-            (s2, v2) => consumeR(s2, h, a1, pve, v2)(Q),
-            (s2, v2) => consumeR(s2, h, a2, pve, v2)(Q))
-        })
+            (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
+              SymbExLogger.currentLog().closeScope(uidCondExp)
+              Q(s3, h1, t1, v3)
+            }),
+            (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h1, t1, v3) => {
+              SymbExLogger.currentLog().closeScope(uidCondExp)
+              Q(s3, h1, t1, v3)
+            })))
 
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.

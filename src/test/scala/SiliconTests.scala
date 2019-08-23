@@ -14,7 +14,7 @@ import viper.silicon.{Silicon, SiliconFrontend}
 import viper.silver.reporter.NoopReporter
 
 class SiliconTests extends SilSuite {
-  private val siliconTestDirectories = Seq("consistency", "issue387", "symbExLogTests")
+  private val siliconTestDirectories = Seq("consistency", "issue387")
   private val silTestDirectories = Seq("all", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
   val testDirectories = siliconTestDirectories ++ silTestDirectories
 
@@ -40,10 +40,9 @@ class SiliconTests extends SilSuite {
   val commandLineArguments: Seq[String] = Seq.empty
 
   private def createSiliconInstance() = {
-    val configMap = prefixSpecificConfigMap.getOrElse("silicon", Map())
-    var args =
+    val args =
       commandLineArguments ++
-      Silicon.optionsFromScalaTestConfigMap(configMap)
+      Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap.getOrElse("silicon", Map()))
     val reporter = NoopReporter
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
     val silicon = Silicon.fromPartialCommandLineArguments(args, reporter, debugInfo)

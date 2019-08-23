@@ -162,7 +162,6 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
           (fr1, nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accSnapEqs)
       }
     }
-
     SymbExLogger.currentLog().closeScope(sepIdentifier)
     result
   }

@@ -209,30 +209,36 @@ object producer extends ProductionRules with Immutable {
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
         val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          SymbExLogger.currentLog().closeScope(uidImplies)
+        eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, v1)(
-            (s2, v2) => produceR(s2, sf, a0, pve, v2)(Q),
+            (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
+              SymbExLogger.currentLog().closeScope(uidImplies)
+              Q(s3, v3)
+            }),
             (s2, v2) => {
                 v2.decider.assume(sf(sorts.Snap, v2) === Unit)
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                    */
+                SymbExLogger.currentLog().closeScope(uidImplies)
                 Q(s2, v2)
-            })
-        })
+            }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
         val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
 
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          SymbExLogger.currentLog().closeScope(uidCondExp)
+        eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, v1)(
-            (s2, v2) => produceR(s2, sf, a1, pve, v2)(Q),
-            (s2, v2) => produceR(s2, sf, a2, pve, v2)(Q))
-        })
+            (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
+              SymbExLogger.currentLog().closeScope(uidCondExp)
+              Q(s3, v3)
+            }),
+            (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
+              SymbExLogger.currentLog().closeScope(uidCondExp)
+              Q(s3, v3)
+            })))
 
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) =>

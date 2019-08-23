@@ -31,10 +31,53 @@ import scala.util.{Failure, Success, Try}
  *       traversed in non-deterministic order.
  */
 
+/**
+  * ================================
+  * SymbExLogger Usage
+  * ================================
+  * The SymbExLogger has to be enabled by passing `--ideModeAdvanced` to Silicon (which in turn
+  * requires numberOfParallelVerifiers to be 1).
+  * Unless otherwise specified, the default logConfig will be used (viper.silicon.logger.LogConfig.default()):
+  * All logged records will be included in the report, but store, heap, and path conditions will be omitted.
+  *
+  * A custom logConfig can be used by passing `--logConfig <pathToLogConfig>` to Silicon. The logConfig has to be valid
+  * JSON in the following format:
+  * {
+  *   "isBlackList": false,
+  *   "includeStore": false,
+  *   "includeHeap": false,
+  *   "includeOldHeap": false,
+  *   "includePcs": false,
+  *   "recordConfigs": [
+  *     {
+  *       "kind": "method"
+  *     },
+  *     {
+  *       "kind": "execute",
+  *       "value": "a := 1"
+  *     }
+  *   ]
+  * }
+  *
+  * isBlackList: specifies whether recordConfigs should be interpreted as a black- or whitelist
+  * includeStore: specifies whether store information for each record (that offers it) should be included
+  * includeHeap: specifies whether heap information for each record (that offers it) should be included
+  * includeOldHeap: specifies whether old heap information for each record (that offers it) should be included
+  * includePcs: specifies whether path condition information for each record (that offers it) should be included
+  * recordConfigs: array of recordConfig
+  * recordConfig.kind: string with which each SymbolicRecord.toTypeString() is matched against
+  * recordConfig.value: optional string with which each SymbolicRecord.toSimpleString() is matched against
+  *
+  * Therefore, the above example leads to the following logger behavior:
+  * - No store, heap, old heap, and path condition information will be present in the report
+  * - By interpreting recordConfigs as whitelist, all records of type MethodRecord will be included in the report as
+  *   well as any ExecuteRecord with statement "a := 1" (all other ExecuteRecords will be omitted)
+  */
+
 /*
- *  For instructions on how to use/visualise recording, have a look at
- *  /utils/symbolicRecording/README_symbolicRecord.txt
- *
+ * ================================
+ * SymbExLogger Architecture
+ * ================================
  * Overall concept:
  * 1) SymbExLogger Object:
  *    Is used as interface to access the logs. Code from this file that is used in Silicon

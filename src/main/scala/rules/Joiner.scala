@@ -61,7 +61,6 @@ object joiner extends JoiningRules with Immutable {
          */
         Success()
       } else {
-
         val (sJoined, dataJoined) = merge(entries)
 
         entries foreach (entry => {

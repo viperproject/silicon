@@ -130,11 +130,10 @@ object executionFlowController extends ExecutionFlowRules with Immutable {
 
         val comLog = new CommentRecord("Retry", s0, v.decider.pcs)
         val sepIdentifier = SymbExLogger.currentLog().openScope(comLog)
-        val retryResult = action(s0.copy(retrying = true), v, (s1, r, v1) => {
+        action(s0.copy(retrying = true), v, (s1, r, v1) => {
           SymbExLogger.currentLog().closeScope(sepIdentifier)
           Q(s1.copy(retrying = false), r, v1)
         })
-        retryResult
       }
 
     finalActionResult

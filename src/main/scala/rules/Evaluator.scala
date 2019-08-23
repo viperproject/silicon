@@ -308,16 +308,16 @@ object evaluator extends EvaluationRules with Immutable {
       case implies @ ast.Implies(e0, e1) =>
         val impliesRecord = new ImpliesRecord(implies, s, v.decider.pcs, "Implies")
         val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          SymbExLogger.currentLog().closeScope(uidImplies)
-          evalImplies(s1, t0, e1, implies.info == FromShortCircuitingAnd, pve, v1, impliesRecord)(Q)
-        })
+        eval(s, e0, pve, v)((s1, t0, v1) =>
+          evalImplies(s1, t0, e1, implies.info == FromShortCircuitingAnd, pve, v1)((s2, t1, v2) => {
+            SymbExLogger.currentLog().closeScope(uidImplies)
+            Q(s2, t1, v2)
+          }))
 
       case condExp @ ast.CondExp(e0, e1, e2) => {
         val condExpRecord = new CondExpRecord(condExp, s, v.decider.pcs, "CondExp")
         val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          SymbExLogger.currentLog().closeScope(uidCondExp)
+        eval(s, e0, pve, v)((s1, t0, v1) =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
             brancher.branch(s2, t0, v2)(
               (s3, v3) => eval(s3, e1, pve, v3)(QB),
@@ -337,11 +337,12 @@ object evaluator extends EvaluationRules with Immutable {
               case Seq(entry1, entry2) =>
                 (entry1.s.merge(entry2.s), entry1.data, entry2.data)
               case _ =>
-                sys.error(s"Unexpected join data entries: $entries")
-            }
+                sys.error(s"Unexpected join data entries: $entries")}
             (s2, Ite(t0, t1, t2))
-          })(Q)
-        })
+          })((s4, t3, v3) => {
+            SymbExLogger.currentLog().closeScope(uidCondExp)
+            Q(s4, t3, v3)
+          }))
       }
 
       /* Integers */
@@ -528,7 +529,7 @@ object evaluator extends EvaluationRules with Immutable {
             val nonQuantArgs = args filter (a => !vars.map(_.localVar).contains(a))
             val indices = nonQuantArgs map (a => args.indexOf(a))
 
-            // TODO: record all nonQuantArgs
+            // TODO LA: nonQuantArgs are not recorded yet
             val impliesRecord = new ImpliesRecord(null, s2, v.decider.pcs, "bindRcvrsAndEvalBody")
             val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
@@ -537,9 +538,11 @@ object evaluator extends EvaluationRules with Immutable {
               val zippedArgs = argsWithIndex map (ai => (ai._1, ch.args(ai._2)))
               val argsPairWiseEqual = And(zippedArgs map {case (a1, a2) => a1 === a2})
 
-              SymbExLogger.currentLog().closeScope(uidImplies)
-              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), body, false, pve, v1, impliesRecord)((s4, tImplies, v2) =>
-                bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, v2)(Q))
+              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), body, false, pve, v1)((s4, tImplies, v2) =>
+                bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, v2)((s5, ts1, v3) => {
+                  SymbExLogger.currentLog().closeScope(uidImplies)
+                  Q(s5, ts1, v3)
+                }))
             })
           }
         }
@@ -558,7 +561,7 @@ object evaluator extends EvaluationRules with Immutable {
 
             val s1 = s.copy(s.g + gVars, quantifiedVariables = tVars ++ s.quantifiedVariables)
 
-            // TODO: record all args
+            // TODO LA: args are not recorded yet
             val impliesRecord = new ImpliesRecord(null, s1, v.decider.pcs, "bindQuantRcvrsAndEvalBody")
             val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
@@ -572,10 +575,12 @@ object evaluator extends EvaluationRules with Immutable {
                 case wc: QuantifiedMagicWandChunk => PredicateTrigger(wc.id.toString, wc.wsf, ts1)
               }
 
-              SymbExLogger.currentLog().closeScope(uidImplies)
-              evalImplies(s2, And(trig, bc), body, false, pve, v1, impliesRecord)((s3, tImplies, v2) => {
+              evalImplies(s2, And(trig, bc), body, false, pve, v1)((s3, tImplies, v2) => {
                 val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
-                bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, v2)(Q)})
+                bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, v2)((s4, ts2, v3) => {
+                  SymbExLogger.currentLog().closeScope(uidImplies)
+                  Q(s4, ts2, v3)
+                })})
             })
           }
         }
@@ -936,8 +941,7 @@ object evaluator extends EvaluationRules with Immutable {
                           eRhs: ast.Exp,
                           fromShortCircuitingAnd: Boolean,
                           pve: PartialVerificationError,
-                          v: Verifier,
-                          impliesRecord: ImpliesRecord)
+                          v: Verifier)
                          (Q: (State, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
 
