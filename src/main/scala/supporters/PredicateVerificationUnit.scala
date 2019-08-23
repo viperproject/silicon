@@ -89,7 +89,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
-      SymbExLogger.insertMember(predicate, null, v.decider.pcs)
+      SymbExLogger.openMemberScope(predicate, null, v.decider.pcs)
 
       val ins = predicate.formalArgs.map(_.localVar)
       val s = sInit.copy(g = Store(ins.map(x => (x, decider.fresh(x)))),
@@ -108,7 +108,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                     Success())})
       }
 
-      SymbExLogger.endMember()
+      SymbExLogger.closeMemberScope()
       Seq(result)
     }
 

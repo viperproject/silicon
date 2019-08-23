@@ -247,8 +247,6 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
                                            this.postConditionAxioms().toList)
     }
 
-    logger info SymbExLogger.toSimpleTreeString
-
     (   functionVerificationResults
      ++ predicateVerificationResults
      ++ methodVerificationResults)

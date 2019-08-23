@@ -7,13 +7,13 @@
 package viper.silicon.logger
 
 import java.nio.file.{Files, Path, Paths}
-import spray.json._
 
+import spray.json._
 import LogConfigProtocol._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.logger.SymbExLogger.getRecordConfig
 import viper.silicon.logger.records.SymbolicRecord
-import viper.silicon.logger.records.data.{DataRecord, FunctionRecord, MethodRecord, PredicateRecord}
+import viper.silicon.logger.records.data.{DataRecord, FunctionRecord, MemberRecord, MethodRecord, PredicateRecord}
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
 import viper.silicon.logger.records.structural.BranchingRecord
 import viper.silicon.logger.renderer.SimpleTreeRenderer
@@ -42,20 +42,21 @@ import scala.util.{Failure, Success, Try}
  *    per method/function/predicate (member). The method 'currentLog()' gives access to the log
  *    of the currently executed member.
  * 2) SymbLog:
- *    Contains the log for a member. Most important methods: insert/collapse. To 'start'
- *    a record use insert, to finish the recording use collapse. There should be as many calls
- *    of collapse as of insert (theoretically; practically this is not possible due to branching.
- *    To avoid such cases, each insert gets an identifier, which is then used by collapse, to avoid
- *    multiple collapses per insert).
+ *    Contains the log for a member. Most important methods: openScope/closeScope/insertBranchPoint. To 'start'
+ *    a record use openScope, to finish the recording use closeScope. For each execution path, there should be a
+ *    closeScope for each openScope. Due to branching this means that there might be multiple closeScopes for a
+ *    openScope, because the scope has to be closed on each branch. However to support verification failures, the log
+ *    does not have to be complete. In case of a missing close scope record, the scope will be closed immediately
+ *    before an outer close scope record.
  * 3) Records:
- *    The basic abstract record type is SymbolicRecord. There is one record type for each of the
- *    four basic symbolic primitives evaluate, execute, consume and produce. For constructs of special
- *    interest (e.g., if-then-else-branching), there are separate records.
- *    The basic record looks conceptually as follows:
- *
- *    SymbolicRecord {
- *      subs = List[SymbolicRecord]
- *    }
+ *    There are scoping records representing open and close scope in the log. These records will be automatically
+ *    inserted in the log by SymbExLogger depending on other records.
+ *    Structural records represent branching and joining in the resulting log. JoiningRecords are inserted as regular
+ *    data records, BranchingRecords are inserted using the special interface (insertBranchPoint, markReachable,
+ *    switchToNextBranch, and endBranchPoint).
+ *    Data records represent symbolic primitives (execute, evalute, consume, produce) as well as executions of some
+ *    algorithms of the symbolic execution engine. Inserting a data record automatically creates a scope for it. Each
+ *    subsequent log entry is assumped to be in the scope until scopeClose is invoked.
  *
  *    Example to illustrate the way a silver program is logged:
  *    Assume the following silver code:
@@ -70,24 +71,81 @@ import scala.util.{Failure, Success, Try}
  *    simple tree (see: SimpleTreeRenderer) as follows:
  *
  *    method m
+ *      WellformednessCheck null
+ *      execute var a: Int
  *      execute a := 1
  *        evaluate 1
  *      execute a := a + 2
- *        evaluate a
- *        evaluate 2
+ *        evaluate a + 2
+ *          evaluate a
+ *          evaluate 2
  *
  *    The order of insert/collapse is as follows:
- *    insert(method), insert(execute), insert (evaluate),
- *    collapse(evaluate), collapse(execute),
- *    insert(execute), insert(evaluate) collapse(evaluate),
- *    insert(evaluate), collapse(evaluate)
- *    collapse(execute), collapse(method)
+ *    openScope(method m),
+ *    openScope(WellformednessCheck null), closeScope(WellformednessCheck null),
+ *    openScope(execute var a), closeScope(execute var a), openScope(execute a := 1), openScope(evaluate 1),
+ *    closeScope(evaluate 1), closeScope(execute a := 1),
+ *    openScope(execute a := a + 2), openScope(evaluate a + 2), openScope(evaluate a) closeScope(evaluate a),
+ *    openScope(evaluate 2), closeScope(evaluate 2), closeScope(evaluate a + 2), closeScope(execute a := a + 2),
+ *    closeScope(method m)
  *
- *    Collapse basically 'removes one indentation', i.e., brings you one level higher in the tree.
- *    For an overview of 'custom' records (e.g., for Branching, local branching, method calls etc.),
- *    have a look at the bottom of this file for a guide in how to create such records or take a look
- *    at already existing examples such as IfThenElseRecord, CondExpRecord or MethodCallRecord.
+ *    CloseScope basically 'removes one indentation', i.e., brings you one level higher in the tree.
  */
+
+/**
+  * ================================
+  * GUIDE FOR ADDING RECORDS TO SymbExLogger
+  * ================================
+  *
+  * SymbExLogger records calls to several symbolic primitives (execute, evalute, produce, consume) as well as algorithms
+  * of Silicon. By default, only the current state, context and parameters of the primitives are stored (if configured
+  * in logConfig).
+  * If you want to get more information from certain structures, there are several ways to store additional
+  * info:
+  *
+  * 1) Store the information as a CommentRecord.
+  * 2) Implement a customized record.
+  *
+  * Use of CommentRecord (1):
+  * At the point in the code where you want to add the comment, call
+  * //val id = SymbExLogger.currentLog().openScope(new CommentRecord(my_info, σ, c)
+  * //SymbExLogger.currentLog().closeScope(id)
+  * σ is the current state (AnyRef, but should be of type State[_,_,_] usually), my_info
+  * is a string that contains the information you want to store, c is the current
+  * context. If you want to store more information than just a string, consider (2).
+  *
+  * Use of custom Records (2):
+  * For already existing examples of data records, have look at records/data. In particular ProverAssertRecord might be
+  * of interested, because it shows how additional info can be stored and inserted into RecordData during report
+  * creation.
+  * Inserting new structure records might be a bit more involved, depending on the use case.
+  * As an example, the joining (e.g. occurring in pure conditional expressions) is discussed next:
+  * Silicon uses Joiner to join execution after an execution block. A JoiningRecord is created at the beginning of the
+  * Joiner and added to the log by calling:
+  * // val uidJoin = SymbExLogger.currentLog().openScope(joiningRecord)
+  * After executing the block and joining the execution, the following call to the SymbExLogger is made to close the
+  * join scope:
+  * // SymbExLogger.currentLog().closeScope(uidJoin)
+  * Although JoiningRecord is a structural record and joining in symbolic execution has significant impact on the
+  * execution structure, JoiningRecord behalves almost as a data record in SymbExLogger:
+  * Due to the design that each data record (and joining record) causes a scope and the scope contains all
+  * subexpressions, it naturally follows that branching records and their branches inside a join scope will be joined
+  * because they are part of join's scope and the scope eventually ends.
+  * Hence, of more interest is branching (which most likely occurs in every join scope):
+  * If the execution is branched (occurs in Brancher as well as in Executor when following more than one branch) the
+  * logger has to be informed about it in order that records on the individual branches are correctly logged.
+  * To do so, the following call creates a new branch point with a number of branches that result out of it (but aren't
+  * necessarily all reachable):
+  * // val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition))
+  * All records that will subsequently be inserted will be assigned to the first branch.
+  * As soon as the execution of the first branch is complete, the logger needs to switch to the next branch:
+  * // SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+  * When the execution of all branches is done, the branch point is concluded:
+  * // SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+  * Because the existence as well as non-existence of records on a branch does not imply reachability, the logger
+  * needs to be explicitly informed for each branch that is reachable:
+  * // SymbExLogger.currentLog().markReachable(uidBranchPoint)
+  */
 
 object SymbExLogger {
   /** List of logged Method/Predicates/Functions. **/
@@ -129,7 +187,7 @@ object SymbExLogger {
     * @param pcs    Current path conditions.
     */
   @elidable(INFO)
-  def insertMember(member: ast.Member, s: State, pcs: PathConditionStack) {
+  def openMemberScope(member: ast.Member, s: State, pcs: PathConditionStack) {
     memberList = memberList ++ List(new SymbLog(member, s, pcs))
   }
 
@@ -144,9 +202,11 @@ object SymbExLogger {
     else NoopSymbLog
   }
 
-  def endMember(): Unit = {
-    val closeRecord = new CloseScopeRecord(currentLog().main.id)
-    currentLog().insert(closeRecord)
+  @elidable(INFO)
+  def closeMemberScope(): Unit = {
+    if (enabled) {
+      currentLog().closeMemberScope()
+    }
   }
 
   /**
@@ -164,7 +224,6 @@ object SymbExLogger {
     enabled = b
   }
 
-  @elidable(INFO)
   private def parseLogConfig(c: Config): LogConfig = {
     var logConfigPath = Try(c.logConfig())
     logConfigPath = logConfigPath.filter(path => Files.exists(Paths.get(path)))
@@ -263,20 +322,26 @@ object SymbExLogger {
   */
 class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 
-  var log = List[SymbolicRecord]()
-  var branchingStack = List[BranchingRecord]()
+  /** top level log entries for this member; these log entries were recorded consecutively without branching;
+    * in case branching occured, one of these records is a BranchingRecord with all branches as field attached to it */
+  var log: List[SymbolicRecord] = List[SymbolicRecord]()
+  /** this stack keeps track of BranchingRecords while adding records to the log; as soon as all branches of a
+    * BranchingRecord are done, logging has to switch back to the previous BranchingRecord */
+  var branchingStack: List[BranchingRecord] = List[BranchingRecord]()
+  /** if a record was ignored due to the logConfig, its ID is tracked here and corresponding open and close scope
+    * records will be ignored too */
   var ignoredDataRecords: Set[Int] = Set()
 
   // Maps macros to their body
   private var _macros = Map[App, Term]()
 
-  var main = v match {
+  var main: MemberRecord = v match {
     case m: ast.Method => new MethodRecord(m, s, pcs)
     case p: ast.Predicate => new PredicateRecord(p, s, pcs)
     case f: ast.Function => new FunctionRecord(f, s, pcs)
     case _ => null
   }
-  insert(main)
+  openScope(main)
 
   private def appendLog(r: SymbolicRecord): Unit = {
     if (branchingStack.isEmpty) {
@@ -286,8 +351,13 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     }
   }
 
+  /**
+    * Inserts the record as well as a corresponding open scope record into the log
+    * @param s non-null record
+    * @return id with which closeScope should be called
+    */
   @elidable(INFO)
-  def insert(s: DataRecord): Int = {
+  def openScope(s: DataRecord): Int = {
     s.id = SymbExLogger.freshUid()
     // check whether this record should be ignored:
     val recordConfig = getRecordConfig(s)
@@ -305,8 +375,13 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     s.id
   }
 
+  /**
+    * Appends a scoping record to the log unless it's referenced data record is ignored
+    * @param s non-null scoping record
+    * @return id of the scoping record
+    */
   @elidable(INFO)
-  def insert(s: ScopingRecord): Int = {
+  private def insert(s: ScopingRecord): Int = {
     s.id = SymbExLogger.freshUid()
     if (!ignoredDataRecords.contains(s.refId)) {
       // the corresponding data record is not ignored
@@ -316,6 +391,14 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     s.id
   }
 
+  /**
+    * Creates and appends a branching record to the log. Branching records do not cause scopes.
+    * Use `switchToNextBranch` to change from the current to the next branch and `endBranchPoint` to conclude the
+    * branch point after all branches were visited.
+    * @param possibleBranchesCount number of branches that this branch point has but are not necessarily all reachable
+    * @param condition branch condition
+    * @return id of the branching record
+    */
   @elidable(INFO)
   def insertBranchPoint(possibleBranchesCount: Int, condition: Option[Term] = None): Int = {
     val branchingRecord = new BranchingRecord(possibleBranchesCount, condition)
@@ -325,6 +408,10 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     branchingRecord.id
   }
 
+  /**
+    * Changes from the current to the next branch of a specific branch point
+    * @param uidBranchPoint id of the branching record
+    */
   @elidable(INFO)
   def switchToNextBranch(uidBranchPoint: Int): Unit = {
     assert(branchingStack.nonEmpty)
@@ -334,6 +421,10 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     branchingRecord.switchToNextBranch()
   }
 
+  /**
+    * Marks the current branch of a specific branch point as being reachable
+    * @param uidBranchPoint id of the branching record
+    */
   @elidable(INFO)
   def markReachable(uidBranchPoint: Int): Unit = {
     assert(branchingStack.nonEmpty)
@@ -342,21 +433,35 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     branchingRecord.markReachable()
   }
 
-  // TODO legacy
+  /**
+    * Ends the scope of a specific data record by inserting a corresponding close scope record into the log
+    * @param n id of the data record
+    */
   @elidable(INFO)
-  def collapse(v: ast.Node, n: Int): Unit = {
+  def closeScope(n: Int): Unit = {
     val closeRecord = new CloseScopeRecord(n)
     insert(closeRecord)
   }
 
+  /**
+    * Concludes a specific branch point (which normaly happens after visiting all branches belonging to the branch point)
+    * @param uidBranchPoint id of the branch point
+    */
   @elidable(INFO)
-  // TODO legacy
-  def collapseBranchPoint(uidBranchPoint: Int): Unit = {
+  def endBranchPoint(uidBranchPoint: Int): Unit = {
     assert(branchingStack.nonEmpty)
     val branchingRecord = branchingStack.head
     assert(branchingRecord.id == uidBranchPoint)
     // no close scope is inserted because branches are not considered scopes
     branchingStack = branchingStack.tail
+  }
+
+  /**
+    * Ends the scope of the member (i.e. main) by inserting a corresponding close scope record into the log
+    */
+  def closeMemberScope(): Unit = {
+    val closeRecord = new CloseScopeRecord(main.id)
+    insert(closeRecord)
   }
 
   /** Record the last prover query that failed.
@@ -388,7 +493,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     }
   }
 
-  def macros() = _macros
+  def macros(): Map[App, Term] = _macros
 
   @elidable(INFO)
   def addMacro(m: App, body: Term): Unit = {
@@ -399,94 +504,11 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 }
 
 object NoopSymbLog extends SymbLog(null, null, null) {
-  override def insert(s: DataRecord): Int = 0
-  override def insert(s: ScopingRecord): Int = 0
+  override def openScope(s: DataRecord): Int = 0
   override def insertBranchPoint(possibleBranchesCount: Int, condition: Option[Term]): Int = 0
   override def switchToNextBranch(uidBranchPoint: Int): Unit = {}
-  override def collapse(v: ast.Node, n: Int): Unit = {}
-  override def collapseBranchPoint(uidBranchPoint: Int): Unit = {}
+  override def markReachable(uidBranchPoint: Int): Unit = {}
+  override def closeScope(n: Int): Unit = {}
+  override def endBranchPoint(uidBranchPoint: Int): Unit = {}
+  override def closeMemberScope(): Unit = {}
 }
-
-/**
-  * ================================
-  * GUIDE FOR ADDING RECORDS TO SymbExLogger
-  * ================================
-  *
-  * SymbExLogger records all calls of the four symbolic primitives Execute, Evaluate, Produce
-  * and Consume. By default, only the current state, context and parameters of the primitives are stored.
-  * If you want to get more information from certain structures, there are several ways to store additional
-  * info:
-  *
-  * 1) Store the information as a CommentRecord.
-  * 2) Implement a customized record.
-  *
-  * Use of CommentRecord (1):
-  * At the point in the code where you want to add the comment, call
-  * //SymbExLogger.currentLog().insert(new CommentRecord(my_info, σ, c)
-  * //SymbExLogger.currentLog().collapse()
-  * σ is the current state (AnyRef, but should be of type State[_,_,_] usually), my_info
-  * is a string that contains the information you want to store, c is the current
-  * context. If you want to store more information than just a string, consider (2).
-  *
-  * Use of custom Records (2):
-  * For already existing examples, have a look at CondExpRecord (local Branching) or IfThenElseRecord
-  * (recording of If-Then-Else-structures).
-  * Assume that you want to have a custom record for  (non-short-circuiting) evaluations of
-  * ast.And, since you want to differ between the evaluation of the lefthandside
-  * and the righthandside (not possible with default recording).
-  * Your custom record could look similar to this:
-  *
-  * class AndRecord(v: ast.And, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
-  * val value = v    // Due to inheritance. This is what gets recorded by default.
-  * val state = s    // "
-  * val context = c  // "
-  *
-  * lhs: SymbolicRecord = new CommentRecord("null", null, null)
-  * rhs: SymbolicRecord = new CommentRecord("null", null, null)
-  * // lhs & rhs are what you're interested in. The first initialization should be overwritten anyway,
-  * // initialization with a CommentRecord just ensures that the logger won't crash due
-  * // to a Null Exception (ideally). Can also be used if you're unsure if a certain structure is
-  * // evaluated at all; e.g., the righthandside might not be evaluated because the lefthandside
-  * // is already false (see IfThenElseRecord: paths might be unreachable, so the default is
-  * // a CommentRecord("Unreachable", null, null) which is not overwritten due to unreachability.
-  *
-  * def finish_lhs(): Unit = {
-  * if(!subs.isEmpty) //so you don't overwrite your default CommentRecord if subs is empty
-  * lhs = subs(0)
-  * subs = List[SymbolicRecord]()
-  * }
-  *
-  * def finish_rhs(): Unit = {
-  * if(!subs.isEmpty)
-  * rhs = subs(0)
-  * subs = List[SymbolicRecord]()
-  * }
-  *
-  * // finish_FIELD() is the method that overwrites the given field with what is currently in 'subs'.
-  * // For usage example, see below.
-  * }
-  *
-  * Usage of your new custom record 'AndRecord':
-  * This is the code in the DefaultEvaluator (after unrolling of evalBinOp):
-  *
-  * case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
-  * eval(σ, e0, pve, c)((t0, c1) =>
-  * eval(σ, e1, pve, c1)((t1, c2) =>
-  * Q(And(t0, t1), c2)))
-  *
-  * Use of the new record:
-  *
-  * case and @ ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
-  * andRec = new AndRecord(and, σ, c)
-  * SymbExLogger.currentLog().insert(andRec)
-  * eval(σ, e0, pve, c)((t0, c1) => {
-  * andRec.finish_lhs()
-  * eval(σ, e1, pve, c1)((t1, c2) => {
-  * andRec.finish_rhs()
-  * SymbExLogger.currentLog().collapse()
-  * Q(And(t0, t1), c2)))}}
-  *
-  * The record is now available for use; now its representation needs to be implemented,
-  * which is done Renderer-Classes. Implement a new case in all renderer for the new
-  * record.
-  */

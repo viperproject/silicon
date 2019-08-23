@@ -147,14 +147,14 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
-	    SymbExLogger.insertMember(function, null, v.decider.pcs)
+	    SymbExLogger.openMemberScope(function, null, v.decider.pcs)
 
       val data = functionData(function)
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
       val res = Seq(handleFunction(sInit, function))
-      SymbExLogger.endMember()
+      SymbExLogger.closeMemberScope()
       res
     }
 

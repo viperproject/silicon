@@ -1100,7 +1100,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                        : (ConsumptionResult, State, Seq[QuantifiedBasicChunk]) = {
 
     val rmPermRecord = new CommentRecord("removePermissions", s, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().insert(rmPermRecord)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(rmPermRecord)
 
     val requiredId = ChunkIdentifier(resource, Verifier.program)
     assert(
@@ -1185,7 +1185,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         success
 
     v.decider.prover.comment("Done removing quantified permissions")
-    SymbExLogger.currentLog().collapse(null, sepIdentifier)
+    SymbExLogger.currentLog().closeScope(sepIdentifier)
     (success, s, remainingChunks)
   }
 

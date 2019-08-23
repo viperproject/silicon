@@ -184,9 +184,9 @@ object producer extends ProductionRules with Immutable {
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
 
-    val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(a, s, v.decider.pcs))
+    val sepIdentifier = SymbExLogger.currentLog().openScope(new ProduceRecord(a, s, v.decider.pcs))
     produceTlc(s, sf, a, pve, v)((s1, v1) => {
-      SymbExLogger.currentLog().collapse(a, sepIdentifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -207,10 +207,10 @@ object producer extends ProductionRules with Immutable {
     val produced = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
-        val uidImplies = SymbExLogger.currentLog().insert(impliesRecord)
+        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) => {
-          SymbExLogger.currentLog().collapse(imp, uidImplies)
+          SymbExLogger.currentLog().closeScope(uidImplies)
           branch(s1, t0, v1)(
             (s2, v2) => produceR(s2, sf, a0, pve, v2)(Q),
             (s2, v2) => {
@@ -225,10 +225,10 @@ object producer extends ProductionRules with Immutable {
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
-        val uidCondExp = SymbExLogger.currentLog().insert(condExpRecord)
+        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) => {
-          SymbExLogger.currentLog().collapse(ite, uidCondExp)
+          SymbExLogger.currentLog().closeScope(uidCondExp)
           branch(s1, t0, v1)(
             (s2, v2) => produceR(s2, sf, a1, pve, v2)(Q),
             (s2, v2) => produceR(s2, sf, a2, pve, v2)(Q))

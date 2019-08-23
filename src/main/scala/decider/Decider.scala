@@ -182,7 +182,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term]) = {
       val assumeRecord = new DeciderAssumeRecord(terms)
-      val sepIdentifier = SymbExLogger.currentLog().insert(assumeRecord)
+      val sepIdentifier = SymbExLogger.currentLog().openScope(assumeRecord)
 
       /* Add terms to Silicon-managed path conditions */
       terms foreach pathConditions.add
@@ -190,7 +190,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       /* Add terms to the prover's assumptions */
       terms foreach prover.assume
 
-      SymbExLogger.currentLog().collapse(null, sepIdentifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       None
     }
 
@@ -220,12 +220,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     private def deciderAssert(t: Term, timeout: Option[Int]) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
-      val sepIdentifier = SymbExLogger.currentLog().insert(assertRecord)
+      val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
 
       val asserted = isKnownToBeTrue(t)
       val result = asserted || proverAssert(t, timeout)
 
-      SymbExLogger.currentLog().collapse(null, sepIdentifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       result
     }
 
@@ -239,14 +239,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     private def proverAssert(t: Term, timeout: Option[Int]) = {
       val assertRecord = new ProverAssertRecord(t, timeout)
-      val sepIdentifier = SymbExLogger.currentLog().insert(assertRecord)
+      val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
 
       val result = prover.assert(t, timeout)
       val statistics = prover.statistics()
       val deltaStatistics = SymbExLogger.getDeltaSmtStatistics(statistics)
       assertRecord.statistics = Some(statistics ++ deltaStatistics)
 
-      SymbExLogger.currentLog().collapse(null, sepIdentifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       result
     }
 

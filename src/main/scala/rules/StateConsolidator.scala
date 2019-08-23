@@ -45,7 +45,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     }
 
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().insert(comLog)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(comLog)
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)
 
@@ -63,7 +63,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       var fixedPointRound: Int = 0
       do {
         val roundLog = new CommentRecord("Round " + fixedPointRound, s, v.decider.pcs)
-        val roundSepIdentifier = SymbExLogger.currentLog().insert(roundLog)
+        val roundSepIdentifier = SymbExLogger.currentLog().openScope(roundLog)
 
         val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
 
@@ -75,7 +75,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
         newChunks = mergedChunks
         continue = snapEqs.nonEmpty
 
-        SymbExLogger.currentLog().collapse(null, roundSepIdentifier)
+        SymbExLogger.currentLog().closeScope(roundSepIdentifier)
         fixedPointRound = fixedPointRound + 1
       } while (continue)
 
@@ -95,7 +95,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     }
 
     val res = s.copy(functionRecorder = newFunctionRecorder, h = newHeaps.head, reserveHeaps = newHeaps.tail)
-    SymbExLogger.currentLog().collapse(null, sepIdentifier)
+    SymbExLogger.currentLog().closeScope(sepIdentifier)
     res
   }
 
@@ -109,7 +109,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
   def merge(fr1: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().insert(mergeLog)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(mergeLog)
     val (nonQuantifiedChunks, otherChunks) = partition(h)
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, nonQuantifiedChunks, newNonQuantifiedChunks, v)
@@ -123,7 +123,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     }
 
     val result = (fr2, Heap(mergedChunks ++ otherChunks ++ newOtherChunk))
-    SymbExLogger.currentLog().collapse(null, sepIdentifier)
+    SymbExLogger.currentLog().closeScope(sepIdentifier)
     result
   }
 
@@ -137,7 +137,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
                             InsertionOrderedSet[Term]) = {
 
     val mergeLog = new SingleMergeRecord(destChunks, newChunks, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().insert(mergeLog)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(mergeLog)
     // bookkeeper.heapMergeIterations += 1
 
     val initial = (fr, destChunks, Seq[NonQuantifiedChunk](), InsertionOrderedSet[Term]())
@@ -163,7 +163,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       }
     }
 
-    SymbExLogger.currentLog().collapse(null, sepIdentifier)
+    SymbExLogger.currentLog().closeScope(sepIdentifier)
     result
   }
 

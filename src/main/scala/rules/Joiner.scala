@@ -33,7 +33,7 @@ object joiner extends JoiningRules with Immutable {
     var entries: Seq[JoinDataEntry[D]] = Vector.empty
 
     val joiningRecord = new JoiningRecord(s, v.decider.pcs)
-    val uidJoin = SymbExLogger.currentLog().insert(joiningRecord)
+    val uidJoin = SymbExLogger.currentLog().openScope(joiningRecord)
 
     executionFlowController.locally(s, v)((s1, v1) => {
       val preMark = v1.decider.setPathConditionMark()
@@ -53,7 +53,7 @@ object joiner extends JoiningRules with Immutable {
         Success()
       })
     }) && {
-      SymbExLogger.currentLog().collapse(null, uidJoin)
+      SymbExLogger.currentLog().closeScope(uidJoin)
       if (entries.isEmpty) {
         /* No block data was collected, which we interpret as all branches through
          * the block being infeasible. In turn, we assume that the overall verification path

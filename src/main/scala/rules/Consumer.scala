@@ -161,10 +161,10 @@ object consumer extends ConsumptionRules with Immutable {
       /* TODO: To remove this cast: Add a type argument to the ConsumeRecord.
        *       Globally the types match, but locally the type system does not know.
        */
-      val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(a, s1, v.decider.pcs))
+      val sepIdentifier = SymbExLogger.currentLog().openScope(new ConsumeRecord(a, s1, v.decider.pcs))
 
       consumeTlc(s1, h0, a, pve, v1)((s2, h2, snap2, v2) => {
-        SymbExLogger.currentLog().collapse(a, SEP_identifier)
+        SymbExLogger.currentLog().closeScope(sepIdentifier)
         QS(s2, h2, snap2, v2)})
     })(Q)
   }
@@ -189,10 +189,10 @@ object consumer extends ConsumptionRules with Immutable {
     val consumed = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
-        val uidImplies = SymbExLogger.currentLog().insert(impliesRecord)
+        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) => {
-          SymbExLogger.currentLog().collapse(imp, uidImplies)
+          SymbExLogger.currentLog().closeScope(uidImplies)
           branch(s1, t0, v1)(
             (s2, v2) => consumeR(s2, h, a0, pve, v2)(Q),
             (s2, v2) => Q(s2, h, Unit, v2))
@@ -200,10 +200,10 @@ object consumer extends ConsumptionRules with Immutable {
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
-        val uidCondExp = SymbExLogger.currentLog().insert(condExpRecord)
+        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) => {
-          SymbExLogger.currentLog().collapse(ite, uidCondExp)
+          SymbExLogger.currentLog().closeScope(uidCondExp)
           branch(s1, t0, v1)(
             (s2, v2) => consumeR(s2, h, a1, pve, v2)(Q),
             (s2, v2) => consumeR(s2, h, a2, pve, v2)(Q))

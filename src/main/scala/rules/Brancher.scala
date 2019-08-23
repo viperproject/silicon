@@ -193,7 +193,7 @@ object brancher extends BranchingRules with Immutable {
         rs.head
       }
     }
-    SymbExLogger.currentLog().collapseBranchPoint(uidBranchPoint)
+    SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
     res
   }
 }
