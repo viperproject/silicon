@@ -64,6 +64,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
     this.program = program
     this.data = data
     this.failed = false
+    this.snap = `?h`
 
     posts.map(p => translate(symbolConverter.toSort _)(p.whenInhaling))
   }
@@ -77,6 +78,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
     this.data = data
     this.ignoreAccessPredicates = true
     this.failed = false
+    this.snap = `?h`
 
     pres.map(p => translate(symbolConverter.toSort _)(p.whenExhaling))
   }

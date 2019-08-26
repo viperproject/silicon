@@ -217,7 +217,7 @@ object producer extends ProductionRules with Immutable {
                 SymbExLogger.currentLog().prepareOtherBranch(impLog)
                 res1}),
               (s2, v2) => {
-                v2.decider.assume(`?h` === predef.Emp)
+                //v2.decider.assume(`?h` === predef.Emp)
 
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
