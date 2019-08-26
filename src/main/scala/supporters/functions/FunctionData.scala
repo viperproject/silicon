@@ -83,20 +83,24 @@ class FunctionData(val programFunction: ast.Function,
   }
 
   def translatePreconditionToDomain(pre: ast.Exp): Term = pre match {
-    case ast.PredicateAccessPredicate(ast.PredicateAccess(args, p), _) => {
+    case ast.PredicateAccessPredicate(ast.PredicateAccess(args, p), _) =>
       val tArgs = expressionTranslator.translatePrecondition(program, args, this)
       PHeapSingletonPredicate(p, tArgs, PHeapLookupPredicate(p, `?h`, tArgs))
-    }
-    case ast.And(e1, e2) => PHeapCombine(translatePreconditionToDomain(e1), translatePreconditionToDomain(e2))
-    case ast.FieldAccessPredicate(ast.FieldAccess(x, f), _) => {
+    case ast.And(e1, e2) =>
+      PHeapCombine(translatePreconditionToDomain(e1), translatePreconditionToDomain(e2))
+    case ast.FieldAccessPredicate(ast.FieldAccess(x, f), _) =>
       val tx = expressionTranslator.translatePrecondition(program, Seq(x), this)(0)
       PHeapSingletonField(f.name,tx, PHeapLookupField(f.name, symbolConverter.toSort(f.typ), `?h`, tx))
-    }
-    case ast.CondExp(iff, thn, els) => Ite(expressionTranslator.translatePrecondition(program, Seq(iff), this)(0), translatePreconditionToDomain(thn), translatePreconditionToDomain(els))
-    case ast.Implies(prem, conc) => Ite(expressionTranslator.translatePrecondition(program, Seq(prem), this)(0), translatePreconditionToDomain(conc), predef.Emp)
-    case e: ast.InhaleExhaleExp => translatePreconditionToDomain(e.whenExhaling)
-    case ast.Let(v,e,body) => translatePreconditionToDomain(body.replace(v.localVar, e))
-    case a => if (a.isPure) predef.Emp else sys.error("Cannot translatePreconditionToDomain() of " + a.toString + " of type " + a.getClass)
+    case ast.CondExp(iff, thn, els) =>
+      Ite(expressionTranslator.translatePrecondition(program, Seq(iff), this)(0), translatePreconditionToDomain(thn), translatePreconditionToDomain(els))
+    case ast.Implies(prem, conc) =>
+      Ite(expressionTranslator.translatePrecondition(program, Seq(prem), this)(0), translatePreconditionToDomain(conc), predef.Emp)
+    case e: ast.InhaleExhaleExp =>
+      translatePreconditionToDomain(e.whenExhaling)
+    case ast.Let(v,e,body) =>
+      translatePreconditionToDomain(body.replace(v.localVar, e))
+    case a =>
+      if (a.isPure) predef.Emp else sys.error("Cannot translatePreconditionToDomain() of " + a.toString + " of type " + a.getClass)
   }
 
   /*

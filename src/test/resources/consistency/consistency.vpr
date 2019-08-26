@@ -20,18 +20,16 @@ method use_recpred(x: Ref)
 }
 
 
-// Issue #271
-
+// This used to be unsupported, but should work now (see issue #271)
 field g: Int
 
 predicate pair(x: Ref) {
-  //:: ExpectedOutput(internal:feature.unsupported)
   [acc(x.f) && acc(x.g),
    acc(x.g) && acc(x.f)]
 }
 
 function getf(x: Ref): Int
-  //:: ExpectedOutput(internal:feature.unsupported)
   requires [acc(x.f) && acc(x.g),
             acc(x.g) && acc(x.f)]
 { x.f }
+

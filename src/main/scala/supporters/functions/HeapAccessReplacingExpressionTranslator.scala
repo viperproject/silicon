@@ -115,7 +115,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
          */
         val tQuant = super.translate(symbolConverter.toSort)(eQuant).asInstanceOf[Quantification]
         val names = tQuant.vars.map(_.id.name)
-        println("+++", tQuant)
+
         tQuant.transform({ case v: Var =>
           v.id match {
             case sid: SuffixedIdentifier if names.contains(sid.prefix) => Var(SimpleIdentifier(sid.prefix), v.sort)
@@ -124,11 +124,10 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
           case x => x
         })()
 
-      case ast.FieldAccess(rcv, field) => {
+      case ast.FieldAccess(rcv, field) =>
         PHeapLookupField(field.name, symbolConverter.toSort(field.typ), this.snap, translate(rcv))
-      }
 
-      case ast.Unfolding(ast.PredicateAccessPredicate(ast.PredicateAccess(args, predicate), p), eIn) => {
+      case ast.Unfolding(ast.PredicateAccessPredicate(ast.PredicateAccess(args, predicate), p), eIn) =>
         var oldSnap = this.snap
         val remainingSnapshot = p match {
           case ast.WildcardPerm() => this.snap
@@ -141,7 +140,6 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         var teIn = translate(toSort)(eIn)
         this.snap = oldSnap
         teIn
-      }
 
       case ast.Applying(_, eIn) => translate(toSort)(eIn)
 
