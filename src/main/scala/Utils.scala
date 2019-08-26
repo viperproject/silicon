@@ -217,9 +217,7 @@ package object utils {
   object consistency {
     type ErrorNode = silver.ast.Node with silver.ast.Positioned with silver.ast.TransformableErrors
 
-    def check(program: silver.ast.Program) = (
-         checkPermissions(program)
-      ++ checkInhaleExhaleAssertions(program))
+    def check(program: silver.ast.Program) = checkPermissions(program)
 
     def createUnsupportedPermissionExpressionError(offendingNode: errors.ErrorNode) = {
       val message = s"Silicon doesn't support the permission expression $offendingNode."
@@ -232,30 +230,6 @@ package object utils {
         case eps: silver.ast.EpsilonPerm => createUnsupportedPermissionExpressionError(eps) +: errors.flatten
         case _ => errors.flatten
       })
-
-    def createUnsupportedInhaleExhaleAssertion(offendingNode: silver.ast.InhaleExhaleExp) = {
-      val message = (   "Silicon currently doesn't support inhale-exhale assertions in certain "
-                     +  "positions. See Silicon issue #271 for further details.")
-
-      Internal(offendingNode, FeatureUnsupported(offendingNode, message))
-    }
-
-    def checkInhaleExhaleAssertions(root: ErrorNode): Seq[VerificationError] = {
-      def collectInhaleExhaleAssertions(root: ErrorNode): Seq[silver.ast.InhaleExhaleExp] =
-        root.deepCollect{case ie: silver.ast.InhaleExhaleExp if !ie.isPure => ie}
-
-      root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
-        /*case fun: silver.ast.Function =>
-          val newErrs = fun.pres.flatMap(collectInhaleExhaleAssertions)
-                                .map(createUnsupportedInhaleExhaleAssertion)
-          newErrs ++ errors.flatten
-        case pred: silver.ast.Predicate if pred.body.nonEmpty =>
-          val newErrs = collectInhaleExhaleAssertions(pred.body.get)
-                          .map(createUnsupportedInhaleExhaleAssertion)
-          newErrs ++ errors.flatten*/
-        case _ => errors.flatten
-      })
-    }
 
     /* Unexpected nodes */
 

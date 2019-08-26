@@ -121,9 +121,7 @@ object consumer extends ConsumptionRules with Immutable {
         wrappedConsumeTlc(s, h, a, pve, v)(Q)
       else
         wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) =>
-          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, snap2, v2) => {
-            Q(s2, h2, PHeapCombine(snap1,snap2), v2)
-          }))
+          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, snap2, v2) => Q(s2, h2, PHeapCombine(snap1, snap2), v2)))
     }
   }
 
@@ -409,18 +407,16 @@ object consumer extends ConsumptionRules with Immutable {
                 val ve = pve dueTo InsufficientPermission(locacc)
                 val description = s"consume ${a.pos}: $a"
                 chunkSupporter.consume(s2, h, resource, tArgs, loss, ve, v2, description)((s3, h1, snap1, v3) => locacc match {
-                  case _: ast.FieldAccess => {
+                  case _: ast.FieldAccess =>
                       val hsnap = PHeapSingletonField(name, tArgs(0), snap1)
                       val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
                                        constrainableARPs = s.constrainableARPs)
                       Q(s4, h1, hsnap, v3)
-                  }
-                  case _: ast.PredicateAccess => {
+                  case _: ast.PredicateAccess =>
                       val hsnap = PHeapSingletonPredicate(name, tArgs, snap1)
                       val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
                                        constrainableARPs = s.constrainableARPs)
                       Q(s4, h1, hsnap, v3)
-                  }
               })
               case false =>
                 Failure(pve dueTo NegativePermission(perm))}))
