@@ -73,10 +73,11 @@ object executor extends ExecutionRules with Immutable {
            * as a branch condition on the pathcondition stack.
            */
           brancher.branch(s2, tCond, v1)(
-            (s3, v3) => {
-              SymbExLogger.currentLog().closeScope(sepIdentifier)
-              exec(s3, ce.target, ce.kind, v3)(Q)
-            },
+            (s3, v3) =>
+              exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
+                SymbExLogger.currentLog().closeScope(sepIdentifier)
+                Q(s4, v4)
+              }),
             (_, _)  => {
               SymbExLogger.currentLog().closeScope(sepIdentifier)
               Success()
