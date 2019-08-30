@@ -133,7 +133,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         var oldSnap = this.snap
         val remainingSnapshot = p match {
           case ast.WildcardPerm() => this.snap
-          case _ => Ite(AtLeast(translate(p), FullPerm()), PHeapRemovePredicate(predicate, this.snap, args map translate), this.snap)
+          case _ => Ite(Equals(translate(p), FullPerm()), PHeapRemovePredicate(predicate, this.snap, args map translate), this.snap)
         }
         this.snap = PHeapCombine(
           PHeapLookupPredicate(predicate, this.snap, args map translate),
