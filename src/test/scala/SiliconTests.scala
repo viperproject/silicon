@@ -21,9 +21,7 @@ class SiliconTests extends SilSuite {
   val testDirectories = siliconTestDirectories ++ silTestDirectories
 
   override def errorShouldLeadToTestCancel(err: TestError) = err match {
-    case TestAdditionalOutputError(SilOutput(errors.Internal(_,UnsupportedInputReason,_))) => {
-      true
-    }
+    case TestAdditionalOutputError(SilOutput(errors.Internal(_,UnsupportedInputReason,_))) => true
     case _ => super.errorShouldLeadToTestCancel(err)
   }
 

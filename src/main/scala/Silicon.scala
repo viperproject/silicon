@@ -19,7 +19,7 @@ import viper.silver.frontend.{DefaultStates, SilFrontend}
 import viper.silver.reporter._
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.{Failure, UnsupportedInput}
+import viper.silicon.interfaces.Failure
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.verifier.DefaultMasterVerifier
 import viper.silver.cfg.silver.SilverCfg
@@ -230,7 +230,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     val failures =
       results.flatMap(r => r :: r.allPrevious)
-             .collect{ case f: Failure => f} /* Ignore successes */
+             .collect{ case f: Failure => f } /* Ignore successes */
              .sortBy(_.message.pos match { /* Order failures according to source position */
                 case pos: ast.HasLineColumn => (pos.line, pos.column)
                 case _ => (-1, -1)
