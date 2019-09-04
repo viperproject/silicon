@@ -17,9 +17,9 @@ import viper.silicon.state.terms.{SortDecl, sorts}
 trait PHeapsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 
 class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
-                                            symbolConverter: SymbolConverter,
-                                            termConverter: TermConverter[String, String, String],
-                                            config: Config)
+                               symbolConverter: SymbolConverter,
+                               termConverter: TermConverter[String, String, String],
+                               config: Config)
     extends PHeapsContributor[sorts.FieldValueFunction, String, String] {
 
   /* PreambleBlock = Comment x Lines */
@@ -44,11 +44,18 @@ class DefaultPHeapsContributor(preambleReader: PreambleReader[String, String],
     val pArgs = (p.formalArgs map (a => p.name + "_" + a.name)).mkString(" ")
     val argSorts = (p.formalArgs map (a => termConverter.convert(symbolConverter.toSort(a.typ)))).mkString(" ")
     val id = p.name
+    val pLoc = if (p.formalArgs.length > 0) {
+      "(PHeap.loc_" + p.name + " " + pArgs + ")"
+    } else {
+      "PHeap.loc_" + p.name
+    }
+
     Map(
       "$PRD$" -> id,
       "$PRD_ARGS_S$" -> argSorts,
       "$PRD_ARGS_Q$" -> pArgs_q,
       "$PRD_ARGS$" -> pArgs,
+      "$PRD_LOC$" -> pLoc,
     )
   }
 

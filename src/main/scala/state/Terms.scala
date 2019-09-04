@@ -1683,30 +1683,16 @@ object Second extends (Term => Term) {
 }
 
 /* PHeaps */
-case class PHeapCombine(h1: Term, h2: Term) extends Term {
-  val sort = sorts.PHeap
-}
 
-case class PHeapLookupField(field: String, sort: Sort, h: Term, at: Term) extends Term {}
-case class PHeapLookupPredicate(predicate: String, h: Term, args: Seq[Term]) extends Term {
-  val sort = sorts.PHeap
-}
+sealed trait PHeapTerm extends Term { override val sort = sorts.PHeap }
 
-case class PHeapRemovePredicate(predicate: String, h: Term, args: Seq[Term]) extends Term {
-  val sort = sorts.PHeap
-}
-
-case class PHeapSingletonField(field: String, x: Term, v: Term) extends Term {
-  val sort = sorts.PHeap
-}
-
-case class PHeapSingletonPredicate(predicate: String, args: Seq[Term], h: Term) extends Term {
-  val sort = sorts.PHeap
-}
-
-case class PHeapRestrict(fun: String, snap: Term, args: Seq[Term]) extends Term {
-  val sort = sorts.PHeap
-}
+case class PHeapCombine(h1: Term, h2: Term) extends PHeapTerm
+case class PHeapLookupField(field: String, sort: Sort, h: Term, at: Term) extends Term
+case class PHeapLookupPredicate(predicate: String, h: Term, args: Seq[Term]) extends PHeapTerm
+case class PHeapRemovePredicate(predicate: String, h: Term, args: Seq[Term]) extends PHeapTerm
+case class PHeapSingletonField(field: String, x: Term, v: Term) extends PHeapTerm
+case class PHeapSingletonPredicate(predicate: String, args: Seq[Term], h: Term) extends PHeapTerm
+case class PHeapRestrict(fun: String, snap: Term, args: Seq[Term]) extends PHeapTerm
 
 
 /* Quantified permissions */

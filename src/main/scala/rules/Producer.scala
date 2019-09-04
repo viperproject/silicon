@@ -217,7 +217,6 @@ object producer extends ProductionRules with Immutable {
                 SymbExLogger.currentLog().prepareOtherBranch(impLog)
                 res1}),
               (s2, v2) => {
-                // TODO What here?
                 //v2.decider.assume(`?h` === predef.Emp)
 
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
@@ -257,7 +256,7 @@ object producer extends ProductionRules with Immutable {
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-            val fieldSnap = PHeapLookupField(field.name, v2.symbolConverter.toSort(field.typ),snap ,tRcvr)
+            val fieldSnap = PHeapLookupField(field.name, v2.symbolConverter.toSort(field.typ), snap, tRcvr)
 
             // Learn that `snap` is a field singleton
             v2.decider.assume(Equals(snap, PHeapSingletonField(field.name, tRcvr, fieldSnap)))
@@ -340,7 +339,6 @@ object producer extends ProductionRules with Immutable {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = snap /*sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)*/
 //            v.decider.assume(PermAtMost(tPerm, FullPerm()))
             quantifiedChunkSupporter.produce(
               s1,
@@ -353,7 +351,7 @@ object producer extends ProductionRules with Immutable {
               auxNonGlobals,
               tCond,
               Seq(tRcvr),
-              tSnap,
+              snap,
               tPerm,
               v1
             )(Q)
@@ -368,7 +366,6 @@ object producer extends ProductionRules with Immutable {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = snap/*sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)*/
             quantifiedChunkSupporter.produce(
               s1,
               forall,
@@ -382,7 +379,7 @@ object producer extends ProductionRules with Immutable {
               auxNonGlobals,
               tCond,
               tArgs,
-              tSnap,
+              snap,
               tPerm,
               v1
             )(Q)
@@ -397,7 +394,6 @@ object producer extends ProductionRules with Immutable {
         val qid = MagicWandIdentifier(wand, Verifier.program).toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = snap/*sf(sorts.PredicateSnapFunction(sorts.Snap), v1)*/
             quantifiedChunkSupporter.produce(
               s1,
               forall,
@@ -411,7 +407,7 @@ object producer extends ProductionRules with Immutable {
               auxNonGlobals,
               tCond,
               tArgs,
-              tSnap,
+              snap,
               FullPerm(),
               v1
             )(Q)

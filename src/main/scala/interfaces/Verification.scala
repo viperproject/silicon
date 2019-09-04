@@ -6,7 +6,7 @@
 
 package viper.silicon.interfaces
 
-import viper.silver.verifier.VerificationError
+import viper.silver.verifier.{VerificationError, errors, DummyReason, DummyNode, AbstractErrorReason}
 import viper.silicon.state.terms.Term
 
 /*
@@ -85,3 +85,18 @@ case class Failure/*[ST <: Store[ST],
 
   override lazy val toString = message.readableMessage
 }
+
+object UnsupportedInputReason extends AbstractErrorReason {
+  val id = "unsupported input"
+  val readableMessage = "unsupported input"
+  val offendingNode = DummyNode
+  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = UnsupportedInputReason
+}
+
+object UnsupportedInput {
+  def apply() = new Failure(new errors.Internal(
+    DummyNode,
+    UnsupportedInputReason
+  ))
+}
+

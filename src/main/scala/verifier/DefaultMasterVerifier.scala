@@ -150,6 +150,13 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     Verifier.program = program
 
+    if((program.methods ++ program.functions ++ program.predicates).map(x => {
+      val sCheck = createInitialState(x, program)
+      isSupported(sCheck)
+    }).exists(!_)) {
+      return List(UnsupportedInput())
+    }
+
     predSnapGenerator.setup(program) // TODO: Why did Nadja put this here?
 
 
@@ -179,7 +186,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
-      val results = functionsSupporter.verify(createInitialState(function, program), function)
+      val results = functionsSupporter.verify(createInitialState(function, program)
+, function)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -248,6 +256,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
      ++ predicateVerificationResults
      ++ methodVerificationResults)
   }
+
+  private def isSupported(s: State) : Boolean = s.qpFields.isEmpty && s.qpPredicates.isEmpty && s.qpMagicWands.isEmpty
 
   private def createInitialState(member: ast.Member, program: ast.Program): State = {
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))

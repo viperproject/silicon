@@ -209,7 +209,13 @@ class TermToSMTLib2Converter
     /* PHeaps */
 
     case PHeapLookupField(f, _, h, x) => parens(text("PHeap.lookup_") <> f <+> render(h) <+> render(x))
-    case PHeapLookupPredicate(p, h, args) => parens(text("PHeap.lookup_") <> p <+> render(h) <+> parens(text("PHeap.loc_") <> p <+> args.map(a => convert(a)).mkString(" ")))
+    case PHeapLookupPredicate(p, h, args) => parens(text("PHeap.lookup_") <> p <+> render(h) <+> (
+      if (args.length > 0) {
+        parens(text("PHeap.loc_") <> p <+> args.map(a => convert(a)).mkString(" "))
+      } else {
+        text("PHeap.loc_") <> p
+      }
+    ))
     case PHeapRemovePredicate(p, h, args) => parens(text("PHeap.remove_") <> p <+> render(h) <+> args.map(a => convert(a)).mkString(" "))
     case PHeapCombine(h1,h2) => parens(text("PHeap.combine") <+> render(h1) <+> render(h2) )
     case PHeapSingletonField(f, x, v) => parens(text("PHeap.singleton_") <> f <+> render(x) <+> render(v))
