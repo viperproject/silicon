@@ -102,7 +102,7 @@ class ErrorMessageTests extends FunSuite {
          * error back-transformer saying that `n` is to be reported.
          */
         val (pos, info, _) = n.getPrettyMetadata
-        c.c(l).meta = ((pos, info, NodeTrafo(n)))
+        (c.c(l).meta = ((pos, info, NodeTrafo(n))), c)
 
     }, Map.empty[Exp, Exp])
 
@@ -129,7 +129,7 @@ class ErrorMessageTests extends FunSuite {
         val context2 = new PartialContextC[Node, Map[Exp, Exp]](replacer2)
         val inPosts = mDecl.posts.map(replaceStrategy.execute[Exp](_, context2)).map(x => Inhale(x)(x.pos, x.info, postError(x, mDecl)))
 
-        Seqn(exPres ++ inPosts, Seq())()
+        (Seqn(exPres ++ inPosts, Seq())(), a)
     }) traverse Traverse.Innermost
 
     files foreach (executeTest(filePrefix, _, strategy, frontend))
