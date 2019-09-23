@@ -12,7 +12,6 @@ stats/
 bin/**
 tmp_*
 tmp/
-viper_tutorial_examples/
 utils/assembly/silicon.jar
 utils/scripts/z3_tidy.jar
 utils/tidy_smtlib/tidy_smtlib.jar
@@ -20,3 +19,4 @@ utils/scripts/tidy_smtlib.jar
 silicon_classpath.txt
 lib/
 silver
+viper_tutorial_examples/
