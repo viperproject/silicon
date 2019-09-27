@@ -516,6 +516,19 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
+  validateOpt(writeLogFile, numberOfParallelVerifiers) {
+    case (Some(false), _) =>
+      Right(Unit)
+    case (Some(true), Some(n)) =>
+      if (n == 1)
+        Right(Unit)
+      else
+        Left(  s"Option ${writeLogFile.name} requires setting "
+          + s"${numberOfParallelVerifiers.name} to 1")
+    case other =>
+      sys.error(s"Unexpected combination: $other")
+  }
+
   verify()
 }
 

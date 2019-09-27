@@ -241,7 +241,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
 
-    if (config.ideModeAdvanced()) {
+    if (config.ideModeAdvanced() || config.writeLogFile()) {
       reporter report ExecutionTraceReport(SymbExLogger.memberList,
                                            this.axiomsAfterAnalysis().toList,
                                            this.postConditionAxioms().toList)

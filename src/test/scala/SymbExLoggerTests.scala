@@ -53,7 +53,7 @@ class SymbExLoggerTests extends SilSuite {
     var args =
       commandLineArguments ++
         Silicon.optionsFromScalaTestConfigMap(configMap)
-    args = args ++ Seq("--disableCaching", "--ideModeAdvanced", "--numberOfParallelVerifiers", "1"/*, "--enableMoreCompleteExhale"*/)
+    args = args ++ Seq("--disableCaching", "--writeLogFile", "--numberOfParallelVerifiers", "1"/*, "--enableMoreCompleteExhale", "--logConfig", "../logConfig.json"*/)
     val reporter = NoopReporter
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
     val silicon = Silicon.fromPartialCommandLineArguments(args, reporter, debugInfo)

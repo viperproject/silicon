@@ -74,7 +74,7 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
     var args =
       commandLineArguments ++
         Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap.getOrElse("silicon", Map()))
-    args = args ++ Seq("--disableCaching", "--ideModeAdvanced", "--numberOfParallelVerifiers", "1"/*, "--enableMoreCompleteExhale"*/)
+    args = args ++ Seq("--disableCaching", "--writeLogFile"/*, "--timeout", "1000"*/, "--numberOfParallelVerifiers", "1"/*, "--enableMoreCompleteExhale"*/)
     val reporter = SymbExReportFileReporter(targetDirName, ouputDirName)
     // val reporter = NoopReporter
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil

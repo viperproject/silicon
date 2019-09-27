@@ -16,7 +16,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.{Prover, Unsat}
 import viper.silicon.logger.SymbExLogger
-import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
+import viper.silicon.logger.records.data.{CommentRecord, DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.{Verifier, VerifierComponent}
@@ -147,13 +147,19 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Assumption scope handling */
 
     def pushScope() {
+      //val commentRecord = new CommentRecord("push", null, null)
+      //val sepIdentifier = SymbExLogger.currentLog().openScope(commentRecord)
       pathConditions.pushScope()
       z3.push()
+      //SymbExLogger.currentLog().closeScope(sepIdentifier)
     }
 
     def popScope() {
+      //val commentRecord = new CommentRecord("pop", null, null)
+      //val sepIdentifier = SymbExLogger.currentLog().openScope(commentRecord)
       z3.pop()
       pathConditions.popScope()
+      //SymbExLogger.currentLog().closeScope(sepIdentifier)
     }
 
     def setCurrentBranchCondition(t: Term) {

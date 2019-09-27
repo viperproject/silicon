@@ -234,13 +234,11 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
   private def getModel(): Unit = {
-    /*
     if (Verifier.config.ideModeAdvanced()) {
       writeLine("(get-model)")
       val model = readModel().trim()
       println(model + "\r\n")
     }
-     */
   }
 
   private def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
