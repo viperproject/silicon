@@ -18,7 +18,7 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
 
   def renderMember(member: SymbLog): String = {
     // val filteredLog = filterEmptyScopes(member.log)
-    toSimpleTree(member.log, 0)
+    toSimpleTree(member.log, 0, 0)
   }
 
   /*
@@ -60,16 +60,24 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     }
   }
 
-  private def toSimpleTree(log: List[SymbolicRecord], n: Int): String = {
+  /**
+    *
+    * @param log
+    * @param minN specifies the minimal indentation level; this is necessary to ignore certain close scope records
+    *             on a branch in order records on the branch have a higher indentation level than the branch indicator
+    * @param n
+    * @return
+    */
+  private def toSimpleTree(log: List[SymbolicRecord], minN: Int, n: Int): String = {
     var res = ""
     var indentLevel = n
     for (record <- log) {
       record match {
         case os: OpenScopeRecord => indentLevel = indentLevel + 1
-        case cs: CloseScopeRecord => indentLevel = indentLevel - 1
-        case br: BranchingRecord => res = res + toSimpleTree(br, indentLevel)
-        case jr: JoiningRecord => res = res + toSimpleTree(jr, indentLevel)
-        case dr: DataRecord => res = res + toSimpleTree(dr, indentLevel)
+        case cs: CloseScopeRecord => indentLevel = Math.max(minN, indentLevel - 1)
+        case br: BranchingRecord => res = res + toSimpleTree(br, minN, indentLevel)
+        case jr: JoiningRecord => res = res + toSimpleTree(jr, minN, indentLevel)
+        case dr: DataRecord => res = res + toSimpleTree(dr, minN, indentLevel)
       }
     }
     res
@@ -83,12 +91,12 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     indent
   }
 
-  private def toSimpleTree(dr: DataRecord, n: Int): String = {
+  private def toSimpleTree(dr: DataRecord, minN: Int, n: Int): String = {
     val indent = getIndent(n)
     indent + dr.toString() + "\n"
   }
 
-  private def toSimpleTree(br: BranchingRecord, n: Int): String = {
+  private def toSimpleTree(br: BranchingRecord, minN: Int, n: Int): String = {
     val indent = getIndent(n)
     var res = ""
     val branches = br.getBranches()
@@ -102,7 +110,7 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
       val branch = branches(branchIndex)
       if (br.isReachable(branchIndex)) {
         res = res + getIndent(n + 1) + "comment: Reachable\n"
-        res = res + toSimpleTree(branch, n + 1)
+        res = res + toSimpleTree(branch, n + 1, n + 1)
       } else {
         res = res + getIndent(n + 1) + "comment: Unreachable\n"
       }
@@ -110,7 +118,7 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     res
   }
 
-  private def toSimpleTree(jr: JoiningRecord, n: Int): String = {
+  private def toSimpleTree(jr: JoiningRecord, minN: Int, n: Int): String = {
     getIndent(n) + "Join\n"
   }
 }

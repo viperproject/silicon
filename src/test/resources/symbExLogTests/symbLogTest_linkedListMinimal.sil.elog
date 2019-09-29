@@ -73,60 +73,60 @@ method insert
               comment: Unreachable
             Branch $t@12@01 == Null:
               comment: Reachable
-    Branch 1:
-      comment: Reachable
-      Join
-        Branch $t@8@01 == Null:
-          comment: Reachable
-        Branch $t@8@01 != Null:
-          comment: Reachable
-          Join
-            Branch elem@4@01 <= $t@10@01:
-              comment: Reachable
-            Branch !(elem@4@01 <= $t@10@01):
-              comment: Reachable
-      Branch !($t@8@01 == Null || elem@4@01 <= $t@10@01):
+      Branch 1:
         comment: Reachable
-      Branch $t@8@01 == Null || elem@4@01 <= $t@10@01:
-        comment: Reachable
-    Branch 2:
-      comment: Reachable
-      Join
-        Branch $t@8@01 == Null:
+        Join
+          Branch $t@8@01 == Null:
+            comment: Reachable
+          Branch $t@8@01 != Null:
+            comment: Reachable
+            Join
+              Branch elem@4@01 <= $t@10@01:
+                comment: Reachable
+              Branch !(elem@4@01 <= $t@10@01):
+                comment: Reachable
+        Branch !($t@8@01 == Null || elem@4@01 <= $t@10@01):
           comment: Reachable
-        Branch $t@8@01 != Null:
+        Branch $t@8@01 == Null || elem@4@01 <= $t@10@01:
           comment: Reachable
-          Join
-            Branch elem@4@01 <= $t@10@01:
-              comment: Reachable
-            Branch !(elem@4@01 <= $t@10@01):
-              comment: Reachable
-      Branch $t@8@01 == Null || elem@4@01 <= $t@10@01:
+      Branch 2:
         comment: Reachable
-      Branch !($t@8@01 == Null || elem@4@01 <= $t@10@01):
-        comment: Reachable
+        Join
+          Branch $t@8@01 == Null:
+            comment: Reachable
+          Branch $t@8@01 != Null:
+            comment: Reachable
+            Join
+              Branch elem@4@01 <= $t@10@01:
+                comment: Reachable
+              Branch !(elem@4@01 <= $t@10@01):
+                comment: Reachable
+        Branch $t@8@01 == Null || elem@4@01 <= $t@10@01:
+          comment: Reachable
+        Branch !($t@8@01 == Null || elem@4@01 <= $t@10@01):
+          comment: Reachable
     Branch $t@8@01 == Null:
       comment: Reachable
-    Branch 1:
-      comment: Reachable
-      Join
+      Branch 1:
+        comment: Reachable
+        Join
+          Branch $t@8@01 == Null:
+            comment: Reachable
+          Branch $t@8@01 != Null:
+            comment: Reachable
+        Branch $t@8@01 != Null:
+          comment: Unreachable
+        Branch $t@8@01 == Null:
+          comment: Reachable
+      Branch 2:
+        comment: Reachable
+        Join
+          Branch $t@8@01 == Null:
+            comment: Reachable
+          Branch $t@8@01 != Null:
+            comment: Reachable
         Branch $t@8@01 == Null:
           comment: Reachable
         Branch $t@8@01 != Null:
-          comment: Reachable
-      Branch $t@8@01 != Null:
-        comment: Unreachable
-      Branch $t@8@01 == Null:
-        comment: Reachable
-    Branch 2:
-      comment: Reachable
-      Join
-        Branch $t@8@01 == Null:
-          comment: Reachable
-        Branch $t@8@01 != Null:
-          comment: Reachable
-      Branch $t@8@01 == Null:
-        comment: Reachable
-      Branch $t@8@01 != Null:
-        comment: Unreachable
+          comment: Unreachable
 

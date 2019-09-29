@@ -10,6 +10,8 @@ import java.nio.file.{Files, Path, Paths}
 
 import spray.json._
 import LogConfigProtocol._
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.logger.SymbExLogger.getRecordConfig
 import viper.silicon.logger.records.SymbolicRecord
@@ -35,7 +37,7 @@ import scala.util.{Failure, Success, Try}
   * ================================
   * SymbExLogger Usage
   * ================================
-  * The SymbExLogger has to be enabled by passing `--ideModeAdvanced` to Silicon (which in turn
+  * The SymbExLogger has to be enabled by passing `--ideModeAdvanced` or `--writeLogFile` to Silicon (which in turn
   * requires numberOfParallelVerifiers to be 1).
   * Unless otherwise specified, the default logConfig will be used (viper.silicon.logger.LogConfig.default()):
   * All logged records will be included in the report, but store, heap, and path conditions will be omitted.
@@ -258,7 +260,7 @@ object SymbExLogger {
     * @param c Config of Silicon.
     */
   def setConfig(c: Config) {
-    setEnabled(c.ideModeAdvanced())
+    setEnabled(c.ideModeAdvanced() || c.writeLogFile())
     logConfig = parseLogConfig(c)
   }
 
@@ -302,10 +304,13 @@ object SymbExLogger {
     uidCounter = 0
     filePath = null
     logConfig = LogConfig.default()
+    prevSmtStatistics = new Map()
   }
 
   def resetMemberList() {
     memberList = List[SymbLog]()
+    // or reset by calling it from Decider.reset
+    prevSmtStatistics = new Map()
   }
 
   /**
@@ -332,6 +337,9 @@ object SymbExLogger {
     val prevValDouble = prevSmtStatistics.get(pair._1) match {
       case Some(value) => toDouble(value)
       case _ => Some(0.0) // value not found
+    }
+    if (curValInt.contains(143)) {
+      val i = 0
     }
     (curValInt, prevValInt, curValDouble, prevValDouble) match {
       case (Some(curInt), Some(prevInt), _, _) => (pair._1, Some((curInt - prevInt).toString))
@@ -365,6 +373,9 @@ object SymbExLogger {
   */
 class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 
+  val logger: Logger =
+    Logger(LoggerFactory.getLogger(s"${this.getClass.getName}"))
+
   /** top level log entries for this member; these log entries were recorded consecutively without branching;
     * in case branching occured, one of these records is a BranchingRecord with all branches as field attached to it */
   var log: List[SymbolicRecord] = List[SymbolicRecord]()
@@ -374,6 +385,11 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
   /** if a record was ignored due to the logConfig, its ID is tracked here and corresponding open and close scope
     * records will be ignored too */
   var ignoredDataRecords: Set[Int] = Set()
+
+  /**
+    * indicates whether this member's close was already closed
+    */
+  private var isClosed: Boolean = false
 
   // Maps macros to their body
   private var _macros = Map[App, Term]()
@@ -386,8 +402,12 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
   }
   openScope(main)
 
-  private def appendLog(r: SymbolicRecord): Unit = {
-    if (branchingStack.isEmpty) {
+  private def appendLog(r: SymbolicRecord, ignoreBranchingStack: Boolean = false): Unit = {
+    if (isClosed) {
+      logger warn "ignoring record insertion to an already closed SymbLog instance"
+      return
+    }
+    if (branchingStack.isEmpty || ignoreBranchingStack) {
       log = log :+ r
     } else {
       branchingStack.head.appendLog(r)
@@ -421,15 +441,16 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
   /**
     * Appends a scoping record to the log unless it's referenced data record is ignored
     * @param s non-null scoping record
+    * @param ignoreBranchingStack true if the record should always be inserted in the root level
     * @return id of the scoping record
     */
   @elidable(INFO)
-  private def insert(s: ScopingRecord): Int = {
+  private def insert(s: ScopingRecord, ignoreBranchingStack: Boolean = false): Int = {
     s.id = SymbExLogger.freshUid()
     if (!ignoredDataRecords.contains(s.refId)) {
       // the corresponding data record is not ignored
       s.timeMs = System.currentTimeMillis()
-      appendLog(s)
+      appendLog(s, ignoreBranchingStack)
     }
     s.id
   }
@@ -503,8 +524,13 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     * Ends the scope of the member (i.e. main) by inserting a corresponding close scope record into the log
     */
   def closeMemberScope(): Unit = {
+    if (isClosed) {
+      return
+    }
     val closeRecord = new CloseScopeRecord(main.id)
-    insert(closeRecord)
+    // always insert this close scope record on the root log instead of at the correct place depending on branching stack:
+    insert(closeRecord, ignoreBranchingStack = true)
+    isClosed = true
   }
 
   /** Record the last prover query that failed.
