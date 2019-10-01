@@ -122,7 +122,7 @@ case class SymbExReportFileReporter(targetDirName: String, ouputDirName: Option[
 
   def report(msg: Message): Unit = {
     msg match {
-      case ExecutionTraceReport(members: List[SymbLog], axioms: List[Term], functionPostAxioms: List[Term]) => {
+      case ExecutionTraceReport(members: Seq[SymbLog], axioms: List[Term], functionPostAxioms: List[Term]) => {
         val targetPath = Paths.canonize(targetDirName)
         val isFileInTarget = Paths.isInSubDirectory(targetPath, SymbExLogger.filePath.toFile)
         if (!isFileInTarget) {
