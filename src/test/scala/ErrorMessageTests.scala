@@ -102,7 +102,8 @@ class ErrorMessageTests extends FunSuite {
          * error back-transformer saying that `n` is to be reported.
          */
         val (pos, info, _) = n.getPrettyMetadata
-        c.c(l).duplicateMeta((pos, info, NodeTrafo(n)))
+        (c.c(l).meta = ((pos, info, NodeTrafo(n))), c)
+
     }, Map.empty[Exp, Exp])
 
     val preError = (m: MethodCall) => ErrTrafo({
@@ -128,7 +129,7 @@ class ErrorMessageTests extends FunSuite {
         val context2 = new PartialContextC[Node, Map[Exp, Exp]](replacer2)
         val inPosts = mDecl.posts.map(replaceStrategy.execute[Exp](_, context2)).map(x => Inhale(x)(x.pos, x.info, postError(x, mDecl)))
 
-        Seqn(exPres ++ inPosts, Seq())()
+        (Seqn(exPres ++ inPosts, Seq())(), a)
     }) traverse Traverse.Innermost
 
     files foreach (executeTest(filePrefix, _, strategy, frontend))
@@ -145,7 +146,15 @@ class ErrorMessageTests extends FunSuite {
     val transformedProgram = strategy.execute[Program](program)
     val transformedResult = tests.verifyProgram(transformedProgram, frontend)
 
-    assert(transformedResult.toString == referenceResult.toString, "Files are not equal")
+    import viper.silver.verifier.Failure
+
+    var result = referenceResult == transformedResult
+
+    if (!result && referenceResult.isInstanceOf[Failure] && transformedResult.isInstanceOf[Failure] &&
+        referenceResult.asInstanceOf[Failure].errors.size == transformedResult.asInstanceOf[Failure].errors.size)
+      result = referenceResult.asInstanceOf[Failure].errors.zip(transformedResult.asInstanceOf[Failure].errors).forall(tuple => tuple._1.fullId == tuple._2.fullId)
+
+    assert(result, "Files are not equivalent after transformation")
   }
 }
 

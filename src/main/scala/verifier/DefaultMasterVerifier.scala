@@ -18,6 +18,7 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.reporting.condenseToViperResult
+import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
@@ -69,7 +70,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateSnapFunctionsContributor, magicWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
-    _verificationPoolManager
+    _verificationPoolManager,
+    MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
   )
 
   /* Lifetime */
@@ -157,7 +159,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     allProvers.comment("Started: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()) /*bookkeeper.formattedStartTime*/)
     allProvers.comment("Silicon.version: " + Silicon.version)
-    allProvers.comment(s"Input file: ${config.inputFile.getOrElse("<unknown>")}")
+    allProvers.comment(s"Input file: ${Verifier.inputFile.getOrElse("<unknown>")}")
     allProvers.comment(s"Verifier id: $uniqueId")
     allProvers.comment("-" * 60)
     allProvers.comment("Begin preamble")

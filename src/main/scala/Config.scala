@@ -6,7 +6,6 @@
 
 package viper.silicon
 
-import java.io.File
 import java.nio.file.{Path, Paths}
 import scala.util.Properties._
 import org.rogach.scallop._
@@ -139,21 +138,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   private lazy val defaultStatisticsFile = Paths.get(tempDirectory(), defaultRawStatisticsFile)
 
-  def showStatistics: ScallopOption[(Sink, String)] = rawShowStatistics map {
-    case (Sink.File, fileName) =>
-      val newFilename =
-        fileName.toLowerCase match {
-          case "$infile" =>
-            inputFile.map(f =>
-              common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some("json")).toPath
-            ).getOrElse(defaultStatisticsFile)
-             .toString
-          case _ => fileName
-        }
-
-      (Sink.File, newFilename)
-    case other => other
-  }
+//  def showStatistics: ScallopOption[(Sink, String)] = rawShowStatistics map {
+//    case (Sink.File, fileName) =>
+//      val newFilename =
+//        fileName.toLowerCase match {
+//          case "$infile" =>
+//            inputFile.map(f =>
+//              common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some("json")).toPath
+//            ).getOrElse(defaultStatisticsFile)
+//             .toString
+//          case _ => fileName
+//        }
+//
+//      (Sink.File, newFilename)
+//    case other => other
+//  }
 
   val disableSubsumption = opt[Boolean]("disableSubsumption",
     descr = "Don't add assumptions gained by verifying an assert statement",
@@ -340,8 +339,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = false
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
-
-  var inputFile: Option[Path] = None
 
   def z3LogFile(suffix: String = ""): Path = rawZ3LogFile() match {
     case UserValue(logfile) =>
