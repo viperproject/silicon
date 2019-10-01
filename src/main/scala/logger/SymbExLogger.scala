@@ -193,8 +193,8 @@ import scala.util.{Failure, Success, Try}
   */
 
 object SymbExLogger {
-  /** List of logged Method/Predicates/Functions. **/
-  var memberList = List[SymbLog]()
+  /** Collection of logged Method/Predicates/Functions. **/
+  var memberList = Seq[SymbLog]()
   private var uidCounter = 0
 
   var enabled = false
@@ -208,9 +208,9 @@ object SymbExLogger {
 
   def getRecordConfig(d: DataRecord): Option[RecordConfig] = {
     for (rc <- logConfig.recordConfigs) {
-      if (rc.kind.equals(d.toTypeString())) {
+      if (rc.kind.equals(d.toTypeString)) {
         rc.value match {
-          case Some(value) => if (value.equals(d.toSimpleString())) return Some(rc)
+          case Some(value) => if (value.equals(d.toSimpleString)) return Some(rc)
           case _ => return Some(rc)
         }
       }
@@ -378,7 +378,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 
   /** top level log entries for this member; these log entries were recorded consecutively without branching;
     * in case branching occured, one of these records is a BranchingRecord with all branches as field attached to it */
-  var log: List[SymbolicRecord] = List[SymbolicRecord]()
+  var log: Vector[SymbolicRecord] = Vector[SymbolicRecord]()
   /** this stack keeps track of BranchingRecords while adding records to the log; as soon as all branches of a
     * BranchingRecord are done, logging has to switch back to the previous BranchingRecord */
   var branchingStack: List[BranchingRecord] = List[BranchingRecord]()

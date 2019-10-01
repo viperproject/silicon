@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 package viper.silicon.logger.records.data
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -12,7 +18,5 @@ class WellformednessCheckRecord(v: Seq[ast.Exp], s: State, p: PathConditionStack
   val state: State = s
   val pcs: InsertionOrderedSet[Term] = if (p != null) p.assumptions else null
 
-  override def toTypeString(): String = {
-    "WellformednessCheck"
-  }
+  override val toTypeString: String = "WellformednessCheck"
 }

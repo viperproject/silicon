@@ -103,12 +103,11 @@ class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopRep
 
       comparisonResult match {
         case cf: ComparisonFailed => {
-          var errorMsg = "Unit Test failed, expected output "
-          errorMsg = errorMsg + "does not match actual output. "
-          errorMsg = errorMsg + "First occurrence at line " + cf.lineNumber + ".\n"
-          errorMsg = errorMsg + "Compared Files:\n"
-          errorMsg = errorMsg + "expected: " + expectedPath.toString() + "\n"
-          errorMsg = errorMsg + "actual:   " + actualPath.toString() + "\n"
+          val errorMsg = s"Unit Test failed, expected output " +
+            s"does not match actual output. First occurrence at line ${cf.lineNumber}.\n" +
+            s"Compared Files:\n" +
+            s"expected: ${expectedPath.toString()}\n" +
+            s"actual:   ${actualPath.toString()}\n"
           Seq(new SymbExLogUnitTestError(errorMsg))
         }
         case _ => Nil
@@ -181,11 +180,11 @@ class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopRep
 }
 
 case class SymbExLogUnitTestError(msg: String) extends AbstractError {
-  def pos: Position = ast.NoPosition
+  val pos: Position = ast.NoPosition
 
-  def fullId = "symbexlogunittest.error"
+  val fullId = "symbexlogunittest.error"
 
-  def readableMessage: String = msg
+  val readableMessage: String = msg
 }
 
 case class ComparisonFailed(lineNumber: Int) extends ComparisonResult

@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 package viper.silicon.logger.records.data
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -20,11 +26,11 @@ trait DataRecord extends SymbolicRecord {
   // TODO: Oops.
   val pcs: InsertionOrderedSet[Term]
 
-  override def toString(): String = {
-    toTypeString() + " " + toSimpleString()
+  override lazy val toString: String = {
+    s"${toTypeString} ${toSimpleString}"
   }
 
-  override def toSimpleString(): String = {
+  override lazy val toSimpleString: String = {
     if (value != null) value.toString()
     else "null"
   }

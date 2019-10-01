@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 package viper.silicon.logger.writer
 
 import spray.json.{JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsTrue, JsValue}
@@ -61,7 +67,7 @@ object SymbExLogReportWriter {
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
         "cond" -> cond.map(TermWriter.toJSON).getOrElse(JsNull),
         "receiver" -> receiver.map(TermWriter.toJSON).getOrElse(JsNull),
-        "hints" -> (if (hints != Nil) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
+        "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
     case QuantifiedPredicateChunk(id, vars, psf, perm, invs, cond, singletonArgs, hints) =>
@@ -74,7 +80,7 @@ object SymbExLogReportWriter {
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
         "cond" -> cond.map(TermWriter.toJSON).getOrElse(JsNull),
         "singleton_args" -> singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).getOrElse(JsNull),
-        "hints" -> (if (hints != Nil) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
+        "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
     case QuantifiedMagicWandChunk(id, vars, wsf, perm, invs, cond, singletonArgs, hints) =>
@@ -87,7 +93,7 @@ object SymbExLogReportWriter {
         "invs" -> invs.map(inverseFunctionsToJSON).getOrElse(JsNull),
         "cond" -> cond.map(TermWriter.toJSON).getOrElse(JsNull),
         "singleton_args" -> singletonArgs.map(as => JsArray(as.map(TermWriter.toJSON).toVector)).getOrElse(JsNull),
-        "hints" -> (if (hints != Nil) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
+        "hints" -> (if (hints.nonEmpty) JsArray(hints.map(TermWriter.toJSON).toVector) else JsNull)
       )
 
     case other => JsObject(
@@ -101,7 +107,7 @@ object SymbExLogReportWriter {
     * @param members A symbolic log per member to translate.
     * @return array of all records.
     */
-  def toJSON(members: List[SymbLog]): JsArray = {
+  def toJSON(members: Seq[SymbLog]): JsArray = {
     val records = members.foldLeft(Vector[JsValue]()) {
       (prevVal: Vector[JsValue], member: SymbLog) => prevVal ++ toJSON(member)
     }
@@ -118,17 +124,17 @@ object SymbExLogReportWriter {
     allRecords.map(toJSON).toVector
   }
 
-  def getAllRecords(list: List[SymbolicRecord]): List[SymbolicRecord] = {
-    list.foldLeft(List[SymbolicRecord]()) (
+  def getAllRecords(logs: Seq[SymbolicRecord]): Seq[SymbolicRecord] = {
+    logs.foldLeft(Vector[SymbolicRecord]()) (
       (prevVal, curVal) => prevVal ++ getAllRecords(curVal))
   }
 
-  def getAllRecords(r: SymbolicRecord): List[SymbolicRecord] = {
+  def getAllRecords(r: SymbolicRecord): Seq[SymbolicRecord] = {
     // return the record itself plus all records that are referenced by it (which only occurs for branching records)
     r match {
-      case br: BranchingRecord => br.getBranches().foldLeft(List[SymbolicRecord](br)) (
+      case br: BranchingRecord => br.getBranches().foldLeft(Vector[SymbolicRecord](br)) (
         (prevVal, curVal) => prevVal ++ getAllRecords(curVal))
-      case _ => List(r)
+      case _ => Vector(r)
     }
   }
 
@@ -156,8 +162,8 @@ object SymbExLogReportWriter {
     var fields: Map[String, JsValue] = new Map()
 
     fields = fields + ("id" -> JsNumber(record.id))
-    fields = fields + ("kind" -> JsString(record.toTypeString()))
-    fields = fields + ("value" -> JsString(record.toSimpleString()))
+    fields = fields + ("kind" -> JsString(record.toTypeString))
+    fields = fields + ("value" -> JsString(record.toSimpleString))
     if (isJoinPoint) {
       fields = fields + ("isJoinPoint" -> JsTrue)
     }
@@ -185,54 +191,27 @@ object SymbExLogReportWriter {
   def toJSON(data: RecordData): Option[JsObject] = {
     var fields: Map[String, JsValue] = new Map()
 
-    data.refId match {
-      case Some(refId) => fields = fields + ("refId" -> JsNumber(refId))
-      case _ =>
-    }
+    data.refId.foreach(refId => fields = fields + ("refId" -> JsNumber(refId)))
 
     if (data.isSmtQuery) {
       fields = fields + ("isSmtQuery" -> JsTrue)
     }
 
-    data.smtStatistics match {
-      case Some(stats) => fields = fields + ("smtStatistics" -> toJSON(stats))
-      case _ =>
-    }
+    data.smtStatistics.foreach(stats => fields = fields + ("smtStatistics" -> toJSON(stats)))
 
-    data.timeMs match {
-      case Some(timeMs) => fields = fields + ("timeMs" -> JsNumber(timeMs))
-      case _ =>
-    }
+    data.timeMs.foreach(timeMs => fields = fields + ("timeMs" -> JsNumber(timeMs)))
 
-    data.pos match {
-      case Some(pos) => fields = fields + ("pos" -> JsString(pos))
-      case _ =>
-    }
+    data.pos.foreach(pos => fields = fields + ("pos" -> JsString(pos)))
 
-    data.lastSMTQuery match {
-      case Some(smtQuery) => fields = fields + ("lastSMTQuery" -> TermWriter.toJSON(smtQuery))
-      case _ =>
-    }
+    data.lastSMTQuery.foreach(smtQuery => fields = fields + ("lastSMTQuery" -> TermWriter.toJSON(smtQuery)))
 
-    data.store match {
-      case Some(store) => fields = fields + ("store" -> toJSON(store))
-      case _ =>
-    }
+    data.store.foreach(store => fields = fields + ("store" -> toJSON(store)))
 
-    data.heap match {
-      case Some(heap) => fields = fields + ("heap" -> toJSON(heap))
-      case _ =>
-    }
+    data.heap.foreach(heap => fields = fields + ("heap" -> toJSON(heap)))
 
-    data.oldHeap match {
-      case Some(oldHeap) => fields = fields + ("oldHeap" -> toJSON(oldHeap))
-      case _ =>
-    }
+    data.oldHeap.foreach(oldHeap => fields = fields + ("oldHeap" -> toJSON(oldHeap)))
 
-    data.pcs match {
-      case Some(pcs) => fields = fields + ("pcs" -> toJSON(pcs))
-      case _ =>
-    }
+    data.pcs.foreach(pcs => fields = fields + ("pcs" -> toJSON(pcs)))
 
     if (fields.isEmpty) None else Some(JsObject(fields))
   }
@@ -264,7 +243,7 @@ object SymbExLogReportWriter {
   }
 
   def toJSON(info: BranchInfo): JsObject = {
-    val records: List[JsNumber] = info.records.map(record => JsNumber(record.id))
+    val records: Seq[JsNumber] = info.records.map(record => JsNumber(record.id))
 
     JsObject(
       "isReachable" -> JsBoolean(info.isReachable),

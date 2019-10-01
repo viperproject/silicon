@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 package viper.silicon.logger.renderer
 
 import viper.silicon.logger.SymbLog
@@ -8,7 +14,7 @@ import viper.silicon.logger.records.structural.{BranchingRecord, JoiningRecord}
 import viper.silicon.state.terms.Not
 
 class SimpleTreeRenderer extends Renderer[SymbLog, String] {
-  def render(memberList: List[SymbLog]): String = {
+  def render(memberList: Seq[SymbLog]): String = {
     var res = ""
     for (m <- memberList) {
       res = res + renderMember(m) + "\n"
@@ -68,7 +74,7 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     * @param n
     * @return
     */
-  private def toSimpleTree(log: List[SymbolicRecord], minN: Int, n: Int): String = {
+  private def toSimpleTree(log: Seq[SymbolicRecord], minN: Int, n: Int): String = {
     var res = ""
     var indentLevel = n
     for (record <- log) {
@@ -84,16 +90,12 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
   }
 
   private def getIndent(indentLevel: Int): String = {
-    var indent = ""
-    for (i <- 1 to indentLevel) {
-      indent = "  " + indent
-    }
-    indent
+    "  " * indentLevel
   }
 
   private def toSimpleTree(dr: DataRecord, minN: Int, n: Int): String = {
     val indent = getIndent(n)
-    indent + dr.toString() + "\n"
+    s"${indent}${dr.toString}\n"
   }
 
   private def toSimpleTree(br: BranchingRecord, minN: Int, n: Int): String = {
@@ -103,22 +105,22 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     for (branchIndex <- branches.indices) {
       if (branches.length <= 2 && br.condition.isDefined) {
         val condition = if (branchIndex == 0)  br.condition.get else Not(br.condition.get)
-        res = res + indent + "Branch " + condition.toString() + ":\n"
+        res = s"${res}${indent}Branch ${condition.toString()}:\n"
       } else {
-        res = res + indent + "Branch " + (branchIndex + 1) + ":\n"
+        res = s"${res}${indent}Branch ${branchIndex + 1}:\n"
       }
       val branch = branches(branchIndex)
       if (br.isReachable(branchIndex)) {
-        res = res + getIndent(n + 1) + "comment: Reachable\n"
+        res = s"${res}${getIndent(n + 1)}comment: Reachable\n"
         res = res + toSimpleTree(branch, n + 1, n + 1)
       } else {
-        res = res + getIndent(n + 1) + "comment: Unreachable\n"
+        res = s"${res}${getIndent(n + 1)}comment: Unreachable\n"
       }
     }
     res
   }
 
   private def toSimpleTree(jr: JoiningRecord, minN: Int, n: Int): String = {
-    getIndent(n) + "Join\n"
+    s"${getIndent(n)}Join\n"
   }
 }
