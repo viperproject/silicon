@@ -815,8 +815,22 @@ object evaluator extends EvaluationRules with Immutable {
       case ast.RangeSeq(e0, e1) => evalBinOp(s, e0, e1, SeqRanged, pve, v)(Q)
 
       case ast.SeqUpdate(e0, e1, e2) =>
-        evals2(s, List(e0, e1, e2), Nil, _ => pve, v)((s1, ts, v1) =>
-          Q(s1, SeqUpdate(ts.head, ts(1), ts(2)), v1))
+        evals2(s, Seq(e0, e1, e2), Nil, _ => pve, v)({ case (s1, Seq(t0, t1, t2), v1) =>
+          if (s1.triggerExp) {
+            Q(s1, SeqUpdate(t0, t1, t2), v1)
+          } else {
+            v1.decider.assert(AtLeast(t1, IntLiteral(0))) {
+              case true =>
+                v1.decider.assert(Less(t1, SeqLength(t0))) {
+                  case true =>
+                    Q(s1, SeqUpdate(t0, t1, t2), v1)
+                  case false =>
+                    Failure(pve dueTo SeqIndexExceedsLength(e0, e1))}
+              case false =>
+                Failure(pve dueTo SeqIndexNegative(e0, e1))
+            }
+          }
+        })
 
       case ast.ExplicitSeq(es) =>
         evals2(s, es, Nil, _ => pve, v)((s1, tEs, v1) => {
