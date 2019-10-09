@@ -233,7 +233,7 @@ object SymbExLogger {
     */
   @elidable(INFO)
   def openMemberScope(member: ast.Member, s: State, pcs: PathConditionStack) {
-    memberList = memberList ++ List(new SymbLog(member, s, pcs))
+    memberList = memberList ++ Seq(new SymbLog(member, s, pcs))
   }
 
   /** Use this method to access the current log, e.g., to access the log of the method
@@ -300,7 +300,7 @@ object SymbExLogger {
     * Only needed when several files are verified together (e.g., sbt test).
     */
   def reset() {
-    memberList = List[SymbLog]()
+    memberList = Seq[SymbLog]()
     uidCounter = 0
     filePath = null
     logConfig = LogConfig.default()
@@ -308,7 +308,7 @@ object SymbExLogger {
   }
 
   def resetMemberList() {
-    memberList = List[SymbLog]()
+    memberList = Seq[SymbLog]()
     // or reset by calling it from Decider.reset
     prevSmtStatistics = new Map()
   }
