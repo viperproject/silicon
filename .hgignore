@@ -19,3 +19,4 @@ utils/scripts/tidy_smtlib.jar
 silicon_classpath.txt
 lib/
 silver
+viper_tutorial_examples/
