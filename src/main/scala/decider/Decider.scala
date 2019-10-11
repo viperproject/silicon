@@ -16,7 +16,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.{Prover, Unsat}
 import viper.silicon.logger.SymbExLogger
-import viper.silicon.logger.records.data.{CommentRecord, DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
+import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.{Verifier, VerifierComponent}
