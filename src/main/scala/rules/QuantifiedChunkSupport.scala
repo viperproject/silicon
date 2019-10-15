@@ -62,9 +62,9 @@ case class InverseFunctions(condition: Term,
          |$linePrefix  invertibles: $invertibles
          |$linePrefix  additionalArguments: $additionalArguments
          |$linePrefix  axiomInversesOfInvertibles:
-         |$linePrefix    $axiomInversesOfInvertibles
+         |$linePrefix    ${axiomInversesOfInvertibles.stringRepresentationWithTriggers}
          |$linePrefix  axiomInvertiblesOfInverses
-         |$linePrefix    $axiomInvertiblesOfInverses
+         |$linePrefix    ${axiomInvertiblesOfInverses.stringRepresentationWithTriggers}
        """.stripMargin
 }
 
@@ -1380,7 +1380,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         condition,
         And(qvarsWithIndices map { case (qvar, idx) => inversesOfFcts(idx) === qvar }))
 
-    val axInvOfFct =
+    val axInvsOfFct =
       userProvidedTriggers match {
         case None =>
           /* No user-provided triggers; use trigger inference to create the quantifier */
@@ -1412,12 +1412,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
             .zip(codomainQVars)
             .map { case (fctOfInvs, r) => fctOfInvs === r }))
 
-    val axFctOfInv =
+    val axFctsOfInvsTriggers: Seq[Trigger] =
+      if (Verifier.config.disableISCTriggers()) Nil else inversesOfCodomains.map(Trigger.apply)
+
+    val axFctsOfInvs =
       v.triggerGenerator.assembleQuantification(
         Forall,
         codomainQVars,
         axFctsOfInvsBody,
-        if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(inversesOfCodomains) :: Nil,
+        axFctsOfInvsTriggers,
         s"$qidPrefix-fctOfInv",
         isGlobal = true,
         v.axiomRewriter)
@@ -1426,8 +1429,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       condition,
       invertibles,
       additionalInvArgs.toVector,
-      axInvOfFct,
-      axFctOfInv,
+      axInvsOfFct,
+      axFctsOfInvs,
       qvars.zip(inverseFunctions)(collection.breakOut))
   }
 

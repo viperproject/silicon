@@ -6,6 +6,7 @@
 
 package viper.silicon
 
+import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
 
@@ -54,6 +55,8 @@ object Silicon {
         }
     }.toSeq
 
+  val dummyInputFilename = "dummy-file-to-prevent-cli-parser-from-complaining-about-missing-file-name.silver"
+
   def fromPartialCommandLineArguments(args: Seq[String],
                                       reporter: Reporter,
                                       debugInfo: Seq[(String, Any)] = Nil)
@@ -61,7 +64,7 @@ object Silicon {
 
     val silicon = new Silicon(reporter, debugInfo)
 
-    silicon.parseCommandLine(args :+ "dummy-file-to-prevent-cli-parser-from-complaining-about-missing-file-name.silver")
+    silicon.parseCommandLine(args :+ dummyInputFilename)
 
     silicon
   }
@@ -158,15 +161,18 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     lifetimeState = LifetimeState.Running
 
-    //bookkeeping for Viper IVE
-//    verifier.bookkeeper.reportInitialProgress(program)
-
     logger.debug(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
-    config.inputFile = program.pos match {
-      case sp: ast.AbstractSourcePosition => Some(sp.file)
-      case _ => None
-    }
+    /* If available, save the filename corresponding to the program under verification in Verifier.inputFile.
+     * See also src/test/scala/SiliconTests.scala, where the analogous happens if Silicon is executed while
+     * running the test suite.
+     *
+     * TODO: Figure out what happens when ViperServer is used. */
+    config.file.foreach(filename => {
+      if (filename != Silicon.dummyInputFilename) {
+        viper.silicon.verifier.Verifier.inputFile = Some(Paths.get(filename))
+      }
+    })
 
     // TODO: Check consistency of cfgs.
     val consistencyErrors = utils.consistency.check(program)
@@ -230,8 +236,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
                 case _ => (-1, -1)
              })
 
-    if (config.showStatistics.isDefined) {
-      sys.error("Implementation missing")
+//    if (config.showStatistics.isDefined) {
 //      val proverStats = verifier.decider.statistics()
 //
 //      verifier.bookkeeper.proverStatistics = proverStats
@@ -250,7 +255,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 //
 //        case _ => /* Should never be reached if the arguments to showStatistics have been validated */
 //      }
-    }
+//    }
 
     failures foreach (f => logFailure(f, s => logger.debug(s)))
     logger.debug("Verification finished in %s with %s error(s)".format(
