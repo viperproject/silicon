@@ -514,7 +514,6 @@ object executor extends ExecutionRules with Immutable {
            | _: ast.If
            | _: ast.Label
            | _: ast.Seqn
-           | _: ast.Constraining
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
     }
 
