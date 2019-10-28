@@ -335,19 +335,6 @@ object executor extends ExecutionRules with Immutable {
         v.decider.assume(ts)
         Q(s1, v)
 
-      case ast.Fresh(vars) =>
-        val (arps, arpConstraints) =
-          vars.map(x => (x, v.decider.freshARP()))
-              .map{case (variable, (value, constrain)) => ((variable, value), constrain)}
-              .unzip
-        val g1 = Store(s.g.values ++ arps)
-          /* It is crucial that the (var -> term) mappings in arps override
-           * already existing bindings for the same vars when they are added
-           * (via ++).
-           */
-        v.decider.assume(arpConstraints)
-        Q(s.copy(g = g1), v)
-
       case inhale @ ast.Inhale(a) => a match {
         case _: ast.FalseLit =>
           /* We're done */
