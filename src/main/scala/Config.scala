@@ -306,6 +306,20 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       scale(rawZ3SaturationTimeoutWeights().beforeRepetition, "before repetition")
   }
 
+  val z3EnableResourceBounds = opt[Boolean]("z3EnableResourceBounds",
+    descr = ("Use Z3's resource bounds instead of timeouts"),
+    default = Some(false),
+    noshort = true,
+    hidden = false
+  )
+
+  val z3ResourcesPerMillisecond = opt[Int]("z3ResourcesPerMillisecond",
+    descr = ("Z3 resources per milliseconds. Is used to convert timeouts to resource bounds."),
+    default = Some(60000), // Moritz Knüsel empirically determined 1600 in his BSc thesis, but when Malte
+    noshort = true,        // used this value, over 20 tests failed.
+    hidden = false
+  )
+
   val tempDirectory = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: ./tmp)",
     default = Some("./tmp"),
