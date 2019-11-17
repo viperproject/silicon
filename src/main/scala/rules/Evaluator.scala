@@ -606,11 +606,13 @@ object evaluator extends EvaluationRules with Immutable {
             val tlqGlobal = tAuxGlobal flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
             val tlq = tAux flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
 
-            v1.decider.prover.comment("Nested auxiliary terms: globals")
+            v1.decider.prover.comment("Nested auxiliary terms: globals (aux)")
             v1.decider.assume(tAuxGlobal)
+            v1.decider.prover.comment("Nested auxiliary terms: globals (tlq)")
             v1.decider.assume(tlqGlobal)
-            v1.decider.prover.comment("Nested auxiliary terms: non-globals")
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals (aux)")
             v1.decider.assume(tAux)
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals (tlq)")
             v1.decider.assume(tlq)
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
