@@ -1,4 +1,4 @@
-import scala.sys.process.Process
+import scala.sys.process.{Process, ProcessLogger}
 import scala.util.Try
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -72,21 +72,23 @@ lazy val silicon = (project in file("."))
       "projectVersion" -> version.value,
       scalaVersion,
       sbtVersion,
-      // TODO: Either make hg a named pair with fields hg.revision/hg.branch,
-      //       or replace by two direct fields, e.g. hgRevision/hgBranch
       BuildInfoKey.action("hg") {
-        val defaults = Seq("<revision>", "<branch>")
+        val hgCommand = "hg id -ib"
 
-        val Seq(revision, branch) =
-          Try(
-            Process("hg id -ib").!!.trim.split(' ').toSeq match {
-              case Seq() => defaults
-              case Seq(rev) => Seq(rev, defaults(1))
-              case Seq(rev, bra, _*) => Seq(rev, bra)
-            }
-          ).getOrElse(defaults)
+        val Seq(revision, branch) = Try({
+          val outputBuffer = new StringBuffer()
 
-        (revision, branch)
+          // Execute Mercurial, record stdout and stderr in outputBuffer, and return the exit code
+          val exitCode =
+            Process(hgCommand, baseDirectory.value).!(ProcessLogger(outputBuffer append _))
+
+          if (exitCode != 0)
+            sys.error(s"'$hgCommand' didn't execute successfully")
+
+          outputBuffer.toString.trim.split(' ').toSeq
+        }).getOrElse(Seq("", ""))
+
+        Map("revision" -> revision, "branch" -> branch)
       }
     ),
     buildInfoPackage := "viper.silicon")
