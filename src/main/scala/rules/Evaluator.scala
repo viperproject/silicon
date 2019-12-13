@@ -1248,7 +1248,7 @@ object evaluator extends EvaluationRules with Immutable {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(fa.field.name))
     val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) { println("domain needed"); None }
+      if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1307,7 +1307,7 @@ object evaluator extends EvaluationRules with Immutable {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(pa.predicateName))
     val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) { println("domain needed"); None }
+      if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1335,7 +1335,7 @@ object evaluator extends EvaluationRules with Immutable {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s.h, MagicWandIdentifier(wand, Verifier.program))
     val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) { println("domain needed"); None }
+      if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
