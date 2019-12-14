@@ -88,7 +88,7 @@ lazy val silicon = (project in file("."))
           outputBuffer.toString.trim.split(' ').toSeq
         }).getOrElse(Seq("", ""))
 
-        Map("revision" -> revision, "branch" -> branch)
+        collection.Map("revision" -> revision, "branch" -> branch)
       }
     ),
     buildInfoPackage := "viper.silicon")
