@@ -605,11 +605,13 @@ object evaluator extends EvaluationRules with Immutable {
             val tlqGlobal = tAuxGlobal flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
             val tlq = tAux flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
 
-            v1.decider.prover.comment("Nested auxiliary terms: globals")
+            v1.decider.prover.comment("Nested auxiliary terms: globals (aux)")
             v1.decider.assume(tAuxGlobal)
+            v1.decider.prover.comment("Nested auxiliary terms: globals (tlq)")
             v1.decider.assume(tlqGlobal)
-            v1.decider.prover.comment("Nested auxiliary terms: non-globals")
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals (aux)")
             v1.decider.assume(tAux)
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals (tlq)")
             v1.decider.assume(tlq)
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
@@ -785,8 +787,22 @@ object evaluator extends EvaluationRules with Immutable {
       case ast.RangeSeq(e0, e1) => evalBinOp(s, e0, e1, SeqRanged, pve, v)(Q)
 
       case ast.SeqUpdate(e0, e1, e2) =>
-        evals2(s, List(e0, e1, e2), Nil, _ => pve, v)((s1, ts, v1) =>
-          Q(s1, SeqUpdate(ts.head, ts(1), ts(2)), v1))
+        evals2(s, Seq(e0, e1, e2), Nil, _ => pve, v)({ case (s1, Seq(t0, t1, t2), v1) =>
+          if (s1.triggerExp) {
+            Q(s1, SeqUpdate(t0, t1, t2), v1)
+          } else {
+            v1.decider.assert(AtLeast(t1, IntLiteral(0))) {
+              case true =>
+                v1.decider.assert(Less(t1, SeqLength(t0))) {
+                  case true =>
+                    Q(s1, SeqUpdate(t0, t1, t2), v1)
+                  case false =>
+                    Failure(pve dueTo SeqIndexExceedsLength(e0, e1))}
+              case false =>
+                Failure(pve dueTo SeqIndexNegative(e0, e1))
+            }
+          }
+        })
 
       case ast.ExplicitSeq(es) =>
         evals2(s, es, Nil, _ => pve, v)((s1, tEs, v1) => {
@@ -1229,7 +1245,7 @@ object evaluator extends EvaluationRules with Immutable {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(fa.field.name))
     val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) { println("domain needed"); None }
+      if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1288,7 +1304,7 @@ object evaluator extends EvaluationRules with Immutable {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(pa.predicateName))
     val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) { println("domain needed"); None }
+      if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1316,7 +1332,7 @@ object evaluator extends EvaluationRules with Immutable {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s.h, MagicWandIdentifier(wand, Verifier.program))
     val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) { println("domain needed"); None }
+      if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
