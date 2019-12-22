@@ -22,7 +22,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silicon.utils.toSf
+import viper.silicon.utils.{freshSnap, toSf}
 
 trait FunctionVerificationUnit[SO, SY, AX]
     extends VerifyingPreambleContributor[SO, SY, AX, ast.Function]
@@ -210,7 +210,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         val preMark = decider.setPathConditionMark()
         produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, _) => {
           phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
-            produces(s1, toSf(`?s`), posts, ContractNotWellformed, v)((s2, _) => {
+          // The postcondition must be produced with a fresh snapshot (different from `?s`) because
+          // the postcondition's snapshot structure is most likely different than that of the
+          // precondition
+          produces(s1, freshSnap, posts, ContractNotWellformed, v)((s2, _) => {
             recorders :+= s2.functionRecorder
             Success()})})})
 
