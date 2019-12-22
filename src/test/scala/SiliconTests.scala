@@ -51,7 +51,8 @@ class SiliconTests extends SilSuite {
 
   lazy val verifiers = List(createSiliconInstance())
 
-  val commandLineArguments: Seq[String] = Seq.empty
+  val commandLineArguments: Seq[String] =
+    Seq("--timeout", "300" /* seconds */)
 
   private def createSiliconInstance() = {
     val args =
