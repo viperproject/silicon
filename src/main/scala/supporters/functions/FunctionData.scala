@@ -88,11 +88,12 @@ class FunctionData(val programFunction: ast.Function,
   private[this] var freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   private[this] var freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   private[this] var freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
-  private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
+  private[this] var freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet.empty
+  private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
 
   private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunctions] = freshFieldInvs
   private[functions] def getFreshArps: InsertionOrderedSet[Var] = freshArps.map(_._1)
-  private[functions] def getFreshSymbolsAcrossAllPhases: InsertionOrderedSet[Function] = freshSymbolsAcrossAllPhases
+  private[functions] def getFreshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = freshSymbolsAcrossAllPhases
 
   private[functions] def advancePhase(recorders: Seq[FunctionRecorder]): Unit = {
     assert(0 <= phase && phase <= 1, s"Cannot advance from phase $phase")
@@ -110,16 +111,18 @@ class FunctionData(val programFunction: ast.Function,
     freshArps = mergedFunctionRecorder.freshArps
     freshSnapshots = mergedFunctionRecorder.freshSnapshots
     freshPathSymbols = mergedFunctionRecorder.freshPathSymbols
+    freshMacros = mergedFunctionRecorder.freshMacros
 
-    freshSymbolsAcrossAllPhases ++= freshPathSymbols
-    freshSymbolsAcrossAllPhases ++= freshArps.map(_._1)
-    freshSymbolsAcrossAllPhases ++= freshSnapshots
-    freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(_.inverses)
+    freshSymbolsAcrossAllPhases ++= freshPathSymbols map FunctionDecl
+    freshSymbolsAcrossAllPhases ++= freshArps.map(pair => FunctionDecl(pair._1))
+    freshSymbolsAcrossAllPhases ++= freshSnapshots map FunctionDecl
+    freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(_.inverses map FunctionDecl)
+    freshSymbolsAcrossAllPhases ++= freshMacros
 
     freshSymbolsAcrossAllPhases ++= freshFvfsAndDomains map (fvfDef =>
       fvfDef.sm match {
-        case x: Var => x
-        case App(f: Function, _) => f
+        case x: Var => ConstDecl(x)
+        case App(f: Function, _) => FunctionDecl(f)
         case other => sys.error(s"Unexpected SM $other of type ${other.getClass.getSimpleName}")
       })
 
