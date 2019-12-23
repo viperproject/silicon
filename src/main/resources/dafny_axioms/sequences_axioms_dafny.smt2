@@ -117,6 +117,12 @@
   ($Seq.contains s x)) ($Seq.contains ($Seq.build s v) x)))
   :pattern ( ($Seq.contains ($Seq.build s v) x))
   )))
+(assert (forall ((s $Seq<$S$>) (n Int) ) (!
+  (=>
+    (<= n 0) 
+    (= ($Seq.take s n) $Seq.empty<$S$>))
+  :pattern ( ($Seq.take s n)) ;; [2019-12-23 Malte] Added to resolve Silicon/Silver issue #400/#295
+  )))
 (assert (forall ((s $Seq<$S$>) (n Int) (x $S$) ) (!
   (and
     (=>
@@ -141,6 +147,12 @@
       ($Seq.contains ($Seq.take s n) x)))
   :pattern ( ($Seq.contains ($Seq.take s n) x))
   )))
+(assert (forall ((s $Seq<$S$>) (n Int) ) (!
+  (=>
+    (<= n 0) 
+    (= ($Seq.drop s n) s))
+  :pattern ( ($Seq.drop s n)) ;; [2019-12-23 Malte] Added to resolve Silicon/Silver issue #400/#295
+  )))  
 (assert (forall ((s $Seq<$S$>) (n Int) (x $S$) ) (!
   (and
     (=>
