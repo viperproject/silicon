@@ -117,50 +117,62 @@
   ($Seq.contains s x)) ($Seq.contains ($Seq.build s v) x)))
   :pattern ( ($Seq.contains ($Seq.build s v) x))
   )))
+(assert (forall ((s $Seq<$S$>) (n Int) ) (!
+  (=>
+    (<= n 0) 
+    (= ($Seq.take s n) $Seq.empty<$S$>))
+  :pattern ( ($Seq.take s n)) ;; [2019-12-23 Malte] Added to resolve Silicon/Silver issue #400/#295
+  )))
 (assert (forall ((s $Seq<$S$>) (n Int) (x $S$) ) (!
   (and
     (=>
       ($Seq.contains ($Seq.take s n) x)
       (exists ((i Int) ) (!
         (and
-  (<= 0 i)
-  (< i n)
-  (< i ($Seq.length s))
-  (= ($Seq.index s i) x))
-  :pattern ( ($Seq.index s i))
-  )))
+          (<= 0 i)
+          (< i n)
+          (< i ($Seq.length s))
+          (= ($Seq.index s i) x))
+        :pattern ( ($Seq.index s i))
+      )))
     (=>
       (exists ((i Int) ) (!
         (and
-  (<= 0 i)
-  (< i n)
-  (< i ($Seq.length s))
-  (= ($Seq.index s i) x))
-  :pattern ( ($Seq.index s i))
+          (<= 0 i)
+          (< i n)
+          (< i ($Seq.length s))
+          (= ($Seq.index s i) x))
+          :pattern ( ($Seq.index s i))
       ))
       ($Seq.contains ($Seq.take s n) x)))
   :pattern ( ($Seq.contains ($Seq.take s n) x))
   )))
+(assert (forall ((s $Seq<$S$>) (n Int) ) (!
+  (=>
+    (<= n 0) 
+    (= ($Seq.drop s n) s))
+  :pattern ( ($Seq.drop s n)) ;; [2019-12-23 Malte] Added to resolve Silicon/Silver issue #400/#295
+  )))  
 (assert (forall ((s $Seq<$S$>) (n Int) (x $S$) ) (!
   (and
     (=>
       ($Seq.contains ($Seq.drop s n) x)
       (exists ((i Int) ) (!
         (and
-  (<= 0 n)
-  (<= n i)
-  (< i ($Seq.length s))
-  (= ($Seq.index s i) x))
-  :pattern ( ($Seq.index s i))
-  )))
+          (<= 0 n)
+          (<= n i)
+          (< i ($Seq.length s))
+          (= ($Seq.index s i) x))
+        :pattern ( ($Seq.index s i))
+      )))
     (=>
       (exists ((i Int) ) (!
         (and
-  (<= 0 n)
-  (<= n i)
-  (< i ($Seq.length s))
-  (= ($Seq.index s i) x))
-  :pattern ( ($Seq.index s i))
+          (<= 0 n)
+          (<= n i)
+          (< i ($Seq.length s))
+          (= ($Seq.index s i) x))
+        :pattern ( ($Seq.index s i))
       ))
       ($Seq.contains ($Seq.drop s n) x)))
   :pattern ( ($Seq.contains ($Seq.drop s n) x))
@@ -202,28 +214,48 @@
   )) ($Seq.sameuntil s0 s1 n)))
   :pattern ( ($Seq.sameuntil s0 s1 n))
   )))
-(assert (forall ((s $Seq<$S$>) (n Int) ) (! (=> (<= 0 n) (and
-  (=> (<= n ($Seq.length s)) (= ($Seq.length ($Seq.take s n)) n))
-  (=> (< ($Seq.length s) n) (= ($Seq.length ($Seq.take s n)) ($Seq.length s)))))
+(assert (forall ((s $Seq<$S$>) (n Int) ) (! 
+  (=> 
+    (<= 0 n) 
+    (and
+      (=> 
+        (<= n ($Seq.length s)) 
+        (= ($Seq.length ($Seq.take s n)) n))
+      (=> 
+        (< ($Seq.length s) n) 
+        (= ($Seq.length ($Seq.take s n)) ($Seq.length s)))))
   :pattern ( ($Seq.length ($Seq.take s n)))
   )))
-(assert (forall ((s $Seq<$S$>) (n Int) (j Int) ) (! (=> (and
-  (<= 0 j)
-  (< j n)
-  (< j ($Seq.length s))) (= ($Seq.index ($Seq.take s n) j) ($Seq.index s j)))
+(assert (forall ((s $Seq<$S$>) (n Int) (j Int) ) (! 
+  (=> 
+    (and
+      (<= 0 j)
+      (< j n)
+      (< j ($Seq.length s))) 
+    (= ($Seq.index ($Seq.take s n) j) ($Seq.index s j)))
   :pattern ( ($Seq.index ($Seq.take s n) j))
   :pattern (($Seq.index s j) ($Seq.take s n)) ; [XXX] Added 29-10-2015
 ;  :weight 25
   )))
-(assert (forall ((s $Seq<$S$>) (n Int) ) (! (=> (<= 0 n) (and
-  (=> (<= n ($Seq.length s)) (= ($Seq.length ($Seq.drop s n)) (- ($Seq.length s) n)))
-  (=> (< ($Seq.length s) n) (= ($Seq.length ($Seq.drop s n)) 0))))
+(assert (forall ((s $Seq<$S$>) (n Int) ) (! 
+  (=> 
+    (<= 0 n) 
+    (and
+      (=> 
+        (<= n ($Seq.length s)) 
+        (= ($Seq.length ($Seq.drop s n)) (- ($Seq.length s) n)))
+      (=> 
+        (< ($Seq.length s) n) 
+        (= ($Seq.length ($Seq.drop s n)) 0))))
   :pattern ( ($Seq.length ($Seq.drop s n)))
   )))
-(assert (forall ((s $Seq<$S$>) (n Int) (j Int) ) (! (=> (and
-  (<= 0 n)
-  (<= 0 j)
-  (< j (- ($Seq.length s) n))) (= ($Seq.index ($Seq.drop s n) j) ($Seq.index s (+ j n))))
+(assert (forall ((s $Seq<$S$>) (n Int) (j Int) ) (! 
+  (=> 
+    (and
+      (<= 0 n)
+      (<= 0 j)
+      (< j (- ($Seq.length s) n))) 
+    (= ($Seq.index ($Seq.drop s n) j) ($Seq.index s (+ j n))))
   :pattern ( ($Seq.index ($Seq.drop s n) j))
 ;  :weight 25
   )))
@@ -246,32 +278,57 @@
 ;  :pattern ((= ($Seq.take ($Seq.append s t) ($Seq.length s)) s))
 ;  :pattern (($Seq.drop ($Seq.append s t) ($Seq.length s)))
 ;  )))
-(assert (forall ((s $Seq<$S$>) (i Int) (v $S$) (n Int) ) (! (=> (and
-  (<= 0 i)
-  (< i n)
-  (<= n ($Seq.length s))) (= ($Seq.take ($Seq.update s i v) n) ($Seq.update ($Seq.take s n) i v)))
+(assert (forall ((s $Seq<$S$>) (i Int) (v $S$) (n Int) ) (! 
+  (=> 
+    (and
+      (<= 0 i)
+      (< i n)
+      (<= n ($Seq.length s))) 
+    (= 
+      ($Seq.take ($Seq.update s i v) n) 
+      ($Seq.update ($Seq.take s n) i v)))
   :pattern ( ($Seq.take ($Seq.update s i v) n))
   )))
-(assert (forall ((s $Seq<$S$>) (i Int) (v $S$) (n Int) ) (! (=> (and
-  (<= n i)
-  (< i ($Seq.length s))) (= ($Seq.take ($Seq.update s i v) n) ($Seq.take s n)))
+(assert (forall ((s $Seq<$S$>) (i Int) (v $S$) (n Int) ) (! 
+  (=> 
+    (and
+      (<= n i)
+      (< i ($Seq.length s))) 
+    (= 
+      ($Seq.take ($Seq.update s i v) n)
+      ($Seq.take s n)))
   :pattern ( ($Seq.take ($Seq.update s i v) n))
   )))
-(assert (forall ((s $Seq<$S$>) (i Int) (v $S$) (n Int) ) (! (=> (and
-  (<= 0 n)
-  (<= n i)
-  (< i ($Seq.length s))) (= ($Seq.drop ($Seq.update s i v) n) ($Seq.update ($Seq.drop s n) (- i n) v)))
+(assert (forall ((s $Seq<$S$>) (i Int) (v $S$) (n Int) ) (! 
+  (=> 
+    (and
+      (<= 0 n)
+      (<= n i)
+      (< i ($Seq.length s))) 
+    (= 
+      ($Seq.drop ($Seq.update s i v) n) 
+      ($Seq.update ($Seq.drop s n) (- i n) v)))
   :pattern ( ($Seq.drop ($Seq.update s i v) n))
   )))
-(assert (forall ((s $Seq<$S$>) (i Int) (v $S$) (n Int) ) (! (=> (and
-  (<= 0 i)
-  (< i n)
-  (< n ($Seq.length s))) (= ($Seq.drop ($Seq.update s i v) n) ($Seq.drop s n)))
+(assert (forall ((s $Seq<$S$>) (i Int) (v $S$) (n Int) ) (! 
+  (=> 
+    (and
+      (<= 0 i)
+      (< i n)
+      (< n ($Seq.length s))) 
+    (= 
+      ($Seq.drop ($Seq.update s i v) n) 
+      ($Seq.drop s n)))
   :pattern ( ($Seq.drop ($Seq.update s i v) n))
   )))
-(assert (forall ((s $Seq<$S$>) (v $S$) (n Int) ) (! (=> (and
-  (<= 0 n)
-  (<= n ($Seq.length s))) (= ($Seq.drop ($Seq.build s v) n) ($Seq.build ($Seq.drop s n) v)))
+(assert (forall ((s $Seq<$S$>) (v $S$) (n Int) ) (! 
+  (=> 
+    (and
+      (<= 0 n)
+      (<= n ($Seq.length s))) 
+    (= 
+      ($Seq.drop ($Seq.build s v) n) 
+      ($Seq.build ($Seq.drop s n) v)))
   :pattern ( ($Seq.drop ($Seq.build s v) n))
   )))
 ;(assert (forall ((s $Seq<$S$>) (n Int) ) (! (=> (= n 0) (= ($Seq.drop s n) s))
