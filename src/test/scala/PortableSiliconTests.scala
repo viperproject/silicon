@@ -59,7 +59,9 @@ import viper.silver.verifier.Verifier
 @DoNotDiscover
 class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
 
-  val commandLineArguments: Seq[String] = Seq.empty
+  val commandLineArguments: Seq[String] = Seq(
+    "--disableCatchingExceptions",
+    "--timeout", "180" /* seconds */)
 
   lazy val verifier = {
     val args =
