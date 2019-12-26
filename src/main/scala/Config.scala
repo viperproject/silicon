@@ -320,6 +320,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )
 
+  val z3RandomizeSeeds = opt[Boolean]("z3RandomizeSeeds",
+    descr = ("Set various Z3 random seeds to random values"),
+    default = Some(false),
+    noshort = true,
+    hidden = false
+  )
+
   val tempDirectory = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: ./tmp)",
     default = Some("./tmp"),
