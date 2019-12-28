@@ -14,12 +14,12 @@ import viper.silver.reporter.NoopReporter
 import viper.silver.testing.{SilSuite, StatisticalTestSuite}
 import viper.silver.verifier.Verifier
 
+
 /** This test mechanism is intended for running non-default test suites,
   * in a portable way. Example run command:
   *
   * ```
   * Z3_EXE=z3.exe
-  * BOOGIE_EXE=Boogie.exe
   * sbt "test:runMain
   *      -DSILICONTESTS_TARGET=./target
   *      -DSILICONTESTS_WARMUP=./warmup
