@@ -474,6 +474,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+
+  val enableHavocHack = opt[Boolean]("enableHavocHack",
+    descr = "A Viper method call to havoc_all_R(), where R is a field or predicate, results " +
+            "in Silicon havocking all instances of R. See also Silicon issue #407.",
+    default = Some(false),
+    noshort = true
+  )
+
   /* Option validation */
 
   validateOpt(timeout) {
