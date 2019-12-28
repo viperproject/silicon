@@ -14,17 +14,20 @@ import viper.silver.reporter.NoopReporter
 import viper.silver.testing.{SilSuite, StatisticalTestSuite}
 import viper.silver.verifier.Verifier
 
-/**
-  * This test mechanism is intended for running non-default test suites,
+/** This test mechanism is intended for running non-default test suites,
   * in a portable way. Example run command:
   *
   * ```
-  * Z3_EXE=z3.exe \
-  * BOOGIE_EXE=Boogie.exe \
-  * SILICONTESTS_TARGET=./target \
-  * SILICONTESTS_WARMUP=./warmup \
-  * SILICONTESTS_REPETITIONS=5 \
-  * sbt "test:runMain org.scalatest.tools.Runner -o -s viper.silicon.tests.PortableSiliconTests"
+  * Z3_EXE=z3.exe
+  * BOOGIE_EXE=Boogie.exe
+  * sbt "test:runMain
+  *      -DSILICONTESTS_TARGET=./target
+  *      -DSILICONTESTS_WARMUP=./warmup
+  *      -DSILICONTESTS_REPETITIONS=5
+  *      -DSILICONTESTS_CSV=data.csv
+  *      org.scalatest.tools.Runner
+  *      -o -s
+  *      viper.silicon.tests.PortableSiliconTests"
   * ```
   *
   * The command above will:
@@ -32,11 +35,13 @@ import viper.silver.verifier.Verifier
   * 2. Measure time of 5 runs of each .vpr file in ./target
   * 3. Discard ("trim") the slowest and the fastest runs and compute
   *   - the mean
+  *   - absolute and relative standard deviation
   *   - the best
   *   - the median
   *   - the worst
   *   run times of all these tests, and
-  * 4. Print the timing info (per phase) into STDOUT.
+  * 4. Print the timing info (per phase) into STDOUT, and write mean and standard deviation
+  *    to file data.csv
   * 5. Create JAR files (e.g., target/scala-2.12/silicon_2.12-1.1-SNAPSHOT.jar,
   *                            target/scala-2.12/silicon_2.12-1.1-SNAPSHOT-tests.jar)
   *    that can be used to run tests with SBT without the need to distribute/ recompile
@@ -47,14 +52,16 @@ import viper.silver.verifier.Verifier
   *    sbt "set trapExit := false" \
   *    "test:runMain org.scalatest.tools.Runner -o -s viper.silicon.tests.PortableSiliconTests"
   *    ```
-  *    Note that this command takes the same environment variables as above.
+  *    Note that this command takes the same JVM property arguments as used above.
   *
   * The warmup and the target must be disjoint (not in a sub-directory relation).
   *
-  * The default values for environment variables above are:
-  *   - SILICONTESTS_TARGET = ???    // This must be set before invoking SBT!
-  *   - SILICONTESTS_WARMUP = None   // If not specified, skip JVM warmup phase.
-  *   - SILICONTESTS_REPETITIONS = 1 // If less then 3, no "trimming" will happen.
+  * The following JVM properties are available:
+  *   - SILICONTESTS_TARGET = path/to/target/files/    // Mandatory
+  *   - SILICONTESTS_WARMUP = path/to/warmup/files/    // Optional. If not specified, skip JVM warmup phase.
+  *   - SILICONTESTS_REPETITIONS = n // Optional, defaults to 1. If less then 3, no "trimming" will happen.
+  *   - SILICONTESTS_CSV = path/to/file.csv // Optional. If provided, mean & stddev are written to CSV file.
+  *   - SILICONTESTS_RANDOMIZE_Z3 = bool // Optional, defaults to true. If true, passes --z3RandomizeSeeds to Silicon.
   */
 @DoNotDiscover
 class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
