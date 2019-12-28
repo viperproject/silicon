@@ -392,7 +392,11 @@ object executor extends ExecutionRules with Immutable {
                 Q(s2, v1)})
         }
 
-      case ast.MethodCall(methodName, _, _) if methodName.startsWith("havoc_all_") =>
+      // A call havoc_all_R() results in Silicon efficiently havocking all instances of resource R.
+      // See also Silicon issue #407.
+      case ast.MethodCall(methodName, _, _)
+          if Verifier.config.enableHavocHack() && methodName.startsWith("havoc_all_") =>
+
         val resourceName = methodName.stripPrefix("havoc_all_")
         val member = Verifier.program.collectFirst {
           case m: ast.Field if m.name == resourceName => m
