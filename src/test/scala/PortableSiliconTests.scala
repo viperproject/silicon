@@ -58,12 +58,23 @@ import viper.silver.verifier.Verifier
   */
 @DoNotDiscover
 class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
+  /** Following a hyphenation-based naming scheme is important for handling project-specific annotations.
+    * See comment for [[viper.silver.testing.TestAnnotations.projectNameMatches()]].
+    */
+  override def name = "Silicon-Statistics"
+
+  override val repetitionsPropertyName = "SILICONTESTS_REPETITIONS"
+  override val warmupLocationPropertyName = "SILICONTESTS_WARMUP"
+  override val targetLocationPropertyName = "SILICONTESTS_TARGET"
+  override val csvFilePropertyName = "SILICONTESTS_CSV"
+  val randomizePropertyName = "SILICONTESTS_RANDOMIZE_Z3"
 
   val commandLineArguments: Seq[String] = Seq(
     "--disableCatchingExceptions",
-    "--timeout", "180" /* seconds */)
+    "--timeout", "180" /* seconds */
+  ) ++ (if (System.getProperty(randomizePropertyName, "false").toBoolean) Seq("--z3RandomizeSeeds") else Seq.empty)
 
-  lazy val verifier = {
+  lazy val verifier: Silicon = {
     val args =
       commandLineArguments ++
         Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap.getOrElse("silicon", Map()))
@@ -74,7 +85,7 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
     silicon
   }
 
-  override def frontend(verifier: Verifier, files: Seq[Path]) = {
+  override def frontend(verifier: Verifier, files: Seq[Path]): SiliconFrontend = {
     require(files.length == 1, "tests should consist of exactly one file")
 
     // For Unit-Testing of the Symbolic Execution Logging, the name of the file
@@ -94,21 +105,5 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
     fe.init(verifier)
     fe.reset(files.head)
     fe
-  }
-
-  /** Following a hyphenation-based naming scheme is important for handling project-specific annotations.
-    * See comment for [[viper.silver.testing.TestAnnotations.projectNameMatches()]].
-    */
-  override def name = "Silicon-Statistics"
-
-  override def warmupLocationEnvVarName = "SILICONTESTS_WARMUP"
-  override def targetLocationEnvVarName = "SILICONTESTS_TARGET"
-
-  override val numOfExecutions: Int = Option(System.getenv("SILICONTESTS_REPETITIONS")) match {
-    case Some(reps) =>
-      val intReps = reps.toInt
-      require(intReps >= 1)
-      intReps
-    case None => 1
   }
 }
