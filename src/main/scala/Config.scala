@@ -132,8 +132,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     descr = (  "Show some statistics about the verification. Options are "
              + "'stdio' and 'file=<path\\to\\statistics.json>'"),
     default = None,
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )(statisticsSinkConverter)
 
   private lazy val defaultStatisticsFile = Paths.get(tempDirectory(), defaultRawStatisticsFile)
@@ -157,66 +156,58 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val disableSubsumption = opt[Boolean]("disableSubsumption",
     descr = "Don't add assumptions gained by verifying an assert statement",
     default  = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   val includeMethods = opt[String]("includeMethods",
     descr = "Include methods in verification (default: '*'). Wildcard characters are '?' and '*'. ",
     default = Some(".*"),
-    noshort = true,
-    hidden = false
+    noshort = true
   )(singleArgConverter[String](s => viper.silicon.common.config.wildcardToRegex(s)))
 
   val excludeMethods = opt[String]("excludeMethods",
     descr = "Exclude methods from verification (default: ''). Is applied after the include pattern.",
     default = Some(""),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   val recursivePredicateUnfoldings = opt[Int]("recursivePredicateUnfoldings",
     descr = (  "Evaluate n unfolding expressions in the body of predicates that (transitively) unfold "
              + "other instances of themselves (default: 1)"),
     default = Some(1),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   val disableShortCircuitingEvaluations = opt[Boolean]("disableShortCircuitingEvaluations",
     descr = (  "Disable short-circuiting evaluation of AND, OR. If disabled, "
              + "evaluating e.g., i > 0 && f(i), will fail if f's precondition requires i > 0."),
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   val logLevel = opt[String]("logLevel",
     descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF",
     default = None,
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )(singleArgConverter(level => level.toUpperCase))
 
   val logger = props[String]('L',
     descr = "Set level of certain internal loggers",
     keyName = "logger",
-    valueName = "level",
-    hidden = Silicon.hideInternalOptions)
+    valueName = "level"
+  )
 
   val timeout = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
             + "not per method or proof obligation (default: 0, i.e. no timeout)."),
     default = Some(0),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   val assertTimeout = opt[Int]("assertTimeout",
     descr = "Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout).",
     default = None,
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   val checkTimeout = opt[Int]("checkTimeout",
@@ -227,16 +218,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + "and indirectly in verification failures due to incompletenesses, e.g. when "
              + "the held permission amount is too coarsely underapproximated (default: 10)."),
     default = Some(10),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   private val rawZ3SaturationTimeout = opt[Int]("z3SaturationTimeout",
     descr = (  "Timeout (in ms) used for Z3 state saturation calls (default: 100). A timeout of "
              + "0 disables all saturation checks."),
     default = Some(100),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   /* Attention: Update companion object if number of weights changes! */
@@ -273,8 +262,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              +  "Weights must be non-negative, a weight of 0 disables the corresponding saturation "
              +  "call and a minimal timeout of 10ms is enforced."),
     default = Some(defaultZ3SaturationTimeoutWeights),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )(saturationTimeoutWeightsConverter)
 
   /* ATTENTION: Don't access the effective weights before the configuration objects has been
@@ -309,37 +297,32 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val z3EnableResourceBounds = opt[Boolean]("z3EnableResourceBounds",
     descr = ("Use Z3's resource bounds instead of timeouts"),
     default = Some(false),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   val z3ResourcesPerMillisecond = opt[Int]("z3ResourcesPerMillisecond",
     descr = ("Z3 resources per milliseconds. Is used to convert timeouts to resource bounds."),
     default = Some(60000), // Moritz Knüsel empirically determined 1600 in his BSc thesis, but when Malte
     noshort = true,        // used this value, over 20 tests failed.
-    hidden = false
   )
 
   val z3RandomizeSeeds = opt[Boolean]("z3RandomizeSeeds",
     descr = ("Set various Z3 random seeds to random values"),
     default = Some(false),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   val tempDirectory = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: ./tmp)",
     default = Some("./tmp"),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   private val rawZ3Exe = opt[String]("z3Exe",
     descr = (  "Z3 executable. The environment variable %s can also "
              + "be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable),
     default = None,
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   lazy val z3Exe: String = {
@@ -357,8 +340,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + s"extension $z3LogFileExtension will be appended. "
              + s"(default: <tempDirectory>/$defaultRawZ3LogFile.$z3LogFileExtension)"),
     default = Some(DefaultValue(defaultRawZ3LogFile)),
-    noshort = true,
-    hidden = false
+    noshort = true
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
 
   def z3LogFile(suffix: String = ""): Path = rawZ3LogFile() match {
@@ -382,8 +364,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     descr = (  "Command-line arguments which should be forwarded to Z3. "
              + "The expected format is \"<opt> <opt> ... <opt>\", including the quotation marks."),
     default = None,
-    noshort = true,
-    hidden = false
+    noshort = true
   )(forwardArgumentsConverter)
 
   val z3ConfigArgs = opt[Map[String, String]]("z3ConfigArgs",
@@ -392,8 +373,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + "including the quotation marks. "
              + "The configuration options given here will override those from Silicon's Z3 preamble."),
     default = Some(Map()),
-    noshort = true,
-    hidden = false
+    noshort = true
   )(smtlibOptionsConverter)
 
   lazy val z3Timeout: Int =
@@ -409,24 +389,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val maxHeuristicsDepth = opt[Int]("maxHeuristicsDepth",
     descr = "Maximal number of nested heuristics applications (default: 3)",
     default = Some(3),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   val handlePureConjunctsIndividually = opt[Boolean]("handlePureConjunctsIndividually",
     descr = (  "Handle pure conjunction individually."
              + "Increases precision of error reporting, but may slow down verification."),
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   val assertionMode = opt[AssertionMode]("assertionMode",
     descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
              + "'pp' (push-pop) and 'cs' (soft constraints) (default: cs)."),
     default = Some(AssertionMode.PushPop),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )(assertionModeConverter)
 
 
@@ -435,76 +412,66 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + "holds no further permissions, and 2) checking if sufficiently many "
              + "permissions have already been split off."),
     default = Some(500),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   val disableValueMapCaching = opt[Boolean]("disableValueMapCaching",
     descr = "Disable caching of value maps (context: iterated separating conjunctions).",
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   val disableISCTriggers = opt[Boolean]("disableISCTriggers",
     descr = (  "Don't pick triggers for quantifiers, let the SMT solver do it "
              + "(context: iterated separating conjunctions)."),
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   val disableChunkOrderHeuristics = opt[Boolean]("disableChunkOrderHeuristics",
     descr = (  "Disable heuristic ordering of quantified chunks "
              + "(context: iterated separating conjunctions)."),
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   val enablePredicateTriggersOnInhale = opt[Boolean]("enablePredicateTriggersOnInhale",
     descr = (  "Emit predicate-based function trigger on each inhale of a "
              + "predicate instance (context: heap-dependent functions)."),
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   val enableMoreCompleteExhale = opt[Boolean]("enableMoreCompleteExhale",
     descr = "Enable a more complete exhale version.",
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   val numberOfParallelVerifiers = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
              + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
     default = Some(Runtime.getRuntime.availableProcessors()),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   val printTranslatedProgram = opt[Boolean]("printTranslatedProgram",
     descr ="Print the final program that is going to be verified to stdout.",
     default = Some(false),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   val printMethodCFGs = opt[Boolean]("printMethodCFGs",
     descr = "Print a DOT (Graphviz) representation of the CFG of each method to verify to " +
             "a file '<tempDirectory>/<methodName>.dot'.",
     default = Some(false),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   val disableCatchingExceptions = opt[Boolean]("disableCatchingExceptions",
     descr =s"Don't catch exceptions (can be useful for debugging problems with ${Silicon.name})",
     default = Some(false),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   /* Option validation */

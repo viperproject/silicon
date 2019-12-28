@@ -45,8 +45,6 @@ object Silicon {
   val z3MaxVersion: Option[Version] = None // Some(Version("4.5.0")) /* X.Y.Z if that is the *last supported* version */
   val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "https://github.com/Z3Prover/z3"))
 
-  val hideInternalOptions = false
-
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
     configMap.flatMap {
       case (k, v) =>
