@@ -228,29 +228,17 @@ class TermToSMTLib2Converter
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
     case PredicateLookup(id, psf, args) =>
-      val snap: Term = if (args.size == 1) {
-        args.head.convert(sorts.Snap)
-      } else {
-        args.reduce((arg1: Term, arg2: Term) => Combine(arg1, arg2))
-      }
+      val snap: Term = toSnapTree(args)
 
       parens(text("$PSF.lookup_") <> id <+> render(psf) <+> render(snap))
 
     case PredicateTrigger(id, psf, args) =>
-      val snap: Term = if (args.size == 1) {
-        args.head.convert(sorts.Snap)
-      } else {
-        args.reduce((arg1, arg2) => Combine(arg1, arg2))
-      }
+      val snap: Term = toSnapTree(args)
 
       parens(text("$PSF.loc_") <> id <+> render(PredicateLookup(id, psf, args)) <+> render(snap))
 
     case PredicatePermLookup(predname, pm, args) =>
-      val snap: Term = if (args.size == 1) {
-        args.head.convert(sorts.Snap)
-      } else {
-        args.reduce((arg1: Term, arg2: Term) => Combine(arg1, arg2))
-      }
+      val snap: Term = toSnapTree(args)
 
       parens(text("$PSF.perm_") <> predname <+> render(pm) <+> render(snap))
 
@@ -274,6 +262,13 @@ class TermToSMTLib2Converter
 
     case _: MagicWandChunkTerm =>
       sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
+  }
+
+  @inline
+  protected def toSnapTree(args: Seq[Term]): Term = {
+    if (args.isEmpty) Unit
+    else if (args.size == 1) args.head.convert(sorts.Snap)
+    else args.reduce((arg1, arg2) => Combine(arg1, arg2))
   }
 
   @inline
