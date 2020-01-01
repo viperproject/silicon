@@ -396,19 +396,17 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           assert(codomainQVars.length == 1)
           SetIn(codomainQVars.head, domain(field.name, sm))
         case predicate: ast.Predicate =>
-          SetIn(codomainQVars
-                  .map(_.convert(sorts.Snap))
-                  .reduceLeft(Combine),
-                domain(predicate.name, sm))
+          SetIn(toSnapTree(codomainQVars), domain(predicate.name, sm))
         case wand: ast.MagicWand =>
           val subexpressionsToEvaluate = wand.subexpressionsToEvaluate(Verifier.program)
           val numLhs = wand.left.shallowCollect({
             case n if subexpressionsToEvaluate.contains(n) => n
           }).size
-          val lhsSnap = codomainQVars.take(numLhs).map(_.convert(sorts.Snap)).reduceLeft(Combine)
-          val rhsSnap = codomainQVars.drop(numLhs).map(_.convert(sorts.Snap)).reduceLeft(Combine)
+          val (lhsVars, rhsVars) = codomainQVars.splitAt(numLhs)
+          val lhsSnap = toSnapTree(lhsVars)
+          val rhsSnap = toSnapTree(rhsVars)
           SetIn(MagicWandSnapshot(lhsSnap, rhsSnap),
-            domain(MagicWandIdentifier(wand, Verifier.program).toString, sm))
+                domain(MagicWandIdentifier(wand, Verifier.program).toString, sm))
         case other =>
           sys.error(s"Found yet unsupported resource $other (${other.getClass.getSimpleName})")
       }

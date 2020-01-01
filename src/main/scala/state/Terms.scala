@@ -1739,6 +1739,16 @@ case class PredicateTrigger(predname: String, psf: Term, args: Seq[Term]) extend
   val sort = sorts.Bool
 }
 
+/* Factory methods for all resources */
+
+object toSnapTree extends (Seq[Term] => Term) {
+  @inline
+  def apply(args: Seq[Term]): Term = {
+    if (args.isEmpty) Unit
+    else args.map(_.convert(sorts.Snap)).reduceLeft(Combine)
+  }
+}
+
 object ResourceTriggerFunction {
   def apply(resource: ast.Resource, sm: Term, args: Seq[Term]): Term = {
     resource match {

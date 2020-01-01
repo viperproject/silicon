@@ -272,13 +272,6 @@ class TermToSMTLib2Converter
   }
 
   @inline
-  protected def toSnapTree(args: Seq[Term]): Term = {
-    if (args.isEmpty) Unit
-    else if (args.size == 1) args.head.convert(sorts.Snap)
-    else args.reduce((arg1, arg2) => Combine(arg1, arg2))
-  }
-
-  @inline
   protected def renderUnaryOp(op: String, t: UnaryOp[Term]) =
     parens(text(op) <> nest(defaultIndent, group(line <> render(t.p))))
 
