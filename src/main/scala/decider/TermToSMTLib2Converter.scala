@@ -106,20 +106,27 @@ class TermToSMTLib2Converter
 
     /* Handle quantifiers that have at most one trigger set */
     case Quantification(quant, vars, body, triggers, name, _) =>
-      val docVars = ssep((vars map (v => parens(text(sanitize(v.id)) <+> render(v.sort)))).to[collection.immutable.Seq], space)
       val docBody = render(body)
-      val docQuant = render(quant)
 
-      val docTriggers =
-        ssep(triggers.map(trigger => ssep((trigger.p map render).to[collection.immutable.Seq], space))
-                     .map(d => text(":pattern") <+> parens(d)).to[collection.immutable.Seq],
-             line)
+      if (vars.nonEmpty) {
+        val docVars = ssep((vars map (v => parens(text(sanitize(v.id)) <+> render(v.sort)))).to[collection.immutable.Seq], space)
+        val docQuant = render(quant)
 
-      val docQid: Cont =
-        if (name.isEmpty) nil
-        else s":qid |$name|"
+        val docTriggers =
+          ssep(triggers.map(trigger => ssep((trigger.p map render).to[collection.immutable.Seq], space))
+            .map(d => text(":pattern") <+> parens(d)).to[collection.immutable.Seq],
+            line)
 
-      parens(docQuant <+> parens(docVars) <+> parens(text("!") <> nest(defaultIndent, line <> docBody <> line <> docTriggers <> line <> docQid)))
+        val docQid: Cont =
+          if (name.isEmpty) nil
+          else s":qid |$name|"
+
+        parens(docQuant <+> parens(docVars) <+> parens(text("!") <> nest(defaultIndent, line <> docBody <> line <> docTriggers <> line <> docQid)))
+      } else {
+        // TODO: This seems like a hack.
+        //       It would be better to avoid creating quantifications with no variables in the first place.
+        text(s"; WARNING: Got invalid quantifier: $term") <@> docBody
+      }
 
     /* Booleans */
 
