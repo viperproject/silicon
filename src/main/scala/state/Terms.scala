@@ -521,6 +521,8 @@ object Quantification
             name: String,
             isGlobal: Boolean)
            : Quantification = {
+
+//    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")
 //    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
 //    assert(triggers.distinct.length == triggers.length, s"Found duplicate triggers: $triggers")
 
