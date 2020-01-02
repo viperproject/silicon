@@ -395,9 +395,9 @@ object executor extends ExecutionRules with Immutable {
       // A call havoc_all_R() results in Silicon efficiently havocking all instances of resource R.
       // See also Silicon issue #407.
       case ast.MethodCall(methodName, _, _)
-          if Verifier.config.enableHavocHack() && methodName.startsWith("havoc_all_") =>
+          if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
-        val resourceName = methodName.stripPrefix("havoc_all_")
+        val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
         val member = Verifier.program.collectFirst {
           case m: ast.Field if m.name == resourceName => m
           case m: ast.Predicate if m.name == resourceName => m
@@ -563,4 +563,16 @@ object executor extends ExecutionRules with Immutable {
          t
      }
    }
+
+  private val hack407_method_name_prefix = "___silicon_hack407_havoc_all_"
+
+  def hack407_havoc_all_resources_method_name(id: String): String = s"$hack407_method_name_prefix$id"
+
+  def hack407_havoc_all_resources_method_call(id: String): ast.MethodCall = {
+    ast.MethodCall(
+      methodName = hack407_havoc_all_resources_method_name(id),
+      args = Vector.empty,
+      targets = Vector.empty
+    )(ast.NoPosition, ast.NoInfo, ast.NoTrafos)
+  }
 }
