@@ -448,6 +448,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableMostStateConsolidations = opt[Boolean]("disableMostStateConsolidations",
+    descr = "Disable state consolidations, except on-retry and single-merge.",
+    default = Some(false),
+    noshort = true
+  )
+
   val numberOfParallelVerifiers = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
              + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
