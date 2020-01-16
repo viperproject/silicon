@@ -186,7 +186,7 @@ class FunctionData(val programFunction: ast.Function,
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val body = Let(toMap(bodyBindings), innermostBody)
 
-      Some(Forall(arguments, body, Trigger(limitedFunctionApplication)))
+      Some(Forall(arguments, body, Trigger(limitedFunctionApplication), s"postAxiom [${function.id.name}]"))
     } else
       None
   }
