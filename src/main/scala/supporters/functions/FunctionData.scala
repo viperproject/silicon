@@ -62,12 +62,13 @@ class FunctionData(val programFunction: ast.Function,
 
   val functionApplication = App(function, `?h` +: formalArgs.values.toSeq)
   val restrictHeapApplication = App(restrictHeapFunction, arguments)
-  val limitedFunctionApplication = App(limitedFunction, restrictHeapApplication +: formalArgs.values.toSeq)
+  val restrictedLimitedFunctionApplication = App(limitedFunction, restrictHeapApplication +: formalArgs.values.toSeq)
+  val limitedFunctionApplication = App(limitedFunction, `?h` +: formalArgs.values.toSeq)
   val triggerFunctionApplication = App(statelessFunction, formalArgs.values.toSeq)
 
   val limitedAxiom =
     Forall(arguments,
-           limitedFunctionApplication === functionApplication,
+           restrictedLimitedFunctionApplication === functionApplication,
            Trigger(functionApplication),
            s"limitedAxiom [${function.id.name}]")
 
