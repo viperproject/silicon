@@ -2,7 +2,7 @@
 ; License, v. 2.0. If a copy of the MPL was not distributed with this
 ; file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-; Having only this axiom makes $SortWrappers.$S$To$Snap injective, which is
+; Having (at least) the first axiom makes $SortWrappers.$S$To$Snap injective, which is
 ; necessary because Z3 otherwise won't know that an assumption such as
 ;   IntToSnap(x) = IntToSnap(y)
 ; implies that
@@ -10,12 +10,13 @@
 (assert (forall ((x $S$)) (!
     (= x ($SortWrappers.$SnapTo$S$($SortWrappers.$S$To$Snap x)))
     :pattern (($SortWrappers.$S$To$Snap x))
-    :qid |$Snap.$S$|
+    :qid |$Snap.$SnapTo$S$To$Snap|
     )))
-;(assert (forall ((x $Snap)) (!
-;    (= x ($SortWrappers.$S$To$Snap($SortWrappers.$SnapTo$S$ x)))
-;    :pattern (($SortWrappers.$SnapTo$S$ x))
-;    )))
+(assert (forall ((x $Snap)) (!
+    (= x ($SortWrappers.$S$To$Snap($SortWrappers.$SnapTo$S$ x)))
+    :pattern (($SortWrappers.$SnapTo$S$ x))
+    :qid |$Snap.$S$To$SnapTo$S$|
+    )))
 
 ; On several examples, e.g., AVLTree.iterative.sil, Z3 instantiates the sort
 ; wrapper axioms somewhat often. It might be possible to include the wrappers

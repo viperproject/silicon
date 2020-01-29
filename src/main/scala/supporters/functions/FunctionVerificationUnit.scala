@@ -34,7 +34,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
   private case class Phase1Data(sPre: State, pcsPre: InsertionOrderedSet[Term])
 
   object functionsSupporter
-      extends FunctionVerificationUnit[Sort, Function, Term]
+      extends FunctionVerificationUnit[Sort, Decl, Term]
          with StatefulComponent {
 
     import producer._
@@ -102,20 +102,20 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     val sortsAfterAnalysis: Iterable[Sort] = Seq.empty
     def declareSortsAfterAnalysis(sink: ProverLike): Unit = ()
 
-    private def generateFunctionSymbolsAfterAnalysis: Iterable[Either[String, Function]] = (
+    private def generateFunctionSymbolsAfterAnalysis: Iterable[Either[String, Decl]] = (
          Seq(Left("Declaring symbols related to program functions (from program analysis)"))
       ++ functionData.values.flatMap(data =>
-            Seq(data.function, data.limitedFunction, data.statelessFunction, data.restrictHeapFunction)
+            Seq(data.function, data.limitedFunction, data.statelessFunction, data.restrictHeapFunction).map(FunctionDecl)
          ).map(Right(_))
     )
 
-    def symbolsAfterAnalysis: Iterable[Function] =
-      (generateFunctionSymbolsAfterAnalysis collect { case Right(f) => f }) ++ Seq(`?s`)
+    def symbolsAfterAnalysis: Iterable[Decl] =
+      (generateFunctionSymbolsAfterAnalysis collect { case Right(f) => f }) ++ Seq(ConstDecl(`?s`))
 
     def declareSymbolsAfterAnalysis(sink: ProverLike): Unit = {
       generateFunctionSymbolsAfterAnalysis foreach {
         case Left(comment) => sink.comment(comment)
-        case Right(f) => sink.declare(FunctionDecl(f))
+        case Right(decl) => sink.declare(decl)
       }
 
       sink.comment("Snapshot variable to be used during function verification")
@@ -211,7 +211,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         val preMark = decider.setPathConditionMark()
         produces(s0, `?h`, pres, ContractNotWellformed, v)((s1, _) => {
           phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
-            produces(s1, `?h`, posts, ContractNotWellformed, v)((s2, _) => {
+          // The postcondition must be produced with a fresh snapshot (different from `?h`) because
+          // the postcondition's snapshot structure is most likely different than that of the
+          // precondition
+          // TODO: Use a fresh snapshot variable instead of `?h` here
+          produces(s1, v.decider.fresh(sorts.PHeap), posts, ContractNotWellformed, v)((s2, _) => {
             recorders :+= s2.functionRecorder
             Success()})})})
 
@@ -256,21 +260,30 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
     }
 
-    private def generateFunctionSymbolsAfterVerification: Iterable[Either[String, Function]] = (
-         Seq(Left("Declaring symbols related to program functions (from verification)"))
-      ++ functionData.values.flatMap(data => data.getFreshSymbolsAcrossAllPhases).map(Right(_)))
+    private def generateFunctionSymbolsAfterVerification: Iterable[Either[String, Decl]] = {
+      // TODO: It can currently happen that a pTaken macro (see QuantifiedChunkSupporter, def removePermissions)
+      //       is recorded as a fresh macro before a snapshot map that is used in the macro definition (body)
+      //       is recorded, which will yield a Z3 syntax error (undeclared symbol). To work around this,
+      //       macros are declared last. This work-around shouldn't be necessary, though.
+      val (macroDecls, otherDecls) =
+        functionData.values.flatMap(_.getFreshSymbolsAcrossAllPhases).partition(_.isInstanceOf[MacroDecl])
+
+      Seq(Left("Declaring symbols related to program functions (from verification)")) ++
+        otherDecls.map(Right(_)) ++
+        macroDecls.map(Right(_))
+    }
 
     /* Function supporter generates no additional sorts during verification */
     val sortsAfterVerification: Iterable[Sort] = Seq.empty
     def declareSortsAfterVerification(sink: ProverLike): Unit = ()
 
-    val symbolsAfterVerification: Iterable[Function] =
+    val symbolsAfterVerification: Iterable[Decl] =
       generateFunctionSymbolsAfterVerification collect { case Right(f) => f }
 
     def declareSymbolsAfterVerification(sink: ProverLike): Unit = {
       generateFunctionSymbolsAfterVerification foreach {
         case Left(comment) => sink.comment(comment)
-        case Right(f) => sink.declare(FunctionDecl(f))
+        case Right(decl) => sink.declare(decl)
       }
 
       freshVars foreach (x => sink.declare(ConstDecl(x)))
