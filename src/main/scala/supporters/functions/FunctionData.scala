@@ -204,9 +204,7 @@ class FunctionData(val programFunction: ast.Function,
     optBody.map(translatedBody => {
       val pre = And(translatedPres)
       val nestedDefinitionalAxioms = generateNestedDefinitionalAxioms
-      val innermostBody = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
-      val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
-      val body = Let(toMap(bodyBindings), innermostBody)
+      val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
       val allTriggers = (
            Seq(Trigger(functionApplication))
         ++ predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt))))
