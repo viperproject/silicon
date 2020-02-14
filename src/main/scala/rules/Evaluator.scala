@@ -746,7 +746,8 @@ object evaluator extends EvaluationRules with Immutable {
                                          recordVisited = s3.recordVisited,
                                          permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
-                        eval(s9, eIn, pve, v5)(QB)})})
+                        val s10 = stateConsolidator.consolidateIfRetrying(s9, v5)
+                        eval(s10, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
