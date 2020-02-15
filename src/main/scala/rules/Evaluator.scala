@@ -743,7 +743,8 @@ object evaluator extends EvaluationRules with Immutable {
                                          recordVisited = s3.recordVisited,
                                          permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
-                        eval(s9, eIn, pve, v5)(QB)})})
+                        val s10 = stateConsolidator.consolidateIfRetrying(s9, v5)
+                        eval(s10, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
@@ -1349,14 +1350,14 @@ object evaluator extends EvaluationRules with Immutable {
     (axioms, triggers, mostRecentTrig)
   }
 
-  /* Evaluate a sequence of expressions in Order 
+  /* Evaluate a sequence of expressions in Order
    * The constructor determines when the evaluation stops
    * Only Or and And are supported for the constructor
    */
-  private def evalSeqShortCircuit(constructor: Seq[Term] => Term, 
-                                  s: State, 
-                                  exps: Seq[ast.Exp], 
-                                  pve: PartialVerificationError, 
+  private def evalSeqShortCircuit(constructor: Seq[Term] => Term,
+                                  s: State,
+                                  exps: Seq[ast.Exp],
+                                  pve: PartialVerificationError,
                                   v: Verifier)
                                  (Q: (State, Term, Verifier) => VerificationResult)
                                   : VerificationResult = {
@@ -1364,8 +1365,8 @@ object evaluator extends EvaluationRules with Immutable {
       sys.error("Only Or and And are supported as constructors for evalSeqShortCircuit")
     }
     type brFun = (State, Verifier) => VerificationResult
-    val (default, stop, swapIfAnd) = 
-      if(constructor == Or) (False(), True(), (a: brFun, b: brFun) => (a,b)) 
+    val (default, stop, swapIfAnd) =
+      if(constructor == Or) (False(), True(), (a: brFun, b: brFun) => (a,b))
       else (True(), False(), (a: brFun, b: brFun) => (b,a))
     if(exps.size==0)
       Q(s, default, v)
@@ -1373,13 +1374,13 @@ object evaluator extends EvaluationRules with Immutable {
       eval(s, exps.head, pve, v)((s1, t0, v1) =>
           t0 match {
             case `stop` => Q(s1, t0, v1)
-            case _ => 
+            case _ =>
               joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
                   brancher.branch(s2, t0, v2, true) _ tupled swapIfAnd(
                     (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
                     (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
                   ){case Seq(ent) => (ent.s, ent.data)
-                    case Seq(ent1, ent2) => (ent1.s.merge(ent2.s), 
+                    case Seq(ent1, ent2) => (ent1.s.merge(ent2.s),
                       constructor(Seq(ent1.data, ent2.data)))
                     case ents => sys.error(s"Unexpected join data entries $ents")
                   }(Q)
