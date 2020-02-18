@@ -12,7 +12,6 @@ import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.AbstractLocalVar
-import viper.silicon.SiliconRunner
 
 /* TODO: Use a proper pretty-printer such as the one we use for Silver AST nodes and Silicon terms */
 

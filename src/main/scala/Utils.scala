@@ -12,7 +12,7 @@ import viper.silver.verifier.{VerificationError, errors}
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silicon.state.terms.{Sort, Term, Var, sorts}
+import viper.silicon.state.terms.{Sort, sorts}
 import viper.silicon.verifier.Verifier
 
 package object utils {

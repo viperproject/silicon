@@ -6,7 +6,7 @@
 
 package viper.silicon.interfaces
 
-import viper.silver.verifier.{VerificationError, errors, DummyReason, DummyNode, AbstractErrorReason}
+import viper.silver.verifier.{VerificationError, errors, DummyNode, AbstractErrorReason}
 import viper.silicon.state.terms.Term
 
 /*

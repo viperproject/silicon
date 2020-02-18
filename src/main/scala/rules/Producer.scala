@@ -10,12 +10,11 @@ import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.{Failure, VerificationResult, Success}
+import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.terms.predef.{`?r`, `?h`}
+import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms._
 import viper.silicon.state._
-import viper.silicon.rules.predicateSupporter
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}

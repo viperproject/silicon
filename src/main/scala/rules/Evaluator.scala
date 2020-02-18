@@ -13,7 +13,7 @@ import viper.silver.verifier.errors.PreconditionInAppFalse
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
-import viper.silicon.state.{terms, _}
+import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
