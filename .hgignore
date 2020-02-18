@@ -4,6 +4,9 @@ syntax: glob
 project/project
 project/target
 target
+.metals/
+metals.sbt
+.bloop/
 .settings/
 .cache
 .scala_dependencies
