@@ -72,34 +72,43 @@ lazy val silicon = (project in file("."))
       "projectVersion" -> version.value,
       scalaVersion,
       sbtVersion,
-      "hgRevision" -> hgInfo.value._1,
-      "hgBranch" -> hgInfo.value._2
+      "gitRevision" -> gitInfo.value._1,
+      "gitBranch" -> gitInfo.value._2
     ),
     buildInfoPackage := "viper.silicon")
 
 // Pair of revision and branch information from Mercurial. Empty strings if an error occurred.
-lazy val hgInfo: Def.Initialize[(String, String)] = Def.setting {
-  val hgCommand = "hg id -ib"
+lazy val gitInfo: Def.Initialize[(String, String)] = Def.setting {
+  val gitCommand = "git status --porcelain=v2 --branch"
 
   Try({
     val outputBuffer = new StringBuffer()
 
     // Execute Mercurial, record stdout and stderr in outputBuffer, and return the exit code
     val exitCode =
-      Process(hgCommand, baseDirectory.value).!(ProcessLogger(outputBuffer append _))
+      Process(gitCommand, baseDirectory.value).!(ProcessLogger(outputBuffer append _ append '\n'))
 
     if (exitCode != 0)
-      sys.error(s"'$hgCommand' didn't execute successfully")
+      sys.error(s"'$gitCommand' didn't execute successfully")
 
-    outputBuffer.toString.trim.split(' ').toSeq
+    val output = outputBuffer.toString
+    val lines = output.split('\n').map(_.trim)
+
+    // Expected format is "# branch.oid HASH", use first 8 digits
+    var revision = lines.find(_.startsWith("# branch.oid")).get.split(' ')(2).take(8)
+
+    // Expected format is "# branch.head NAME"
+    val branch = lines.find(_.startsWith("# branch.head")).get.split(' ')(2)
+
+    if (!lines.forall(_.startsWith("# ")))
+      revision = s"$revision+"
+
+    Seq(revision, branch)
   }) match {
     case Failure(throwable) =>
-      sLog.value.warn(s"Couldn't execute Mercurial: ${throwable.getMessage}")
+      sLog.value.warn(s"Couldn't execute '${throwable.getMessage}', or couldn't parse obtained output")
       ("", "")
     case Success(Seq(revision, branch)) =>
       (revision, branch)
-    case Success(seq) =>
-      sLog.value.warn(s"Executed Mercurial, but got unexpected result: ${seq.mkString(" ")}")
-      ("", "")
   }
 }

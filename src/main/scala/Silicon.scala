@@ -28,12 +28,12 @@ import viper.silver.logger.ViperStdOutLogger
 object Silicon {
   val name = BuildInfo.projectName
   
-  val buildRevision = BuildInfo.hgRevision
-  val buildBranch = BuildInfo.hgBranch
+  val buildRevision = BuildInfo.gitRevision
+  val buildBranch = BuildInfo.gitBranch
 
   val buildVersion: Option[String] =
     if (buildRevision.isEmpty && buildBranch.isEmpty) None
-    else if (buildBranch == "default") Some(buildRevision)
+    else if (buildBranch == "master") Some(buildRevision)
     else Some(s"$buildRevision@$buildBranch")
 
   val version: String =
