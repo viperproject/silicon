@@ -113,30 +113,24 @@ method main() {
 
 # Installation Instructions:
 
-* Clone [silver](https://bitbucket.org/viperproject/silver/) repository in your computer.
+* Clone [silver](https://github.com/viperproject/silver) repository in your computer.
 * Clone **silicon** (this repository) in your computer, in a separate directory.
 * From within the directory where you installed silicon, create a symbolic link to the directory where you installed silver.
 * On Linux/Mac OS X: ```ln -s <relative path to diretory where you installed silver> silver```
 * On Windows: ```mklink /D silver <relative path to diretory where you installed silver>```
 * Compile by typing: ```sbt compile```
 
-# For further information, please:
+# For further information:
 
-* experiment with Viper using the
+* Experiment with Viper using the
   [Viper online](http://viper.ethz.ch/examples/)
   web interface.
 
-* download the
+* Download the
   [Viper IDE](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
   (based on Microsoft Visual Studio Code).
   
-* see the
+* See the
   [PhD thesis of Malte Schwerhoff](http://pm.inf.ethz.ch/publications/getpdf.php?bibname=Own&id=Schwerhoff16.pdf)
   for an overview of the Viper language and a detailed description of Silicon
   and its internal workings.
-
-* consult
-  [Viper's wiki](https://bitbucket.org/viperproject/documentation/wiki/)
-  and
-  [Silicon's wiki](https://bitbucket.org/viperproject/silicon/wiki/)
-  for information about how to compile and run Silicon locally.
