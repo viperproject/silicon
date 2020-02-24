@@ -8,7 +8,9 @@ Silicon's input language is the
 a language in the spirit of Microsoft's Boogie, but with a higher level of
 abstraction and a built-in notation of permissions, which makes Viper
 well-suited for encoding and verifying properties of sequential and concurrent
-programs with shared mutable state.
+programs with shared mutable state. Loads of details can (but don't need to) be
+found in the
+[PhD thesis of Malte Schwerhoff](http://pm.inf.ethz.ch/publications/getpdf.php?bibname=Own&id=Schwerhoff16.pdf).
 
 As an example, consider the following simple C++ program, which runs two threads
 in parallel that increment a shared memory location and that uses a lock to
@@ -74,7 +76,7 @@ define inc_PRE(c, tid)
 define inc_POST(c, tid, oldv)
   tid == 0 ? (acc(c.t1, 1/2) && c.t1 == oldv + 1)
             : (acc(c.t2, 1/2) && c.t2 == oldv + 1)
-            
+
 method inc(c: Ref, tid: Int)
   requires inc_PRE(c, tid)
   ensures  inc_POST(c, tid, tid == 0 ? old(c.t1) : old(c.t2))
@@ -111,26 +113,24 @@ method main() {
 }
 ```
 
-# Installation Instructions:
+# Getting Started
 
+* Download the
+  [Viper IDE](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
+  (based on Microsoft Visual Studio Code).
+
+* Experiment with Viper using the
+  [Viper online](http://viper.ethz.ch/examples/)
+  web interface.
+
+# Build Instructions
+
+* You need recent installations of
+  1. the [sbt build tool](https://www.scala-sbt.org/)
+  2. the [Z3 SMT solver](https://github.com/Z3Prover/z3/releases)
 * Clone [silver](https://github.com/viperproject/silver) repository in your computer.
 * Clone **silicon** (this repository) in your computer, in a separate directory.
 * From within the directory where you installed silicon, create a symbolic link to the directory where you installed silver.
 * On Linux/Mac OS X: ```ln -s <relative path to diretory where you installed silver> silver```
 * On Windows: ```mklink /D silver <relative path to diretory where you installed silver>```
 * Compile by typing: ```sbt compile```
-
-# For further information:
-
-* Experiment with Viper using the
-  [Viper online](http://viper.ethz.ch/examples/)
-  web interface.
-
-* Download the
-  [Viper IDE](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
-  (based on Microsoft Visual Studio Code).
-  
-* See the
-  [PhD thesis of Malte Schwerhoff](http://pm.inf.ethz.ch/publications/getpdf.php?bibname=Own&id=Schwerhoff16.pdf)
-  for an overview of the Viper language and a detailed description of Silicon
-  and its internal workings.
