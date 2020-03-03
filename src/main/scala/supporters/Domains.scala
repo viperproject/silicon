@@ -14,6 +14,7 @@ import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.{SymbolConverter, terms}
 import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Symbol, Term}
+import viper.silver.ast.NamedDomainAxiom
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
   def uniquenessAssumptionsAfterAnalysis: Iterable[UA]
@@ -141,7 +142,7 @@ class DefaultDomainsTranslator()
   def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort): Term = {
     translate(toSort)(ax.exp) match {
       case terms.Quantification(q, vars, body, triggers, "", _) =>
-        terms.Quantification(q, vars, body, triggers, s"prog.${ax.name}")
+        terms.Quantification(q, vars, body, triggers, if (ax.isInstanceOf[NamedDomainAxiom]) s"prog.${ax.asInstanceOf[NamedDomainAxiom].name}" else "")
 
       case other => other
     }
