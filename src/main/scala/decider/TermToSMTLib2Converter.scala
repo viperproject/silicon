@@ -317,8 +317,8 @@ class TermToSMTLib2Converter
     case False() => "false"
     case Null() => "$Ref.null"
     case SeqNil(elementSort) => text("$Seq.empty<") <> render(elementSort) <> ">"
-    case EmptySet(elementSort) => renderApp("Set_empty", Seq(), literal.sort)
-    case EmptyMultiset(elementSort) => renderApp("Multiset_empty", Seq(), literal.sort)
+    case _: EmptySet => renderApp("Set_empty", Seq(), literal.sort)
+    case _: EmptyMultiset => renderApp("Multiset_empty", Seq(), literal.sort)
   }
 
   protected def renderAsReal(t: Term): Cont =
