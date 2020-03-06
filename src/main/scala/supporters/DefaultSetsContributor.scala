@@ -8,7 +8,6 @@ package viper.silicon.supporters
 
 import scala.reflect.{ClassTag, classTag}
 import viper.silver.ast
-import viper.silver.ast.{Program, SetType}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, sorts}
 
@@ -21,7 +20,7 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term])
   val sourceResource: String = "/dafny_axioms/sets.vpr"
   def sourceDomainName: String = "$Set"
 
-  override def computeGroundTypeInstances(program: Program): InsertionOrderedSet[SetType] = {
+  override def computeGroundTypeInstances(program: ast.Program): InsertionOrderedSet[ast.SetType] = {
     var setTypeInstances = super.computeGroundTypeInstances(program)
 
     /* Axioms generated for quantified permissions depend on sets.
