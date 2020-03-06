@@ -142,7 +142,12 @@ class DefaultDomainsTranslator()
   def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort): Term = {
     translate(toSort)(ax.exp) match {
       case terms.Quantification(q, vars, body, triggers, "", _) =>
-        terms.Quantification(q, vars, body, triggers, if (ax.isInstanceOf[NamedDomainAxiom]) s"prog.${ax.asInstanceOf[NamedDomainAxiom].name}" else "")
+        val qid = ax match {
+          case axiom: NamedDomainAxiom => s"prog.${axiom.name}"
+          case _ => ""
+        }
+
+        terms.Quantification(q, vars, body, triggers, qid)
 
       case other => other
     }
