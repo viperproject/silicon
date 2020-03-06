@@ -272,30 +272,27 @@ class TermToSMTLib2Converter
   }
 
   @inline
-  protected def renderUnaryOp(op: String, t: UnaryOp[Term]) =
+  protected def renderUnaryOp(op: String, t: UnaryOp[Term]): Cont =
     parens(text(op) <> nest(defaultIndent, group(line <> render(t.p))))
 
   @inline
-  protected def renderUnaryOp(op: String, doc: Cont) =
+  protected def renderUnaryOp(op: String, doc: Cont): Cont =
     parens(text(op) <> nest(defaultIndent, group(line <> doc)))
 
   @inline
-  protected def renderBinaryOp(op: String, t: BinaryOp[Term]) =
+  protected def renderBinaryOp(op: String, t: BinaryOp[Term]): Cont =
     parens(text(op) <> nest(defaultIndent, group(line <> render(t.p0) <> line <> render(t.p1))))
 
   @inline
-  protected def renderBinaryOp(op: String, left: Cont, right: Cont) =
+  protected def renderBinaryOp(op: String, left: Cont, right: Cont): Cont =
     parens(text(op) <> nest(defaultIndent, group(line <> left <> line <> right)))
 
   @inline
-  protected def renderNAryOp(op: String, terms: Term*) =
+  protected def renderNAryOp(op: String, terms: Term*): Cont =
     parens(text(op) <> nest(defaultIndent, group(line <> ssep((terms map render).to[collection.immutable.Seq], line))))
 
   @inline
-  protected def renderApp(functionName: String, args: Seq[Term], outSort: Sort) = {
-    val inSorts = args map (_.sort)
-    val id = Identifier(functionName)
-
+  protected def renderApp(functionName: String, args: Seq[Term], outSort: Sort): Cont = {
     val docAppNoParens =
       text(sanitize(functionName)) <+> ssep((args map render).to[collection.immutable.Seq], space)
 
