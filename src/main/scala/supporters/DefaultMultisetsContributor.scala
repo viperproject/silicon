@@ -17,7 +17,7 @@ class DefaultMultisetsContributor(val domainTranslator: DomainsTranslator[Term])
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.MultisetType]
 
   val sourceResource: String = "/dafny_axioms/multisets.vpr"
-  def sourceDomainName: String = "$Multiset"
+  val sourceDomainName: String = "$Multiset"
 
   def targetSortFactory(argumentSorts: Iterable[Sort]): Sort = {
     assert(argumentSorts.size == 1)

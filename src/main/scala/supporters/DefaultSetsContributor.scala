@@ -18,7 +18,7 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term])
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.SetType]
 
   val sourceResource: String = "/dafny_axioms/sets.vpr"
-  def sourceDomainName: String = "$Set"
+  val sourceDomainName: String = "$Set"
 
   override def computeGroundTypeInstances(program: ast.Program): InsertionOrderedSet[ast.SetType] = {
     var setTypeInstances = super.computeGroundTypeInstances(program)

@@ -25,7 +25,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   def domainTranslator: DomainsTranslator[Term]
   def targetSortFactory(argumentSorts: Iterable[Sort]): Sort
 
-  protected val symbolConverter =
+  protected lazy val symbolConverter: BuiltinDomainAwareSymbolConverter =
     new BuiltinDomainAwareSymbolConverter(sourceDomainName, targetSortFactory)
 
   private var collectedSorts: InsertionOrderedSet[Sort] = InsertionOrderedSet.empty
@@ -52,11 +52,8 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   def analyze(program: ast.Program) {
     val builtinDomainTypeInstances = computeGroundTypeInstances(program)
-
-    val sourceProgram =
-      utils.loadProgram(sourceResource)
-
-    val sourceDomain = sourceProgram.findDomain(sourceDomainName)
+    val sourceProgram = utils.loadProgram(sourceResource)
+    val sourceDomain = transformSourceDomain(sourceProgram.findDomain(sourceDomainName))
 
     val sourceDomainTypeInstances =
       builtinDomainTypeInstances map (builtinTypeInstance =>
@@ -81,6 +78,8 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
     collectFunctions(sourceDomainInstantiations)
     collectAxioms(sourceDomainInstantiations)
   }
+
+  protected def transformSourceDomain(sourceDomain: ast.Domain): ast.Domain = sourceDomain
 
   protected def collectSorts(domainTypes: Iterable[ast.DomainType]) {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")
