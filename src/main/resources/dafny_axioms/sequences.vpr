@@ -1,0 +1,300 @@
+// Functions and axioms for general sequences.
+// See sequences_int.vpr for additional functions and axioms specific to integer sequences.
+
+domain $Seq[E] {
+  function Seq_length(s: $Seq[E]): Int
+  function Seq_empty(): $Seq[E]
+  function Seq_singleton(e: E): $Seq[E]
+  function Seq_build(s: $Seq[E], e: E): $Seq[E]
+  function Seq_index(s: $Seq[E], i: Int): E
+  function Seq_append(s1: $Seq[E], s2: $Seq[E]): $Seq[E]
+  function Seq_update(s: $Seq[E], i: Int, e: E): $Seq[E]
+  function Seq_contains(s: $Seq[E], e: E): Bool
+  function Seq_take(s: $Seq[E], n: Int): $Seq[E]
+  function Seq_drop(s: $Seq[E], n: Int): $Seq[E]
+  function Seq_equal(s1: $Seq[E], s2: $Seq[E]): Bool
+  function Seq_sameuntil(s1: $Seq[E], s2: $Seq[E], i: Int): Bool
+
+  axiom seq_length_non_negative {
+    forall s: $Seq[E] :: {Seq_length(s)}
+      0 <= Seq_length(s)
+  }
+
+  axiom empty_seq_length_zero {
+    // [2020-03-06 Malte] WARNING: Silver will type Seq_Empty() as Seq[Int], since the former is
+    // type-wise unconstrained. However, it should be typed as Seq[E].
+    // Since type ascriptions aren't currently supported, Silicon hackily works around this by
+    // matching on the axiom name ("empty_seq_length_zero") and rewriting the axiom body.
+    // See also DefaultSequencesContributor.scala.
+    Seq_length(Seq_empty()) == 0
+  }
+
+  axiom only_empty_seq_length_zero {
+    forall s: $Seq[E] :: {Seq_length(s)}
+      Seq_length(s) == 0 ==> s == Seq_empty()
+  }
+
+  axiom length_singleton_seq {
+    forall e: E :: {Seq_length(Seq_singleton(e))}
+      Seq_length(Seq_singleton(e)) == 1
+  }
+
+  axiom length_seq_build_inc_by_one {
+    forall s: $Seq[E], e: E :: {Seq_length(Seq_build(s, e))}
+      Seq_length(Seq_build(s, e)) == 1 + Seq_length(s)
+  }
+
+  axiom seq_index_over_build {
+    forall s: $Seq[E], i: Int, e: E :: {Seq_index(Seq_build(s, e), i) }
+      i == Seq_length(s)
+        ? Seq_index(Seq_build(s, e), i) == e
+        : Seq_index(Seq_build(s, e), i) == Seq_index(s, i)
+  }
+
+  axiom seq_length_over_append {
+    forall s1: $Seq[E], s2: $Seq[E] :: {Seq_length(Seq_append(s1, s2))}
+      Seq_length(Seq_append(s1, s2)) == Seq_length(s1) + Seq_length(s2)
+  }
+
+  axiom seq_index_over_singleton {
+    forall e: E :: {Seq_index(Seq_singleton(e), 0)}
+      Seq_index(Seq_singleton(e), 0) == e
+  }
+
+  axiom seq_contains_over_singleton {
+    forall e1: E, e2: E :: {Seq_contains(Seq_singleton(e1), e2)}
+      Seq_contains(Seq_singleton(e1), e2)
+        <==>
+      e1 == e2
+  }
+
+  axiom seq_append_empty_left { // The axiom was not in the Dafny version
+    forall s: $Seq[E] :: {Seq_append(Seq_empty(), s)}
+      Seq_append(Seq_empty(), s) == s
+  }
+
+  axiom seq_append_empty_right { // The axiom was not in the Dafny version
+    forall s: $Seq[E] :: {Seq_append(s, Seq_empty())}
+      Seq_append(s, Seq_empty()) == s
+  }
+
+  axiom seq_index_over_append {
+    forall s1: $Seq[E], s2: $Seq[E], i: Int ::
+        {Seq_index(Seq_append(s1, s2), i)}
+        {Seq_index(s1, i), Seq_append(s1, s2)}
+      i < Seq_length(s1)
+        ? Seq_index(Seq_append(s1, s2), i) == Seq_index(s1, i)
+        : Seq_index(Seq_append(s1, s2), i) == Seq_index(s2, i - Seq_length(s1))
+  }
+
+  axiom seq_length_invariant_over_update {
+    forall s: $Seq[E], i: Int, e: E :: {Seq_length(Seq_update(s, i, e))}
+      0 <= i && i < Seq_length(s) ==>
+        Seq_length(Seq_update(s, i, e)) == Seq_length(s)
+  }
+
+  axiom seq_index_over_update {
+    forall s: $Seq[E], i: Int, e: E, j: Int :: {Seq_index(Seq_update(s, i, e), j)}
+      0 <= i && i < Seq_length(s) ==>
+        i == j
+          ? Seq_index(Seq_update(s, i, e), j) == e
+          : Seq_index(Seq_update(s, i, e), j) == Seq_index(s, j)
+  }
+
+  axiom seq_element_contains_index_exists {
+    forall s: $Seq[E], e: E :: {Seq_contains(s, e)}
+      Seq_contains(s, e)
+        <==> // Two implications in the Dafny version
+      exists i: Int :: {Seq_index(s, i)}
+        0 <= i && i < Seq_length(s) && Seq_index(s, i) == e
+  }
+
+  axiom empty_seq_contains_nothing {
+    forall e: E :: {Seq_contains(Seq_empty(), e)}
+      !Seq_contains(Seq_empty(), e)
+  }
+
+  axiom seq_contains_over_append {
+    forall s1: $Seq[E], s2: $Seq[E], e: E :: {Seq_contains(Seq_append(s1, s2), e)}
+      Seq_contains(Seq_append(s1, s2), e)
+        <==> // Two implications in the Dafny version
+      (Seq_contains(s1, e) || Seq_contains(s2, e))
+  }
+
+  axiom seq_contains_over_build {
+    forall s: $Seq[E], e1: E, e2: E :: {Seq_contains(Seq_build(s, e1), e2)}
+      Seq_contains(Seq_build(s, e1), e2)
+        <==> // Two implications in the Dafny version
+      (e1 == e2 || Seq_contains(s, e2))
+  }
+
+  axiom seq_take_negative_length { // [2019-12-23 Malte] Added to resolve Silicon/Silver issue #400/#295
+    forall s: $Seq[E], n: Int :: {Seq_take(s, n)}
+      n <= 0 ==> Seq_take(s, n) == Seq_empty()
+  }
+
+  axiom seq_contains_over_take_index_exists {
+    forall s: $Seq[E], n: Int, e: E :: {Seq_contains(Seq_take(s, n), e)}
+      Seq_contains(Seq_take(s, n), e)
+        <==> // Two implications in the Dafny version
+      exists i: Int :: {Seq_index(s, i)}
+        0 <= i && i < n && i < Seq_length(s) && Seq_index(s, i) == e
+  }
+
+  axiom seq_drop_negative_length { // [2019-12-23 Malte] Added to resolve Silicon/Silver issue #400/#295
+    forall s: $Seq[E], n: Int :: {Seq_drop(s, n)}
+      n <= 0 ==> Seq_drop(s, n) == s
+  }
+
+  axiom seq_contains_over_drop_index_exists {
+    forall s: $Seq[E], n: Int, e: E :: {Seq_contains(Seq_drop(s, n), e)}
+      Seq_contains(Seq_drop(s, n), e)
+        <==> // Two implications in the Dafny version
+      exists i: Int :: {Seq_index(s, i)}
+        0 <= i && n <= i && i < Seq_length(s) && Seq_index(s, i) == e
+  }
+
+  axiom extensional_seq_equality {
+    forall s1: $Seq[E], s2: $Seq[E] :: {Seq_equal(s1, s2)}
+      Seq_equal(s1, s2)
+        <==> // Two implications in the Dafny version
+      (Seq_length(s1) == Seq_length(s2) &&
+       forall i: Int :: {Seq_index(s1, i)} {Seq_index(s2, i)}
+          0 <= i && i < Seq_length(s1) ==>
+            Seq_index(s1, i) == Seq_index(s2, i))
+  }
+
+  axiom seq_equality_identity {
+    forall s1: $Seq[E], s2: $Seq[E] :: {Seq_equal(s1, s2)}
+      Seq_equal(s1, s2) ==> s1 == s2
+  }
+
+  axiom extensional_seq_equality_prefix {
+    forall s1: $Seq[E], s2: $Seq[E], n: Int :: {Seq_sameuntil(s1, s2, n)}
+      Seq_sameuntil(s1, s2, n)
+        <==> // Two implications in the Dafny version
+      forall i: Int :: {Seq_index(s1, i)} {Seq_index(s2, i)}
+        0 <= i && i < n ==>
+          Seq_index(s1, i) == Seq_index(s2, i)
+
+  }
+
+  axiom seq_length_over_take {
+    forall s: $Seq[E], n: Int :: {Seq_length(Seq_take(s, n))}
+      0 <= n ==>
+        (n <= Seq_length(s)
+          ? Seq_length(Seq_take(s, n)) == n
+          : Seq_length(Seq_take(s, n)) == Seq_length(s))
+  }
+
+  axiom seq_index_over_take {
+    forall s: $Seq[E], n: Int, i: Int ::
+        {Seq_index(Seq_take(s, n), i)}
+        {Seq_index(s, i), Seq_take(s, n)} // Added 29-10-2015
+      0 <= i && i < n && i < Seq_length(s) ==>
+        Seq_index(Seq_take(s, n), i) == Seq_index(s, i)
+  }
+
+  axiom seq_length_over_drop {
+    forall s: $Seq[E], n: Int :: {Seq_length(Seq_drop(s, n))}
+      0 <= n ==>
+        (n <= Seq_length(s)
+          ? Seq_length(Seq_drop(s, n)) == Seq_length(s) - n
+          : Seq_length(Seq_drop(s, n)) == 0)
+  }
+
+  axiom seq_index_over_drop_1 {
+    forall s: $Seq[E], n: Int, i: Int :: {Seq_index(Seq_drop(s, n), i)}
+      0 <= n && 0 <= i && i < Seq_length(s) - n ==>
+        Seq_index(Seq_drop(s, n), i) == Seq_index(s, i + n)
+  }
+
+  axiom seq_index_over_drop_2 { // Added 29-10-2015
+    forall s: $Seq[E], n: Int, i: Int :: {Seq_index(s, i), Seq_drop(s, n)}
+      0 <= n && n <= i && i < Seq_length(s) ==>
+        Seq_index(Seq_drop(s, n), i - n) == Seq_index(s, i)
+  }
+
+//  axiom seq_take_drop_length_over_append { // No idea when & why this axiom was commented
+//    forall s1: $Seq[E], s2: $Seq[E] ::
+//        {Seq_drop(Seq_append(s1, s2), Seq_length(s1))}
+//        {Seq_take(Seq_append(s1, s2), Seq_length(s1))}
+//      Seq_drop(Seq_append(s1, s2), Seq_length(s1)) == s2 &&
+//      Seq_take(Seq_append(s1, s2), Seq_length(s1)) == s1
+//  }
+
+  axiom seq_take_over_update_1 {
+    forall s: $Seq[E], i: Int, e: E, n: Int :: {Seq_take(Seq_update(s, i, e), n)}
+      0 <= i && i < n && n < Seq_length(s) ==>
+        Seq_take(Seq_update(s, i, e), n) == Seq_update(Seq_take(s, n), i, e)
+  }
+
+  axiom seq_take_over_update_2 {
+    forall s: $Seq[E], i: Int, e: E, n: Int :: {Seq_take(Seq_update(s, i, e), n)}
+      n <= i && i < Seq_length(s) ==>
+        Seq_take(Seq_update(s, i, e), n) == Seq_take(s, n)
+  }
+
+  axiom seq_drop_over_update_1 {
+    forall s: $Seq[E], i: Int, e: E, n: Int :: {Seq_drop(Seq_update(s, i, e), n)}
+      0 <= n && n <= i && i < Seq_length(s) ==>
+        Seq_drop(Seq_update(s, i, e), n) == Seq_update(Seq_drop(s, n), i - n, e)
+  }
+
+  axiom seq_drop_over_update_2 {
+    forall s: $Seq[E], i: Int, e: E, n: Int :: {Seq_drop(Seq_update(s, i, e), n)}
+      0 <= i && i < n && n < Seq_length(s) ==>
+        Seq_drop(Seq_update(s, i, e), n) == Seq_drop(s, n)
+  }
+
+  axiom seq_drop_over_build {
+    forall s: $Seq[E], e: E, n: Int :: {Seq_drop(Seq_build(s, e), n)}
+      0 <= n && n <= Seq_length(s) ==>
+        Seq_drop(Seq_build(s, e), n) == Seq_build(Seq_drop(s, n), e)
+  }
+
+//  axiom seq_drop_nothing {
+//    forall s: $Seq[E] :: {Seq_drop(s, 0)}
+//      Seq_drop(s, 0) == s
+//  }
+//
+//  axiom seq_take_nothing {
+//    forall s: $Seq[E] :: {Seq_take(s, 0)}
+//      Seq_take(s, 0) == Seq_empty()
+//  }
+//
+//  axiom seq_drop_over_drop {
+//    forall s: $Seq[E], m: Int, n: Int :: {Seq_drop(Seq_drop(s, m), n)}
+//      0 <= m && 0 <= n && n + m <= Seq_length(s) ==>
+//        Seq_drop(Seq_drop(s, m), n) == Seq_drop(s, m + n)
+//  }
+
+
+
+  //
+  // The remaining functions and axioms are only for integer sequences, i.e. $Seq[Int].
+  // NOTE: Update DefaultSequencesContributor.scala after having added functions or axioms.
+  //
+
+  function Seq_range(min: Int, max: Int): $Seq[Int]
+
+  axiom ranged_seq_length {
+    forall min: Int, max: Int :: {Seq_length(Seq_range(min, max))}
+      min < max
+        ? Seq_length(Seq_range(min, max)) == max - min
+        : Seq_length(Seq_range(min, max)) == 0
+  }
+
+  axiom ranged_seq_index {
+    forall min: Int, max: Int, i: Int :: {Seq_index(Seq_range(min, max), i)}
+      0 <= i && i < max - min ==>
+        Seq_index(Seq_range(min, max), i) == min + i
+  }
+
+  axiom ranged_seq_contains {
+    forall min: Int, max: Int, e: Int :: {Seq_contains(Seq_range(min, max), e)}
+      Seq_contains(Seq_range(min, max), e)
+        <==> // Two implications in the Dafny version
+      (min <= e && e < max)
+  }
+}

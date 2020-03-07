@@ -37,7 +37,7 @@ class TermToSMTLib2Converter
     case sorts.Perm => "$Perm"
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
-    case sorts.Seq(elementSort) => text("$Seq<") <> render(elementSort) <> ">"
+    case sorts.Seq(elementSort) => text("Seq<") <> render(elementSort) <> ">"
     case sorts.Set(elementSort) => text("Set<") <> render(elementSort) <> ">"
     case sorts.Multiset(elementSort) => text("Multiset<") <> render(elementSort) <> ">"
     case sorts.UserSort(id) => sanitize(id)
@@ -138,7 +138,7 @@ class TermToSMTLib2Converter
     case bop: BuiltinEquals => renderBinaryOp("=", bop)
 
     case bop: CustomEquals => bop.p0.sort match {
-      case _: sorts.Seq => renderBinaryOp("$Seq.equal", bop)
+      case _: sorts.Seq => renderBinaryOp("Seq_equal", bop)
       case _: sorts.Set => renderApp("Set_equal", Seq(bop.p0, bop.p1), bop.sort)
       case _: sorts.Multiset => renderApp("Multiset_equal", Seq(bop.p0, bop.p1), bop.sort)
       case sort => sys.error(s"Don't know how to translate equality between symbols $sort-typed terms")
@@ -178,15 +178,15 @@ class TermToSMTLib2Converter
 
     /* Sequences */
 
-    case SeqRanged(t0, t1) => renderBinaryOp("$Seq.range", render(t0), render(t1))
-    case SeqSingleton(t0) => parens(text("$Seq.singleton") <+> render(t0))
-    case bop: SeqAppend => renderBinaryOp("$Seq.append", bop)
-    case uop: SeqLength => renderUnaryOp("$Seq.length", uop)
-    case bop: SeqAt => renderBinaryOp("$Seq.index", bop)
-    case bop: SeqTake => renderBinaryOp("$Seq.take", bop)
-    case bop: SeqDrop => renderBinaryOp("$Seq.drop", bop)
-    case bop: SeqIn => renderBinaryOp("$Seq.contains", bop)
-    case SeqUpdate(t0, t1, t2) => renderNAryOp("$Seq.update", t0, t1, t2)
+    case SeqRanged(t0, t1) => renderBinaryOp("Seq_range", render(t0), render(t1))
+    case SeqSingleton(t0) => parens(text("Seq_singleton") <+> render(t0))
+    case bop: SeqAppend => renderBinaryOp("Seq_append", bop)
+    case uop: SeqLength => renderUnaryOp("Seq_length", uop)
+    case bop: SeqAt => renderBinaryOp("Seq_index", bop)
+    case bop: SeqTake => renderBinaryOp("Seq_take", bop)
+    case bop: SeqDrop => renderBinaryOp("Seq_drop", bop)
+    case bop: SeqIn => renderBinaryOp("Seq_contains", bop)
+    case SeqUpdate(t0, t1, t2) => renderNAryOp("Seq_update", t0, t1, t2)
 
     /* Sets */
 
@@ -316,7 +316,7 @@ class TermToSMTLib2Converter
     case True() => "true"
     case False() => "false"
     case Null() => "$Ref.null"
-    case SeqNil(elementSort) => text("$Seq.empty<") <> render(elementSort) <> ">"
+    case _: SeqNil => renderApp("Seq_empty", Seq(), literal.sort)
     case _: EmptySet => renderApp("Set_empty", Seq(), literal.sort)
     case _: EmptyMultiset => renderApp("Multiset_empty", Seq(), literal.sort)
   }

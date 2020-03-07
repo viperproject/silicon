@@ -45,11 +45,6 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   /* Functionality */
 
-  def computeGroundTypeInstances(program: ast.Program): InsertionOrderedSet[BuiltinDomainType] =
-    program.groundTypeInstances.collect {
-      case builtinDomainTypeTag(s) => s
-    }.to[InsertionOrderedSet]
-
   def analyze(program: ast.Program) {
     val builtinDomainTypeInstances = computeGroundTypeInstances(program)
     val sourceProgram = utils.loadProgram(sourceResource)
@@ -71,7 +66,10 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
         val functions = sourceDomain.functions.map(ast.utility.DomainInstances.substitute(_, mdt.typVarsMap, sourceProgram)).distinct
         val axioms = sourceDomain.axioms.map(ast.utility.DomainInstances.substitute(_, mdt.typVarsMap, sourceProgram)).distinct
 
-        sourceDomain.copy(functions = functions, axioms = axioms)(sourceDomain.pos, sourceDomain.info, sourceDomain.errT)
+        val instance =
+          sourceDomain.copy(functions = functions, axioms = axioms)(sourceDomain.pos, sourceDomain.info, sourceDomain.errT)
+
+        transformSourceDomainInstance(instance, mdt)
       })
 
     collectSorts(sourceDomainTypeInstances)
@@ -79,7 +77,14 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
     collectAxioms(sourceDomainInstantiations)
   }
 
+  protected def computeGroundTypeInstances(program: ast.Program): InsertionOrderedSet[BuiltinDomainType] =
+    program.groundTypeInstances.collect {
+      case builtinDomainTypeTag(s) => s
+    }.to[InsertionOrderedSet]
+
   protected def transformSourceDomain(sourceDomain: ast.Domain): ast.Domain = sourceDomain
+
+  protected def transformSourceDomainInstance(sourceDomain: ast.Domain, typ: ast.DomainType): ast.Domain = sourceDomain
 
   protected def collectSorts(domainTypes: Iterable[ast.DomainType]) {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")
