@@ -90,7 +90,7 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
      *       and set equality (for sort Snap only), but Nadja only emits the necessary set function
      *       declarations, but no corresponding axioms. Looks like an oversight.
      */
-    val setsTemplateFile = "/dafny_axioms/qpp_sets_declarations_dafny.smt2"
+    val setsTemplateFile = "/predicate_snap_sets_declarations.smt2"
     val setsSort = sorts.Snap
     val substitutions = Map("$S$" -> termConverter.convert(setsSort))
     val setsDeclarations = preambleReader.readParametricPreamble(setsTemplateFile, substitutions)
