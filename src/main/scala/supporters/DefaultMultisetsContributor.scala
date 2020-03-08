@@ -7,16 +7,18 @@
 package viper.silicon.supporters
 
 import scala.reflect.{ClassTag, classTag}
+import viper.silicon.Config
 import viper.silver.ast
 import viper.silicon.state.terms._
 
-class DefaultMultisetsContributor(val domainTranslator: DomainsTranslator[Term])
+class DefaultMultisetsContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
     extends BuiltinDomainsContributor {
 
   type BuiltinDomainType = ast.MultisetType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.MultisetType]
 
-  val sourceResource: String = "/dafny_axioms/multisets.vpr"
+  val defaultSourceResource: String = "/dafny_axioms/multisets.vpr"
+  val userProvidedSourceFilepath: Option[String] = config.multisetAxiomatizationFile.toOption
   val sourceDomainName: String = "$Multiset"
 
   def targetSortFactory(argumentSorts: Iterable[Sort]): Sort = {
@@ -24,5 +26,3 @@ class DefaultMultisetsContributor(val domainTranslator: DomainsTranslator[Term])
     sorts.Multiset(argumentSorts.head)
   }
 }
-
-

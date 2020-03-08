@@ -7,16 +7,18 @@
 package viper.silicon.supporters
 
 import scala.reflect.{ClassTag, classTag}
+import viper.silicon.Config
 import viper.silicon.state.terms.{Sort, Term, sorts}
 import viper.silver.ast
 
-class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term])
+class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
     extends BuiltinDomainsContributor {
 
   type BuiltinDomainType = ast.SeqType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.SeqType]
 
-  val sourceResource: String = "/dafny_axioms/sequences.vpr"
+  val defaultSourceResource: String = "/dafny_axioms/sequences.vpr"
+  val userProvidedSourceFilepath: Option[String] = config.sequenceAxiomatizationFile.toOption
   val sourceDomainName: String = "$Seq"
 
   override protected def transformSourceDomain(sourceDomain: ast.Domain): ast.Domain = {

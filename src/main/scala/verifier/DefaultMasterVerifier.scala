@@ -50,9 +50,9 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   protected val preambleReader = new SMTLib2PreambleReader
 
-  protected val sequencesContributor = new DefaultSequencesContributor(domainTranslator)
-  protected val setsContributor = new DefaultSetsContributor(domainTranslator)
-  protected val multisetsContributor = new DefaultMultisetsContributor(domainTranslator)
+  protected val sequencesContributor = new DefaultSequencesContributor(domainTranslator, config)
+  protected val setsContributor = new DefaultSetsContributor(domainTranslator, config)
+  protected val multisetsContributor = new DefaultMultisetsContributor(domainTranslator, config)
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)

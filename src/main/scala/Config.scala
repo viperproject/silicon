@@ -480,6 +480,24 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val setAxiomatizationFile = opt[String]("setAxiomatizationFile",
+    descr =s"Source file with set axiomatisation. If omitted, built-in one is used.",
+    default = None,
+    noshort = true
+  )
+
+  val multisetAxiomatizationFile = opt[String]("multisetAxiomatizationFile",
+    descr =s"Source file with multiset axiomatisation. If omitted, built-in one is used.",
+    default = None,
+    noshort = true
+  )
+
+  val sequenceAxiomatizationFile = opt[String]("sequenceAxiomatizationFile",
+    descr =s"Source file with sequence axiomatisation. If omitted, built-in one is used.",
+    default = None,
+    noshort = true
+  )
+
 
   val disableHavocHack407 = opt[Boolean]("disableHavocHack407",
     descr = "A Viper method call to " +
@@ -490,7 +508,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  /* Option validation */
+  /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(timeout) {
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
@@ -509,6 +527,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case other =>
       sys.error(s"Unexpected combination: $other")
   }
+
+  validateFileOpt(setAxiomatizationFile)
+  validateFileOpt(multisetAxiomatizationFile)
+  validateFileOpt(sequenceAxiomatizationFile)
+
+  /* Finalise configuration */
 
   verify()
 }

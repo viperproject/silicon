@@ -6,21 +6,30 @@
 
 package viper.silicon.supporters
 
+import java.io.File
+import java.net.URL
 import scala.reflect.ClassTag
+import fastparse.all
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
-import viper.silver.ast.LineCol
-import fastparse.all
 
 abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
   type BuiltinDomainType <: ast.GenericType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType]
 
-  def sourceResource: String
+  def defaultSourceResource: String
+  def userProvidedSourceFilepath: Option[String]
+
+  lazy val sourceUrl: URL = {
+    userProvidedSourceFilepath
+      .map(filepath => new File(filepath).toURI.toURL)
+      .getOrElse(getClass.getResource(defaultSourceResource))
+  }
+
   def sourceDomainName: String
   def domainTranslator: DomainsTranslator[Term]
   def targetSortFactory(argumentSorts: Iterable[Sort]): Sort
@@ -47,7 +56,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   def analyze(program: ast.Program) {
     val builtinDomainTypeInstances = computeGroundTypeInstances(program)
-    val sourceProgram = utils.loadProgram(sourceResource)
+    val sourceProgram = utils.loadProgramFromUrl(sourceUrl)
     val sourceDomain = transformSourceDomain(sourceProgram.findDomain(sourceDomainName))
 
     val sourceDomainTypeInstances =
@@ -152,24 +161,23 @@ class BuiltinDomainAwareSymbolConverter(sourceDomainName: String,
 }
 
 private object utils {
-  /* TODO: Might no longer be necessary once Simon's AST transformation code has been merged in,
-   *       since he added a similar method to the parser that can be used to import Viper files.
-   */
-  def loadProgram(fromResource: String): ast.Program = {
-    val fromStream = getClass.getResourceAsStream(fromResource)
-    val fromURL = getClass.getResource(fromResource)
+  def loadProgramFromResource(resource: String): ast.Program = {
+    loadProgramFromUrl(getClass.getResource(resource))
+  }
 
-    assert(fromStream != null && fromURL != null, s"Cannot find $fromResource")
+  // TODO: Check that Silver's parser doesn't already provide suitable functionality.
+  def loadProgramFromUrl(url: URL): ast.Program = {
+    assert(url != null, s"Unexpectedly found sourceUrl == null")
 
-    val fromPath = viper.silver.utility.Paths.pathFromResource(fromURL)
-    val source = scala.io.Source.fromInputStream(fromStream)
+    val fromPath = viper.silver.utility.Paths.pathFromResource(url)
+    val source = scala.io.Source.fromURL(url)
 
     val content =
       try {
         source.mkString
       } catch {
         case e@(_: RuntimeException | _: java.io.IOException) =>
-          sys.error(s"Could not read from $fromStream. Exception: $e")
+          sys.error(s"Could not read from $url. Exception: $e")
       } finally {
         source.close()
       }
@@ -186,7 +194,7 @@ private object utils {
         program
 
       case fastparse.core.Parsed.Failure(msg, index, extra) =>
-        val (line, col) = LineCol(extra.input.asInstanceOf[all.ParserInput], index)
+        val (line, col) = ast.LineCol(extra.input.asInstanceOf[all.ParserInput], index)
         sys.error(s"Failure: $msg, at ${viper.silver.parser.FilePosition(fromPath, line, col)}")
     }
   }
