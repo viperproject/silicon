@@ -1363,31 +1363,37 @@ object evaluator extends EvaluationRules with Immutable {
                                   pve: PartialVerificationError,
                                   v: Verifier)
                                  (Q: (State, Term, Verifier) => VerificationResult)
-                                  : VerificationResult = {
-    if(constructor != Or && constructor != And) {
-      sys.error("Only Or and And are supported as constructors for evalSeqShortCircuit")
-    }
+                                 : VerificationResult = {
+    assert(
+      constructor == Or || constructor == And,
+      "Only Or and And are supported as constructors for evalSeqShortCircuit")
+
+    assert(exps.nonEmpty, "Empty sequence of expressions not allowed")
+
     type brFun = (State, Verifier) => VerificationResult
-    val (default, stop, swapIfAnd) =
-      if(constructor == Or) (False(), True(), (a: brFun, b: brFun) => (a,b))
-      else (True(), False(), (a: brFun, b: brFun) => (b,a))
-    if(exps.size==0)
-      Q(s, default, v)
-    else
-      eval(s, exps.head, pve, v)((s1, t0, v1) =>
-          t0 match {
-            case `stop` => Q(s1, t0, v1)
-            case _ =>
-              joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-                  brancher.branch(s2, t0, v2, true) _ tupled swapIfAnd(
-                    (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
-                    (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
-                  ){case Seq(ent) => (ent.s, ent.data)
-                    case Seq(ent1, ent2) => (ent1.s.merge(ent2.s),
-                      constructor(Seq(ent1.data, ent2.data)))
-                    case ents => sys.error(s"Unexpected join data entries $ents")
-                  }(Q)
-          })
+
+    // TODO: Find out and document why swapIfAnd is needed
+    val (stop, swapIfAnd) =
+      if(constructor == Or) (True(), (a: brFun, b: brFun) => (a, b))
+      else (False(), (a: brFun, b: brFun) => (b, a))
+
+    eval(s, exps.head, pve, v)((s1, t0, v1) => {
+      t0 match {
+        case _ if exps.tail.isEmpty => Q(s1, t0, v1) // Done, if no expressions left (necessary)
+        case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
+        case _ =>
+          joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
+            brancher.branch(s2, t0, v2, true) _ tupled swapIfAnd(
+              (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
+              (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
+            ){case Seq(ent) =>
+                (ent.s, ent.data)
+              case Seq(ent1, ent2) =>
+                (ent1.s.merge(ent2.s), constructor(Seq(ent1.data, ent2.data)))
+              case entries =>
+                sys.error(s"Unexpected join data entries $entries")
+            }(Q)
+      }})
   }
 
   private[silicon] case object FromShortCircuitingAnd extends Info {
