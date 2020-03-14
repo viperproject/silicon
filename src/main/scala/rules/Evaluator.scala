@@ -252,7 +252,7 @@ object evaluator extends EvaluationRules with Immutable {
               }})
 
       case fa: ast.FieldAccess =>
-        evalLocationAccess(s, fa, pve, v)((s1, name, tArgs, v1) => {
+        evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
           val resource = fa.res(Verifier.program)
           chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
