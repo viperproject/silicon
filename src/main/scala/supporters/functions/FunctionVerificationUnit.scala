@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
-import viper.silicon.{Map, SymbExLogger, toMap}
+import viper.silicon.{Map, Stack, SymbExLogger, toMap}
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.interfaces._
 import viper.silicon.state._
@@ -32,7 +32,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
   def decider: Decider
   def symbolConverter: SymbolConverter
 
-  private case class Phase1Data(sPre: State, pcsPre: InsertionOrderedSet[Term])
+  private case class Phase1Data(sPre: State, bcsPre: Stack[Term], pcsPre: InsertionOrderedSet[Term])
 
   object functionsSupporter
       extends FunctionVerificationUnit[Sort, Decl, Term]
@@ -209,7 +209,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
         produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, _) => {
-          phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
+          val relevantPathConditionStack = decider.pcs.after(preMark)
+          phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions, relevantPathConditionStack.assumptions)
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because
           // the postcondition's snapshot structure is most likely different than that of the
           // precondition
@@ -238,8 +239,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
-        case (intermediateResult, Phase1Data(sPre, pcsPre)) =>
+        case (intermediateResult, Phase1Data(sPre, bcsPre, pcsPre)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
+            decider.setCurrentBranchCondition(And(bcsPre))
             decider.assume(pcsPre)
             v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, _) => {
