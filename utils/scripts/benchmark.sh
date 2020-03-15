@@ -7,6 +7,7 @@ SILICONTESTS_REPETITIONS=10
 SILICONTESTS_RANDOMIZE_Z3="false"
 SILICONTESTS_CSV="benchmark_$(date +%Y-%m-%d_%H-%M).csv"
 SILICONTESTS_WARMUP=
+SILICONTESTS_INCL_FILE=
 SILICONTESTS_TARGET=
 
 function usage() {
@@ -17,6 +18,7 @@ function usage() {
   echo "  -h, --help"
   echo "  -p, --pause [true|false] (default: $PAUSE, if empty: true)"
   echo "  -w, --warmup-directory <path/to/warmup/files/> (optional)"
+  echo "  -i, --includes <path/to/file.txt> (optional)"
   echo "  -r, --repetitions <n> (default: $SILICONTESTS_REPETITIONS)"
   echo "  -c, --csv-file <path/to/file.csv> (default: $SILICONTESTS_CSV)"
   echo "  -z, --randomize-z3 [true|false] (default: $SILICONTESTS_RANDOMIZE_Z3, if empty: true)"
@@ -49,13 +51,14 @@ function set_boolean_flag() {
 # Declare valid arguments and parse provided ones
 TEMP=$(getopt \
 -n $PROGRAM_NAME \
--o hp::r:w:c:z:: \
+-o hp::r:w:i:c:z:: \
 --long \
 pause::,\
 repetitions:,\
 warmup-directory:,\
 csv-file:,\
 randomize-z3:,\
+includes:,\
 help \
 -- "$@")
 # --quiet \  ## suppress getopt errors
@@ -75,6 +78,7 @@ while true; do
       shift ;;    
     -r|--repetitions) SILICONTESTS_REPETITIONS=$2; shift ;;
     -w|--warmup-directory) SILICONTESTS_WARMUP=$2; shift ;;
+    -i|--includes) SILICONTESTS_INCL_FILE=$2; shift ;;
     -c|--csv-file) SILICONTESTS_CSV=$2; shift ;;
     -z|--randomize-z3)
       set_boolean_flag SILICONTESTS_RANDOMIZE_Z3 $1 $2
@@ -98,6 +102,7 @@ SBT_ARGS="
   -DSILICONTESTS_WARMUP=$SILICONTESTS_WARMUP 
   -DSILICONTESTS_REPETITIONS=$SILICONTESTS_REPETITIONS 
   -DSILICONTESTS_CSV=$SILICONTESTS_CSV 
+  -DSILICONTESTS_INCL_FILE=$SILICONTESTS_INCL_FILE 
   -DSILICONTESTS_RANDOMIZE_Z3=$SILICONTESTS_RANDOMIZE_Z3   
   org.scalatest.tools.Runner 
   -o -s 

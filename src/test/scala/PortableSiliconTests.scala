@@ -74,6 +74,7 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
   override val warmupLocationPropertyName = "SILICONTESTS_WARMUP"
   override val targetLocationPropertyName = "SILICONTESTS_TARGET"
   override val csvFilePropertyName = "SILICONTESTS_CSV"
+  override val inclusionFilePropertyName = "SILICONTESTS_INCL_FILE"
   val randomizePropertyName = "SILICONTESTS_RANDOMIZE_Z3"
 
   val commandLineArguments: Seq[String] = Seq(

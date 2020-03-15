@@ -1,0 +1,3 @@
+method test(xs: Seq[Int]) {
+  inhale forall x: Int :: x in xs ==> 0 < x
+}
