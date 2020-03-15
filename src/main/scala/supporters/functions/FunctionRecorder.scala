@@ -13,6 +13,10 @@ import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition}
 import viper.silicon.{Map, Stack}
 import viper.silicon.state.terms._
 
+// TODO: FunctionRecorder records Function, Var, etc., which are later on turned into corresponding
+//       declarations (e.g. FunctionDecl), see FunctionData's field freshSymbolsAcrossAllPhases.
+//       Only macros are already recorded as MacroDecls — this should be the case for Functions,
+//       etc. as well.
 trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def data: Option[FunctionData]
   private[functions] def locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]]
@@ -24,6 +28,7 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def freshArps: InsertionOrderedSet[(Var, Term)]
   def freshSnapshots: InsertionOrderedSet[Function]
   def freshPathSymbols: InsertionOrderedSet[Function]
+  def freshMacros: InsertionOrderedSet[MacroDecl]
   def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term): FunctionRecorder
   def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder
   def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): FunctionRecorder
@@ -31,6 +36,7 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def recordArp(arp: Var, constraint: Term): FunctionRecorder
   def recordFreshSnapshot(snap: Function): FunctionRecorder
   def recordPathSymbol(symbol: Function): FunctionRecorder
+  def recordFreshMacro(decl: MacroDecl): FunctionRecorder
   def depth: Int
   def changeDepthBy(delta: Int): FunctionRecorder
 }
@@ -43,6 +49,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
                                   freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet(),
                                   freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet(),
                                   freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet(),
+                                  freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet(),
                                   depth: Int = 0)
     extends FunctionRecorder {
 
@@ -152,6 +159,10 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     if (depth <= 1) copy(freshPathSymbols = freshPathSymbols + symbol)
     else this
 
+  def recordFreshMacro(decl: MacroDecl): FunctionRecorder =
+    if (depth <= 1) copy(freshMacros = freshMacros + decl)
+    else this
+
   def changeDepthBy(delta: Int): ActualFunctionRecorder =
     copy(depth = depth + delta)
 
@@ -183,6 +194,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     val arps = freshArps ++ other.freshArps
     val snaps = freshSnapshots ++ other.freshSnapshots
     val symbols = freshPathSymbols ++ other.freshPathSymbols
+    val macros = freshMacros ++ other.freshMacros
 
     copy(locToSnaps = lts,
          fappToSnaps = fts,
@@ -190,7 +202,8 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
          freshFieldInvs = fieldInvs,
          freshArps = arps,
          freshSnapshots = snaps,
-         freshPathSymbols = symbols)
+         freshPathSymbols = symbols,
+         freshMacros = macros)
   }
 
   override lazy val toString: String = {
@@ -219,6 +232,7 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   val freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   val freshSnapshots: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   val freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
+  val freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet.empty
   val depth = 0
 
   def merge(other: FunctionRecorder): NoopFunctionRecorder.type = {
@@ -234,5 +248,6 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   def recordArp(arp: Var, constraint: Term): NoopFunctionRecorder.type = this
   def recordFreshSnapshot(snap: Function): NoopFunctionRecorder.type = this
   def recordPathSymbol(symbol: Function): NoopFunctionRecorder.type = this
+  def recordFreshMacro(decl: MacroDecl): NoopFunctionRecorder.type = this
   def changeDepthBy(delta: Int): NoopFunctionRecorder.type = this
 }

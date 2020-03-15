@@ -361,19 +361,6 @@ object executor extends ExecutionRules with Immutable {
         v.decider.assume(ts)
         Q(s1, v)
 
-      case ast.Fresh(vars) =>
-        val (arps, arpConstraints) =
-          vars.map(x => (x, v.decider.freshARP()))
-              .map{case (variable, (value, constrain)) => ((variable, value), constrain)}
-              .unzip
-        val g1 = Store(s.g.values ++ arps)
-          /* It is crucial that the (var -> term) mappings in arps override
-           * already existing bindings for the same vars when they are added
-           * (via ++).
-           */
-        v.decider.assume(arpConstraints)
-        Q(s.copy(g = g1), v)
-
       case inhale @ ast.Inhale(a) => a match {
         case _: ast.FalseLit =>
           /* We're done */
@@ -434,6 +421,27 @@ object executor extends ExecutionRules with Immutable {
                 val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
                 Q(s2, v1)})
         }
+
+      // A call havoc_all_R() results in Silicon efficiently havocking all instances of resource R.
+      // See also Silicon issue #407.
+      case ast.MethodCall(methodName, _, _)
+          if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
+
+        val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
+        val member = Verifier.program.collectFirst {
+          case m: ast.Field if m.name == resourceName => m
+          case m: ast.Predicate if m.name == resourceName => m
+        }.getOrElse(sys.error(s"Found $methodName, but no matching field or predicate $resourceName"))
+        val h1 = Heap(s.h.values.map {
+          case bc: BasicChunk if bc.id.name == member.name =>
+            bc.withSnap(freshSnap(bc.snap.sort, v))
+          case qfc: QuantifiedFieldChunk if qfc.id.name == member.name =>
+            qfc.withSnapshotMap(freshSnap(qfc.fvf.sort, v))
+          case qpc: QuantifiedPredicateChunk if qpc.id.name == member.name =>
+            qpc.withSnapshotMap(freshSnap(qpc.psf.sort, v))
+          case other =>
+            other})
+        Q(s.copy(h = h1), v)
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = Verifier.program.findMethod(methodName)
@@ -564,7 +572,6 @@ object executor extends ExecutionRules with Immutable {
            | _: ast.If
            | _: ast.Label
            | _: ast.Seqn
-           | _: ast.Constraining
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
     }
 
@@ -593,4 +600,16 @@ object executor extends ExecutionRules with Immutable {
          t
      }
    }
+
+  private val hack407_method_name_prefix = "___silicon_hack407_havoc_all_"
+
+  def hack407_havoc_all_resources_method_name(id: String): String = s"$hack407_method_name_prefix$id"
+
+  def hack407_havoc_all_resources_method_call(id: String): ast.MethodCall = {
+    ast.MethodCall(
+      methodName = hack407_havoc_all_resources_method_name(id),
+      args = Vector.empty,
+      targets = Vector.empty
+    )(ast.NoPosition, ast.NoInfo, ast.NoTrafos)
+  }
 }

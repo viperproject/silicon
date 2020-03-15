@@ -6,31 +6,28 @@
 
 package viper.silicon.tests
 
-import java.io.FileWriter
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 
 import org.scalatest.DoNotDiscover
-import spray.json.{JsArray, JsObject}
-import viper.silicon.logger.{SymbExLogger, SymbLog}
-import viper.silicon.logger.writer.{SymbExLogReportWriter, TermWriter}
-import viper.silicon.{Silicon, SiliconFrontend}
-import viper.silicon.state.terms.Term
-import viper.silver.reporter.{ExecutionTraceReport, Message, NoopReporter, Reporter}
+import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
+import viper.silver.reporter.NoopReporter
 import viper.silver.testing.{SilSuite, StatisticalTestSuite}
-import viper.silver.utility.Paths
 import viper.silver.verifier.Verifier
 
-/**
-  * This test mechanism is intended for running non-default test suites,
+
+/** This test mechanism is intended for running non-default test suites,
   * in a portable way. Example run command:
   *
   * ```
-  * Z3_EXE=z3.exe \
-  * BOOGIE_EXE=Boogie.exe \
-  * SILICONTESTS_TARGET=./target \
-  * SILICONTESTS_WARMUP=./warmup \
-  * SILICONTESTS_REPETITIONS=5 \
-  * sbt "test:runMain org.scalatest.tools.Runner -o -s viper.silicon.tests.PortableSiliconTests"
+  * Z3_EXE=z3.exe
+  * sbt "test:runMain
+  *      -DSILICONTESTS_TARGET=./target
+  *      -DSILICONTESTS_WARMUP=./warmup
+  *      -DSILICONTESTS_REPETITIONS=5
+  *      -DSILICONTESTS_CSV=data.csv
+  *      org.scalatest.tools.Runner
+  *      -o -s
+  *      viper.silicon.tests.PortableSiliconTests"
   * ```
   *
   * The command above will:
@@ -38,11 +35,13 @@ import viper.silver.verifier.Verifier
   * 2. Measure time of 5 runs of each .vpr file in ./target
   * 3. Discard ("trim") the slowest and the fastest runs and compute
   *   - the mean
+  *   - absolute and relative standard deviation
   *   - the best
   *   - the median
   *   - the worst
   *   run times of all these tests, and
-  * 4. Print the timing info (per phase) into STDOUT.
+  * 4. Print the timing info (per phase) into STDOUT, and write mean and standard deviation
+  *    to file data.csv
   * 5. Create JAR files (e.g., target/scala-2.12/silicon_2.12-1.1-SNAPSHOT.jar,
   *                            target/scala-2.12/silicon_2.12-1.1-SNAPSHOT-tests.jar)
   *    that can be used to run tests with SBT without the need to distribute/ recompile
@@ -53,37 +52,47 @@ import viper.silver.verifier.Verifier
   *    sbt "set trapExit := false" \
   *    "test:runMain org.scalatest.tools.Runner -o -s viper.silicon.tests.PortableSiliconTests"
   *    ```
-  *    Note that this command takes the same environment variables as above.
+  *    Note that this command takes the same JVM property arguments as used above.
   *
   * The warmup and the target must be disjoint (not in a sub-directory relation).
   *
-  * The default values for environment variables above are:
-  *   - SILICONTESTS_TARGET = ???    // This must be set before invoking SBT!
-  *   - SILICONTESTS_WARMUP = None   // If not specified, skip JVM warmup phase.
-  *   - SILICONTESTS_REPETITIONS = 1 // If less then 3, no "trimming" will happen.
+  * The following JVM properties are available:
+  *   - SILICONTESTS_TARGET = path/to/target/files/    // Mandatory
+  *   - SILICONTESTS_WARMUP = path/to/warmup/files/    // Optional. If not specified, skip JVM warmup phase.
+  *   - SILICONTESTS_REPETITIONS = n // Optional, defaults to 1. If less then 3, no "trimming" will happen.
+  *   - SILICONTESTS_CSV = path/to/file.csv // Optional. If provided, mean & stddev are written to CSV file.
+  *   - SILICONTESTS_RANDOMIZE_Z3 = bool // Optional, defaults to true. If true, passes --z3RandomizeSeeds to Silicon.
   */
 @DoNotDiscover
 class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
+  /** Following a hyphenation-based naming scheme is important for handling project-specific annotations.
+    * See comment for [[viper.silver.testing.TestAnnotations.projectNameMatches()]].
+    */
+  override def name = "Silicon-Statistics"
 
-  val commandLineArguments: Seq[String] = Seq.empty
-  private def outputLocationEnvVarName = "SILICONTESTS_OUTPUT"
-  private def ouputDirName: Option[String] = Option(System.getenv(outputLocationEnvVarName))
-  private def targetDirName: String = Option(System.getenv(targetLocationEnvVarName)).get
+  override val repetitionsPropertyName = "SILICONTESTS_REPETITIONS"
+  override val warmupLocationPropertyName = "SILICONTESTS_WARMUP"
+  override val targetLocationPropertyName = "SILICONTESTS_TARGET"
+  override val csvFilePropertyName = "SILICONTESTS_CSV"
+  val randomizePropertyName = "SILICONTESTS_RANDOMIZE_Z3"
 
-  lazy val verifier = {
-    var args =
+  val commandLineArguments: Seq[String] = Seq(
+    "--disableCatchingExceptions",
+    "--timeout", "180" /* seconds */
+  ) ++ (if (System.getProperty(randomizePropertyName, "false").toBoolean) Seq("--z3RandomizeSeeds") else Seq.empty)
+
+  lazy val verifier: Silicon = {
+    val args =
       commandLineArguments ++
         Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap.getOrElse("silicon", Map()))
-    args = args ++ Seq("--disableCaching", "--writeLogFile"/*, "--timeout", "1000"*/, "--numberOfParallelVerifiers", "1"/*, "--enableMoreCompleteExhale"*/)
-    val reporter = SymbExReportFileReporter(targetDirName, ouputDirName)
-    // val reporter = NoopReporter
+    val reporter = NoopReporter
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
     val silicon = Silicon.fromPartialCommandLineArguments(args, reporter, debugInfo)
 
     silicon
   }
 
-  override def frontend(verifier: Verifier, files: Seq[Path]) = {
+  override def frontend(verifier: Verifier, files: Seq[Path]): SiliconFrontend = {
     require(files.length == 1, "tests should consist of exactly one file")
 
     // For Unit-Testing of the Symbolic Execution Logging, the name of the file
@@ -92,78 +101,16 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
     // tests at once, e.g. with the 'test'-sbt-command.
     SymbExLogger.reset()
     SymbExLogger.filePath = files.head
-    val reporter = verifier match {
-      case silicon: Silicon => silicon.reporter
-      case _ => NoopReporter
-    }
-    // val reporter = SymbExReportFileReporter("symbexreport_file_reporter", files.head.getFileName.toString)
-    val fe = new SiliconFrontend(reporter)
+    SymbExLogger.initUnitTestEngine()
+
+    /* If needed, Silicon reads the filename of the program under verification from Verifier.inputFile.
+    When the test suite is executed (sbt test/testOnly), Verifier.inputFile is set here. When Silicon is
+    run from the command line, Verifier.inputFile is set in src/main/scala/Silicon.scala. */
+    viper.silicon.verifier.Verifier.inputFile = Some(files.head)
+
+    val fe = new SiliconFrontend(NoopReporter)//SiliconFrontendWithUnitTesting()
     fe.init(verifier)
     fe.reset(files.head)
     fe
-  }
-
-  override def name = "Silicon Statistics"
-  override def warmupLocationEnvVarName = "SILICONTESTS_WARMUP"
-  override def targetLocationEnvVarName = "SILICONTESTS_TARGET"
-
-  override val numOfExecutions: Int = Option(System.getenv("SILICONTESTS_REPETITIONS")) match {
-    case Some(reps) =>
-      val intReps = reps.toInt
-      require(intReps >= 1)
-      intReps
-    case None => 1
-  }
-}
-
-case class SymbExReportFileReporter(targetDirName: String, ouputDirName: Option[String], name: String = "symbexreport_file_reporter") extends Reporter {
-
-  def this(targetDirName: String, ouputDirName: Option[String]) = this(targetDirName, ouputDirName, "symbexreport_file_reporter")
-
-  def report(msg: Message): Unit = {
-    msg match {
-      case ExecutionTraceReport(members: Seq[SymbLog], axioms: List[Term], functionPostAxioms: List[Term]) => {
-        val targetPath = Paths.canonize(targetDirName)
-        val isFileInTarget = Paths.isInSubDirectory(targetPath, SymbExLogger.filePath.toFile)
-        if (!isFileInTarget) {
-          return
-        }
-        if (ouputDirName.isEmpty) {
-          return
-        }
-        val relativePathInTarget = targetPath.toPath.relativize(SymbExLogger.filePath)
-        val outputPath = Paths.canonize(ouputDirName.get).toPath.resolve(relativePathInTarget)
-        // replace filename by generated one:
-        val reportFilePath = getReportFileName(outputPath)
-
-        val reportObject = JsObject(
-          "members" -> SymbExLogReportWriter.toJSON(members),
-          "axioms" -> JsArray(axioms.map(TermWriter.toJSON).toVector),
-          "functionPostAxioms" -> JsArray(functionPostAxioms.map(TermWriter.toJSON).toVector),
-          "macros" -> JsArray(members.flatMap(m => m.macros().map(m => {
-            JsObject(
-              "macro" -> TermWriter.toJSON(m._1),
-              "body" -> TermWriter.toJSON(m._2)
-            )
-          })).toVector)
-        )
-
-        // create directory if it does not exist yet
-        reportFilePath.getParent.toFile.mkdirs()
-        val reportFile = new FileWriter(reportFilePath.toFile, false)
-        reportFile.write(reportObject.prettyPrint)
-        reportFile.flush()
-      }
-      case _ =>
-    }
-  }
-
-  private def getReportFileName(origPath: Path): Path = {
-    val origFileName = origPath.getFileName
-    var fileNameSuffix = 1
-    while (Files.exists(origPath.resolveSibling(origFileName + "_" + fileNameSuffix.toString + ".json"))) {
-      fileNameSuffix = fileNameSuffix + 1
-    }
-    origPath.resolveSibling(origFileName + "_" + fileNameSuffix.toString + ".json")
   }
 }

@@ -26,7 +26,7 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
 
 object stateConsolidator extends StateConsolidationRules with Immutable {
   def consolidate(s: State, v: Verifier): State = {
-    if (Verifier.config.enableMoreCompleteExhale()) {
+    if (Verifier.config.disableMostStateConsolidations() || Verifier.config.enableMoreCompleteExhale()) {
       // TODO: Skipping most of what the regular state consolidation performs results in
       //       incompletenesses. E.g. when using quantified permissions, the state consolidation
       //       will, among other things, assume non-aliasing for receivers of *singleton quantified

@@ -237,14 +237,22 @@ object moreCompleteExhaleSupporter extends Immutable {
         definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
       }
 
+      val additionalArgs = s.relevantQuantifiedVariables
+      var currentFunctionRecorder = s.functionRecorder
+
       relevantChunks.sortWith(sortFunction) foreach { ch =>
         if (moreNeeded) {
           val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
           pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm()))
           val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm())
-          val pTakenMacro = v.decider.freshMacro("complete_pTaken", Seq(), pTakenBody)
-          val pTaken = App(pTakenMacro, Seq())
+          val pTakenArgs = additionalArgs
+          val pTakenDecl = v.decider.freshMacro("mce_pTaken", pTakenArgs, pTakenBody)
+          val pTakenMacro = Macro(pTakenDecl.id, pTakenDecl.args.map(_.sort), pTakenDecl.body.sort)
+          val pTaken = App(pTakenMacro, pTakenArgs)
+
+          currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(pTakenDecl)
           SymbExLogger.currentLog().addMacro(pTaken, pTakenBody)
+
           val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
           pNeeded = PermMinus(pNeeded, pTaken)
 
@@ -267,7 +275,9 @@ object moreCompleteExhaleSupporter extends Immutable {
       }
       val newHeap = Heap(allChunks)
 
-      summarise(s, relevantChunks, resource, args, v)((s1, snap, _, _, v1) =>
+      val s0 = s.copy(functionRecorder = currentFunctionRecorder)
+
+      summarise(s0, relevantChunks, resource, args, v)((s1, snap, _, _, v1) =>
         if (!moreNeeded) {
           if (!consumeExact) {
             v1.decider.assume(PermLess(perms, pSum))

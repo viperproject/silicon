@@ -521,6 +521,8 @@ object Quantification
             name: String,
             isGlobal: Boolean)
            : Quantification = {
+
+//    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")
 //    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
 //    assert(triggers.distinct.length == triggers.length, s"Found duplicate triggers: $triggers")
 
@@ -1711,8 +1713,8 @@ case class FieldTrigger(field: String, fvf: Term, at: Term) extends Term {
   val sort = sorts.Bool
 }
 
-
 /* Quantified predicates */
+
 case class PredicateLookup(predname: String, psf: Term, args: Seq[Term]) extends Term {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
 
@@ -1735,6 +1737,50 @@ case class PredicateTrigger(predname: String, psf: Term, args: Seq[Term]) extend
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
 
   val sort = sorts.Bool
+}
+
+/* Magic wands */
+
+case class MagicWandSnapshot(abstractLhs: Term, rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
+  utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
+  utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
+
+  override lazy val toString = s"wandSnap(lhs = $abstractLhs, rhs = $rhsSnapshot)"
+
+  def merge(other: MagicWandSnapshot, branchConditions: Stack[Term]): MagicWandSnapshot = {
+    assert(this.abstractLhs == other.abstractLhs)
+    val condition = And(branchConditions)
+    MagicWandSnapshot(this.abstractLhs, if (this.rhsSnapshot == other.rhsSnapshot)
+      this.rhsSnapshot
+    else
+      Ite(condition, other.rhsSnapshot, this.rhsSnapshot))
+  }
+}
+
+object MagicWandSnapshot {
+  def apply(snapshot: Term): MagicWandSnapshot = {
+    assert(snapshot.sort == sorts.Snap)
+    snapshot match {
+      case snap: MagicWandSnapshot => snap
+      case _ =>
+        MagicWandSnapshot(First(snapshot), Second(snapshot))
+    }
+  }
+}
+
+case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
+  override val sort = sorts.Unit /* TODO: Does this make sense? */
+  override lazy val toString = s"wand@${chunk.id.ghostFreeWand.pos}}"
+}
+
+/* Factory methods for all resources */
+
+object toSnapTree extends (Seq[Term] => Term) {
+  @inline
+  def apply(args: Seq[Term]): Term = {
+    if (args.isEmpty) Unit
+    else args.map(_.convert(sorts.Snap)).reduceLeft(Combine)
+  }
 }
 
 object ResourceTriggerFunction {
@@ -1848,41 +1894,6 @@ object SortWrapper {
   }
 
   def unapply(sw: SortWrapper) = Some((sw.t, sw.to))
-}
-
-/* Magic wands */
-
-case class MagicWandSnapshot(abstractLhs: Term, rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
-
-  utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
-  utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
-
-  override lazy val toString = s"wandSnap(lhs = $abstractLhs, rhs = $rhsSnapshot)"
-
-  def merge(other: MagicWandSnapshot, branchConditions: Stack[Term]): MagicWandSnapshot = {
-    assert(this.abstractLhs == other.abstractLhs)
-    val condition = And(branchConditions)
-    MagicWandSnapshot(this.abstractLhs, if (this.rhsSnapshot == other.rhsSnapshot)
-      this.rhsSnapshot
-    else
-      Ite(condition, other.rhsSnapshot, this.rhsSnapshot))
-  }
-}
-
-object MagicWandSnapshot {
-  def apply(snapshot: Term): MagicWandSnapshot = {
-    assert(snapshot.sort == sorts.Snap)
-    snapshot match {
-      case snap: MagicWandSnapshot => snap
-      case _ =>
-        MagicWandSnapshot(First(snapshot), Second(snapshot))
-    }
-  }
-}
-
-case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
-  override val sort = sorts.Unit /* TODO: Does this make sense? */
-  override lazy val toString = s"wand@${chunk.id.ghostFreeWand.pos}}"
 }
 
 /* Other terms */

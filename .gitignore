@@ -1,6 +1,6 @@
-syntax: glob
 .idea
 .idea_modules
+common/target
 project/project
 project/target
 target
