@@ -476,6 +476,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val logConfig: ScallopOption[String] = opt[String]("logConfig",
+    descr = "Path to config file specifying SymbExLogger options",
+    default = None,
+    noshort = true,
+    hidden = false
+  )
+
   val disableCatchingExceptions: ScallopOption[Boolean] = opt[Boolean]("disableCatchingExceptions",
     descr =s"Don't catch exceptions (can be useful for debugging problems with ${Silicon.name})",
     default = Some(false),
@@ -530,6 +537,19 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
+  validateOpt(writeLogFile, numberOfParallelVerifiers) {
+    case (Some(false), _) =>
+      Right(Unit)
+    case (Some(true), Some(n)) =>
+      if (n == 1)
+        Right(Unit)
+      else
+        Left(  s"Option ${writeLogFile.name} requires setting "
+             + s"${numberOfParallelVerifiers.name} to 1")
+    case other =>
+      sys.error(s"Unexpected combination: $other")
+  }
+  
   validateFileOpt(setAxiomatizationFile)
   validateFileOpt(multisetAxiomatizationFile)
   validateFileOpt(sequenceAxiomatizationFile)

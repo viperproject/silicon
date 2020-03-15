@@ -11,13 +11,14 @@ import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
-import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
 
 trait ProductionRules extends SymbolicExecutionRules {
 
@@ -183,9 +184,9 @@ object producer extends ProductionRules with Immutable {
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
 
-    val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(a, s, v.decider.pcs))
+    val sepIdentifier = SymbExLogger.currentLog().openScope(new ProduceRecord(a, s, v.decider.pcs))
     produceTlc(s, sf, a, pve, v)((s1, v1) => {
-      SymbExLogger.currentLog().collapse(a, sepIdentifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -205,50 +206,39 @@ object producer extends ProductionRules with Immutable {
 
     val produced = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
-        val impLog = new GlobalBranchRecord(imp, s, v.decider.pcs, "produce")
-        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-        SymbExLogger.currentLog().initializeBranching()
+        val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
+        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          impLog.finish_cond()
-          val branch_res =
-            branch(s1, t0, v1)(
-              (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
-                val res1 = Q(s3, v3)
-                impLog.finish_thnSubs()
-                SymbExLogger.currentLog().prepareOtherBranch(impLog)
-                res1}),
-              (s2, v2) => {
+        eval(s, e0, pve, v)((s1, t0, v1) =>
+          branch(s1, t0, v1)(
+            (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
+              SymbExLogger.currentLog().closeScope(uidImplies)
+              Q(s3, v3)
+            }),
+            (s2, v2) => {
                 v2.decider.assume(sf(sorts.Snap, v2) === Unit)
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                    */
-                val res2 = Q(s2, v2)
-                impLog.finish_elsSubs()
-                res2})
-          SymbExLogger.currentLog().collapse(null, sepIdentifier)
-          branch_res})
+                SymbExLogger.currentLog().closeScope(uidImplies)
+                Q(s2, v2)
+            }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
-        val gbLog = new GlobalBranchRecord(ite, s, v.decider.pcs, "produce")
-        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
-        SymbExLogger.currentLog().initializeBranching()
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          gbLog.finish_cond()
-          val branch_res =
-            branch(s1, t0, v1)(
-              (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
-                val res1 = Q(s3, v3)
-                gbLog.finish_thnSubs()
-                SymbExLogger.currentLog().prepareOtherBranch(gbLog)
-                res1}),
-              (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
-                val res2 = Q(s3, v3)
-                gbLog.finish_elsSubs()
-                res2}))
-          SymbExLogger.currentLog().collapse(null, sepIdentifier)
-          branch_res})
+        val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
+        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
+
+        eval(s, e0, pve, v)((s1, t0, v1) =>
+          branch(s1, t0, v1)(
+            (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
+              SymbExLogger.currentLog().closeScope(uidCondExp)
+              Q(s3, v3)
+            }),
+            (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
+              SymbExLogger.currentLog().closeScope(uidCondExp)
+              Q(s3, v3)
+            })))
 
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) =>

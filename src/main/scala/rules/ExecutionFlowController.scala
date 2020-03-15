@@ -7,6 +7,8 @@
 package viper.silicon.rules
 
 import viper.silicon.interfaces._
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 
@@ -125,7 +127,13 @@ object executionFlowController extends ExecutionFlowRules with Immutable {
         firstActionResult
       else {
         val s0 = stateConsolidator.consolidate(s, v)
-        action(s0.copy(retrying = true), v, (s1, r, v1) => Q(s1.copy(retrying = false), r, v1))
+
+        val comLog = new CommentRecord("Retry", s0, v.decider.pcs)
+        val sepIdentifier = SymbExLogger.currentLog().openScope(comLog)
+        action(s0.copy(retrying = true), v, (s1, r, v1) => {
+          SymbExLogger.currentLog().closeScope(sepIdentifier)
+          Q(s1.copy(retrying = false), r, v1)
+        })
       }
 
     finalActionResult

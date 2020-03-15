@@ -15,6 +15,8 @@ import viper.silver.{ast, cfg}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -22,7 +24,6 @@ import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ExecuteRecord, Map, MethodCallRecord, SymbExLogger}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -49,28 +50,41 @@ object executor extends ExecutionRules with Immutable {
                     (Q: (State, Verifier) => VerificationResult)
                     : VerificationResult = {
 
-    val s1 = edge.kind match {
-      case cfg.Kind.Out =>
-        val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
-        val s1 = s.copy(functionRecorder = fr1, h = h1,
-                        invariantContexts = s.invariantContexts.tail)
-        s1
-      case _ =>
-        /* No need to do anything special. See also the handling of loop heads in exec below. */
-        s
+    def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
+      edge.kind match {
+        case cfg.Kind.Out =>
+          val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+          val s1 = s.copy(functionRecorder = fr1, h = h1,
+                          invariantContexts = s.invariantContexts.tail)
+          s1
+        case _ =>
+          /* No need to do anything special. See also the handling of loop heads in exec below. */
+          s
+      }
     }
 
     edge match {
       case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
+        val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
+        val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
+        val s1 = handleOutEdge(s, edge, v)
         eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
           /* Using branch(...) here ensures that the edge condition is recorded
            * as a branch condition on the pathcondition stack.
            */
           brancher.branch(s2, tCond, v1)(
-            (s3, v3) => exec(s3, ce.target, ce.kind, v3)(Q),
-            (_, _)  => Success()))
+            (s3, v3) =>
+              exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
+                SymbExLogger.currentLog().closeScope(sepIdentifier)
+                Q(s4, v4)
+              }),
+            (_, _)  => {
+              SymbExLogger.currentLog().closeScope(sepIdentifier)
+              Success()
+            }))
 
       case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
+        val s1 = handleOutEdge(s, edge, v)
         exec(s1, ue.target, ue.kind, v)(Q)
     }
   }
@@ -84,11 +98,23 @@ object executor extends ExecutionRules with Immutable {
 
     if (edges.isEmpty) {
       Q(s, v)
-    } else
-      edges.foldLeft(Success(): VerificationResult) {
+    } else if (edges.length == 1) {
+      follow(s, edges.head, v)(Q)
+    } else {
+      val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
+      val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
-        case (_, edge) => follow(s, edge, v)(Q)
+        case (_, (edge, edgeIndex)) => {
+          if (edgeIndex != 0) {
+            SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+          }
+          SymbExLogger.currentLog().markReachable(uidBranchPoint)
+          follow(s, edge, v)(Q)
+        }
       }
+      SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+      res
+    }
   }
 
   def exec(s: State, graph: SilverCfg, v: Verifier)
@@ -209,9 +235,9 @@ object executor extends ExecutionRules with Immutable {
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
-    val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, s, v.decider.pcs))
+    val sepIdentifier = SymbExLogger.currentLog().openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
-      SymbExLogger.currentLog().collapse(stmt, sepIdentifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -356,8 +382,12 @@ object executor extends ExecutionRules with Immutable {
         a match {
           /* "assert true" triggers a heap compression. */
           case _: ast.TrueLit =>
-            val s1 = stateConsolidator.consolidate(s, v)
-            Q(s1, v)
+            if (Verifier.config.consolidateOnAssertTrue()) {
+              val s1 = stateConsolidator.consolidate(s, v)
+              Q(s1, v)
+            } else {
+              Q(s, v)
+            }
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.FalseLit =>
@@ -421,25 +451,32 @@ object executor extends ExecutionRules with Immutable {
         val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
         val pvePre = PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer)
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
-        val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
+        val currentLog = SymbExLogger.currentLog()
+        val sepIdentifier = currentLog.openScope(mcLog)
+        val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
+        val paramId = currentLog.openScope(paramLog)
         evals(s, eArgs, _ => pveCall, v)((s1, tArgs, v1) => {
-          mcLog.finish_parameters()
+          currentLog.closeScope(paramId)
+          val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
+          val preCondId = currentLog.openScope(preCondLog)
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
                            recordVisited = true)
           consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
-            mcLog.finish_precondition()
+            currentLog.closeScope(preCondId)
+            val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
+            val postCondId = currentLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
-              mcLog.finish_postcondition()
+              currentLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
                               .map(p => (p._1, s5.g(p._2))).toMap)
               val s6 = s5.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
-              SymbExLogger.currentLog().collapse(null, sepIdentifier)
+              currentLog.closeScope(sepIdentifier)
               Q(s6, v3)})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>

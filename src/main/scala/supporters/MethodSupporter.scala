@@ -7,12 +7,13 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.{SymbExLogger, WellformednessCheckRecord}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
 import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
@@ -44,7 +45,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      SymbExLogger.insertMember(method, null, v.decider.pcs)
+      SymbExLogger.openMemberScope(method, null, v.decider.pcs)
 
       val pres = method.pres
       val posts = method.posts
@@ -83,9 +84,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
                   val s4 = s3.copy(h = Heap())
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
-                  val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+                  val sepIdentifier = SymbExLogger.currentLog().openScope(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, v4) => {
-                    SymbExLogger.currentLog().collapse(null, sepIdentifier)
+                    SymbExLogger.currentLog().closeScope(sepIdentifier)
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
@@ -93,6 +94,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     consumes(s4, posts, postViolated, v4)((_, _, _) =>
                       Success()))}) }  )})})
 
+      SymbExLogger.closeMemberScope()
       Seq(result)
     }
 

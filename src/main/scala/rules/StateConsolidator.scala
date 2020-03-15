@@ -8,6 +8,8 @@ package viper.silicon.rules
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{CommentRecord, SingleMergeRecord}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -42,6 +44,8 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       return s
     }
 
+    val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(comLog)
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)
 
@@ -56,7 +60,11 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       var newChunks: Seq[NonQuantifiedChunk] = nonQuantifiedChunks
       var functionRecorder: FunctionRecorder = fr
 
+      var fixedPointRound: Int = 0
       do {
+        val roundLog = new CommentRecord("Round " + fixedPointRound, s, v.decider.pcs)
+        val roundSepIdentifier = SymbExLogger.currentLog().openScope(roundLog)
+
         val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
 
         snapEqs foreach v.decider.assume
@@ -66,6 +74,9 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
         destChunks = Nil
         newChunks = mergedChunks
         continue = snapEqs.nonEmpty
+
+        SymbExLogger.currentLog().closeScope(roundSepIdentifier)
+        fixedPointRound = fixedPointRound + 1
       } while (continue)
 
       val allChunks = mergedChunks ++ otherChunks
@@ -83,7 +94,9 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       (functionRecorder, hs :+ Heap(allChunks))
     }
 
-    s.copy(functionRecorder = newFunctionRecorder, h = newHeaps.head, reserveHeaps = newHeaps.tail)
+    val res = s.copy(functionRecorder = newFunctionRecorder, h = newHeaps.head, reserveHeaps = newHeaps.tail)
+    SymbExLogger.currentLog().closeScope(sepIdentifier)
+    res
   }
 
   def consolidateIfRetrying(s: State, v: Verifier): State =
@@ -95,6 +108,8 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   }
 
   def merge(fr1: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
+    val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(mergeLog)
     val (nonQuantifiedChunks, otherChunks) = partition(h)
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, nonQuantifiedChunks, newNonQuantifiedChunks, v)
@@ -107,7 +122,9 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
     }
 
-    (fr2, Heap(mergedChunks ++ otherChunks ++ newOtherChunk))
+    val result = (fr2, Heap(mergedChunks ++ otherChunks ++ newOtherChunk))
+    SymbExLogger.currentLog().closeScope(sepIdentifier)
+    result
   }
 
   private def singleMerge(fr: FunctionRecorder,
@@ -119,11 +136,13 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
                             Seq[NonQuantifiedChunk],
                             InsertionOrderedSet[Term]) = {
 
+    val mergeLog = new SingleMergeRecord(destChunks, newChunks, v.decider.pcs)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(mergeLog)
     // bookkeeper.heapMergeIterations += 1
 
     val initial = (fr, destChunks, Seq[NonQuantifiedChunk](), InsertionOrderedSet[Term]())
 
-    newChunks.foldLeft(initial) { case ((fr1, accMergedChunks, accNewChunks, accSnapEqs), nextChunk) =>
+    val result = newChunks.foldLeft(initial) { case ((fr1, accMergedChunks, accNewChunks, accSnapEqs), nextChunk) =>
       /* accMergedChunks: already merged chunks
        * accNewChunks: newly added chunks
        * accSnapEqs: collected snapshot equalities
@@ -143,6 +162,8 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
           (fr1, nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accSnapEqs)
       }
     }
+    SymbExLogger.currentLog().closeScope(sepIdentifier)
+    result
   }
 
   // Merges two chunks that are aliases (i.e. that have the same id and the args are proven to be equal)

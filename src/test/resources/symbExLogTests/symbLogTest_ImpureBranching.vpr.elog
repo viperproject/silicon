@@ -1,0 +1,203 @@
+predicate P
+  Branch b@0@00:
+    comment: Reachable
+  Branch !(b@0@00):
+    comment: Reachable
+
+method test1
+  execute inhale (b ? acc(x.f, write) : acc(x.g, write))
+    Branch b@2@01:
+      comment: Reachable
+      execute fold acc(P(b, x), write)
+        Branch b@2@01:
+          comment: Reachable
+        Branch !(b@2@01):
+          comment: Unreachable
+    Branch !(b@2@01):
+      comment: Reachable
+      execute fold acc(P(b, x), write)
+        Branch b@2@01:
+          comment: Unreachable
+        Branch !(b@2@01):
+          comment: Reachable
+
+method test2
+  execute var a: Int
+  execute inhale (b ==> acc(x.f, write)) && (!b ==> acc(x.g, write))
+    Branch b@9@01:
+      comment: Reachable
+      Branch !(b@9@01):
+        comment: Unreachable
+      Branch b@9@01:
+        comment: Reachable
+        execute a := 1
+        execute fold acc(P(b, x), write)
+          Branch b@9@01:
+            comment: Reachable
+          Branch !(b@9@01):
+            comment: Unreachable
+    Branch !(b@9@01):
+      comment: Reachable
+      Branch !(b@9@01):
+        comment: Reachable
+        execute a := 1
+        execute fold acc(P(b, x), write)
+          Branch b@9@01:
+            comment: Unreachable
+          Branch !(b@9@01):
+            comment: Reachable
+      Branch b@9@01:
+        comment: Unreachable
+
+method test3
+  execute var a: Int
+  execute inhale b ==> acc(x.f, write)
+    Branch b@18@01:
+      comment: Reachable
+      execute a := 1
+    Branch !(b@18@01):
+      comment: Reachable
+      execute a := 1
+
+method test4
+  Branch b@25@01:
+    comment: Reachable
+    execute var a: Int
+    execute a := 1
+  Branch !(b@25@01):
+    comment: Reachable
+    execute var a: Int
+    execute a := 1
+
+method test5
+  execute var a: Int
+  execute inhale b1 ==> acc(x.f, write)
+    Branch b1@34@01:
+      comment: Reachable
+      execute inhale b2 ==> acc(x.f, write)
+        Branch b2@35@01:
+          comment: Reachable
+          execute a := 1
+        Branch !(b2@35@01):
+          comment: Reachable
+          execute a := 1
+    Branch !(b1@34@01):
+      comment: Reachable
+      execute inhale b2 ==> acc(x.f, write)
+        Branch b2@35@01:
+          comment: Reachable
+          execute a := 1
+        Branch !(b2@35@01):
+          comment: Reachable
+          execute a := 1
+
+method test5a
+  execute var a: Int
+  Branch 1:
+    comment: Reachable
+    Branch b1@47@01:
+      comment: Reachable
+      execute inhale acc(x.f, write)
+      Branch 1:
+        comment: Reachable
+        Branch b2@48@01:
+          comment: Reachable
+          execute inhale acc(x.f, write)
+          execute a := 1
+        Branch !(b2@48@01):
+          comment: Reachable
+      Branch 2:
+        comment: Reachable
+        Branch !(b2@48@01):
+          comment: Reachable
+          execute a := 1
+        Branch b2@48@01:
+          comment: Reachable
+    Branch !(b1@47@01):
+      comment: Reachable
+  Branch 2:
+    comment: Reachable
+    Branch !(b1@47@01):
+      comment: Reachable
+      Branch 1:
+        comment: Reachable
+        Branch b2@48@01:
+          comment: Reachable
+          execute inhale acc(x.f, write)
+          execute a := 1
+        Branch !(b2@48@01):
+          comment: Reachable
+      Branch 2:
+        comment: Reachable
+        Branch !(b2@48@01):
+          comment: Reachable
+          execute a := 1
+        Branch b2@48@01:
+          comment: Reachable
+    Branch b1@47@01:
+      comment: Reachable
+
+method test5b
+  execute var a: Int
+  execute inhale (b1 ? acc(x.f, write) : true)
+    Branch b1@57@01:
+      comment: Reachable
+      execute inhale (b2 ? acc(x.f, write) : true)
+        Branch b2@58@01:
+          comment: Reachable
+          execute a := 1
+        Branch !(b2@58@01):
+          comment: Reachable
+          execute a := 1
+    Branch !(b1@57@01):
+      comment: Reachable
+      execute inhale (b2 ? acc(x.f, write) : true)
+        Branch b2@58@01:
+          comment: Reachable
+          execute a := 1
+        Branch !(b2@58@01):
+          comment: Reachable
+          execute a := 1
+
+method test6
+  execute var a: Int
+  execute inhale (b1 ? acc(x.f, write) : acc(x.g, write))
+    Branch b1@70@01:
+      comment: Reachable
+      execute inhale (b2 ? acc(x.f, write) : acc(x.g, write))
+        Branch b2@71@01:
+          comment: Reachable
+          execute a := 1
+        Branch !(b2@71@01):
+          comment: Reachable
+          execute a := 1
+    Branch !(b1@70@01):
+      comment: Reachable
+      execute inhale (b2 ? acc(x.f, write) : acc(x.g, write))
+        Branch b2@71@01:
+          comment: Reachable
+          execute a := 1
+        Branch !(b2@71@01):
+          comment: Reachable
+          execute a := 1
+
+method test7
+  execute var a: Int
+  execute inhale (b ? acc(x.f, write) : acc(x.g, write))
+    Branch b@82@01:
+      comment: Reachable
+      execute a := 1
+    Branch !(b@82@01):
+      comment: Reachable
+      execute a := 1
+
+method test8
+  execute var a: Int
+  execute inhale true && (true && (true && (b ? acc(x.f, write) : acc(x.g, write))))
+    Branch b@89@01:
+      comment: Reachable
+      execute a := 1
+    Branch !(b@89@01):
+      comment: Reachable
+      execute a := 1
+

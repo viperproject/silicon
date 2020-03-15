@@ -1,0 +1,132 @@
+predicate lseg
+  Branch this@0@00 != end@1@00:
+    comment: Reachable
+    Join
+      Branch $t@5@00 != end@1@00:
+        comment: Reachable
+        Join
+          Branch $t@10@00 != end@1@00:
+            comment: Reachable
+            Join
+              Branch $t@10@00 != end@1@00:
+                comment: Reachable
+              Branch $t@10@00 == end@1@00:
+                comment: Unreachable
+          Branch $t@10@00 == end@1@00:
+            comment: Reachable
+            Join
+              Branch $t@10@00 != end@1@00:
+                comment: Unreachable
+              Branch $t@10@00 == end@1@00:
+                comment: Reachable
+        Join
+          Branch $t@5@00 != end@1@00:
+            comment: Reachable
+          Branch $t@5@00 == end@1@00:
+            comment: Unreachable
+      Branch $t@5@00 == end@1@00:
+        comment: Reachable
+        Join
+          Branch $t@5@00 != end@1@00:
+            comment: Unreachable
+          Branch $t@5@00 == end@1@00:
+            comment: Reachable
+  Branch this@0@00 == end@1@00:
+    comment: Reachable
+
+predicate List
+
+method insert
+  execute var tmp: Ref
+  execute index := 0
+  execute unfold acc(List(this), write)
+  execute unfold acc(lseg(this.head, null), write)
+    Branch $t@8@01 != Null:
+      comment: Reachable
+      Join
+        Branch $t@12@01 != Null:
+          comment: Reachable
+          Join
+            Branch $t@17@01 != Null:
+              comment: Reachable
+              Join
+                Branch $t@17@01 != Null:
+                  comment: Reachable
+                Branch $t@17@01 == Null:
+                  comment: Unreachable
+            Branch $t@17@01 == Null:
+              comment: Reachable
+              Join
+                Branch $t@17@01 != Null:
+                  comment: Unreachable
+                Branch $t@17@01 == Null:
+                  comment: Reachable
+          Join
+            Branch $t@12@01 != Null:
+              comment: Reachable
+            Branch $t@12@01 == Null:
+              comment: Unreachable
+        Branch $t@12@01 == Null:
+          comment: Reachable
+          Join
+            Branch $t@12@01 != Null:
+              comment: Unreachable
+            Branch $t@12@01 == Null:
+              comment: Reachable
+      Branch 1:
+        comment: Reachable
+        Join
+          Branch $t@8@01 == Null:
+            comment: Reachable
+          Branch $t@8@01 != Null:
+            comment: Reachable
+            Join
+              Branch elem@4@01 <= $t@10@01:
+                comment: Reachable
+              Branch !(elem@4@01 <= $t@10@01):
+                comment: Reachable
+        Branch !($t@8@01 == Null || elem@4@01 <= $t@10@01):
+          comment: Reachable
+        Branch $t@8@01 == Null || elem@4@01 <= $t@10@01:
+          comment: Reachable
+      Branch 2:
+        comment: Reachable
+        Join
+          Branch $t@8@01 == Null:
+            comment: Reachable
+          Branch $t@8@01 != Null:
+            comment: Reachable
+            Join
+              Branch elem@4@01 <= $t@10@01:
+                comment: Reachable
+              Branch !(elem@4@01 <= $t@10@01):
+                comment: Reachable
+        Branch $t@8@01 == Null || elem@4@01 <= $t@10@01:
+          comment: Reachable
+        Branch !($t@8@01 == Null || elem@4@01 <= $t@10@01):
+          comment: Reachable
+    Branch $t@8@01 == Null:
+      comment: Reachable
+      Branch 1:
+        comment: Reachable
+        Join
+          Branch $t@8@01 == Null:
+            comment: Reachable
+          Branch $t@8@01 != Null:
+            comment: Reachable
+        Branch $t@8@01 != Null:
+          comment: Unreachable
+        Branch $t@8@01 == Null:
+          comment: Reachable
+      Branch 2:
+        comment: Reachable
+        Join
+          Branch $t@8@01 == Null:
+            comment: Reachable
+          Branch $t@8@01 != Null:
+            comment: Reachable
+        Branch $t@8@01 == Null:
+          comment: Reachable
+        Branch $t@8@01 != Null:
+          comment: Unreachable
+

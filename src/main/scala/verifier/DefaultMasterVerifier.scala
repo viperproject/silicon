@@ -16,6 +16,8 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
@@ -25,7 +27,7 @@ import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.reporter.{ConfigurationConfirmation, Reporter, VerificationResultMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage}
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -88,6 +90,10 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     super.stop()
     statefulSubcomponents foreach (_.stop())
   }
+
+  def axiomsAfterAnalysis(): Iterable[Term] = this.domainsContributor.axiomsAfterAnalysis
+
+  def postConditionAxioms() = functionsSupporter.getPostConditionAxioms()
 
   /* Verifier orchestration */
 
@@ -237,10 +243,11 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
 
-    /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */
-    SymbExLogger.writeJSFile()
-    /** Write DOT-Representation of the log if the SymbExLogger is enabled */
-    SymbExLogger.writeDotFile()
+    if (config.ideModeAdvanced() || config.writeLogFile()) {
+      reporter report ExecutionTraceReport(SymbExLogger.memberList,
+                                           this.axiomsAfterAnalysis().toList,
+                                           this.postConditionAxioms().toList)
+    }
 
     (   functionVerificationResults
      ++ predicateVerificationResults

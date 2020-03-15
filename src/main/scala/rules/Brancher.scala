@@ -9,6 +9,7 @@ package viper.silicon.rules
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Not, Term}
 import viper.silicon.verifier.Verifier
@@ -70,6 +71,8 @@ object brancher extends BranchingRules with Immutable {
     v.decider.prover.comment(thenBranchComment)
     v.decider.prover.comment(elseBranchComment)
 
+    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition))
+
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch) {
 /* [BRANCH-PARALLELISATION] */
@@ -92,6 +95,8 @@ object brancher extends BranchingRules with Immutable {
 //        v.decider.pcs.branchConditions foreach (a => println(s"    $a"))
 
         (v0: Verifier) => {
+          SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+          SymbExLogger.currentLog().markReachable(uidBranchPoint)
           executionFlowController.locally(s, v0)((s1, v1) => {
             if (v.uniqueId != v1.uniqueId) {
 
@@ -142,16 +147,17 @@ object brancher extends BranchingRules with Immutable {
         CompletableFuture.completedFuture(Seq(Unreachable()))
       }
 
-    (if (executeThenBranch) {
-      executionFlowController.locally(s, v)((s1, v1) => {
-        v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-        v1.decider.setCurrentBranchCondition(condition)
+    val res = (if (executeThenBranch) {
+      SymbExLogger.currentLog().markReachable(uidBranchPoint)
+        executionFlowController.locally(s, v)((s1, v1) => {
+          v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
+          v1.decider.setCurrentBranchCondition(condition)
 
-        fThen(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
-      })
-    } else {
-      Unreachable()
-    }) && {
+          fThen(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+        })
+      } else {
+        Unreachable()
+      }) && {
 
       /* [BRANCH-PARALLELISATION] */
       if (parallelizeElseBranch) {
@@ -186,5 +192,7 @@ object brancher extends BranchingRules with Immutable {
         rs.head
       }
     }
+    SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+    res
   }
 }

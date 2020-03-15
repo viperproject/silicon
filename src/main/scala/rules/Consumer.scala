@@ -12,11 +12,12 @@ import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssert
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
 import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ConsumeRecord, GlobalBranchRecord, SymbExLogger}
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 
@@ -157,13 +158,10 @@ object consumer extends ConsumptionRules with Immutable {
       val h0 = s0.h /* h0 is h, but potentially consolidated */
       val s1 = s0.copy(h = s.h) /* s1 is s, but the retrying flag might be set */
 
-      /* TODO: To remove this cast: Add a type argument to the ConsumeRecord.
-       *       Globally the types match, but locally the type system does not know.
-       */
-      val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(a, s1, v.decider.pcs))
+      val sepIdentifier = SymbExLogger.currentLog().openScope(new ConsumeRecord(a, s1, v.decider.pcs))
 
       consumeTlc(s1, h0, a, pve, v1)((s2, h2, snap2, v2) => {
-        SymbExLogger.currentLog().collapse(a, SEP_identifier)
+        SymbExLogger.currentLog().closeScope(sepIdentifier)
         QS(s2, h2, snap2, v2)})
     })(Q)
   }
@@ -187,45 +185,34 @@ object consumer extends ConsumptionRules with Immutable {
 
     val consumed = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
-        val impLog = new GlobalBranchRecord(imp, s, v.decider.pcs, "consume")
-        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-        SymbExLogger.currentLog().initializeBranching()
+        val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
+        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
-        evaluator.eval(s, e0, pve, v)((s1, t0, v1) => {
-          impLog.finish_cond()
-          val branch_res =
-            branch(s1, t0, v1)(
-              (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h3, snap3, v3) => {
-                val res1 = Q(s3, h3, snap3, v3)
-                impLog.finish_thnSubs()
-                SymbExLogger.currentLog().prepareOtherBranch(impLog)
-                res1}),
-              (s2, v2) => {
-                val res2 = Q(s2, h, Unit, v2)
-                impLog.finish_elsSubs()
-                res2})
-          SymbExLogger.currentLog().collapse(null, sepIdentifier)
-          branch_res})
+        evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
+          branch(s1, t0, v1)(
+            (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
+              SymbExLogger.currentLog().closeScope(uidImplies)
+              Q(s3, h1, t1, v3)
+            }),
+            (s2, v2) => {
+              SymbExLogger.currentLog().closeScope(uidImplies)
+              Q(s2, h, Unit, v2)
+            }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
-        val gbLog = new GlobalBranchRecord(ite, s, v.decider.pcs, "consume")
-        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
-        SymbExLogger.currentLog().initializeBranching()
-        eval(s, e0, pve, v)((s1, t0, v1) => {
-          gbLog.finish_cond()
-          val branch_res =
-            branch(s1, t0, v1)(
-              (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h3, snap3, v3) => {
-                val res1 = Q(s3, h3, snap3, v3)
-                gbLog.finish_thnSubs()
-                SymbExLogger.currentLog().prepareOtherBranch(gbLog)
-                res1}),
-              (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h3, snap3, v3) => {
-                val res2 = Q(s3, h3, snap3, v3)
-                gbLog.finish_elsSubs()
-                res2}))
-          SymbExLogger.currentLog().collapse(null, sepIdentifier)
-          branch_res})
+        val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
+        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
+
+        eval(s, e0, pve, v)((s1, t0, v1) =>
+          branch(s1, t0, v1)(
+            (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
+              SymbExLogger.currentLog().closeScope(uidCondExp)
+              Q(s3, h1, t1, v3)
+            }),
+            (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h1, t1, v3) => {
+              SymbExLogger.currentLog().closeScope(uidCondExp)
+              Q(s3, h1, t1, v3)
+            })))
 
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.

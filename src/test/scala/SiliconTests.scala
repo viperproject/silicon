@@ -9,9 +9,8 @@ package viper.silicon.tests
 import java.nio.file.Path
 
 import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
-import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
-import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
-import viper.silver.frontend.DefaultStates
+import viper.silver.verifier.Verifier
+import viper.silicon.{Silicon, SiliconFrontend}
 import viper.silver.reporter.NoopReporter
 
 class SiliconTests extends SilSuite {
@@ -22,20 +21,12 @@ class SiliconTests extends SilSuite {
   override def frontend(verifier: Verifier, files: Seq[Path]) = {
     require(files.length == 1, "tests should consist of exactly one file")
 
-    // For Unit-Testing of the Symbolic Execution Logging, the name of the file
-    // to be tested must be known, which is why it's passed here to the SymbExLogger-Object.
-    // SymbExLogger.reset() cleans the logging object (only relevant for verifying multiple
-    // tests at once, e.g. with the 'test'-sbt-command.
-    SymbExLogger.reset()
-    SymbExLogger.filePath = files.head
-    SymbExLogger.initUnitTestEngine()
-
     /* If needed, Silicon reads the filename of the program under verification from Verifier.inputFile.
     When the test suite is executed (sbt test/testOnly), Verifier.inputFile is set here. When Silicon is
     run from the command line, Verifier.inputFile is set in src/main/scala/Silicon.scala. */
     viper.silicon.verifier.Verifier.inputFile = Some(files.head)
 
-    val fe = new SiliconFrontend(NoopReporter)//SiliconFrontendWithUnitTesting()
+    val fe = new SiliconFrontend(NoopReporter)
     fe.init(verifier)
     fe.reset(files.head)
     fe
@@ -63,22 +54,5 @@ class SiliconTests extends SilSuite {
     val silicon = Silicon.fromPartialCommandLineArguments(args, reporter, debugInfo)
 
     silicon
-  }
-}
-
-class SiliconFrontendWithUnitTesting extends SiliconFrontend(NoopReporter) {
-  /** Is overridden only to append SymbExLogging-UnitTesting-Errors to the Result. **/
-  override def result: SilVerificationResult = {
-    if(_state < DefaultStates.Verification) super.result
-    else{
-      val symbExLogUnitTestErrors = SymbExLogger.unitTestEngine.verify()
-      symbExLogUnitTestErrors match{
-        case Nil => super.result
-        case s1:Seq[AbstractError] => super.result match{
-          case SilSuccess => SilFailure(s1)
-          case SilFailure(s2) => SilFailure(s2 ++ s1)
-        }
-      }
-    }
   }
 }

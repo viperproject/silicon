@@ -1,0 +1,12 @@
+method outEdgeStateConsolidation(i: Int)
+{
+    var j: Int
+    var res: Int
+    j := 1
+    while(j < 2)
+    {
+        res := 1
+        j := j + 1
+    }
+    res := 2
+}
