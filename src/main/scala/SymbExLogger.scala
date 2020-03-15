@@ -166,7 +166,7 @@ object SymbExLogger {
     */
   @elidable(INFO)
   def writeDotFile() {
-    if (config.writeSymbexLogFile()) {
+    if (config.writeTraceFile()) {
       val dotRenderer = new DotTreeRenderer()
       val str = dotRenderer.render(memberList)
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "dot_input.dot"))
@@ -180,7 +180,7 @@ object SymbExLogger {
     */
   @elidable(INFO)
   def writeJSFile() {
-    if (config.writeSymbexLogFile()) {
+    if (config.writeTraceFile()) {
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "executionTreeData.js"))
       try pw.write(toJSString()) finally pw.close()
     }
