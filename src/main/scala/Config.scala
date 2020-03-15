@@ -199,6 +199,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     valueName = "level"
   )
 
+  val writeSymbexLogFile: ScallopOption[Boolean] = opt[Boolean]("writeSymbexLogFile",
+    descr = "Report the symbolic execution log as ExecutionTraceReport",
+    default = Some(false),
+    noshort = true
+  )
+
   val timeout: ScallopOption[Int] = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
             + "not per method or proof obligation (default: 0, i.e. no timeout)."),
