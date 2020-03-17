@@ -53,7 +53,8 @@ domain $Seq[E] {
 
   axiom seq_length_over_append {
     forall s1: $Seq[E], s2: $Seq[E] :: {Seq_length(Seq_append(s1, s2))}
-      Seq_length(Seq_append(s1, s2)) == Seq_length(s1) + Seq_length(s2)
+      s1 != Seq_empty() && s2 != Seq_empty() ==> // Implication not in the Dafny version
+        Seq_length(Seq_append(s1, s2)) == Seq_length(s1) + Seq_length(s2)
   }
 
   axiom seq_index_over_singleton {
@@ -82,9 +83,10 @@ domain $Seq[E] {
     forall s1: $Seq[E], s2: $Seq[E], i: Int ::
         {Seq_index(Seq_append(s1, s2), i)}
         {Seq_index(s1, i), Seq_append(s1, s2)}
-      i < Seq_length(s1)
-        ? Seq_index(Seq_append(s1, s2), i) == Seq_index(s1, i)
-        : Seq_index(Seq_append(s1, s2), i) == Seq_index(s2, i - Seq_length(s1))
+      s1 != Seq_empty() && s2 != Seq_empty() ==> ( // Implication not in the Dafny version
+        i < Seq_length(s1)
+          ? Seq_index(Seq_append(s1, s2), i) == Seq_index(s1, i)
+          : Seq_index(Seq_append(s1, s2), i) == Seq_index(s2, i - Seq_length(s1)))
   }
 
   axiom seq_length_invariant_over_update {
