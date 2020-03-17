@@ -10,6 +10,7 @@ import scala.reflect.{ClassTag, classTag}
 import viper.silicon.Config
 import viper.silicon.state.terms.{Sort, Term, sorts}
 import viper.silver.ast
+import viper.silver.ast.utility.rewriter.Traverse
 
 class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
     extends BuiltinDomainsContributor {
@@ -42,7 +43,21 @@ class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term],
             else
               app
         }
-    }
+
+      /* [2020-03-17 Malte] Potential axiom transformations. Can identify unstable examples,
+         but don't seem to gain or cost performance in general. */
+      // case eq: ast.EqCmp if eq.left.typ == ast.Bool =>
+      //   ast.And(
+      //     ast.Implies(eq.left, eq.right)(eq.pos, eq.info, eq.errT),
+      //     ast.Implies(eq.right, eq.left)(eq.pos, eq.info, eq.errT),
+      //   )(eq.pos, eq.info, eq.errT)
+      //
+      // case ite: ast.CondExp =>
+      //   ast.And(
+      //     ast.Implies(ite.cond, ite.thn)(ite.pos, ite.info, ite.errT),
+      //     ast.Implies(ast.Not(ite.cond)(ite.pos, ite.info, ite.errT), ite.els)(ite.pos, ite.info, ite.errT)
+      //   )(ite.pos, ite.info, ite.errT)
+    } //, Traverse.BottomUp)
   }
 
   override protected def transformSourceDomainInstance(sequenceDomainInstance: ast.Domain, typ: ast.DomainType): ast.Domain = {
