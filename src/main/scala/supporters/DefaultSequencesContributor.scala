@@ -10,7 +10,6 @@ import scala.reflect.{ClassTag, classTag}
 import viper.silicon.Config
 import viper.silicon.state.terms.{Sort, Term, sorts}
 import viper.silver.ast
-import viper.silver.ast.utility.rewriter.Traverse
 
 class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
     extends BuiltinDomainsContributor {
