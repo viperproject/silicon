@@ -83,7 +83,7 @@ domain $Seq[E] {
     forall s1: $Seq[E], s2: $Seq[E], i: Int ::
         {Seq_index(Seq_append(s1, s2), i)}
         {Seq_index(s1, i), Seq_append(s1, s2)}
-      s1 != Seq_empty() && s2 != Seq_empty() ==> ( // Implication not in the Dafny version
+      s1 != Seq_empty() && s2 != Seq_empty() /*&& 0 <= i && i < Seq_length(Seq_append(s1, s2))*/ ==> ( // Implication not in the Dafny version
         i < Seq_length(s1)
           ? Seq_index(Seq_append(s1, s2), i) == Seq_index(s1, i)
           : Seq_index(Seq_append(s1, s2), i) == Seq_index(s2, i - Seq_length(s1)))
