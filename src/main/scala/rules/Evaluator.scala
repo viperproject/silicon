@@ -602,6 +602,7 @@ object evaluator extends EvaluationRules with Immutable {
         val name = s"prog.l${viper.silicon.utils.ast.sourceLine(sourceQuant)}"
         evalQuantified(s, qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v){
           case (s1, tVars, _, Seq(tBody), tTriggers, (tAuxGlobal, tAux), v1) =>
+            val tAuxHeapIndep = tAux.flatMap(v.quantifierSupporter.makeTriggersHeapIndependent(_, v1.decider.fresh))
 
             val tlqGlobal = tAuxGlobal flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
             val tlq = tAux flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
@@ -611,7 +612,7 @@ object evaluator extends EvaluationRules with Immutable {
             v1.decider.prover.comment("Nested auxiliary terms: globals (tlq)")
             v1.decider.assume(tlqGlobal)
             v1.decider.prover.comment("Nested auxiliary terms: non-globals (aux)")
-            v1.decider.assume(tAux)
+            v1.decider.assume(tAuxHeapIndep/*tAux*/)
             v1.decider.prover.comment("Nested auxiliary terms: non-globals (tlq)")
             v1.decider.assume(tlq)
 
