@@ -1,0 +1,203 @@
+field f: Int
+field g: Int
+
+predicate pair(x: Ref, i: Int) {
+  acc(x.f) && acc(x.g)
+}
+
+define swap_rnd_pair_values(xs, is) {
+  var tx: Ref
+  var ti: Int
+  assume tx in xs
+  assume ti in is
+  unfold pair(tx, ti)
+  var tmp: Int := tx.f
+  tx.f := tx.g
+  tx.g := tmp
+  fold pair(tx, ti)
+}
+
+function addA(v: Int, i: Int): Int
+{ i + v }
+
+function addB(x: Ref, i: Int): Int
+  requires acc(x.f) && acc(x.g)
+{ i + x.f + x.g }
+
+function addC(x: Ref, v: Int, i: Int): Int
+  requires acc(x.f)
+{ x.f + v + i }
+
+
+method test01a(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {x in xs, i in is}
+    x in xs && i in is ==> 0 < addA(unfolding pair(x, i) in x.f, i)
+
+  assert forall x: Ref, i: Int :: {x in xs, i in is}
+    x in xs && i in is ==> 0 < addA(i, unfolding pair(x, i) in x.f)
+}
+
+method test01b(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {x in xs, i in is}
+    x in xs && i in is ==> 0 < addA(unfolding pair(x, i) in x.f, i)
+
+  assert forall x: Ref, i: Int :: {x in xs, i in is}
+    x in xs && i in is ==> 0 < addA(i, unfolding pair(x, i) in x.f)
+}
+
+method test01c(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {x in xs, i in is}
+    x in xs && i in is ==> 0 < addA(unfolding pair(x, i) in x.f, i)
+
+  swap_rnd_pair_values(xs, is)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert forall x: Ref, i: Int :: {x in xs, i in is}
+    x in xs && i in is ==> 0 < addA(i, unfolding pair(x, i) in x.f)
+}
+
+method test01d(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {x in xs, i in is}
+    x in xs && i in is ==> 0 < addA(unfolding pair(x, i) in x.f, i)
+
+  swap_rnd_pair_values(xs, is)
+
+  assert forall x: Ref, i: Int :: {x in xs, i in is}
+    x in xs && i in is ==> (
+      0 < addA(i, unfolding pair(x, i) in x.f) ||
+      0 < addA(i, unfolding pair(x, i) in x.g))
+}
+
+
+method test02a(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {pair(x, i)}
+    x in xs && i in is ==> 0 < addA(unfolding pair(x, i) in x.f, i)
+
+  assert forall x: Ref, i: Int :: {pair(x, i)}
+    x in xs && i in is ==> 0 < addA(i, unfolding pair(x, i) in x.f)
+}
+
+method test02b(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {pair(x, i)}{x in xs, i in is}
+    x in xs && i in is ==> 0 < addA(unfolding pair(x, i) in x.f, i)
+
+  swap_rnd_pair_values(xs, is)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert forall x: Ref, i: Int :: {pair(x, i)}
+    x in xs && i in is ==> 0 < addA(i, unfolding pair(x, i) in x.f)
+}
+
+method test02c(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {pair(x, i)}{x in xs, i in is}
+    x in xs && i in is ==> 0 < addA(unfolding pair(x, i) in x.f, i)
+
+  swap_rnd_pair_values(xs, is)
+
+  assert forall x: Ref, i: Int :: {pair(x, i)}
+    x in xs && i in is ==> (
+      0 < addA(i, unfolding pair(x, i) in x.f) ||
+      0 < addA(i, unfolding pair(x, i) in x.g))
+}
+
+method test02d(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {pair(x, i)}
+    x in xs && i in is ==> 0 < addA(unfolding pair(x, i) in x.f, i)
+
+  swap_rnd_pair_values(xs, is)
+
+  // TODO: Debatable if the assert should succeed, since the footprint/snapshot of the
+  //       heap-dependent trigger changed since the preceding assumption.
+  assert forall x: Ref, i: Int :: {pair(x, i)}
+    x in xs && i in is ==> (
+      0 < addA(i, unfolding pair(x, i) in x.f) ||
+      0 < addA(i, unfolding pair(x, i) in x.g))
+}
+
+
+method test03a(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {addB(x, i)}
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addB(x, i)
+
+  assert forall x: Ref, i: Int :: {addB(x, i)}
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addB(x, i)
+}
+
+method test03b(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {addB(x, i)}{x in xs, i in is}
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addB(x, i)
+
+  swap_rnd_pair_values(xs, is)
+
+  assert forall x: Ref, i: Int :: {addB(x, i)}
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addB(x, i)
+}
+
+method test03c(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {addB(x, i)}
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addB(x, i)
+
+  swap_rnd_pair_values(xs, is)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert forall x: Ref, i: Int :: {addB(x, i)} // Fails because heap-dep. trigger's snapshot changed
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addB(x, i)
+}
+
+
+method test04a(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {addC(x, x.g, i)}
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addC(x, x.g, i)
+
+  assert forall x: Ref, i: Int :: {addC(x, x.g, i)}
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addC(x, x.g, i)
+}
+
+method test04b(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {addC(x, x.g, i)}{x in xs, i in is}
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addC(x, x.g, i)
+
+  swap_rnd_pair_values(xs, is)
+
+  assert forall x: Ref, i: Int :: {addC(x, x.g, i)}
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addC(x, x.g, i)
+}
+
+method test04c(xs: Set[Ref], is: Seq[Int]) {
+  inhale forall x: Ref, i: Int :: x in xs && i in is ==> pair(x, i)
+
+  assume forall x: Ref, i: Int :: {addC(x, x.g, i)}
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addC(x, x.g, i)
+
+  swap_rnd_pair_values(xs, is)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert forall x: Ref, i: Int :: {addC(x, x.g, i)} // Fails because heap-dep. trigger's snapshot changed
+    x in xs && i in is ==> unfolding pair(x, i) in 0 < addC(x, x.g, i)
+}
