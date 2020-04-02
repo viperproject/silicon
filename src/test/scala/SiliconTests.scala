@@ -24,9 +24,9 @@ class SiliconTests extends SilSuite {
         "wands", "termination",
         "examples")
 
-  val testDirectories = siliconTestDirectories ++ silTestDirectories
+  val testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories
 
-  override def frontend(verifier: Verifier, files: Seq[Path]) = {
+  override def frontend(verifier: Verifier, files: Seq[Path]): SiliconFrontend = {
     require(files.length == 1, "tests should consist of exactly one file")
 
     // For Unit-Testing of the Symbolic Execution Logging, the name of the file
@@ -48,7 +48,7 @@ class SiliconTests extends SilSuite {
     fe
   }
 
-  override def annotationShouldLeadToTestCancel(ann: LocatedAnnotation) = {
+  override def annotationShouldLeadToTestCancel(ann: LocatedAnnotation): Boolean = {
     ann match {
       case UnexpectedOutput(_, _, _, _, _, _) => true
       case MissingOutput(_, _, _, _, _, issue) => issue != 34
