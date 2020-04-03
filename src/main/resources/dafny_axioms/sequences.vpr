@@ -190,7 +190,7 @@ domain $Seq[E] {
   }
 
   axiom seq_index_over_take {
-    forall s: $Seq[E], n: Int, i: Int ::
+    forall s: $Seq[E], n: Int, i: Int :: // Weight 25 in Dafny
         {Seq_index(Seq_take(s, n), i)}
         {Seq_index(s, i), Seq_take(s, n)} // Added 29-10-2015
       0 <= i && i < n && i < Seq_length(s) ==>
@@ -206,12 +206,12 @@ domain $Seq[E] {
   }
 
   axiom seq_index_over_drop_1 {
-    forall s: $Seq[E], n: Int, i: Int :: {Seq_index(Seq_drop(s, n), i)}
+    forall s: $Seq[E], n: Int, i: Int :: {Seq_index(Seq_drop(s, n), i)} // Weight 25 in Dafny
       0 <= n && 0 <= i && i < Seq_length(s) - n ==>
         Seq_index(Seq_drop(s, n), i) == Seq_index(s, i + n)
   }
 
-  axiom seq_index_over_drop_2 { // Added 29-10-2015
+  axiom seq_index_over_drop_2 { // Added 29-10-2015 // Weight 25 in Dafny
     forall s: $Seq[E], n: Int, i: Int :: {Seq_index(s, i), Seq_drop(s, n)}
       0 <= n && n <= i && i < Seq_length(s) ==>
         Seq_index(Seq_drop(s, n), i - n) == Seq_index(s, i)
