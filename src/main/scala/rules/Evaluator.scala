@@ -314,22 +314,16 @@ object evaluator extends EvaluationRules with Immutable {
               (s3, v3) => eval(s3, e1, pve, v3)(QB),
               (s3, v3) => eval(s3, e2, pve, v3)(QB))
           )(entries => {
-            /* TODO: The next few lines could be made safer if branch(...) took orElse-continuations
-             *       that are executed if a branch is dead */
-            val (s2, t1, t2) = entries match {
-              case Seq(entry) if entry.pathConditions.branchConditions.head == t0 =>
-                val t2 = v1.decider.appliedFresh("dead_else", v1.symbolConverter.toSort(e2.typ), s1.relevantQuantifiedVariables)
-                val fr1 = entry.s.functionRecorder.recordPathSymbol(t2.applicable.asInstanceOf[Function]) // TODO: Avoid cast
-                (entry.s.copy(functionRecorder = fr1), entry.data, t2)
-              case Seq(entry) if entry.pathConditions.branchConditions.head == Not(t0) =>
-                val t1 = v1.decider.appliedFresh("dead_then", v1.symbolConverter.toSort(e1.typ), s1.relevantQuantifiedVariables)
-                val fr1 = entry.s.functionRecorder.recordPathSymbol(t1.applicable.asInstanceOf[Function]) // TODO: Avoid cast
-                (entry.s.copy(functionRecorder = fr1), t1, entry.data)
-              case Seq(entry1, entry2) =>
-                (entry1.s.merge(entry2.s), entry1.data, entry2.data)
+            /* TODO: If branch(...) took orElse-continuations that are executed if a branch is dead, then then
+                comparisons with t0/Not(t0) wouldn't be necessary. */
+            val (s2, result) = entries match {
+              case Seq(entry) => // One branch is dead
+                (entry.s, entry.data)
+              case Seq(entry1, entry2) => // Both branches are alive
+                (entry1.s.merge(entry2.s), Ite(t0, entry1.data, entry2.data))
               case _ =>
                 sys.error(s"Unexpected join data entries: $entries")}
-            (s2, Ite(t0, t1, t2))
+            (s2, result)
           })(Q))
 
       /* Integers */
