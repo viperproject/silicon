@@ -83,7 +83,7 @@ class DefaultQuantifierSupporter(triggerGenerator: TriggerGenerator) extends Qua
     q.triggers
       // : Seq[Trigger]
       // Find heap dependencies for each trigger separately
-      .map(({ case Trigger(ts) => (ts, ts.flatMap(computeHeapDeps))}))
+      .map({ case Trigger(ts) => (ts, ts.flatMap(computeHeapDeps))})
       .distinct
       // : Seq[(Trigger, Seq[Term])]
       // Map all heap dependencies to fresh variables
