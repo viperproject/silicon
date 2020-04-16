@@ -54,7 +54,7 @@ object Verifier {
   def program: ast.Program = _program
   /*private*/ def program_=(program: ast.Program): Unit = { _program = program }
 
-  private var _inputFile: Option[Path] = _
+  private var _inputFile: Option[Path] = None
   def inputFile: Option[Path] = _inputFile
   /*private*/ def inputFile_=(file: Option[Path]): Unit = { _inputFile = file }
 
