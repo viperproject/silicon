@@ -59,7 +59,7 @@ import viper.silver.verifier.Verifier
   * The following JVM properties are available:
   *   - SILICONTESTS_TARGET = path/to/target/files/    // Mandatory
   *   - SILICONTESTS_WARMUP = path/to/warmup/files/    // Optional. If not specified, skip JVM warmup phase.
-  *   - SILICONTESTS_REPETITIONS = n // Optional, defaults to 1. If less then 3, no "trimming" will happen.
+  *   - SILICONTESTS_REPETITIONS = n // Optional, defaults to 1. If less than 4, no "trimming" will happen.
   *   - SILICONTESTS_CSV = path/to/file.csv // Optional. If provided, mean & stddev are written to CSV file.
   *   - SILICONTESTS_RANDOMIZE_Z3 = bool // Optional, defaults to true. If true, passes --z3RandomizeSeeds to Silicon.
   */
