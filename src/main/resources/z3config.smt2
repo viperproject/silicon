@@ -16,49 +16,48 @@
 (set-option :global-decls true) ; Boogie: default
 (set-option :auto_config false) ; Usually a good idea
 
-; Syntax for 4.3.0 <= Z3 < 4.3.2
-;(set-option :mbqi false)
-;(set-option :model-v2 true)
-;(set-option :phase_selection 0)
-;(set-option :restart_strategy 0)
-;(set-option :restart_factor |1.5|)
-;(set-option :arith-random_initial_value true)
-;(set-option :case_split 3)
-;(set-option :delay_units true)
-;(set-option :delay_units_threshold 16)
-;(set-option :nnf-sk_hack true)
-;(set-option :qi-eager_threshold 100)
-;(set-option :qi-cost |"(+ weight generation)"|)
-;(set-option :type_check true)
-;(set-option :bv-reflect true)
-;;(set-option :qi_profile true)
-;;(set-option :default_qid true)
-;;(set-option :macro_finder true)
-
-; Syntax for Z3 >= 4.3.2
-(set-option :smt.mbqi false)
-; (set-option :sat.random_seed 0)
-; (set-option :produce-models true)
-;(set-option :model false)
-(set-option :model.v2 true)
-; (set-option :model.compact true)
-(set-option :smt.phase_selection 0)
 (set-option :smt.restart_strategy 0)
 (set-option :smt.restart_factor |1.5|)
-(set-option :smt.arith.random_initial_value true)
 (set-option :smt.case_split 3)
 (set-option :smt.delay_units true)
 (set-option :smt.delay_units_threshold 16)
 (set-option :nnf.sk_hack true)
-(set-option :smt.qi.eager_threshold 100)
-(set-option :smt.qi.cost "(+ weight generation)")
 (set-option :type_check true)
 (set-option :smt.bv.reflect true)
-;(set-option :smt.qi.profile true)
-;(set-option :smt.qi.profile_freq 100000)
-;(set-option :smt.macro_finder true)
-;(set-option :combined_solver.solver2_timeout 500)
-;(set-option :combined_solver.solver2_unknown 2)
-;(set-option :smt.arith.nl false)
+
+(set-option :smt.mbqi false)
+(set-option :smt.qi.eager_threshold 100)
+(set-option :smt.qi.cost "(+ weight generation)")
+(set-option :smt.qi.max_multi_patterns 1000)
+; (set-option :smt.qi.profile true)
+; (set-option :smt.qi.profile_freq 100000)
+
+;; [2019-07-31 Malte] The next block of options are all randomness-related options that I could
+;; find in the description Z3 -pd emits. If not stated otherwise, the options are merely explicitly
+;; set to their default values.
+(set-option :smt.phase_selection 0) ; default: 3, Boogie: 0
+(set-option :sat.phase caching)
+(set-option :sat.random_seed 0)
+(set-option :nlsat.randomize true)
+(set-option :nlsat.seed 0)
+(set-option :nlsat.shuffle_vars false)
+(set-option :fp.spacer.order_children 0) ; Not available with Z3 4.5
+(set-option :fp.spacer.random_seed 0) ; Not available with Z3 4.5
+(set-option :smt.arith.random_initial_value true) ; Boogie: true
+(set-option :smt.random_seed 0)
+(set-option :sls.random_offset true)
+(set-option :sls.random_seed 0)
+(set-option :sls.restart_init false)
+(set-option :sls.walksat_ucb true)
+
+; (set-option :smt.macro_finder true)
+; (set-option :combined_solver.solver2_timeout 500)
+; (set-option :combined_solver.solver2_unknown 2)
+; (set-option :smt.arith.nl false)
 ; (set-option :smt.arith.nl.gb false)
     ; See http://stackoverflow.com/questions/28210673
+
+; (set-option :produce-models true)
+; (set-option :model false)
+(set-option :model.v2 true)
+; (set-option :model.compact true)

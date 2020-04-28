@@ -521,6 +521,8 @@ object Quantification
             name: String,
             isGlobal: Boolean)
            : Quantification = {
+
+//    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")
 //    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
 //    assert(triggers.distinct.length == triggers.length, s"Found duplicate triggers: $triggers")
 
@@ -799,12 +801,17 @@ object Equals extends ((Term, Term) => BooleanTerm) {
           (e0, e1) match {
             case (sw1: SortWrapper, sw2: SortWrapper) if sw1.t.sort != sw2.t.sort =>
               assert(false, s"Equality '(Snap) $e0 == (Snap) $e1' is not allowed")
-            case (_: Combine, _: SortWrapper) =>
-              assert(false, s"Equality '$e0 == (Snap) $e1' is not allowed")
-            case (_: SortWrapper, _: Combine) =>
-              assert(false, s"Equality '(Snap) $e0 == $e1' is not allowed")
-            case (Unit, _: Combine) | (_: Combine, Unit) =>
-              assert(false, s"Equality '$e0 == $e1' is not allowed")
+            /* The next few cases are nonsensical and might indicate a bug in Silicon.
+               However, they can also arise on infeasible paths (and preventing them
+               would require potentially expensive prover calls), so treating
+               them as errors is unfortunately not an option.
+             */
+            // case (_: Combine, _: SortWrapper) =>
+            //   assert(false, s"Equality '$e0 == (Snap) $e1' is not allowed")
+            // case (_: SortWrapper, _: Combine) =>
+            //   assert(false, s"Equality '(Snap) $e0 == $e1' is not allowed")
+            // case (Unit, _: Combine) | (_: Combine, Unit) =>
+            //   assert(false, s"Equality '$e0 == $e1' is not allowed")
             case _ => /* Ok */
           }
 
@@ -1423,11 +1430,12 @@ object SetIntersection extends ((Term, Term) => SetTerm) {
   def unapply(si: SetIntersection) = Some((si.p0, si.p1))
 }
 
-class SetSubset(val p0: Term, val p1: Term) extends BinarySetOp {
+class SetSubset(val p0: Term, val p1: Term) extends BooleanTerm 
+    with StructuralEqualityBinaryOp[Term] {
   override val op = "⊂"
 }
 
-object SetSubset extends ((Term, Term) => SetTerm) {
+object SetSubset extends ((Term, Term) => BooleanTerm) {
   def apply(t0: Term, t1: Term) = {
     utils.assertSameSorts[sorts.Set](t0, t1)
     new SetSubset(t0, t1)
@@ -1436,11 +1444,12 @@ object SetSubset extends ((Term, Term) => SetTerm) {
   def unapply(ss: SetSubset) = Some((ss.p0, ss.p1))
 }
 
-class SetDisjoint(val p0: Term, val p1: Term) extends BinarySetOp {
+class SetDisjoint(val p0: Term, val p1: Term) extends BooleanTerm
+    with StructuralEqualityBinaryOp[Term] {
   override val op = "disj"
 }
 
-object SetDisjoint extends ((Term, Term) => SetTerm) {
+object SetDisjoint extends ((Term, Term) => BooleanTerm) {
   def apply(t0: Term, t1: Term) = {
     utils.assertSameSorts[sorts.Set](t0, t1)
     new SetDisjoint(t0, t1)
@@ -1567,11 +1576,12 @@ object MultisetIntersection extends ((Term, Term) => MultisetTerm) {
   def unapply(mi: MultisetIntersection) = Some((mi.p0, mi.p1))
 }
 
-class MultisetSubset(val p0: Term, val p1: Term) extends BinaryMultisetOp {
+class MultisetSubset(val p0: Term, val p1: Term) extends BooleanTerm
+    with StructuralEqualityBinaryOp[Term] {
   override val op = "⊂"
 }
 
-object MultisetSubset extends ((Term, Term) => MultisetTerm) {
+object MultisetSubset extends ((Term, Term) => BooleanTerm) {
   def apply(t0: Term, t1: Term) = {
     utils.assertSameSorts[sorts.Multiset](t0, t1)
     new MultisetSubset(t0, t1)
@@ -1708,8 +1718,8 @@ case class FieldTrigger(field: String, fvf: Term, at: Term) extends Term {
   val sort = sorts.Bool
 }
 
-
 /* Quantified predicates */
+
 case class PredicateLookup(predname: String, psf: Term, args: Seq[Term]) extends Term {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
 
@@ -1732,6 +1742,50 @@ case class PredicateTrigger(predname: String, psf: Term, args: Seq[Term]) extend
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
 
   val sort = sorts.Bool
+}
+
+/* Magic wands */
+
+case class MagicWandSnapshot(abstractLhs: Term, rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
+  utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
+  utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
+
+  override lazy val toString = s"wandSnap(lhs = $abstractLhs, rhs = $rhsSnapshot)"
+
+  def merge(other: MagicWandSnapshot, branchConditions: Stack[Term]): MagicWandSnapshot = {
+    assert(this.abstractLhs == other.abstractLhs)
+    val condition = And(branchConditions)
+    MagicWandSnapshot(this.abstractLhs, if (this.rhsSnapshot == other.rhsSnapshot)
+      this.rhsSnapshot
+    else
+      Ite(condition, other.rhsSnapshot, this.rhsSnapshot))
+  }
+}
+
+object MagicWandSnapshot {
+  def apply(snapshot: Term): MagicWandSnapshot = {
+    assert(snapshot.sort == sorts.Snap)
+    snapshot match {
+      case snap: MagicWandSnapshot => snap
+      case _ =>
+        MagicWandSnapshot(First(snapshot), Second(snapshot))
+    }
+  }
+}
+
+case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
+  override val sort = sorts.Unit /* TODO: Does this make sense? */
+  override lazy val toString = s"wand@${chunk.id.ghostFreeWand.pos}}"
+}
+
+/* Factory methods for all resources */
+
+object toSnapTree extends (Seq[Term] => Term) {
+  @inline
+  def apply(args: Seq[Term]): Term = {
+    if (args.isEmpty) Unit
+    else args.map(_.convert(sorts.Snap)).reduceLeft(Combine)
+  }
 }
 
 object ResourceTriggerFunction {
@@ -1832,7 +1886,8 @@ class SortWrapper(val t: Term, val to: Sort)
          s"Unexpected sort wrapping of $t from ${t.sort} to $to")
 
   val equalityDefiningMembers = t :: to :: Nil
-  override lazy val toString = s"$t"
+//  override lazy val toString = s"SortWrapper($t, $to)"
+  override lazy val toString = t.toString
   override val sort = to
 }
 
@@ -1844,41 +1899,6 @@ object SortWrapper {
   }
 
   def unapply(sw: SortWrapper) = Some((sw.t, sw.to))
-}
-
-/* Magic wands */
-
-case class MagicWandSnapshot(abstractLhs: Term, rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
-
-  utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
-  utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
-
-  override lazy val toString = s"wandSnap(lhs = $abstractLhs, rhs = $rhsSnapshot)"
-
-  def merge(other: MagicWandSnapshot, branchConditions: Stack[Term]): MagicWandSnapshot = {
-    assert(this.abstractLhs == other.abstractLhs)
-    val condition = And(branchConditions)
-    MagicWandSnapshot(this.abstractLhs, if (this.rhsSnapshot == other.rhsSnapshot)
-      this.rhsSnapshot
-    else
-      Ite(condition, other.rhsSnapshot, this.rhsSnapshot))
-  }
-}
-
-object MagicWandSnapshot {
-  def apply(snapshot: Term): MagicWandSnapshot = {
-    assert(snapshot.sort == sorts.Snap)
-    snapshot match {
-      case snap: MagicWandSnapshot => snap
-      case _ =>
-        MagicWandSnapshot(First(snapshot), Second(snapshot))
-    }
-  }
-}
-
-case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
-  override val sort = sorts.Unit /* TODO: Does this make sense? */
-  override lazy val toString = s"wand@${chunk.id.ghostFreeWand.pos}}"
 }
 
 /* Other terms */

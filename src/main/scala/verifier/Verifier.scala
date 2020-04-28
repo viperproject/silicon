@@ -6,9 +6,10 @@
 
 package viper.silicon.verifier
 
+import java.nio.file.Path
+
 import com.typesafe.scalalogging.Logger
 import viper.silver.ast
-import viper.silver.parser.FastParser
 import viper.silicon.{Config, Map}
 import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
@@ -18,6 +19,7 @@ import viper.silicon.supporters.{PredicateData, QuantifierSupporter, SnapshotSup
 import viper.silicon.supporters.functions.FunctionData
 import viper.silicon.utils.Counter
 import viper.silver.plugin.PluginAwareReporter
+import viper.silver.ast.LabelledOld
 
 trait Verifier {
   def uniqueId: String
@@ -38,9 +40,11 @@ trait Verifier {
   def verificationPoolManager: VerificationPoolManager
 }
 
+/* TODO: Replace getters and setters by public vars
+   TODO: Add a description to each var that explain when it is expected to be set */
 object Verifier {
   val PRE_STATE_LABEL = "old"
-  val MAGIC_WAND_LHS_STATE_LABEL = FastParser.LHS_OLD_LABEL
+  val MAGIC_WAND_LHS_STATE_LABEL = LabelledOld.LhsOldLabel
 
   private var _config: Config = _
   def config: Config = _config
@@ -49,6 +53,10 @@ object Verifier {
   private var _program: ast.Program = _
   def program: ast.Program = _program
   /*private*/ def program_=(program: ast.Program): Unit = { _program = program }
+
+  private var _inputFile: Option[Path] = None
+  def inputFile: Option[Path] = _inputFile
+  /*private*/ def inputFile_=(file: Option[Path]): Unit = { _inputFile = file }
 
   private var _predicateData: Map[ast.Predicate, PredicateData] = _
   def predicateData: Map[ast.Predicate, PredicateData] = _predicateData

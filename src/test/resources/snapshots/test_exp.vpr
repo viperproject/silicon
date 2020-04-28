@@ -1,0 +1,51 @@
+field f: Int
+
+function zero(x: Ref): Bool
+  requires acc(x.f)
+{ x.f == 0 }
+
+function dangling(x: Ref): Bool
+{ x == null }
+
+method test00(xs: Set[Ref], y: Ref) {
+  assume forall x: Ref :: {zero(x)}
+    x == y ==> dangling(x)
+}
+
+method test01(xs: Set[Ref], y: Ref) {
+  inhale forall x: Ref :: x in xs ==> acc(x.f)
+
+  assume forall x: Ref :: {zero(x)}
+    x == y ==> dangling(x)
+}
+
+method test02(xs: Set[Ref], y: Ref) {
+  inhale forall x: Ref :: x in xs ==> acc(x.f)
+  inhale acc(y.f)
+
+  assume forall x: Ref :: {zero(x)}
+    x == y ==> dangling(x)
+}
+
+
+method test03(xs: Set[Ref], y: Ref) {
+  assume forall x: Ref :: {zero(x)}
+    //:: ExpectedOutput(application.precondition:insufficient.permission)
+    x == y ==> zero(x)
+}
+
+method test04(xs: Set[Ref], y: Ref) {
+  inhale forall x: Ref :: x in xs ==> acc(x.f)
+
+  assume forall x: Ref :: {zero(x)}
+    //:: ExpectedOutput(application.precondition:insufficient.permission)
+    x == y ==> zero(x)
+}
+
+method test05(xs: Set[Ref], y: Ref) {
+  inhale forall x: Ref :: x in xs ==> acc(x.f)
+  inhale acc(y.f)
+
+  assume forall x: Ref :: {zero(x)}
+    x == y ==> zero(x)
+}

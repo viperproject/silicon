@@ -250,6 +250,67 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                       recordPcs = true,
                       parallelizeBranches = false)
 
+    def createWandChunkAndRecordResults(s4: State,
+                                        freshSnapRoot: Var,
+                                        snap: Term,
+                                        v3: Verifier)
+                                       : VerificationResult = {
+
+      def appendToResults(s5: State, ch: Chunk, pcs: RecordedPathConditions, v4: Verifier): Unit = {
+        assert(s5.conservedPcs.nonEmpty, s"Unexpected structure of s5.conservedPcs: ${s5.conservedPcs}")
+
+        var conservedPcs: Vector[RecordedPathConditions] = Vector.empty
+        var conservedPcsStack: Stack[Vector[RecordedPathConditions]] = s5.conservedPcs
+
+        // Do not record further path conditions if the current state is inconsistent.
+        // This is an ad-hoc workaround to mitigate the following problem: producing a wand's LHS
+        // and executing the packaging proof code can introduce definitional path conditions, e.g.
+        // new permission and snapshot maps, which are in general necessary to proceed after the
+        // package statement, e.g. to know which permissions have been consumed.
+        // Since the current implementation doesn't properly differentiate between definitional
+        // and arbitrary path conditions, all path conditions are recorded — which is unsound.
+        // To somewhat improve the situation, such that "non-malevolent" usage of wands works
+        // as expected, we simply check if the current state is known to be inconsistent, and if
+        // it is, we don't record (any further) path conditions.
+        // TODO: Fix this. Might require a substantial redesign of Silicon's path conditions, though.
+
+        if (!v4.decider.checkSmoke()) {
+          conservedPcs = s5.conservedPcs.head :+ pcs
+
+          conservedPcsStack =
+            s5.conservedPcs.tail match {
+              case empty @ Seq() => empty
+              case head +: tail => (head ++ conservedPcs) +: tail
+            }
+        }
+
+        val s6 = s5.copy(conservedPcs = conservedPcsStack, recordPcs = s.recordPcs)
+
+        results :+= (s6, v4.decider.pcs.branchConditions, conservedPcs, ch)
+      }
+
+      val preMark = v3.decider.setPathConditionMark()
+      if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program))) {
+        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {
+          val (sm, smValueDef) =
+            quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
+          v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
+          v4.decider.assume(smValueDef)
+          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+          appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
+          Success()
+        })
+      } else {
+        magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
+//          say(s"done: create wand chunk: $ch")
+          appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
+          Success()
+        })
+      }
+    }
+
     val r = executionFlowController.locally(sEmp, v)((s1, v1) => {
       /* Using conservingSnapshotGeneration a snapshot (binary tree) will be
        * constructed using First/Second datatypes, that preserves the original root.
@@ -260,7 +321,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
        */
       val freshSnapRoot = freshSnap(sorts.Snap, v1)
       produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
-
         val proofScriptCfg = proofScript.toCfg()
 
         /* Expected shape of reserveHeaps is either
@@ -269,7 +329,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
          *   [hEmp, hOps, ..., hOuterLHS, hOuter]
          * if we are executing a package ghost operation (i.e. if we are coming from the consumer).
          */
-        val s2 = sLhs.copy(g = s.g,
+        val s2 = sLhs.copy(g = s.g, // TODO: s1.g? And analogously, s1 instead of s further down?
                            h = Heap(),
                            reserveHeaps = Heap() +: Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
                            reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
@@ -292,50 +352,20 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //        say(s"next: consume RHS ${wand.right}")
         executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
           consume(proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail), wand.right, pve, proofScriptVerifier)((s3, snap, v3) => {
+//            say(s"done: consumed RHS ${wand.right}")
             val s4 = s3.copy(//h = s.h, /* Temporarily */
                              exhaleExt = false,
                              oldHeaps = s.oldHeaps)
+//            say(s"next: create wand chunk")
+            createWandChunkAndRecordResults(s4, freshSnapRoot, snap, v3)})})})})
 
-//          say(s"done: consumed RHS ${wand.right}")
-//          say(s"next: create wand chunk")
-            val preMark = v3.decider.setPathConditionMark()
-            if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program))) {
-              val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
-              val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-              evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {
-                val (sm, smValueDef) =
-                  quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
-                v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
-                v4.decider.assume(smValueDef)
-                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
-
-                val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark)
-                val conservedPcsTail = s5.conservedPcs.tail
-                val newConservedPcs =
-                  if (conservedPcsTail.isEmpty) conservedPcsTail
-                  else {
-                    val head = conservedPcsTail.head ++ conservedPcs
-                    head +: conservedPcsTail.tail
-                  }
-
-                results :+= (s5.copy(conservedPcs = newConservedPcs, recordPcs = s.recordPcs), v4.decider.pcs.branchConditions, conservedPcs, ch)
-                Success()
-              })
-            }
-            else magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
-//            say(s"done: create wand chunk: $ch")
-              val conservedPcs = s5.conservedPcs.head :+ v4.decider.pcs.after(preMark)
-              val conservedPcsTail = s5.conservedPcs.tail
-              val newConservedPcs =
-                if (conservedPcsTail.isEmpty) conservedPcsTail
-                else {
-                  val head = conservedPcsTail.head ++ conservedPcs
-                  head +: conservedPcsTail.tail
-                }
-
-              results :+= (s5.copy(conservedPcs = newConservedPcs, recordPcs = s.recordPcs), v4.decider.pcs.branchConditions, conservedPcs, ch)
-              Success()
-            })})})})})
+    if (results.isEmpty) {
+      // No results mean that packaging the wand resulted in inconsistent states on all paths,
+      // and thus, that no wand chunk was created. In order to continue, we create one now.
+      // Moreover, we need to set reserveHeaps to structurally match [State RHS] below.
+      val s1 = sEmp.copy(reserveHeaps = Heap() +: Heap() +: Heap() +: s.reserveHeaps.tail)
+      createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v)
+    }
 
     results.foldLeft(r)((res, packageOut) => {
       res && {
@@ -399,9 +429,9 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 
       val usedChunks = chs2.flatten
-      val hUsed = stateConsolidator.merge(s2.reserveHeaps.head, Heap(usedChunks), v2)
+      val (fr4, hUsed) = stateConsolidator.merge(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
 
-      val s4 = s3.copy(reserveHeaps = hUsed +: s3.reserveHeaps.tail)
+      val s4 = s3.copy(functionRecorder = fr4, reserveHeaps = hUsed +: s3.reserveHeaps.tail)
 
       /* Returning the last of the usedChunks should be fine w.r.t to the snapshot
        * of the chunk, since consumeFromMultipleHeaps should have equated the
@@ -444,8 +474,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
        * is consumed from hOps and permissions for the predicate are added to the state's
        * heap. After a statement is executed those permissions are transferred to hOps.
        */
-      val hOpsJoinUsed = stateConsolidator.merge(newState.reserveHeaps(1), newState.h, v)
-      newState.copy(h = Heap(),
+      val (fr, hOpsJoinUsed) = stateConsolidator.merge(newState.functionRecorder, newState.reserveHeaps(1), newState.h, v)
+      newState.copy(functionRecorder = fr, h = Heap(),
           reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
     } else newState
 

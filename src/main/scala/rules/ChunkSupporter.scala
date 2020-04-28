@@ -6,23 +6,21 @@
 
 package viper.silicon.rules
 
-import viper.silicon.SymbExLogger
-
-import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
+import viper.silver.ast
 import viper.silver.verifier.VerificationError
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, Success, VerificationResult}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
+import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.verifier.Verifier
 
 trait ChunkSupportRules extends SymbolicExecutionRules {
   def consume(s: State,
               h: Heap,
-              id: ChunkIdentifer,
+              resource: ast.Resource,
               args: Seq[Term],
               perms: Term,
               ve: VerificationError,
@@ -37,7 +35,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
 
   def lookup(s: State,
              h: Heap,
-             id: ChunkIdentifer,
+             resource: ast.Resource,
              args: Seq[Term],
              ve: VerificationError,
              v: Verifier)
@@ -66,7 +64,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
 object chunkSupporter extends ChunkSupportRules with Immutable {
   def consume(s: State,
               h: Heap,
-              id: ChunkIdentifer,
+              resource: ast.Resource,
               args: Seq[Term],
               perms: Term,
               ve: VerificationError,
@@ -75,7 +73,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult = {
     heuristicsSupporter.tryOperation[Heap, Term](description)(s, h, v)((s1, h1, v1, QS) => {
-      consume(s1, h1, id, args, perms, ve, v1)((s2, h2, optSnap, v2) =>
+      consume(s1, h1, resource, args, perms, ve, v1)((s2, h2, optSnap, v2) =>
         optSnap match {
           case Some(snap) =>
             QS(s2, h2, snap.convert(sorts.Snap), v2)
@@ -93,21 +91,23 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
   private def consume(s: State,
                       h: Heap,
-                      id: ChunkIdentifer,
+                      resource: ast.Resource,
                       args: Seq[Term],
                       perms: Term,
                       ve: VerificationError,
                       v: Verifier)
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
+
+    val id = ChunkIdentifier(resource, Verifier.program)
     if (s.exhaleExt) {
       val failure = Failure(ve).withLoad(args)
       magicWandSupporter.transfer(s, perms, failure, v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
-        if (Verifier.config.enableMoreCompleteExhale()) {
-          consumeComplete(s1, s1.h, id, args, perms, ve, v1)((s2, h2, snap2, v2) => {
+        if (s.isMethodVerification && Verifier.config.enableMoreCompleteExhale()) {
+          moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, perms, ve, v1)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
           })
         } else {
@@ -171,151 +171,42 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     }
   }
 
-  private def consumeComplete(s: State,
-                              h: Heap,
-                              id: ChunkIdentifer,
-                              args: Seq[Term],
-                              perms: Term,
-                              ve: VerificationError,
-                              v: Verifier)
-                             (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
-                             : VerificationResult = {
-    val relevantChunks = ListBuffer[NonQuantifiedChunk]()
-    val otherChunks = ListBuffer[Chunk]()
-    h.values foreach {
-      case c: NonQuantifiedChunk if id == c.id => relevantChunks.append(c)
-      case ch => otherChunks.append(ch)
-    }
-
-    if (relevantChunks.isEmpty) {
-      // if no permission is exhaled, return none
-      if (v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
-        Q(s, h, None, v)
-      } else {
-        Failure(ve).withLoad(args)
-      }
-    } else {
-      val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
-
-      var pNeeded = perms
-      var pSum: Term = NoPerm()
-      val newChunks = ListBuffer[NonQuantifiedChunk]()
-      val constraints = ListBuffer[(Term, Term)]()
-      var moreNeeded = true
-
-      val definiteAlias = findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
-
-      val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
-        // The definitive alias and syntactic aliases should get priority, since it is always
-        // possible to consume from them
-        definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
-      }
-
-      relevantChunks.sortWith(sortFunction) foreach { ch =>
-        if (moreNeeded) {
-          val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
-          pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm()))
-          val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm())
-          val pTakenMacro = v.decider.freshMacro("complete_pTaken", Seq(), pTakenBody)
-          val pTaken = App(pTakenMacro, Seq())
-          SymbExLogger.currentLog().addMacro(pTaken, pTakenBody)
-          val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
-          constraints.append((And(eq, IsPositive(ch.perm)), newChunk.snap))
-          pNeeded = PermMinus(pNeeded, pTaken)
-
-          if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
-            newChunks.append(newChunk)
-          }
-
-          val toCheck = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
-          moreNeeded = !v.decider.check(toCheck, Verifier.config.splitTimeout())
-        } else {
-          newChunks.append(ch)
-        }
-      }
-
-      // A fresh snapshot is only needed, if we are consuming no permissions and
-      // there is no definite alias with a non-zero permission amount
-      val toCheck = Or(IsPositive(perms), IsPositive(definiteAlias.map(_.perm).getOrElse(NoPerm())))
-      val s1 = if (consumeExact && !v.decider.check(toCheck, Verifier.config.checkTimeout())) {
-        val sort = relevantChunks.head.snap.sort
-        val fresh = v.decider.fresh(sort)
-        constraints.append((True(), fresh))
-        s.copy(functionRecorder = s.functionRecorder.recordFreshSnapshot(fresh.applicable))
-      } else {
-        s
-      }
-
-      // Creates the snapshot that is returned by the consume method
-      // by building a conditional expression
-      def createSnapshot(constraints: List[(Term, Term)]): Option[Term] = constraints match {
-        case (_, sn) :: Nil => Some(sn)
-        case (eq, sn) :: tail => createSnapshot(tail).flatMap(s => Some(Ite(eq, sn, s)))
-        case _ => None
-      }
-
-      val snap = createSnapshot(constraints.toList)
-
-      val allChunks = otherChunks ++ newChunks
-      val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
-      newChunks foreach { ch =>
-        val resource = Resources.resourceDescriptions(ch.resourceID)
-        v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
-      }
-
-      val newHeap = Heap(allChunks)
-
-      if (!moreNeeded) {
-        if (!consumeExact) {
-          v.decider.assume(PermLess(perms, pSum))
-        }
-        Q(s1, newHeap, snap, v)
-      } else {
-        val toAssert = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
-        v.decider.assert(toAssert) {
-          case true =>
-            if (!consumeExact) {
-              v.decider.assume(PermLess(perms, pSum))
-            }
-            Q(s1, newHeap, snap, v)
-          case false =>
-            Failure(ve).withLoad(args)
-        }
-      }
-    }
-  }
-
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
              (Q: (State, Heap, Verifier) => VerificationResult) = {
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
-    Q(s, stateConsolidator.merge(h, ch, v), v)
+    val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, h, ch, v)
+    Q(s.copy(functionRecorder = fr1), h1, v)
   }
 
   def lookup(s: State,
              h: Heap,
-             id: ChunkIdentifer,
+             resource: ast.Resource,
              args: Seq[Term],
              ve: VerificationError,
              v: Verifier)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
-      val lookupFunction = if (Verifier.config.enableMoreCompleteExhale()) lookupComplete _ else lookupGreedy _
-      lookupFunction(s1, s1.h, id, args, ve, v1)((s2, tSnap, v2) => {
-          QS(s2.copy(h = s.h), s2.h, tSnap, v2)
-      })
+      val lookupFunction =
+        if (s.isMethodVerification && Verifier.config.enableMoreCompleteExhale()) moreCompleteExhaleSupporter.lookupComplete _
+        else lookupGreedy _
+      lookupFunction(s1, s1.h, resource, args, ve, v1)((s2, tSnap, v2) =>
+        QS(s2.copy(h = s.h), s2.h, tSnap, v2))
     })(Q)
   }
 
   private def lookupGreedy(s: State,
                            h: Heap,
-                           id: ChunkIdentifer,
+                           resource: ast.Resource,
                            args: Seq[Term],
                            ve: VerificationError,
                            v: Verifier)
                           (Q: (State, Term, Verifier) => VerificationResult)
                           : VerificationResult = {
+
+    val id = ChunkIdentifier(resource, Verifier.program)
+
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
         Q(s, ch.snap, v)
@@ -323,67 +214,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         Success() // TODO: Mark branch as dead?
       case _ =>
         Failure(ve).withLoad(args)
-    }
-  }
-
-  private def lookupComplete(s: State,
-                             h: Heap,
-                             id: ChunkIdentifer,
-                             args: Seq[Term],
-                             ve: VerificationError,
-                             v: Verifier)
-                            (Q: (State, Term, Verifier) => VerificationResult)
-                            : VerificationResult = {
-    val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
-
-    if (relevantChunks.isEmpty) {
-      if (v.decider.checkSmoke()) {
-        Success() // TODO: Mark branch as dead?
-      } else {
-        Failure(ve).withLoad(args)
-      }
-    } else {
-      var pSum: Term = NoPerm()
-      val constraints = ListBuffer[(Term, Term)]()
-      var moreNeeded = true
-
-      val definiteAlias = findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
-
-      val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
-        // The definitive alias should get priority, since it is always possible to consume from it
-        // Else, look for a syntactic alias
-        definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
-      }
-
-      relevantChunks.sortWith(sortFunction) foreach { ch =>
-        if (moreNeeded) {
-          val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
-          pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm()))
-          constraints.append((And(eq, IsPositive(ch.perm)), ch.snap))
-          moreNeeded = !v.decider.check(IsPositive(pSum), Verifier.config.splitTimeout())
-        }
-      }
-
-      // Creates the snapshot that is returned by the lookup method
-      // by building a conditional expression
-      def createSnapshot(constraints: List[(Term, Term)]): Term = constraints match {
-        case (_, sn) :: Nil => sn
-        case (eq, sn) :: tail => Ite(eq, sn, createSnapshot(tail))
-        case _ => sys.error("Should never happen, since relevant chunks is non-empty")
-      }
-
-      val snap = createSnapshot(constraints.toList)
-
-      if (!moreNeeded) {
-        Q(s, snap, v)
-      } else {
-        v.decider.assert(IsPositive(pSum)) {
-          case true =>
-            Q(s, snap, v)
-          case false =>
-            Failure(ve).withLoad(args)
-        }
-      }
     }
   }
 

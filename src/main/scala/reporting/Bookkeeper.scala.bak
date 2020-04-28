@@ -33,16 +33,7 @@ class Bookkeeper(config: Config, uniqueId: String) extends StatefulComponent {
   var proverStatistics = Map[String, String]()
   var appliedHeuristicReactions: Long = 0
 
-  /* TODO: Unify these loggers with those that are used if command-line option -L<logger> is provided */
-  var logfiles: scala.collection.immutable.Map[String, MultiRunLogger] =
-    scala.collection.immutable.Map[String, MultiRunLogger]().withDefault(name => {
-      val writer = viper.silver.utility.Common.PrintWriter(new File(config.tempDirectory(), s"$name-$uniqueId.txt"), false)
-      val logger = new MultiRunLogger(writer, () => config.inputFile.map(_.toString))
 
-      logfiles += (name -> logger)
-
-      logger
-    })
 
   def start() { /* Nothing to do here */ }
 
@@ -60,18 +51,9 @@ class Bookkeeper(config: Config, uniqueId: String) extends StatefulComponent {
     errors = 0
     proverStatistics = Map[String, String]()
     appliedHeuristicReactions = 0
-
-    /* Notice that logfiles are not closed, because we want to record data
-     * across multiple runs of Silicon. This is not essential, though, and only
-     * a design decision.
-     */
-    logfiles.values foreach (_.flush())
   }
 
-  def stop() {
-    logfiles.values foreach (_.close())
-    logfiles = logfiles.empty
-  }
+  def stop() { /* Nothing to do here */ }
 
   def methodVerified(name: String): Unit = {
     if(config.ideMode()) {

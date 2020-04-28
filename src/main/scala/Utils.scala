@@ -145,13 +145,17 @@ package object utils {
       * @param forall The quantifier to compute triggers for.
       * @return A quantifier that is equal to the input quantifier, except potentially for triggers.
       */
-    def autoTrigger(forall: silver.ast.Forall): silver.ast.Forall = {
-      val defaultTriggerForall = forall.autoTrigger
+    def autoTrigger[T <: silver.ast.QuantifiedExp](q: T, withAutoTrigger: T): T = {
+      val triggers = withAutoTrigger match {
+        case f: silver.ast.Forall => f.triggers
+        case e: silver.ast.Exists => e.triggers
+        case _ => sys.error(s"Unexpected expression $q")
+      }
 
       val autoTriggeredForall =
-        if (defaultTriggerForall.triggers.nonEmpty)
+        if (triggers.nonEmpty)
           /* Standard trigger generation code succeeded */
-          defaultTriggerForall
+          withAutoTrigger
         else {
           /* Standard trigger generation code failed.
            * Let's try generating (certain) invalid triggers, which will then be rewritten
@@ -160,7 +164,7 @@ package object utils {
             case _: silver.ast.Add | _: silver.ast.Sub => false
           }
 
-          val optTriggerSet = silver.ast.utility.Expressions.generateTriggerSet(forall)
+          val optTriggerSet = silver.ast.utility.Expressions.generateTriggerSet(q)
 
           silver.ast.utility.Triggers.TriggerGeneration.setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
@@ -168,17 +172,21 @@ package object utils {
             optTriggerSet match {
               case Some((variables, triggerSets)) =>
                 /* Invalid triggers could be generated, now try to rewrite them */
-                val intermediateForall = silver.ast.Forall(variables, Nil, forall.exp)(forall.pos, forall.info)
-                silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateForall, triggerSets).getOrElse(forall)
+                val intermediateQ = q match {
+                  case f: silver.ast.Forall => silver.ast.Forall(variables, Nil, q.exp)(q.pos, q.info)
+                  case e: silver.ast.Exists => silver.ast.Exists(variables, Nil, q.exp)(q.pos, q.info)
+                  case _=> sys.error(s"Unexpected expression ${q}")
+                }
+                silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateQ, triggerSets).getOrElse(q)
               case None =>
                 /* Invalid triggers could not be generated -> give up */
-                forall
+                q
             }
 
           advancedTriggerForall
         }
 
-      autoTriggeredForall
+      autoTriggeredForall.asInstanceOf[T]
     }
 
     def sourceLine(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {
@@ -189,6 +197,23 @@ package object utils {
     def sourceLineColumn(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {
       case pos: silver.ast.HasLineColumn => s"${pos.line}:${pos.column}"
       case _ => node.pos.toString
+    }
+
+    /** Flattens an Exp into a list of subexpressions
+      * getArgs controls which kinds of expression are flattened 
+      */
+    def flattenOperator(e: silver.ast.Exp, 
+                        getArgs: PartialFunction[silver.ast.Exp, Seq[silver.ast.Exp]])
+                        : Seq[silver.ast.Exp] = 
+
+      getArgs andThen {_ flatMap {flattenOperator(_, getArgs)}} applyOrElse(e, {Seq(_:silver.ast.Exp)})
+
+    def toUnambiguousShortString(resource: silver.ast.Resource): String = {
+      resource match {
+        case l: silver.ast.Location => l.name
+        case m: silver.ast.MagicWand => m.toString()
+        case m @ silver.ast.MagicWandOp => s"${m.op}@${sourceLineColumn(m)}"
+      }
     }
   }
 

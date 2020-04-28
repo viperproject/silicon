@@ -1,0 +1,15 @@
+field discriminant: Int
+field next: Ref
+
+function contains(x: Ref): Bool
+  requires acc(BoxList(x))
+{
+  (unfolding acc(BoxList(x)) in x.discriminant == 0) &&
+  (unfolding acc(BoxList(x)) in contains(x.next))
+}
+
+predicate BoxList(self: Ref) {
+  acc(self.discriminant) &&
+  acc(self.next) &&
+  acc(BoxList(self.next))
+}

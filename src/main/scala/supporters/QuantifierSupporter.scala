@@ -11,8 +11,10 @@ import viper.silicon.state.terms._
 trait QuantifierSupporter {
   def autoTrigger(q: Quantification): Quantification
 
-  def makeTriggersHeapIndependent(triggers: Seq[Trigger], fresh: (String, Sort) => Var)
-                                 : Seq[(Trigger, Iterable[Var])]
+//  def makeTriggersHeapIndependent(triggers: Seq[Trigger], fresh: (String, Sort) => Var)
+//                                 : Seq[(Trigger, Iterable[Var])]
+
+  def makeTriggersHeapIndependent(q: Quantification, fresh: (String, Sort) => Var): Seq[Quantification]
 
   def detectQuantificationProblems(quantification: Quantification): Seq[String]
 }
@@ -33,33 +35,69 @@ class DefaultQuantifierSupporter(triggerGenerator: TriggerGenerator) extends Qua
       }
     }
 
-  def makeTriggersHeapIndependent(triggers: Seq[Trigger], fresh: (String, Sort) => Var)
-                                 : Seq[(Trigger, Iterable[Var])] = {
+//  def makeTriggersHeapIndependent(triggers: Seq[Trigger], fresh: (String, Sort) => Var)
+//                                 : Seq[(Trigger, Iterable[Var])] = {
+//
+//    /* TODO: fresh() does not need to declare the new symbols (on the solver level)
+//     *       because they'll be bound by the quantifier.
+//     */
+//    var subst = collection.mutable.Map[Term, Var]()
+//
+//    val triggersAndVars =
+//      triggers map (trigger => {
+//        val heapIndepTrigger =
+//          Trigger(
+//            trigger.p map (_.transform({
+//              case app @ App(_: HeapDepFun, args) if args.head != Unit =>
+//                val s = subst.getOrElseUpdate(args.head, fresh("s", sorts.Snap))
+//                app.copy(args = s +: args.tail)
+//              case fvf: Application[_] if fvf.sort.isInstanceOf[sorts.FieldValueFunction] =>
+//                val s = subst.getOrElseUpdate(fvf, fresh("fvf", fvf.sort))
+//                s
+//            })(_ => true)))
+//        val snaps = subst.values /* A (lazy) iterable*/
+//        subst = subst.empty      /* subst.clear() would also clear the lazy iterable snaps */
+//
+//        (heapIndepTrigger, snaps)
+//      })
+//
+//    triggersAndVars
+//  }
 
-    /* TODO: fresh() does not need to declare the new symbols (on the solver level)
-     *       because they'll be bound by the quantifier.
-     */
-    var subst = collection.mutable.Map[Term, Var]()
+  def makeTriggersHeapIndependent(q: Quantification, fresh: (String, Sort) => Var): Seq[Quantification] = {
+    def computeHeapDeps(t: Term): Seq[Term] = t match {
+      case App(HeapDepFun(_,_,_), args) => args.flatMap(computeHeapDeps)
+      case fvf: Application[_] if fvf.sort.isInstanceOf[sorts.FieldValueFunction] => Seq(fvf)
+      case psf: Application[_] if psf.sort.isInstanceOf[sorts.PredicateSnapFunction] => Seq(psf)
+      case _ => Seq()
+    }
 
-    val triggersAndVars =
-      triggers map (trigger => {
-        val heapIndepTrigger =
-          Trigger(
-            trigger.p map (_.transform({
-              case app @ App(_: HeapDepFun, args) if args.head != Unit =>
-                val s = subst.getOrElseUpdate(args.head, fresh("s", sorts.Snap))
-                app.copy(args = s +: args.tail)
-              case fvf: Application[_] if fvf.sort.isInstanceOf[sorts.FieldValueFunction] =>
-                val s = subst.getOrElseUpdate(fvf, fresh("fvf", fvf.sort))
-                s
-            })(_ => true)))
-        val snaps = subst.values /* A (lazy) iterable*/
-        subst = subst.empty      /* subst.clear() would also clear the lazy iterable snaps */
+    def replaceHeapDeps(t: Term, m: Map[Term, Var]): Term = t match {
+      case App(f, args) => App(f, args.map(replaceHeapDeps(_,m)))
+      case fvf: Application[_] if fvf.sort.isInstanceOf[sorts.FieldValueFunction] => m(fvf)
+      case psf: Application[_] if psf.sort.isInstanceOf[sorts.PredicateSnapFunction] => m(psf)
+      case _ => t
+    }
 
-        (heapIndepTrigger, snaps)
-      })
-
-    triggersAndVars
+    // TODO: Keep all heap-independent triggers under one quantifier instead of splitting
+    q.triggers
+      // : Seq[Trigger]
+      // Find heap dependencies for each trigger separately
+      .map({ case Trigger(ts) => (ts, ts.flatMap(computeHeapDeps))})
+      .distinct
+      // : Seq[(Trigger, Seq[Term])]
+      // Map all heap dependencies to fresh variables
+      .map({ case (ts, deps) => (ts, deps.map(t => (t, fresh("proj", t.sort))).toMap)})
+      // : Seq[(Trigger, Map[Term, Var])]
+      // For each trigger, create a new quantifier where all heap dependencies are replaced with the new variables
+      .map({ case (ts, m) =>
+        Quantification(
+          q.q,
+          q.vars ++ m.values.toSeq,
+          q.body,
+          Seq(Trigger(ts.map(replaceHeapDeps(_,m)))),
+          q.name,
+          q.isGlobal)})
   }
 
   def detectQuantificationProblems(quantification: Quantification): Seq[String] = {

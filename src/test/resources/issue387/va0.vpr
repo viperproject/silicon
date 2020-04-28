@@ -1,0 +1,10 @@
+//:: IgnoreFile(/silicon/issue/387/)
+// Note: this test can be included in a branch (work in progress), but the main version of Silicon doesn't currently handle it with default options.
+field f: Int
+
+method test(x: Ref, y: Ref, z: Ref) {
+  inhale acc(x.f) && acc(y.f)
+  inhale z == x || z == y
+  assert acc(z.f)
+  z.f := 123
+}
