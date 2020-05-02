@@ -56,15 +56,16 @@ class SiliconTests extends SilSuite {
     }
   }
 
-  lazy val verifiers = List(createSiliconInstance())
+  lazy val verifiers = verifiers(Map.empty)
+  override def verifiers(configMap: Map[String, Any]) = List(createSiliconInstance(configMap))
 
   val commandLineArguments: Seq[String] =
     Seq("--timeout", "300" /* seconds */)
 
-  private def createSiliconInstance() = {
+  private def createSiliconInstance(configMap: Map[String, Any]) = {
     val args =
       commandLineArguments ++
-      Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap.getOrElse("silicon", Map()))
+      Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap(configMap).getOrElse("silicon", Map()))
     val reporter = NoopReporter
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
     val silicon = Silicon.fromPartialCommandLineArguments(args, reporter, debugInfo)
