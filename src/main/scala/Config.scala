@@ -7,7 +7,9 @@
 package viper.silicon
 
 import java.nio.file.{Path, Paths}
+import scala.util.matching.Regex
 import scala.util.Properties._
+import scala.reflect.runtime.universe.{typeTag, TypeTag}
 import org.rogach.scallop._
 import viper.silver.frontend.SilFrontendConfig
 
@@ -21,36 +23,36 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   /* Argument converter */
 
-  private val statisticsSinkConverter = new ValueConverter[(Sink, String)] {
-    val stdioRegex = """(?i)(stdio)""".r
-    val fileRegex = """(?i)(file)=(.*)""".r
+//  private val statisticsSinkConverter: ValueConverter[(Sink, String)] = new ValueConverter[(Sink, String)] {
+//    val stdioRegex: Regex = """(?i)(stdio)""".r
+//    val fileRegex: Regex = """(?i)(file)=(.*)""".r
+//
+//    def parse(s: List[(String, List[String])]): Either[String, Option[(Sink, String)]] = s match {
+//      case (_, stdioRegex(_) :: Nil) :: Nil => Right(Some(Sink.Stdio, ""))
+//
+//      case (_, fileRegex(_, fileName) :: Nil) :: Nil =>
+//        Right(Some(Sink.File, fileName))
+//
+//      case Nil => Right(None)
+//      case _ => Left(s"unexpected arguments")
+//    }
+//
+//    val tag: TypeTag[(Sink, String)] = typeTag[(Sink, String)]
+//    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
+//  }
 
-    def parse(s: List[(String, List[String])]) = s match {
-      case (_, stdioRegex(_) :: Nil) :: Nil => Right(Some(Sink.Stdio, ""))
-
-      case (_, fileRegex(_, fileName) :: Nil) :: Nil =>
-        Right(Some(Sink.File, fileName))
-
-      case Nil => Right(None)
-      case _ => Left(s"unexpected arguments")
-    }
-
-    val tag = scala.reflect.runtime.universe.typeTag[(Sink, String)]
-    val argType = org.rogach.scallop.ArgType.LIST
-  }
-
-  private val forwardArgumentsConverter = new ValueConverter[String] {
-    def parse(s: List[(String, List[String])]) = s match {
+  private val forwardArgumentsConverter: ValueConverter[String] = new ValueConverter[String] {
+    def parse(s: List[(String, List[String])]): Either[String, Option[String]] = s match {
       case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' => Right(Some(str.substring(1, str.length - 1)))
       case Nil => Right(None)
       case _ => Left(s"unexpected arguments")
     }
 
-    val tag = scala.reflect.runtime.universe.typeTag[String]
-    val argType = org.rogach.scallop.ArgType.LIST
+    val tag: TypeTag[String] = typeTag[String]
+    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
   }
 
-  private val smtlibOptionsConverter = new ValueConverter[Map[String, String]] {
+  private val smtlibOptionsConverter: ValueConverter[Map[String, String]] = new ValueConverter[Map[String, String]] {
     def parse(s: List[(String, List[String])]): Either[String, Option[Map[String, String]]] = s match {
       case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' =>
         val config = toMap(
@@ -63,7 +65,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
                 case Array(k, v) =>
                   Some(k -> v)
                 case other =>
-                  return Left(s"unexpected arguments")
+                  return Left(s"unexpected arguments '$other'")
            })
 
         Right(Some(config))
@@ -73,27 +75,27 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
         Left(s"unexpected arguments")
     }
 
-    val tag = scala.reflect.runtime.universe.typeTag[Map[String, String]]
-    val argType = org.rogach.scallop.ArgType.LIST
+    val tag: TypeTag[Map[String, String]] = typeTag[Map[String, String]]
+    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
   }
 
-  private val assertionModeConverter = new ValueConverter[AssertionMode] {
-    val pushPopRegex = """(?i)(pp)""".r
-    val softConstraintsRegex = """(?i)(sc)""".r
+  private val assertionModeConverter: ValueConverter[AssertionMode] = new ValueConverter[AssertionMode] {
+    val pushPopRegex: Regex = """(?i)(pp)""".r
+    val softConstraintsRegex: Regex = """(?i)(sc)""".r
 
-    def parse(s: List[(String, List[String])]) = s match {
+    def parse(s: List[(String, List[String])]): Either[String, Option[AssertionMode]] = s match {
       case (_, pushPopRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.PushPop))
       case (_, softConstraintsRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.SoftConstraints))
       case Nil => Right(None)
       case _ => Left(s"unexpected arguments")
     }
 
-    val tag = scala.reflect.runtime.universe.typeTag[AssertionMode]
-    val argType = org.rogach.scallop.ArgType.LIST
+    val tag: TypeTag[AssertionMode] = typeTag[AssertionMode]
+    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
   }
 
-  private val saturationTimeoutWeightsConverter = new ValueConverter[Z3SaturationTimeoutWeights] {
-    def parse(s: List[(String, List[String])]) = s match {
+  private val saturationTimeoutWeightsConverter: ValueConverter[Z3SaturationTimeoutWeights] = new ValueConverter[Z3SaturationTimeoutWeights] {
+    def parse(s: List[(String, List[String])]): Either[String, Option[Z3SaturationTimeoutWeights]] = s match {
       case Seq((_, Seq(rawString))) =>
         val trimmedString = rawString.trim
         if (!trimmedString.startsWith("[") || !trimmedString.endsWith("]"))
@@ -120,23 +122,22 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       case _ => Left(s"unexpected arguments")
     }
 
-    val tag = scala.reflect.runtime.universe.typeTag[Z3SaturationTimeoutWeights]
-    val argType = org.rogach.scallop.ArgType.LIST
+    val tag: TypeTag[Z3SaturationTimeoutWeights] = typeTag[Z3SaturationTimeoutWeights]
+    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
   }
 
   /* Command-line options */
 
-  val defaultRawStatisticsFile = "statistics.json"
+//  val defaultRawStatisticsFile = "statistics.json"
 
-  private val rawShowStatistics = opt[(Sink, String)]("showStatistics",
-    descr = (  "Show some statistics about the verification. Options are "
-             + "'stdio' and 'file=<path\\to\\statistics.json>'"),
-    default = None,
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )(statisticsSinkConverter)
-
-  private lazy val defaultStatisticsFile = Paths.get(tempDirectory(), defaultRawStatisticsFile)
+//  private val rawShowStatistics = opt[(Sink, String)]("showStatistics",
+//    descr = (  "Show some statistics about the verification. Options are "
+//             + "'stdio' and 'file=<path\\to\\statistics.json>'"),
+//    default = None,
+//    noshort = true
+//  )(statisticsSinkConverter)
+//
+//  private lazy val defaultStatisticsFile = Paths.get(tempDirectory(), defaultRawStatisticsFile)
 
 //  def showStatistics: ScallopOption[(Sink, String)] = rawShowStatistics map {
 //    case (Sink.File, fileName) =>
@@ -154,72 +155,71 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 //    case other => other
 //  }
 
-  val disableSubsumption = opt[Boolean]("disableSubsumption",
+  val disableSubsumption: ScallopOption[Boolean] = opt[Boolean]("disableSubsumption",
     descr = "Don't add assumptions gained by verifying an assert statement",
     default  = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
-  val includeMethods = opt[String]("includeMethods",
+  val includeMethods: ScallopOption[String] = opt[String]("includeMethods",
     descr = "Include methods in verification (default: '*'). Wildcard characters are '?' and '*'. ",
     default = Some(".*"),
-    noshort = true,
-    hidden = false
+    noshort = true
   )(singleArgConverter[String](s => viper.silicon.common.config.wildcardToRegex(s)))
 
-  val excludeMethods = opt[String]("excludeMethods",
+  val excludeMethods: ScallopOption[String] = opt[String]("excludeMethods",
     descr = "Exclude methods from verification (default: ''). Is applied after the include pattern.",
     default = Some(""),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
-  val recursivePredicateUnfoldings = opt[Int]("recursivePredicateUnfoldings",
+  val recursivePredicateUnfoldings: ScallopOption[Int] = opt[Int]("recursivePredicateUnfoldings",
     descr = (  "Evaluate n unfolding expressions in the body of predicates that (transitively) unfold "
              + "other instances of themselves (default: 1)"),
     default = Some(1),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
-  val disableShortCircuitingEvaluations = opt[Boolean]("disableShortCircuitingEvaluations",
+  val disableShortCircuitingEvaluations: ScallopOption[Boolean] = opt[Boolean]("disableShortCircuitingEvaluations",
     descr = (  "Disable short-circuiting evaluation of AND, OR. If disabled, "
              + "evaluating e.g., i > 0 && f(i), will fail if f's precondition requires i > 0."),
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
-  val logLevel = opt[String]("logLevel",
+  val logLevel: ScallopOption[String] = opt[String]("logLevel",
     descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF",
     default = None,
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )(singleArgConverter(level => level.toUpperCase))
 
-  val logger = props[String]('L',
+  val logger: Predef.Map[String, String] = props[String]('L',
     descr = "Set level of certain internal loggers",
     keyName = "logger",
-    valueName = "level",
-    hidden = Silicon.hideInternalOptions)
+    valueName = "level"
+  )
 
-  val timeout = opt[Int]("timeout",
+  val writeSymbexLogFile = opt[Boolean]("writeSymbexLogFile",
+    descr = "Report the symbolic execution log as ExecutionTraceReport",
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
+  val timeout: ScallopOption[Int] = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
             + "not per method or proof obligation (default: 0, i.e. no timeout)."),
     default = Some(0),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
-  val assertTimeout = opt[Int]("assertTimeout",
+  val assertTimeout: ScallopOption[Int] = opt[Int]("assertTimeout",
     descr = "Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout).",
     default = None,
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
-  val checkTimeout = opt[Int]("checkTimeout",
+  val checkTimeout: ScallopOption[Int] = opt[Int]("checkTimeout",
     descr = (  "Timeout (in ms) per SMT solver check. Solver checks differ from solver asserts "
              + "in that a failing assert always yields a verification error whereas a failing "
              + "check doesn't, at least not directly. However, failing checks might result in "
@@ -227,16 +227,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + "and indirectly in verification failures due to incompletenesses, e.g. when "
              + "the held permission amount is too coarsely underapproximated (default: 10)."),
     default = Some(10),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   private val rawZ3SaturationTimeout = opt[Int]("z3SaturationTimeout",
     descr = (  "Timeout (in ms) used for Z3 state saturation calls (default: 100). A timeout of "
              + "0 disables all saturation checks."),
     default = Some(100),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
   /* Attention: Update companion object if number of weights changes! */
@@ -273,8 +271,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              +  "Weights must be non-negative, a weight of 0 disables the corresponding saturation "
              +  "call and a minimal timeout of 10ms is enforced."),
     default = Some(defaultZ3SaturationTimeoutWeights),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )(saturationTimeoutWeightsConverter)
 
   /* ATTENTION: Don't access the effective weights before the configuration objects has been
@@ -306,19 +303,35 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       scale(rawZ3SaturationTimeoutWeights().beforeRepetition, "before repetition")
   }
 
-  val tempDirectory = opt[String]("tempDirectory",
+  val z3EnableResourceBounds: ScallopOption[Boolean] = opt[Boolean]("z3EnableResourceBounds",
+    descr = "Use Z3's resource bounds instead of timeouts",
+    default = Some(false),
+    noshort = true
+  )
+
+  val z3ResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("z3ResourcesPerMillisecond",
+    descr = "Z3 resources per milliseconds. Is used to convert timeouts to resource bounds.",
+    default = Some(60000), // Moritz Knüsel empirically determined 1600 in his BSc thesis, but when Malte
+    noshort = true,        // used this value, over 20 tests failed.
+  )
+
+  val z3RandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("z3RandomizeSeeds",
+    descr = "Set various Z3 random seeds to random values",
+    default = Some(false),
+    noshort = true
+  )
+
+  val tempDirectory: ScallopOption[String] = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: ./tmp)",
     default = Some("./tmp"),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   private val rawZ3Exe = opt[String]("z3Exe",
     descr = (  "Z3 executable. The environment variable %s can also "
              + "be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable),
     default = None,
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
   lazy val z3Exe: String = {
@@ -336,8 +349,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + s"extension $z3LogFileExtension will be appended. "
              + s"(default: <tempDirectory>/$defaultRawZ3LogFile.$z3LogFileExtension)"),
     default = Some(DefaultValue(defaultRawZ3LogFile)),
-    noshort = true,
-    hidden = false
+    noshort = true
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
 
   def z3LogFile(suffix: String = ""): Path = rawZ3LogFile() match {
@@ -353,26 +365,24 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
           Paths.get(s"$logfile-$suffix.$z3LogFileExtension")
       }
 
-    case DefaultValue(logfile) =>
+    case DefaultValue(_) =>
       Paths.get(tempDirectory(), s"$defaultRawZ3LogFile-$suffix.$z3LogFileExtension")
   }
 
-  val z3Args = opt[String]("z3Args",
+  val z3Args: ScallopOption[String] = opt[String]("z3Args",
     descr = (  "Command-line arguments which should be forwarded to Z3. "
              + "The expected format is \"<opt> <opt> ... <opt>\", including the quotation marks."),
     default = None,
-    noshort = true,
-    hidden = false
+    noshort = true
   )(forwardArgumentsConverter)
 
-  val z3ConfigArgs = opt[Map[String, String]]("z3ConfigArgs",
+  val z3ConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("z3ConfigArgs",
     descr = (  "Configuration options which should be forwarded to Z3. "
              + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
              + "including the quotation marks. "
              + "The configuration options given here will override those from Silicon's Z3 preamble."),
     default = Some(Map()),
-    noshort = true,
-    hidden = false
+    noshort = true
   )(smtlibOptionsConverter)
 
   lazy val z3Timeout: Int =
@@ -385,108 +395,129 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
             z3Args.toOption.flatMap(args => z3TimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
         .getOrElse(0)
 
-  val maxHeuristicsDepth = opt[Int]("maxHeuristicsDepth",
+  val maxHeuristicsDepth: ScallopOption[Int] = opt[Int]("maxHeuristicsDepth",
     descr = "Maximal number of nested heuristics applications (default: 3)",
     default = Some(3),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
-  val handlePureConjunctsIndividually = opt[Boolean]("handlePureConjunctsIndividually",
+  val handlePureConjunctsIndividually: ScallopOption[Boolean] = opt[Boolean]("handlePureConjunctsIndividually",
     descr = (  "Handle pure conjunction individually."
              + "Increases precision of error reporting, but may slow down verification."),
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
-  val assertionMode = opt[AssertionMode]("assertionMode",
+  val assertionMode: ScallopOption[AssertionMode] = opt[AssertionMode]("assertionMode",
     descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
              + "'pp' (push-pop) and 'cs' (soft constraints) (default: cs)."),
     default = Some(AssertionMode.PushPop),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )(assertionModeConverter)
 
 
-  val splitTimeout = opt[Int]("qpSplitTimeout",
+  val splitTimeout: ScallopOption[Int] = opt[Int]("qpSplitTimeout",
     descr = (  "Timeout (in ms) used by QP's split algorithm when 1) checking if a chunk "
              + "holds no further permissions, and 2) checking if sufficiently many "
              + "permissions have already been split off."),
     default = Some(500),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
-  val disableValueMapCaching = opt[Boolean]("disableValueMapCaching",
+  val disableValueMapCaching: ScallopOption[Boolean] = opt[Boolean]("disableValueMapCaching",
     descr = "Disable caching of value maps (context: iterated separating conjunctions).",
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
-  val disableISCTriggers = opt[Boolean]("disableISCTriggers",
+  val disableISCTriggers: ScallopOption[Boolean] = opt[Boolean]("disableISCTriggers",
     descr = (  "Don't pick triggers for quantifiers, let the SMT solver do it "
              + "(context: iterated separating conjunctions)."),
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
-  val disableChunkOrderHeuristics = opt[Boolean]("disableChunkOrderHeuristics",
+  val disableChunkOrderHeuristics: ScallopOption[Boolean] = opt[Boolean]("disableChunkOrderHeuristics",
     descr = (  "Disable heuristic ordering of quantified chunks "
              + "(context: iterated separating conjunctions)."),
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
-  val enablePredicateTriggersOnInhale = opt[Boolean]("enablePredicateTriggersOnInhale",
+  val enablePredicateTriggersOnInhale: ScallopOption[Boolean] = opt[Boolean]("enablePredicateTriggersOnInhale",
     descr = (  "Emit predicate-based function trigger on each inhale of a "
              + "predicate instance (context: heap-dependent functions)."),
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
-  val enableMoreCompleteExhale = opt[Boolean]("enableMoreCompleteExhale",
+  val enableMoreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
     descr = "Enable a more complete exhale version.",
     default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
+    noshort = true
   )
 
-  val numberOfParallelVerifiers = opt[Int]("numberOfParallelVerifiers",
+  val disableMostStateConsolidations: ScallopOption[Boolean] = opt[Boolean]("disableMostStateConsolidations",
+    descr = "Disable state consolidations, except on-retry and single-merge.",
+    default = Some(false),
+    noshort = true
+  )
+
+  val numberOfParallelVerifiers: ScallopOption[Int] = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
              + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
     default = Some(Runtime.getRuntime.availableProcessors()),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
-  val printTranslatedProgram = opt[Boolean]("printTranslatedProgram",
+  val printTranslatedProgram: ScallopOption[Boolean] = opt[Boolean]("printTranslatedProgram",
     descr ="Print the final program that is going to be verified to stdout.",
     default = Some(false),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
-  val printMethodCFGs = opt[Boolean]("printMethodCFGs",
+  val printMethodCFGs: ScallopOption[Boolean] = opt[Boolean]("printMethodCFGs",
     descr = "Print a DOT (Graphviz) representation of the CFG of each method to verify to " +
             "a file '<tempDirectory>/<methodName>.dot'.",
     default = Some(false),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
-  val disableCatchingExceptions = opt[Boolean]("disableCatchingExceptions",
+  val disableCatchingExceptions: ScallopOption[Boolean] = opt[Boolean]("disableCatchingExceptions",
     descr =s"Don't catch exceptions (can be useful for debugging problems with ${Silicon.name})",
     default = Some(false),
-    noshort = true,
-    hidden = false
+    noshort = true
   )
 
-  /* Option validation */
+  val setAxiomatizationFile: ScallopOption[String] = opt[String]("setAxiomatizationFile",
+    descr =s"Source file with set axiomatisation. If omitted, built-in one is used.",
+    default = None,
+    noshort = true
+  )
+
+  val multisetAxiomatizationFile: ScallopOption[String] = opt[String]("multisetAxiomatizationFile",
+    descr =s"Source file with multiset axiomatisation. If omitted, built-in one is used.",
+    default = None,
+    noshort = true
+  )
+
+  val sequenceAxiomatizationFile: ScallopOption[String] = opt[String]("sequenceAxiomatizationFile",
+    descr =s"Source file with sequence axiomatisation. If omitted, built-in one is used.",
+    default = None,
+    noshort = true
+  )
+
+
+  val disableHavocHack407: ScallopOption[Boolean] = opt[Boolean]("disableHavocHack407",
+    descr = "A Viper method call to " +
+            viper.silicon.rules.executor.hack407_havoc_all_resources_method_name("R") +
+            ", where R is a field or predicate, results " +
+            "in Silicon havocking all instances of R. See also Silicon issue #407.",
+    default = Some(false),
+    noshort = true
+  )
+
+  /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(timeout) {
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
@@ -506,6 +537,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
+  validateFileOpt(setAxiomatizationFile)
+  validateFileOpt(multisetAxiomatizationFile)
+  validateFileOpt(sequenceAxiomatizationFile)
+
+  /* Finalise configuration */
+
   verify()
 }
 
@@ -513,7 +550,7 @@ object Config {
   sealed abstract class ConfigValue[T] {
     def value: T
 
-    def orElse(f: T => T) = this match {
+    def orElse(f: T => T): T = this match {
       case UserValue(v) => v
       case DefaultValue(v) => f(v)
     }

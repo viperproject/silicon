@@ -9,7 +9,7 @@ package viper.silicon.supporters
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silicon.state.{State, SymbolConverter}
-import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, True, Unit, sorts}
+import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, Unit, sorts}
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 
@@ -22,9 +22,6 @@ trait SnapshotSupporter {
                          a1: ast.Exp,
                          v: Verifier)
                         : ((Sort, Verifier) => Term, (Sort, Verifier) => Term)
-
-  def createSnapshotPair(s: State, snap: Term, a0: ast.Exp, a1: ast.Exp, v: Verifier)
-                        : (Term, Term)
 }
 
 class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends SnapshotSupporter {
@@ -122,35 +119,39 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
     (sf0, sf1)
   }
 
-  def createSnapshotPair(s: State, snap: Term, a0: ast.Exp, a1: ast.Exp, v: Verifier): (Term, Term) = {
+  private def createSnapshotPair(s: State, snap: Term, a0: ast.Exp, a1: ast.Exp, v: Verifier): (Term, Term) = {
     /* [2015-11-17 Malte] If both fresh snapshot terms and first/second datatypes
      * are used, then the overall test suite verifies in 2min 10sec, whereas
      * it takes 2min 20sec when only first/second datatypes are used. Might be
      * worth re-benchmarking from time to time.
-     */
-    /* [2017-06-30 Nils] The performance difference seems to be negligible.
+     *
+     * [2017-06-30 Nils] The performance difference seems to be negligible.
      * Using only first/second datatypes causes all/issues/carbon/0122.sil to fail,
      * though. Silicon produces the same output as Carbon in that case.
+     *
+     * [2019-12-22 Malte] The larger and more complex Silicon's test suite gets, the less
+     * significant the performance difference becomes. I've therefore changed to implementation
+     * to use First(snap)/Second(snap) as the default.
      */
 
-    if (!s.conservingSnapshotGeneration) {
-      val snap0 = mkSnap(a0, Verifier.program, v)
-      val snap1 = mkSnap(a1, Verifier.program, v)
+    assert(snap != Unit, "Unit snapshot cannot be decomposed")
 
-      val snapshotEq = (snap, snap0, snap1) match {
-        case (Unit, Unit, Unit) => True()
-        case (Unit, _, _) => sys.error(s"Unexpected equality between $s and ($snap0, $snap1)")
-        case _ => snap === Combine(snap0, snap1)
+    val (snap0, snap1, snapshotEq) =
+      /* // [2019-12-22 Malte] Old code kept for documentation purposes
+      if (!s.conservingSnapshotGeneration) {
+        val snap0 = mkSnap(a0, Verifier.program, v)
+        val snap1 = mkSnap(a1, Verifier.program, v)
+
+        (snap0, snap1, snap === Combine(snap0, snap1))
+      } else*/ {
+        val snap0 = First(snap)
+        val snap1 = Second(snap)
+
+        (snap0, snap1, snap === Combine(snap0, snap1))
       }
 
-      v.decider.assume(snapshotEq)
+    v.decider.assume(snapshotEq)
 
-      (snap0, snap1)
-    } else {
-      val _snap0 = First(snap)
-      val _snap1 = Second(snap)
-
-      (_snap0, _snap1)
-    }
+    (snap0, snap1)
   }
 }

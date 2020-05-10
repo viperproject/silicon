@@ -27,17 +27,23 @@ import viper.silver.logger.ViperStdOutLogger
 
 object Silicon {
   val name = BuildInfo.projectName
-  val buildRevision = BuildInfo.hg._1
-  val buildBranch = BuildInfo.hg._2
-  val buildVersion = s"$buildRevision${if (buildBranch == "default") "" else s"@$buildBranch"}"
-  val version = s"${BuildInfo.projectVersion} ($buildVersion)"
+  
+  val buildRevision = BuildInfo.gitRevision
+  val buildBranch = BuildInfo.gitBranch
+
+  val buildVersion: Option[String] =
+    if (buildRevision.isEmpty && buildBranch.isEmpty) None
+    else if (buildBranch == "master") Some(buildRevision)
+    else Some(s"$buildRevision@$buildBranch")
+
+  val version: String =
+    s"${BuildInfo.projectVersion}${buildVersion.fold("")(v => s" ($v)")}"
+
   val copyright = "(c) Copyright ETH Zurich 2012 - 2019"
   val z3ExeEnvironmentVariable = "Z3_EXE"
   val z3MinVersion = Version("4.5.0")
   val z3MaxVersion: Option[Version] = None // Some(Version("4.5.0")) /* X.Y.Z if that is the *last supported* version */
   val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "https://github.com/Z3Prover/z3"))
-
-  val hideInternalOptions = false
 
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
     configMap.flatMap {
@@ -80,7 +86,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
   val name: String = Silicon.name
   val version = Silicon.version
-  val buildVersion = Silicon.buildVersion
+  val buildVersion = Silicon.buildVersion.getOrElse("<unknown-build-version>")
   val copyright = Silicon.copyright
   val dependencies = Silicon.dependencies
 

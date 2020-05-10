@@ -15,11 +15,18 @@ import viper.silver.frontend.DefaultStates
 import viper.silver.reporter.NoopReporter
 
 class SiliconTests extends SilSuite {
-  private val siliconTestDirectories = Seq("consistency", "issue387")
-  private val silTestDirectories = Seq("all", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
-  val testDirectories = siliconTestDirectories ++ silTestDirectories
+  private val siliconTestDirectories =
+    Seq("consistency", "issue387")
 
-  override def frontend(verifier: Verifier, files: Seq[Path]) = {
+  private val silTestDirectories =
+    Seq("all",
+        "quantifiedpermissions", "quantifiedpredicates" ,"quantifiedcombinations",
+        "wands", "termination",
+        "examples")
+
+  val testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories
+
+  override def frontend(verifier: Verifier, files: Seq[Path]): SiliconFrontend = {
     require(files.length == 1, "tests should consist of exactly one file")
 
     // For Unit-Testing of the Symbolic Execution Logging, the name of the file
@@ -41,7 +48,7 @@ class SiliconTests extends SilSuite {
     fe
   }
 
-  override def annotationShouldLeadToTestCancel(ann: LocatedAnnotation) = {
+  override def annotationShouldLeadToTestCancel(ann: LocatedAnnotation): Boolean = {
     ann match {
       case UnexpectedOutput(_, _, _, _, _, _) => true
       case MissingOutput(_, _, _, _, _, issue) => issue != 34
@@ -51,7 +58,8 @@ class SiliconTests extends SilSuite {
 
   lazy val verifiers = List(createSiliconInstance())
 
-  val commandLineArguments: Seq[String] = Seq.empty
+  val commandLineArguments: Seq[String] =
+    Seq("--timeout", "300" /* seconds */)
 
   private def createSiliconInstance() = {
     val args =

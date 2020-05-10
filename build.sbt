@@ -1,5 +1,5 @@
-import scala.sys.process.Process
-import scala.util.Try
+import scala.sys.process.{Process, ProcessLogger}
+import scala.util.{Failure, Success, Try}
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -72,21 +72,43 @@ lazy val silicon = (project in file("."))
       "projectVersion" -> version.value,
       scalaVersion,
       sbtVersion,
-      // TODO: Either make hg a named pair with fields hg.revision/hg.branch,
-      //       or replace by two direct fields, e.g. hgRevision/hgBranch
-      BuildInfoKey.action("hg") {
-        val defaults = Seq("<revision>", "<branch>")
-
-        val Seq(revision, branch) =
-          Try(
-            Process("hg id -ib").!!.trim.split(' ').toSeq match {
-              case Seq() => defaults
-              case Seq(rev) => Seq(rev, defaults(1))
-              case Seq(rev, bra, _*) => Seq(rev, bra)
-            }
-          ).getOrElse(defaults)
-
-        (revision, branch)
-      }
+      "gitRevision" -> gitInfo.value._1,
+      "gitBranch" -> gitInfo.value._2
     ),
     buildInfoPackage := "viper.silicon")
+
+// Pair of revision and branch information from Mercurial. Empty strings if an error occurred.
+lazy val gitInfo: Def.Initialize[(String, String)] = Def.setting {
+  val gitCommand = "git status --porcelain=v2 --branch"
+
+  Try({
+    val outputBuffer = new StringBuffer()
+
+    // Execute Mercurial, record stdout and stderr in outputBuffer, and return the exit code
+    val exitCode =
+      Process(gitCommand, baseDirectory.value).!(ProcessLogger(outputBuffer append _ append '\n'))
+
+    if (exitCode != 0)
+      sys.error(s"'$gitCommand' didn't execute successfully")
+
+    val output = outputBuffer.toString
+    val lines = output.split('\n').map(_.trim)
+
+    // Expected format is "# branch.oid HASH", use first 8 digits
+    var revision = lines.find(_.startsWith("# branch.oid")).get.split(' ')(2).take(8)
+
+    // Expected format is "# branch.head NAME"
+    val branch = lines.find(_.startsWith("# branch.head")).get.split(' ')(2)
+
+    if (!lines.forall(_.startsWith("# ")))
+      revision = s"$revision+"
+
+    Seq(revision, branch)
+  }) match {
+    case Failure(throwable) =>
+      sLog.value.warn(s"Couldn't execute '${throwable.getMessage}', or couldn't parse obtained output")
+      ("", "")
+    case Success(Seq(revision, branch)) =>
+      (revision, branch)
+  }
+}

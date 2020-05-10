@@ -375,7 +375,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                 v: Verifier)
                : (Term, Seq[Quantification], Option[Quantification]) = {
 
-    val additionalFvfArgs = s.functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+    val additionalFvfArgs = s.functionRecorderQuantifiedVariables()
     val sm = freshSnapshotMap(s, resource, additionalFvfArgs, v)
 
     val smDomainDefinitionCondition =
@@ -396,19 +396,17 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           assert(codomainQVars.length == 1)
           SetIn(codomainQVars.head, domain(field.name, sm))
         case predicate: ast.Predicate =>
-          SetIn(codomainQVars
-                  .map(_.convert(sorts.Snap))
-                  .reduceLeft(Combine),
-                domain(predicate.name, sm))
+          SetIn(toSnapTree(codomainQVars), domain(predicate.name, sm))
         case wand: ast.MagicWand =>
           val subexpressionsToEvaluate = wand.subexpressionsToEvaluate(Verifier.program)
           val numLhs = wand.left.shallowCollect({
             case n if subexpressionsToEvaluate.contains(n) => n
           }).size
-          val lhsSnap = codomainQVars.take(numLhs).map(_.convert(sorts.Snap)).reduceLeft(Combine)
-          val rhsSnap = codomainQVars.drop(numLhs).map(_.convert(sorts.Snap)).reduceLeft(Combine)
+          val (lhsVars, rhsVars) = codomainQVars.splitAt(numLhs)
+          val lhsSnap = toSnapTree(lhsVars)
+          val rhsSnap = toSnapTree(rhsVars)
           SetIn(MagicWandSnapshot(lhsSnap, rhsSnap),
-            domain(MagicWandIdentifier(wand, Verifier.program).toString, sm))
+                domain(MagicWandIdentifier(wand, Verifier.program).toString, sm))
         case other =>
           sys.error(s"Found yet unsupported resource $other (${other.getClass.getSimpleName})")
       }
@@ -1115,11 +1113,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     v.decider.prover.comment("Precomputing data for removing quantified permissions")
 
+    val additionalArgs = s.relevantQuantifiedVariables
+    var currentFunctionRecorder = s.functionRecorder
+
     val precomputedData = candidates map { ch =>
       val permsProvided = ch.perm
       val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm())
-      val permsTakenMacro = v.decider.freshMacro("pTaken", codomainQVars, permsTakenBody)
-      val permsTaken = App(permsTakenMacro, codomainQVars)
+      val permsTakenArgs = codomainQVars ++ additionalArgs
+      val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenBody)
+      val permsTakenMacro = Macro(permsTakenDecl.id, permsTakenDecl.args.map(_.sort), permsTakenDecl.body.sort)
+      val permsTaken = App(permsTakenMacro, permsTakenArgs)
+
+      currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(permsTakenDecl)
       SymbExLogger.currentLog().addMacro(permsTaken, permsTakenBody)
 
       permsNeeded = PermMinus(permsNeeded, permsTaken)
@@ -1182,7 +1187,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     v.decider.prover.comment("Done removing quantified permissions")
 
-    (success, s, remainingChunks)
+    (success, s.copy(functionRecorder = currentFunctionRecorder), remainingChunks)
   }
 
   private def createPermissionConstraintAndDepletedCheck(codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */

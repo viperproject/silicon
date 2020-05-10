@@ -46,10 +46,7 @@ case class SnapshotMapCache private (
          : Option[SnapshotMapCache.Value] = {
 
     cache.get(key) match {
-      case Some((smDef, totalPermissions, optSmDomainDefinitionCondition2))
-          if optSmDomainDefinitionCondition.isEmpty ||
-             optSmDomainDefinitionCondition == optSmDomainDefinitionCondition2 =>
-
+      case Some((smDef, totalPermissions, `optSmDomainDefinitionCondition`)) =>
         Some((smDef, totalPermissions))
 
       case _ =>
