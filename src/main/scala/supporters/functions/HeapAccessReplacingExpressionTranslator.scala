@@ -13,13 +13,14 @@ import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
-import viper.silver.reporter.{InternalWarningMessage, Reporter}
+import viper.silver.plugin.PluginAwareReporter
+import viper.silver.reporter.InternalWarningMessage
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                               fresh: (String, Sort) => Var,
                                               resolutionFailureMessage: (ast.Positioned, FunctionData) => String,
                                               stopOnResolutionFailure: (ast.Positioned, FunctionData) => Boolean,
-                                              reporter: Reporter)
+                                              reporter: PluginAwareReporter)
     extends ExpressionTranslator
        with LazyLogging {
 
