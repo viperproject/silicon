@@ -22,14 +22,10 @@ trait SymbolicExecutionRules extends Immutable {
       val model = v.decider.getModel()
       val nativeModel = Model(model)
       val finalModel: Map[String, ModelEntry] = if (Verifier.config.model.toOption.get == "native") nativeModel.entries else {
-        val modelOption = Verifier.config.model.toOption.get
-        val names = if (modelOption == "variables") null else  modelOption.split(",").toSet
         val res = mutable.HashMap[String, ModelEntry]()
         for (curVar <- s.g.values) {
-          if (names == null || names.contains(curVar._1.name)){
-            if (nativeModel.entries.contains(curVar._2.toString)){
-              res.update(curVar._1.name, nativeModel.entries.get(curVar._2.toString).get)
-            }
+          if (nativeModel.entries.contains(curVar._2.toString)){
+            res.update(curVar._1.name, nativeModel.entries.get(curVar._2.toString).get)
           }
         }
         res.toMap
