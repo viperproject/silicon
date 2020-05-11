@@ -13,6 +13,7 @@ import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Su
 import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
 import viper.silver.frontend.DefaultStates
 import viper.silver.reporter.NoopReporter
+import viper.silver.plugin.PluginAwareReporter
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories =
@@ -56,21 +57,22 @@ class SiliconTests extends SilSuite {
     }
   }
 
-  lazy val verifiers = List(createSiliconInstance())
+  val silicon = {
+    val reporter = PluginAwareReporter(NoopReporter)
+    val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
+    new Silicon(reporter, debugInfo)
+  }
+
+  def verifiers = List(silicon)
+
+  override def configureVerifiersFromConfigMap(configMap: Map[String, Any]) = {
+    val args = Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap(configMap).getOrElse("silicon", Map()))
+    silicon.parseCommandLine(args :+ Silicon.dummyInputFilename)
+  }
 
   val commandLineArguments: Seq[String] =
     Seq("--timeout", "300" /* seconds */)
 
-  private def createSiliconInstance() = {
-    val args =
-      commandLineArguments ++
-      Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap.getOrElse("silicon", Map()))
-    val reporter = NoopReporter
-    val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
-    val silicon = Silicon.fromPartialCommandLineArguments(args, reporter, debugInfo)
-
-    silicon
-  }
 }
 
 class SiliconFrontendWithUnitTesting extends SiliconFrontend(NoopReporter) {
