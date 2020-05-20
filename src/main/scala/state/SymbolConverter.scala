@@ -43,7 +43,7 @@ class DefaultSymbolConverter extends SymbolConverter with Immutable {
       sys.error("Found unexpected type %s (%s)".format(typ, typ.getClass.getSimpleName))
   }
 
-  def toSortSpecificId(name: String, sorts: Seq[Sort]) =
+  def toSortSpecificId(name: String, sorts: Seq[Sort]): Identifier =
     Identifier(name + sorts.mkString("[",",","]"))
 
   def toFunction(function: ast.DomainFunc): terms.DomainFun = {
