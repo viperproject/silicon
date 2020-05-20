@@ -236,7 +236,7 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
   private def getModel(): Unit = {
-    if (Verifier.config.ideModeAdvanced() || Verifier.config.model.toOption.isDefined) {
+    if (Verifier.config.ideModeAdvanced() || Verifier.config.counterexample.toOption.isDefined) {
       writeLine("(get-model)")
 
       if (Verifier.config.ideModeAdvanced()){

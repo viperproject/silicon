@@ -15,13 +15,13 @@ import scala.collection.mutable
 
 trait SymbolicExecutionRules extends Immutable {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
-    if (v != null && Verifier.config.model.toOption.isDefined) {
+    if (v != null && Verifier.config.counterexample.toOption.isDefined) {
       if (generateNewModel || v.decider.getModel() == null) {
         v.decider.generateModel()
       }
       val model = v.decider.getModel()
       val nativeModel = Model(model)
-      val finalModel: Map[String, ModelEntry] = if (Verifier.config.model.toOption.get == "native") nativeModel.entries else {
+      val finalModel: Map[String, ModelEntry] = if (Verifier.config.counterexample.toOption.get == "native") nativeModel.entries else {
         val res = mutable.HashMap[String, ModelEntry]()
         for (curVar <- s.g.values) {
           if (nativeModel.entries.contains(curVar._2.toString)){
