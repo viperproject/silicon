@@ -21,44 +21,6 @@ class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term],
   val userProvidedSourceFilepath: Option[String] = config.sequenceAxiomatizationFile.toOption
   val sourceDomainName: String = "$Seq"
 
-  override protected def transformSourceDomain(sourceDomain: ast.Domain): ast.Domain = {
-    // Seq_empty(), if type-wise unconstrained, is typed by Silver as Seq[Int]. However, in
-    // case of the sequence source domain, the type should be generic, i.e. Seq[E].
-    // Currently, the only affected axiom is hard-coded and appropriately transformed below.
-    // See also a comment for axiom "empty_seq_length_zero" in the sequence domain source file
-    // (i.e. val sourceResource above).
-
-    sourceDomain transform {
-      // TODO: Generalise code once more axioms are affected
-      case axiom: ast.NamedDomainAxiom if axiom.name == "empty_seq_length_zero" =>
-        axiom transform {
-          case app: ast.DomainFuncApp if app.funcname == "Seq_empty" =>
-            assert(app.typVarMap.size == 1)
-
-            val (typeVar, typ) = app.typVarMap.head
-
-            if (typ == ast.Int)
-              app.copy(typVarMap = Map(typeVar -> typeVar))(app.pos, app.info, app.typ, app.domainName, app.errT)
-            else
-              app
-        }
-
-      /* [2020-03-17 Malte] Potential axiom transformations. Can identify unstable examples,
-         but don't seem to gain or cost performance in general. */
-      // case eq: ast.EqCmp if eq.left.typ == ast.Bool =>
-      //   ast.And(
-      //     ast.Implies(eq.left, eq.right)(eq.pos, eq.info, eq.errT),
-      //     ast.Implies(eq.right, eq.left)(eq.pos, eq.info, eq.errT),
-      //   )(eq.pos, eq.info, eq.errT)
-      //
-      // case ite: ast.CondExp =>
-      //   ast.And(
-      //     ast.Implies(ite.cond, ite.thn)(ite.pos, ite.info, ite.errT),
-      //     ast.Implies(ast.Not(ite.cond)(ite.pos, ite.info, ite.errT), ite.els)(ite.pos, ite.info, ite.errT)
-      //   )(ite.pos, ite.info, ite.errT)
-    } //, Traverse.BottomUp)
-  }
-
   override protected def transformSourceDomainInstance(sequenceDomainInstance: ast.Domain, typ: ast.DomainType): ast.Domain = {
     // sequences.vpr (val sourceResource) contains functions and axioms for generic sequences (Seq[E]), and those
     // for integer sequences (Seq[Int]): currently, function Seq_range and corresponding axioms.
