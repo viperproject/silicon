@@ -36,6 +36,8 @@ class DefaultSymbolConverter extends SymbolConverter with Immutable {
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
       sorts.UserSort(Identifier(dt.toString()))
 
+    case viper.silicon.utils.ast.ViperEmbedding(sort) => sort
+
     case   ast.InternalType
          | _: ast.TypeVar
          | ast.Wand

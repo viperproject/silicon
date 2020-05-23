@@ -37,7 +37,6 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
 
-
   /* Lifetime */
 
   def reset() {
@@ -64,11 +63,12 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
         collectedPredicates ++= (predicateAccesses map (_.loc(program)))
     }
 
+    // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over predicates
+
     collectedSorts = (
         (collectedPredicates.map(predicate =>
           sorts.PredicateSnapFunction(predicateSnapGenerator.getSnap(predicate)._1)): InsertionOrderedSet[Sort])
             + sorts.PredicateSnapFunction(sorts.Snap)
-            + sorts.Set(sorts.Snap) // TODO: Needed? See comment below in generateFunctionDecls
         )
 
     collectedFunctionDecls = generateFunctionDecls
@@ -86,28 +86,16 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
   }
 
   def generateFunctionDecls: Iterable[PreambleBlock] = {
-    /* TODO: The predicate snap function axioms (see method generateAxioms) use set-contains
-     *       and set equality (for sort Snap only), but Nadja only emits the necessary set function
-     *       declarations, but no corresponding axioms. Looks like an oversight.
-     */
-    val setsTemplateFile = "/predicate_snap_sets_declarations.smt2"
-    val setsSort = sorts.Snap
-    val substitutions = Map("$S$" -> termConverter.convert(setsSort))
-    val setsDeclarations = preambleReader.readParametricPreamble(setsTemplateFile, substitutions)
-
     val snapsTemplateFile = "/predicate_snap_functions_declarations.smt2"
 
-    val setsPreambleBlocks =
-      collectedPredicates map (p => {
-        val snapSort = predicateSnapGenerator.getSnap(p)._1
-        val id = p.name
-        val substitutions = Map("$PRD$" -> id, "$S$" -> termConverter.convert(snapSort))
-        val declarations = preambleReader.readParametricPreamble(snapsTemplateFile, substitutions)
+    collectedPredicates map (p => {
+      val snapSort = predicateSnapGenerator.getSnap(p)._1
+      val id = p.name
+      val substitutions = Map("$PRD$" -> id, "$S$" -> termConverter.convert(snapSort))
+      val declarations = preambleReader.readParametricPreamble(snapsTemplateFile, substitutions)
 
-        (s"$snapsTemplateFile [$id: $snapSort]", declarations)
-      })
-
-    Seq((s"$setsTemplateFile [$setsSort]", setsDeclarations)) ++ setsPreambleBlocks
+      (s"$snapsTemplateFile [$id: $snapSort]", declarations)
+    })
   }
 
   def generateAxioms: Iterable[PreambleBlock] = {

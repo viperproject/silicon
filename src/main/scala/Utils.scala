@@ -215,6 +215,14 @@ package object utils {
         case m @ silver.ast.MagicWandOp => s"${m.op}@${sourceLineColumn(m)}"
       }
     }
+
+    /** An embedding of a Silicon type in Viper's type system.
+      * The embedded sort must be concrete (ground), i.e. free of type variables.
+      */
+    case class ViperEmbedding(embeddedSort: Sort) extends silver.ast.ExtensionType {
+      def substitute(typVarsMap: Predef.Map[silver.ast.TypeVar, silver.ast.Type]): silver.ast.Type = this
+      def isConcrete: Boolean = true
+    }
   }
 
   object consistency {

@@ -57,6 +57,8 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
         collectedFields ++= (fieldAccesses map (_.field))
     }
 
+    // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over fields
+
     collectedSorts = (
         collectedFields.map(f => sorts.FieldValueFunction(symbolConverter.toSort(f.typ)))
       + sorts.FieldValueFunction(sorts.Ref))
