@@ -260,7 +260,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
           applyHeuristics = applyHeuristics,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
-          isMethodVerification = member.isInstanceOf[ast.Method])
+          isMethodVerification = member.isInstanceOf[ast.Method],
+          currentMember = Some(member))
   }
 
   private def createInitialState(cfg: SilverCfg, program: ast.Program): State = {

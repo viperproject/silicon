@@ -7,11 +7,15 @@
 package viper.silicon.rules
 
 import viper.silicon.interfaces.Failure
+import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.State
+import viper.silicon.state.terms.Term
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.{Model, ModelEntry, VerificationError}
+import viper.silver.verifier.{BackendSpecificCounterexample, Model, ModelEntry, VerificationError}
 
 import scala.collection.mutable
+
+case class SiliconCounterexample(store: Map[String, Term], heap: Iterable[Chunk], oldHeap: Iterable[Chunk], nativeModel: Model) extends BackendSpecificCounterexample
 
 trait SymbolicExecutionRules extends Immutable {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
@@ -31,6 +35,9 @@ trait SymbolicExecutionRules extends Immutable {
         res.toMap
       }
       ve.parsedModel = Some(Model(finalModel))
+      val store = s.g.values.map(entry => entry._1.name -> entry._2)
+      ve.counterExample = Some(SiliconCounterexample(store, s.h.values, s.oldHeaps(Verifier.PRE_STATE_LABEL).values, nativeModel))
+      ve.scope = s.currentMember
     }
     Failure(ve)
   }

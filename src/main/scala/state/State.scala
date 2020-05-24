@@ -64,7 +64,8 @@ final case class State(g: Store = Store(),
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
                        predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
-                       isMethodVerification: Boolean = false)
+                       isMethodVerification: Boolean = false,
+                       currentMember: Option[ast.Member] = None)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =
@@ -147,7 +148,7 @@ object State {
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
-                 predicateSnapMap1, predicateFormalVarMap1, hack) =>
+                 predicateSnapMap1, predicateFormalVarMap1, hack, curMember) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -169,7 +170,7 @@ object State {
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
-                     `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`) =>
+                     `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `curMember`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
