@@ -357,7 +357,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     *                       to the given `resource`.
     * @param codomainQVars Quantified variables, typically from a quantified permission assertion,
     *                      but ranging over codomain types.
-    * @param resource A particular resource (e.g. a field) for to summarise the heap.
+    * @param resource A particular resource (e.g. a field) to summarise the heap for.
     * @param optSmDomainDefinitionCondition A constraint, potentially mentioning the
     *                                       `codomainQVars`. If provided, a domain definition is
     *                                       returned that is conditionally defined w.r.t. this
