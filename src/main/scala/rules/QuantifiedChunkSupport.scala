@@ -375,6 +375,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                 v: Verifier)
                : (Term, Seq[Quantification], Option[Quantification]) = {
 
+    assert(codomainQVars.nonEmpty, "Expected at least one codomain quantified variable, but got none")
+
+    // TODO: Reconsider all pattern matches on the resource
+    resource match {
+      case predicate: ast.Predicate =>
+        return summarise_predicate(s, relevantChunks, codomainQVars, predicate, optSmDomainDefinitionCondition, v)
+      case _ => // Continue
+    }
+
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables()
     val sm = freshSnapshotMap(s, resource, additionalFvfArgs, v)
 
@@ -445,6 +454,71 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
             condition),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(codomainQVarsInDomainOfSummarisingSm)),
           s"qp.fvfDomDef${v.counter(this).next()}",
+          isGlobal = true
+        ))
+
+    (sm, valueDefinitions :+ valueDefs2, optDomainDefinition)
+  }
+
+  def summarise_predicate(s: State,
+                          relevantChunks: Seq[QuantifiedBasicChunk],
+                          codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
+                          predicate: ast.Predicate,
+                          optSmDomainDefinitionCondition: Option[Term], /* c(rs) */
+                          v: Verifier)
+                         : (Term, Seq[Quantification], Option[Quantification]) = {
+
+    val additionalFvfArgs = s.functionRecorderQuantifiedVariables()
+    val sm = freshSnapshotMap(s, predicate, additionalFvfArgs, v)
+
+    val qvar = v.decider.fresh("s", sorts.Snap) /* Quantified snapshot s */
+
+    // Create a replacement map for rewriting e(r_1, r_2, ...) to e(first(s), second(s), ...),
+    // including necessary sort wrapper applications
+    val snapToCodomainTermsSubstitution: Map[Term, Term] =
+      codomainQVars.zip(fromSnapTree(qvar, codomainQVars))(collection.breakOut)
+
+    // Rewrite c(r_1, r_2, ...) to c(first(s), second(s), ...)
+    val transformedOptSmDomainDefinitionCondition =
+      optSmDomainDefinitionCondition.map(_.replace(snapToCodomainTermsSubstitution))
+
+    val qvarInDomainOfSummarisingSm = SetIn(qvar, PredicateDomain(predicate.name, sm))
+
+    val valueDefinitions =
+      relevantChunks map (chunk => {
+        val lookupSummary = PredicateLookup(predicate.name, sm, Seq(qvar))
+        val lookupChunk = PredicateLookup(predicate.name, chunk.snapshotMap, Seq(qvar))
+
+        val effectiveCondition =
+          And(
+            transformedOptSmDomainDefinitionCondition.getOrElse(True()), /* Alternatively: qvarInDomainOfSummarisingSm */
+            IsPositive(chunk.perm).replace(snapToCodomainTermsSubstitution))
+
+        Forall(
+          Seq(qvar),
+          Implies(effectiveCondition, lookupSummary === lookupChunk),
+          if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
+          s"qp.psmValDef${v.counter(this).next()}",
+          isGlobal = true)
+      })
+
+    val valueDefs2 = // TODO: Should this also quantify over s (qvar) instead of the rs (codomainQVars)?
+      Forall(
+        codomainQVars,
+        And(relevantChunks map (chunk => ResourceTriggerFunction(predicate, chunk.snapshotMap, codomainQVars))),
+        Trigger(PredicateLookup(predicate.name, sm, codomainQVars)),
+        s"qp.psmResTrgFun${v.counter(this).next()}",
+        )
+
+    val optDomainDefinition =
+      transformedOptSmDomainDefinitionCondition.map(condition =>
+        Forall(
+          Seq(qvar),
+          Iff(
+            qvarInDomainOfSummarisingSm,
+            condition),
+          if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(qvarInDomainOfSummarisingSm)),
+          s"qp.psmDomDef${v.counter(this).next()}",
           isGlobal = true
         ))
 

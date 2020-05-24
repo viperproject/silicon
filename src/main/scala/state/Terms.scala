@@ -1788,6 +1788,19 @@ object toSnapTree extends (Seq[Term] => Term) {
   }
 }
 
+object fromSnapTree extends ((Term, Int) => Seq[Term]) {
+  def apply(snap: Term, targets: Seq[Term]): Seq[Term] = {
+    fromSnapTree(snap, targets.length)
+      .zip(targets)
+      .map { case (s, t) => s.convert(t.sort) }
+  }
+
+  def apply(snap: Term, size: Int): Seq[Term] = {
+    if (size <= 1) Seq(snap)
+    else fromSnapTree(First(snap), size - 1) :+ Second(snap)
+  }
+}
+
 object ResourceTriggerFunction {
   def apply(resource: ast.Resource, sm: Term, args: Seq[Term]): Term = {
     resource match {
