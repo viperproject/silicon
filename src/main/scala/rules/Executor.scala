@@ -441,7 +441,7 @@ object executor extends ExecutionRules with Immutable {
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
               SymbExLogger.currentLog().collapse(null, sepIdentifier)
-              Q(s6, v3)})})})
+              Q(s6, v3)})}).withStore(s1.g)})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)

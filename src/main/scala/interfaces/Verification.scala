@@ -6,7 +6,9 @@
 
 package viper.silicon.interfaces
 
-import viper.silver.verifier.VerificationError
+import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.Store
+import viper.silver.verifier.{Counterexample, Model, VerificationError}
 import viper.silicon.state.terms.Term
 
 /*
@@ -38,6 +40,8 @@ sealed abstract class VerificationResult {
       case Some(vr) =>
         vr.append(other)
     }
+
+  def withStore(s: Store) = this
 }
 
 sealed abstract class FatalResult extends VerificationResult {
@@ -83,5 +87,37 @@ case class Failure/*[ST <: Store[ST],
     this
   }
 
+  override def withStore(s: Store) = {
+    message.counterexample match {
+      case Some(ce: SiliconCounterexample) => {
+        message.counterexample = Some(ce.withStore(s))
+        this
+      }
+      case _ => this
+    }
+  }
+
   override lazy val toString = message.readableMessage
 }
+
+trait SiliconCounterexample extends Counterexample {
+  val internalStore: Store
+  def store: Map[String, Term] = internalStore.values.map{case (k, v) => k.name -> v}
+  def withStore(s: Store) : SiliconCounterexample
+}
+
+case class SiliconNativeCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeap: Option[Iterable[Chunk]], model: Model) extends SiliconCounterexample {
+  override def withStore(s: Store): SiliconCounterexample = SiliconNativeCounterexample(s, heap, oldHeap, model)
+}
+
+case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Model) extends SiliconCounterexample {
+  override val model: Model = {
+    Model(internalStore.values.filter{
+      case (k,v) => nativeModel.entries.contains(v.toString)
+    }.map{
+      case (k, v) => k.name -> nativeModel.entries.get(v.toString).get
+    })
+  }
+  override def withStore(s: Store): SiliconCounterexample = SiliconVariableCounterexample(s, nativeModel)
+}
+

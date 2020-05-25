@@ -6,16 +6,10 @@
 
 package viper.silicon.rules
 
-import viper.silicon.interfaces.Failure
-import viper.silicon.interfaces.state.Chunk
+import viper.silicon.interfaces.{Failure, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
-import viper.silicon.state.terms.Term
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.{BackendSpecificCounterexample, Model, ModelEntry, VerificationError}
-
-import scala.collection.mutable
-
-case class SiliconCounterexample(store: Map[String, Term], heap: Iterable[Chunk], oldHeap: Iterable[Chunk], nativeModel: Model) extends BackendSpecificCounterexample
+import viper.silver.verifier.{Model, VerificationError}
 
 trait SymbolicExecutionRules extends Immutable {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
@@ -25,19 +19,14 @@ trait SymbolicExecutionRules extends Immutable {
       }
       val model = v.decider.getModel()
       val nativeModel = Model(model)
-      val finalModel: Map[String, ModelEntry] = if (Verifier.config.counterexample.toOption.get == "native") nativeModel.entries else {
-        val res = mutable.HashMap[String, ModelEntry]()
-        for (curVar <- s.g.values) {
-          if (nativeModel.entries.contains(curVar._2.toString)){
-            res.update(curVar._1.name, nativeModel.entries.get(curVar._2.toString).get)
-          }
-        }
-        res.toMap
+      if (Verifier.config.counterexample.toOption.get == "native") {
+        val oldHeap = if (s.oldHeaps.contains(Verifier.PRE_STATE_LABEL))
+          Some(s.oldHeaps(Verifier.PRE_STATE_LABEL).values)
+        else None
+        ve.counterexample = Some(SiliconNativeCounterexample(s.g, s.h.values, oldHeap, nativeModel))
+      }else{
+        ve.counterexample = Some(SiliconVariableCounterexample(s.g, nativeModel))
       }
-      ve.parsedModel = Some(Model(finalModel))
-      val store = s.g.values.map(entry => entry._1.name -> entry._2)
-      ve.counterExample = Some(SiliconCounterexample(store, s.h.values, s.oldHeaps(Verifier.PRE_STATE_LABEL).values, nativeModel))
-      ve.scope = s.currentMember
     }
     Failure(ve)
   }

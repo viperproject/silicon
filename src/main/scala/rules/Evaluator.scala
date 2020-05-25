@@ -691,7 +691,7 @@ object evaluator extends EvaluationRules with Immutable {
                                functionRecorder = fr5,
                                smDomainNeeded = s2.smDomainNeeded,
                                hackIssue387DisablePermissionConsumption = s.hackIssue387DisablePermissionConsumption)
-              QB(s5, tFApp, v3)})
+              QB(s5, tFApp, v3)}).withStore(s2.g)
             /* TODO: The join-function is heap-independent, and it is not obvious how a
              *       joined snapshot could be defined and represented
              */
