@@ -369,13 +369,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     */
   def summarise(s: State,
                 relevantChunks: Seq[QuantifiedBasicChunk],
-                codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
+                codomainQVars: Seq[Var], /* rs := r_1, ..., r_m. May be empty. */
                 resource: ast.Resource,
                 optSmDomainDefinitionCondition: Option[Term], /* c(rs) */
                 v: Verifier)
                : (Term, Seq[Quantification], Option[Quantification]) = {
-
-    assert(codomainQVars.nonEmpty, "Expected at least one codomain quantified variable, but got none")
 
     // TODO: Reconsider all pattern matches on the resource
     resource match {
@@ -462,11 +460,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
   def summarise_predicate(s: State,
                           relevantChunks: Seq[QuantifiedBasicChunk],
-                          codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
+                          codomainQVars: Seq[Var], /* rs := r_1, ..., r_m. May be empty. */
                           predicate: ast.Predicate,
                           optSmDomainDefinitionCondition: Option[Term], /* c(rs) */
                           v: Verifier)
                          : (Term, Seq[Quantification], Option[Quantification]) = {
+
+    // TODO: Consider if axioms can be simplified in case codomainQVars is empty
 
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables()
     val sm = freshSnapshotMap(s, predicate, additionalFvfArgs, v)
