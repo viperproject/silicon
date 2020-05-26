@@ -502,13 +502,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           isGlobal = true)
       })
 
-    val valueDefs2 = // TODO: Should this also quantify over s (qvar) instead of the rs (codomainQVars)?
-      Forall(
-        codomainQVars,
-        And(relevantChunks map (chunk => ResourceTriggerFunction(predicate, chunk.snapshotMap, codomainQVars))),
-        Trigger(PredicateLookup(predicate.name, sm, codomainQVars)),
-        s"qp.psmResTrgFun${v.counter(this).next()}",
-        )
+    // TODO: Should this also quantify over s (qvar) instead of the rs (codomainQVars)?
+//    val valueDefs2 =
+//      Forall(
+//        codomainQVars,
+//        And(relevantChunks map (chunk => ResourceTriggerFunction(predicate, chunk.snapshotMap, codomainQVars))),
+//        Trigger(PredicateLookup(predicate.name, sm, codomainQVars)),
+//        s"qp.psmResTrgFun${v.counter(this).next()}",
+//        )
 
     val optDomainDefinition =
       transformedOptSmDomainDefinitionCondition.map(condition =>
@@ -522,7 +523,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           isGlobal = true
         ))
 
-    (sm, valueDefinitions :+ valueDefs2, optDomainDefinition)
+    (sm, valueDefinitions /*:+ valueDefs2*/, optDomainDefinition) // TODO: Bring back valueDefs2
   }
 
   def summarisePerm(s: State,
@@ -610,66 +611,81 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                              optQVarsInstantiations: Option[Seq[Term]] = None)
                             : (SnapshotMapDefinition, SnapshotMapCache) = {
 
-    s.smCache.get(resource, relevantChunks, optSmDomainDefinitionCondition) match {
-      case Some((smDef, _)) if !s.exhaleExt =>
-        if (s.smDomainNeeded) {
-          optQVarsInstantiations match {
-            case None =>
-              v.decider.prover.comment("Definitional axioms for snapshot map domain")
-              v.decider.assume(smDef.domainDefinitions)
-            case Some(instantiations) =>
-              v.decider.prover.comment("Definitional axioms for snapshot map domain (instantiated)")
-              v.decider.assume(smDef.domainDefinitions.map(_.asInstanceOf[Quantification].body.replace(codomainQVars, instantiations)))
-          }
-        }
+    def emitSnapshotMapDefinition(s: State,
+                                  smDef: SnapshotMapDefinition,
+                                  v: Verifier,
+                                  optQVarsInstantiations: Option[Seq[Term]])
+                                 : Unit = {
 
+      if (s.smDomainNeeded) {
         optQVarsInstantiations match {
           case None =>
-            v.decider.prover.comment("Definitional axioms for snapshot map values")
-            v.decider.assume(smDef.valueDefinitions)
-          case Some(instantiations) =>
-            v.decider.prover.comment("Definitional axioms for snapshot map values (instantiated)")
-            v.decider.assume(smDef.valueDefinitions.map(_.asInstanceOf[Quantification].body.replace(codomainQVars, instantiations)))
+            v.decider.prover.comment("Definitional axioms for snapshot map domain")
+            v.decider.assume(smDef.domainDefinitions)
+          case Some(_instantiations) =>
+            // TODO: Avoid pattern matching on resource
+            val instantiations = resource match {
+              case _: ast.Predicate => Seq(toSnapTree(_instantiations))
+              case _ => _instantiations
+            }
+
+            v.decider.prover.comment("Definitional axioms for snapshot map domain (instantiated)")
+            // TODO: Avoid cast to Quantification
+//            v.decider.assume(smDef.domainDefinitions.map(_.asInstanceOf[Quantification].body.replace(codomainQVars, instantiations)))
+            v.decider.assume(smDef.domainDefinitions.map(_.asInstanceOf[Quantification].instantiate(instantiations)))
         }
+      }
 
-        (smDef, s.smCache)
-
-      case _ =>
-        val (sm, valueDefs, optDomainDefinition) =
-          quantifiedChunkSupporter.summarise(
-            s, relevantChunks, codomainQVars, resource, optSmDomainDefinitionCondition, v)
-        val smDef = SnapshotMapDefinition(resource, sm, valueDefs, optDomainDefinition.toSeq)
-        val totalPermissions = BigPermSum(relevantChunks.map(_.perm))
-
-        if (s.smDomainNeeded) {
-          optQVarsInstantiations match {
-            case None =>
-              v.decider.prover.comment("Definitional axioms for snapshot map domain")
-              v.decider.assume(optDomainDefinition.toSeq)
-            case Some(instantiations) =>
-              v.decider.prover.comment("Definitional axioms for snapshot map domain (instantiated)")
-              v.decider.assume(optDomainDefinition.get.body.replace(codomainQVars, instantiations))
+      optQVarsInstantiations match {
+        case None =>
+          v.decider.prover.comment("Definitional axioms for snapshot map values")
+          v.decider.assume(smDef.valueDefinitions)
+        case Some(_instantiations) =>
+          // TODO: Avoid pattern matching on resource
+          val instantiations = resource match {
+            case _: ast.Predicate => Seq(toSnapTree(_instantiations))
+            case _ => _instantiations
           }
-        }
+//          println("[summarisingSnapshotMap/emitSnapshotMapDefinition]")
+//          println(s"  codomainQVars = $codomainQVars")
+//          println(s"  instantiations = $instantiations")
+//          val valDefs1 = smDef.valueDefinitions
+//          println(s"  valDefs1 =")
+//          valDefs1 foreach (e => println(s"    $e"))
+//          val valDefs2 = valDefs1.map(_.asInstanceOf[Quantification].instantiate(instantiations))
+//          println(s"  valDefs2 =")
+//          valDefs2 foreach (e => println(s"    $e"))
 
-        optQVarsInstantiations match {
-          case None =>
-            v.decider.prover.comment("Definitional axioms for snapshot map values")
-            v.decider.assume(valueDefs)
-          case Some(instantiations) =>
-            v.decider.prover.comment("Definitional axioms for snapshot map values (instantiated)")
-            v.decider.assume(valueDefs.map(_.body.replace(codomainQVars, instantiations)))
-        }
-
-        if (Verifier.config.disableValueMapCaching()) {
-          (smDef, s.smCache)
-        } else {
-          /* TODO: smCache records total permissions, pmCache seems to do the same - why? */
-          val key = (resource, relevantChunks)
-          val value = (smDef, totalPermissions, optSmDomainDefinitionCondition)
-          (smDef, s.smCache + (key, value))
-        }
+          v.decider.prover.comment("Definitional axioms for snapshot map values (instantiated)")
+          // TODO: Avoid cast to Quantification
+          v.decider.assume(smDef.valueDefinitions.map(_.asInstanceOf[Quantification].instantiate(instantiations)))
+      }
     }
+
+    val (smDef, smCache) =
+      s.smCache.get(resource, relevantChunks, optSmDomainDefinitionCondition) match {
+        case Some((smDef, _)) if !s.exhaleExt => // Cache hit (and not in extended-exhale mode)
+          (smDef, s.smCache)
+        case _ =>
+          val (sm, valueDefs, optDomainDefinition) =
+            quantifiedChunkSupporter.summarise(
+              s, relevantChunks, codomainQVars, resource, optSmDomainDefinitionCondition, v)
+          val smDef = SnapshotMapDefinition(resource, sm, valueDefs, optDomainDefinition.toSeq)
+          val totalPermissions = BigPermSum(relevantChunks.map(_.perm))
+
+          if (Verifier.config.disableValueMapCaching()) {
+            (smDef, s.smCache)
+          } else {
+            /* TODO: smCache records total permissions, pmCache seems to do the same - why? */
+            val key = (resource, relevantChunks)
+            val value = (smDef, totalPermissions, optSmDomainDefinitionCondition)
+            (smDef, s.smCache + (key, value))
+          }
+      }
+
+    emitSnapshotMapDefinition(s, smDef, v, optQVarsInstantiations)
+
+    (smDef, smCache)
   }
 
   /* Manipulating quantified chunks */
@@ -1049,6 +1065,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                             v: Verifier)
                            (Q: (State, Heap, Term, Verifier) => VerificationResult)
                            : VerificationResult = {
+
+//    println("[consumeSingleLocation]")
+//    println(s"  codomainQVars = $codomainQVars")
+//    println(s"  arguments = $arguments")
+//    println(s"  resourceAccess = $resourceAccess")
 
     val resource = resourceAccess.res(Verifier.program)
     val failure = resourceAccess match {
