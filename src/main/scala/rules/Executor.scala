@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
@@ -420,11 +420,16 @@ object executor extends ExecutionRules with Immutable {
         val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
         val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
         val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
-        val pvePre = PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer)
+
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
         evals(s, eArgs, _ => pveCall, v)((s1, tArgs, v1) => {
           mcLog.finish_parameters()
+          val exampleTrafo = CounterexampleTransformer({
+            case ce: SiliconCounterexample => ce.withStore(s1.g)
+            case ce => ce
+          })
+          val pvePre = ErrorWrapperWithExampleTransformer(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
                            recordVisited = true)
           consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
@@ -441,7 +446,7 @@ object executor extends ExecutionRules with Immutable {
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
               SymbExLogger.currentLog().collapse(null, sepIdentifier)
-              Q(s6, v3)})}).withStore(s1.g)})
+              Q(s6, v3)})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)

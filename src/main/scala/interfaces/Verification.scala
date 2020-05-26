@@ -40,8 +40,6 @@ sealed abstract class VerificationResult {
       case Some(vr) =>
         vr.append(other)
     }
-
-  def withStore(s: Store) = this
 }
 
 sealed abstract class FatalResult extends VerificationResult {
@@ -87,16 +85,6 @@ case class Failure/*[ST <: Store[ST],
     this
   }
 
-  override def withStore(s: Store) = {
-    message.counterexample match {
-      case Some(ce: SiliconCounterexample) => {
-        message.counterexample = Some(ce.withStore(s))
-        this
-      }
-      case _ => this
-    }
-  }
-
   override lazy val toString = message.readableMessage
 }
 
@@ -107,7 +95,9 @@ trait SiliconCounterexample extends Counterexample {
 }
 
 case class SiliconNativeCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeap: Option[Iterable[Chunk]], model: Model) extends SiliconCounterexample {
-  override def withStore(s: Store): SiliconCounterexample = SiliconNativeCounterexample(s, heap, oldHeap, model)
+  override def withStore(s: Store): SiliconCounterexample = {
+    SiliconNativeCounterexample(s, heap, oldHeap, model)
+  }
 }
 
 case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Model) extends SiliconCounterexample {
@@ -118,6 +108,8 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
       case (k, v) => k.name -> nativeModel.entries.get(v.toString).get
     })
   }
-  override def withStore(s: Store): SiliconCounterexample = SiliconVariableCounterexample(s, nativeModel)
+  override def withStore(s: Store): SiliconCounterexample = {
+    SiliconVariableCounterexample(s, nativeModel)
+  }
 }
 

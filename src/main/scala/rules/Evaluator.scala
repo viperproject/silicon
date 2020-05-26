@@ -8,8 +8,8 @@ package viper.silicon.rules
 
 import viper.silver.ast
 import viper.silver.ast.{Info, PredicateAccess}
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors.PreconditionInAppFalse
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
+import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
@@ -650,9 +650,13 @@ object evaluator extends EvaluationRules with Immutable {
              */
             val fargs = func.formalArgs.map(_.localVar)
             val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+            val exampleTrafo = CounterexampleTransformer({
+              case ce: SiliconCounterexample => ce.withStore(s2.g)
+              case ce => ce
+            })
             val pvePre =
-              PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
-                reasonOffendingNode.replace(formalsToActuals))
+              ErrorWrapperWithExampleTransformer(PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
+                reasonOffendingNode.replace(formalsToActuals)), exampleTrafo)
             val s3 = s2.copy(g = Store(fargs.zip(tArgs)),
                              recordVisited = true,
                              functionRecorder = s2.functionRecorder.changeDepthBy(+1),
@@ -691,7 +695,7 @@ object evaluator extends EvaluationRules with Immutable {
                                functionRecorder = fr5,
                                smDomainNeeded = s2.smDomainNeeded,
                                hackIssue387DisablePermissionConsumption = s.hackIssue387DisablePermissionConsumption)
-              QB(s5, tFApp, v3)}).withStore(s2.g)
+              QB(s5, tFApp, v3)})
             /* TODO: The join-function is heap-independent, and it is not obvious how a
              *       joined snapshot could be defined and represented
              */
