@@ -388,7 +388,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val smDomainDefinitionCondition =
       optSmDomainDefinitionCondition.getOrElse(True())
 
-    // TODO: Avoid need for pattern matching on location
+    // TODO: Avoid need for pattern matching on resource
     val domain: (String, Term) => Term =
       resource match {
         case _: ast.Field => Domain
@@ -396,7 +396,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         case other => sys.error(s"Found yet unsupported resource $other (${other.getClass.getSimpleName})")
       }
 
-    // TODO: Avoid need for pattern matching on location
+    // TODO: Avoid need for pattern matching on resource
     val codomainQVarsInDomainOfSummarisingSm =
       resource match {
         case field: ast.Field =>
