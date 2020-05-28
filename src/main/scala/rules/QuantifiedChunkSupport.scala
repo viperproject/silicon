@@ -631,7 +631,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
             v.decider.prover.comment("Definitional axioms for snapshot map domain (instantiated)")
             // TODO: Avoid cast to Quantification
-//            v.decider.assume(smDef.domainDefinitions.map(_.asInstanceOf[Quantification].body.replace(codomainQVars, instantiations)))
             v.decider.assume(smDef.domainDefinitions.map(_.asInstanceOf[Quantification].instantiate(instantiations)))
         }
       }
@@ -646,15 +645,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
             case _: ast.Predicate => Seq(toSnapTree(_instantiations))
             case _ => _instantiations
           }
-//          println("[summarisingSnapshotMap/emitSnapshotMapDefinition]")
-//          println(s"  codomainQVars = $codomainQVars")
-//          println(s"  instantiations = $instantiations")
-//          val valDefs1 = smDef.valueDefinitions
-//          println(s"  valDefs1 =")
-//          valDefs1 foreach (e => println(s"    $e"))
-//          val valDefs2 = valDefs1.map(_.asInstanceOf[Quantification].instantiate(instantiations))
-//          println(s"  valDefs2 =")
-//          valDefs2 foreach (e => println(s"    $e"))
 
           v.decider.prover.comment("Definitional axioms for snapshot map values (instantiated)")
           // TODO: Avoid cast to Quantification
@@ -1065,11 +1055,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                             v: Verifier)
                            (Q: (State, Heap, Term, Verifier) => VerificationResult)
                            : VerificationResult = {
-
-//    println("[consumeSingleLocation]")
-//    println(s"  codomainQVars = $codomainQVars")
-//    println(s"  arguments = $arguments")
-//    println(s"  resourceAccess = $resourceAccess")
 
     val resource = resourceAccess.res(Verifier.program)
     val failure = resourceAccess match {
