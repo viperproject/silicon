@@ -502,14 +502,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           isGlobal = true)
       })
 
-    // TODO: Should this also quantify over s (qvar) instead of the rs (codomainQVars)?
-//    val valueDefs2 =
-//      Forall(
-//        codomainQVars,
-//        And(relevantChunks map (chunk => ResourceTriggerFunction(predicate, chunk.snapshotMap, codomainQVars))),
-//        Trigger(PredicateLookup(predicate.name, sm, codomainQVars)),
-//        s"qp.psmResTrgFun${v.counter(this).next()}",
-//        )
+    val resourceTriggerDefinition =
+      Forall(
+        Seq(qvar),
+        And(relevantChunks map (chunk => ResourceTriggerFunction(predicate, chunk.snapshotMap, Seq(qvar)))),
+        Trigger(PredicateLookup(predicate.name, sm, Seq(qvar))),
+        s"qp.psmResTrgDef${v.counter(this).next()}",
+        isGlobal = true)
 
     val optDomainDefinition =
       transformedOptSmDomainDefinitionCondition.map(condition =>
@@ -523,7 +522,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           isGlobal = true
         ))
 
-    (sm, valueDefinitions /*:+ valueDefs2*/, optDomainDefinition) // TODO: Bring back valueDefs2
+    (sm, valueDefinitions :+ resourceTriggerDefinition, optDomainDefinition)
   }
 
   def summarisePerm(s: State,
@@ -1087,44 +1086,32 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           v
         )
         val h2 = Heap(remainingChunks ++ otherChunks)
-//        val optSmDomainDefinitionCondition = if (s2.smDomainNeeded) Some(True()) else None
-//        val (smDef1, smCache1) =
-//          quantifiedChunkSupporter.summarisingSnapshotMap(
-//            s2, resource, codomainQVars, relevantChunks, optSmDomainDefinitionCondition, v1)
-        /* TODO: Replacing the next block of code with the commented code above isn't yet
-         *       possible because of the substitutions (arguments for codomainQVars) that is
-         *       performed before definitional axioms are assumed.
-         */
-        val (sm, smValueDefs, optSmDomainDef) =
-          quantifiedChunkSupporter.summarise(
+        val (smDef1, smCache1) =
+          summarisingSnapshotMap(
             s2,
-            relevantChunks,
-            codomainQVars,
             resource,
-            if (s2.smDomainNeeded) Some(True()) else None,
-            v1)
-        if (s2.smDomainNeeded) {
-          v1.decider.prover.comment("Definitional axioms for singleton-SM's domain")
-          v1.decider.assume(optSmDomainDef.get.body.replace(codomainQVars, arguments))
-        }
-        v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
-        v1.decider.assume(smValueDefs.map(_.body.replace(codomainQVars, arguments)))
-
+            codomainQVars,
+            relevantChunks,
+            v1,
+            optSmDomainDefinitionCondition = if (s2.smDomainNeeded) Some(True()) else None,
+            optQVarsInstantiations = Some(arguments))
         val permsTaken = result match {
           case Complete() => rPerm
           case Incomplete(remaining) => PermMinus(rPerm, remaining)
         }
         val consumedChunk =
           quantifiedChunkSupporter.createSingletonQuantifiedChunk(
-            codomainQVars, resource, arguments, permsTaken, sm)
-        (result, s2, h2, Some(consumedChunk))
-      })((s3, optCh, v2) =>
+            codomainQVars, resource, arguments, permsTaken, smDef1.sm)
+        val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef1),
+                         smCache = smCache1)
+        (result, s3, h2, Some(consumedChunk))
+      })((s4, optCh, v2) =>
         optCh match {
           case Some(ch) =>
             val snap = ResourceLookup(resource, ch.snapshotMap, arguments).convert(sorts.Snap)
-            Q(s3, s3.h, snap, v2)
+            Q(s4, s4.h, snap, v2)
           case _ =>
-            Q(s3, s3.h, v2.decider.fresh(sorts.Snap), v2)
+            Q(s4, s4.h, v2.decider.fresh(sorts.Snap), v2)
         }
       )
     } else {
