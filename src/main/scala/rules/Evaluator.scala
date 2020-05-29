@@ -428,7 +428,7 @@ object evaluator extends EvaluationRules with Immutable {
                       s1, wand, formalVars, relevantChunks, v1)
                   v1.decider.assume(PredicateTrigger(identifier.toString, smDef1.sm, args))
                   val (pmDef1, pmCache1) =
-                    quantifiedChunkSupporter.summarisingPermissionMap(s1, wand, formalVars, relevantChunks, v1)
+                    quantifiedChunkSupporter.summarisingPermissionMap(s1, wand, formalVars, relevantChunks, smDef1, v1)
                   (PredicatePermLookup(identifier.toString, pmDef1.pm, args), smCache1, pmCache1)
 
                 case field: ast.Field =>
@@ -439,7 +439,8 @@ object evaluator extends EvaluationRules with Immutable {
                       s1, field, Seq(`?r`), relevantChunks, v1)
                   v1.decider.assume(FieldTrigger(field.name, smDef1.sm, args.head))
                   val (pmDef1, pmCache1) =
-                    quantifiedChunkSupporter.summarisingPermissionMap(s1, field, Seq(`?r`), relevantChunks, v1)
+                    quantifiedChunkSupporter.summarisingPermissionMap(
+                      s1, field, Seq(`?r`), relevantChunks, smDef1, v1)
                   val perm = PermLookup(field.name, pmDef1.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
                   v1.decider.prover.comment(perm.toString)
@@ -455,7 +456,8 @@ object evaluator extends EvaluationRules with Immutable {
                   val trigger = PredicateTrigger(predicate.name, smDef1.sm, args)
                   v1.decider.assume(trigger)
                   val (pmDef1, pmCache1) =
-                    quantifiedChunkSupporter.summarisingPermissionMap(s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
+                    quantifiedChunkSupporter.summarisingPermissionMap(
+                      s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, smDef1, v1)
                   (PredicatePermLookup(identifier.toString, pmDef1.pm, args), smCache1, pmCache1)
               }
             } else {
