@@ -1318,8 +1318,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val (permissionConstraint, depletedCheck) =
       ithChunk.singletonArguments match {
           case Some(args) =>
-            (quantifiedPermissionConstraint.map(_.body.replace(codomainQVars, args)),
-             quantifiedDepletedCheck.body.replace(codomainQVars, args))
+            (quantifiedPermissionConstraint.map(_.instantiate(args)),
+             quantifiedDepletedCheck.instantiate(args))
           case None =>
             (quantifiedPermissionConstraint,
              quantifiedDepletedCheck)
