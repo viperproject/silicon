@@ -1,0 +1,44 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/carbon/issue/257/)
+
+field val: Int
+
+predicate two(a: Ref, i: Int) {
+  acc(a.val) && a.val == i
+}
+
+function sign_two(a: Ref, i: Int): Int
+  requires two(a, i)
+{ unfolding two(a, i) in i < 0 ? -1 : 1 }
+
+define wand_one(a)
+  acc(a.val/*, 1/2*/) --* acc(a.val) //&& a.val == 0
+
+define access_one(as)
+  forall a: Ref :: { wand_one(a) } a in as ==> wand_one(a)
+
+define wand_two(a, i)
+  acc(two(a, i)/*, 1/2*/) --* two(a, i) //&& sign_two(a, i) == 1
+
+define access_two(as, is)
+  forall a: Ref, i: Int :: { wand_two(a, i) } a in as && i in is ==> wand_two(a, i)
+
+function foo_one(as: Set[Ref]): Int
+    requires access_one(as)
+
+function foo_two(as: Set[Ref], is: Set[Int]): Int
+    requires access_two(as, is)
+
+method test_one(as: Set[Ref]) {
+    inhale access_one(as)
+    inhale foo_one(as) == 0
+    exhale foo_one(as) == 0
+}
+
+method test_two(as: Set[Ref], is: Set[Int]) {
+    inhale access_two(as, is)
+    inhale foo_two(as, is) == 0
+    exhale foo_two(as, is) == 0
+}

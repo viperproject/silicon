@@ -1,0 +1,13 @@
+field f: Int
+
+method test0(xs: Set[Ref], x: Ref) {
+  inhale x in xs ==> acc(x.f, wildcard)
+  exhale x in xs ==> acc(x.f, wildcard)
+  exhale x in xs ==> acc(x.f, wildcard)
+}
+
+method test01(xs: Set[Ref]) {
+  inhale forall x: Ref :: {x.f} x in xs ==> acc(x.f, wildcard)
+  exhale forall x: Ref :: {x.f} x in xs ==> acc(x.f, wildcard)
+  exhale forall x: Ref :: {x.f} x in xs ==> acc(x.f, wildcard) // Unexpectedly fails in Silicon
+}
