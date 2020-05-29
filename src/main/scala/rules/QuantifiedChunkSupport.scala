@@ -433,15 +433,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           Implies(effectiveCondition, lookupSummary === lookupChunk),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.fvfValDef${v.counter(this).next()}",
-          isGlobal = true
-        )
+          isGlobal = true)
       })
 
-    val valueDefs2 =
+    val resourceTriggerDefinition =
       Forall(
         codomainQVars,
         And(relevantChunks map (chunk => ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars))),
-        Trigger(ResourceLookup(resource, sm, codomainQVars)))
+        Trigger(ResourceLookup(resource, sm, codomainQVars)),
+        s"qp.fvfResTrgDef${v.counter(this).next()}",
+        isGlobal = true)
 
     val optDomainDefinition =
       optSmDomainDefinitionCondition.map(condition =>
@@ -452,10 +453,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
             condition),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(codomainQVarsInDomainOfSummarisingSm)),
           s"qp.fvfDomDef${v.counter(this).next()}",
-          isGlobal = true
-        ))
+          isGlobal = true))
 
-    (sm, valueDefinitions :+ valueDefs2, optDomainDefinition)
+    (sm, valueDefinitions :+ resourceTriggerDefinition, optDomainDefinition)
   }
 
   def summarise_predicate(s: State,
@@ -540,9 +540,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       Forall(
         codomainQVars,
         permSummary === BigPermSum(relevantChunks map (_.perm)),
-        Trigger(permSummary))
+        Trigger(permSummary),
+        s"qp.resPrmSumDef${v.counter(this).next()}",
+        isGlobal = true)
 
-    val trig =
+    // TODO: Call summarisingSnapshotMap here
+    val resourceTriggerFunction =
       s.smCache.get((resource, relevantChunks)) match {
         case Some((smDef, _)) =>
           v.decider.assume(smDef.valueDefinitions)
@@ -553,15 +556,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
           ResourceTriggerFunction(resource, sm, codomainQVars)
       }
 
-    val valueDefs2 =
+    // TODO: Quantify over snapshot if resource is predicate
+    val resourceTriggerDefinition =
       Forall(
         codomainQVars,
-        And(trig +:
+        And(resourceTriggerFunction +:
             relevantChunks.map(chunk =>
               ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars))),
-        Trigger(ResourcePermissionLookup(resource, pm, codomainQVars)))
+        Trigger(ResourcePermissionLookup(resource, pm, codomainQVars)),
+        s"qp.resTrgDef${v.counter(this).next()}",
+        isGlobal = true)
 
-    (pm, Seq(valueDefinitions, valueDefs2))
+    (pm, Seq(valueDefinitions, resourceTriggerDefinition))
   }
 
   def summarisingPermissionMap(s: State,
