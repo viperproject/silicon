@@ -676,6 +676,30 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     (smDef, smCache)
   }
 
+  def heapSummarisingMaps(s: State,
+                          resource: ast.Resource,
+                          codomainQVars: Seq[Var],
+                          relevantChunks: Seq[QuantifiedBasicChunk],
+                          v: Verifier,
+                          optSmDomainDefinitionCondition: Option[Term] = None,
+                          optQVarsInstantiations: Option[Seq[Term]] = None)
+                         : (State, SnapshotMapDefinition, PermMapDefinition) = {
+
+    val (smDef, smCache) =
+      summarisingSnapshotMap(
+        s, resource, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition, optQVarsInstantiations)
+
+    val s1 = s.copy(smCache = smCache)
+
+    val (pmDef, pmCache) =
+      quantifiedChunkSupporter.summarisingPermissionMap(
+        s1, resource, codomainQVars, relevantChunks, smDef, v)
+
+    val s2 = s1.copy(pmCache = pmCache)
+
+    (s2, smDef, pmDef)
+  }
+
   /* Manipulating quantified chunks */
 
   def produce(s: State,
