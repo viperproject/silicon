@@ -21,12 +21,7 @@ domain $Seq[E] {
   }
 
   axiom empty_seq_length_zero {
-    // [2020-03-06 Malte] WARNING: Silver will type Seq_Empty() as Seq[Int], since the former is
-    // type-wise unconstrained. However, it should be typed as Seq[E].
-    // Since type ascriptions aren't currently supported, Silicon hackily works around this by
-    // matching on the axiom name ("empty_seq_length_zero") and rewriting the axiom body.
-    // See also DefaultSequencesContributor.scala.
-    Seq_length(Seq_empty()) == 0
+    Seq_length((Seq_empty(): $Seq[E])) == 0
   }
 
   axiom only_empty_seq_length_zero {

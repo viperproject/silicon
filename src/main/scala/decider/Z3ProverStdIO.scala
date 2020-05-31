@@ -236,19 +236,14 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
   private def getModel(): Unit = {
-    if (Verifier.config.ideModeAdvanced() || Verifier.config.counterexample.toOption.isDefined) {
+    if (Verifier.config.counterexample.toOption.isDefined) {
       writeLine("(get-model)")
 
-      if (Verifier.config.ideModeAdvanced()){
-        val model = readModel().trim()
-        println(model + "\r\n")
-      }else{
-        var model = readModel("\n").trim()
-        if (model.startsWith("\"")){
-          model = model.replaceAll("\"", "")
-        }
-        lastModel = model
+      var model = readModel("\n").trim()
+      if (model.startsWith("\"")){
+        model = model.replaceAll("\"", "")
       }
+      lastModel = model
     }
   }
 
