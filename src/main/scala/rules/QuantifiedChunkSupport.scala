@@ -928,6 +928,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                 }
               )
             } else {
+              v.decider.clearModel()
               val permissionRemovalResult =
                 quantifiedChunkSupporter.removePermissions(
                   s.copy(smCache = smCache1),
@@ -955,13 +956,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                                    constrainableARPs = s.constrainableARPs,
                                    smCache = smCache2)
                   Q(s3, h3, smDef2.sm.convert(sorts.Snap), v)
-                case (Incomplete(_), _, _) =>
-                  Failure(pve dueTo insufficientPermissionReason)}
+                case (Incomplete(_), s2, _) =>
+                  createFailure(pve dueTo insufficientPermissionReason, v, s2)}
             }
           case false =>
-            Failure(pve dueTo notInjectiveReason)}
+            createFailure(pve dueTo notInjectiveReason, v, s)}
       case false =>
-        Failure(pve dueTo negativePermissionReason)}
+        createFailure(pve dueTo negativePermissionReason, v, s)}
   }
 
   def consumeSingleLocation(s: State,

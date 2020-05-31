@@ -211,7 +211,7 @@ object evaluator extends EvaluationRules with Immutable {
               } else {
                 v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                   case false =>
-                    Failure(pve dueTo InsufficientPermission(fa))
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
@@ -240,7 +240,7 @@ object evaluator extends EvaluationRules with Immutable {
                 }
               v1.decider.assert(permCheck) {
                 case false =>
-                  Failure(pve dueTo InsufficientPermission(fa))
+                  createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
                 case true =>
                   val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
                   val fr2 =
@@ -745,7 +745,7 @@ object evaluator extends EvaluationRules with Immutable {
                         eval(s10, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
-                  Failure(pve dueTo NegativePermission(ePerm))}))
+                  createFailure(pve dueTo NegativePermission(ePerm), v2, s2)}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables)
           Q(s, unknownValue, v)
@@ -773,9 +773,9 @@ object evaluator extends EvaluationRules with Immutable {
                   case true =>
                     Q(s1, SeqAt(t0, t1), v1)
                   case false =>
-                    Failure(pve dueTo SeqIndexExceedsLength(e0, e1))}
+                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)}
               case false =>
-                Failure(pve dueTo SeqIndexNegative(e0, e1))
+                createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
             }}})
 
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)(Q)
@@ -1021,7 +1021,7 @@ object evaluator extends EvaluationRules with Immutable {
 
     v.decider.assert(tDivisor !== tZero){
       case true => Q(s, t, v)
-      case false => Failure(pve dueTo DivisionByZero(eDivisor))
+      case false => createFailure(pve dueTo DivisionByZero(eDivisor), v, s)
     }
   }
 

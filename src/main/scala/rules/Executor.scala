@@ -275,6 +275,7 @@ object executor extends ExecutionRules with Immutable {
               quantifiedChunkSupporter.summarisingSnapshotMap(
                 s2, field, Seq(`?r`), relevantChunks, v1)
             v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
+            v2.decider.clearModel()
             val result = quantifiedChunkSupporter.removePermissions(
               s2.copy(smCache = smCache1),
               relevantChunks,
@@ -294,8 +295,8 @@ object executor extends ExecutionRules with Immutable {
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm)
                 v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
-              case (Incomplete(_), _, _) =>
-                Failure(pve dueTo InsufficientPermission(fa))}}))
+              case (Incomplete(_), s3, _) =>
+                createFailure(pve dueTo InsufficientPermission(fa), v2, s3)}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
@@ -365,7 +366,7 @@ object executor extends ExecutionRules with Immutable {
               if (v1.decider.checkSmoke())
                 QS(s1.copy(h = s.h), v1)
               else
-                Failure(pve dueTo AssertionFalse(a))
+                createFailure(pve dueTo AssertionFalse(a), v1, s1)
               })((_, _) => Success())
 
           case _ =>
@@ -452,7 +453,7 @@ object executor extends ExecutionRules with Immutable {
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                 predicateSupporter.fold(s2, predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
               case false =>
-                Failure(pve dueTo NegativePermission(ePerm))
+                createFailure(pve dueTo NegativePermission(ePerm), v2, s2)
             }
           }))
 
@@ -479,7 +480,7 @@ object executor extends ExecutionRules with Immutable {
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                 predicateSupporter.unfold(s2.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v2, pa)(Q)
               case false =>
-                Failure(pve dueTo NegativePermission(ePerm))
+                createFailure(pve dueTo NegativePermission(ePerm), v2, s2)
             }
           }))
 
