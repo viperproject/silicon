@@ -6,32 +6,45 @@
 
 package viper.silicon.rules
 
-import viper.silicon.interfaces.Failure
+import viper.silicon.interfaces.{Failure, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.{Model, ModelEntry, VerificationError}
-
-import scala.collection.mutable
+import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
+import viper.silver.verifier.{Counterexample, CounterexampleTransformer, Model, VerificationError}
 
 trait SymbolicExecutionRules extends Immutable {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
+    var ceTrafo: Option[CounterexampleTransformer] = None
+    val res = ve match {
+      case ErrorWrapperWithExampleTransformer(wrapped, trafo) => {
+        ceTrafo = Some(trafo)
+        wrapped
+      }
+      case _ => ve
+    }
     if (v != null && Verifier.config.counterexample.toOption.isDefined) {
       if (generateNewModel || v.decider.getModel() == null) {
         v.decider.generateModel()
       }
       val model = v.decider.getModel()
-      val nativeModel = Model(model)
-      val finalModel: Map[String, ModelEntry] = if (Verifier.config.counterexample.toOption.get == "native") nativeModel.entries else {
-        val res = mutable.HashMap[String, ModelEntry]()
-        for (curVar <- s.g.values) {
-          if (nativeModel.entries.contains(curVar._2.toString)){
-            res.update(curVar._1.name, nativeModel.entries.get(curVar._2.toString).get)
-          }
+      if (!model.contains("model is not available")){
+        val nativeModel = Model(model)
+        var ce: Counterexample = if (Verifier.config.counterexample.toOption.get == "native") {
+          val oldHeap = if (s.oldHeaps.contains(Verifier.PRE_STATE_LABEL))
+            Some(s.oldHeaps(Verifier.PRE_STATE_LABEL).values)
+          else None
+          SiliconNativeCounterexample(s.g, s.h.values, oldHeap, nativeModel)
+        }else{
+          SiliconVariableCounterexample(s.g, nativeModel)
         }
-        res.toMap
+        val finalCE = ceTrafo match {
+          case Some(trafo) => trafo.f(ce)
+          case _ => ce
+        }
+        res.counterexample = Some(finalCE)
       }
-      ve.parsedModel = Some(Model(finalModel))
     }
-    Failure(ve)
+    Failure(res)
+
   }
 }
