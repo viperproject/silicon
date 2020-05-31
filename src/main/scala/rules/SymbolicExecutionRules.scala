@@ -10,42 +10,41 @@ import viper.silicon.interfaces.{Failure, SiliconNativeCounterexample, SiliconVa
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
-import viper.silver.verifier.{Counterexample, Model, VerificationError}
+import viper.silver.verifier.{Counterexample, CounterexampleTransformer, Model, VerificationError}
 
 trait SymbolicExecutionRules extends Immutable {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
-    val finalVe: VerificationError = if (v != null && Verifier.config.counterexample.toOption.isDefined) {
+    var ceTrafo: Option[CounterexampleTransformer] = None
+    val res = ve match {
+      case ErrorWrapperWithExampleTransformer(wrapped, trafo) => {
+        ceTrafo = Some(trafo)
+        wrapped
+      }
+      case _ => ve
+    }
+    if (v != null && Verifier.config.counterexample.toOption.isDefined) {
       if (generateNewModel || v.decider.getModel() == null) {
         v.decider.generateModel()
       }
       val model = v.decider.getModel()
-      val nativeModel = Model(model)
-      var ce: Counterexample = if (Verifier.config.counterexample.toOption.get == "native") {
-        val oldHeap = if (s.oldHeaps.contains(Verifier.PRE_STATE_LABEL))
-          Some(s.oldHeaps(Verifier.PRE_STATE_LABEL).values)
-        else None
-        SiliconNativeCounterexample(s.g, s.h.values, oldHeap, nativeModel)
-      }else{
-        SiliconVariableCounterexample(s.g, nativeModel)
-      }
-      val res = ve match {
-        case ErrorWrapperWithExampleTransformer(wrapped, trafo) => {
-          ce = trafo.f(ce)
-          wrapped
+      if (!model.contains("model is not available")){
+        val nativeModel = Model(model)
+        var ce: Counterexample = if (Verifier.config.counterexample.toOption.get == "native") {
+          val oldHeap = if (s.oldHeaps.contains(Verifier.PRE_STATE_LABEL))
+            Some(s.oldHeaps(Verifier.PRE_STATE_LABEL).values)
+          else None
+          SiliconNativeCounterexample(s.g, s.h.values, oldHeap, nativeModel)
+        }else{
+          SiliconVariableCounterexample(s.g, nativeModel)
         }
-        case _ => ve
-      }
-      res.counterexample = Some(ce)
-      res
-    }else {
-      ve match {
-        case ErrorWrapperWithExampleTransformer(wrapped, trafo) => {
-          wrapped
+        val finalCE = ceTrafo match {
+          case Some(trafo) => trafo.f(ce)
+          case _ => ce
         }
-        case _ => ve
+        res.counterexample = Some(finalCE)
       }
     }
-    Failure(finalVe)
+    Failure(res)
 
   }
 }
