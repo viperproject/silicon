@@ -85,7 +85,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         heights.map { case (func, height) =>
           val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
           val data = new FunctionData(func, height, quantifiedFields, program)(symbolConverter, expressionTranslator,
-                                      identifierFactory, pred => Verifier.predicateData(pred), Verifier.config)
+                                      identifierFactory, pred => Verifier.predicateData(pred), Verifier.config,
+                                      reporter)
           func -> data})
 
       /* TODO: FunctionData and HeapAccessReplacingExpressionTranslator depend
