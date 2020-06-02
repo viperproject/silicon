@@ -31,4 +31,6 @@ trait Prover extends ProverLike with StatefulComponent {
   def check(timeout: Option[Int] = None): Result
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def statistics(): Map[String, String]
+  def getLastModel(): String
+  def clearLastModel(): Unit
 }

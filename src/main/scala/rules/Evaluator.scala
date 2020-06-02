@@ -8,8 +8,8 @@ package viper.silicon.rules
 
 import viper.silver.ast
 import viper.silver.ast.{Info, PredicateAccess}
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors.PreconditionInAppFalse
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
+import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
@@ -211,7 +211,7 @@ object evaluator extends EvaluationRules with Immutable {
               } else {
                 v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                   case false =>
-                    Failure(pve dueTo InsufficientPermission(fa))
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
@@ -240,7 +240,7 @@ object evaluator extends EvaluationRules with Immutable {
                 }
               v1.decider.assert(permCheck) {
                 case false =>
-                  Failure(pve dueTo InsufficientPermission(fa))
+                  createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
                 case true =>
                   val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
                   val fr2 =
@@ -639,9 +639,13 @@ object evaluator extends EvaluationRules with Immutable {
              */
             val fargs = func.formalArgs.map(_.localVar)
             val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+            val exampleTrafo = CounterexampleTransformer({
+              case ce: SiliconCounterexample => ce.withStore(s2.g)
+              case ce => ce
+            })
             val pvePre =
-              PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
-                reasonOffendingNode.replace(formalsToActuals))
+              ErrorWrapperWithExampleTransformer(PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
+                reasonOffendingNode.replace(formalsToActuals)), exampleTrafo)
             val s3 = s2.copy(g = Store(fargs.zip(tArgs)),
                              recordVisited = true,
                              functionRecorder = s2.functionRecorder.changeDepthBy(+1),
@@ -734,7 +738,7 @@ object evaluator extends EvaluationRules with Immutable {
                         eval(s10, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
-                  Failure(pve dueTo NegativePermission(ePerm))}))
+                  createFailure(pve dueTo NegativePermission(ePerm), v2, s2)}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables)
           Q(s, unknownValue, v)
@@ -762,9 +766,9 @@ object evaluator extends EvaluationRules with Immutable {
                   case true =>
                     Q(s1, SeqAt(t0, t1), v1)
                   case false =>
-                    Failure(pve dueTo SeqIndexExceedsLength(e0, e1))}
+                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)}
               case false =>
-                Failure(pve dueTo SeqIndexNegative(e0, e1))
+                createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
             }}})
 
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)(Q)
@@ -1010,7 +1014,7 @@ object evaluator extends EvaluationRules with Immutable {
 
     v.decider.assert(tDivisor !== tZero){
       case true => Q(s, t, v)
-      case false => Failure(pve dueTo DivisionByZero(eDivisor))
+      case false => createFailure(pve dueTo DivisionByZero(eDivisor), v, s)
     }
   }
 

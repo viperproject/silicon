@@ -57,6 +57,10 @@ trait Decider {
   def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term)
   def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
 
+  def generateModel(): Unit
+  def getModel(): String
+  def clearModel(): Unit
+
 /* [BRANCH-PARALLELISATION] */
 //  def freshFunctions: InsertionOrderedSet[FunctionDecl]
 //  def freshMacros: Vector[MacroDecl]
@@ -318,5 +322,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Misc */
 
     def statistics() = prover.statistics()
+
+    override def generateModel(): Unit = proverAssert(False(), None)
+
+    override def getModel(): String = prover.getLastModel()
+
+    override def clearModel(): Unit = prover.clearLastModel()
   }
 }

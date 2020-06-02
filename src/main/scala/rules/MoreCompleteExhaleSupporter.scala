@@ -9,7 +9,7 @@ package viper.silicon.rules
 import scala.collection.mutable.ListBuffer
 import viper.silicon.{MList, MMap, SymbExLogger}
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Failure, Success, VerificationResult}
+import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.rules.chunkSupporter.findChunksWithID
 import viper.silicon.state._
@@ -20,7 +20,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.VerificationError
 
-object moreCompleteExhaleSupporter extends Immutable {
+object moreCompleteExhaleSupporter extends SymbolicExecutionRules with Immutable {
   sealed trait TaggedSummarisingSnapshot {
     def snapshot: Term
   }
@@ -144,7 +144,7 @@ object moreCompleteExhaleSupporter extends Immutable {
       if (v.decider.checkSmoke()) {
         Success() // TODO: Mark branch as dead?
       } else {
-        Failure(ve).withLoad(args)
+        createFailure(ve, v, s, true).withLoad(args)
       }
     } else {
       summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
@@ -152,7 +152,7 @@ object moreCompleteExhaleSupporter extends Immutable {
           case true =>
             Q(s1, snap, v1)
           case false =>
-            Failure(ve).withLoad(args)
+            createFailure(ve, v, s1).withLoad(args)
         })
     }
   }
@@ -191,7 +191,7 @@ object moreCompleteExhaleSupporter extends Immutable {
         case true =>
           Q(s1, h, Some(snap), v1)
         case false =>
-          Failure(ve).withLoad(args)
+          createFailure(ve, v, s1).withLoad(args)
       })
   }
 
@@ -218,7 +218,7 @@ object moreCompleteExhaleSupporter extends Immutable {
       if (v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
         Q(s, h, None, v)
       } else {
-        Failure(ve).withLoad(args)
+        createFailure(ve, v, s).withLoad(args)
       }
     } else {
       val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
@@ -291,7 +291,7 @@ object moreCompleteExhaleSupporter extends Immutable {
               }
               Q(s1, newHeap, Some(snap), v1)
             case false =>
-              Failure(ve).withLoad(args)
+              createFailure(ve, v1, s1).withLoad(args)
           }
         })
     }

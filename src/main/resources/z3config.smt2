@@ -27,6 +27,7 @@
 
 (set-option :smt.mbqi false)
 (set-option :smt.qi.eager_threshold 100)
+; (set-option :smt.qi.lazy_threshold 1000000000)
 (set-option :smt.qi.cost "(+ weight generation)")
 (set-option :smt.qi.max_multi_patterns 1000)
 ; (set-option :smt.qi.profile true)
