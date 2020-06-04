@@ -489,6 +489,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         val lookupSummary = PredicateLookup(predicate.name, sm, Seq(qvar))
         val lookupChunk = PredicateLookup(predicate.name, chunk.snapshotMap, Seq(qvar))
 
+        // This is justified even for vacuous predicates (e.g. with body "true") because qvar is
+        // the tuple of predicate arguments, and thus unrelated to the actual body
+        val snapshotNotUnit =
+          if (codomainQVars.nonEmpty) qvar !== Unit
+          else qvar === Unit // TODO: Consider if axioms can be simplified in case codomainQVars is empty
+
         val effectiveCondition =
           And(
             transformedOptSmDomainDefinitionCondition.getOrElse(True()), /* Alternatively: qvarInDomainOfSummarisingSm */
@@ -496,7 +502,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
         Forall(
           Seq(qvar),
-          Implies(effectiveCondition, lookupSummary === lookupChunk),
+          Implies(effectiveCondition, And(snapshotNotUnit, lookupSummary === lookupChunk)),
           if (Verifier.config.disableISCTriggers()) Nil else Seq(Trigger(lookupSummary), Trigger(lookupChunk)),
           s"qp.psmValDef${v.counter(this).next()}",
           isGlobal = true)
