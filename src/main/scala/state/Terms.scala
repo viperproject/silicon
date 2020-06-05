@@ -434,6 +434,9 @@ case object Forall extends Quantifier {
   def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger], name: String) =
     Quantification(Forall, qvar :: Nil, tBody, triggers, name)
 
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger], name: String, isGlobal: Boolean) =
+    Quantification(Forall, qvar :: Nil, tBody, triggers, name, isGlobal)
+
   def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger): Quantification =
     apply(qvars, tBody, trigger, "")
 
@@ -490,6 +493,13 @@ class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
            isGlobal: Boolean = isGlobal) = {
 
     Quantification(q, vars, body, triggers, name, isGlobal)
+  }
+
+  def instantiate(terms: Seq[Term]): Term = {
+    assert(terms.length == vars.length,
+           s"Cannot instantiate a quantifier binding ${vars.length} variables with ${terms.length} terms")
+
+    body.replace(vars, terms)
   }
 
   lazy val stringRepresentation = s"$q ${vars.mkString(",")} :: $body"
@@ -1785,6 +1795,19 @@ object toSnapTree extends (Seq[Term] => Term) {
   def apply(args: Seq[Term]): Term = {
     if (args.isEmpty) Unit
     else args.map(_.convert(sorts.Snap)).reduceLeft(Combine)
+  }
+}
+
+object fromSnapTree extends ((Term, Int) => Seq[Term]) {
+  def apply(snap: Term, targets: Seq[Term]): Seq[Term] = {
+    fromSnapTree(snap, targets.length)
+      .zip(targets)
+      .map { case (s, t) => s.convert(t.sort) }
+  }
+
+  def apply(snap: Term, size: Int): Seq[Term] = {
+    if (size <= 1) Seq(snap)
+    else fromSnapTree(First(snap), size - 1) :+ Second(snap)
   }
 }
 

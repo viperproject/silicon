@@ -57,8 +57,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
-  protected val predicateSnapFunctionsContributor = new DefaultPredicateSnapFunctionsContributor(preambleReader, symbolConverter, termConverter, predSnapGenerator, config)
-  protected val magicWandSnapFunctionsContributor = new DefaultMagicWandSnapFunctionsContributor(preambleReader, termConverter)
+  protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
 
   private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
@@ -67,7 +66,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     uniqueIdCounter,
     sequencesContributor, setsContributor, multisetsContributor, domainsContributor,
     fieldValueFunctionsContributor,
-    predSnapGenerator, predicateSnapFunctionsContributor, magicWandSnapFunctionsContributor,
+    predSnapGenerator, predicateAndWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     _verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
@@ -319,8 +318,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-    predicateSnapFunctionsContributor,
-    magicWandSnapFunctionsContributor,
+    predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -331,8 +329,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-    predicateSnapFunctionsContributor,
-    magicWandSnapFunctionsContributor,
+    predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -343,8 +340,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-    predicateSnapFunctionsContributor,
-    magicWandSnapFunctionsContributor,
+    predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -359,8 +355,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     sequencesContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-    predicateSnapFunctionsContributor,
-    magicWandSnapFunctionsContributor,
+    predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -371,8 +366,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-    predicateSnapFunctionsContributor,
-    magicWandSnapFunctionsContributor,
+    predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )

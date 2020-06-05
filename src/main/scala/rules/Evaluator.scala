@@ -415,7 +415,7 @@ object evaluator extends EvaluationRules with Immutable {
             case _: ast.MagicWand => s1.qpMagicWands.contains(identifier.asInstanceOf[MagicWandIdentifier])
             case field: ast.Field => s1.qpFields.contains(field)
             case pred: ast.Predicate => s1.qpPredicates.contains(pred)}
-          val (perm, smCache1, pmCache1) =
+          val (s2, currentPermAmount) =
             if (usesQPChunks) {
               res match {
                 case wand: ast.MagicWand =>
@@ -423,44 +423,35 @@ object evaluator extends EvaluationRules with Immutable {
                     quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, identifier)
                   val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
                   val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
-                  val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(
-                      s1, wand, formalVars, relevantChunks, v1)
-                  v1.decider.assume(PredicateTrigger(identifier.toString, smDef1.sm, args))
-                  val (pmDef1, pmCache1) =
-                    quantifiedChunkSupporter.summarisingPermissionMap(s1, wand, formalVars, relevantChunks, v1)
-                  (PredicatePermLookup(identifier.toString, pmDef1.pm, args), smCache1, pmCache1)
+                  val (s2, smDef, pmDef) =
+                    quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
+                  v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args))
+                  (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
 
                 case field: ast.Field =>
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, identifier)
-                  val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(
-                      s1, field, Seq(`?r`), relevantChunks, v1)
-                  v1.decider.assume(FieldTrigger(field.name, smDef1.sm, args.head))
-                  val (pmDef1, pmCache1) =
-                    quantifiedChunkSupporter.summarisingPermissionMap(s1, field, Seq(`?r`), relevantChunks, v1)
-                  val perm = PermLookup(field.name, pmDef1.pm, args.head)
+                  val (s2, smDef, pmDef) =
+                    quantifiedChunkSupporter.heapSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
+                  v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head))
+                  val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
-                  v1.decider.prover.comment(perm.toString)
-                  v1.decider.assume(PermAtMost(perm, FullPerm()))
-                  (perm, smCache1, pmCache1)
+                  v1.decider.assume(PermAtMost(currentPermAmount, FullPerm()))
+                  (s2, currentPermAmount)
 
                 case predicate: ast.Predicate =>
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h, identifier)
-                  val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                  val (s2, smDef, pmDef) =
+                    quantifiedChunkSupporter.heapSummarisingMaps(
                       s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
-                  val trigger = PredicateTrigger(predicate.name, smDef1.sm, args)
+                  val trigger = PredicateTrigger(predicate.name, smDef.sm, args)
                   v1.decider.assume(trigger)
-                  val (pmDef1, pmCache1) =
-                    quantifiedChunkSupporter.summarisingPermissionMap(s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
-                  (PredicatePermLookup(identifier.toString, pmDef1.pm, args), smCache1, pmCache1)
+                  (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
               }
             } else {
               val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
-              val perm =
+              val currentPermAmount =
                 chs.foldLeft(NoPerm(): Term)((q, ch) => {
                   val argsPairWiseEqual = And(args.zip(ch.args).map { case (a1, a2) => a1 === a2 })
                   PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm()))
@@ -469,12 +460,10 @@ object evaluator extends EvaluationRules with Immutable {
 //              v1.decider.prover.comment(s"perm($locacc)  ~~>  assume upper permission bound")
 //              v1.decider.prover.comment(perm.toString)
 //              v1.decider.assume(PermAtMost(perm, FullPerm()))
-              (perm, s.smCache, s.pmCache)
+              (s, currentPermAmount)
             }
 
-          val s2 = s1.copy(smCache = smCache1, pmCache = pmCache1)
-
-          Q(s2, perm, v1)})
+          Q(s2, currentPermAmount, v1)})
 
       case ast.ForPerm(vars, resourceAccess, body) =>
 
