@@ -434,6 +434,9 @@ case object Forall extends Quantifier {
   def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger], name: String) =
     Quantification(Forall, qvar :: Nil, tBody, triggers, name)
 
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger], name: String, isGlobal: Boolean) =
+    Quantification(Forall, qvar :: Nil, tBody, triggers, name, isGlobal)
+
   def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger): Quantification =
     apply(qvars, tBody, trigger, "")
 
