@@ -29,9 +29,10 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
      * Hence, we add the appropriate set types iff quantified permissions are used in the program.
      *
      * TODO: It shouldn't be the responsibility of the sets contributor to add set types
-     *       required by QPs. Rather, this should be done by PredicateSnapFunctionsContributor
-     *       and FieldValueFunctionContributor. However, it is currently not (easily) possible for
-     *       the latter to contribute instances of set axioms.
+     *       required by QPs. Rather, this should be done by DefaultFieldValueFunctionContributor
+     *       and DefaultPredicateAndWandSnapFunctionsContributor.
+     *       However, it is currently not (easily) possible for the latter to contribute instances
+     *       of set axioms.
      */
     if (program.existsDefined { case f: ast.Forall if (f.triggers flatMap (_.exps)) exists (e => e.existsDefined { case _: ast.ResourceAccess => }) =>
       case q: ast.QuantifiedExp if !q.isPure => }) {
@@ -54,4 +55,3 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
     sorts.Set(argumentSorts.head)
   }
 }
-
