@@ -6,6 +6,7 @@
 
 package viper.silicon
 
+import scala.annotation.implicitNotFound
 import viper.silver
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.{VerificationError, errors}
@@ -91,15 +92,17 @@ package object utils {
 
   trait MustBeReinitializedAfterReset { this: StatefulComponent => }
 
-  /* http://www.tikalk.com/java/blog/avoiding-nothing */
+  /* Used version from https://github.com/gatling/gatling/blob/master/gatling-commons/src/main/scala/io/gatling/commons/NotNothing.scala.
+   * For alternatives, see e.g. http://www.tikalk.com/java/blog/avoiding-nothing
+   * and https://riptutorial.com/scala/example/21134/preventing-inferring-nothing
+   */
   object notNothing {
-    sealed trait NotNothing[-T]
+    @implicitNotFound("Type Nothing was provided for type argument ${T}, but is not allowed. If the argument was inferred, try providing it explicitly.")
+    trait NotNothing[T]
 
     object NotNothing {
-      implicit object notNothing extends NotNothing[Any]
-
-      implicit object `\n The error is because the type parameter was resolved to Nothing`
-          extends NotNothing[Nothing]
+      private val Evidence: NotNothing[Any] = new Object with NotNothing[Any]
+      implicit def notNothingEv[T](implicit n: T =:= T): NotNothing[T] = Evidence.asInstanceOf[NotNothing[T]]
     }
   }
 
