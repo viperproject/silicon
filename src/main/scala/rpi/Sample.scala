@@ -1,10 +1,10 @@
 package rpi
 
-import viper.silver.ast.LocationAccess
+import viper.silver.ast.FieldAccess
 
 sealed trait Sample
 
-case class Record(access: LocationAccess)
+case class Record(access: FieldAccess)
 
 case class Positive(record: Record) extends Sample
 

@@ -21,6 +21,8 @@ class Teacher(program: Program) {
       "--counterexample", "native",
       "--ignoreFile", "dummy.vpr")
     instance.parseCommandLine(arguments)
+    // TODO: when do we stop the verifier?
+    instance.start()
     // return instance
     instance
   }
@@ -49,9 +51,7 @@ class Teacher(program: Program) {
     println(program)
 
     // verify program
-    verifier.start()
     val result = verifier.verify(program)
-    verifier.stop()
 
     result match {
       case Success => Seq.empty
