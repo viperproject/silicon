@@ -15,4 +15,6 @@ object Maps {
     map2.foldLeft(map1)({ case (map, (key, value)) =>
       map.updated(key, map.get(key).map(combine(_, value)).getOrElse(value))
     })
+
+  def reverse[K, V](map: Map[K, V]): Map[V, K] = map.map({ case (key, value) => value -> key })
 }

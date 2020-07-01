@@ -3,6 +3,7 @@ package rpi.teacher
 import rpi.{Positive, Record, Sample}
 import rpi.util.Maps
 import viper.silicon.interfaces.SiliconNativeCounterexample
+import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.BasicChunk
 import viper.silicon.state.terms.Term
 import viper.silver.ast._
@@ -40,86 +41,106 @@ class SampleExtractor(error: VerificationError, context: Context) {
   }
 
   /**
-    * The store extracted from the counter example.
+    * The initial state.
     */
-  private lazy val store: StoreMap = example.store
+  private lazy val initialState = {
+    // TODO: Filter parameters.
+    val variables = context.initials.keys.map(_.name)
+    val store = variables.map(variable => variable -> example.store(variable)).toMap
+    val heap = buildHeapMap(example.oldHeap.get)
+    State(store, heap)
+  }
 
   /**
-    * The heap extracted from the counter example
+    * The current state.
     */
-  private lazy val heap: HeapMap = example.heap
-    .foldLeft(Map.empty: HeapMap)({
-      case (partial, chunk: BasicChunk) =>
-        // extract information from heap chunk
-        val receiver = chunk.args.head
-        val field = chunk.id.name
-        val value = chunk.snap
-        // update partial heap
-        val fieldMap = partial.getOrElse(receiver, Map.empty)
-        partial.updated(receiver, fieldMap.updated(field, value))
-      case (partial, _) => partial
-    })
+  private lazy val currentState = {
+    val variables = context.initials.values.map(_.name)
+    val store = variables.map(variable => variable -> example.store(variable)).toMap
+    val heap = buildHeapMap(example.heap)
+    State(store, heap)
+  }
 
   /**
-    * Computes the terms that are reachable from the initial variables. The reachability is represented asa a map that
-    * associates every reachable term with a set of access paths that point to that term.
+    * Computes the terms that are reachable from the initial variables. The reachability is represented as a map that
+    * associates every reachable term with a set of access paths that point to that term (in the initial state).
     */
   private lazy val reachability: Reachability = {
-    // auxiliary method that iteratively computes n-steps of the heap reachability
+    // auxiliary method that iteratively computes n steps of the heap reachability
     def iterate(reachable: Reachability, n: Int): Reachability =
       if (n == 0) reachable
       else {
         // compute next step of the heap reachability
-        val next = reachable.foldLeft(Map.empty: Reachability)({
-          case (partial, (term, paths)) => heap
-            .getOrElse(term, Map.empty)
-            .foldLeft(partial)({
+        val next = reachable
+          .foldLeft(Map.empty: Reachability)({
+            case (partial, (term, paths)) => initialState.heap
+              .getOrElse(term, Map.empty).foldLeft(partial) {
               case (partial, (field, value)) =>
                 val existing = partial.getOrElse(value, Set.empty)
                 partial.updated(value, existing ++ paths.map(_ :+ field))
-            })
-        })
-        // recurse
+            }
+          })
+        // recurse and combine results
         Maps.combine[Term, Paths](reachable, iterate(next, n - 1), _ ++ _)
       }
 
-    // initialize reachability with terms directly pointed to by the initial variables
-    val reachability = context.initials.keys
-      .map(_.name)
+    // compute store reachability
+    val reachability = initialState.store
       .foldLeft(Map.empty: Reachability)({
-        case (partial, variable) =>
-          val value = store(variable)
+        case (partial, (variable, value)) =>
           val existing = partial.getOrElse(value, Set.empty)
           partial.updated(value, existing + Seq(variable))
       })
 
-    // iteratively compute reachability
+    // iteratively compute heap reachability
     iterate(reachability, 2)
   }
 
-  private def evaluate(expression: Exp): Term = expression match {
-    case LocalVar(name, _) => store(name)
-    case FieldAccess(receiver, field) => heap(evaluate(receiver))(field.name)
-    case _ => ???
+  private def buildHeapMap(chunks: Iterable[Chunk]): HeapMap = chunks.foldLeft[HeapMap](Map.empty) {
+    case (partial, chunk: BasicChunk) =>
+      // extract information from heap chunk
+      val receiver = chunk.args.head
+      val field = chunk.id.name
+      val value = chunk.snap
+      // update partial heap
+      val fieldMap = partial.getOrElse(receiver, Map.empty)
+      partial.updated(receiver, fieldMap.updated(field, value))
+    case (partial, _) => partial
   }
 
-  //  TODO: Think of a better name.
-  def initialExpression(term: Term): Set[Exp] = reachability(term)
-    .map { path =>
-      // TODO: Rework variables and fields
+  private def adapt(expression: Exp): Set[Exp] = {
+    val term = currentState.evaluate(expression)
+    reachability(term).map { path =>
       val variable = context.initials(LocalVar(path.head, Ref)())
-      path.tail.foldLeft(variable: Exp)({ case (receiver, field) => FieldAccess(receiver, Field(field, Ref)())() })
+      path.tail.foldLeft(variable: Exp)({
+        case (receiver, field) => FieldAccess(receiver, Field(field, Ref)())()
+      })
     }
+  }
 
   def extract(): Seq[Sample] = reason match {
-    case InsufficientPermission(access) => access match {
-      case FieldAccess(receiver, field) =>
-        val term = evaluate(receiver)
-        val expressions = initialExpression(term)
-        assert(expressions.size == 1)
-        val access = FieldAccess(expressions.head, field)()
-        Seq(Positive(Record(access)))
-    }
-    case _ => Seq.empty
+    case InsufficientPermission(FieldAccess(receiver, field)) =>
+      println(initialState)
+      println(currentState)
+      val adapted = adapt(receiver)
+      assert(adapted.size == 1)
+      val access = FieldAccess(adapted.head, field)()
+      Seq(Positive(Record(access)))
   }
+
+
+  case class State(store: StoreMap, heap: HeapMap) {
+    /**
+      * Evaluates the given expression in this state.
+      *
+      * @param expression The expression to evaluate.
+      * @return The value of the expression.
+      */
+    def evaluate(expression: Exp): Term = expression match {
+      case LocalVar(variable, _) => store(variable)
+      case FieldAccess(receiver, Field(field, _)) => heap(evaluate(receiver))(field)
+      case _ => ???
+    }
+  }
+
 }

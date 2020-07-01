@@ -1,5 +1,6 @@
 package rpi.teacher
 
+import rpi.util.Maps
 import rpi.{Inference, Sample}
 import viper.silicon.Silicon
 import viper.silver.ast._
@@ -43,9 +44,10 @@ class Teacher(program: Program) {
     // build program
     val builder = new ProgramBuilder(context)
     builder.initialize()
-    builder.inhale(hypothesis)
-    builder.execute(loop.loop.body)
-    builder.exhale(hypothesis)
+    builder.addPrecondition(hypothesis)
+    builder.addPostconditions(hypothesis)
+    builder.addStatement(loop.loop.body)
+
     val program = builder.buildProgram()
 
     println(program)
@@ -91,6 +93,8 @@ case class Context(program: Program, method: Method, declarations: Seq[Declarati
   lazy val initials = variables
     .map { variable => LocalVar(s"${variable.name}_0", variable.typ)() -> variable }
     .toMap
+
+  lazy val reverse = Maps.reverse(initials)
 
   def addDeclarations(declarations: Seq[Declaration]): Context = copy(declarations = this.declarations ++ declarations)
 }
