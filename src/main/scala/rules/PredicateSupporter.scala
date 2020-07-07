@@ -80,7 +80,8 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h3, BasicChunkIdentifier(predicate.name))
           val (smDef1, smCache1) =
-            quantifiedChunkSupporter.summarisingSnapshotMap(s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v1)
+            quantifiedChunkSupporter.summarisingSnapshotMap(
+              s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v1)
           v1.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
 
           smCache1
@@ -142,7 +143,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
     } else {
       val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
-      chunkSupporter.consume(s1, s1.h, BasicChunkIdentifier(predicate.name), tArgs, s1.permissionScalingFactor, ve, v, description)((s2, h1, snap, v1) => {
+      chunkSupporter.consume(s1, s1.h, predicate, tArgs, s1.permissionScalingFactor, ve, v, description)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {

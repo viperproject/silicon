@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
@@ -51,7 +51,8 @@ object executor extends ExecutionRules with Immutable {
 
     val s1 = edge.kind match {
       case cfg.Kind.Out =>
-        val s1 = s.copy(h = stateConsolidator.merge(s.h, s.invariantContexts.head, v),
+        val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+        val s1 = s.copy(functionRecorder = fr1, h = h1,
                         invariantContexts = s.invariantContexts.tail)
         s1
       case _ =>
@@ -271,8 +272,10 @@ object executor extends ExecutionRules with Immutable {
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             val (smDef1, smCache1) =
-              quantifiedChunkSupporter.summarisingSnapshotMap(s2, field, Seq(`?r`), relevantChunks, v1)
+              quantifiedChunkSupporter.summarisingSnapshotMap(
+                s2, field, Seq(`?r`), relevantChunks, v1)
             v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
+            v2.decider.clearModel()
             val result = quantifiedChunkSupporter.removePermissions(
               s2.copy(smCache = smCache1),
               relevantChunks,
@@ -292,19 +295,20 @@ object executor extends ExecutionRules with Immutable {
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm)
                 v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
-              case (Incomplete(_), _, _) =>
-                Failure(pve dueTo InsufficientPermission(fa))}}))
+              case (Incomplete(_), s3, _) =>
+                createFailure(pve dueTo InsufficientPermission(fa), v2, s3)}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
-            val id = BasicChunkIdentifier(field.name)
+            val resource = fa.res(Verifier.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            chunkSupporter.consume(s2, s2.h, id, Seq(tRcvr), FullPerm(), ve, v2, description)((s3, h3, _, v3) => {
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm(), ve, v2, description)((s3, h3, _, v3) => {
               val tSnap = ssaifyRhs(tRhs, field.name, field.typ, v3)
+              val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm())
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) =>
                 Q(s4.copy(h = h4), v4))
@@ -331,19 +335,6 @@ object executor extends ExecutionRules with Immutable {
         val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
         v.decider.assume(ts)
         Q(s1, v)
-
-      case ast.Fresh(vars) =>
-        val (arps, arpConstraints) =
-          vars.map(x => (x, v.decider.freshARP()))
-              .map{case (variable, (value, constrain)) => ((variable, value), constrain)}
-              .unzip
-        val g1 = Store(s.g.values ++ arps)
-          /* It is crucial that the (var -> term) mappings in arps override
-           * already existing bindings for the same vars when they are added
-           * (via ++).
-           */
-        v.decider.assume(arpConstraints)
-        Q(s.copy(g = g1), v)
 
       case inhale @ ast.Inhale(a) => a match {
         case _: ast.FalseLit =>
@@ -375,7 +366,7 @@ object executor extends ExecutionRules with Immutable {
               if (v1.decider.checkSmoke())
                 QS(s1.copy(h = s.h), v1)
               else
-                Failure(pve dueTo AssertionFalse(a))
+                createFailure(pve dueTo AssertionFalse(a), v1, s1)
               })((_, _) => Success())
 
           case _ =>
@@ -402,17 +393,43 @@ object executor extends ExecutionRules with Immutable {
                 Q(s2, v1)})
         }
 
+      // A call havoc_all_R() results in Silicon efficiently havocking all instances of resource R.
+      // See also Silicon issue #407.
+      case ast.MethodCall(methodName, _, _)
+          if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
+
+        val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
+        val member = Verifier.program.collectFirst {
+          case m: ast.Field if m.name == resourceName => m
+          case m: ast.Predicate if m.name == resourceName => m
+        }.getOrElse(sys.error(s"Found $methodName, but no matching field or predicate $resourceName"))
+        val h1 = Heap(s.h.values.map {
+          case bc: BasicChunk if bc.id.name == member.name =>
+            bc.withSnap(freshSnap(bc.snap.sort, v))
+          case qfc: QuantifiedFieldChunk if qfc.id.name == member.name =>
+            qfc.withSnapshotMap(freshSnap(qfc.fvf.sort, v))
+          case qpc: QuantifiedPredicateChunk if qpc.id.name == member.name =>
+            qpc.withSnapshotMap(freshSnap(qpc.psf.sort, v))
+          case other =>
+            other})
+        Q(s.copy(h = h1), v)
+
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = Verifier.program.findMethod(methodName)
         val fargs = meth.formalArgs.map(_.localVar)
         val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
         val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
         val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
-        val pvePre = PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer)
+
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
         val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
         evals(s, eArgs, _ => pveCall, v)((s1, tArgs, v1) => {
           mcLog.finish_parameters()
+          val exampleTrafo = CounterexampleTransformer({
+            case ce: SiliconCounterexample => ce.withStore(s1.g)
+            case ce => ce
+          })
+          val pvePre = ErrorWrapperWithExampleTransformer(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
                            recordVisited = true)
           consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
@@ -441,7 +458,7 @@ object executor extends ExecutionRules with Immutable {
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                 predicateSupporter.fold(s2, predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
               case false =>
-                Failure(pve dueTo NegativePermission(ePerm))
+                createFailure(pve dueTo NegativePermission(ePerm), v2, s2)
             }
           }))
 
@@ -455,7 +472,8 @@ object executor extends ExecutionRules with Immutable {
               val (relevantChunks, _) =
                 quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s2.h, BasicChunkIdentifier(predicateName))
               val (smDef1, smCache1) =
-                quantifiedChunkSupporter.summarisingSnapshotMap(s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
+                quantifiedChunkSupporter.summarisingSnapshotMap(
+                  s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
               v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
               smCache1
             } else {
@@ -467,7 +485,7 @@ object executor extends ExecutionRules with Immutable {
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                 predicateSupporter.unfold(s2.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v2, pa)(Q)
               case false =>
-                Failure(pve dueTo NegativePermission(ePerm))
+                createFailure(pve dueTo NegativePermission(ePerm), v2, s2)
             }
           }))
 
@@ -504,7 +522,8 @@ object executor extends ExecutionRules with Immutable {
                 val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
                 val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
                 val (smDef, smCache) =
-                  quantifiedChunkSupporter.summarisingSnapshotMap(s2, wand, formalVars, relevantChunks, v1)
+                  quantifiedChunkSupporter.summarisingSnapshotMap(
+                    s2, wand, formalVars, relevantChunks, v1)
                 v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get))
                 smCache
               case _ => s2.smCache
@@ -522,7 +541,6 @@ object executor extends ExecutionRules with Immutable {
            | _: ast.If
            | _: ast.Label
            | _: ast.Seqn
-           | _: ast.Constraining
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
     }
 
@@ -551,4 +569,16 @@ object executor extends ExecutionRules with Immutable {
          t
      }
    }
+
+  private val hack407_method_name_prefix = "___silicon_hack407_havoc_all_"
+
+  def hack407_havoc_all_resources_method_name(id: String): String = s"$hack407_method_name_prefix$id"
+
+  def hack407_havoc_all_resources_method_call(id: String): ast.MethodCall = {
+    ast.MethodCall(
+      methodName = hack407_havoc_all_resources_method_name(id),
+      args = Vector.empty,
+      targets = Vector.empty
+    )(ast.NoPosition, ast.NoInfo, ast.NoTrafos)
+  }
 }

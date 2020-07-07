@@ -1,0 +1,12 @@
+field next: Ref
+
+predicate valid(this: Ref) {
+     acc(this.next, write)
+  && (this.next != null ==> acc(valid(this.next), write))
+}
+
+function size(this: Ref): Int
+  requires this != null
+  requires acc(valid(this), write)
+  ensures result >= 1
+{ unfolding acc(valid(this), write) in (this.next == null ? 1 : 1 + size(this.next)) }

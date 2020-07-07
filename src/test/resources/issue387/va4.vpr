@@ -1,0 +1,19 @@
+field discriminant: Int
+
+predicate Option(self: Ref) {
+  acc(self.discriminant, write)
+}
+
+function Option$discriminant(self: Ref): Int
+  requires acc(Option(self), 1/2)
+{
+  (unfolding acc(Option(self), 1/2) in self.discriminant)
+}
+
+method test() {
+    var _3: Ref
+    inhale acc(Option(_3), write)
+    inhale Option$discriminant(_3) == 1
+    unfold acc(Option(_3), write)
+    assert _3.discriminant == 1
+}

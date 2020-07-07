@@ -7,34 +7,44 @@
 package viper.silicon.supporters
 
 import scala.reflect.{ClassTag, classTag}
+import viper.silicon.Config
 import viper.silver.ast
-import viper.silver.ast.{Program, SetType}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, sorts}
 
-class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term])
+class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
     extends BuiltinDomainsContributor {
 
   type BuiltinDomainType = ast.SetType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.SetType]
 
-  val sourceResource: String = "/dafny_axioms/sets.vpr"
-  def sourceDomainName: String = "$Set"
+  val defaultSourceResource: String = "/dafny_axioms/sets.vpr"
+  val userProvidedSourceFilepath: Option[String] = config.setAxiomatizationFile.toOption
+  val sourceDomainName: String = "$Set"
 
-  override def computeGroundTypeInstances(program: Program): InsertionOrderedSet[SetType] = {
+  override def computeGroundTypeInstances(program: ast.Program): InsertionOrderedSet[ast.SetType] = {
     var setTypeInstances = super.computeGroundTypeInstances(program)
 
     /* Axioms generated for quantified permissions depend on sets.
      * Hence, we add the appropriate set types iff quantified permissions are used in the program.
      *
      * TODO: It shouldn't be the responsibility of the sets contributor to add set types
-     *       required by QPs
+     *       required by QPs. Rather, this should be done by DefaultFieldValueFunctionContributor
+     *       and DefaultPredicateAndWandSnapFunctionsContributor.
+     *       However, it is currently not (easily) possible for the latter to contribute instances
+     *       of set axioms.
      */
     if (program.existsDefined { case f: ast.Forall if (f.triggers flatMap (_.exps)) exists (e => e.existsDefined { case _: ast.ResourceAccess => }) =>
       case q: ast.QuantifiedExp if !q.isPure => }) {
       program.fields foreach {f => setTypeInstances += ast.SetType(f.typ)}
 
-      setTypeInstances += ast.SetType(ast.Ref) /* $FVF.domain_f is ref-typed */
+      setTypeInstances += ast.SetType(ast.Ref) /* $FVF.domain_f is of type Set[Ref] */
+
+      /* $PSF.domain_p is of type Set[Snap], and a corresponding instantiation of the set axioms
+       * is thus needed. Currently, such an instantiation is supported only for Viper types.
+       * Hence, we use an embedding of Silicon's sorts.Snap into Viper's type system, via a Viper
+       * extension type. */
+      setTypeInstances += ast.SetType(viper.silicon.utils.ast.ViperEmbedding(sorts.Snap))
     }
 
     setTypeInstances
@@ -45,4 +55,3 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term])
     sorts.Set(argumentSorts.head)
   }
 }
-

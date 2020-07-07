@@ -8,7 +8,7 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
-
+import scala.util.Random
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._
@@ -16,15 +16,17 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.reporting.condenseToViperResult
+import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
 import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
-import viper.silver.ast.utility.Rewriter.Traverse
-import viper.silver.reporter.{ConfigurationConfirmation, Reporter, VerificationResultMessage}
+import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.cfg.silver.SilverCfg
+import viper.silver.plugin.PluginAwareReporter
+import viper.silver.reporter.{ConfigurationConfirmation, VerificationResultMessage}
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -36,7 +38,7 @@ trait MasterVerifier extends Verifier {
   def verificationPoolManager: VerificationPoolManager
 }
 
-class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
+class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareReporter)
     extends BaseVerifier(config, "00")
        with MasterVerifier
        with DefaultFunctionVerificationUnitProvider
@@ -49,14 +51,13 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   protected val preambleReader = new SMTLib2PreambleReader
 
-  protected val sequencesContributor = new DefaultSequencesContributor(preambleReader, symbolConverter, termConverter)
-  protected val setsContributor = new DefaultSetsContributor(domainTranslator)
-  protected val multisetsContributor = new DefaultMultisetsContributor(domainTranslator)
+  protected val sequencesContributor = new DefaultSequencesContributor(domainTranslator, config)
+  protected val setsContributor = new DefaultSetsContributor(domainTranslator, config)
+  protected val multisetsContributor = new DefaultMultisetsContributor(domainTranslator, config)
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
-  protected val predicateSnapFunctionsContributor = new DefaultPredicateSnapFunctionsContributor(preambleReader, symbolConverter, termConverter, predSnapGenerator, config)
-  protected val magicWandSnapFunctionsContributor = new DefaultMagicWandSnapFunctionsContributor(preambleReader, termConverter)
+  protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
 
   private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
@@ -65,9 +66,10 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     uniqueIdCounter,
     sequencesContributor, setsContributor, multisetsContributor, domainsContributor,
     fieldValueFunctionsContributor,
-    predSnapGenerator, predicateSnapFunctionsContributor, magicWandSnapFunctionsContributor,
+    predSnapGenerator, predicateAndWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
-    _verificationPoolManager
+    _verificationPoolManager,
+    MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
   )
 
   /* Lifetime */
@@ -123,7 +125,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   /* Program verification */
 
-  def verify(_program: ast.Program): List[VerificationResult] = {
+  def verify(_program: ast.Program, cfgs: Seq[SilverCfg]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
       * This is done bottom-up to ensure that nested quantifiers are transformed as well
@@ -133,8 +135,12 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     val program =
       _program.transform({
         case forall: ast.Forall if forall.isPure =>
-          viper.silicon.utils.ast.autoTrigger(forall)
+          viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
+        case exists: ast.Exists =>
+          viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
       }, Traverse.BottomUp)
+
+    // TODO: Autotrigger for cfgs.
 
     if (config.printTranslatedProgram()) {
       println(program)
@@ -146,8 +152,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
 
     allProvers.comment("Started: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()) /*bookkeeper.formattedStartTime*/)
-    allProvers.comment("Silicon.buildVersion: " + Silicon.buildVersion)
-    allProvers.comment(s"Input file: ${config.inputFile.getOrElse("<unknown>")}")
+    allProvers.comment("Silicon.version: " + Silicon.version)
+    allProvers.comment(s"Input file: ${Verifier.inputFile.getOrElse("<unknown>")}")
     allProvers.comment(s"Verifier id: $uniqueId")
     allProvers.comment("-" * 60)
     allProvers.comment("Begin preamble")
@@ -155,7 +161,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     allProvers.comment("/" * 10 + " Static preamble")
     emitStaticPreamble(allProvers)
 
-    analyzeProgramAndEmitPreambleContributions(program, allProvers)
+    analyzeProgramAndEmitPreambleContributions(program, allProvers) // TODO: Add support for cfgs.
 
     allProvers.comment("End preamble")
     allProvers.comment("-" * 60)
@@ -214,6 +220,19 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
           results
         })
+      }) ++ cfgs.map(cfg => {
+        val s = createInitialState(cfg, program)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
+
+        _verificationPoolManager.queueVerificationTask(v => {
+          val startTime = System.currentTimeMillis()
+          val results = v.cfgSupporter.verify(s, cfg)
+          val elapsed = System.currentTimeMillis() - startTime
+
+          reporter report VerificationResultMessage(s"silicon"/*, cfg*/, elapsed, condenseToViperResult(results))
+          logger debug s"Silicon finished verification of method `CFG` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
+
+          results
+        })
       })
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
@@ -239,7 +258,22 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           qpMagicWands = quantifiedMagicWands,
           applyHeuristics = applyHeuristics,
           predicateSnapMap = predSnapGenerator.snapMap,
-          predicateFormalVarMap = predSnapGenerator.formalVarMap)
+          predicateFormalVarMap = predSnapGenerator.formalVarMap,
+          isMethodVerification = member.isInstanceOf[ast.Member])
+  }
+
+  private def createInitialState(cfg: SilverCfg, program: ast.Program): State = {
+    val quantifiedFields = InsertionOrderedSet(program.fields)
+    val quantifiedPredicates = InsertionOrderedSet(program.predicates)
+    val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.
+    val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
+
+    State(qpFields = quantifiedFields,
+      qpPredicates = quantifiedPredicates,
+      qpMagicWands = quantifiedMagicWands,
+      applyHeuristics = applyHeuristics,
+      predicateSnapMap = predSnapGenerator.snapMap,
+      predicateFormalVarMap = predSnapGenerator.formalVarMap)
   }
 
   private def excludeMethod(method: ast.Method) = (
@@ -251,6 +285,15 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
   private def emitStaticPreamble(sink: ProverLike) {
     sink.comment("\n; /z3config.smt2")
     preambleReader.emitPreamble("/z3config.smt2", sink)
+
+    if (config.z3RandomizeSeeds()) {
+      sink.comment(s"\n; Randomise seeds [--${config.z3RandomizeSeeds.name}]")
+      val options =
+        Seq("sat.random_seed", "nlsat.seed", "fp.spacer.random_seed", "smt.random_seed", "sls.random_seed")
+          .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
+
+      preambleReader.emitPreamble(options, sink)
+    }
 
     val smt2ConfigOptions =
       config.z3ConfigArgs().map { case (k, v) => s"(set-option :$k $v)" }
@@ -275,8 +318,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-    predicateSnapFunctionsContributor,
-    magicWandSnapFunctionsContributor,
+    predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -287,8 +329,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-    predicateSnapFunctionsContributor,
-    magicWandSnapFunctionsContributor,
+    predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -299,8 +340,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-    predicateSnapFunctionsContributor,
-    magicWandSnapFunctionsContributor,
+    predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -315,8 +355,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     sequencesContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-    predicateSnapFunctionsContributor,
-    magicWandSnapFunctionsContributor,
+    predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -327,8 +366,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-    predicateSnapFunctionsContributor,
-    magicWandSnapFunctionsContributor,
+    predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )

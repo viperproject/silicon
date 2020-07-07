@@ -52,15 +52,19 @@ final case class State(g: Store = Store(),
                        heuristicsDepth: Int = 0,
                        triggerAction: AnyRef = null,
 
+                       ssCache: SsCache = Map.empty,
+                       hackIssue387DisablePermissionConsumption: Boolean = false,
+
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
                        qpMagicWands: InsertionOrderedSet[MagicWandIdentifier] = InsertionOrderedSet.empty,
-                       smCache: SmCache = Map.empty,
+                       smCache: SnapshotMapCache = SnapshotMapCache.empty,
                        pmCache: PmCache = Map.empty,
                        smDomainNeeded: Boolean = false,
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
-                       predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty)
+                       predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
+                       isMethodVerification: Boolean = false)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =
@@ -96,8 +100,11 @@ final case class State(g: Store = Store(),
   def preserveAfterLocalEvaluation(post: State): State =
     State.preserveAfterLocalEvaluation(this, post)
 
+  def functionRecorderQuantifiedVariables(): Seq[Var] =
+    functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+
   def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[Var] = (
-       functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+       functionRecorderQuantifiedVariables()
     ++ quantifiedVariables.filter(filterPredicate)
   )
 
@@ -138,8 +145,9 @@ object State {
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
+                 ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
-                 predicateSnapMap1, predicateFormalVarMap1) =>
+                 predicateSnapMap1, predicateFormalVarMap1, hack) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -159,43 +167,25 @@ object State {
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
+                     ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
-                     `predicateSnapMap1`, `predicateFormalVarMap1`) =>
+                     `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
             val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
 
-            val smCache3 =
-              viper.silicon.utils.conflictFreeUnion(smCache1, smCache2) match {
-                case (m3, conflicts) if conflicts.isEmpty => m3
-                case (m3, conflicts) =>
-                  /* A "conflict" here means that two syntactically different snapshot maps have
-                   * been defined relative to the *same set of chunks*. It is therefore expected
-                   * that the two snapshots maps are semantically equivalent, and that it doesn't
-                   * matter which one is chosen for the merged cache.
-                   *
-                   * TODO: Add a runtime assertion that checks above hypothesis: e.g. check that the
-                   *       two snapshot maps are structurally equivalent modulo renaming.
-                   *
-                   * TODO: A possible optimisation to snapshot map caching might be the following:
-                   *       when branching (locally/in general?), the snapshot map cache from the
-                   *       first branch should be made available to the second branch in order to
-                   *       avoid axiomatising a fresh but equivalent snapshot map. This should be
-                   *       sound because the branch condition (of a local branch?) cannot influence
-                   *       the available chunks.
-                   */
-
-                  m3 ++ conflicts.map { case (k, (v1, _)) => k -> v1 }
-                }
-
+            val smCache3 = smCache1.union(smCache2)
             val pmCache3 = pmCache1 ++ pmCache2
+
+            val ssCache3 = ssCache1 ++ ssCache2
 
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
                     constrainableARPs = constrainableARPs3,
+                    ssCache = ssCache3,
                     smCache = smCache3,
                     pmCache = pmCache3)
 

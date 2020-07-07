@@ -11,7 +11,7 @@ import com.typesafe.scalalogging.Logger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError
-import viper.silicon.Silicon
+import viper.silicon.{Silicon, SymbExLogger}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.{Prover, Unsat}
@@ -50,12 +50,16 @@ trait Decider {
 
   def fresh(id: String, sort: Sort): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
-  def freshMacro(id: String, formalArgs: Seq[Var], body: Term): Macro
+  def freshMacro(id: String, formalArgs: Seq[Var], body: Term): MacroDecl
 
   def fresh(sort: Sort): Var
   def fresh(v: ast.AbstractLocalVar): Var
   def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term)
   def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
+
+  def generateModel(): Unit
+  def getModel(): String
+  def clearModel(): Unit
 
 /* [BRANCH-PARALLELISATION] */
 //  def freshFunctions: InsertionOrderedSet[FunctionDecl]
@@ -194,8 +198,20 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def check(t: Term, timeout: Int) = deciderAssert(t, Some(timeout))
 
-    def assert(t: Term, timeout: Option[Int] = None)(Q: Boolean => VerificationResult) = {
+    def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
+              (Q: Boolean => VerificationResult)
+              : VerificationResult = {
+
       val success = deciderAssert(t, timeout)
+
+      // If the SMT query was not successful, store it (possibly "overwriting"
+      // any previously saved query), otherwise discard any query we had saved
+      // previously (it did not cause a verification failure) and ignore the
+      // current one, because it cannot cause a verification error.
+      if (success)
+        SymbExLogger.currentLog().discardSMTQuery()
+      else
+        SymbExLogger.currentLog().setSMTQuery(t)
 
       Q(success)
     }
@@ -239,16 +255,15 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       (permVar, permVarConstraints)
     }
 
-    def freshMacro(id: String, formalArgs: Seq[Var], body: Term): Macro = {
+    def freshMacro(id: String, formalArgs: Seq[Var], body: Term): MacroDecl = {
       val name = identifierFactory.fresh(id)
-      val argSorts = formalArgs map (_.sort)
       val macroDecl = MacroDecl(name, formalArgs, body)
 
       prover.declare(macroDecl)
 
 //      _freshMacros = _freshMacros :+ macroDecl /* [BRANCH-PARALLELISATION] */
 
-      Macro(name, argSorts, body.sort)
+      macroDecl
     }
 
     def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App = {
@@ -307,5 +322,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Misc */
 
     def statistics() = prover.statistics()
+
+    override def generateModel(): Unit = proverAssert(False(), None)
+
+    override def getModel(): String = prover.getLastModel()
+
+    override def clearModel(): Unit = prover.clearLastModel()
   }
 }

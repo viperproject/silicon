@@ -35,15 +35,18 @@ class NodeBacktranslationTests extends FunSuite {
     val backtranslationTransformer = ViperStrategy.Slim({
       case lv: LocalVar if assignments.contains(lv) =>
         val (pos, info, _) = lv.getPrettyMetadata
-            /* Note: lv might already have an error transformer set. It will be replaced. */
-        lv.duplicateMeta((pos, info, NodeTrafo(assignments(lv))))
+        /* Note: lv might already have an error transformer set. It will be replaced. */
+        lv.meta = (pos, info, NodeTrafo(assignments(lv)))
     })
 
     val substitutionTransformer = ViperStrategy.Slim({
       case lv: LocalVar if assignments.contains(lv) => assignments(lv)
     })
 
+    // TODO: Rewriting is forced because changes in metadata are irrelevant for comparison operator, but a cleaner solution should be found
+    ViperStrategy.forceRewrite = true
     val exhaleToVerify = backtranslationTransformer.execute[Exhale](exhale)
+    ViperStrategy.forceRewrite = false
     val exhaleToReport = substitutionTransformer.execute[Exhale](exhale)
 
     assert(exhaleToVerify.toString == exhale.toString, "Unexpected syntactic difference")

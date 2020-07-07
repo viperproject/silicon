@@ -1,0 +1,11 @@
+field f: Int
+
+function foo(x: Ref, y: Ref): Int
+  requires acc(x.f) && acc(y.f)
+{ x == y ? 1 : 0 }
+
+method test(x: Ref, y: Ref) {
+  inhale acc(x.f) && acc(y.f)
+  var v: Int := foo(x, y)
+  assert v == 0
+}
