@@ -46,7 +46,9 @@ class Teacher(program: Program) {
     builder.initialize()
     builder.addPrecondition(hypothesis)
     builder.addPostconditions(hypothesis)
+    builder.addSnap("s0", EqCmp(LocalVar("c", Ref)(), NullLit()())())
     builder.addStatement(loop.loop.body)
+    builder.addSnap("s1", EqCmp(LocalVar("c", Ref)(), NullLit()())())
 
     val program = builder.buildProgram()
 

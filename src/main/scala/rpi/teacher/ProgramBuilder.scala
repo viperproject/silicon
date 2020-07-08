@@ -1,5 +1,7 @@
 package rpi.teacher
 
+import java.beans.Expression
+
 import viper.silver.ast._
 
 class ProgramBuilder(context: Context) {
@@ -23,6 +25,12 @@ class ProgramBuilder(context: Context) {
   def addPrecondition(expression: Exp): Unit = preconditions :+= expression
 
   def addPostconditions(expression: Exp): Unit = postconditions :+= expression
+
+  def addSnap(name: String, expression: Exp): Unit = {
+    val variable = LocalVar(name, expression.typ)()
+    addDeclaration(variable)
+    addStatement(LocalVarAssign(variable, expression)())
+  }
 
   def addStatement(statement: Stmt): Unit = statement match {
     case Seqn(stmts, _) => stmts.foreach(addStatement)
@@ -48,6 +56,11 @@ class ProgramBuilder(context: Context) {
   private def addParameter(variable: LocalVar): Unit = {
     val declaration = LocalVarDecl(variable.name, variable.typ)()
     parameters :+= declaration
+  }
+
+  private def addDeclaration(variable: LocalVar): Unit = {
+    val declaration = LocalVarDecl(variable.name, variable.typ)()
+    addDeclaration(declaration)
   }
 
   private def addDeclaration(declaration: Declaration): Unit = declarations :+= declaration

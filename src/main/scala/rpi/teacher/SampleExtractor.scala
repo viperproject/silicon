@@ -105,7 +105,7 @@ class SampleExtractor(error: VerificationError, context: Context) {
       // update partial heap
       val fieldMap = partial.getOrElse(receiver, Map.empty)
       partial.updated(receiver, fieldMap.updated(field, value))
-    case (partial, _) => partial
+    case (partial, _) => ???
   }
 
   private def adapt(expression: Exp): Set[Exp] = {
