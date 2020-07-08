@@ -24,7 +24,7 @@ domain $Set[E] {
   axiom empty_set_cardinality {
     forall s: $Set[E] :: {Set_card(s)}
          (Set_card(s) == 0 <==> s == Set_empty())
-      && (Set_card(s) != 0 ==> exists e: E :: Set_in(e, s))
+      && (Set_card(s) != 0 ==> exists e: E :: {Set_in(e, s)} Set_in(e, s))
   }  
 
   axiom in_singleton_set {
