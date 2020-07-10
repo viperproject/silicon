@@ -1,71 +1,40 @@
 package rpi.teacher
 
-import java.beans.Expression
-
 import viper.silver.ast._
 
 class ProgramBuilder(context: Context) {
-  private var parameters: Seq[LocalVarDecl] = Seq.empty
 
-  private var declarations: Seq[Declaration] = Seq.empty
+  private var decls: Seq[Declaration] = Seq.empty
 
-  private var preconditions: Seq[Exp] = Seq.empty
+  private var stmts: Seq[Stmt] = Seq.empty
 
-  private var postconditions: Seq[Exp] = Seq.empty
+  def addInhale(exp: Exp): Unit = addStmt(Inhale(exp)())
 
-  private var statements: Seq[Stmt] = Seq.empty
+  def addExhale(exp: Exp): Unit = addStmt(Exhale(exp)())
 
-  def initialize(): Unit = {
-    context.initials.foreach { case (initial, variable) =>
-      addParameter(initial)
-      addStatement(LocalVarAssign(variable, initial)())
-    }
-  }
+  def addLabel(name: String): Unit = addStmt(Label(name, Seq.empty)())
 
-  def addPrecondition(expression: Exp): Unit = preconditions :+= expression
+  def addStmt(stmt: Stmt): Unit = stmts :+= stmt
 
-  def addPostconditions(expression: Exp): Unit = postconditions :+= expression
-
-  def addSnap(name: String, expression: Exp): Unit = {
-    val variable = LocalVar(name, expression.typ)()
-    addDeclaration(variable)
-    addStatement(LocalVarAssign(variable, expression)())
-  }
-
-  def addStatement(statement: Stmt): Unit = statement match {
-    case Seqn(stmts, _) => stmts.foreach(addStatement)
-    case _ => statements :+= statement
-  }
+  def addDecl(decl: Declaration): Unit = decls :+= decl
 
   def buildMethod(): Method = {
-    val formalArgs = context.method.formalArgs ++ parameters
-    val exhales = postconditions.map(Exhale(_)())
-    val body = Seqn(statements ++ exhales, context.declarations ++ declarations)()
-    context.method.copy(
-      formalArgs = formalArgs,
-      pres = preconditions.map(rename),
-      body = Some(body)
-    )(NoPosition, NoInfo, NoTrafos)
+    val name = "foo"
+    val args = context.args()
+    val returns = Seq.empty
+    val pres = Seq.empty
+    val posts = Seq.empty
+    val body = Some(Seqn(stmts, context.vars())())
+    Method(name, args, returns, pres, posts, body)()
   }
 
   def buildProgram(): Program = {
-    val method = buildMethod()
-    context.program.copy(methods = Seq(method))(NoPosition, NoInfo, NoTrafos)
-  }
-
-  private def addParameter(variable: LocalVar): Unit = {
-    val declaration = LocalVarDecl(variable.name, variable.typ)()
-    parameters :+= declaration
-  }
-
-  private def addDeclaration(variable: LocalVar): Unit = {
-    val declaration = LocalVarDecl(variable.name, variable.typ)()
-    addDeclaration(declaration)
-  }
-
-  private def addDeclaration(declaration: Declaration): Unit = declarations :+= declaration
-
-  private def rename(expression: Exp): Exp = expression.transform {
-    case variable: LocalVar => context.reverse(variable)
+    val domains = Seq.empty
+    val fields = context.fields()
+    val functions = Seq.empty
+    val predicates = Seq.empty
+    val methods = Seq(buildMethod())
+    val extensions = Seq.empty
+    Program(domains, fields, functions, predicates, methods, extensions)()
   }
 }

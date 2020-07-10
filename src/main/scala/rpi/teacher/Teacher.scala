@@ -1,15 +1,20 @@
 package rpi.teacher
 
-import rpi.util.Maps
 import rpi.{Inference, Sample}
 import viper.silicon.Silicon
 import viper.silver.ast._
 import viper.silver.verifier._
 
+object Teacher {
+  val PRE_STATE_LABEL = "pre"
+  val POST_STATE_LABEL = "post"
+}
+
 /**
   * The teacher providing the learner with positive, negative, and implication samples.
   */
 class Teacher(program: Program) {
+
   /**
     * The instance of the silicon verifier used to generate the samples.
     */
@@ -19,7 +24,8 @@ class Teacher(program: Program) {
     // pass arguments
     val arguments = Seq(
       "--z3Exe", Inference.z3,
-      "--counterexample", "native",
+      "--counterexample", "raw",
+      "--logLevel", "ALL",
       "--ignoreFile", "dummy.vpr")
     instance.parseCommandLine(arguments)
     // TODO: when do we stop the verifier?
@@ -43,15 +49,18 @@ class Teacher(program: Program) {
 
     // build program
     val builder = new ProgramBuilder(context)
-    builder.initialize()
-    builder.addPrecondition(hypothesis)
-    builder.addPostconditions(hypothesis)
-    builder.addSnap("s0", EqCmp(LocalVar("c", Ref)(), NullLit()())())
-    builder.addStatement(loop.loop.body)
-    builder.addSnap("s1", EqCmp(LocalVar("c", Ref)(), NullLit()())())
+    (context.vars() zip context.args()).foreach { case (v, a) =>
+      val lhs = LocalVar(v.name, v.typ)()
+      val rhs = LocalVar(a.name, a.typ)()
+      builder.addStmt(LocalVarAssign(lhs, rhs)())
+    }
+    builder.addInhale(hypothesis)
+    builder.addLabel(Teacher.PRE_STATE_LABEL)
+    loop.stmts().foreach(builder.addStmt)
+    builder.addLabel(Teacher.POST_STATE_LABEL)
+    builder.addExhale(hypothesis)
 
     val program = builder.buildProgram()
-
     println(program)
 
     // verify program
@@ -85,18 +94,16 @@ class Teacher(program: Program) {
 
 case class Loop(loop: While, context: Context) {
   def addDeclarations(declarations: Seq[Declaration]): Loop = copy(context = context.addDeclarations(declarations))
+
+  def stmts(): Seq[Stmt] = loop.body.ss
 }
 
 case class Context(program: Program, method: Method, declarations: Seq[Declaration]) {
-  lazy val variables = declarations
-    .collect { case declaration: LocalVarDecl => declaration }
-    .map { declaration => LocalVar(declaration.name, declaration.typ)() }
+  def args(): Seq[LocalVarDecl] = vars().map(v => LocalVarDecl(s"${v.name}_0", v.typ)())
 
-  lazy val initials = variables
-    .map { variable => LocalVar(s"${variable.name}_0", variable.typ)() -> variable }
-    .toMap
+  def vars(): Seq[LocalVarDecl] = declarations.collect { case v: LocalVarDecl => v }
 
-  lazy val reverse = Maps.reverse(initials)
+  def fields(): Seq[Field] = program.fields
 
   def addDeclarations(declarations: Seq[Declaration]): Context = copy(declarations = this.declarations ++ declarations)
 }

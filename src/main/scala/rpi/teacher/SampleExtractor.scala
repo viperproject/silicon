@@ -1,11 +1,11 @@
 package rpi.teacher
 
 import rpi.{Positive, Record, Sample}
-import rpi.util.Maps
-import viper.silicon.interfaces.SiliconNativeCounterexample
+import rpi.util.{Maps, UnionFind}
+import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.BasicChunk
-import viper.silicon.state.terms.Term
+import viper.silicon.state.terms.{BuiltinEquals, Term}
 import viper.silver.ast._
 import viper.silver.verifier.VerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
@@ -33,21 +33,36 @@ class SampleExtractor(error: VerificationError, context: Context) {
   private lazy val reason = error.reason
 
   /**
-    * The counter example.
+    * The verifier state from the silicon counter example
     */
-  private lazy val example = error.counterexample match {
-    case Some(example: SiliconNativeCounterexample) => example
-    case _ => ??? // wo do not expect anything other than native counter examples
+  private lazy val (conditions, state) = error.counterexample match {
+    case Some(SiliconRawCounterexample(cs, s, _)) => (cs, s)
+    case _ => ??? // wo do not expect anything other than raw counter examples
+  }
+
+  private val x = {
+    val uf = new UnionFind[Term]
+
+    conditions.foreach {
+      case BuiltinEquals(a, b) =>
+        uf.add(a)
+        uf.add(b)
+        uf.union(a, b)
+      case _ => // do nothing
+    }
+
+    println(conditions)
+    println(uf.toString)
+
+    uf
   }
 
   /**
     * The initial state.
     */
   private lazy val initialState = {
-    // TODO: Filter parameters.
-    val variables = context.initials.keys.map(_.name)
-    val store = variables.map(variable => variable -> example.store(variable)).toMap
-    val heap = buildHeapMap(example.oldHeap.get)
+    val store = buildStoreMap(context.args())
+    val heap = buildHeapMap(state.oldHeaps(Teacher.PRE_STATE_LABEL).values)
     State(store, heap)
   }
 
@@ -55,9 +70,9 @@ class SampleExtractor(error: VerificationError, context: Context) {
     * The current state.
     */
   private lazy val currentState = {
-    val variables = context.initials.values.map(_.name)
-    val store = variables.map(variable => variable -> example.store(variable)).toMap
-    val heap = buildHeapMap(example.heap)
+    val store = buildStoreMap(context.vars())
+    // TODO: fix
+    val heap = buildHeapMap(state.oldHeaps.getOrElse(Teacher.POST_STATE_LABEL, state.h).values)
     State(store, heap)
   }
 
@@ -96,12 +111,14 @@ class SampleExtractor(error: VerificationError, context: Context) {
     iterate(reachability, 2)
   }
 
+  private def buildStoreMap(vars: Seq[LocalVarDecl]): StoreMap = vars.map(v => v.name -> x.find(state.g(LocalVar(v.name, v.typ)()))).toMap
+
   private def buildHeapMap(chunks: Iterable[Chunk]): HeapMap = chunks.foldLeft[HeapMap](Map.empty) {
     case (partial, chunk: BasicChunk) =>
       // extract information from heap chunk
-      val receiver = chunk.args.head
+      val receiver = x.find(chunk.args.head)
       val field = chunk.id.name
-      val value = chunk.snap
+      val value = x.find(chunk.snap)
       // update partial heap
       val fieldMap = partial.getOrElse(receiver, Map.empty)
       partial.updated(receiver, fieldMap.updated(field, value))
@@ -110,8 +127,10 @@ class SampleExtractor(error: VerificationError, context: Context) {
 
   private def adapt(expression: Exp): Set[Exp] = {
     val term = currentState.evaluate(expression)
+    val initials = (context.args().map(_.name) zip context.vars()).toMap
     reachability(term).map { path =>
-      val variable = context.initials(LocalVar(path.head, Ref)())
+      val declaration = initials(path.head)
+      val variable = LocalVar(declaration.name, declaration.typ)()
       path.tail.foldLeft(variable: Exp)({
         case (receiver, field) => FieldAccess(receiver, Field(field, Ref)())()
       })
