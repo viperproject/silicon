@@ -12,6 +12,7 @@ import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms._
+import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
 
@@ -20,6 +21,8 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidateIfRetrying(s: State, v: Verifier): State
   def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap)
   def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap)
+  def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State
+  def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State
 }
 
 object stateConsolidator extends StateConsolidationRules with Immutable {
@@ -45,45 +48,53 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)
 
-    val heaps = s.h +: s.reserveHeaps
-    val (newFunctionRecorder, newHeaps) = heaps.foldLeft((s.functionRecorder, Nil: List[Heap])) { case ((fr, hs), h) =>
-      val (nonQuantifiedChunks, otherChunks) = partition(h)
+    val initialHeaps = s.h +: s.reserveHeaps
 
-      var continue = false
+    val (functionRecorderAfterHeapMerging, mergedHeaps) =
+      initialHeaps.foldLeft((s.functionRecorder, Nil: List[Heap])) { case ((fr, hs), h) =>
+        val (nonQuantifiedChunks, otherChunks) = partition(h)
 
-      var mergedChunks: Seq[NonQuantifiedChunk] = Nil
-      var destChunks: Seq[NonQuantifiedChunk] = Nil
-      var newChunks: Seq[NonQuantifiedChunk] = nonQuantifiedChunks
-      var functionRecorder: FunctionRecorder = fr
+        var continue = false
 
-      do {
-        val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
+        var mergedChunks: Seq[NonQuantifiedChunk] = Nil
+        var destChunks: Seq[NonQuantifiedChunk] = Nil
+        var newChunks: Seq[NonQuantifiedChunk] = nonQuantifiedChunks
+        var functionRecorder: FunctionRecorder = fr
 
-        snapEqs foreach v.decider.assume
+        do {
+          val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
 
-        functionRecorder = _functionRecorder
-        mergedChunks = _mergedChunks
-        destChunks = Nil
-        newChunks = mergedChunks
-        continue = snapEqs.nonEmpty
-      } while (continue)
+          snapEqs foreach v.decider.assume
 
-      val allChunks = mergedChunks ++ otherChunks
-      val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
+          functionRecorder = _functionRecorder
+          mergedChunks = _mergedChunks
+          destChunks = Nil
+          newChunks = mergedChunks
+          continue = snapEqs.nonEmpty
+        } while (continue)
 
-      mergedChunks foreach { ch =>
-        val resource = Resources.resourceDescriptions(ch.resourceID)
-        v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+        val allChunks = mergedChunks ++ otherChunks
+        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
+
+        mergedChunks foreach { ch =>
+          val resource = Resources.resourceDescriptions(ch.resourceID)
+          v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+        }
+
+        Resources.resourceDescriptions foreach { case (id, desc) =>
+          v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
+        }
+
+        (functionRecorder, hs :+ Heap(allChunks))
       }
 
-      Resources.resourceDescriptions foreach { case (id, desc) =>
-        v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
-      }
+    val s1 = s.copy(functionRecorder = functionRecorderAfterHeapMerging,
+                    h = mergedHeaps.head,
+                    reserveHeaps = mergedHeaps.tail)
 
-      (functionRecorder, hs :+ Heap(allChunks))
-    }
+    val s2 = assumeUpperPermissionBoundForQPFields(s1, v)
 
-    s.copy(functionRecorder = newFunctionRecorder, h = newHeaps.head, reserveHeaps = newHeaps.tail)
+    s2
   }
 
   def consolidateIfRetrying(s: State, v: Verifier): State =
@@ -179,6 +190,36 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
          */
         val t3 = v.decider.fresh(t1.sort)
         (fr.recordFreshSnapshot(t3), t3, And(Implies(b1, t3 === t1), Implies(b2, t3 === t2)))
+    }
+  }
+
+  def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State =
+    assumeUpperPermissionBoundForQPFields(s, s.h +: s.reserveHeaps, v)
+
+  def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State = {
+    heaps.foldLeft(s) { case (si, heap) =>
+      val chunks: Seq[QuantifiedFieldChunk] =
+        heap.values.collect({ case ch: QuantifiedFieldChunk => ch })(collection.breakOut)
+
+      val receiver = `?r`
+      val args = Seq(receiver)
+      val chunksPerField: Map[String, Seq[QuantifiedFieldChunk]] = chunks.groupBy(_.id.name)
+
+      /* Iterate over all fields f and effectively assume "forall x :: {x.f} perm(x.f) <= write"
+         for each field. Nearly identical to what the evaluator does for perm(x.f) if f is
+         a QP field */
+      chunksPerField.foldLeft(si) { case (si, (fieldName, fieldChunks)) =>
+        val field = Verifier.program.findField(fieldName)
+        val (sn, smDef, pmDef) =
+          quantifiedChunkSupporter.heapSummarisingMaps(si, field, args, fieldChunks, v)
+        val trigger = FieldTrigger(field.name, smDef.sm, receiver)
+        val currentPermAmount = PermLookup(field.name, pmDef.pm, receiver)
+        v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
+        v.decider.assume(
+          Forall(receiver, PermAtMost(currentPermAmount, FullPerm()), Trigger(trigger), "qp-fld-prm-bnd"))
+
+        sn
+      }
     }
   }
 
