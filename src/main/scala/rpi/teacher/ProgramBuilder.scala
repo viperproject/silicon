@@ -18,6 +18,17 @@ class ProgramBuilder(context: Context) {
 
   def addDecl(decl: Declaration): Unit = decls :+= decl
 
+  def saveValue(exp: Exp, name: String): Unit = {
+    val variable = LocalVar(name, Bool)()
+    val declaration = LocalVarDecl(name, Bool)()
+
+    addDecl(declaration)
+
+    val thn = Seqn(LocalVarAssign(variable, BoolLit(true)())() :: Nil, Seq.empty)()
+    val els = Seqn(LocalVarAssign(variable, BoolLit(false)())() :: Nil, Seq.empty)()
+    addStmt(If(exp, thn, els)())
+  }
+
   def buildMethod(): Method = {
     val name = "foo"
     val args = context.args()

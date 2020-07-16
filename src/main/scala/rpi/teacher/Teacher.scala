@@ -34,6 +34,8 @@ class Teacher(program: Program) {
     instance
   }
 
+  // COLLECT LOOPS --------------------
+
   /**
     * For now, we assume that there is only one loop. At some point, we will lift this restriction.
     */
@@ -43,6 +45,42 @@ class Teacher(program: Program) {
     loops.head
   }
 
+  private def collectLoops(method: Method): Seq[Loop] = {
+    // helper method
+    def collect(node: Node): Seq[Loop] = node match {
+      case Seqn(stmts, decls) => stmts
+        .flatMap(collect)
+        .map(_.addDeclarations(decls))
+      case loop: While => Seq(Loop(loop, Context(program, method, Seq.empty, atoms)))
+      case _ => Seq.empty
+    }
+
+    // collect loops contained in body of method
+    method.body match {
+      case Some(body) => collect(body)
+      case None => Seq.empty
+    }
+  }
+
+  // COLLECT ATOMIC PREDICATES --------------
+
+  private lazy val atoms: Seq[Exp] = program.methods.flatMap(collectAtomic)
+
+  println(s"atomic predicates: $atoms")
+
+  private def collectAtomic(method: Method): Seq[Exp] = {
+    // TODO: Refine
+    def collect(node: Node): Seq[Exp] = node match {
+      case Seqn(stmts, _) => stmts.flatMap(collect).distinct
+      case While(cond, _, body) => collect(body) :+ cond
+      case _ => Seq.empty
+    }
+
+    method.body match {
+      case Some(body) => collect(body)
+      case None => Seq.empty
+    }
+  }
 
   def check(hypothesis: Exp): Seq[Sample] = {
     val context = loop.context
@@ -55,6 +93,8 @@ class Teacher(program: Program) {
       builder.addStmt(LocalVarAssign(lhs, rhs)())
     }
     builder.addInhale(hypothesis)
+    builder.addInhale(loop.loop.cond)
+    atoms.zipWithIndex.foreach { case (exp, i) => builder.saveValue(atoms.head, s"p$i") }
     builder.addLabel(Teacher.PRE_STATE_LABEL)
     loop.stmts().foreach(builder.addStmt)
     builder.addLabel(Teacher.POST_STATE_LABEL)
@@ -74,22 +114,6 @@ class Teacher(program: Program) {
     }
   }
 
-  private def collectLoops(method: Method): Seq[Loop] = {
-    // helper method
-    def collect(node: Node): Seq[Loop] = node match {
-      case Seqn(statements, declarations) => statements
-        .flatMap(collect)
-        .map(_.addDeclarations(declarations))
-      case loop: While => Seq(Loop(loop, Context(program, method, Seq.empty)))
-      case _ => Seq.empty
-    }
-
-    // collect loops contained in body of method
-    method.body match {
-      case Some(body) => collect(body)
-      case None => Seq.empty
-    }
-  }
 }
 
 case class Loop(loop: While, context: Context) {
@@ -98,7 +122,7 @@ case class Loop(loop: While, context: Context) {
   def stmts(): Seq[Stmt] = loop.body.ss
 }
 
-case class Context(program: Program, method: Method, declarations: Seq[Declaration]) {
+case class Context(program: Program, method: Method, declarations: Seq[Declaration], atoms: Seq[Exp]) {
   def args(): Seq[LocalVarDecl] = vars().map(v => LocalVarDecl(s"${v.name}_0", v.typ)())
 
   def vars(): Seq[LocalVarDecl] = declarations.collect { case v: LocalVarDecl => v }

@@ -5,7 +5,7 @@ import rpi.util.{Maps, UnionFind}
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.BasicChunk
-import viper.silicon.state.terms.{BuiltinEquals, Term}
+import viper.silicon.state.terms.{BuiltinEquals, False, Term, True}
 import viper.silver.ast._
 import viper.silver.verifier.VerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
@@ -40,7 +40,7 @@ class SampleExtractor(error: VerificationError, context: Context) {
     case _ => ??? // wo do not expect anything other than raw counter examples
   }
 
-  private val x = {
+  private val unify = {
     val uf = new UnionFind[Term]
 
     conditions.foreach {
@@ -50,10 +50,6 @@ class SampleExtractor(error: VerificationError, context: Context) {
         uf.union(a, b)
       case _ => // do nothing
     }
-
-    println(conditions)
-    println(uf.toString)
-
     uf
   }
 
@@ -111,14 +107,14 @@ class SampleExtractor(error: VerificationError, context: Context) {
     iterate(reachability, 2)
   }
 
-  private def buildStoreMap(vars: Seq[LocalVarDecl]): StoreMap = vars.map(v => v.name -> x.find(state.g(LocalVar(v.name, v.typ)()))).toMap
+  private def buildStoreMap(vars: Seq[LocalVarDecl]): StoreMap = vars.map(v => v.name -> unify.find(state.g(LocalVar(v.name, v.typ)()))).toMap
 
   private def buildHeapMap(chunks: Iterable[Chunk]): HeapMap = chunks.foldLeft[HeapMap](Map.empty) {
     case (partial, chunk: BasicChunk) =>
       // extract information from heap chunk
-      val receiver = x.find(chunk.args.head)
+      val receiver = unify.find(chunk.args.head)
       val field = chunk.id.name
-      val value = x.find(chunk.snap)
+      val value = unify.find(chunk.snap)
       // update partial heap
       val fieldMap = partial.getOrElse(receiver, Map.empty)
       partial.updated(receiver, fieldMap.updated(field, value))
@@ -137,14 +133,23 @@ class SampleExtractor(error: VerificationError, context: Context) {
     }
   }
 
+  def extractVector(): Seq[Boolean] = context.atoms.indices.map { i =>
+    state.g(LocalVar(s"p$i", Bool)()) match {
+      case True() => true
+      case False() => false
+    }
+  }
+
   def extract(): Seq[Sample] = reason match {
     case InsufficientPermission(FieldAccess(receiver, field)) =>
       println(initialState)
       println(currentState)
       val adapted = adapt(receiver)
       assert(adapted.size == 1)
+      val vector = extractVector()
+      println(vector)
       val access = FieldAccess(adapted.head, field)()
-      Seq(Positive(Record(access)))
+      Seq(Positive(Record(vector, access)))
   }
 
 

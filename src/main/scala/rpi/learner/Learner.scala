@@ -43,9 +43,9 @@ class Learner {
       else sequence.tail.map((sequence.head, _)) ++ pairs(sequence.tail)
 
     val accesses = samples.flatMap {
-      case Positive(Record(access)) => Seq(access)
-      case Negative(Record(access)) => Seq(access)
-      case Implication(Record(left), Record(right)) => Seq(left, right)
+      case Positive(Record(_, access)) => Seq(access)
+      case Negative(Record(_, access)) => Seq(access)
+      case Implication(Record(_, left), Record(_, right)) => Seq(left, right)
     }
 
     val map = accesses

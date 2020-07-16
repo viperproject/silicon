@@ -4,7 +4,7 @@ import viper.silver.ast.FieldAccess
 
 sealed trait Sample
 
-case class Record(access: FieldAccess)
+case class Record(vector: Seq[Boolean], access: FieldAccess)
 
 case class Positive(record: Record) extends Sample
 
