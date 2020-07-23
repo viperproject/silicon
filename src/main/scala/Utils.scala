@@ -6,6 +6,7 @@
 
 package viper.silicon
 
+import scala.annotation.implicitNotFound
 import viper.silver
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.{VerificationError, errors}
@@ -91,15 +92,17 @@ package object utils {
 
   trait MustBeReinitializedAfterReset { this: StatefulComponent => }
 
-  /* http://www.tikalk.com/java/blog/avoiding-nothing */
+  /* Used version from https://github.com/gatling/gatling/blob/master/gatling-commons/src/main/scala/io/gatling/commons/NotNothing.scala.
+   * For alternatives, see e.g. http://www.tikalk.com/java/blog/avoiding-nothing
+   * and https://riptutorial.com/scala/example/21134/preventing-inferring-nothing
+   */
   object notNothing {
-    sealed trait NotNothing[-T]
+    @implicitNotFound("Type Nothing was provided for type argument ${T}, but is not allowed. If the argument was inferred, try providing it explicitly.")
+    trait NotNothing[T]
 
     object NotNothing {
-      implicit object notNothing extends NotNothing[Any]
-
-      implicit object `\n The error is because the type parameter was resolved to Nothing`
-          extends NotNothing[Nothing]
+      private val Evidence: NotNothing[Any] = new Object with NotNothing[Any]
+      implicit def notNothingEv[T](implicit n: T =:= T): NotNothing[T] = Evidence.asInstanceOf[NotNothing[T]]
     }
   }
 
@@ -145,13 +148,17 @@ package object utils {
       * @param forall The quantifier to compute triggers for.
       * @return A quantifier that is equal to the input quantifier, except potentially for triggers.
       */
-    def autoTrigger(forall: silver.ast.Forall): silver.ast.Forall = {
-      val defaultTriggerForall = forall.autoTrigger
+    def autoTrigger[T <: silver.ast.QuantifiedExp](q: T, withAutoTrigger: T): T = {
+      val triggers = withAutoTrigger match {
+        case f: silver.ast.Forall => f.triggers
+        case e: silver.ast.Exists => e.triggers
+        case _ => sys.error(s"Unexpected expression $q")
+      }
 
       val autoTriggeredForall =
-        if (defaultTriggerForall.triggers.nonEmpty)
+        if (triggers.nonEmpty)
           /* Standard trigger generation code succeeded */
-          defaultTriggerForall
+          withAutoTrigger
         else {
           /* Standard trigger generation code failed.
            * Let's try generating (certain) invalid triggers, which will then be rewritten
@@ -160,7 +167,7 @@ package object utils {
             case _: silver.ast.Add | _: silver.ast.Sub => false
           }
 
-          val optTriggerSet = silver.ast.utility.Expressions.generateTriggerSet(forall)
+          val optTriggerSet = silver.ast.utility.Expressions.generateTriggerSet(q)
 
           silver.ast.utility.Triggers.TriggerGeneration.setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
@@ -168,17 +175,21 @@ package object utils {
             optTriggerSet match {
               case Some((variables, triggerSets)) =>
                 /* Invalid triggers could be generated, now try to rewrite them */
-                val intermediateForall = silver.ast.Forall(variables, Nil, forall.exp)(forall.pos, forall.info)
-                silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateForall, triggerSets).getOrElse(forall)
+                val intermediateQ = q match {
+                  case f: silver.ast.Forall => silver.ast.Forall(variables, Nil, q.exp)(q.pos, q.info)
+                  case e: silver.ast.Exists => silver.ast.Exists(variables, Nil, q.exp)(q.pos, q.info)
+                  case _=> sys.error(s"Unexpected expression ${q}")
+                }
+                silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateQ, triggerSets).getOrElse(q)
               case None =>
                 /* Invalid triggers could not be generated -> give up */
-                forall
+                q
             }
 
           advancedTriggerForall
         }
 
-      autoTriggeredForall
+      autoTriggeredForall.asInstanceOf[T]
     }
 
     def sourceLine(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {
@@ -206,6 +217,14 @@ package object utils {
         case m: silver.ast.MagicWand => m.toString()
         case m @ silver.ast.MagicWandOp => s"${m.op}@${sourceLineColumn(m)}"
       }
+    }
+
+    /** An embedding of a Silicon type in Viper's type system.
+      * The embedded sort must be concrete (ground), i.e. free of type variables.
+      */
+    case class ViperEmbedding(embeddedSort: Sort) extends silver.ast.ExtensionType {
+      def substitute(typVarsMap: Predef.Map[silver.ast.TypeVar, silver.ast.Type]): silver.ast.Type = this
+      def isConcrete: Boolean = true
     }
   }
 

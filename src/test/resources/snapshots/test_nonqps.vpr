@@ -1,0 +1,144 @@
+field f: Int
+
+predicate pair(x: Ref, y: Ref) {
+  acc(x.f) && acc(y.f)
+}
+
+define swap_pair_values(x, y) {
+  unfold pair(x, y)
+  var tmp: Int := x.f
+  x.f := y.f
+  y.f := tmp
+  fold pair(x, y)
+}
+
+function addA(v: Int, i: Int): Int
+{ i + v }
+
+function addB(x: Ref, y: Ref, i: Int): Int
+  requires acc(x.f) && acc(y.f)
+{ i + x.f + y.f }
+
+function addC(x: Ref, v: Int, i: Int): Int
+  requires acc(x.f)
+{ x.f + v + i }
+
+
+method test01a(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {i in xs} i in xs ==> 0 < addA(unfolding pair(x, y) in x.f, i)
+  assert forall i: Int :: {i in xs} i in xs ==> 0 < addA(i, unfolding pair(x, y) in x.f)
+}
+
+method test01b(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {i in xs} i in xs ==> 0 < addA(unfolding pair(x, y) in x.f, i)
+  swap_pair_values(x, y)
+  assert forall i: Int :: {i in xs} i in xs ==> 0 < addA(i, unfolding pair(x, y) in y.f)
+}
+
+
+method test02a(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {addB(x, y, i)} i in xs ==> unfolding pair(x, y) in 0 < addB(x, y, i)
+  assert forall i: Int :: {addB(x, y, i)} i in xs ==> unfolding pair(x, y) in 0 < addB(x, y, i)
+}
+
+method test02b(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {addB(x, y, i)}{i in xs}
+    i in xs ==> unfolding pair(x, y) in 0 < addB(x, y, i)
+
+  swap_pair_values(x, y)
+
+  assert forall i: Int :: {addB(x, y, i)}
+    i in xs ==> unfolding pair(x, y) in 0 < addB(x, y, i)
+}
+
+method test02c(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {addB(x, y, i)}
+    i in xs ==> unfolding pair(x, y) in 0 < addB(x, y, i)
+
+  swap_pair_values(x, y)
+
+  // Heap-dep. trigger's snapshot changed, but function application addB(x, y, i)'s value is
+  // equivalent to above application. Should therefore hold.
+  assert forall i: Int :: {addB(x, y, i)}
+    i in xs ==> unfolding pair(x, y) in 0 < addB(x, y, i)
+}
+
+
+method test03a(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {addC(x, y.f, i)} i in xs ==> unfolding pair(x, y) in 0 < addC(x, y.f, i)
+  assert forall i: Int :: {addC(x, y.f, i)} i in xs ==> unfolding pair(x, y) in 0 < addC(x, y.f, i)
+}
+
+method test03b(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {addC(x, y.f, i)}{i in xs}
+    i in xs ==> unfolding pair(x, y) in 0 < addC(x, y.f, i)
+
+  swap_pair_values(x, y)
+
+  assert forall i: Int :: {addC(x, y.f, i)}
+    i in xs ==> unfolding pair(x, y) in 0 < addC(x, y.f, i)
+}
+
+method test03c(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {addC(x, y.f, i)}
+    i in xs ==> unfolding pair(x, y) in 0 < addC(x, y.f, i)
+
+  swap_pair_values(x, y)
+
+  // Heap-dep. trigger's snapshot changed, but function application addB(x, y, i)'s value is
+  // equivalent to above application. Should therefore hold.
+  assert forall i: Int :: {addC(x, y.f, i)}
+    i in xs ==> unfolding pair(x, y) in 0 < addC(x, y.f, i)
+}
+
+
+method test04a(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {addC(x, y.f, i)} i in xs ==> unfolding pair(x, y) in 0 < addC(x, y.f, i)
+  assume forall i: Int :: {addC(y, x.f, i)} i in xs ==> unfolding pair(x, y) in 0 < addC(y, x.f, i)
+}
+
+method test04b(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {addC(x, y.f, i)} i in xs ==> unfolding pair(x, y) in 0 < addC(x, y.f, i)
+  swap_pair_values(x, y)
+  // Heap-dep. trigger's snapshot changed, but function application addB(x, y, i)'s value is
+  // equivalent to above application. Should therefore hold.
+  assume forall i: Int :: {addC(y, x.f, i)} i in xs ==> unfolding pair(x, y) in 0 < addC(y, x.f, i)
+}
+
+
+method test05a(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {addC(x, y.f, i)} i in xs ==> unfolding pair(x, y) in 0 < addC(x, y.f, i)
+  assume forall i: Int :: {addC(y, x.f, i)} i in xs ==> unfolding pair(x, y) in 0 < addC(y, i, x.f)
+}
+
+method test05b(x: Ref, y: Ref, xs: Seq[Int]) {
+  inhale pair(x, y)
+
+  assume forall i: Int :: {addC(x, y.f, i)} i in xs ==> unfolding pair(x, y) in 0 < addC(x, y.f, i)
+  swap_pair_values(x, y)
+  // Heap-dep. trigger's snapshot changed, but function application addB(x, y, i)'s value is
+  // equivalent to above application. Should therefore hold.
+  assume forall i: Int :: {addC(y, i, x.f)} i in xs ==> unfolding pair(x, y) in 0 < addC(y, i, x.f)
+}

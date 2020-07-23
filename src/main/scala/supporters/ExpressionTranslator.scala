@@ -72,7 +72,7 @@ trait ExpressionTranslator {
              */
             (forall, Forall, forall.triggers)
           case exists: ast.Exists =>
-            (exists, Exists, Seq())
+            (exists, Exists, exists.triggers)
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
 

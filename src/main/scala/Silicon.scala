@@ -6,6 +6,7 @@
 
 package viper.silicon
 
+import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
 
@@ -23,20 +24,27 @@ import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.verifier.DefaultMasterVerifier
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
+import viper.silver.plugin.PluginAwareReporter
 
 object Silicon {
   val name = BuildInfo.projectName
-  val buildRevision = BuildInfo.hg._1
-  val buildBranch = BuildInfo.hg._2
-  val buildVersion = s"$buildRevision${if (buildBranch == "default") "" else s"@$buildBranch"}"
-  val version = s"${BuildInfo.projectVersion} ($buildVersion)"
+  
+  val buildRevision = BuildInfo.gitRevision
+  val buildBranch = BuildInfo.gitBranch
+
+  val buildVersion: Option[String] =
+    if (buildRevision.isEmpty && buildBranch.isEmpty) None
+    else if (buildBranch == "master") Some(buildRevision)
+    else Some(s"$buildRevision@$buildBranch")
+
+  val version: String =
+    s"${BuildInfo.projectVersion}${buildVersion.fold("")(v => s" ($v)")}"
+
   val copyright = "(c) Copyright ETH Zurich 2012 - 2019"
   val z3ExeEnvironmentVariable = "Z3_EXE"
   val z3MinVersion = Version("4.5.0")
   val z3MaxVersion: Option[Version] = None // Some(Version("4.5.0")) /* X.Y.Z if that is the *last supported* version */
   val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "https://github.com/Z3Prover/z3"))
-
-  val hideInternalOptions = false
 
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
     configMap.flatMap {
@@ -54,30 +62,32 @@ object Silicon {
         }
     }.toSeq
 
+  val dummyInputFilename = "dummy-file-to-prevent-cli-parser-from-complaining-about-missing-file-name.silver"
+
   def fromPartialCommandLineArguments(args: Seq[String],
                                       reporter: Reporter,
                                       debugInfo: Seq[(String, Any)] = Nil)
                                      : Silicon = {
 
-    val silicon = new Silicon(reporter, debugInfo)
+    val silicon = new Silicon(PluginAwareReporter(reporter), debugInfo)
 
-    silicon.parseCommandLine(args :+ "dummy-file-to-prevent-cli-parser-from-complaining-about-missing-file-name.silver")
+    silicon.parseCommandLine(args :+ dummyInputFilename)
 
     silicon
   }
 }
 
-class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] = Nil)
+class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(String, Any)] = Nil)
     extends SilVerifier
        with LazyLogging {
 
-  def this(debugInfo: Seq[(String, Any)]) = this(StdIOReporter(), debugInfo)
+  def this(debugInfo: Seq[(String, Any)]) = this(PluginAwareReporter(StdIOReporter()), debugInfo)
 
-  def this() = this(StdIOReporter(), Nil)
+  def this() = this(PluginAwareReporter(StdIOReporter()), Nil)
 
   val name: String = Silicon.name
   val version = Silicon.version
-  val buildVersion = Silicon.buildVersion
+  val buildVersion = Silicon.buildVersion.getOrElse("<unknown-build-version>")
   val copyright = Silicon.copyright
   val dependencies = Silicon.dependencies
 
@@ -158,15 +168,18 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     lifetimeState = LifetimeState.Running
 
-    //bookkeeping for Viper IVE
-//    verifier.bookkeeper.reportInitialProgress(program)
-
     logger.debug(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
-    config.inputFile = program.pos match {
-      case sp: ast.AbstractSourcePosition => Some(sp.file)
-      case _ => None
-    }
+    /* If available, save the filename corresponding to the program under verification in Verifier.inputFile.
+     * See also src/test/scala/SiliconTests.scala, where the analogous happens if Silicon is executed while
+     * running the test suite.
+     *
+     * TODO: Figure out what happens when ViperServer is used. */
+    config.file.foreach(filename => {
+      if (filename != Silicon.dummyInputFilename) {
+        viper.silicon.verifier.Verifier.inputFile = Some(Paths.get(filename))
+      }
+    })
 
     // TODO: Check consistency of cfgs.
     val consistencyErrors = utils.consistency.check(program)
@@ -230,8 +243,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
                 case _ => (-1, -1)
              })
 
-    if (config.showStatistics.isDefined) {
-      sys.error("Implementation missing")
+//    if (config.showStatistics.isDefined) {
 //      val proverStats = verifier.decider.statistics()
 //
 //      verifier.bookkeeper.proverStatistics = proverStats
@@ -250,7 +262,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 //
 //        case _ => /* Should never be reached if the arguments to showStatistics have been validated */
 //      }
-    }
+//    }
 
     failures foreach (f => logFailure(f, s => logger.debug(s)))
     logger.debug("Verification finished in %s with %s error(s)".format(
@@ -281,8 +293,12 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   }
 }
 
-class SiliconFrontend(override val reporter: Reporter,
-                      override implicit val logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) extends SilFrontend {
+class SiliconFrontend(override val reporter: PluginAwareReporter,
+                      override implicit val logger: Logger) extends SilFrontend {
+
+  def this(reporter: Reporter, logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) =
+    this(PluginAwareReporter(reporter), logger)
+
   protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {

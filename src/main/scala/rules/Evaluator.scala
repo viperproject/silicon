@@ -8,8 +8,8 @@ package viper.silicon.rules
 
 import viper.silver.ast
 import viper.silver.ast.{Info, PredicateAccess}
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors.PreconditionInAppFalse
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
+import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
@@ -211,7 +211,7 @@ object evaluator extends EvaluationRules with Immutable {
               } else {
                 v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                   case false =>
-                    Failure(pve dueTo InsufficientPermission(fa))
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
@@ -240,7 +240,7 @@ object evaluator extends EvaluationRules with Immutable {
                 }
               v1.decider.assert(permCheck) {
                 case false =>
-                  Failure(pve dueTo InsufficientPermission(fa))
+                  createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
                 case true =>
                   val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
                   val fr2 =
@@ -252,7 +252,7 @@ object evaluator extends EvaluationRules with Immutable {
               }})
 
       case fa: ast.FieldAccess =>
-        evalLocationAccess(s, fa, pve, v)((s1, name, tArgs, v1) => {
+        evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
           val resource = fa.res(Verifier.program)
           chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
@@ -314,22 +314,16 @@ object evaluator extends EvaluationRules with Immutable {
               (s3, v3) => eval(s3, e1, pve, v3)(QB),
               (s3, v3) => eval(s3, e2, pve, v3)(QB))
           )(entries => {
-            /* TODO: The next few lines could be made safer if branch(...) took orElse-continuations
-             *       that are executed if a branch is dead */
-            val (s2, t1, t2) = entries match {
-              case Seq(entry) if entry.pathConditions.branchConditions.head == t0 =>
-                val t2 = v1.decider.appliedFresh("dead_else", v1.symbolConverter.toSort(e2.typ), s1.relevantQuantifiedVariables)
-                val fr1 = entry.s.functionRecorder.recordPathSymbol(t2.applicable.asInstanceOf[Function]) // TODO: Avoid cast
-                (entry.s.copy(functionRecorder = fr1), entry.data, t2)
-              case Seq(entry) if entry.pathConditions.branchConditions.head == Not(t0) =>
-                val t1 = v1.decider.appliedFresh("dead_then", v1.symbolConverter.toSort(e1.typ), s1.relevantQuantifiedVariables)
-                val fr1 = entry.s.functionRecorder.recordPathSymbol(t1.applicable.asInstanceOf[Function]) // TODO: Avoid cast
-                (entry.s.copy(functionRecorder = fr1), t1, entry.data)
-              case Seq(entry1, entry2) =>
-                (entry1.s.merge(entry2.s), entry1.data, entry2.data)
+            /* TODO: If branch(...) took orElse-continuations that are executed if a branch is dead, then then
+                comparisons with t0/Not(t0) wouldn't be necessary. */
+            val (s2, result) = entries match {
+              case Seq(entry) => // One branch is dead
+                (entry.s, entry.data)
+              case Seq(entry1, entry2) => // Both branches are alive
+                (entry1.s.merge(entry2.s), Ite(t0, entry1.data, entry2.data))
               case _ =>
                 sys.error(s"Unexpected join data entries: $entries")}
-            (s2, Ite(t0, t1, t2))
+            (s2, result)
           })(Q))
 
       /* Integers */
@@ -426,7 +420,7 @@ object evaluator extends EvaluationRules with Immutable {
             case _: ast.MagicWand => s1.qpMagicWands.contains(identifier.asInstanceOf[MagicWandIdentifier])
             case field: ast.Field => s1.qpFields.contains(field)
             case pred: ast.Predicate => s1.qpPredicates.contains(pred)}
-          val (perm, smCache1, pmCache1) =
+          val (s2, currentPermAmount) =
             if (usesQPChunks) {
               res match {
                 case wand: ast.MagicWand =>
@@ -434,44 +428,35 @@ object evaluator extends EvaluationRules with Immutable {
                     quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, identifier)
                   val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
                   val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
-                  val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(
-                      s1, wand, formalVars, relevantChunks, v1)
-                  v1.decider.assume(PredicateTrigger(identifier.toString, smDef1.sm, args))
-                  val (pmDef1, pmCache1) =
-                    quantifiedChunkSupporter.summarisingPermissionMap(s1, wand, formalVars, relevantChunks, v1)
-                  (PredicatePermLookup(identifier.toString, pmDef1.pm, args), smCache1, pmCache1)
+                  val (s2, smDef, pmDef) =
+                    quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
+                  v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args))
+                  (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
 
                 case field: ast.Field =>
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, identifier)
-                  val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(
-                      s1, field, Seq(`?r`), relevantChunks, v1)
-                  v1.decider.assume(FieldTrigger(field.name, smDef1.sm, args.head))
-                  val (pmDef1, pmCache1) =
-                    quantifiedChunkSupporter.summarisingPermissionMap(s1, field, Seq(`?r`), relevantChunks, v1)
-                  val perm = PermLookup(field.name, pmDef1.pm, args.head)
+                  val (s2, smDef, pmDef) =
+                    quantifiedChunkSupporter.heapSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
+                  v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head))
+                  val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
-                  v1.decider.prover.comment(perm.toString)
-                  v1.decider.assume(PermAtMost(perm, FullPerm()))
-                  (perm, smCache1, pmCache1)
+                  v1.decider.assume(PermAtMost(currentPermAmount, FullPerm()))
+                  (s2, currentPermAmount)
 
                 case predicate: ast.Predicate =>
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h, identifier)
-                  val (smDef1, smCache1) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                  val (s2, smDef, pmDef) =
+                    quantifiedChunkSupporter.heapSummarisingMaps(
                       s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
-                  val trigger = PredicateTrigger(predicate.name, smDef1.sm, args)
+                  val trigger = PredicateTrigger(predicate.name, smDef.sm, args)
                   v1.decider.assume(trigger)
-                  val (pmDef1, pmCache1) =
-                    quantifiedChunkSupporter.summarisingPermissionMap(s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
-                  (PredicatePermLookup(identifier.toString, pmDef1.pm, args), smCache1, pmCache1)
+                  (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
               }
             } else {
               val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
-              val perm =
+              val currentPermAmount =
                 chs.foldLeft(NoPerm(): Term)((q, ch) => {
                   val argsPairWiseEqual = And(args.zip(ch.args).map { case (a1, a2) => a1 === a2 })
                   PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm()))
@@ -480,12 +465,10 @@ object evaluator extends EvaluationRules with Immutable {
 //              v1.decider.prover.comment(s"perm($locacc)  ~~>  assume upper permission bound")
 //              v1.decider.prover.comment(perm.toString)
 //              v1.decider.assume(PermAtMost(perm, FullPerm()))
-              (perm, s.smCache, s.pmCache)
+              (s, currentPermAmount)
             }
 
-          val s2 = s1.copy(smCache = smCache1, pmCache = pmCache1)
-
-          Q(s2, perm, v1)})
+          Q(s2, currentPermAmount, v1)})
 
       case ast.ForPerm(vars, resourceAccess, body) =>
 
@@ -599,7 +582,7 @@ object evaluator extends EvaluationRules with Immutable {
              */
             (forall, Forall, forall.triggers)
           case exists: ast.Exists =>
-            (exists, Exists, Seq())
+            (exists, Exists, exists.triggers)
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
 
@@ -607,15 +590,18 @@ object evaluator extends EvaluationRules with Immutable {
         val name = s"prog.l${viper.silicon.utils.ast.sourceLine(sourceQuant)}"
         evalQuantified(s, qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v){
           case (s1, tVars, _, Seq(tBody), tTriggers, (tAuxGlobal, tAux), v1) =>
+            val tAuxHeapIndep = tAux.flatMap(v.quantifierSupporter.makeTriggersHeapIndependent(_, v1.decider.fresh))
 
             val tlqGlobal = tAuxGlobal flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
             val tlq = tAux flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
 
-            v1.decider.prover.comment("Nested auxiliary terms: globals")
+            v1.decider.prover.comment("Nested auxiliary terms: globals (aux)")
             v1.decider.assume(tAuxGlobal)
+            v1.decider.prover.comment("Nested auxiliary terms: globals (tlq)")
             v1.decider.assume(tlqGlobal)
-            v1.decider.prover.comment("Nested auxiliary terms: non-globals")
-            v1.decider.assume(tAux)
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals (aux)")
+            v1.decider.assume(tAuxHeapIndep/*tAux*/)
+            v1.decider.prover.comment("Nested auxiliary terms: non-globals (tlq)")
             v1.decider.assume(tlq)
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
@@ -658,9 +644,13 @@ object evaluator extends EvaluationRules with Immutable {
              */
             val fargs = func.formalArgs.map(_.localVar)
             val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+            val exampleTrafo = CounterexampleTransformer({
+              case ce: SiliconCounterexample => ce.withStore(s2.g)
+              case ce => ce
+            })
             val pvePre =
-              PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
-                reasonOffendingNode.replace(formalsToActuals))
+              ErrorWrapperWithExampleTransformer(PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
+                reasonOffendingNode.replace(formalsToActuals)), exampleTrafo)
             val s3 = s2.copy(g = Store(fargs.zip(tArgs)),
                              recordVisited = true,
                              functionRecorder = s2.functionRecorder.changeDepthBy(+1),
@@ -739,18 +729,21 @@ object evaluator extends EvaluationRules with Immutable {
                          * (see 'predicateTriggers' in FunctionData.scala).
                          */
                       v4.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
-//                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val body = pa.predicateBody(Verifier.program).get /* Only non-abstract predicates can be unfolded */
+                      val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)
-                      produce(s7 /*\ insγ*/, toSf(snap), body, pve, v4)((s8, v5) => {
-                        val s9 = s8.copy(functionRecorder = s8.functionRecorder.changeDepthBy(-1),
+                      val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
+                      val s7a = s7.copy(g = insg)
+                      produce(s7a, toSf(snap), body, pve, v4)((s8, v5) => {
+                        val s9 = s8.copy(g = s7.g,
+                                         functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                          recordVisited = s3.recordVisited,
                                          permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
-                        eval(s9, eIn, pve, v5)(QB)})})
+                        val s10 = stateConsolidator.consolidateIfRetrying(s9, v5)
+                        eval(s10, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
-                  Failure(pve dueTo NegativePermission(ePerm))}))
+                  createFailure(pve dueTo NegativePermission(ePerm), v2, s2)}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables)
           Q(s, unknownValue, v)
@@ -778,9 +771,9 @@ object evaluator extends EvaluationRules with Immutable {
                   case true =>
                     Q(s1, SeqAt(t0, t1), v1)
                   case false =>
-                    Failure(pve dueTo SeqIndexExceedsLength(e0, e1))}
+                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)}
               case false =>
-                Failure(pve dueTo SeqIndexNegative(e0, e1))
+                createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
             }}})
 
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)(Q)
@@ -791,8 +784,22 @@ object evaluator extends EvaluationRules with Immutable {
       case ast.RangeSeq(e0, e1) => evalBinOp(s, e0, e1, SeqRanged, pve, v)(Q)
 
       case ast.SeqUpdate(e0, e1, e2) =>
-        evals2(s, List(e0, e1, e2), Nil, _ => pve, v)((s1, ts, v1) =>
-          Q(s1, SeqUpdate(ts.head, ts(1), ts(2)), v1))
+        evals2(s, Seq(e0, e1, e2), Nil, _ => pve, v)({ case (s1, Seq(t0, t1, t2), v1) =>
+          if (s1.triggerExp) {
+            Q(s1, SeqUpdate(t0, t1, t2), v1)
+          } else {
+            v1.decider.assert(AtLeast(t1, IntLiteral(0))) {
+              case true =>
+                v1.decider.assert(Less(t1, SeqLength(t0))) {
+                  case true =>
+                    Q(s1, SeqUpdate(t0, t1, t2), v1)
+                  case false =>
+                    Failure(pve dueTo SeqIndexExceedsLength(e0, e1))}
+              case false =>
+                Failure(pve dueTo SeqIndexNegative(e0, e1))
+            }
+          }
+        })
 
       case ast.ExplicitSeq(es) =>
         evals2(s, es, Nil, _ => pve, v)((s1, tEs, v1) => {
@@ -1012,7 +1019,7 @@ object evaluator extends EvaluationRules with Immutable {
 
     v.decider.assert(tDivisor !== tZero){
       case true => Q(s, t, v)
-      case false => Failure(pve dueTo DivisionByZero(eDivisor))
+      case false => createFailure(pve dueTo DivisionByZero(eDivisor), v, s)
     }
   }
 
@@ -1235,7 +1242,7 @@ object evaluator extends EvaluationRules with Immutable {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s.h, BasicChunkIdentifier(fa.field.name))
     val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) { println("domain needed"); None }
+      if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1294,7 +1301,7 @@ object evaluator extends EvaluationRules with Immutable {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(pa.predicateName))
     val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) { println("domain needed"); None }
+      if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1322,7 +1329,7 @@ object evaluator extends EvaluationRules with Immutable {
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s.h, MagicWandIdentifier(wand, Verifier.program))
     val optSmDomainDefinitionCondition =
-      if (s.smDomainNeeded) { println("domain needed"); None }
+      if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1339,41 +1346,47 @@ object evaluator extends EvaluationRules with Immutable {
     (axioms, triggers, mostRecentTrig)
   }
 
-  /* Evaluate a sequence of expressions in Order 
+  /* Evaluate a sequence of expressions in Order
    * The constructor determines when the evaluation stops
    * Only Or and And are supported for the constructor
    */
-  private def evalSeqShortCircuit(constructor: Seq[Term] => Term, 
-                                  s: State, 
-                                  exps: Seq[ast.Exp], 
-                                  pve: PartialVerificationError, 
+  private def evalSeqShortCircuit(constructor: Seq[Term] => Term,
+                                  s: State,
+                                  exps: Seq[ast.Exp],
+                                  pve: PartialVerificationError,
                                   v: Verifier)
                                  (Q: (State, Term, Verifier) => VerificationResult)
-                                  : VerificationResult = {
-    if(constructor != Or && constructor != And) {
-      sys.error("Only Or and And are supported as constructors for evalSeqShortCircuit")
-    }
+                                 : VerificationResult = {
+    assert(
+      constructor == Or || constructor == And,
+      "Only Or and And are supported as constructors for evalSeqShortCircuit")
+
+    assert(exps.nonEmpty, "Empty sequence of expressions not allowed")
+
     type brFun = (State, Verifier) => VerificationResult
-    val (default, stop, swapIfAnd) = 
-      if(constructor == Or) (False(), True(), (a: brFun, b: brFun) => (a,b)) 
-      else (True(), False(), (a: brFun, b: brFun) => (b,a))
-    if(exps.size==0)
-      Q(s, default, v)
-    else
-      eval(s, exps.head, pve, v)((s1, t0, v1) =>
-          t0 match {
-            case `stop` => Q(s1, t0, v1)
-            case _ => 
-              joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-                  brancher.branch(s2, t0, v2, true) _ tupled swapIfAnd(
-                    (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
-                    (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
-                  ){case Seq(ent) => (ent.s, ent.data)
-                    case Seq(ent1, ent2) => (ent1.s.merge(ent2.s), 
-                      constructor(Seq(ent1.data, ent2.data)))
-                    case ents => sys.error(s"Unexpected join data entries $ents")
-                  }(Q)
-          })
+
+    // TODO: Find out and document why swapIfAnd is needed
+    val (stop, swapIfAnd) =
+      if(constructor == Or) (True(), (a: brFun, b: brFun) => (a, b))
+      else (False(), (a: brFun, b: brFun) => (b, a))
+
+    eval(s, exps.head, pve, v)((s1, t0, v1) => {
+      t0 match {
+        case _ if exps.tail.isEmpty => Q(s1, t0, v1) // Done, if no expressions left (necessary)
+        case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
+        case _ =>
+          joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
+            brancher.branch(s2, t0, v2, true) _ tupled swapIfAnd(
+              (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
+              (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
+            ){case Seq(ent) =>
+                (ent.s, ent.data)
+              case Seq(ent1, ent2) =>
+                (ent1.s.merge(ent2.s), constructor(Seq(ent1.data, ent2.data)))
+              case entries =>
+                sys.error(s"Unexpected join data entries $entries")
+            }(Q)
+      }})
   }
 
   private[silicon] case object FromShortCircuitingAnd extends Info {

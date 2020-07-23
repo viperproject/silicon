@@ -13,13 +13,21 @@ import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Su
 import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
 import viper.silver.frontend.DefaultStates
 import viper.silver.reporter.NoopReporter
+import viper.silver.plugin.PluginAwareReporter
 
 class SiliconTests extends SilSuite {
-  private val siliconTestDirectories = Seq("consistency", "issue387")
-  private val silTestDirectories = Seq("all", "quantifiedpermissions", "wands", "examples", "quantifiedpredicates" ,"quantifiedcombinations")
-  val testDirectories = siliconTestDirectories ++ silTestDirectories
+  private val siliconTestDirectories =
+    Seq("consistency", "issue387")
 
-  override def frontend(verifier: Verifier, files: Seq[Path]) = {
+  private val silTestDirectories =
+    Seq("all",
+        "quantifiedpermissions", "quantifiedpredicates" ,"quantifiedcombinations",
+        "wands", "termination",
+        "examples")
+
+  val testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories
+
+  override def frontend(verifier: Verifier, files: Seq[Path]): SiliconFrontend = {
     require(files.length == 1, "tests should consist of exactly one file")
 
     // For Unit-Testing of the Symbolic Execution Logging, the name of the file
@@ -29,13 +37,19 @@ class SiliconTests extends SilSuite {
     SymbExLogger.reset()
     SymbExLogger.filePath = files.head
     SymbExLogger.initUnitTestEngine()
+
+    /* If needed, Silicon reads the filename of the program under verification from Verifier.inputFile.
+    When the test suite is executed (sbt test/testOnly), Verifier.inputFile is set here. When Silicon is
+    run from the command line, Verifier.inputFile is set in src/main/scala/Silicon.scala. */
+    viper.silicon.verifier.Verifier.inputFile = Some(files.head)
+
     val fe = new SiliconFrontend(NoopReporter)//SiliconFrontendWithUnitTesting()
     fe.init(verifier)
     fe.reset(files.head)
     fe
   }
 
-  override def annotationShouldLeadToTestCancel(ann: LocatedAnnotation) = {
+  override def annotationShouldLeadToTestCancel(ann: LocatedAnnotation): Boolean = {
     ann match {
       case UnexpectedOutput(_, _, _, _, _, _) => true
       case MissingOutput(_, _, _, _, _, issue) => issue != 34
@@ -43,20 +57,22 @@ class SiliconTests extends SilSuite {
     }
   }
 
-  lazy val verifiers = List(createSiliconInstance())
-
-  val commandLineArguments: Seq[String] = Seq.empty
-
-  private def createSiliconInstance() = {
-    val args =
-      commandLineArguments ++
-      Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap.getOrElse("silicon", Map()))
-    val reporter = NoopReporter
+  val silicon = {
+    val reporter = PluginAwareReporter(NoopReporter)
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
-    val silicon = Silicon.fromPartialCommandLineArguments(args, reporter, debugInfo)
-
-    silicon
+    new Silicon(reporter, debugInfo)
   }
+
+  def verifiers = List(silicon)
+
+  override def configureVerifiersFromConfigMap(configMap: Map[String, Any]) = {
+    val args = Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap(configMap).getOrElse("silicon", Map()))
+    silicon.parseCommandLine(args :+ Silicon.dummyInputFilename)
+  }
+
+  val commandLineArguments: Seq[String] =
+    Seq("--timeout", "300" /* seconds */)
+
 }
 
 class SiliconFrontendWithUnitTesting extends SiliconFrontend(NoopReporter) {

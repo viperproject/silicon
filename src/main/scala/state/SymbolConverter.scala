@@ -39,7 +39,8 @@ class DefaultSymbolConverter extends SymbolConverter with Immutable {
       sorts.UserSort(Identifier(dt.toString()))
 
     case st : ast.SMTType => sorts.SMTSort(Identifier(st.smtName))
-
+    case viper.silicon.utils.ast.ViperEmbedding(sort) => sort
+      
     case   ast.InternalType
          | _: ast.TypeVar
          | ast.Wand
@@ -47,7 +48,7 @@ class DefaultSymbolConverter extends SymbolConverter with Immutable {
       sys.error("Found unexpected type %s (%s)".format(typ, typ.getClass.getSimpleName))
   }
 
-  def toSortSpecificId(name: String, sorts: Seq[Sort]) =
+  def toSortSpecificId(name: String, sorts: Seq[Sort]): Identifier =
     Identifier(name + sorts.mkString("[",",","]"))
 
   def toFunction(function: ast.DomainFunc): terms.DomainFun = {

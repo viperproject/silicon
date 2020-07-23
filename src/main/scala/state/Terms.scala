@@ -449,6 +449,9 @@ case object Forall extends Quantifier {
   def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger], name: String) =
     Quantification(Forall, qvar :: Nil, tBody, triggers, name)
 
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger], name: String, isGlobal: Boolean) =
+    Quantification(Forall, qvar :: Nil, tBody, triggers, name, isGlobal)
+
   def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger): Quantification =
     apply(qvars, tBody, trigger, "")
 
@@ -507,6 +510,13 @@ class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
     Quantification(q, vars, body, triggers, name, isGlobal)
   }
 
+  def instantiate(terms: Seq[Term]): Term = {
+    assert(terms.length == vars.length,
+           s"Cannot instantiate a quantifier binding ${vars.length} variables with ${terms.length} terms")
+
+    body.replace(vars, terms)
+  }
+
   lazy val stringRepresentation = s"$q ${vars.mkString(",")} :: $body"
   lazy val stringRepresentationWithTriggers = s"$q ${vars.mkString(",")} :: ${triggers.mkString(",")} $body"
 
@@ -536,6 +546,8 @@ object Quantification
             name: String,
             isGlobal: Boolean)
            : Quantification = {
+
+//    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")
 //    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
 //    assert(triggers.distinct.length == triggers.length, s"Found duplicate triggers: $triggers")
 
@@ -814,12 +826,17 @@ object Equals extends ((Term, Term) => BooleanTerm) {
           (e0, e1) match {
             case (sw1: SortWrapper, sw2: SortWrapper) if sw1.t.sort != sw2.t.sort =>
               assert(false, s"Equality '(Snap) $e0 == (Snap) $e1' is not allowed")
-            case (_: Combine, _: SortWrapper) =>
-              assert(false, s"Equality '$e0 == (Snap) $e1' is not allowed")
-            case (_: SortWrapper, _: Combine) =>
-              assert(false, s"Equality '(Snap) $e0 == $e1' is not allowed")
-            case (Unit, _: Combine) | (_: Combine, Unit) =>
-              assert(false, s"Equality '$e0 == $e1' is not allowed")
+            /* The next few cases are nonsensical and might indicate a bug in Silicon.
+               However, they can also arise on infeasible paths (and preventing them
+               would require potentially expensive prover calls), so treating
+               them as errors is unfortunately not an option.
+             */
+            // case (_: Combine, _: SortWrapper) =>
+            //   assert(false, s"Equality '$e0 == (Snap) $e1' is not allowed")
+            // case (_: SortWrapper, _: Combine) =>
+            //   assert(false, s"Equality '(Snap) $e0 == $e1' is not allowed")
+            // case (Unit, _: Combine) | (_: Combine, Unit) =>
+            //   assert(false, s"Equality '$e0 == $e1' is not allowed")
             case _ => /* Ok */
           }
 
@@ -1726,8 +1743,8 @@ case class FieldTrigger(field: String, fvf: Term, at: Term) extends Term {
   val sort = sorts.Bool
 }
 
-
 /* Quantified predicates */
+
 case class PredicateLookup(predname: String, psf: Term, args: Seq[Term]) extends Term {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
 
@@ -1750,6 +1767,63 @@ case class PredicateTrigger(predname: String, psf: Term, args: Seq[Term]) extend
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
 
   val sort = sorts.Bool
+}
+
+/* Magic wands */
+
+case class MagicWandSnapshot(abstractLhs: Term, rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
+  utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
+  utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
+
+  override lazy val toString = s"wandSnap(lhs = $abstractLhs, rhs = $rhsSnapshot)"
+
+  def merge(other: MagicWandSnapshot, branchConditions: Stack[Term]): MagicWandSnapshot = {
+    assert(this.abstractLhs == other.abstractLhs)
+    val condition = And(branchConditions)
+    MagicWandSnapshot(this.abstractLhs, if (this.rhsSnapshot == other.rhsSnapshot)
+      this.rhsSnapshot
+    else
+      Ite(condition, other.rhsSnapshot, this.rhsSnapshot))
+  }
+}
+
+object MagicWandSnapshot {
+  def apply(snapshot: Term): MagicWandSnapshot = {
+    assert(snapshot.sort == sorts.Snap)
+    snapshot match {
+      case snap: MagicWandSnapshot => snap
+      case _ =>
+        MagicWandSnapshot(First(snapshot), Second(snapshot))
+    }
+  }
+}
+
+case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
+  override val sort = sorts.Unit /* TODO: Does this make sense? */
+  override lazy val toString = s"wand@${chunk.id.ghostFreeWand.pos}}"
+}
+
+/* Factory methods for all resources */
+
+object toSnapTree extends (Seq[Term] => Term) {
+  @inline
+  def apply(args: Seq[Term]): Term = {
+    if (args.isEmpty) Unit
+    else args.map(_.convert(sorts.Snap)).reduceLeft(Combine)
+  }
+}
+
+object fromSnapTree extends ((Term, Int) => Seq[Term]) {
+  def apply(snap: Term, targets: Seq[Term]): Seq[Term] = {
+    fromSnapTree(snap, targets.length)
+      .zip(targets)
+      .map { case (s, t) => s.convert(t.sort) }
+  }
+
+  def apply(snap: Term, size: Int): Seq[Term] = {
+    if (size <= 1) Seq(snap)
+    else fromSnapTree(First(snap), size - 1) :+ Second(snap)
+  }
 }
 
 object ResourceTriggerFunction {
@@ -1863,41 +1937,6 @@ object SortWrapper {
   }
 
   def unapply(sw: SortWrapper) = Some((sw.t, sw.to))
-}
-
-/* Magic wands */
-
-case class MagicWandSnapshot(abstractLhs: Term, rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
-
-  utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
-  utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
-
-  override lazy val toString = s"wandSnap(lhs = $abstractLhs, rhs = $rhsSnapshot)"
-
-  def merge(other: MagicWandSnapshot, branchConditions: Stack[Term]): MagicWandSnapshot = {
-    assert(this.abstractLhs == other.abstractLhs)
-    val condition = And(branchConditions)
-    MagicWandSnapshot(this.abstractLhs, if (this.rhsSnapshot == other.rhsSnapshot)
-      this.rhsSnapshot
-    else
-      Ite(condition, other.rhsSnapshot, this.rhsSnapshot))
-  }
-}
-
-object MagicWandSnapshot {
-  def apply(snapshot: Term): MagicWandSnapshot = {
-    assert(snapshot.sort == sorts.Snap)
-    snapshot match {
-      case snap: MagicWandSnapshot => snap
-      case _ =>
-        MagicWandSnapshot(First(snapshot), Second(snapshot))
-    }
-  }
-}
-
-case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
-  override val sort = sorts.Unit /* TODO: Does this make sense? */
-  override lazy val toString = s"wand@${chunk.id.ghostFreeWand.pos}}"
 }
 
 /* Other terms */

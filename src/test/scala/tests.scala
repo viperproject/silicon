@@ -22,9 +22,8 @@ package object tests {
       _verifier = None
       _state = DefaultStates.Initialized
 
-      reset(silverFile) //
-
-      runTo("Translation")
+      reset(silverFile)
+      runTo(Translation)
 
       //println(s"_program = ${_program}") /* Option[Program], set if parsing and translating worked */
       //println(s"_errors = ${_errors}")   /*  Seq[AbstractError], contains errors, if encountered */
@@ -48,12 +47,12 @@ package object tests {
   }
 
   def loadProgram(filePrefix: String, fileName: String, frontend: SilFrontend): Program = {
-    val testFile = getClass.getClassLoader.getResource(filePrefix + fileName + ".sil")
+    val testFile = getClass.getClassLoader.getResource(filePrefix + fileName + ".vpr")
     assert(testFile != null, s"File $filePrefix$fileName not found")
     val file = Paths.get(testFile.toURI)
 
     frontend.reset(file)
-    frontend.runTo("Translation")
+    frontend.runTo(frontend.Translation)
 
     frontend.translationResult
   }

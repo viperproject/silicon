@@ -18,12 +18,13 @@ import viper.silicon.reporting.{ExternalToolError, Z3InteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
-import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
+import viper.silver.plugin.PluginAwareReporter
+import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 
 class Z3ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
                     identifierFactory: IdentifierFactory,
-                    reporter: Reporter)
+                    reporter: PluginAwareReporter)
     extends Prover
        with LazyLogging {
 
@@ -34,9 +35,10 @@ class Z3ProverStdIO(uniqueId: String,
   private var input: BufferedReader = _
   private var output: PrintWriter = _
   /* private */ var z3Path: Path = _
+  var lastModel : String = null
 
   def z3Version(): Version = {
-    val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
+    val versionPattern = """\(?\s*:version\s+"(.*?)(?:\s*-.*?)?"\)?""".r
     var line = ""
 
     writeLine("(get-info :version)")
@@ -234,10 +236,14 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
   private def getModel(): Unit = {
-    if (Verifier.config.ideModeAdvanced()) {
+    if (Verifier.config.counterexample.toOption.isDefined) {
       writeLine("(get-model)")
-      val model = readModel().trim()
-      println(model + "\r\n")
+
+      var model = readModel("\n").trim()
+      if (model.startsWith("\"")){
+        model = model.replaceAll("\"", "")
+      }
+      lastModel = model
     }
   }
 
@@ -282,7 +288,11 @@ class Z3ProverStdIO(uniqueId: String,
     if (lastTimeout != effectiveTimeout) {
       lastTimeout = effectiveTimeout
 
-      writeLine(s"(set-option :timeout $effectiveTimeout)")
+      if(Verifier.config.z3EnableResourceBounds()) {
+        writeLine(s"(set-option :rlimit ${effectiveTimeout * (Verifier.config.z3ResourcesPerMillisecond())})")
+      } else {
+        writeLine(s"(set-option :timeout $effectiveTimeout)")
+      }
       readSuccess()
     }
   }
@@ -364,7 +374,7 @@ class Z3ProverStdIO(uniqueId: String,
       throw Z3InteractionFailed(uniqueId, s"Unexpected output of Z3 while trying to refute an assertion: $result")
   }
 
-  private def readModel(): String = {
+  private def readModel(separator: String = " "): String = {
     try {
       var endFound = false
       var result = ""
@@ -374,7 +384,7 @@ class Z3ProverStdIO(uniqueId: String,
         if (nextLine.trim().endsWith("\"") || (firstTime && !nextLine.startsWith("\""))) {
           endFound = true
         }
-        result = result + " " + nextLine
+        result = result + separator + nextLine
         firstTime = false
       }
       result
@@ -414,4 +424,8 @@ class Z3ProverStdIO(uniqueId: String,
     logToFile(out)
     output.println(out)
   }
+
+  override def getLastModel(): String = lastModel
+
+  override def clearLastModel(): Unit = lastModel = null
 }
