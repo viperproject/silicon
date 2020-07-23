@@ -12,9 +12,7 @@ object Maps {
     * @return The combined map.
     */
   def combine[K, V](map1: Map[K, V], map2: Map[K, V], combine: (V, V) => V): Map[K, V] =
-    map2.foldLeft(map1)({ case (map, (key, value)) =>
+    map2.foldLeft(map1) { case (map, (key, value)) =>
       map.updated(key, map.get(key).map(combine(_, value)).getOrElse(value))
-    })
-
-  def reverse[K, V](map: Map[K, V]): Map[V, K] = map.map({ case (key, value) => value -> key })
+    }
 }

@@ -2,93 +2,102 @@ package rpi
 
 import java.nio.file.{Files, Paths}
 
-import fastparse.core.Parsed
-import rpi.learner.Learner
-import rpi.teacher.Teacher
-import viper.silver.ast._
+import fastparse.core.Parsed.Success
+import viper.silver.ast.{Exp, Program, TrueLit, While}
 import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
 
 import scala.io.Source
 import scala.util.Properties
 
-object Inference extends Inference {
+
+object Inference {
   /**
-    * The flag indicating whether we are on a windows machine.
+    * Returns he file to be parsed.
+    *
+    * @return The file to be parsed.
     */
-  lazy val isWindows: Boolean = System
-    .getProperty("os.name")
-    .toLowerCase
-    .startsWith("windows")
+  def file: String = _file.get
 
   /**
-    * The path to the file containing the program to run the inference with.
+    * Returns the path to the z3 executable.
+    *
+    * @return The path to the z3 executable.
     */
-  lazy val file: String = fileArgument.get
+  def z3: String = _z3
+    .orElse(Properties.envOrNone("Z3_EXE"))
+    .getOrElse {
+      val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
+      if (isWindows) "z3.exe" else "z3"
+    }
+
+  /**
+    * The file to be parsed.
+    */
+  private var _file: Option[String] = None
 
   /**
     * The path to the z3 executable.
     */
-  lazy val z3: String = z3Argument
-    .orElse(Properties.envOrNone("Z3_EXE"))
-    .getOrElse(if (isWindows) "z3.exe" else "z3")
-
-  private var fileArgument: Option[String] = None
-
-  private var z3Argument: Option[String] = None
+  private var _z3: Option[String] = None
 
   /**
     * The entry point of the inference.
     *
-    * @param arguments The arguments.
+    * @param args The command line arguments.
     */
-  def main(arguments: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = {
     // process arguments
-    processArguments(arguments)
+    processArgs(args)
 
-    // parse program and run inference
+    // run inference
     val program = parse(file).get
-    run(program)
+    val inference = new Inference(program)
+    inference.start()
+    inference.run()
+    inference.stop()
   }
 
   /**
-    * Processes the specified arguments. The first argument is expected to be the file containing the program to run the
-    * inference with. After that, a sequence of options may follow.
+    * Process the given arguments. The first argument is expected to be the file to be parsed. After that a sequence of
+    * of options may follow.
     *
-    * @param arguments The arguments.
+    * @param args The arguments.
     */
-  private def processArguments(arguments: Seq[String]): Unit = {
+  private def processArgs(args: Seq[String]): Unit = {
     // get file
-    assert(1 <= arguments.length, "No file specified.")
-    fileArgument = Some(arguments.head)
+    assert(args.nonEmpty, "no file specified.")
+    _file = Some(args.head)
     // process options
-    processOptions(arguments.tail)
+    processOptions(args.tail)
   }
 
   /**
-    * Processes the specified options.
+    * Processes the sequence of options represented by the given arguments.
     *
-    * @param options The options.
+    * @param args The arguments.
     */
-  private def processOptions(options: Seq[String]): Unit = options match {
-    case "--z3Exe" +: value +: rest =>
-      z3Argument = Some(value)
-      processOptions(rest)
-    case _ +: rest => processOptions(rest)
-    case Nil => // do nothing
+  private def processOptions(args: Seq[String]): Unit = args match {
+    case "-z3" +: value +: rest => _z3 = Some(value); processOptions(rest)
+    case _ +: rest => processOptions(rest) // ignore unknown option
+    case Nil => // we are done
   }
 
-  def parse(file: String): Option[Program] = {
+  /**
+    * Parses the given file.
+    *
+    * @param file The file to parse.
+    * @return The parsed program.
+    */
+  private def parse(file: String): Option[Program] = {
     // read input
     val path = Paths.get(file)
     val input = Source.fromInputStream(Files.newInputStream(path)).mkString
     // parse program
     val program = FastParser.parse(input, path, None) match {
-      case Parsed.Success(program: PProgram, _) =>
-        if (program.errors.isEmpty) {
-          program.initProperties()
-          Some(program)
-        } else None
-      case Parsed.Failure(_, _, _) => None
+      case Success(program: PProgram, _) if program.errors.isEmpty =>
+        program.initProperties()
+        Some(program)
+      case _ => None
     }
     // resolve and translate program
     program
@@ -97,18 +106,56 @@ object Inference extends Inference {
   }
 }
 
-trait Inference {
-  def run(program: Program): Unit = {
-    val teacher = new Teacher(program)
-    val learner = new Learner()
+class Inference(val program: Program) {
+  /**
+    * The teacher providing the examples.
+    */
+  private val teacher: Teacher = new Teacher(this)
 
+  /**
+    * The learner used synthesizing hypotheses.
+    */
+  private val learner: Learner = new Learner(this)
+
+  /**
+    * The sequence of atomic predicates.
+    */
+  lazy val atoms: Seq[Exp] = program
+    .deepCollect { case While(cond, _, _) => cond }
+    .distinct
+
+  /**
+    * The loops appearing within the program.
+    *
+    * TODO: Replace with triples {pre} s {post} or something alike.
+    */
+  lazy val loops: Seq[While] = program.deepCollect { case loop: While => loop }
+
+  /**
+    * Starts the inference and all of its subcomponents.
+    */
+  def start(): Unit = {
+    teacher.start()
+    learner.start()
+  }
+
+  /**
+    * Stops the inference and all of its subcomponents.
+    */
+  def stop(): Unit = {
+    teacher.stop()
+    learner.stop()
+  }
+
+  def run(): Unit = {
     var hypothesis: Exp = TrueLit()()
 
     for (i <- 0 until 3) {
-      val samples = teacher.check(hypothesis)
-      learner.addSamples(samples)
+      val examples = teacher.check(hypothesis)
+      learner.addExamples(examples)
       hypothesis = learner.hypothesis()
       println(hypothesis)
     }
   }
 }
+

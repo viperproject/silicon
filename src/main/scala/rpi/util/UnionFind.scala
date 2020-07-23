@@ -2,32 +2,43 @@ package rpi.util
 
 import scala.collection.mutable
 
+/**
+  * A union find data structure.
+  *
+  * Elements not present in the data structure are implicitly assumed to be in their own partition.
+  *
+  * @tparam T The type of the elements.
+  */
 class UnionFind[T] {
+  /**
+    * The parent map.
+    */
   private val parents = new mutable.HashMap[T, T]
 
-  def add(x: T): Unit = if (!parents.contains(x)) parents.update(x, x)
+  /**
+    * Merges the partitions of the two given elements.
+    *
+    * @param x The first element.
+    * @param y The second element.
+    */
+  def union(x: T, y: T): Unit = parents.update(find(x), find(y))
 
-  def union(x: T, y: T): Unit = {
-    val a = find(x)
-    val b = find(y)
-    if (a != b) parents.update(a, b)
-  }
+  /**
+    * Finds the element representing the partition of the given element.
+    *
+    * @param x The element.
+    * @return The element representing the partition.
+    */
+  def find(x: T): T = parents.get(x)
+    .map { p => parents.update(x, p); p }
+    .getOrElse(x)
 
-  def find(x: T): T =
-    if (parents.getOrElse(x, x) == x) x
-    else {
-      parents.update(x, find(parents(x)))
-      parents(x)
-    }
-
-  def equal(x: T, y: T): Boolean = find(x) == find(y)
-
-  override def toString: String = {
-    val cs = parents.keys.foldLeft(Map.empty[T, Set[T]]) {
-      case (m, x) =>
-        val a = find(x)
-        m.updated(a, m.getOrElse(a, Set.empty) + x)
-    }
-    cs.values.map(x => x.mkString("{", ",", "}")).mkString("{", ",", "}")
-  }
+  /**
+    * Returns whether the two given elements are in the same partition.
+    *
+    * @param x The first element.
+    * @param y The second element.
+    * @return True if the two given elements are in the same partition.
+    */
+  def isEqual(x: T, y: T): Boolean = find(x) == find(y)
 }
