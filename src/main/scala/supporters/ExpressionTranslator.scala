@@ -130,6 +130,14 @@ trait ExpressionTranslator {
         val df = Fun(id, inSorts, outSort)
         App(df, tArgs)
 
+      case ast.SMTFuncApp(func, args) =>
+        val tArgs = args map f
+        val inSorts = tArgs map (_.sort)
+        val outSort = toSort(func.typ)
+        val id = Identifier(func.smtName)
+        val sf = SMTFun(id, inSorts, outSort)
+        App(sf, tArgs)
+
       /* Permissions */
 
       case _: ast.FullPerm => FullPerm()
