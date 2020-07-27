@@ -27,7 +27,7 @@ trait SymbolicExecutionRules extends Immutable {
         v.decider.generateModel()
       }
       val model = v.decider.getModel()
-      if (!model.contains("model is not available")){
+      if (model != null && !model.contains("model is not available")){
         val nativeModel = Model(model)
         var ce: Counterexample = if (Verifier.config.counterexample.toOption.get == "native") {
           val oldHeap = if (s.oldHeaps.contains(Verifier.PRE_STATE_LABEL))
