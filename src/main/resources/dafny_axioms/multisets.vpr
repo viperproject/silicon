@@ -33,7 +33,7 @@ domain $Multiset[E] {
   axiom card_empty {
     forall m: $Multiset[E] :: {Multiset_card(m)}
          (Multiset_card(m) == 0 <==> m == Multiset_empty())
-      && (Multiset_card(m) != 0 ==> exists e: E :: 0 < Multiset_count(m, e))
+      && (Multiset_card(m) != 0 ==> exists e: E :: {Multiset_count(m, e)} 0 < Multiset_count(m, e))
   }
 
   axiom count_singleton {

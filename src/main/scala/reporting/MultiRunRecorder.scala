@@ -7,9 +7,11 @@
 package viper.silicon.reporting
 
 import java.io.{File, PrintWriter}
+
 import scala.collection.mutable
 import scala.reflect.ClassTag
 import viper.silicon.Config
+import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.components.StatefulComponent
 
@@ -106,7 +108,7 @@ object MultiRunRecorders extends StatefulComponent {
     writer
   }
 
-  def get[R <: MultiRunRecorder : ClassTag](name: String): R = {
+  def get[R <: MultiRunRecorder : NotNothing : ClassTag](name: String): R = {
     val recorder =
       recorders.getOrElseUpdate(name, {
         val sinkArgumentClass = classOf[PrintWriter]
