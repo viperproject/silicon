@@ -116,7 +116,7 @@ object executor extends ExecutionRules with Immutable {
          */
         sys.error(s"Unexpected block: $block")
 
-      case block @ cfg.LoopHeadBlock(invs, stmts) =>
+      case block @ cfg.LoopHeadBlock(invs, stmts,_) =>
         incomingEdgeKind match {
           case cfg.Kind.In =>
             /* We've reached a loop head block via an in-edge. Steps to perform:
@@ -188,11 +188,6 @@ object executor extends ExecutionRules with Immutable {
             consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
               Success())
         }
-
-      case cfg.ConstrainingBlock(vars: Seq[ast.AbstractLocalVar @unchecked], body: SilverCfg) =>
-        val arps = vars map (s.g.apply(_).asInstanceOf[Var])
-        exec(s.setConstrainable(arps, true), body, v)((s1, v1) =>
-          follows(s1.setConstrainable(arps, false), magicWandSupporter.getOutEdges(s1, block), Internal(_), v1)(Q))
     }
   }
 
