@@ -60,11 +60,14 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
     val sourceDomain = transformSourceDomain(sourceProgram.findDomain(sourceDomainName))
 
     val sourceDomainTypeInstances =
-      builtinDomainTypeInstances map (builtinTypeInstance =>
-        ast.DomainType(sourceDomain, sourceDomain.typVars.zip(builtinTypeInstance.typeArguments).toMap))
+      builtinDomainTypeInstances map (builtinTypeInstance => {
+        val instantiation : Map[viper.silver.ast.TypeVar,viper.silver.ast.Type] = sourceDomain.typVars.zip(builtinTypeInstance.typeArguments).toMap
+        //(instantiation, ast.DomainType(sourceDomain, instantiation))
+        ast.DomainType(sourceDomain, instantiation)
+      })
 
     /* For each necessary domain type, instantiate the corresponding domain */
-    val sourceDomainInstantiations =
+    val sourceDomainInstantiationsWithType =
       sourceDomainTypeInstances map (mdt => {
         /* TODO: Copied from DomainInstances.getInstanceMembers.
          *       Cannot directly use that because it filters according to which domain instances
@@ -78,12 +81,14 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
         val instance =
           sourceDomain.copy(functions = functions, axioms = axioms)(sourceDomain.pos, sourceDomain.info, sourceDomain.errT)
 
-        transformSourceDomainInstance(instance, mdt)
+        (mdt, transformSourceDomainInstance(instance, mdt))
       })
+
+    val sourceDomainInstantiations = sourceDomainInstantiationsWithType.map(x => x._2)
 
     collectSorts(sourceDomainTypeInstances)
     collectFunctions(sourceDomainInstantiations)
-    collectAxioms(sourceDomainInstantiations)
+    collectAxioms(sourceDomainInstantiationsWithType)
   }
 
   protected def computeGroundTypeInstances(program: ast.Program): InsertionOrderedSet[BuiltinDomainType] =
@@ -110,18 +115,23 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
         collectedFunctions += symbolConverter.toFunction(df)))
   }
 
-  protected def collectAxioms(domains: Set[ast.Domain]) {
-    domains foreach (
-      _.axioms foreach (ax =>
-        collectedAxioms += translateAxiom(ax)))
+  protected def collectAxioms(domains: Set[(ast.DomainType, ast.Domain)]) {
+    domains foreach ({d =>
+      d._2.axioms foreach (ax =>
+        collectedAxioms += translateAxiom(ax, d._1))
+        })
   }
 
-  protected def translateAxiom(ax: ast.DomainAxiom): Term = {
+  protected def translateAxiom(ax: ast.DomainAxiom, d: ast.DomainType): Term = {
     /* Use builtin equality instead of the type-specific one.
      * Uses of custom equality functions, i.e. applications of the uninterpreted equality function,
      * are preserved.
      */
+    val domainName = f"${d.domainName}[${d.typVarsMap.values.map(t => symbolConverter.toSort(t)).mkString(",")}]"
     domainTranslator.translateAxiom(ax, symbolConverter.toSort).transform {
+      case q@Quantification(_,_,_,_,name,_) if name != "" => {
+        q.copy(name = f"${domainName}_${name}")
+      }
       case Equals(t1, t2) => BuiltinEquals(t1, t2)
     }(recursive = _ => true)
   }
