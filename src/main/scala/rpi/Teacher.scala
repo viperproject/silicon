@@ -132,7 +132,7 @@ class ProgramBuilder(teacher: Teacher) {
   private def saveExp(name: String, exp: Exp): Unit = {
     val variable = LocalVar(name, Bool)()
     val thn = Seqn(Seq(LocalVarAssign(variable, BoolLit(true)())()), Seq.empty)()
-    val els = Seqn(Seq(LocalVarAssign(variable, BoolLit(true)())()), Seq.empty)()
+    val els = Seqn(Seq(LocalVarAssign(variable, BoolLit(false)())()), Seq.empty)()
     addStmt(If(exp, thn, els)())
   }
 
