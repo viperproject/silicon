@@ -276,7 +276,7 @@ object evaluator extends EvaluationRules with Immutable {
       case old @ ast.LabelledOld(e0, lbl) =>
         s.oldHeaps.get(lbl) match {
           case None =>
-            Failure(pve dueTo LabelledStateNotReached(old))
+            createFailure(pve dueTo LabelledStateNotReached(old), v, s)
           case _ =>
             evalInOldState(s, lbl, e0, pve, v)(Q)}
 
@@ -789,9 +789,9 @@ object evaluator extends EvaluationRules with Immutable {
                   case true =>
                     Q(s1, SeqUpdate(t0, t1, t2), v1)
                   case false =>
-                    Failure(pve dueTo SeqIndexExceedsLength(e0, e1))}
+                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)}
               case false =>
-                Failure(pve dueTo SeqIndexNegative(e0, e1))
+                createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
             }
           }
         })
@@ -868,7 +868,7 @@ object evaluator extends EvaluationRules with Immutable {
       /* Unexpected nodes */
 
       case _: ast.InhaleExhaleExp =>
-        Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e))
+        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e), v, s)
     }
 
     resultTerm

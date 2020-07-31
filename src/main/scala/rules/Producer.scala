@@ -414,7 +414,7 @@ object producer extends ProductionRules with Immutable {
         }
 
       case _: ast.InhaleExhaleExp =>
-        Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a))
+        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>

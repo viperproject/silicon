@@ -102,7 +102,7 @@ class ErrorMessageTests extends FunSuite {
          * error back-transformer saying that `n` is to be reported.
          */
         val (pos, info, _) = n.getPrettyMetadata
-        (c.c(l).meta = ((pos, info, NodeTrafo(n))), c)
+        (c.c(l).withMeta(pos, info, NodeTrafo(n)), c)
 
     }, Map.empty[Exp, Exp])
 

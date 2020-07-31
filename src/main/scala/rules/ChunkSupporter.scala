@@ -101,7 +101,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
     val id = ChunkIdentifier(resource, Verifier.program)
     if (s.exhaleExt) {
-      val failure = Failure(ve).withLoad(args)
+      val failure = createFailure(ve, v, s).withLoad(args)
       magicWandSupporter.transfer(s, perms, failure, v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
