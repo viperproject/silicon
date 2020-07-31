@@ -68,8 +68,12 @@ class Teacher(val inference: Inference) {
 
 }
 
+/**
+  * Labels used to label states.
+  */
 object Labels {
   val PRE_STATE = "pre"
+  val CURRENT_STATE = "current"
   val POST_STATE = "post"
 }
 
@@ -95,11 +99,12 @@ class ProgramBuilder(teacher: Teacher) {
     addInhale(hypothesis)
     addInhale(loop.cond)
     // pre-state
-    atoms.zipWithIndex.foreach { case (exp, i) => saveExp(s"p_$i", exp) }
+    atoms.zipWithIndex.foreach { case (exp, i) => saveExp(s"${Labels.PRE_STATE}_p_$i", exp) }
     addLabel(Labels.PRE_STATE)
     // execute loop body
     addStmt(loop.body)
     // post-state
+    atoms.zipWithIndex.foreach { case (exp, i) => saveExp(s"${Labels.POST_STATE}_p_$i", exp) }
     addLabel(Labels.POST_STATE)
     // assume post-condition
     addExhale(hypothesis)
@@ -117,7 +122,7 @@ class ProgramBuilder(teacher: Teacher) {
 
   private def saveVars(loop: While): Unit = loop
     .deepCollect { case variable: LocalVar => variable }
-    .toSeq.distinct
+    .distinct
     .foreach { variable =>
       val init = LocalVar(s"${variable.name}_init", variable.typ)()
       addStmt(LocalVarAssign(variable, init)())
@@ -165,33 +170,44 @@ class ProgramBuilder(teacher: Teacher) {
 
 class ExampleExtractor(teacher: Teacher) {
   def extract(error: VerificationError): Seq[Example] = error.reason match {
-    case InsufficientPermission(access) =>
-      // extract pre and post states
-      val (initial, current) = extractStates(error)
+    case InsufficientPermission(location) =>
+      val access = AccessPath(location)
+
+      // extract states
+      val (first, second) = extractStates(error)
+      println(first)
+      println(second)
       // map access back to initial state
-      val accesses = access match {
+      val accesses = location match {
         case FieldAccess(receiver, field) =>
-          val evaluated = current.evaluate(receiver)
-          val reach = reachability(initial)
-          reach(evaluated).map(_ :+ field.name)
+          val evaluated = second.evaluate(access.dropLast)
+          val reach = reachability(first)
+          reach(evaluated).map(FieldPath(_, field.name))
         case _ => ???
       }
       assert(accesses.size == 1)
-      // predicate abstraction of state
-      val abstraction = abstractState(initial)
+
+      val records = accesses.toSeq.map(Record(abstractState(first), _))
+
+
       // create example(s)
-      accesses.toSeq.map { access =>
-        val record = Record(abstraction, access)
-        Positive(record)
+      if (second.label == Labels.POST_STATE) {
+        val left = Record(abstractState(second), access)
+        records.map(Implication(left, _))
       }
+      else records.map(Positive)
     case _ => ???
   }
 
   /**
+    * Returns a pair of states where the first state is the pre-state and the second state is either the current state
+    * or the past-state depending on whether the execution of the statement failed or whether the assertion of the
+    * post-condition failed.
+    *
     * TODO: Restrict stores.
     *
-    * @param error
-    * @return
+    * @param error The verification error.
+    * @return The pair of states as described above.
     */
   private def extractStates(error: VerificationError): (State, State) = {
     // extract path conditions and state
@@ -213,7 +229,8 @@ class ExampleExtractor(teacher: Teacher) {
     val initialHeap = buildHeap(initialRaw, partitions)
     val currentHeap = buildHeap(currentRaw, partitions)
     // return states
-    (State(store, initialHeap), State(store, currentHeap))
+    val label = if (state.oldHeaps.isDefinedAt(Labels.POST_STATE)) Labels.POST_STATE else Labels.CURRENT_STATE
+    (State(Labels.PRE_STATE, store, initialHeap), State(label, store, currentHeap))
   }
 
   private def buildStore(store: Store, partitions: UnionFind[Term]): Map[String, Term] =
@@ -239,31 +256,31 @@ class ExampleExtractor(teacher: Teacher) {
     * @param state The state.
     * @return The reachability.
     */
-  private def reachability(state: State): Map[Term, Set[Seq[String]]] = {
+  private def reachability(state: State): Map[Term, Set[AccessPath]] = {
     // auxiliary method that recursively computes n steps of the heap reachability
-    def recurse(current: Map[Term, Set[Seq[String]]], n: Int): Map[Term, Set[Seq[String]]] =
+    def recurse(current: Map[Term, Set[AccessPath]], n: Int): Map[Term, Set[AccessPath]] =
       if (n == 0) current
       else {
         // compute next step of heap reachability
-        val next = current.foldLeft[Map[Term, Set[Seq[String]]]](Map.empty) {
-          case (partial, (term, paths)) =>
-            state.heap.getOrElse(term, Map.empty).foldLeft(partial) {
-              case (partial, (field, value)) =>
-                val existing = partial.getOrElse(value, Set.empty)
-                partial.updated(value, existing ++ paths.map(_ :+ field))
+        val next = current.foldLeft[Map[Term, Set[AccessPath]]](Map.empty) {
+          case (m1, (term, paths)) =>
+            state.heap.getOrElse(term, Map.empty).foldLeft(m1) {
+              case (m2, (field, value)) =>
+                val existing = m2.getOrElse(value, Set.empty)
+                m2.updated(value, existing ++ paths.map(FieldPath(_, field)))
             }
         }
         // recurse and combine results
-        Maps.combine[Term, Set[Seq[String]]](current, recurse(next, n - 1), _ ++ _)
+        Maps.combine[Term, Set[AccessPath]](current, recurse(next, n - 1), _ ++ _)
       }
 
     // compute store reachability
     val initial = state.store
       .filterKeys(_.endsWith("_init"))
-      .foldLeft[Map[Term, Set[Seq[String]]]](Map.empty) {
+      .foldLeft[Map[Term, Set[AccessPath]]](Map.empty) {
       case (partial, (variable, value)) =>
         val existing = partial.getOrElse(value, Set.empty)
-        partial.updated(value, existing + Seq(variable.dropRight(5)))
+        partial.updated(value, existing + VariablePath(variable.dropRight(5)))
     }
 
     // iteratively compute heap reachability
@@ -272,24 +289,24 @@ class ExampleExtractor(teacher: Teacher) {
 
   private def abstractState(state: State): Seq[Boolean] = {
     teacher.inference.atoms.indices.map { i =>
-      state.store(s"p_$i") match {
+      state.store(s"${state.label}_p_$i") match {
         case True() => true
         case False() => false
       }
     }
   }
 
-  case class State(store: Map[String, Term], heap: Map[Term, Map[String, Term]]) {
-    /**
-      * Evaluates the given expression in this heap.
-      *
-      * @param exp The expression.
-      * @return The term to which the given expression evaluates.
-      */
-    def evaluate(exp: Exp): Term = exp match {
-      case LocalVar(variable, _) => store(variable)
-      case FieldAccess(receiver, Field(field, _)) => heap(evaluate(receiver))(field)
-      case _ => ???
+  /**
+    * A state.
+    *
+    * @param label The label allowing to distinguish different states.
+    * @param store The store of the state.
+    * @param heap  The heap of the state.
+    */
+  case class State(label: String, store: Map[String, Term], heap: Map[Term, Map[String, Term]]) {
+    def evaluate(access: AccessPath): Term = access match {
+      case VariablePath(name) => store(name)
+      case FieldPath(receiver, name) => heap(evaluate(receiver))(name)
     }
   }
 

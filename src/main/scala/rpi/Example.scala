@@ -1,5 +1,7 @@
 package rpi
 
+import viper.silver.ast.{Exp, FieldAccess, LocalVar}
+
 /**
   * The super trait for all examples.
   */
@@ -20,15 +22,54 @@ case class Positive(record: Record) extends Example
 case class Negative(record: Record) extends Example
 
 /**
+  * An implication example.
+  *
+  * @param left  The left-hand side of the implication.
+  * @param right The right-hand side of the implication.
+  */
+case class Implication(left: Record, right: Record) extends Example
+
+/**
   * A data point.
   *
   * @param abstraction The predicate abstraction of the state.
   * @param access      The access path for which some permissions are required.
   */
-case class Record(abstraction: Seq[Boolean], access: Seq[String]) {
+case class Record(abstraction: Seq[Boolean], access: AccessPath) {
   override def toString: String = {
     val absStr = abstraction.map(if (_) 1 else 0).mkString(",")
-    val accStr = access.mkString(".")
-    s"[$absStr] -> $accStr"
+    s"[$absStr] -> $access"
   }
+}
+
+object AccessPath {
+  def apply(exp: Exp): AccessPath = exp match {
+    case LocalVar(name, _) => VariablePath(name)
+    case FieldAccess(receiver, field) => FieldPath(AccessPath(receiver), field.name)
+  }
+}
+
+sealed trait AccessPath {
+  def last: String = this match {
+    case VariablePath(name) => name
+    case FieldPath(_, name) => name
+  }
+
+  def dropLast: AccessPath = this match {
+    case FieldPath(receiver, _) => receiver
+    case _ => ???
+  }
+
+  def length: Int = this match {
+    case VariablePath(_) => 1
+    case FieldPath(receiver, _) => receiver.length + 1
+  }
+}
+
+case class VariablePath(name: String) extends AccessPath {
+  override def toString: String = name
+}
+
+case class FieldPath(receiver: AccessPath, name: String) extends AccessPath {
+  override def toString: String = s"$receiver.$name"
 }

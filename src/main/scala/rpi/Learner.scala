@@ -108,12 +108,12 @@ class Learner(inference: Inference) {
       .getOrElse(FalseLit()())
   }
 
-  private def buildAccess(access: Seq[String]): FieldAccess = {
-    val receiver =
-      if (access.size == 2) LocalVar(access.head, Ref)()
-      else buildAccess(access.init)
+  private def buildAccess(access: AccessPath): FieldAccess = {
+    val receiver = access.dropLast match {
+      case VariablePath(name) => LocalVar(name, Ref)()
+      case other => buildAccess(other)
+    }
     val field = inference.program.fields.find(_.name == access.last).get
     FieldAccess(receiver, field)()
   }
-
 }
