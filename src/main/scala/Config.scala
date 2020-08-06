@@ -327,6 +327,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableTempDirectory: ScallopOption[Boolean] = opt[Boolean]("disableTempDirectory",
+    descr = "Disable the creation of temporary data (default: ./tmp)",
+    default = Some(false),
+    noshort = true
+  )
+
   private val rawZ3Exe = opt[String]("z3Exe",
     descr = (  "Z3 executable. The environment variable %s can also "
              + "be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable),

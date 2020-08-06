@@ -55,7 +55,7 @@ class Z3ProverStdIO(uniqueId: String,
   def start() {
     pushPopScopeDepth = 0
     lastTimeout = -1
-    logfileWriter = viper.silver.utility.Common.PrintWriter(Verifier.config.z3LogFile(uniqueId).toFile)
+    logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.z3LogFile(uniqueId).toFile)
     z3Path = Paths.get(Verifier.config.z3Exe)
     z3 = createZ3Instance()
     input = new BufferedReader(new InputStreamReader(z3.getInputStream))
@@ -417,7 +417,9 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
   private def logToFile(str: String) {
-    logfileWriter.println(str)
+    if (logfileWriter != null) {
+      logfileWriter.println(str)
+    }
   }
 
   private def writeLine(out: String) = {
