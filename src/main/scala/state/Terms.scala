@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.{Map, Stack, state, toMap}
-import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier}
+import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
 
 sealed trait Node {
@@ -79,15 +79,30 @@ object sorts {
  * Declarations
  */
 
-sealed trait Decl extends Node
+sealed trait Decl extends Node {
+  def id: Identifier
+}
 
-case class SortDecl(sort: Sort) extends Decl
-case class FunctionDecl(func: Function) extends Decl
-case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
+case class SortDecl(sort: Sort) extends Decl {
+  val id: Identifier = sort.id
+}
+
+case class FunctionDecl(func: Function) extends Decl {
+  val id: Identifier = func.id
+}
+
+case class SortWrapperDecl(from: Sort, to: Sort) extends Decl {
+  val id: Identifier = SortWrapperId(from, to)
+}
+
 case class MacroDecl(id: Identifier, args: Seq[Var], body: Term) extends Decl
 
 object ConstDecl extends (Var => Decl) { /* TODO: Inconsistent naming - Const vs Var */
   def apply(v: Var) = FunctionDecl(v)
+}
+
+object SortWrapperId extends ((Sort, Sort) => Identifier) {
+  def apply(from: Sort, to: Sort): Identifier = SortBasedIdentifier("$SortWrappers.%sTo%s", Seq(from, to))
 }
 
 /*
