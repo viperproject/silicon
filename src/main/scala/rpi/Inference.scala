@@ -1,9 +1,11 @@
 package rpi
 
 import java.nio.file.{Files, Paths}
+import java.util.concurrent.atomic.AtomicInteger
 
 import fastparse.core.Parsed.Success
-import viper.silver.ast.{Exp, Program, TrueLit, While}
+import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast._
 import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
 
 import scala.io.Source
@@ -125,11 +127,58 @@ class Inference(val program: Program) {
     .distinct
 
   /**
-    * The loops appearing within the program.
-    *
-    * TODO: Replace with triples {pre} s {post} or something alike.
+    * The program annotated with predicates in all the places where some specification should be inferred.
     */
-  lazy val loops: Seq[While] = program.deepCollect { case loop: While => loop }
+  lazy val annotated: Program = {
+    val id = new AtomicInteger()
+    program.transform({
+      case method: Method =>
+        val args = method.formalArgs.map(v => LocalVar(v.name, v.typ)())
+        val pres = method.pres :+ PredicateAccessPredicate(PredicateAccess(args, s"P_${method.name}")(), FullPerm()())()
+        val posts = method.posts :+ PredicateAccessPredicate(PredicateAccess(args, s"Q_${method.name}")(), FullPerm()())()
+        method.copy(pres = pres, posts = posts)(method.pos, method.info, method.errT)
+      case loop: While =>
+        val invs = loop.invs :+ PredicateAccessPredicate(PredicateAccess(Seq.empty, s"I_${id.getAndIncrement()}")(), FullPerm()())()
+        loop.copy(invs = invs)(loop.pos, loop.info, loop.errT)
+    }, Traverse.TopDown)
+  }
+
+  lazy val predicates: Seq[PredicateAccess] = annotated.deepCollect {
+    case p: PredicateAccess => p
+  }
+
+  /**
+    * TODO: Framing
+    */
+  lazy val triples: Seq[Triple] = {
+    val methods = annotated.methods.map(m => m.name -> m).toMap
+
+    def collectTriples(triples: Seq[Triple], pres: Seq[Exp], before: Seq[Stmt], stmt: Stmt): (Seq[Triple], Seq[Exp], Seq[Stmt]) = stmt match {
+      case Seqn(stmts, _) =>
+        stmts.foldLeft((triples, pres, before)) { case ((ts, ps, bs), s) => collectTriples(ts, ps, bs, s) }
+      case While(cond, invs, body) =>
+        val t1 = Triple(pres, invs, Seqn(before, Seq.empty)())
+        val (ts1, ps1, bs1) = collectTriples(triples :+ t1, invs :+ cond, Seq.empty, body)
+        val t2 = Triple(ps1, invs, Seqn(bs1, Seq.empty)())
+        (ts1 :+ t2, invs :+ Not(cond)(), Seq.empty)
+      case MethodCall(name, args, _) =>
+        val method = methods(name)
+        val ps1 = method.pres.init :+ PredicateAccessPredicate(PredicateAccess(args, s"P_${method.name}")(), FullPerm()())()
+        val ps2 = method.posts.init :+ PredicateAccessPredicate(PredicateAccess(args, s"Q_${method.name}")(), FullPerm()())()
+        val part = Triple(pres, ps1, Seqn(before, Seq.empty)())
+        (triples :+ part, ps2, Seq.empty)
+      case _ =>
+        (triples, pres, before :+ stmt)
+    }
+
+    annotated.methods.flatMap {
+      case Method(name, args, _, pres, posts, Some(body)) =>
+        val (ts, ps, bs) = collectTriples(Seq.empty, pres, Seq.empty, body)
+        val t = Triple(ps, posts, Seqn(bs, Seq.empty)())
+        ts :+ t
+      case _ => Seq.empty
+    }
+  }
 
   /**
     * Starts the inference and all of its subcomponents.
@@ -148,14 +197,23 @@ class Inference(val program: Program) {
   }
 
   def run(): Unit = {
-    var hypothesis: Exp = TrueLit()()
+    var hypothesis: Seq[Predicate] = learner.initial()
 
-    for (i <- 0 until 3) {
+    for (i <- 0 until 4) {
+      println(s"round $i -----------------------")
       val examples = teacher.check(hypothesis)
       learner.addExamples(examples)
       hypothesis = learner.hypothesis()
-      println(hypothesis)
+      hypothesis.foreach(println)
     }
   }
 }
 
+case class Triple(pres: Seq[Exp], posts: Seq[Exp], body: Seqn) {
+  override def toString: String = {
+    val p = pres.map(_.toString()).reduceOption((x, y) => s"$x && $y").getOrElse("true")
+    val q = posts.map(_.toString()).reduceOption((x, y) => s"$x && $y").getOrElse("true")
+    val s = body.ss.map(_.toString()).reduceOption((x, y) => s"$x; $y").getOrElse("skip")
+    s"{$p} $s {$q}"
+  }
+}

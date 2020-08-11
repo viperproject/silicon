@@ -50,10 +50,10 @@ class Teacher(val inference: Inference) {
     * @param hypothesis The hypothesis to check.
     * @return The sequence of counter examples.
     */
-  def check(hypothesis: Exp): Seq[Example] = {
+  def check(hypothesis: Seq[Predicate]): Seq[Example] = inference
+    .triples.flatMap { triple =>
     // build program
-    val loop = inference.loops.head
-    val program = builder.buildCheck(loop, hypothesis)
+    val program = builder.buildCheck(triple, hypothesis)
     println(program)
     // verify program
     val result = verifier.verify(program)
@@ -62,10 +62,9 @@ class Teacher(val inference: Inference) {
       case Success => Seq.empty
       case Failure(errors) => errors
         .collect { case error: VerificationError => error }
-        .flatMap { error => extractor.extract(error) }
+        .flatMap { error => extractor.extract(triple, error) }
     }
   }
-
 }
 
 /**
@@ -89,28 +88,27 @@ class ProgramBuilder(teacher: Teacher) {
 
   private var stmts: Seq[Stmt] = Seq.empty
 
-  def buildCheck(loop: While, hypothesis: Exp): Program = {
+  def buildCheck(triple: Triple, hypothesis: Seq[Predicate]): Program = {
     // clear
     clear()
-
-    saveVars(loop)
-
+    // save variables
+    saveVars(triple)
     // assume pre-condition and loop condition
-    addInhale(hypothesis)
-    addInhale(loop.cond)
+    triple.pres.foreach(addInhale)
+    triple.pres.collect { case p: PredicateAccessPredicate => p }.foreach(addUnfold)
     // pre-state
     atoms.zipWithIndex.foreach { case (exp, i) => saveExp(s"${Labels.PRE_STATE}_p_$i", exp) }
     addLabel(Labels.PRE_STATE)
     // execute loop body
-    addStmt(loop.body)
+    addStmt(triple.body)
     // post-state
     atoms.zipWithIndex.foreach { case (exp, i) => saveExp(s"${Labels.POST_STATE}_p_$i", exp) }
     addLabel(Labels.POST_STATE)
     // assume post-condition
-    addExhale(hypothesis)
-
+    triple.posts.collect { case p: PredicateAccessPredicate => p }.foreach(addFold)
+    triple.posts.foreach(addExhale)
     // return program
-    buildProgram()
+    buildProgram(hypothesis)
   }
 
   private def clear(): Unit = {
@@ -120,19 +118,25 @@ class ProgramBuilder(teacher: Teacher) {
 
   private def addStmt(stmt: Stmt): Unit = stmts :+= stmt
 
-  private def saveVars(loop: While): Unit = loop
-    .deepCollect { case variable: LocalVar => variable }
-    .distinct
-    .foreach { variable =>
-      val init = LocalVar(s"${variable.name}_init", variable.typ)()
-      addStmt(LocalVarAssign(variable, init)())
-    }
+  private def saveVars(triple: Triple): Unit = {
+    val elems = triple.pres ++ triple.body.ss ++ triple.posts
+    elems.flatMap(_.deepCollect { case variable: LocalVar => variable })
+      .distinct
+      .foreach { variable =>
+        val init = LocalVar(s"${variable.name}_init", variable.typ)()
+        addStmt(LocalVarAssign(variable, init)())
+      }
+  }
 
   private def addLabel(name: String): Unit = addStmt(Label(name, Seq.empty)())
 
   private def addInhale(exp: Exp): Unit = addStmt(Inhale(exp)())
 
   private def addExhale(exp: Exp): Unit = addStmt(Exhale(exp)())
+
+  private def addUnfold(pred: PredicateAccessPredicate): Unit = addStmt(Unfold(pred)())
+
+  private def addFold(pred: PredicateAccessPredicate): Unit = addStmt(Fold(pred)())
 
   private def saveExp(name: String, exp: Exp): Unit = {
     val variable = LocalVar(name, Bool)()
@@ -157,11 +161,11 @@ class ProgramBuilder(teacher: Teacher) {
     Method(name, args, returns, pres, posts, body)()
   }
 
-  private def buildProgram(): Program = {
+  private def buildProgram(hypothesis: Seq[Predicate]): Program = {
     val domains = Seq.empty
     val fields = program.fields
     val functions = Seq.empty
-    val predicates = Seq.empty
+    val predicates = hypothesis
     val methods = Seq(buildMethod())
     val extensions = Seq.empty
     Program(domains, fields, functions, predicates, methods, extensions)()
@@ -169,34 +173,60 @@ class ProgramBuilder(teacher: Teacher) {
 }
 
 class ExampleExtractor(teacher: Teacher) {
-  def extract(error: VerificationError): Seq[Example] = error.reason match {
-    case InsufficientPermission(location) =>
-      val access = AccessPath(location)
+  def extract(triple: Triple, error: VerificationError): Seq[Example] = {
+    println(error)
 
-      // extract states
-      val (first, second) = extractStates(error)
-      println(first)
-      println(second)
-      // map access back to initial state
-      val accesses = location match {
-        case FieldAccess(receiver, field) =>
-          val evaluated = second.evaluate(access.dropLast)
-          val reach = reachability(first)
-          reach(evaluated).map(FieldPath(_, field.name))
-        case _ => ???
-      }
-      assert(accesses.size == 1)
+    // extract states
+    val (first, second) = extractStates(error)
 
-      val records = accesses.toSeq.map(Record(abstractState(first), _))
+    val access = error.reason match {
+      case InsufficientPermission(location) =>
+        val x = AccessPath(location)
+        println(x)
+        if (second.label == Labels.POST_STATE) {
+          val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
+          foo0(predicate, x)
+        } else x
+    }
+    println(access)
+    println(first)
+    println(second)
+    // map access back to initial state
+    val accesses = {
+      val evaluated = second.evaluate(access.dropLast)
+      val reach = reachability(first)
+      reach(evaluated).map(FieldPath(_, access.last))
+    }
+    assert(accesses.size == 1)
 
+    val records = accesses.toSeq.map { access =>
+      val predicate = triple.pres.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
+      val abstraction = abstractState(first)
+      Record(predicate, abstraction, foo(predicate, access))
+    }
 
-      // create example(s)
-      if (second.label == Labels.POST_STATE) {
-        val left = Record(abstractState(second), access)
-        records.map(Implication(left, _))
-      }
-      else records.map(Positive)
-    case _ => ???
+    // create example(s)
+    if (second.label == Labels.POST_STATE) {
+      val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
+      val abstraction = abstractState(second)
+      val left = Record(predicate, abstraction, foo(predicate, access))
+      records.map(Implication(left, _))
+    }
+    else records.map(Positive)
+  }
+
+  private def foo0(predicate: PredicateAccess, path: AccessPath): AccessPath = path match {
+    case VariablePath(name) =>
+      val x = predicate.args.zipWithIndex.collectFirst { case (LocalVar(arg, _), i) if s"x_$i" == name => arg }.get
+      VariablePath(x)
+    case FieldPath(receiver, name) => FieldPath(foo0(predicate, receiver), name)
+  }
+
+  private def foo(predicate: PredicateAccess, path: AccessPath): AccessPath = path match {
+    case VariablePath(name) =>
+      val i = predicate.args.zipWithIndex.collectFirst { case (LocalVar(`name`, _), i) => i }.get
+      VariablePath(s"x_$i")
+    case FieldPath(receiver, name) => FieldPath(foo(predicate, receiver), name)
   }
 
   /**
@@ -212,7 +242,10 @@ class ExampleExtractor(teacher: Teacher) {
   private def extractStates(error: VerificationError): (State, State) = {
     // extract path conditions and state
     val (pcs, state) = error.counterexample match {
-      case Some(SiliconRawCounterexample(p, s, _)) => (p, s)
+      case Some(SiliconRawCounterexample(p, s, _)) =>
+        println(s"pcs: $p")
+        println(s"pcs: $p")
+        (p, s)
       case _ => ???
     }
     // build partitions

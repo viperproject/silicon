@@ -4,7 +4,7 @@ import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamW
 import java.nio.file.Paths
 
 import fastparse.core.Parsed.Success
-import viper.silver.ast.{And, Exp, Implies, LocalVar, Not, Or}
+import viper.silver.ast.{And, Exp, FalseLit, Implies, LocalVar, Not, Or, TrueLit}
 import viper.silver.verifier.{ModelParser, SingleEntry}
 
 class Smt {
@@ -132,10 +132,13 @@ class Smt {
   }
 
   def convert(exp: Exp): String = exp match {
+    case TrueLit() => "true"
+    case FalseLit() => "false"
     case LocalVar(name, _) => name
     case Not(arg) => s"(not ${convert(arg)})"
     case And(left, right) => s"(and ${convert(left)} ${convert(right)})"
     case Or(left, right) => s"(or ${convert(left)} ${convert(right)})"
     case Implies(left, right) => s"(=> ${convert(left)} ${convert(right)})"
+    case _ => ???
   }
 }

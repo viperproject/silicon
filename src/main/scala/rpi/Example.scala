@@ -1,6 +1,6 @@
 package rpi
 
-import viper.silver.ast.{Exp, FieldAccess, LocalVar}
+import viper.silver.ast.{Exp, FieldAccess, LocalVar, PredicateAccess}
 
 /**
   * The super trait for all examples.
@@ -32,10 +32,11 @@ case class Implication(left: Record, right: Record) extends Example
 /**
   * A data point.
   *
+  * @param predicate   The predicate this data point refers to.
   * @param abstraction The predicate abstraction of the state.
   * @param access      The access path for which some permissions are required.
   */
-case class Record(abstraction: Seq[Boolean], access: AccessPath) {
+case class Record(predicate: PredicateAccess, abstraction: Seq[Boolean], access: AccessPath) {
   override def toString: String = {
     val absStr = abstraction.map(if (_) 1 else 0).mkString(",")
     s"[$absStr] -> $access"
@@ -60,15 +61,20 @@ sealed trait AccessPath {
     case _ => ???
   }
 
+  def toSeq: Seq[String] = this match {
+    case VariablePath(name) => Seq(name)
+    case FieldPath(receiver, name) => receiver.toSeq :+ name
+  }
+
   def length: Int = this match {
     case VariablePath(_) => 1
     case FieldPath(receiver, _) => receiver.length + 1
   }
+
+  override def toString: String = toSeq.mkString(".")
 }
 
-case class VariablePath(name: String) extends AccessPath {
-  override def toString: String = name
-}
+case class VariablePath(name: String) extends AccessPath
 
 case class FieldPath(receiver: AccessPath, name: String) extends AccessPath {
   override def toString: String = s"$receiver.$name"

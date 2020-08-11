@@ -13,6 +13,8 @@ class Learner(inference: Inference) {
     */
   private var examples: Seq[Example] = Seq.empty
 
+  private var cached: Map[String, Predicate] = Map.empty
+
   /**
     * Starts the learner and all of its subcomponents.
     */
@@ -33,40 +35,71 @@ class Learner(inference: Inference) {
   def addExamples(examples: Seq[Example]): Unit = this.examples ++= examples
 
   /**
+    * Returns the initial hypothesis.
+    *
+    * @return The initial hypothesis.
+    */
+  def initial(): Seq[Predicate] = {
+    cached = inference.predicates.foldLeft[Map[String, Predicate]](Map.empty) {
+      case (current, predicate) =>
+        val name = predicate.predicateName
+        val args = predicate.args.zipWithIndex.map { case (arg, i) => LocalVarDecl(s"x_$i", arg.typ)() }
+        current.updated(name, Predicate(name, args, Some(TrueLit()()))())
+    }
+    cached.values.toSeq
+  }
+
+  /**
     * Returns a hypothesis that is consistent with all examples.
     *
     * @return The hypothesis.
     */
-  def hypothesis(): Exp = examples
-    .groupBy {
-      case Positive(record) => record.access
-      case Negative(record) => record.access
-    }
-    .toSeq.sortBy(_._1.length)
-    .map { case (access, examples) =>
-      val encoded = examples
-        .map(encodeExample)
-        .reduce[Exp](And(_, _)())
-      val model = solver.solve(encoded)
-      val guard = buildGuard(model)
-      val perm = FieldAccessPredicate(buildAccess(access), FullPerm()())()
-      Implies(guard, perm)()
-    }
-    .reduceOption[Exp](And(_, _)())
-    .getOrElse(TrueLit()())
+  def hypothesis(): Seq[Predicate] = {
+    val encoded = examples.map(encodeExample).reduce[Exp](And(_, _)())
+    val model = solver.solve(encoded)
+
+    val labels = examples
+      .flatMap {
+        case Positive(record) => Seq(record)
+        case Negative(record) => Seq(record)
+        case Implication(left, right) => Seq(left, right)
+      }
+      .groupBy(_.predicate)
+      .foreach { case (predicate, records) =>
+        val body = records.map(_.access)
+          .distinct
+          .sortBy(_.length)
+          .map { access =>
+            val fullLabel = s"${predicate.predicateName}_${access.toSeq.mkString("_")}"
+            val guard = buildGuard(fullLabel, model)
+            val perm = FieldAccessPredicate(buildAccess(access), FullPerm()())()
+            Implies(guard, perm)()
+          }
+          .reduce[Exp](And(_, _)())
+        val parameters = predicate.args.zipWithIndex.map {
+          case (argument, index) => LocalVarDecl(s"x_$index", argument.typ)()
+        }
+
+        val name = predicate.predicateName
+        val inferred = Predicate(name, parameters, Some(body))()
+        cached = cached.updated(name, inferred)
+      }
+
+    cached.values.toSeq
+  }
 
   private def positives: Seq[Positive] = examples.collect { case positive: Positive => positive }
 
   private def encodeExample(example: Example): Exp = example match {
-    case example: Positive => encodePositive(example)
-    case example: Negative => encodeNegative(example)
+    case Positive(record) => encodeRecord(record)
+    case Negative(record) => Not(encodeRecord(record))()
+    case Implication(left, right) => Or(encodeRecord(left), Not(encodeRecord(right))())()
   }
 
-  private def encodePositive(example: Positive): Exp = encodeAbstraction(example.record.abstraction)
+  private def encodeRecord(record: Record): Exp = {
+    val label = s"${record.predicate.predicateName}_${record.access.toSeq.mkString("_")}"
+    val abstraction = record.abstraction
 
-  private def encodeNegative(example: Negative): Exp = Not(encodeAbstraction(example.record.abstraction))()
-
-  private def encodeAbstraction(abstraction: Seq[Boolean]): Exp = {
     // complexity parameter
     val k = 1
     // encoding
@@ -74,30 +107,30 @@ class Learner(inference: Inference) {
       .map { i =>
         val conjunction = abstraction.zipWithIndex
           .map { case (v, j) =>
-            val activation = LocalVar(s"y_${i}_$j", Bool)()
-            val sign = LocalVar(s"s_${i}_$j", Bool)()
+            val activation = LocalVar(s"y_${label}_${i}_$j", Bool)()
+            val sign = LocalVar(s"s_${label}_${i}_$j", Bool)()
             Implies(activation, if (v) sign else Not(sign)())()
           }
           .reduceOption[Exp](And(_, _)())
           .getOrElse(TrueLit()())
-        val activation = LocalVar(s"x_$i", Bool)()
+        val activation = LocalVar(s"x_${label}_$i", Bool)()
         And(activation, conjunction)()
       }
       .reduceOption[Exp](Or(_, _)())
       .getOrElse(FalseLit()())
   }
 
-  private def buildGuard(model: Map[String, Boolean]): Exp = {
+  private def buildGuard(label: String, model: Map[String, Boolean]): Exp = {
     // complexity parameter
     val k = 1
 
     Range(0, k)
       .map { i =>
-        if (model(s"x_$i")) {
+        if (model(s"x_${label}_$i")) {
           inference.atoms.zipWithIndex
             .map { case (a, j) =>
-              if (model(s"y_${i}_$j")) {
-                if (model(s"s_${i}_$j")) a else Not(a)()
+              if (model(s"y_${label}_${i}_$j")) {
+                if (model(s"s_${label}_${i}_$j")) a else Not(a)()
               } else TrueLit()()
             }
             .reduceOption[Exp](And(_, _)())
