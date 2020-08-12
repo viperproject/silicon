@@ -55,10 +55,11 @@ class Learner(inference: Inference) {
     * @return The hypothesis.
     */
   def hypothesis(): Seq[Predicate] = {
+    println("examples:")
+    examples.foreach(println)
     val encoded = examples.map(encodeExample).reduce[Exp](And(_, _)())
     val model = solver.solve(encoded)
-
-    val labels = examples
+    examples
       .flatMap {
         case Positive(record) => Seq(record)
         case Negative(record) => Seq(record)
@@ -66,11 +67,12 @@ class Learner(inference: Inference) {
       }
       .groupBy(_.predicate)
       .foreach { case (predicate, records) =>
+        val name = predicate.predicateName
         val body = records.map(_.access)
           .distinct
           .sortBy(_.length)
           .map { access =>
-            val fullLabel = s"${predicate.predicateName}_${access.toSeq.mkString("_")}"
+            val fullLabel = s"${name}_${access.toSeq.mkString("_")}"
             val guard = buildGuard(fullLabel, model)
             val perm = FieldAccessPredicate(buildAccess(access), FullPerm()())()
             Implies(guard, perm)()
@@ -80,11 +82,9 @@ class Learner(inference: Inference) {
           case (argument, index) => LocalVarDecl(s"x_$index", argument.typ)()
         }
 
-        val name = predicate.predicateName
         val inferred = Predicate(name, parameters, Some(body))()
         cached = cached.updated(name, inferred)
       }
-
     cached.values.toSeq
   }
 
@@ -93,7 +93,7 @@ class Learner(inference: Inference) {
   private def encodeExample(example: Example): Exp = example match {
     case Positive(record) => encodeRecord(record)
     case Negative(record) => Not(encodeRecord(record))()
-    case Implication(left, right) => Or(encodeRecord(left), Not(encodeRecord(right))())()
+    case Implication(left, right) => Or(Not(encodeRecord(left))(), encodeRecord(right))()
   }
 
   private def encodeRecord(record: Record): Exp = {

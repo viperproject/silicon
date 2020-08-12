@@ -38,8 +38,9 @@ case class Implication(left: Record, right: Record) extends Example
   */
 case class Record(predicate: PredicateAccess, abstraction: Seq[Boolean], access: AccessPath) {
   override def toString: String = {
+    val name = predicate.predicateName
     val absStr = abstraction.map(if (_) 1 else 0).mkString(",")
-    s"[$absStr] -> $access"
+    s"$predicate: [$absStr] -> $access"
   }
 }
 

@@ -175,22 +175,17 @@ class ProgramBuilder(teacher: Teacher) {
 class ExampleExtractor(teacher: Teacher) {
   def extract(triple: Triple, error: VerificationError): Seq[Example] = {
     println(error)
-
     // extract states
     val (first, second) = extractStates(error)
 
     val access = error.reason match {
       case InsufficientPermission(location) =>
-        val x = AccessPath(location)
-        println(x)
+        val rawPath = AccessPath(location)
         if (second.label == Labels.POST_STATE) {
           val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
-          foo0(predicate, x)
-        } else x
+          formalToActual(predicate, rawPath)
+        } else rawPath
     }
-    println(access)
-    println(first)
-    println(second)
     // map access back to initial state
     val accesses = {
       val evaluated = second.evaluate(access.dropLast)
@@ -202,31 +197,55 @@ class ExampleExtractor(teacher: Teacher) {
     val records = accesses.toSeq.map { access =>
       val predicate = triple.pres.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
       val abstraction = abstractState(first)
-      Record(predicate, abstraction, foo(predicate, access))
+      Record(renameArgs(predicate), abstraction, actualToFormal(predicate, access))
     }
 
     // create example(s)
     if (second.label == Labels.POST_STATE) {
       val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
       val abstraction = abstractState(second)
-      val left = Record(predicate, abstraction, foo(predicate, access))
+      val left = Record(renameArgs(predicate), abstraction, actualToFormal(predicate, access))
       records.map(Implication(left, _))
     }
     else records.map(Positive)
   }
 
-  private def foo0(predicate: PredicateAccess, path: AccessPath): AccessPath = path match {
-    case VariablePath(name) =>
-      val x = predicate.args.zipWithIndex.collectFirst { case (LocalVar(arg, _), i) if s"x_$i" == name => arg }.get
-      VariablePath(x)
-    case FieldPath(receiver, name) => FieldPath(foo0(predicate, receiver), name)
+  private def renameArgs(predicate: PredicateAccess): PredicateAccess = {
+    val args = predicate.args.zipWithIndex.map { case (exp, i) => LocalVar(s"x_$i", exp.typ)() }
+    val name = predicate.predicateName
+    PredicateAccess(args, name)()
   }
 
-  private def foo(predicate: PredicateAccess, path: AccessPath): AccessPath = path match {
-    case VariablePath(name) =>
-      val i = predicate.args.zipWithIndex.collectFirst { case (LocalVar(`name`, _), i) => i }.get
-      VariablePath(s"x_$i")
-    case FieldPath(receiver, name) => FieldPath(foo(predicate, receiver), name)
+  /**
+    * The given access path is expected to contain a formal argument of the predicate accessed by the given predicate
+    * access. This method replaces this formal argument with the corresponding actual argument.
+    *
+    * @param predicate The predicate access.
+    * @param path      The access path.
+    * @return The path with the formal argument replaced with the corresponding actual argument.
+    */
+  private def formalToActual(predicate: PredicateAccess, path: AccessPath): AccessPath = path match {
+    case VariablePath(name) => predicate.args
+      .zipWithIndex
+      .collectFirst { case (LocalVar(arg, _), i) if s"x_$i" == name => VariablePath(arg) }
+      .get
+    case FieldPath(receiver, name) => FieldPath(formalToActual(predicate, receiver), name)
+  }
+
+  /**
+    * The given access path is expected to contain an actual argument of the given predicate access. This method
+    * replaces this actual argument with the corresponding formal argument.
+    *
+    * @param predicate The predicate access.
+    * @param path      The access path.
+    * @return The path with the actual argument replaced with the corresponding formal argument.
+    */
+  private def actualToFormal(predicate: PredicateAccess, path: AccessPath): AccessPath = path match {
+    case VariablePath(name) => predicate.args
+      .zipWithIndex
+      .collectFirst { case (LocalVar(`name`, _), i) => VariablePath(s"x_$i") }
+      .get
+    case FieldPath(receiver, name) => FieldPath(actualToFormal(predicate, receiver), name)
   }
 
   /**
@@ -242,10 +261,7 @@ class ExampleExtractor(teacher: Teacher) {
   private def extractStates(error: VerificationError): (State, State) = {
     // extract path conditions and state
     val (pcs, state) = error.counterexample match {
-      case Some(SiliconRawCounterexample(p, s, _)) =>
-        println(s"pcs: $p")
-        println(s"pcs: $p")
-        (p, s)
+      case Some(SiliconRawCounterexample(p, s, _)) => (p, s)
       case _ => ???
     }
     // build partitions
