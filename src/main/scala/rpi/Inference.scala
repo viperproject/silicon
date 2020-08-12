@@ -55,8 +55,11 @@ object Inference {
     val program = parse(file).get
     val inference = new Inference(program)
     inference.start()
-    inference.run()
+    val annotated = inference.infer()
     inference.stop()
+
+    println("----- annotated program -----")
+    println(annotated)
   }
 
   /**
@@ -129,7 +132,7 @@ class Inference(val program: Program) {
   /**
     * The program annotated with predicates in all the places where some specification should be inferred.
     */
-  lazy val annotated: Program = {
+  lazy val labelled: Program = {
     val id = new AtomicInteger()
     program.transform({
       case method: Method =>
@@ -143,7 +146,7 @@ class Inference(val program: Program) {
     }, Traverse.TopDown)
   }
 
-  lazy val predicates: Seq[PredicateAccess] = annotated.deepCollect {
+  lazy val predicates: Seq[PredicateAccess] = labelled.deepCollect {
     case p: PredicateAccess => p
   }
 
@@ -151,7 +154,7 @@ class Inference(val program: Program) {
     * TODO: Framing
     */
   lazy val triples: Seq[Triple] = {
-    val methods = annotated.methods.map(m => m.name -> m).toMap
+    val methods = labelled.methods.map(m => m.name -> m).toMap
 
     def collectTriples(triples: Seq[Triple], pres: Seq[Exp], before: Seq[Stmt], stmt: Stmt): (Seq[Triple], Seq[Exp], Seq[Stmt]) = stmt match {
       case Seqn(stmts, _) =>
@@ -171,7 +174,7 @@ class Inference(val program: Program) {
         (triples, pres, before :+ stmt)
     }
 
-    annotated.methods.flatMap {
+    labelled.methods.flatMap {
       case Method(name, args, _, pres, posts, Some(body)) =>
         val (ts, ps, bs) = collectTriples(Seq.empty, pres, Seq.empty, body)
         val t = Triple(ps, posts, Seqn(bs, Seq.empty)())
@@ -196,16 +199,41 @@ class Inference(val program: Program) {
     learner.stop()
   }
 
-  def run(): Unit = {
+  def infer(): Program = {
     var hypothesis: Seq[Predicate] = learner.initial()
 
     for (i <- 0 until 4) {
-      println(s"round $i -----------------------")
+      println(s"----- round $i -----")
       val examples = teacher.check(hypothesis)
       learner.addExamples(examples)
       hypothesis = learner.hypothesis()
-      hypothesis.foreach(println)
     }
+
+    // annotate program with inferred specifications
+    val map = hypothesis.map(pred => pred.name -> pred).toMap
+    annotated(map)
+  }
+
+  private def annotated(hypothesis: Map[String, Predicate]): Program = {
+    val predicates = labelled.predicates ++ hypothesis.values
+    val methods = labelled.methods.map { method =>
+      val body = method.body match {
+        case Some(seqn) =>
+          val unfold = method.pres.collectFirst { case p: PredicateAccessPredicate => Unfold(p)() }.get
+          val fold = method.posts.collectFirst { case p: PredicateAccessPredicate => Fold(p)() }.get
+          val x = seqn.transform({
+            case call@MethodCall(name, args, _) =>
+              val mp = Fold(PredicateAccessPredicate(PredicateAccess(args, hypothesis(s"P_$name").name)(), FullPerm()())())()
+              val mq = Unfold(PredicateAccessPredicate(PredicateAccess(args, hypothesis(s"Q_$name").name)(), FullPerm()())())()
+              Seqn(Seq(mp, call, mq), Seq.empty)()
+          }, Traverse.BottomUp)
+          val stmts = unfold +: x.ss :+ fold
+          Some(Seqn(stmts, seqn.scopedDecls)())
+        case none => none
+      }
+      method.copy(body = body)(method.pos, method.info, method.errT)
+    }
+    labelled.copy(predicates = predicates, methods = methods)(NoPosition, NoInfo, NoTrafos)
   }
 }
 
