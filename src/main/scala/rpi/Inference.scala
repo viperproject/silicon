@@ -226,6 +226,13 @@ class Inference(val program: Program) {
               val mp = Fold(PredicateAccessPredicate(PredicateAccess(args, hypothesis(s"P_$name").name)(), FullPerm()())())()
               val mq = Unfold(PredicateAccessPredicate(PredicateAccess(args, hypothesis(s"Q_$name").name)(), FullPerm()())())()
               Seqn(Seq(mp, call, mq), Seq.empty)()
+            case While(cond, invs, body) =>
+              val invPred = invs.collectFirst { case p: PredicateAccessPredicate => p }.get
+              val invFold = Fold(invPred)()
+              val invUnfold = Unfold(invPred)()
+              val updated = Seqn(invUnfold +: body.ss :+ invFold, Seq.empty)()
+              val loop = While(cond, invs, updated)()
+              Seqn(Seq(invFold, loop, invUnfold), Seq.empty)()
           }, Traverse.BottomUp)
           val stmts = unfold +: x.ss :+ fold
           Some(Seqn(stmts, seqn.scopedDecls)())
