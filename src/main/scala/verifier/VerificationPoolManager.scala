@@ -35,6 +35,8 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
     def saturate(timeout: Int, comment: String): Unit =
       slaveVerifiers foreach (_.decider.prover.saturate(timeout, comment))
+
+    def preamble(start: Boolean) = ???
   }
 
   /* Verifier pool management */
