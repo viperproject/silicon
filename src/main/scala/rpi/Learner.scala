@@ -40,9 +40,9 @@ class Learner(inference: Inference) {
     * @return The initial hypothesis.
     */
   def initial(): Seq[Predicate] = {
-    cached = inference.predicates.foldLeft[Map[String, Predicate]](Map.empty) {
-      case (current, predicate) =>
-        val name = predicate.predicateName
+    cached = inference.specs.foldLeft[Map[String, Predicate]](Map.empty) {
+      case (current, (name, specification)) =>
+        val predicate = specification.predicate
         val args = predicate.args.zipWithIndex.map { case (arg, i) => LocalVarDecl(s"x_$i", arg.typ)() }
         current.updated(name, Predicate(name, args, Some(TrueLit()()))())
     }
@@ -68,12 +68,13 @@ class Learner(inference: Inference) {
       .groupBy(_.predicate)
       .foreach { case (predicate, records) =>
         val name = predicate.predicateName
+        val atoms = inference.specs(name).atoms
         val body = records.map(_.access)
           .distinct
           .sortBy(_.length)
           .map { access =>
             val fullLabel = s"${name}_${access.toSeq.mkString("_")}"
-            val guard = buildGuard(fullLabel, model)
+            val guard = buildGuard(atoms, fullLabel, model)
             val perm = FieldAccessPredicate(buildAccess(access), FullPerm()())()
             Implies(guard, perm)()
           }
@@ -120,14 +121,15 @@ class Learner(inference: Inference) {
       .getOrElse(FalseLit()())
   }
 
-  private def buildGuard(label: String, model: Map[String, Boolean]): Exp = {
+  private def buildGuard(atoms: Seq[Exp], label: String, model: Map[String, Boolean]): Exp = {
     // complexity parameter
     val k = 1
 
+    // TODO: Implement me.
     Range(0, k)
       .map { i =>
         if (model(s"x_${label}_$i")) {
-          inference.atoms.zipWithIndex
+          atoms.zipWithIndex
             .map { case (a, j) =>
               if (model(s"y_${label}_${i}_$j")) {
                 if (model(s"s_${label}_${i}_$j")) a else Not(a)()

@@ -55,16 +55,22 @@ class Teacher(val inference: Inference) {
     // build program
     val program = builder.buildCheck(triple, hypothesis)
     println(program)
-    // verify program
-    val result = verifier.verify(program)
-    // extract examples
-    result match {
+    // verify program and extract examples
+    verify(program) match {
       case Success => Seq.empty
       case Failure(errors) => errors
         .collect { case error: VerificationError => error }
         .flatMap { error => extractor.extract(triple, error) }
     }
   }
+
+  /**
+    * Verifies the given program.
+    *
+    * @param program The program to verify.
+    * @return The verification result.
+    */
+  def verify(program: Program): VerificationResult = verifier.verify(program)
 }
 
 /**
@@ -82,13 +88,19 @@ class ProgramBuilder(teacher: Teacher) {
     */
   private val program: Program = teacher.inference.program
 
-  private val atoms: Seq[Exp] = teacher.inference.atoms
-
   private var inits: Seq[LocalVarDecl] = Seq.empty
 
   private var stmts: Seq[Stmt] = Seq.empty
 
   def buildCheck(triple: Triple, hypothesis: Seq[Predicate]): Program = {
+
+    val specs = teacher.inference.specs
+
+    val prePred = triple.pres.collectFirst { case pred: PredicateAccessPredicate => pred }.get
+    val postPred = triple.posts.collectFirst { case pred: PredicateAccessPredicate => pred }.get
+    val preSpec = specs(prePred.loc.predicateName)
+    val postSpec = specs(postPred.loc.predicateName)
+
     // clear
     clear()
     // save variables
@@ -97,12 +109,12 @@ class ProgramBuilder(teacher: Teacher) {
     triple.pres.foreach(addInhale)
     triple.pres.collect { case p: PredicateAccessPredicate => p }.foreach(addUnfold)
     // pre-state
-    atoms.zipWithIndex.foreach { case (exp, i) => saveExp(s"${Labels.PRE_STATE}_p_$i", exp) }
+    preSpec.atoms(prePred.loc.args).zipWithIndex.foreach { case (exp, i) => saveExp(s"${Labels.PRE_STATE}_p_$i", exp) }
     addLabel(Labels.PRE_STATE)
     // execute loop body
     addStmt(triple.body)
     // post-state
-    atoms.zipWithIndex.foreach { case (exp, i) => saveExp(s"${Labels.POST_STATE}_p_$i", exp) }
+    postSpec.atoms(postPred.loc.args).zipWithIndex.foreach { case (exp, i) => saveExp(s"${Labels.POST_STATE}_p_$i", exp) }
     addLabel(Labels.POST_STATE)
     // assume post-condition
     triple.posts.collect { case p: PredicateAccessPredicate => p }.foreach(addFold)
@@ -192,22 +204,27 @@ class ExampleExtractor(teacher: Teacher) {
       val reach = reachability(first)
       reach(evaluated).map(FieldPath(_, access.last))
     }
-    assert(accesses.size == 1)
 
-    val records = accesses.toSeq.map { access =>
+    val record = {
+      // TODO: Does it matter which access path we pick?
+      val access = accesses.head
       val predicate = triple.pres.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
-      val abstraction = abstractState(first)
+      val atoms = teacher.inference.specs(predicate.predicateName).atoms
+      val abstraction = abstractState(atoms, first)
       Record(renameArgs(predicate), abstraction, actualToFormal(predicate, access))
     }
 
-    // create example(s)
-    if (second.label == Labels.POST_STATE) {
+    // create example
+    val example = if (second.label == Labels.POST_STATE) {
       val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
-      val abstraction = abstractState(second)
+      val atoms = teacher.inference.specs(predicate.predicateName).atoms
+      val abstraction = abstractState(atoms, second)
       val left = Record(renameArgs(predicate), abstraction, actualToFormal(predicate, access))
-      records.map(Implication(left, _))
+      Implication(left, record)
     }
-    else records.map(Positive)
+    else Positive(record)
+
+    Seq(example)
   }
 
   private def renameArgs(predicate: PredicateAccess): PredicateAccess = {
@@ -299,8 +316,8 @@ class ExampleExtractor(teacher: Teacher) {
     }
 
   /**
-    * * Computes the terms that are reachable from the initial variables. The reachability is represented as a map that
-    * * associates every reachable term with a set of access paths that point to that term (in the initial state).
+    * Computes the terms that are reachable from the initial variables. The reachability is represented as a map that
+    * associates every reachable term with a set of access paths that point to that term (in the initial state).
     *
     * @param state The state.
     * @return The reachability.
@@ -336,8 +353,8 @@ class ExampleExtractor(teacher: Teacher) {
     recurse(initial, 2)
   }
 
-  private def abstractState(state: State): Seq[Boolean] = {
-    teacher.inference.atoms.indices.map { i =>
+  private def abstractState(atoms: Seq[Exp], state: State): Seq[Boolean] = {
+    atoms.indices.map { i =>
       state.store(s"${state.label}_p_$i") match {
         case True() => true
         case False() => false

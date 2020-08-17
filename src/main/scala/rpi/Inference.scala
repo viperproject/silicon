@@ -11,7 +11,6 @@ import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
 import scala.io.Source
 import scala.util.Properties
 
-
 object Inference {
   /**
     * Returns he file to be parsed.
@@ -56,10 +55,13 @@ object Inference {
     val inference = new Inference(program)
     inference.start()
     val annotated = inference.infer()
-    inference.stop()
 
     println("----- annotated program -----")
     println(annotated)
+    println("----- verification result -----")
+    println(inference.teacher.verify(annotated))
+
+    inference.stop()
   }
 
   /**
@@ -123,13 +125,6 @@ class Inference(val program: Program) {
   private val learner: Learner = new Learner(this)
 
   /**
-    * The sequence of atomic predicates.
-    */
-  lazy val atoms: Seq[Exp] = program
-    .deepCollect { case While(cond, _, _) => cond }
-    .distinct
-
-  /**
     * The program annotated with predicates in all the places where some specification should be inferred.
     */
   lazy val labelled: Program = {
@@ -146,9 +141,22 @@ class Inference(val program: Program) {
     }, Traverse.TopDown)
   }
 
-  lazy val predicates: Seq[PredicateAccess] = labelled.deepCollect {
-    case p: PredicateAccess => p
-  }
+  lazy val specs: Map[String, Spec] = labelled.deepCollect {
+    case predicate: PredicateAccess =>
+      // TODO: Implement properly.
+      val atoms = predicate.args.zipWithIndex.tails.flatMap {
+        case (a, i) +: rest =>
+          rest.map { case (b, j) =>
+            val xi = LocalVar(s"x_$i", a.typ)()
+            val xj = LocalVar(s"x_$j", b.typ)()
+            EqCmp(xi, xj)()
+          }
+        case _ => Seq.empty
+      }
+      val specification = Spec(predicate, atoms.toSeq)
+      // create map entry
+      predicate.predicateName -> specification
+  }.toMap
 
   /**
     * TODO: Framing
@@ -250,5 +258,24 @@ case class Triple(pres: Seq[Exp], posts: Seq[Exp], body: Seqn) {
     val q = posts.map(_.toString()).reduceOption((x, y) => s"$x && $y").getOrElse("true")
     val s = body.ss.map(_.toString()).reduceOption((x, y) => s"$x; $y").getOrElse("skip")
     s"{$p} $s {$q}"
+  }
+}
+
+/**
+  * Represents specifications that need to be inferred.
+  *
+  * @param predicate The predicate representing the specifications.
+  * @param atoms     The atomic predicates that may be used to express the guards in the specifications.
+  */
+case class Spec(predicate: PredicateAccess, atoms: Seq[Exp]) {
+  /**
+    * Returns the atomic predicates where the formal arguments are replaced with the given actual arguments.
+    *
+    * @param args The arguments.
+    * @return The atomic predicates.
+    */
+  def atoms(args: Seq[Exp]): Seq[Exp] = {
+    val map = args.zipWithIndex.map { case (arg, i) => s"x_$i" -> arg }.toMap
+    atoms.map(_.transform { case v: LocalVar => map.getOrElse(v.name, v) })
   }
 }
