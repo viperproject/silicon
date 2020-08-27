@@ -34,13 +34,15 @@ case class Implication(left: Record, right: Record) extends Example
   *
   * @param predicate   The predicate this data point refers to.
   * @param abstraction The predicate abstraction of the state.
-  * @param access      The access path for which some permissions are required.
+  * @param accesses    The (under-approximate) set of access paths that can be used to represent the location for which
+  *                    some permissions are required.
   */
-case class Record(predicate: PredicateAccess, abstraction: Seq[Boolean], access: AccessPath) {
+case class Record(predicate: PredicateAccess, abstraction: Seq[Boolean], accesses: Set[AccessPath]) {
   override def toString: String = {
     val name = predicate.predicateName
     val absStr = abstraction.map(if (_) 1 else 0).mkString(",")
-    s"$predicate: [$absStr] -> $access"
+    val accStr = accesses.mkString(",")
+    s"$predicate: [$absStr] -> {$accStr}"
   }
 }
 

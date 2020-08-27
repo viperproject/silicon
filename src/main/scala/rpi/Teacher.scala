@@ -186,7 +186,6 @@ class ProgramBuilder(teacher: Teacher) {
 
 class ExampleExtractor(teacher: Teacher) {
   def extract(triple: Triple, error: VerificationError): Seq[Example] = {
-    println(error)
     // extract states
     val (first, second) = extractStates(error)
 
@@ -206,12 +205,11 @@ class ExampleExtractor(teacher: Teacher) {
     }
 
     val record = {
-      // TODO: Does it matter which access path we pick?
-      val access = accesses.head
       val predicate = triple.pres.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
       val atoms = teacher.inference.specs(predicate.predicateName).atoms
       val abstraction = abstractState(atoms, first)
-      Record(renameArgs(predicate), abstraction, actualToFormal(predicate, access))
+      val mappedAccesses = accesses.map { access => actualToFormal(predicate, access) }
+      Record(renameArgs(predicate), abstraction, mappedAccesses)
     }
 
     // create example
@@ -219,7 +217,7 @@ class ExampleExtractor(teacher: Teacher) {
       val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
       val atoms = teacher.inference.specs(predicate.predicateName).atoms
       val abstraction = abstractState(atoms, second)
-      val left = Record(renameArgs(predicate), abstraction, actualToFormal(predicate, access))
+      val left = Record(renameArgs(predicate), abstraction, Set(actualToFormal(predicate, access)))
       Implication(left, record)
     }
     else Positive(record)

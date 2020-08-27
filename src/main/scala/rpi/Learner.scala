@@ -69,7 +69,7 @@ class Learner(inference: Inference) {
       .foreach { case (predicate, records) =>
         val name = predicate.predicateName
         val atoms = inference.specs(name).atoms
-        val body = records.map(_.access)
+        val body = records.flatMap(_.accesses)
           .distinct
           .sortBy(_.length)
           .map { access =>
@@ -98,27 +98,49 @@ class Learner(inference: Inference) {
   }
 
   private def encodeRecord(record: Record): Exp = {
-    val label = s"${record.predicate.predicateName}_${record.access.toSeq.mkString("_")}"
-    val abstraction = record.abstraction
-
     // complexity parameter
     val k = 1
-    // encoding
-    Range(0, k)
-      .map { i =>
-        val conjunction = abstraction.zipWithIndex
-          .map { case (v, j) =>
-            val activation = LocalVar(s"y_${label}_${i}_$j", Bool)()
-            val sign = LocalVar(s"s_${label}_${i}_$j", Bool)()
-            Implies(activation, if (v) sign else Not(sign)())()
-          }
-          .reduceOption[Exp](And(_, _)())
-          .getOrElse(TrueLit()())
-        val activation = LocalVar(s"x_${label}_$i", Bool)()
-        And(activation, conjunction)()
+
+    val encodings = record.accesses.map { access =>
+      val name = record.predicate.predicateName
+      val label = s"${name}_${access.toSeq.mkString("_")}"
+      Range(0, k)
+        .map { i =>
+          val clauseEncoding = record
+            .abstraction
+            .zipWithIndex
+            .map { case (v, j) =>
+              val literalEncoding = {
+                val sign = LocalVar(s"s_${label}_${i}_$j", Bool)()
+                if (v) sign else Not(sign)()
+              }
+              val literalActivation = LocalVar(s"y_${label}_${i}_$j", Bool)()
+              Implies(literalActivation, literalEncoding)()
+            }
+            .reduceOption[Exp](And(_, _)())
+            .getOrElse(TrueLit()())
+          val clauseActivation = LocalVar(s"x_${label}_$i", Bool)()
+          And(clauseActivation, clauseEncoding)()
+        }
+        .reduceOption[Exp](Or(_, _)())
+        .getOrElse(FalseLit()())
+    }
+
+    if (encodings.isEmpty) FalseLit()()
+    else if (encodings.tail.isEmpty) encodings.head
+    else one(encodings.toSeq)
+  }
+
+  private def one(parts: Seq[Exp]): Exp = {
+    val lower = parts.reduceOption[Exp](Or(_, _)()).getOrElse(FalseLit()())
+    val upper = parts.tails
+      .flatMap {
+        case x +: rest => rest.map { y => Not(And(x, y)())() }
+        case _ => Seq.empty
       }
-      .reduceOption[Exp](Or(_, _)())
-      .getOrElse(FalseLit()())
+      .reduceOption[Exp](And(_, _)())
+      .getOrElse(TrueLit()())
+    And(lower, upper)()
   }
 
   private def buildGuard(atoms: Seq[Exp], label: String, model: Map[String, Boolean]): Exp = {
@@ -137,7 +159,8 @@ class Learner(inference: Inference) {
             }
             .reduceOption[Exp](And(_, _)())
             .getOrElse(TrueLit()())
-        } else FalseLit()()
+        }
+        else FalseLit()()
       }
       .reduceOption[Exp](Or(_, _)())
       .getOrElse(FalseLit()())

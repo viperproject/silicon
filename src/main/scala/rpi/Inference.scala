@@ -149,7 +149,7 @@ class Inference(val program: Program) {
           rest.map { case (b, j) =>
             val xi = LocalVar(s"x_$i", a.typ)()
             val xj = LocalVar(s"x_$j", b.typ)()
-            EqCmp(xi, xj)()
+            NeCmp(xi, xj)()
           }
         case _ => Seq.empty
       }
@@ -210,7 +210,7 @@ class Inference(val program: Program) {
   def infer(): Program = {
     var hypothesis: Seq[Predicate] = learner.initial()
 
-    for (i <- 0 until 4) {
+    for (i <- 0 until 3) {
       println(s"----- round $i -----")
       val examples = teacher.check(hypothesis)
       learner.addExamples(examples)
