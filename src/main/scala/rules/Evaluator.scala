@@ -219,8 +219,8 @@ object evaluator extends EvaluationRules with Immutable {
                     Q(s2, fvfLookup, v1)}
               }
             case _ =>
-              val (smDef1, smCache1) =
-                quantifiedChunkSupporter.summarisingSnapshotMap(
+              val (s2, smDef1, pmDef1) =
+                quantifiedChunkSupporter.heapSummarisingMaps(
                   s = s1,
                   resource = fa.field,
                   codomainQVars = Seq(`?r`),
@@ -234,9 +234,8 @@ object evaluator extends EvaluationRules with Immutable {
                 if (s1.triggerExp) {
                   True()
                 } else {
-                  val totalPermissions = smCache1.get((fa.field, relevantChunks)).get._2
-                    /* TODO: Have totalPermissions returned by quantifiedChunkSupporter.summarisingSnapshotMap */
-                  IsPositive(totalPermissions.replace(`?r`, tRcvr))
+                  val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
+                  IsPositive(totalPermissions)
                 }
               v1.decider.assert(permCheck) {
                 case false =>
@@ -246,9 +245,9 @@ object evaluator extends EvaluationRules with Immutable {
                   val fr2 =
                     s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
                                        .recordFvfAndDomain(smDef1)
-                  val s2 = s1.copy(functionRecorder = fr2,
-                                   smCache = smCache1)
-                  Q(s2, smLookup, v1)}
+                  val s3 = s1.copy(functionRecorder = fr2/*,
+                                   smCache = smCache1*/)
+                  Q(s3, smLookup, v1)}
               }})
 
       case fa: ast.FieldAccess =>
