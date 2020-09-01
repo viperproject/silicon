@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silver.verifier.VerificationError
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Failure, Success, VerificationResult}
+import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
