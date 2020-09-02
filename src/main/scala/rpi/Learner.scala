@@ -78,7 +78,8 @@ class Learner(inference: Inference) {
             val perm = FieldAccessPredicate(buildAccess(access), FullPerm()())()
             Implies(guard, perm)()
           }
-          .reduce[Exp](And(_, _)())
+          .reduceOption[Exp](And(_, _)())
+          .getOrElse(FalseLit()())
         val parameters = predicate.args.zipWithIndex.map {
           case (argument, index) => LocalVarDecl(s"x_$index", argument.typ)()
         }

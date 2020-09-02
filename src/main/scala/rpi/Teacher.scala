@@ -4,7 +4,7 @@ import rpi.util.{Maps, UnionFind}
 import viper.silicon.Silicon
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.state.{BasicChunk, Heap, Store}
-import viper.silicon.state.terms.{BuiltinEquals, False, Term, True}
+import viper.silicon.state.terms.{BuiltinEquals, False, Null, Term, True}
 import viper.silver.ast._
 import viper.silver.verifier._
 import viper.silver.verifier.reasons.InsufficientPermission
@@ -198,10 +198,9 @@ class ExampleExtractor(teacher: Teacher) {
         } else rawPath
     }
     // map access back to initial state
-    val accesses = {
-      val evaluated = second.evaluate(access.dropLast)
-      val reach = reachability(first)
-      reach(evaluated).map(FieldPath(_, access.last))
+    val accesses = second.evaluate(access.dropLast) match {
+      case Null() => Set.empty
+      case term => reachability(first)(term).map(FieldPath(_, access.last))
     }
 
     val record = {
