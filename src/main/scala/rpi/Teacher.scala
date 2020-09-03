@@ -190,17 +190,21 @@ class ExampleExtractor(teacher: Teacher) {
     val (first, second) = extractStates(error)
 
     val access = error.reason match {
-      case InsufficientPermission(location) =>
-        val rawPath = AccessPath(location)
-        if (second.label == Labels.POST_STATE) {
-          val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
-          formalToActual(predicate, rawPath)
-        } else rawPath
+      case InsufficientPermission(location) => AccessPath(location)
     }
+
     // map access back to initial state
-    val accesses = second.evaluate(access.dropLast) match {
-      case Null() => Set.empty
-      case term => reachability(first)(term).map(FieldPath(_, access.last))
+    val accesses = {
+      // adapt
+      val adapted = if (second.label == Labels.POST_STATE) {
+        val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
+        formalToActual(predicate, access)
+      } else access
+
+      second.evaluate(adapted.dropLast) match {
+        case Null() => Set.empty
+        case term => reachability(first)(term).map(FieldPath(_, adapted.last))
+      }
     }
 
     val record = {
@@ -216,7 +220,7 @@ class ExampleExtractor(teacher: Teacher) {
       val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
       val atoms = teacher.inference.specs(predicate.predicateName).atoms
       val abstraction = abstractState(atoms, second)
-      val left = Record(renameArgs(predicate), abstraction, Set(actualToFormal(predicate, access)))
+      val left = Record(renameArgs(predicate), abstraction, Set(access))
       Implication(left, record)
     }
     else Positive(record)
