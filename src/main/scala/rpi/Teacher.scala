@@ -4,7 +4,8 @@ import rpi.util.{Maps, UnionFind}
 import viper.silicon.Silicon
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.state.{BasicChunk, Heap, Store}
-import viper.silicon.state.terms.{BuiltinEquals, False, Null, Term, True}
+import viper.silicon.state.terms.Term
+import viper.silicon.state.{terms => term}
 import viper.silver.ast._
 import viper.silver.verifier._
 import viper.silver.verifier.reasons.InsufficientPermission
@@ -113,6 +114,22 @@ class ProgramBuilder(teacher: Teacher) {
     addLabel(Labels.PRE_STATE)
     // execute loop body
     addStmt(triple.body)
+    // reflect on permission amounts
+    hypothesis
+      .find(_.name == postPred.loc.predicateName).get.body.get
+      .collect { case pred: FieldAccessPredicate => pred.loc }
+      .foreach {
+        access: FieldAccess =>
+          // formal to actual transformation (maybe we can reuse code for access paths?)
+          val location = access.transform {
+            case LocalVar(name, typ) => postPred.loc.args.zipWithIndex
+              .collectFirst { case (variable, index) if s"x_$index" == name => variable }.get
+          }
+          // assign current perm to variable
+          val lhs = LocalVar(s"perm_${AccessPath(location).toSeq.mkString("_")}", Perm)()
+          val rhs = CurrentPerm(location)()
+          addStmt(LocalVarAssign(lhs, rhs)())
+      }
     // post-state
     postSpec.atoms(postPred.loc.args).zipWithIndex.foreach { case (exp, i) => saveExp(s"${Labels.POST_STATE}_p_$i", exp) }
     addLabel(Labels.POST_STATE)
@@ -193,37 +210,44 @@ class ExampleExtractor(teacher: Teacher) {
       case InsufficientPermission(location) => AccessPath(location)
     }
 
-    // map access back to initial state
-    val accesses = {
-      // adapt
-      val adapted = if (second.label == Labels.POST_STATE) {
-        val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
-        formalToActual(predicate, access)
-      } else access
+    // adapt
+    lazy val adapted = if (second.label == Labels.POST_STATE) {
+      val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
+      formalToActual(predicate, access)
+    } else access
 
-      second.evaluate(adapted.dropLast) match {
-        case Null() => Set.empty
-        case term => reachability(first)(term).map(FieldPath(_, adapted.last))
-      }
-    }
-
-    val record = {
-      val predicate = triple.pres.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
-      val atoms = teacher.inference.specs(predicate.predicateName).atoms
-      val abstraction = abstractState(atoms, first)
-      val mappedAccesses = accesses.map { access => actualToFormal(predicate, access) }
-      Record(renameArgs(predicate), abstraction, mappedAccesses)
-    }
-
-    // create example
-    val example = if (second.label == Labels.POST_STATE) {
+    // post-state record
+    lazy val postRecord = {
       val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
       val atoms = teacher.inference.specs(predicate.predicateName).atoms
       val abstraction = abstractState(atoms, second)
-      val left = Record(renameArgs(predicate), abstraction, Set(access))
-      Implication(left, record)
+      Record(renameArgs(predicate), abstraction, Set(access))
     }
-    else Positive(record)
+
+    // pre-state record
+    lazy val preRecord = {
+      val predicate = triple.pres.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
+      val atoms = teacher.inference.specs(predicate.predicateName).atoms
+      val abstraction = abstractState(atoms, first)
+      val accesses = second.evaluate(adapted.dropLast) match {
+        case term.Null() => Set.empty[AccessPath]
+        case term => reachability(first)(term)
+          .map(FieldPath(_, adapted.last))
+          .map { access => actualToFormal(predicate, access) }
+      }
+      // TODO: Remove hack that only takes the first access path
+      Record(renameArgs(predicate), abstraction, accesses.headOption.toSet)
+    }
+
+    lazy val permission = second.store(s"perm_${adapted.toSeq.mkString("_")}")
+
+    // create example
+    val example =
+      if (second.label == Labels.POST_STATE) permission match {
+        case term.NoPerm() => Implication(postRecord, preRecord)
+        case term.FullPerm() => Negative(postRecord)
+      }
+      else Positive(preRecord)
 
     Seq(example)
   }
@@ -285,7 +309,7 @@ class ExampleExtractor(teacher: Teacher) {
     // build partitions
     val partitions = new UnionFind[Term]
     pcs.foreach {
-      case BuiltinEquals(x, y) => partitions.union(x, y)
+      case term.BuiltinEquals(x, y) => partitions.union(x, y)
       case _ => // do nothing
     }
     // extract raw heaps
@@ -357,8 +381,8 @@ class ExampleExtractor(teacher: Teacher) {
   private def abstractState(atoms: Seq[Exp], state: State): Seq[Boolean] = {
     atoms.indices.map { i =>
       state.store(s"${state.label}_p_$i") match {
-        case True() => true
-        case False() => false
+        case term.True() => true
+        case term.False() => false
       }
     }
   }
