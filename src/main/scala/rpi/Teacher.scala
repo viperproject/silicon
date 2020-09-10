@@ -232,8 +232,10 @@ class ExampleExtractor(teacher: Teacher) {
       val accesses = second.evaluate(adapted.dropLast) match {
         case term.Null() => Set.empty[AccessPath]
         case term => reachability(first)(term)
-          .map(FieldPath(_, adapted.last))
-          .map { access => actualToFormal(predicate, access) }
+          .flatMap { receiver =>
+            val access = FieldPath(receiver, adapted.last)
+            actualToFormal(predicate, access)
+          }
       }
       // TODO: Remove hack that only takes the first access path
       Record(renameArgs(predicate), abstraction, accesses.headOption.toSet)
@@ -282,12 +284,11 @@ class ExampleExtractor(teacher: Teacher) {
     * @param path      The access path.
     * @return The path with the actual argument replaced with the corresponding formal argument.
     */
-  private def actualToFormal(predicate: PredicateAccess, path: AccessPath): AccessPath = path match {
+  private def actualToFormal(predicate: PredicateAccess, path: AccessPath): Option[AccessPath] = path match {
     case VariablePath(name) => predicate.args
       .zipWithIndex
       .collectFirst { case (LocalVar(`name`, _), i) => VariablePath(s"x_$i") }
-      .get
-    case FieldPath(receiver, name) => FieldPath(actualToFormal(predicate, receiver), name)
+    case FieldPath(receiver, name) => actualToFormal(predicate, receiver).map(FieldPath(_, name))
   }
 
   /**
