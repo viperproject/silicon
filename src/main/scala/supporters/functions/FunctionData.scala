@@ -14,7 +14,7 @@ import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, functionSupporter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
-import viper.silicon.state.{IdentifierFactory, SymbolConverter}
+import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.plugin.PluginAwareReporter
@@ -134,6 +134,8 @@ class FunctionData(val programFunction: ast.Function,
   }
 
   private def generateNestedDefinitionalAxioms: InsertionOrderedSet[Term] = {
+    val freshSymbols: Set[Identifier] = freshSymbolsAcrossAllPhases.map(_.id)
+
     val nested = (
          freshFieldInvs.flatMap(_.definitionalAxioms)
       ++ freshFvfsAndDomains.flatMap (fvfDef => fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
@@ -146,10 +148,11 @@ class FunctionData(val programFunction: ast.Function,
     // Once his changes are merged in, the commented warnings below should be turned into errors.
     nested.filter(term => {
       val freeVars = term.freeVariables -- arguments
+      val unknownVars = freeVars.filterNot(v => freshSymbols.contains(v.id))
 
-    //if (freeVars.nonEmpty) {
+    //if (unknownVars.nonEmpty) {
     //  val messageText = (
-    //      s"Found unexpected free variables $freeVars "
+    //      s"Found unexpected free variables $unknownVars "
     //    + s"in term $term during axiomatisation of function "
     //    + s"${programFunction.name}")
     //
@@ -157,7 +160,7 @@ class FunctionData(val programFunction: ast.Function,
     //  logger warn messageText
     //}
 
-      freeVars.isEmpty
+      unknownVars.isEmpty
     })
   }
 

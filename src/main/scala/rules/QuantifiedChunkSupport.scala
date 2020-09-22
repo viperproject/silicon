@@ -12,7 +12,7 @@ import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.{Map, SymbExLogger}
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -712,7 +712,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
               qid: String,
               optTrigger: Option[Seq[ast.Trigger]],
               tTriggers: Seq[Trigger],
-              auxGlobals: Seq[Quantification],
+              auxGlobals: Seq[Term],
               auxNonGlobals: Seq[Quantification],
               tCond: Term,
               tArgs: Seq[Term],
@@ -889,7 +889,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
               qid: String,
               optTrigger: Option[Seq[ast.Trigger]],
               tTriggers: Seq[Trigger],
-              auxGlobals: Seq[Quantification],
+              auxGlobals: Seq[Term],
               auxNonGlobals: Seq[Quantification],
               tCond: Term,
               tArgs: Seq[Term],

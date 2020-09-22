@@ -17,6 +17,7 @@ object Unknown extends Result
 
 /* TODO: Should be generic, not hardcoded to Strings */
 trait ProverLike {
+  def preamble(start: Boolean)
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
   def assume(term: Term)
