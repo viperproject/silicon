@@ -129,16 +129,21 @@ class Inference(val program: Program) {
     */
   lazy val labelled: Program = {
     val id = new AtomicInteger()
-    program.transform({
-      case method: Method =>
+    program.transformWithContext[Seq[Exp]]({
+      case (method: Method, vars) =>
         val args = method.formalArgs.map(v => LocalVar(v.name, v.typ)())
         val pres = method.pres :+ PredicateAccessPredicate(PredicateAccess(args, s"P_${method.name}")(), FullPerm()())()
         val posts = method.posts :+ PredicateAccessPredicate(PredicateAccess(args, s"Q_${method.name}")(), FullPerm()())()
-        method.copy(pres = pres, posts = posts)(method.pos, method.info, method.errT)
-      case loop: While =>
-        val invs = loop.invs :+ PredicateAccessPredicate(PredicateAccess(Seq.empty, s"I_${id.getAndIncrement()}")(), FullPerm()())()
-        loop.copy(invs = invs)(loop.pos, loop.info, loop.errT)
-    }, Traverse.TopDown)
+        val updated = method.copy(pres = pres, posts = posts)(method.pos, method.info, method.errT)
+        (updated, args)
+      case (loop: While, vars) =>
+        val invs = loop.invs :+ PredicateAccessPredicate(PredicateAccess(vars, s"I_${id.getAndIncrement()}")(), FullPerm()())()
+        val updated = loop.copy(invs = invs)(loop.pos, loop.info, loop.errT)
+        (updated, vars)
+      case (seqn: Seqn, vars) =>
+        val updated = vars ++ seqn.scopedDecls.collect { case x: LocalVarDecl => LocalVar(x.name, x.typ)() }
+        (seqn, updated)
+    }, Seq.empty, Traverse.TopDown)
   }
 
   lazy val specs: Map[String, Spec] = labelled.deepCollect {
@@ -210,7 +215,7 @@ class Inference(val program: Program) {
   def infer(): Program = {
     var hypothesis: Seq[Predicate] = learner.initial()
 
-    for (i <- 0 until 3) {
+    for (i <- 0 until 5) {
       println(s"----- round $i -----")
       val examples = teacher.check(hypothesis)
       learner.addExamples(examples)
