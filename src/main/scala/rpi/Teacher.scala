@@ -5,7 +5,7 @@ import viper.silicon.Silicon
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.state.{BasicChunk, Heap, Store}
 import viper.silicon.state.terms.Term
-import viper.silicon.state.{terms => term}
+import viper.silicon.state.{terms => terms}
 import viper.silver.ast._
 import viper.silver.verifier._
 import viper.silver.verifier.reasons.InsufficientPermission
@@ -203,6 +203,7 @@ class ProgramBuilder(teacher: Teacher) {
 
 class ExampleExtractor(teacher: Teacher) {
   def extract(triple: Triple, error: VerificationError): Seq[Example] = {
+    println(s"error: $error")
     // extract states
     val (first, second) = extractStates(error)
 
@@ -225,33 +226,71 @@ class ExampleExtractor(teacher: Teacher) {
     }
 
     // pre-state record
-    lazy val preRecord = {
+    val preRecord = {
       val predicate = triple.pres.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
       val atoms = teacher.inference.specs(predicate.predicateName).atoms
       val abstraction = abstractState(atoms, first)
       val accesses = second.evaluate(adapted.dropLast) match {
-        case term.Null() => Set.empty[AccessPath]
-        case term => reachability(first)(term)
-          .flatMap { receiver =>
-            val access = FieldPath(receiver, adapted.last)
-            actualToFormal(predicate, access)
+        case terms.Null() => Set.empty[AccessPath]
+        case term =>
+          val reach = reachability(first)
+          reach.get(term) match {
+            case Some(x) => x.flatMap { receiver =>
+              val access = FieldPath(receiver, adapted.last)
+              actualToFormal(predicate, access)
+            }
+            case _ =>
+              println(term)
+              ???
           }
+
       }
-      // TODO: Remove hack that only takes the first access path
-      Record(renameArgs(predicate), abstraction, accesses.headOption.toSet)
+      Record(renameArgs(predicate), abstraction, accesses)
     }
 
-    lazy val permission = second.store(s"perm_${adapted.toSeq.mkString("_")}")
 
     // create example
     val example =
-      if (second.label == Labels.POST_STATE) permission match {
-        case term.NoPerm() => Implication(postRecord, preRecord)
-        case term.FullPerm() => Negative(postRecord)
-      }
-      else Positive(preRecord)
+      if (second.label == Labels.POST_STATE) {
+        val model = error.counterexample.get.model
+        val term = second.store(s"perm_${adapted.toSeq.mkString("_")}")
+        val permission = evaluate(term, model)
+        if (permission == "0.0") Implication(postRecord, preRecord)
+        else Negative(postRecord)
+      } else Positive(preRecord)
 
+    println(example)
     Seq(example)
+  }
+
+  def evaluate(term: Term, model: Model): String = term match {
+    // variable
+    case terms.Var(id, _) => model.entries.get(id.name) match {
+      case Some(SingleEntry(value)) => value
+      case _ => ???
+    }
+    // ???
+    case terms.SortWrapper(wrapped, _) => evaluate(wrapped, model)
+    case terms.First(arg) => s"fst(${evaluate(arg, model)})"
+    case terms.Second(arg) => s"snd(${evaluate(arg, model)}"
+    // permissions
+    case terms.FullPerm() => "1.0"
+    case terms.NoPerm() => "0.0"
+    case terms.PermPlus(left, right) =>
+      val leftValue = evaluate(left, model).toDouble
+      val rightValue = evaluate(right, model).toDouble
+      String.valueOf(leftValue + rightValue)
+    // boolean terms
+    case terms.BuiltinEquals(left, right) =>
+      val leftValue = evaluate(left, model)
+      val rightValue = evaluate(right, model)
+      String.valueOf(leftValue == rightValue)
+    case terms.Ite(cond, left, right) =>
+      evaluate(cond, model) match {
+        case "true" => evaluate(left, model)
+        case "false" => evaluate(right, model)
+      }
+    case _ => ???
   }
 
   private def renameArgs(predicate: PredicateAccess): PredicateAccess = {
@@ -310,7 +349,7 @@ class ExampleExtractor(teacher: Teacher) {
     // build partitions
     val partitions = new UnionFind[Term]
     pcs.foreach {
-      case term.BuiltinEquals(x, y) => partitions.union(x, y)
+      case terms.BuiltinEquals(x, y) => partitions.union(x, y)
       case _ => // do nothing
     }
     // extract raw heaps
@@ -376,14 +415,16 @@ class ExampleExtractor(teacher: Teacher) {
     }
 
     // iteratively compute heap reachability
-    recurse(initial, 2)
+    // TODO: We probably want this threshold to be as least as high as
+    //  the length of the longest access path in the specifications.
+    recurse(initial, 3)
   }
 
   private def abstractState(atoms: Seq[Exp], state: State): Seq[Boolean] = {
     atoms.indices.map { i =>
       state.store(s"${state.label}_p_$i") match {
-        case term.True() => true
-        case term.False() => false
+        case terms.True() => true
+        case terms.False() => false
       }
     }
   }

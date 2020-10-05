@@ -57,36 +57,103 @@ class Learner(inference: Inference) {
   def hypothesis(): Seq[Predicate] = {
     println("examples:")
     examples.foreach(println)
-    val encoded = examples.map(encodeExample).reduce[Exp](And(_, _)())
-    val model = solver.solve(encoded)
-    examples
+
+    def isPrefix[T](xs: Seq[T], ys: Seq[T]): Boolean = (xs, ys) match {
+      case (a +: as, b +: bs) => a == b && isPrefix(as, bs)
+      case _ => xs.isEmpty
+    }
+
+    val records = examples
       .flatMap {
         case Positive(record) => Seq(record)
         case Negative(record) => Seq(record)
         case Implication(left, right) => Seq(left, right)
       }
+
+    val structures = records
+      .groupBy(_.predicate)
+      .map { case (_, records) =>
+        val accesses = records.flatMap(_.accesses)
+        val fields = accesses.map(_.last).distinct
+
+        val recursions = accesses
+          .groupBy(_.last)
+          .values
+          .flatMap { paths =>
+            val receivers = paths.map(_.dropLast.toSeq)
+            for {
+              xs <- receivers
+              ys <- receivers
+              if xs != ys && isPrefix(xs, ys)
+            } yield (AccessPath(xs), AccessPath(ys))
+          }.toSeq
+
+        val resources = recursions.flatMap {
+          case (from, to) =>
+            fields.flatMap { field =>
+              val a = FieldPath(from, field)
+              val b = FieldPath(to, field)
+              if (accesses.contains(a) && accesses.contains(b)) Some(a)
+              else None
+            }
+        }
+
+        // return structure
+        (resources.distinct, recursions.map(_._2).distinct)
+      }
+
+    println("structures")
+    structures.foreach(println)
+
+    // encode examples
+    val encoded = examples.map(encodeExample).reduce[Exp](And(_, _)())
+    val model = solver.solve(encoded)
+
+    records
       .groupBy(_.predicate)
       .foreach { case (predicate, records) =>
         val name = predicate.predicateName
         val atoms = inference.specs(name).atoms
-        val body = records.flatMap(_.accesses)
+
+        val accesses = records
+          .flatMap(_.accesses)
           .distinct
           .sortBy(_.length)
-          .map { access =>
+
+        val guards = accesses.foldLeft(Map.empty[AccessPath, Exp]) {
+          case (map, access) =>
+            // build guard
             val fullLabel = s"${name}_${access.toSeq.mkString("_")}"
             val guard = buildGuard(atoms, fullLabel, model)
+
+            // update guard map
+            access.prefixes.foldLeft(map.updated(access, guard)) {
+              case (current, prefix) => map.get(prefix) match {
+                case Some(existing) => current.updated(prefix, Or(existing, guard)())
+                case _ => current
+              }
+            }
+        }
+
+        val body = accesses
+          .map { access =>
+            val guard = guards.get(access) match {
+              case Some(g) => g
+              case _ => ???
+            }
             val perm = FieldAccessPredicate(buildAccess(access), FullPerm()())()
             Implies(guard, perm)()
           }
           .reduceOption[Exp](And(_, _)())
-          .getOrElse(FalseLit()())
-        val parameters = predicate.args.zipWithIndex.map {
-          case (argument, index) => LocalVarDecl(s"x_$index", argument.typ)()
-        }
+          .getOrElse(TrueLit()())
 
-        val inferred = Predicate(name, parameters, Some(body))()
+        // create inferred predicate
+        val params = predicate.args.zipWithIndex.map { case (arg, index) => LocalVarDecl(s"x_$index", arg.typ)() }
+        val inferred = Predicate(name, params, Some(body))()
+
         cached = cached.updated(name, inferred)
       }
+
     cached.values.toSeq
   }
 

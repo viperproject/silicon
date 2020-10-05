@@ -51,6 +51,11 @@ object AccessPath {
     case LocalVar(name, _) => VariablePath(name)
     case FieldAccess(receiver, field) => FieldPath(AccessPath(receiver), field.name)
   }
+
+  def apply(seq: Seq[String]): AccessPath = seq
+    .tail.foldLeft[AccessPath](VariablePath(seq.head)) {
+    case (receiver, field) => FieldPath(receiver, field)
+  }
 }
 
 sealed trait AccessPath {
@@ -62,6 +67,11 @@ sealed trait AccessPath {
   def dropLast: AccessPath = this match {
     case FieldPath(receiver, _) => receiver
     case _ => ???
+  }
+
+  def prefixes: Seq[AccessPath] = this match {
+    case FieldPath(receiver, _) => receiver +: receiver.prefixes
+    case _ => Seq.empty
   }
 
   def toSeq: Seq[String] = this match {
