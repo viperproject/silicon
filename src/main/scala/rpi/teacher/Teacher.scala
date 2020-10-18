@@ -1,11 +1,11 @@
-package rpi
+package rpi.teacher
 
-import rpi.util.{Maps, UnionFind}
+import rpi.util.{Collections, UnionFind}
+import rpi.{AccessPath, Example, FieldPath, Implication, Inference, Negative, Positive, Record, Triple, VariablePath}
 import viper.silicon.Silicon
 import viper.silicon.interfaces.SiliconRawCounterexample
-import viper.silicon.state.{BasicChunk, Heap, Store}
 import viper.silicon.state.terms.Term
-import viper.silicon.state.{terms => terms}
+import viper.silicon.state.{BasicChunk, Heap, Store, terms}
 import viper.silver.ast._
 import viper.silver.verifier._
 import viper.silver.verifier.reasons.InsufficientPermission
@@ -226,7 +226,7 @@ class ExampleExtractor(teacher: Teacher) {
     }
 
     // pre-state record
-    val preRecord = {
+    lazy val preRecord = {
       val predicate = triple.pres.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
       val atoms = teacher.inference.specs(predicate.predicateName).atoms
       val abstraction = abstractState(atoms, first)
@@ -402,7 +402,7 @@ class ExampleExtractor(teacher: Teacher) {
             }
         }
         // recurse and combine results
-        Maps.combine[Term, Set[AccessPath]](current, recurse(next, n - 1), _ ++ _)
+        Collections.combine[Term, Set[AccessPath]](current, recurse(next, n - 1), _ ++ _)
       }
 
     // compute store reachability

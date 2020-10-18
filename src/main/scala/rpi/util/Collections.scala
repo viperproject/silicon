@@ -1,6 +1,21 @@
 package rpi.util
 
-object Maps {
+object Collections {
+  /**
+    * Returns all unordered pairs of the given elements.
+    *
+    * @param elements The elements.
+    * @tparam T The type of the elements.
+    * @return The pairs.
+    */
+  def pairs[T](elements: Iterable[T]): Iterable[(T, T)] =
+    if (elements.isEmpty) Seq.empty
+    else {
+      val first = elements.head
+      val tail = elements.tail
+      tail.map { second => (first, second) } ++ pairs(tail)
+    }
+
   /**
     * Combines two maps into one map by combining values with clashing keys using the specified function.
     *

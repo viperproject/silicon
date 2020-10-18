@@ -4,12 +4,22 @@ import java.nio.file.{Files, Paths}
 import java.util.concurrent.atomic.AtomicInteger
 
 import fastparse.core.Parsed.Success
+import rpi.learner.Learner
+import rpi.teacher.Teacher
+import rpi.util.{Collections, Expressions}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast._
 import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
 
 import scala.io.Source
 import scala.util.Properties
+
+object Names {
+  val pre = "P"
+  val post = "Q"
+  val inv = "I"
+  val rec = "R"
+}
 
 object Inference {
   /**
@@ -28,7 +38,7 @@ object Inference {
     .orElse(Properties.envOrNone("Z3_EXE"))
     .getOrElse {
       val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
-      if (isWindows) "z3.exe" else "z3"
+      if (isWindows) "z3.exe" else "/usr/local/bin/z3"
     }
 
   /**
@@ -117,12 +127,12 @@ class Inference(val program: Program) {
   /**
     * The teacher providing the examples.
     */
-  private val teacher: Teacher = new Teacher(this)
+  private val teacher = new Teacher(this)
 
   /**
     * The learner used synthesizing hypotheses.
     */
-  private val learner: Learner = new Learner(this)
+  private val learner = new Learner(this)
 
   /**
     * The program annotated with predicates in all the places where some specification should be inferred.
@@ -146,18 +156,31 @@ class Inference(val program: Program) {
     }, Seq.empty, Traverse.TopDown)
   }
 
+  lazy val templates = {
+    // TODO: Implement properly.
+    val x0 = LocalVarDecl("x0", Ref)()
+    val x1 = LocalVarDecl("x1", Ref)()
+    val t0 = Predicate("T0", Seq(x0), Some(NeCmp(x0.localVar, NullLit()())()))()
+    val t1 = Predicate("T1", Seq(x0, x1), Some(EqCmp(x0.localVar, x1.localVar)()))()
+    Seq(t0, t1)
+  }
+
+  private def generateAtoms(arguments: Seq[Exp]): Seq[Exp] =
+    templates.flatMap { template =>
+      template.formalArgs.length match {
+        case 1 => arguments.map { argument =>
+          Expressions.instantiate(template, Seq(argument))
+        }
+        case 2 => Collections.pairs(arguments).map {
+          case (first, second) => Expressions.instantiate(template, Seq(first, second))
+        }
+        case _ => ???
+      }
+    }
+
   lazy val specs: Map[String, Spec] = labelled.deepCollect {
     case predicate: PredicateAccess =>
-      // TODO: Implement properly.
-      val atoms = predicate.args.zipWithIndex.tails.flatMap {
-        case (a, i) +: rest =>
-          rest.map { case (b, j) =>
-            val xi = LocalVar(s"x_$i", a.typ)()
-            val xj = LocalVar(s"x_$j", b.typ)()
-            NeCmp(xi, xj)()
-          }
-        case _ => Seq.empty
-      }
+      val atoms = generateAtoms(predicate.args)
       val specification = Spec(predicate, atoms.toSeq)
       // create map entry
       predicate.predicateName -> specification
@@ -215,7 +238,7 @@ class Inference(val program: Program) {
   def infer(): Program = {
     var hypothesis: Seq[Predicate] = learner.initial()
 
-    for (i <- 0 until 5) {
+    for (i <- 0 until 2) {
       println(s"----- round $i -----")
       val examples = teacher.check(hypothesis)
       learner.addExamples(examples)
