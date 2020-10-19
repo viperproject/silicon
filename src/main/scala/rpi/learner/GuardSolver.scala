@@ -46,11 +46,13 @@ class GuardSolver(learner: Learner, constraints: sil.Exp) {
           Expressions.bigAnd(literals)
         } else FalseLit()()
       }
-      Expressions.bigOr(clauses)
+      Expressions.simplify(Expressions.bigOr(clauses))
     }
 
     val resource = guarded.resource match {
-      case Permission(path) => createPath(path)
+      case Permission(path) =>
+        val location = createPath(path)
+        sil.FieldAccessPredicate(location, sil.FullPerm()())()
       case _ => ???
     }
 

@@ -60,10 +60,16 @@ object Expressions {
   }
 
   def simplify(expression: sil.Exp): sil.Exp = expression match {
-    case sil.And(sil.TrueLit(), right) => right
-    case sil.And(left, sil.TrueLit()) => left
-    case sil.Or(sil.FalseLit(), right) => right
-    case sil.Or(left, sil.FalseLit()) => left
+    case sil.And(left, right) => (left, right) match {
+      case (sil.TrueLit(), _) => simplify(right)
+      case (_, sil.TrueLit()) => simplify(left)
+      case _ => sil.And(simplify(left), simplify(right))()
+    }
+    case sil.Or(left, right) => (left, right) match {
+      case (sil.FalseLit(), _) => simplify(right)
+      case (_, sil.FalseLit()) => simplify(left)
+      case _ => sil.Or(simplify(left), simplify(right))()
+    }
     case _ => expression
   }
 }

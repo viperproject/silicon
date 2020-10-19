@@ -4,7 +4,7 @@ import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamW
 import java.nio.file.Paths
 
 import fastparse.core.Parsed.Success
-import viper.silver.ast.{And, Exp, FalseLit, Implies, LocalVar, Not, Or, TrueLit}
+import viper.silver.ast.{And, EqCmp, Exp, FalseLit, Implies, LocalVar, Not, Or, TrueLit}
 import viper.silver.verifier.{ModelParser, SingleEntry}
 
 class Smt {
@@ -139,6 +139,7 @@ class Smt {
     case And(left, right) => s"(and ${convert(left)} ${convert(right)})"
     case Or(left, right) => s"(or ${convert(left)} ${convert(right)})"
     case Implies(left, right) => s"(=> ${convert(left)} ${convert(right)})"
+    case EqCmp(left, right) => s"(= ${convert(left)} ${convert(right)})"
     case _ => ???
   }
 }

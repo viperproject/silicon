@@ -1,5 +1,7 @@
 package rpi.learner
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import rpi.util.Expressions
 import rpi.{Example, Implication, Names, Negative, Positive, Record}
 import viper.silver.{ast => sil}
@@ -18,6 +20,7 @@ class GuardEncoder(templates: Map[String, Template]) {
       case (result, _) => result
     }
   }
+  val id = new AtomicInteger
 
   /**
     * Computes the encoding for the given examples.
@@ -66,7 +69,15 @@ class GuardEncoder(templates: Map[String, Template]) {
     }
     // encode that only one choice can be picked
     // TODO: We might want to introduce temporary variables for the choices for better readability.
-    Expressions.one(choices)
+
+    val empty = Seq.empty[sil.Exp]
+    val (auxiliaries, constraints) = choices.foldLeft((empty, empty)) {
+      case ((variables, equalities), choice) =>
+        val variable = sil.LocalVar(s"t_${id.getAndIncrement()}", sil.Bool)()
+        val equality = sil.EqCmp(variable, choice)()
+        (variables :+ variable, equalities :+ equality)
+    }
+    sil.And(Expressions.one(auxiliaries), Expressions.bigAnd(constraints))()
   }
 
   /**
