@@ -2,7 +2,6 @@ package rpi.learner
 
 import rpi._
 import rpi.util.Expressions
-import viper.silver.ast.{FalseLit, TrueLit}
 import viper.silver.{ast => sil}
 
 class GuardSolver(learner: Learner, constraints: sil.Exp) {
@@ -33,18 +32,21 @@ class GuardSolver(learner: Learner, constraints: sil.Exp) {
     val guard = {
       val id = guarded.id
       val clauses = for (j <- 0 until k) yield {
-        val clauseActivation = model(s"x_${id}_$j")
+        val clauseActivation = model.getOrElse(s"x_${id}_$j", false)
         if (clauseActivation) {
           val literals = atoms.zipWithIndex.map {
-            case (atom, i) =>
-              val literalActivation = model(s"y_${id}_${i}_$j")
-              if (literalActivation) {
-                val sign = model(s"s_${id}_${i}_$j")
-                if (sign) atom else sil.Not(atom)()
-              } else TrueLit()()
+            case (atom, i) => model
+              .get(s"y_${id}_${i}_$j")
+              .flatMap { literalActivation =>
+                if (literalActivation) model
+                  .get(s"s_${id}_${i}_$j")
+                  .map { sign => if (sign) atom else sil.Not(atom)() }
+                else None
+              }
+              .getOrElse(sil.TrueLit()())
           }
           Expressions.bigAnd(literals)
-        } else FalseLit()()
+        } else sil.FalseLit()()
       }
       Expressions.simplify(Expressions.bigOr(clauses))
     }
