@@ -1,6 +1,6 @@
 package rpi
 
-import viper.silver.ast.{Exp, FieldAccess, LocalVar, PredicateAccess}
+import viper.silver.{ast => sil}
 
 /**
   * The super trait for all examples.
@@ -37,7 +37,7 @@ case class Implication(left: Record, right: Record) extends Example
   * @param paths       The (under-approximate) set of access paths that can be used to represent the location for which
   *                    some permissions are required.
   */
-case class Record(predicate: PredicateAccess, abstraction: Seq[Boolean], paths: Set[AccessPath]) {
+case class Record(predicate: sil.PredicateAccess, abstraction: Seq[Boolean], paths: Set[AccessPath]) {
   override def toString: String = {
     val name = predicate.predicateName
     val absStr = abstraction.map(if (_) 1 else 0).mkString(",")
@@ -47,9 +47,9 @@ case class Record(predicate: PredicateAccess, abstraction: Seq[Boolean], paths: 
 }
 
 object AccessPath {
-  def apply(exp: Exp): AccessPath = exp match {
-    case LocalVar(name, _) => VariablePath(name)
-    case FieldAccess(receiver, field) => FieldPath(AccessPath(receiver), field.name)
+  def apply(exp: sil.Exp): AccessPath = exp match {
+    case sil.LocalVar(name, _) => VariablePath(name)
+    case sil.FieldAccess(receiver, field) => FieldPath(AccessPath(receiver), field.name)
   }
 
   def apply(seq: Seq[String]): AccessPath = seq
@@ -82,6 +82,11 @@ sealed trait AccessPath {
   def length: Int = this match {
     case VariablePath(_) => 1
     case FieldPath(receiver, _) => receiver.length + 1
+  }
+
+  def toExp(typ: sil.Type): sil.Exp = this match {
+    case VariablePath(name) => sil.LocalVar(name, typ)()
+    case FieldPath(receiver, name) => sil.FieldAccess(receiver.toExp(sil.Ref), sil.Field(name, typ)())()
   }
 
   override def toString: String = toSeq.mkString(".")

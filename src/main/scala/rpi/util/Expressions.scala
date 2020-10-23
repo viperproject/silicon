@@ -15,11 +15,21 @@ object Expressions {
       case Some(body) =>
         val names = predicate.formalArgs.map(_.name)
         val substitutions = names.zip(arguments).toMap
-        body.transform {
-          case variable@sil.LocalVar(name, _) =>
-            substitutions.getOrElse(name, variable)
-        }
+        substitute(body, substitutions)
       case _ => ???
+    }
+
+  /**
+    * Substitutes all variables of the given expression according to the given substitutions.
+    *
+    * @param expression    The expression.
+    * @param substitutions The substitutions.
+    * @return The substituted expression.
+    */
+  def substitute(expression: sil.Exp, substitutions: Map[String, sil.Exp]): sil.Exp =
+    expression.transform {
+      case variable@sil.LocalVar(name, _) =>
+        substitutions.getOrElse(name, variable)
     }
 
   /**

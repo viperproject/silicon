@@ -7,6 +7,7 @@ import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.state.terms.Term
 import viper.silicon.state.{BasicChunk, Heap, Store, terms}
 import viper.silver.ast._
+import viper.silver.{ast => sil}
 import viper.silver.verifier._
 import viper.silver.verifier.reasons.InsufficientPermission
 
@@ -72,6 +73,22 @@ class Teacher(val inference: Inference) {
     * @return The verification result.
     */
   def verify(program: Program): VerificationResult = verifier.verify(program)
+
+  // TODO: Move substitution helper functions?
+  def formalToActualMap(predicate: sil.PredicateAccess): Map[String, AccessPath] = {
+    val name = predicate.predicateName
+    val specification = inference.specifications(name)
+    val names = specification.variables.map { variable => variable.name }
+    val paths = predicate.args.map { case sil.LocalVar(name, _) => VariablePath(name) }
+    names.zip(paths).toMap
+  }
+
+  // TODO: Does the result has to be optional?
+  def substitute(path: AccessPath, map: Map[String, AccessPath]): Option[AccessPath] =
+    path match {
+      case variable@VariablePath(name) => map.get(name)
+      case FieldPath(receiver, name) => substitute(receiver, map).map(FieldPath(_, name))
+    }
 }
 
 /**
@@ -94,44 +111,50 @@ class ProgramBuilder(teacher: Teacher) {
   private var stmts: Seq[Stmt] = Seq.empty
 
   def buildCheck(triple: Triple, hypothesis: Seq[Predicate]): Program = {
-
-    val specs = teacher.inference.specs
-
+    val specifications = teacher.inference.specifications
     val prePred = triple.pres.collectFirst { case pred: PredicateAccessPredicate => pred }.get
     val postPred = triple.posts.collectFirst { case pred: PredicateAccessPredicate => pred }.get
-    val preSpec = specs(prePred.loc.predicateName)
-    val postSpec = specs(postPred.loc.predicateName)
+    val preSpec = specifications(prePred.loc.predicateName)
+    val postSpec = specifications(postPred.loc.predicateName)
 
     // clear
     clear()
+
     // save variables
     saveVars(triple)
     // assume pre-condition and loop condition
     triple.pres.foreach(addInhale)
     triple.pres.collect { case p: PredicateAccessPredicate => p }.foreach(addUnfold)
     // pre-state
-    preSpec.atoms(prePred.loc.args).zipWithIndex.foreach { case (exp, i) => saveExp(s"${Labels.PRE_STATE}_p_$i", exp) }
+    val preAtoms = preSpec.adaptedAtoms(prePred.loc.args)
+    preAtoms.zipWithIndex.foreach { case (atom, i) => saveExp(s"${Labels.PRE_STATE}_p_$i", atom) }
     addLabel(Labels.PRE_STATE)
+
     // execute loop body
     addStmt(triple.body)
+
     // reflect on permission amounts
+    val subs = {
+      val name = postSpec.variables.map { variable => variable.name }
+      val arguments = postPred.loc.args
+      name.zip(arguments).toMap
+    }
+
     hypothesis
       .find(_.name == postPred.loc.predicateName).get.body.get
       .collect { case pred: FieldAccessPredicate => pred.loc }
       .foreach {
         access: FieldAccess =>
           // formal to actual transformation (maybe we can reuse code for access paths?)
-          val location = access.transform {
-            case LocalVar(name, typ) => postPred.loc.args.zipWithIndex
-              .collectFirst { case (variable, index) if s"x_$index" == name => variable }.get
-          }
+          val location = access.transform { case LocalVar(name, _) => subs(name) }
           // assign current perm to variable
           val lhs = LocalVar(s"perm_${AccessPath(location).toSeq.mkString("_")}", Perm)()
           val rhs = CurrentPerm(location)()
           addStmt(LocalVarAssign(lhs, rhs)())
       }
     // post-state
-    postSpec.atoms(postPred.loc.args).zipWithIndex.foreach { case (exp, i) => saveExp(s"${Labels.POST_STATE}_p_$i", exp) }
+    val postAtoms = postSpec.adaptedAtoms(postPred.loc.args)
+    postAtoms.zipWithIndex.foreach { case (atom, i) => saveExp(s"${Labels.POST_STATE}_p_$i", atom) }
     addLabel(Labels.POST_STATE)
     // assume post-condition
     triple.posts.collect { case p: PredicateAccessPredicate => p }.foreach(addFold)
@@ -202,6 +225,13 @@ class ProgramBuilder(teacher: Teacher) {
 }
 
 class ExampleExtractor(teacher: Teacher) {
+  /**
+    * Returns a pointer to the inference.
+    *
+    * @return The inference.
+    */
+  def inference = teacher.inference
+
   def extract(triple: Triple, error: VerificationError): Seq[Example] = {
     println(s"error: $error")
     // extract states
@@ -214,13 +244,13 @@ class ExampleExtractor(teacher: Teacher) {
     // adapt
     lazy val adapted = if (second.label == Labels.POST_STATE) {
       val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
-      formalToActual(predicate, access)
+      teacher.substitute(access, teacher.formalToActualMap(predicate)).get
     } else access
 
     // post-state record
     lazy val postRecord = {
       val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
-      val atoms = teacher.inference.specs(predicate.predicateName).atoms
+      val atoms = teacher.inference.specifications(predicate.predicateName).atoms
       val abstraction = abstractState(atoms, second)
       Record(renameArgs(predicate), abstraction, Set(access))
     }
@@ -228,26 +258,32 @@ class ExampleExtractor(teacher: Teacher) {
     // pre-state record
     lazy val preRecord = {
       val predicate = triple.pres.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
-      val atoms = teacher.inference.specs(predicate.predicateName).atoms
+      val specification = inference.specifications(predicate.predicateName)
+
+      val substitutions = {
+        val names = predicate.args.map { case sil.LocalVar(name, _) => name }
+        val paths = specification.variables.map { variable => VariablePath(variable.name) }
+        names.zip(paths).toMap
+      }
+
+      val atoms = specification.atoms
       val abstraction = abstractState(atoms, first)
       val accesses = second.evaluate(adapted.dropLast) match {
         case terms.Null() => Set.empty[AccessPath]
         case term =>
           val reach = reachability(first)
           reach.get(term) match {
-            case Some(x) => x.flatMap { receiver =>
+            case Some(set) => set.flatMap { receiver =>
               val access = FieldPath(receiver, adapted.last)
-              actualToFormal(predicate, access)
+              teacher.substitute(access, substitutions)
             }
             case _ =>
               println(term)
               ???
           }
-
       }
       Record(renameArgs(predicate), abstraction, accesses)
     }
-
 
     // create example
     val example =
@@ -259,7 +295,6 @@ class ExampleExtractor(teacher: Teacher) {
         else Negative(postRecord)
       } else Positive(preRecord)
 
-    println(example)
     Seq(example)
   }
 
@@ -294,40 +329,9 @@ class ExampleExtractor(teacher: Teacher) {
   }
 
   private def renameArgs(predicate: PredicateAccess): PredicateAccess = {
-    val args = predicate.args.zipWithIndex.map { case (exp, i) => LocalVar(s"x_$i", exp.typ)() }
     val name = predicate.predicateName
+    val args = inference.specifications(name).variables
     PredicateAccess(args, name)()
-  }
-
-  /**
-    * The given access path is expected to contain a formal argument of the predicate accessed by the given predicate
-    * access. This method replaces this formal argument with the corresponding actual argument.
-    *
-    * @param predicate The predicate access.
-    * @param path      The access path.
-    * @return The path with the formal argument replaced with the corresponding actual argument.
-    */
-  private def formalToActual(predicate: PredicateAccess, path: AccessPath): AccessPath = path match {
-    case VariablePath(name) => predicate.args
-      .zipWithIndex
-      .collectFirst { case (LocalVar(arg, _), i) if s"x_$i" == name => VariablePath(arg) }
-      .get
-    case FieldPath(receiver, name) => FieldPath(formalToActual(predicate, receiver), name)
-  }
-
-  /**
-    * The given access path is expected to contain an actual argument of the given predicate access. This method
-    * replaces this actual argument with the corresponding formal argument.
-    *
-    * @param predicate The predicate access.
-    * @param path      The access path.
-    * @return The path with the actual argument replaced with the corresponding formal argument.
-    */
-  private def actualToFormal(predicate: PredicateAccess, path: AccessPath): Option[AccessPath] = path match {
-    case VariablePath(name) => predicate.args
-      .zipWithIndex
-      .collectFirst { case (LocalVar(`name`, _), i) => VariablePath(s"x_$i") }
-    case FieldPath(receiver, name) => actualToFormal(predicate, receiver).map(FieldPath(_, name))
   }
 
   /**

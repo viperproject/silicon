@@ -33,21 +33,38 @@ class Learner(val inference: Inference) {
     this.examples ++= examples
 
   def initial(): Seq[sil.Predicate] = {
-    predicates = inference.specs.foldLeft(Map.empty[String, sil.Predicate]) {
-      case (current, (name, specification)) =>
-        val arguments = specification.predicate.args.zipWithIndex
-          .map { case (arg, i) => sil.LocalVarDecl(s"x_$i", arg.typ)() }
-        val predicate = sil.Predicate(name, arguments, Some(sil.TrueLit()()))()
-        current.updated(name, predicate)
-    }
+    predicates = inference
+      .specifications
+      .map {
+        case (name, specification) =>
+          val parameters = specification
+            .variables
+            .map { variable =>
+              val name = variable.name
+              val typ = variable.typ
+              sil.LocalVarDecl(name, typ)()
+            }
+          // create specification predicate
+          name -> sil.Predicate(name, parameters, Some(sil.TrueLit()()))()
+      }
+    // return all specification predicates
     predicates.values.toSeq
   }
 
   def hypothesis(): Seq[sil.Predicate] = {
+    if (Config.debugPrintExamples) {
+      println("----- examples -----")
+      examples.foreach(println)
+    }
+
     val templates = computeTemplates(examples)
+    if (Config.debugPrintTemplates) {
+      println("----- templates -----")
+      templates.values.foreach(println)
+    }
 
     // encode examples
-    val encoder = new GuardEncoder(templates)
+    val encoder = new GuardEncoder(this, templates)
     val constraints = encoder.encodeExamples(examples)
 
     // solve guards
@@ -79,10 +96,10 @@ class Learner(val inference: Inference) {
         case Implication(left, right) => Seq(left, right)
       }
       // build resource map
-      val empty = Map.empty[String, Set[Resource]]
+      val empty = Map.empty[sil.PredicateAccess, Set[Resource]]
       records.foldLeft(empty) {
         case (result, record) =>
-          val name = record.predicate.predicateName
+          val name = record.predicate
           val resources = record.paths.map(Permission)
           result.updated(name, result.getOrElse(name, Set.empty) ++ resources)
       }
@@ -93,22 +110,33 @@ class Learner(val inference: Inference) {
     val (templates, structure) = {
       val empty = Map.empty[String, Template]
       resources.foldLeft((empty, Structure.bottom())) {
-        case ((result, global), (name, resources)) =>
+        case ((result, global), (predicate, resources)) =>
+          val name = predicate.predicateName
+          val location = inference.specifications(name)
           val (instances, local) = computeStructure(resources)
-          val body = resources ++ instances
+          // drop long access paths
+          val filtered = resources.filter {
+            case Permission(path) => path.length <= Config.maxLength
+          }
+          val body = filtered ++ instances
           val guarded = body.map { resource => Guarded(guardId.getAndIncrement(), resource) }
-          val template = Template(name, Seq.empty, guarded)
+          val template = Template(location, guarded)
           (result.updated(name, template), global.lub(local))
       }
     }
 
     // create template for recursive predicate
     val template = {
+      val location = {
+        val variables = Seq(sil.LocalVar("x", sil.Ref)())
+        val atoms = inference.generateAtoms(variables)
+        Specification(Names.rec, variables, atoms)
+      }
       val permissions = structure.resources.map { path => Permission(path) }
       val recursions = structure.recursions.map { path => Predicate(Names.rec, Seq(path)) }
       val body = permissions ++ recursions
       val guarded = body.map { resource => Guarded(guardId.getAndIncrement(), resource) }
-      Template(Names.rec, Seq("x"), guarded)
+      Template(location, guarded)
     }
 
     // return all templates
@@ -151,8 +179,6 @@ class Learner(val inference: Inference) {
       (head1 +: common, suffix1, suffix2)
     case _ => (Seq.empty, seq1, seq2)
   }
-
-
 }
 
 object Structure {
@@ -166,7 +192,6 @@ case class Structure(resources: Set[AccessPath], recursions: Set[AccessPath]) {
     Structure(resources, recursions)
   }
 }
-
 
 trait Resource
 
@@ -182,7 +207,13 @@ case class Guarded(id: Int, resource: Resource) {
   override def toString: String = s"phi_$id -> $resource"
 }
 
-case class Template(name: String, parameters: Seq[String], resources: Set[Guarded])
+case class Template(specification: Specification, resources: Set[Guarded]) {
+  def name: String = specification.name
+
+  def parameters: Seq[String] = specification.variables.map(_.name)
+
+  override def toString: String = s"$name(${parameters.mkString(",")}) = ${resources.mkString(" * ")}"
+}
 
 object View {
   def empty: View = View(Map.empty)
@@ -194,5 +225,12 @@ case class View(map: Map[String, AccessPath]) {
   def adapt(path: AccessPath): AccessPath = path match {
     case VariablePath(name) => map.getOrElse(name, path)
     case FieldPath(receiver, field) => FieldPath(adapt(receiver), field)
+  }
+
+  def adapt(exp: sil.Exp): sil.Exp = exp.transform {
+    case variable@sil.LocalVar(name, typ) => map
+      .get(name)
+      .map { path => path.toExp(typ) }
+      .getOrElse(variable)
   }
 }

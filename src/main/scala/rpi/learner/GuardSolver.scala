@@ -15,23 +15,16 @@ class GuardSolver(learner: Learner, constraints: sil.Exp) {
     program.fields.map { field => field.name -> field }.toMap
   }
 
-
   def solveTemplate(template: Template): sil.Exp = {
-    val specs = learner.inference.specs
-    val atoms = specs(template.name).atoms
-
-    val x = template.resources.map { resource => createGuarded(resource, atoms) }
-    Expressions.bigAnd(x)
+    val atoms = template.specification.atoms
+    val conjuncts = template.resources.map { resource => createGuarded(resource, atoms) }
+    Expressions.bigAnd(conjuncts)
   }
 
   private def createGuarded(guarded: Guarded, atoms: Seq[sil.Exp]): sil.Exp = {
-    // complexity parameter
-    // TODO: Make config.
-    val k = 1
-
     val guard = {
       val id = guarded.id
-      val clauses = for (j <- 0 until k) yield {
+      val clauses = for (j <- 0 until Config.maxClauses) yield {
         val clauseActivation = model.getOrElse(s"x_${id}_$j", false)
         if (clauseActivation) {
           val literals = atoms.zipWithIndex.map {
@@ -53,21 +46,23 @@ class GuardSolver(learner: Learner, constraints: sil.Exp) {
 
     val resource = guarded.resource match {
       case Permission(path) =>
-        val location = createPath(path)
+        val location = createField(path)
         sil.FieldAccessPredicate(location, sil.FullPerm()())()
-      case _ => ???
+      case Predicate(name, arguments) =>
+        val location = sil.PredicateAccess(arguments.map(createPath), name)()
+        sil.PredicateAccessPredicate(location, sil.FullPerm()())()
     }
 
     sil.Implies(guard, resource)()
   }
 
-  private def createPath(path: AccessPath): sil.FieldAccess = {
-    val receiver = path.dropLast match {
-      case VariablePath(name) => sil.LocalVar(name, sil.Ref)()
-      case other => createPath(other)
-    }
-    sil.FieldAccess(receiver, fields(path.last))()
+  private def createPath(path: AccessPath): sil.Exp = path match {
+    case VariablePath(name) => sil.LocalVar(name, sil.Ref)()
+    case _ => createField(path)
   }
 
-
+  private def createField(path: AccessPath): sil.FieldAccess = path match {
+    case FieldPath(receiver, field) =>
+      sil.FieldAccess(createPath(receiver), fields(path.last))()
+  }
 }

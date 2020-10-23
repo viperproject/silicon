@@ -9,10 +9,26 @@ import rpi.teacher.Teacher
 import rpi.util.{Collections, Expressions}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast._
+import viper.silver.{ast => sil}
 import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
 
 import scala.io.Source
 import scala.util.Properties
+
+object Config {
+  /**
+    * Indicates the maximal number of clauses of a guard.
+    */
+  val maxClauses = 1
+
+  val maxLength = 2
+
+  /**
+    * Debug options.
+    */
+  val debugPrintExamples = true
+  val debugPrintTemplates = true
+}
 
 object Names {
   val pre = "P"
@@ -124,6 +140,8 @@ object Inference {
 }
 
 class Inference(val program: Program) {
+
+
   /**
     * The teacher providing the examples.
     */
@@ -139,22 +157,37 @@ class Inference(val program: Program) {
     */
   lazy val labelled: Program = {
     val id = new AtomicInteger()
-    program.transformWithContext[Seq[Exp]]({
-      case (method: Method, vars) =>
-        val args = method.formalArgs.map(v => LocalVar(v.name, v.typ)())
-        val pres = method.pres :+ PredicateAccessPredicate(PredicateAccess(args, s"P_${method.name}")(), FullPerm()())()
-        val posts = method.posts :+ PredicateAccessPredicate(PredicateAccess(args, s"Q_${method.name}")(), FullPerm()())()
-        val updated = method.copy(pres = pres, posts = posts)(method.pos, method.info, method.errT)
-        (updated, args)
-      case (loop: While, vars) =>
-        val invs = loop.invs :+ PredicateAccessPredicate(PredicateAccess(vars, s"I_${id.getAndIncrement()}")(), FullPerm()())()
-        val updated = loop.copy(invs = invs)(loop.pos, loop.info, loop.errT)
-        (updated, vars)
-      case (seqn: Seqn, vars) =>
-        val updated = vars ++ seqn.scopedDecls.collect { case x: LocalVarDecl => LocalVar(x.name, x.typ)() }
-        (seqn, updated)
+    program.transformWithContext[Seq[sil.LocalVar]]({
+      case (method: Method, variables) =>
+        val arguments = method.formalArgs.map(v => LocalVar(v.name, v.typ)())
+        val preconditions = method.pres :+ PredicateAccessPredicate(PredicateAccess(arguments, s"P_${method.name}")(), FullPerm()())()
+        val postconditions = method.posts :+ PredicateAccessPredicate(PredicateAccess(arguments, s"Q_${method.name}")(), FullPerm()())()
+        val updated = method.copy(pres = preconditions, posts = postconditions)(method.pos, method.info, method.errT)
+        (updated, arguments)
+      case (loop: While, variables) =>
+        val invariants = loop.invs :+ PredicateAccessPredicate(PredicateAccess(variables, s"I_${id.getAndIncrement()}")(), FullPerm()())()
+        val updated = loop.copy(invs = invariants)(loop.pos, loop.info, loop.errT)
+        (updated, variables)
+      case (sequence: Seqn, variables) =>
+        val updated = variables ++ sequence.scopedDecls.collect { case x: LocalVarDecl => LocalVar(x.name, x.typ)() }
+        (sequence, updated)
     }, Seq.empty, Traverse.TopDown)
   }
+
+  lazy val specifications: Map[String, Specification] =
+    labelled
+      .deepCollect {
+        case predicate: PredicateAccess =>
+          val name = predicate.predicateName
+          // TODO: Names of variables only renamed temporarily for testing purposes
+          val variables = predicate.args.zipWithIndex.map {
+            case (e, i) => sil.LocalVar(s"z_$i", e.typ)()
+          }
+          val atoms = generateAtoms(variables)
+          // create map entry
+          name -> Specification(name, variables, atoms)
+      }
+      .toMap
 
   lazy val templates = {
     // TODO: Implement properly.
@@ -165,26 +198,21 @@ class Inference(val program: Program) {
     Seq(t0, t1)
   }
 
-  private def generateAtoms(arguments: Seq[Exp]): Seq[Exp] =
+  def generateAtoms(parameters: Seq[Exp]): Seq[Exp] =
     templates.flatMap { template =>
       template.formalArgs.length match {
-        case 1 => arguments.map { argument =>
-          Expressions.instantiate(template, Seq(argument))
-        }
-        case 2 => Collections.pairs(arguments).map {
-          case (first, second) => Expressions.instantiate(template, Seq(first, second))
-        }
+        case 1 => parameters
+          .map { argument =>
+            Expressions.instantiate(template, Seq(argument))
+          }
+        case 2 => Collections
+          .pairs(parameters)
+          .map { case (first, second) =>
+            Expressions.instantiate(template, Seq(first, second))
+          }
         case _ => ???
       }
     }
-
-  lazy val specs: Map[String, Spec] = labelled.deepCollect {
-    case predicate: PredicateAccess =>
-      val atoms = generateAtoms(predicate.args)
-      val specification = Spec(predicate, atoms.toSeq)
-      // create map entry
-      predicate.predicateName -> specification
-  }.toMap
 
   /**
     * TODO: Framing
@@ -280,6 +308,7 @@ class Inference(val program: Program) {
   }
 }
 
+// TODO: Rework!
 case class Triple(pres: Seq[Exp], posts: Seq[Exp], body: Seqn) {
   override def toString: String = {
     val p = pres.map(_.toString()).reduceOption((x, y) => s"$x && $y").getOrElse("true")
@@ -290,20 +319,20 @@ case class Triple(pres: Seq[Exp], posts: Seq[Exp], body: Seqn) {
 }
 
 /**
-  * Represents specifications that need to be inferred.
+  * Represents a specification that needs to be inferred.
   *
-  * @param predicate The predicate representing the specifications.
-  * @param atoms     The atomic predicates that may be used to express the guards in the specifications.
+  * @param name      The unique identifier of the specification.
+  * @param variables The variables relevant for the specification.
+  * @param atoms     The atomic predicates
   */
-case class Spec(predicate: PredicateAccess, atoms: Seq[Exp]) {
-  /**
-    * Returns the atomic predicates where the formal arguments are replaced with the given actual arguments.
-    *
-    * @param args The arguments.
-    * @return The atomic predicates.
-    */
-  def atoms(args: Seq[Exp]): Seq[Exp] = {
-    val map = args.zipWithIndex.map { case (arg, i) => s"x_$i" -> arg }.toMap
-    atoms.map(_.transform { case v: LocalVar => map.getOrElse(v.name, v) })
+case class Specification(name: String, variables: Seq[sil.LocalVar], atoms: Seq[sil.Exp]) {
+  def adaptedAtoms(arguments: Seq[sil.Exp]): Seq[sil.Exp] = {
+    val substitutions = variables.zip(arguments).toMap
+    atoms.map { atom =>
+      atom.transform {
+        case variable: sil.LocalVar =>
+          substitutions.getOrElse(variable, variable)
+      }
+    }
   }
 }

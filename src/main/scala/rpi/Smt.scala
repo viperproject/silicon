@@ -70,6 +70,9 @@ class Smt {
     writeLine("(set-option :random-seed 0)")
     // set model format
     writeLine("(set-option :model.v2 true)")
+    // allow partial models
+    // TODO: Does change do anything?
+    writeLine("(set-option :model.completion false)")
   }
 
   /**
@@ -112,7 +115,9 @@ class Smt {
     emitCheck(exp)
     readResponse() match {
       case "sat" => readModel()
-      case _ => ???
+      case response =>
+        println(s"unexpected response: $response")
+        ???
     }
   }
 
