@@ -24,7 +24,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
         inference.specifications.get(name).map {
           specification =>
             val atoms = specification.atoms
-            name -> collectGuards(template, View.empty, atoms, depth = 2)
+            name -> collectGuards(template, Store.empty, atoms, depth = 2)
         }
     }
 
@@ -70,8 +70,9 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
       // choices for this resource
       resourceGuards.map { sequence =>
         val conjuncts = sequence.map { case (guardId, view) =>
-          val state = if (view.isEmpty) record.abstraction else
-            ???
+          // TODO: Handle cases where there is view of an atomic predicate
+          val x = view.adapt(record.abstraction)
+          val state = x.map(_.get)
           encodeState(guardId, state)
         }
         Expressions.bigAnd(conjuncts)
@@ -121,24 +122,11 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     Expressions.bigOr(clauses)
   }
 
-  // TODO: Figure out how we compute the viewpoint shift of atoms.
-  def computeSubstitution(atoms1: Seq[sil.Exp], atoms2: Seq[sil.Exp], view: View): Unit = {
-
-    atoms1.zipWithIndex.map {
-      case (atom, index) =>
-        val adapted = view.adapt(atom)
-        val to = atoms2.indexOf(adapted)
-        println(to)
-        (index, to)
-    }
-
-  }
-
-  private def collectGuards(template: Template, view: View, atoms: Seq[sil.Exp], depth: Int): Map[Resource, Seq[Seq[(Int, View)]]] = {
-    if (!view.isEmpty) {
-      val localAtoms = template.specification.atoms
-      computeSubstitution(atoms, localAtoms, view)
-    }
+  private def collectGuards(template: Template, store: Store, atoms: Seq[sil.Exp], depth: Int): Map[Resource, Seq[Seq[(Int, View)]]] = {
+    // compute view
+    val view =
+      if (store.isEmpty) View.identity
+      else View.mapped(atoms, atoms.map { atom => store.adapt(atom) })
 
     val empty = Map.empty[Resource, Seq[Seq[(Int, View)]]]
     if (depth == 0) empty
@@ -148,17 +136,17 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
         case (result, Guarded(guardId, resource)) => resource match {
           case Permission(path) =>
             // update result with permission
-            val adapted = Permission(view.adapt(path))
+            val adapted = Permission(store.adapt(path))
             result.updated(adapted, result.getOrElse(adapted, Seq.empty) :+ Seq((guardId, view)))
           case Predicate(name, arguments) =>
             // update result with predicate
-            val adaptedArguments = arguments.map(view.adapt)
+            val adaptedArguments = arguments.map { argument => store.adapt(argument) }
             val adapted = Predicate(name, adaptedArguments)
             val updatedResult = result.updated(adapted, result.getOrElse(adapted, Seq.empty) :+ Seq((guardId, view)))
             // process nested resources
             val innerTemplate = templates(name)
-            val innerView = View(innerTemplate.parameters.zip(adaptedArguments).toMap)
-            collectGuards(innerTemplate, innerView, atoms, depth - 1).foldLeft(updatedResult) {
+            val innerStore = Store(innerTemplate.parameters.zip(adaptedArguments).toMap)
+            collectGuards(innerTemplate, innerStore, atoms, depth - 1).foldLeft(updatedResult) {
               case (innerResult, (innerResource, innerGuards)) =>
                 val mappedGuards = innerGuards.map { guards => guards :+ (guardId, view) }
                 val updatedGuards = innerResult.getOrElse(innerResource, Seq.empty) ++ mappedGuards

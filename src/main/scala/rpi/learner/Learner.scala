@@ -212,14 +212,15 @@ case class Template(specification: Specification, resources: Set[Guarded]) {
 
   def parameters: Seq[String] = specification.variables.map(_.name)
 
-  override def toString: String = s"$name(${parameters.mkString(",")}) = ${resources.mkString(" * ")}"
+  override def toString: String = s"$name(${parameters.mkString(", ")}) = ${resources.mkString(" * ")}"
 }
 
-object View {
-  def empty: View = View(Map.empty)
+object Store {
+  def empty: Store = Store(Map.empty)
 }
 
-case class View(map: Map[String, AccessPath]) {
+// TODO: Remove or rename.
+case class Store(map: Map[String, AccessPath]) {
   def isEmpty: Boolean = map.isEmpty
 
   def adapt(path: AccessPath): AccessPath = path match {
@@ -233,4 +234,42 @@ case class View(map: Map[String, AccessPath]) {
       .map { path => path.toExp(typ) }
       .getOrElse(variable)
   }
+}
+
+/**
+  * Used to compute a local view of a state abstraction in terms of the atomic predicates that are available.
+  */
+trait View {
+  def isIdentity: Boolean
+
+  def adapt(state: Seq[Boolean]): Seq[Option[Boolean]]
+}
+
+object View {
+  def identity: View = IdentityView
+
+  def mapped[T](original: Seq[T], adapted: Seq[T]): View = {
+    val indices = adapted.map { element =>
+      val index = original.indexOf(element)
+      if (index == -1) None else Some(index)
+    }
+    MappedView(indices)
+  }
+}
+
+
+case object IdentityView extends View {
+  override def isIdentity: Boolean =
+    true
+
+  override def adapt(state: Seq[Boolean]): Seq[Option[Boolean]] =
+    state.map(Some(_))
+}
+
+case class MappedView(indices: Seq[Option[Int]]) extends View {
+  override def isIdentity: Boolean =
+    false
+
+  override def adapt(state: Seq[Boolean]): Seq[Option[Boolean]] =
+    indices.map { index => index.map(state(_)) }
 }

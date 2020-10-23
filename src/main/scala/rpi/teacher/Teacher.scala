@@ -1,7 +1,7 @@
 package rpi.teacher
 
-import rpi.util.{Collections, UnionFind}
-import rpi.{AccessPath, Example, FieldPath, Implication, Inference, Negative, Positive, Record, Triple, VariablePath}
+import rpi.util._
+import rpi._
 import viper.silicon.Silicon
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.state.terms.Term
