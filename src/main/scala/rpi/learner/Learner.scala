@@ -69,18 +69,13 @@ class Learner(val inference: Inference) {
 
     // solve guards
     val solver = new GuardSolver(this, constraints)
-    val filtered = templates.filter { case (name, _) => name != Names.rec }
-
-    filtered.foreach {
+    templates.foreach {
       case (name, template) =>
-        val x = solver.solveTemplate(template)
-        predicates.get(name).foreach { predicate =>
-          val arguments = predicate.formalArgs
-          val body = solver.solveTemplate(template)
-          println(s"$name(${arguments.mkString(",")}) = $body")
-          val inferred = sil.Predicate(name, arguments, Some(body))()
-          predicates = predicates.updated(name, inferred)
-        }
+        val arguments = template.specification.variables.map { variable => sil.LocalVarDecl(variable.name, variable.typ)() }
+        val body = solver.solveTemplate(template)
+        println(s"$name(${arguments.mkString(",")}) = $body")
+        val inferred = sil.Predicate(name, arguments, Some(body))()
+        predicates = predicates.updated(name, inferred)
     }
 
     predicates.values.toSeq
