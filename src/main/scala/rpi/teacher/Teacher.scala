@@ -6,7 +6,6 @@ import viper.silicon.Silicon
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.state.terms.Term
 import viper.silicon.state.{BasicChunk, Heap, Store, terms}
-import viper.silver.ast._
 import viper.silver.{ast => sil}
 import viper.silver.verifier._
 import viper.silver.verifier.reasons.InsufficientPermission
@@ -52,7 +51,7 @@ class Teacher(val inference: Inference) {
     * @param hypothesis The hypothesis to check.
     * @return The sequence of counter examples.
     */
-  def check(hypothesis: Seq[Predicate]): Seq[Example] = inference
+  def check(hypothesis: Seq[sil.Predicate]): Seq[Example] = inference
     .triples.flatMap { triple =>
     // build program
     val program = builder.buildCheck(triple, hypothesis)
@@ -72,7 +71,7 @@ class Teacher(val inference: Inference) {
     * @param program The program to verify.
     * @return The verification result.
     */
-  def verify(program: Program): VerificationResult = verifier.verify(program)
+  def verify(program: sil.Program): VerificationResult = verifier.verify(program)
 
   // TODO: Move substitution helper functions?
   def formalToActualMap(predicate: sil.PredicateAccess): Map[String, AccessPath] = {
@@ -104,16 +103,16 @@ class ProgramBuilder(teacher: Teacher) {
   /**
     * The program under consideration.
     */
-  private val program: Program = teacher.inference.program
+  private val program: sil.Program = teacher.inference.program
 
-  private var inits: Seq[LocalVarDecl] = Seq.empty
+  private var inits: Seq[sil.LocalVarDecl] = Seq.empty
 
-  private var stmts: Seq[Stmt] = Seq.empty
+  private var stmts: Seq[sil.Stmt] = Seq.empty
 
-  def buildCheck(triple: Triple, hypothesis: Seq[Predicate]): Program = {
+  def buildCheck(triple: Triple, hypothesis: Seq[sil.Predicate]): sil.Program = {
     val specifications = teacher.inference.specifications
-    val prePred = triple.pres.collectFirst { case pred: PredicateAccessPredicate => pred }.get
-    val postPred = triple.posts.collectFirst { case pred: PredicateAccessPredicate => pred }.get
+    val prePred = triple.pres.collectFirst { case pred: sil.PredicateAccessPredicate => pred }.get
+    val postPred = triple.posts.collectFirst { case pred: sil.PredicateAccessPredicate => pred }.get
     val preSpec = specifications(prePred.loc.predicateName)
     val postSpec = specifications(postPred.loc.predicateName)
 
@@ -124,7 +123,7 @@ class ProgramBuilder(teacher: Teacher) {
     saveVars(triple)
     // assume pre-condition and loop condition
     triple.pres.foreach(addInhale)
-    triple.pres.collect { case p: PredicateAccessPredicate => p }.foreach(addUnfold)
+    triple.pres.collect { case p: sil.PredicateAccessPredicate => p }.foreach(addUnfold)
     // pre-state
     val preAtoms = preSpec.adaptedAtoms(prePred.loc.args)
     preAtoms.zipWithIndex.foreach { case (atom, i) => saveExp(s"${Labels.PRE_STATE}_p_$i", atom) }
@@ -142,22 +141,22 @@ class ProgramBuilder(teacher: Teacher) {
 
     hypothesis
       .find(_.name == postPred.loc.predicateName).get.body.get
-      .collect { case pred: FieldAccessPredicate => pred.loc }
+      .collect { case pred: sil.FieldAccessPredicate => pred.loc }
       .foreach {
-        access: FieldAccess =>
+        access: sil.FieldAccess =>
           // formal to actual transformation (maybe we can reuse code for access paths?)
-          val location = access.transform { case LocalVar(name, _) => subs(name) }
+          val location = access.transform { case sil.LocalVar(name, _) => subs(name) }
           // assign current perm to variable
-          val lhs = LocalVar(s"perm_${AccessPath(location).toSeq.mkString("_")}", Perm)()
-          val rhs = CurrentPerm(location)()
-          addStmt(LocalVarAssign(lhs, rhs)())
+          val lhs = sil.LocalVar(s"perm_${AccessPath(location).toSeq.mkString("_")}", sil.Perm)()
+          val rhs = sil.CurrentPerm(location)()
+          addStmt(sil.LocalVarAssign(lhs, rhs)())
       }
     // post-state
     val postAtoms = postSpec.adaptedAtoms(postPred.loc.args)
     postAtoms.zipWithIndex.foreach { case (atom, i) => saveExp(s"${Labels.POST_STATE}_p_$i", atom) }
     addLabel(Labels.POST_STATE)
     // assume post-condition
-    triple.posts.collect { case p: PredicateAccessPredicate => p }.foreach(addFold)
+    triple.posts.collect { case p: sil.PredicateAccessPredicate => p }.foreach(addFold)
     triple.posts.foreach(addExhale)
     // return program
     buildProgram(hypothesis)
@@ -168,59 +167,59 @@ class ProgramBuilder(teacher: Teacher) {
     stmts = Seq.empty
   }
 
-  private def addStmt(stmt: Stmt): Unit = stmts :+= stmt
+  private def addStmt(stmt: sil.Stmt): Unit = stmts :+= stmt
 
   private def saveVars(triple: Triple): Unit = {
     val elems = triple.pres ++ triple.body.ss ++ triple.posts
-    elems.flatMap(_.deepCollect { case variable: LocalVar => variable })
+    elems.flatMap(_.deepCollect { case variable: sil.LocalVar => variable })
       .distinct
       .foreach { variable =>
-        val init = LocalVar(s"${variable.name}_init", variable.typ)()
-        addStmt(LocalVarAssign(variable, init)())
+        val init = sil.LocalVar(s"${variable.name}_init", variable.typ)()
+        addStmt(sil.LocalVarAssign(variable, init)())
       }
   }
 
-  private def addLabel(name: String): Unit = addStmt(Label(name, Seq.empty)())
+  private def addLabel(name: String): Unit = addStmt(sil.Label(name, Seq.empty)())
 
-  private def addInhale(exp: Exp): Unit = addStmt(Inhale(exp)())
+  private def addInhale(exp: sil.Exp): Unit = addStmt(sil.Inhale(exp)())
 
-  private def addExhale(exp: Exp): Unit = addStmt(Exhale(exp)())
+  private def addExhale(exp: sil.Exp): Unit = addStmt(sil.Exhale(exp)())
 
-  private def addUnfold(pred: PredicateAccessPredicate): Unit = addStmt(Unfold(pred)())
+  private def addUnfold(pred: sil.PredicateAccessPredicate): Unit = addStmt(sil.Unfold(pred)())
 
-  private def addFold(pred: PredicateAccessPredicate): Unit = addStmt(Fold(pred)())
+  private def addFold(pred: sil.PredicateAccessPredicate): Unit = addStmt(sil.Fold(pred)())
 
-  private def saveExp(name: String, exp: Exp): Unit = {
-    val variable = LocalVar(name, Bool)()
-    val thn = Seqn(Seq(LocalVarAssign(variable, BoolLit(true)())()), Seq.empty)()
-    val els = Seqn(Seq(LocalVarAssign(variable, BoolLit(false)())()), Seq.empty)()
-    addStmt(If(exp, thn, els)())
+  private def saveExp(name: String, exp: sil.Exp): Unit = {
+    val variable = sil.LocalVar(name, sil.Bool)()
+    val thn = sil.Seqn(Seq(sil.LocalVarAssign(variable, sil.BoolLit(true)())()), Seq.empty)()
+    val els = sil.Seqn(Seq(sil.LocalVarAssign(variable, sil.BoolLit(false)())()), Seq.empty)()
+    addStmt(sil.If(exp, thn, els)())
   }
 
-  private def buildBody(): Seqn = {
-    val vars = stmts.flatMap(_.deepCollect { case v: LocalVar => v }).distinct
-    val decls = vars.map(v => LocalVarDecl(v.name, v.typ)())
-    Seqn(stmts, decls)()
+  private def buildBody(): sil.Seqn = {
+    val vars = stmts.flatMap(_.deepCollect { case v: sil.LocalVar => v }).distinct
+    val decls = vars.map(v => sil.LocalVarDecl(v.name, v.typ)())
+    sil.Seqn(stmts, decls)()
   }
 
-  private def buildMethod(): Method = {
+  private def buildMethod(): sil.Method = {
     val name = "check"
     val args = Seq.empty
     val returns = Seq.empty
     val pres = Seq.empty
     val posts = Seq.empty
     val body = Some(buildBody())
-    Method(name, args, returns, pres, posts, body)()
+    sil.Method(name, args, returns, pres, posts, body)()
   }
 
-  private def buildProgram(hypothesis: Seq[Predicate]): Program = {
+  private def buildProgram(hypothesis: Seq[sil.Predicate]): sil.Program = {
     val domains = Seq.empty
     val fields = program.fields
     val functions = Seq.empty
     val predicates = hypothesis
     val methods = Seq(buildMethod())
     val extensions = Seq.empty
-    Program(domains, fields, functions, predicates, methods, extensions)()
+    sil.Program(domains, fields, functions, predicates, methods, extensions)()
   }
 }
 
@@ -243,13 +242,13 @@ class ExampleExtractor(teacher: Teacher) {
 
     // adapt
     lazy val adapted = if (second.label == Labels.POST_STATE) {
-      val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
+      val predicate = triple.posts.collectFirst { case p: sil.PredicateAccessPredicate => p.loc }.get
       teacher.substitute(access, teacher.formalToActualMap(predicate)).get
     } else access
 
     // post-state record
     lazy val postRecord = {
-      val predicate = triple.posts.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
+      val predicate = triple.posts.collectFirst { case p: sil.PredicateAccessPredicate => p.loc }.get
       val atoms = teacher.inference.specifications(predicate.predicateName).atoms
       val abstraction = abstractState(atoms, second)
       Record(renameArgs(predicate), abstraction, Set(access))
@@ -257,7 +256,7 @@ class ExampleExtractor(teacher: Teacher) {
 
     // pre-state record
     lazy val preRecord = {
-      val predicate = triple.pres.collectFirst { case p: PredicateAccessPredicate => p.loc }.get
+      val predicate = triple.pres.collectFirst { case p: sil.PredicateAccessPredicate => p.loc }.get
       val specification = inference.specifications(predicate.predicateName)
 
       val substitutions = {
@@ -328,10 +327,10 @@ class ExampleExtractor(teacher: Teacher) {
     case _ => ???
   }
 
-  private def renameArgs(predicate: PredicateAccess): PredicateAccess = {
+  private def renameArgs(predicate: sil.PredicateAccess): sil.PredicateAccess = {
     val name = predicate.predicateName
     val args = inference.specifications(name).variables
-    PredicateAccess(args, name)()
+    sil.PredicateAccess(args, name)()
   }
 
   /**
@@ -424,7 +423,7 @@ class ExampleExtractor(teacher: Teacher) {
     recurse(initial, 3)
   }
 
-  private def abstractState(atoms: Seq[Exp], state: State): Seq[Boolean] = {
+  private def abstractState(atoms: Seq[sil.Exp], state: State): Seq[Boolean] = {
     atoms.indices.map { i =>
       state.store(s"${state.label}_p_$i") match {
         case terms.True() => true

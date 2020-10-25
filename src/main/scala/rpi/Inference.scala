@@ -8,7 +8,6 @@ import rpi.learner.Learner
 import rpi.teacher.Teacher
 import rpi.util.{Collections, Expressions}
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast._
 import viper.silver.{ast => sil}
 import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
 
@@ -21,6 +20,9 @@ object Config {
     */
   val maxClauses = 1
 
+  /**
+    * The maximal length of access paths to appear in specifications.
+    */
   val maxLength = 2
 
   /**
@@ -121,7 +123,7 @@ object Inference {
     * @param file The file to parse.
     * @return The parsed program.
     */
-  private def parse(file: String): Option[Program] = {
+  private def parse(file: String): Option[sil.Program] = {
     // read input
     val path = Paths.get(file)
     val input = Source.fromInputStream(Files.newInputStream(path)).mkString
@@ -139,7 +141,7 @@ object Inference {
   }
 }
 
-class Inference(val program: Program) {
+class Inference(val program: sil.Program) {
 
 
   /**
@@ -155,21 +157,21 @@ class Inference(val program: Program) {
   /**
     * The program annotated with predicates in all the places where some specification should be inferred.
     */
-  lazy val labelled: Program = {
+  lazy val labelled: sil.Program = {
     val id = new AtomicInteger()
     program.transformWithContext[Seq[sil.LocalVar]]({
-      case (method: Method, variables) =>
-        val arguments = method.formalArgs.map(v => LocalVar(v.name, v.typ)())
-        val preconditions = method.pres :+ PredicateAccessPredicate(PredicateAccess(arguments, s"P_${method.name}")(), FullPerm()())()
-        val postconditions = method.posts :+ PredicateAccessPredicate(PredicateAccess(arguments, s"Q_${method.name}")(), FullPerm()())()
+      case (method: sil.Method, variables) =>
+        val arguments = method.formalArgs.map(v => sil.LocalVar(v.name, v.typ)())
+        val preconditions = method.pres :+ sil.PredicateAccessPredicate(sil.PredicateAccess(arguments, s"P_${method.name}")(), sil.FullPerm()())()
+        val postconditions = method.posts :+ sil.PredicateAccessPredicate(sil.PredicateAccess(arguments, s"Q_${method.name}")(), sil.FullPerm()())()
         val updated = method.copy(pres = preconditions, posts = postconditions)(method.pos, method.info, method.errT)
         (updated, arguments)
-      case (loop: While, variables) =>
-        val invariants = loop.invs :+ PredicateAccessPredicate(PredicateAccess(variables, s"I_${id.getAndIncrement()}")(), FullPerm()())()
+      case (loop: sil.While, variables) =>
+        val invariants = loop.invs :+ sil.PredicateAccessPredicate(sil.PredicateAccess(variables, s"I_${id.getAndIncrement()}")(), sil.FullPerm()())()
         val updated = loop.copy(invs = invariants)(loop.pos, loop.info, loop.errT)
         (updated, variables)
-      case (sequence: Seqn, variables) =>
-        val updated = variables ++ sequence.scopedDecls.collect { case x: LocalVarDecl => LocalVar(x.name, x.typ)() }
+      case (sequence: sil.Seqn, variables) =>
+        val updated = variables ++ sequence.scopedDecls.collect { case variable: sil.LocalVarDecl => sil.LocalVar(variable.name, variable.typ)() }
         (sequence, updated)
     }, Seq.empty, Traverse.TopDown)
   }
@@ -177,7 +179,7 @@ class Inference(val program: Program) {
   lazy val specifications: Map[String, Specification] =
     labelled
       .deepCollect {
-        case predicate: PredicateAccess =>
+        case predicate: sil.PredicateAccess =>
           val name = predicate.predicateName
           // TODO: Names of variables only renamed temporarily for testing purposes
           val variables = predicate.args.zipWithIndex.map {
@@ -191,14 +193,14 @@ class Inference(val program: Program) {
 
   lazy val templates = {
     // TODO: Implement properly.
-    val x0 = LocalVarDecl("x0", Ref)()
-    val x1 = LocalVarDecl("x1", Ref)()
-    val t0 = Predicate("T0", Seq(x0), Some(NeCmp(x0.localVar, NullLit()())()))()
-    val t1 = Predicate("T1", Seq(x0, x1), Some(EqCmp(x0.localVar, x1.localVar)()))()
+    val x0 = sil.LocalVarDecl("x0", sil.Ref)()
+    val x1 = sil.LocalVarDecl("x1", sil.Ref)()
+    val t0 = sil.Predicate("T0", Seq(x0), Some(sil.NeCmp(x0.localVar, sil.NullLit()())()))()
+    val t1 = sil.Predicate("T1", Seq(x0, x1), Some(sil.EqCmp(x0.localVar, x1.localVar)()))()
     Seq(t0, t1)
   }
 
-  def generateAtoms(parameters: Seq[Exp]): Seq[Exp] =
+  def generateAtoms(parameters: Seq[sil.Exp]): Seq[sil.Exp] =
     templates.flatMap { template =>
       template.formalArgs.length match {
         case 1 => parameters
@@ -220,28 +222,28 @@ class Inference(val program: Program) {
   lazy val triples: Seq[Triple] = {
     val methods = labelled.methods.map(m => m.name -> m).toMap
 
-    def collectTriples(triples: Seq[Triple], pres: Seq[Exp], before: Seq[Stmt], stmt: Stmt): (Seq[Triple], Seq[Exp], Seq[Stmt]) = stmt match {
-      case Seqn(stmts, _) =>
+    def collectTriples(triples: Seq[Triple], pres: Seq[sil.Exp], before: Seq[sil.Stmt], stmt: sil.Stmt): (Seq[Triple], Seq[sil.Exp], Seq[sil.Stmt]) = stmt match {
+      case sil.Seqn(stmts, _) =>
         stmts.foldLeft((triples, pres, before)) { case ((ts, ps, bs), s) => collectTriples(ts, ps, bs, s) }
-      case While(cond, invs, body) =>
-        val t1 = Triple(pres, invs, Seqn(before, Seq.empty)())
+      case sil.While(cond, invs, body) =>
+        val t1 = Triple(pres, invs, sil.Seqn(before, Seq.empty)())
         val (ts1, ps1, bs1) = collectTriples(triples :+ t1, invs :+ cond, Seq.empty, body)
-        val t2 = Triple(ps1, invs, Seqn(bs1, Seq.empty)())
-        (ts1 :+ t2, invs :+ Not(cond)(), Seq.empty)
-      case MethodCall(name, args, _) =>
+        val t2 = Triple(ps1, invs, sil.Seqn(bs1, Seq.empty)())
+        (ts1 :+ t2, invs :+ sil.Not(cond)(), Seq.empty)
+      case sil.MethodCall(name, args, _) =>
         val method = methods(name)
-        val ps1 = method.pres.init :+ PredicateAccessPredicate(PredicateAccess(args, s"P_${method.name}")(), FullPerm()())()
-        val ps2 = method.posts.init :+ PredicateAccessPredicate(PredicateAccess(args, s"Q_${method.name}")(), FullPerm()())()
-        val part = Triple(pres, ps1, Seqn(before, Seq.empty)())
+        val ps1 = method.pres.init :+ sil.PredicateAccessPredicate(sil.PredicateAccess(args, s"P_${method.name}")(), sil.FullPerm()())()
+        val ps2 = method.posts.init :+ sil.PredicateAccessPredicate(sil.PredicateAccess(args, s"Q_${method.name}")(), sil.FullPerm()())()
+        val part = Triple(pres, ps1, sil.Seqn(before, Seq.empty)())
         (triples :+ part, ps2, Seq.empty)
       case _ =>
         (triples, pres, before :+ stmt)
     }
 
     labelled.methods.flatMap {
-      case Method(name, args, _, pres, posts, Some(body)) =>
+      case sil.Method(name, args, _, pres, posts, Some(body)) =>
         val (ts, ps, bs) = collectTriples(Seq.empty, pres, Seq.empty, body)
-        val t = Triple(ps, posts, Seqn(bs, Seq.empty)())
+        val t = Triple(ps, posts, sil.Seqn(bs, Seq.empty)())
         ts :+ t
       case _ => Seq.empty
     }
@@ -263,8 +265,8 @@ class Inference(val program: Program) {
     learner.stop()
   }
 
-  def infer(): Program = {
-    var hypothesis: Seq[Predicate] = learner.initial()
+  def infer(): sil.Program = {
+    var hypothesis: Seq[sil.Predicate] = learner.initial()
 
     for (i <- 0 until 2) {
       println(s"----- round $i -----")
@@ -278,38 +280,38 @@ class Inference(val program: Program) {
     annotated(map)
   }
 
-  private def annotated(hypothesis: Map[String, Predicate]): Program = {
+  private def annotated(hypothesis: Map[String, sil.Predicate]): sil.Program = {
     val predicates = labelled.predicates ++ hypothesis.values
     val methods = labelled.methods.map { method =>
       val body = method.body match {
         case Some(seqn) =>
-          val unfold = method.pres.collectFirst { case p: PredicateAccessPredicate => Unfold(p)() }.get
-          val fold = method.posts.collectFirst { case p: PredicateAccessPredicate => Fold(p)() }.get
+          val unfold = method.pres.collectFirst { case p: sil.PredicateAccessPredicate => sil.Unfold(p)() }.get
+          val fold = method.posts.collectFirst { case p: sil.PredicateAccessPredicate => sil.Fold(p)() }.get
           val x = seqn.transform({
-            case call@MethodCall(name, args, _) =>
-              val mp = Fold(PredicateAccessPredicate(PredicateAccess(args, hypothesis(s"P_$name").name)(), FullPerm()())())()
-              val mq = Unfold(PredicateAccessPredicate(PredicateAccess(args, hypothesis(s"Q_$name").name)(), FullPerm()())())()
-              Seqn(Seq(mp, call, mq), Seq.empty)()
-            case While(cond, invs, body) =>
-              val invPred = invs.collectFirst { case p: PredicateAccessPredicate => p }.get
-              val invFold = Fold(invPred)()
-              val invUnfold = Unfold(invPred)()
-              val updated = Seqn(invUnfold +: body.ss :+ invFold, Seq.empty)()
-              val loop = While(cond, invs, updated)()
-              Seqn(Seq(invFold, loop, invUnfold), Seq.empty)()
+            case call@sil.MethodCall(name, args, _) =>
+              val mp = sil.Fold(sil.PredicateAccessPredicate(sil.PredicateAccess(args, hypothesis(s"P_$name").name)(), sil.FullPerm()())())()
+              val mq = sil.Unfold(sil.PredicateAccessPredicate(sil.PredicateAccess(args, hypothesis(s"Q_$name").name)(), sil.FullPerm()())())()
+              sil.Seqn(Seq(mp, call, mq), Seq.empty)()
+            case sil.While(cond, invs, body) =>
+              val invPred = invs.collectFirst { case p: sil.PredicateAccessPredicate => p }.get
+              val invFold = sil.Fold(invPred)()
+              val invUnfold = sil.Unfold(invPred)()
+              val updated = sil.Seqn(invUnfold +: body.ss :+ invFold, Seq.empty)()
+              val loop = sil.While(cond, invs, updated)()
+              sil.Seqn(Seq(invFold, loop, invUnfold), Seq.empty)()
           }, Traverse.BottomUp)
           val stmts = unfold +: x.ss :+ fold
-          Some(Seqn(stmts, seqn.scopedDecls)())
+          Some(sil.Seqn(stmts, seqn.scopedDecls)())
         case none => none
       }
       method.copy(body = body)(method.pos, method.info, method.errT)
     }
-    labelled.copy(predicates = predicates, methods = methods)(NoPosition, NoInfo, NoTrafos)
+    labelled.copy(predicates = predicates, methods = methods)(sil.NoPosition, sil.NoInfo, sil.NoTrafos)
   }
 }
 
 // TODO: Rework!
-case class Triple(pres: Seq[Exp], posts: Seq[Exp], body: Seqn) {
+case class Triple(pres: Seq[sil.Exp], posts: Seq[sil.Exp], body: sil.Seqn) {
   override def toString: String = {
     val p = pres.map(_.toString()).reduceOption((x, y) => s"$x && $y").getOrElse("true")
     val q = posts.map(_.toString()).reduceOption((x, y) => s"$x && $y").getOrElse("true")
