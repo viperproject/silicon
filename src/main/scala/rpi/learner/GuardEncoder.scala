@@ -126,7 +126,11 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     // compute view
     val view =
       if (store.isEmpty) View.identity
-      else View.mapped(atoms, atoms.map { atom => store.adapt(atom) })
+      else {
+        val localAtoms = template.specification.atoms
+        val adapted = localAtoms.map { atom => store.adapt(atom) }
+        View.mapped(atoms, adapted)
+      }
 
     val empty = Map.empty[Resource, Seq[Seq[(Int, View)]]]
     if (depth == 0) empty
