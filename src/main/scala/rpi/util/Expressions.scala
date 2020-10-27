@@ -33,6 +33,16 @@ object Expressions {
     }
 
   /**
+    * TODO: Is this final?
+    *
+    * @param expression The expression.
+    */
+  def toSeq(expression: sil.Exp): Seq[String] = expression match {
+    case sil.LocalVar(name, _) => Seq(name)
+    case sil.FieldAccess(receiver, field) => toSeq(receiver) :+ field.name
+  }
+
+  /**
     * Returns the disjunction of the given expressions.
     *
     * @param expressions The expressions.
@@ -69,6 +79,12 @@ object Expressions {
     sil.And(atLeast, atMost)()
   }
 
+  /**
+    * Simplifies the given expression.
+    *
+    * @param expression The expression to simplify.
+    * @return The simplified expression.
+    */
   def simplify(expression: sil.Exp): sil.Exp = expression match {
     case sil.And(left, right) => (left, right) match {
       case (sil.TrueLit(), _) => simplify(right)

@@ -62,9 +62,8 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     val name = record.predicate.predicateName
     val localGuards = guards.getOrElse(name, Map.empty)
     // compute encoding for all choices
-    val choices = record.paths.flatMap { path =>
+    val choices = record.locations.flatMap { resource =>
       // get guards for resource
-      val resource = Permission(path)
       val resourceGuards = localGuards.getOrElse(resource, Seq.empty)
       println(s"$resource: $resourceGuards")
       // choices for this resource
@@ -122,7 +121,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     Expressions.bigOr(clauses)
   }
 
-  private def collectGuards(template: Template, store: Store, atoms: Seq[sil.Exp], depth: Int): Map[Resource, Seq[Seq[(Int, View)]]] = {
+  private def collectGuards(template: Template, store: Store, atoms: Seq[sil.Exp], depth: Int): Map[sil.LocationAccess, Seq[Seq[(Int, View)]]] = {
     // compute view
     val view =
       if (store.isEmpty) View.identity
@@ -132,29 +131,32 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
         View.mapped(atoms, adapted)
       }
 
-    val empty = Map.empty[Resource, Seq[Seq[(Int, View)]]]
+    val empty = Map.empty[sil.LocationAccess, Seq[Seq[(Int, View)]]]
     if (depth == 0) empty
     else template
       .resources
       .foldLeft(empty) {
-        case (result, Guarded(guardId, resource)) => resource match {
-          case Permission(path) =>
-            // update result with permission
-            val adapted = Permission(store.adapt(path))
-            result.updated(adapted, result.getOrElse(adapted, Seq.empty) :+ Seq((guardId, view)))
-          case Predicate(name, arguments) =>
-            // update result with predicate
+        case (result, Guarded(guardId, access)) => access match {
+          case sil.FieldAccess(receiver, field) =>
+            // update result with permission for field access
+            val adapted = sil.FieldAccess(store.adapt(receiver), field)()
+            val updatedGuards = result.getOrElse(adapted, Seq.empty) :+ Seq((guardId, view))
+            result.updated(adapted, updatedGuards)
+          case sil.PredicateAccess(arguments, name) =>
+            // update result with permission for predicate access
             val adaptedArguments = arguments.map { argument => store.adapt(argument) }
-            val adapted = Predicate(name, adaptedArguments)
-            val updatedResult = result.updated(adapted, result.getOrElse(adapted, Seq.empty) :+ Seq((guardId, view)))
-            // process nested resources
+            val adapted = sil.PredicateAccess(adaptedArguments, name)()
+            val updatedGuards = result.getOrElse(adapted, Seq.empty) :+ Seq((guardId, view))
+            val updatedResult = result.updated(adapted, updatedGuards)
+            // process nested location accesses
             val innerTemplate = templates(name)
-            val innerStore = Store(innerTemplate.parameters.zip(adaptedArguments).toMap)
+            val parameters = innerTemplate.parameters
+            val innerStore = Store(parameters.zip(adaptedArguments).toMap)
             collectGuards(innerTemplate, innerStore, atoms, depth - 1).foldLeft(updatedResult) {
-              case (innerResult, (innerResource, innerGuards)) =>
+              case (innerResult, (innerAccess, innerGuards)) =>
                 val mappedGuards = innerGuards.map { guards => guards :+ (guardId, view) }
-                val updatedGuards = innerResult.getOrElse(innerResource, Seq.empty) ++ mappedGuards
-                innerResult.updated(innerResource, updatedGuards)
+                val updatedGuards = innerResult.getOrElse(innerAccess, Seq.empty) ++ mappedGuards
+                innerResult.updated(innerAccess, updatedGuards)
             }
         }
       }

@@ -44,25 +44,13 @@ class GuardSolver(learner: Learner, constraints: sil.Exp) {
       Expressions.simplify(Expressions.bigOr(clauses))
     }
 
-    val resource = guarded.resource match {
-      case Permission(path) =>
-        val location = createField(path)
-        sil.FieldAccessPredicate(location, sil.FullPerm()())()
-      case Predicate(name, arguments) =>
-        val location = sil.PredicateAccess(arguments.map(createPath), name)()
-        sil.PredicateAccessPredicate(location, sil.FullPerm()())()
+    val resource = guarded.access match {
+      case access: sil.FieldAccess =>
+        sil.FieldAccessPredicate(access, sil.FullPerm()())()
+      case access: sil.PredicateAccess =>
+        sil.PredicateAccessPredicate(access, sil.FullPerm()())()
     }
 
     sil.Implies(guard, resource)()
-  }
-
-  private def createPath(path: AccessPath): sil.Exp = path match {
-    case VariablePath(name) => sil.LocalVar(name, sil.Ref)()
-    case _ => createField(path)
-  }
-
-  private def createField(path: AccessPath): sil.FieldAccess = path match {
-    case FieldPath(receiver, field) =>
-      sil.FieldAccess(createPath(receiver), fields(path.last))()
   }
 }

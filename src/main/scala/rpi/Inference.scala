@@ -26,6 +26,11 @@ object Config {
   val maxLength = 2
 
   /**
+    * The number of rounds after which the learner gets exhausted and gives up.
+    */
+  val maxRounds = 3
+
+  /**
     * Debug options.
     */
   val debugPrintExamples = true
@@ -268,7 +273,7 @@ class Inference(val program: sil.Program) {
   def infer(): sil.Program = {
     var hypothesis: Seq[sil.Predicate] = learner.initial()
 
-    for (i <- 0 until 2) {
+    for (i <- 0 until Config.maxRounds) {
       println(s"----- round $i -----")
       val examples = teacher.check(hypothesis)
       learner.addExamples(examples)
@@ -328,6 +333,8 @@ case class Triple(pres: Seq[sil.Exp], posts: Seq[sil.Exp], body: sil.Seqn) {
   * @param atoms     The atomic predicates
   */
 case class Specification(name: String, variables: Seq[sil.LocalVar], atoms: Seq[sil.Exp]) {
+  lazy val predicate = sil.PredicateAccess(variables, name)()
+
   def adaptedAtoms(arguments: Seq[sil.Exp]): Seq[sil.Exp] = {
     val substitutions = variables.zip(arguments).toMap
     atoms.map { atom =>

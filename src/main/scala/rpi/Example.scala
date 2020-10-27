@@ -17,7 +17,7 @@ case class Positive(record: Record) extends Example
 /**
   * A negative example.
   *
-  * @param record The data point not to include.
+  * @param record The data point to exclude.
   */
 case class Negative(record: Record) extends Example
 
@@ -32,68 +32,9 @@ case class Implication(left: Record, right: Record) extends Example
 /**
   * A data point.
   *
-  * @param predicate   The predicate this data point refers to.
+  * @param predicate   The predicate representing the inferred specifications this data point refers to.
   * @param abstraction The predicate abstraction of the state.
-  * @param paths       The (under-approximate) set of access paths that can be used to represent the location for which
-  *                    some permissions are required.
+  * @param locations   The (under-approximate) set of location accesses that can ber used to represent the location for
+  *                    which some permissions are required.
   */
-case class Record(predicate: sil.PredicateAccess, abstraction: Seq[Boolean], paths: Set[AccessPath]) {
-  override def toString: String = {
-    val name = predicate.predicateName
-    val absStr = abstraction.map(if (_) 1 else 0).mkString(",")
-    val accStr = paths.mkString(",")
-    s"$predicate: [$absStr] -> {$accStr}"
-  }
-}
-
-object AccessPath {
-  def apply(exp: sil.Exp): AccessPath = exp match {
-    case sil.LocalVar(name, _) => VariablePath(name)
-    case sil.FieldAccess(receiver, field) => FieldPath(AccessPath(receiver), field.name)
-  }
-
-  def apply(seq: Seq[String]): AccessPath = seq
-    .tail.foldLeft[AccessPath](VariablePath(seq.head)) {
-    case (receiver, field) => FieldPath(receiver, field)
-  }
-}
-
-sealed trait AccessPath {
-  def last: String = this match {
-    case VariablePath(name) => name
-    case FieldPath(_, name) => name
-  }
-
-  def dropLast: AccessPath = this match {
-    case FieldPath(receiver, _) => receiver
-    case _ => ???
-  }
-
-  def prefixes: Seq[AccessPath] = this match {
-    case FieldPath(receiver, _) => receiver +: receiver.prefixes
-    case _ => Seq.empty
-  }
-
-  def toSeq: Seq[String] = this match {
-    case VariablePath(name) => Seq(name)
-    case FieldPath(receiver, name) => receiver.toSeq :+ name
-  }
-
-  def length: Int = this match {
-    case VariablePath(_) => 1
-    case FieldPath(receiver, _) => receiver.length + 1
-  }
-
-  def toExp(typ: sil.Type): sil.Exp = this match {
-    case VariablePath(name) => sil.LocalVar(name, typ)()
-    case FieldPath(receiver, name) => sil.FieldAccess(receiver.toExp(sil.Ref), sil.Field(name, typ)())()
-  }
-
-  override def toString: String = toSeq.mkString(".")
-}
-
-case class VariablePath(name: String) extends AccessPath
-
-case class FieldPath(receiver: AccessPath, name: String) extends AccessPath {
-  override def toString: String = s"$receiver.$name"
-}
+case class Record(predicate: sil.PredicateAccess, abstraction: Seq[Boolean], locations: Set[sil.LocationAccess])
