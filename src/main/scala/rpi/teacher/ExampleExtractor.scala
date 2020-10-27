@@ -108,7 +108,7 @@ class ExampleExtractor(teacher: Teacher) {
       val atoms = specifications.atoms
       val abstraction = abstractState(current, atoms)
       // create record
-      Record(specifications.predicate, abstraction, Set(currentLocation))
+      Record(specifications.predicate, abstraction, Set(offendingLocation))
     }
 
     // create and return example
