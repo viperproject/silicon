@@ -254,7 +254,8 @@ object evaluator extends EvaluationRules with Immutable {
         evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
           val resource = fa.res(Verifier.program)
-          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
+          val description = s"eval ${fa.pos}: $fa"
+          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1, description)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
             Q(s3, tSnap, v1)

@@ -38,7 +38,8 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              resource: ast.Resource,
              args: Seq[Term],
              ve: VerificationError,
-             v: Verifier)
+             v: Verifier,
+             description: String)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult
 
@@ -184,9 +185,24 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
              resource: ast.Resource,
              args: Seq[Term],
              ve: VerificationError,
-             v: Verifier)
+             v: Verifier,
+             description: String)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
+
+    heuristicsSupporter.tryOperation[Heap, Term](description)(s, h, v)((s1, h1, v1, QS) => {
+      lookup(s1, h1, resource, args, ve, v1)(QS)
+    })(Q)
+  }
+
+  private def lookup(s: State,
+                     h: Heap,
+                     resource: ast.Resource,
+                     args: Seq[Term],
+                     ve: VerificationError,
+                     v: Verifier)
+                    (Q: (State, Heap, Term, Verifier) => VerificationResult)
+                    : VerificationResult = {
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction =
         if (s.isMethodVerification && Verifier.config.enableMoreCompleteExhale()) moreCompleteExhaleSupporter.lookupComplete _
