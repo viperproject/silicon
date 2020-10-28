@@ -18,7 +18,7 @@ class GuardSolver(learner: Learner, constraints: sil.Exp) {
   def solveTemplate(template: Template): sil.Exp = {
     val atoms = template.specification.atoms
     val conjuncts = template.resources.map { resource => createGuarded(resource, atoms) }
-    Expressions.bigAnd(conjuncts)
+    Expressions.simplify(Expressions.bigAnd(conjuncts))
   }
 
   private def createGuarded(guarded: Guarded, atoms: Seq[sil.Exp]): sil.Exp = {
@@ -41,7 +41,7 @@ class GuardSolver(learner: Learner, constraints: sil.Exp) {
           Expressions.bigAnd(literals)
         } else sil.FalseLit()()
       }
-      Expressions.simplify(Expressions.bigOr(clauses))
+      Expressions.bigOr(clauses)
     }
 
     val resource = guarded.access match {

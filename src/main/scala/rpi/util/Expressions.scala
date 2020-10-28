@@ -1,5 +1,6 @@
 package rpi.util
 
+import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.{ast => sil}
 
 object Expressions {
@@ -85,17 +86,40 @@ object Expressions {
     * @param expression The expression to simplify.
     * @return The simplified expression.
     */
-  def simplify(expression: sil.Exp): sil.Exp = expression match {
-    case sil.And(left, right) => (left, right) match {
-      case (sil.TrueLit(), _) => simplify(right)
-      case (_, sil.TrueLit()) => simplify(left)
-      case _ => sil.And(simplify(left), simplify(right))()
+  def simplify(expression: sil.Exp): sil.Exp =
+    expression.transform({ case node => simplification(node) }, Traverse.BottomUp)
+
+  /**
+    * Performs a simplification step.
+    *
+    * @param expression The expression to simplify.
+    * @return The simplified expression.
+    */
+  def simplification(expression: sil.Node): sil.Node =
+    expression match {
+      // simplify conjunction
+      case sil.And(left, right) => (left, right) match {
+        case (sil.TrueLit(), _) => right
+        case (_, sil.TrueLit()) => left
+        case (sil.FalseLit(), _) => sil.FalseLit()()
+        case (_, sil.FalseLit()) => sil.FalseLit()()
+        case _ => expression
+      }
+      // simplify disjunction
+      case sil.Or(left, right) => (left, right) match {
+        case (sil.TrueLit(), _) => sil.TrueLit()()
+        case (_, sil.TrueLit()) => sil.TrueLit()()
+        case (sil.FalseLit(), _) => right
+        case (_, sil.FalseLit()) => left
+        case _ => expression
+      }
+      // simplify implication
+      case sil.Implies(left, right) => (left, right) match {
+        case (sil.TrueLit(), _) => right
+        case (sil.FalseLit(), _) => sil.TrueLit()()
+        case _ => expression
+      }
+      // do nothing by default
+      case _ => expression
     }
-    case sil.Or(left, right) => (left, right) match {
-      case (sil.FalseLit(), _) => simplify(right)
-      case (_, sil.FalseLit()) => simplify(left)
-      case _ => sil.Or(simplify(left), simplify(right))()
-    }
-    case _ => expression
-  }
 }
