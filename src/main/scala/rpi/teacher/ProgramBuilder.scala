@@ -59,17 +59,17 @@ class ProgramBuilder(teacher: Teacher) {
     }
 
     hypothesis
-      .find(_.name == postPred.loc.predicateName).get.body.get
-      .collect { case pred: sil.FieldAccessPredicate => pred.loc }
-      .foreach {
-        access: sil.FieldAccess =>
-          // formal to actual transformation (maybe we can reuse code for access paths?)
-          val location = access.transform { case sil.LocalVar(name, _) => subs(name) }
-          // assign current perm to variable
-          val lhs = sil.LocalVar(s"perm_${Expressions.toSeq(location).mkString("_")}", sil.Perm)()
-          val rhs = sil.CurrentPerm(location)()
-          addStmt(sil.LocalVarAssign(lhs, rhs)())
+      .find { predicate => predicate.name == postSpec.name }
+      .flatMap { predicate => predicate.body }.get
+      .collect {
+        case sil.FieldAccessPredicate(access, _) => access
+        case sil.PredicateAccessPredicate(access, _) => access
       }
+      .foreach { access =>
+        val adapted = access.transform { case sil.LocalVar(name, _) => subs(name) }
+        savePermission(adapted)
+      }
+
     // post-state
     val postAtoms = postSpec.adaptedAtoms(postPred.loc.args)
     postAtoms.zipWithIndex.foreach { case (atom, i) => saveExp(s"${Labels.POST_STATE}_p_$i", atom) }
@@ -108,11 +108,24 @@ class ProgramBuilder(teacher: Teacher) {
 
   private def addFold(pred: sil.PredicateAccessPredicate): Unit = addStmt(sil.Fold(pred)())
 
+  // TODO: Reuse "saveValue" method below.
   private def saveExp(name: String, exp: sil.Exp): Unit = {
     val variable = sil.LocalVar(name, sil.Bool)()
     val thn = sil.Seqn(Seq(sil.LocalVarAssign(variable, sil.BoolLit(b = true)())()), Seq.empty)()
     val els = sil.Seqn(Seq(sil.LocalVarAssign(variable, sil.BoolLit(b = false)())()), Seq.empty)()
     addStmt(sil.If(exp, thn, els)())
+  }
+
+  private def saveValue(name: String, value: sil.Exp): Unit = {
+    val variable = sil.LocalVar(name, value.typ)()
+    val assignment = sil.LocalVarAssign(variable, value)()
+    addStmt(assignment)
+  }
+
+  private def savePermission(access: sil.LocationAccess): Unit = {
+    val name = s"perm_${teacher.encode(access)}"
+    val value = sil.CurrentPerm(access)()
+    saveValue(name, value)
   }
 
   private def buildBody(): sil.Seqn = {
@@ -133,7 +146,11 @@ class ProgramBuilder(teacher: Teacher) {
 
   private def buildProgram(hypothesis: Seq[sil.Predicate]): sil.Program = {
     val domains = Seq.empty
-    val fields = original.fields
+    val fields = {
+      // magic field that enables fold/unfold heuristics
+      val magic = sil.Field("__CONFIG_HEURISTICS", sil.Bool)()
+      magic +: original.fields
+    }
     val functions = Seq.empty
     val predicates = hypothesis
     val methods = Seq(buildMethod())

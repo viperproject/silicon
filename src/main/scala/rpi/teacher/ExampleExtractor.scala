@@ -31,6 +31,11 @@ class ExampleExtractor(teacher: Teacher) {
     * @return The extracted examples.
     */
   def extractExample(error: VerificationError, triple: Triple): Example = {
+    if (Config.debugPrintError) {
+      println("----- error -----")
+      println(error)
+    }
+
     // get counter-example
     val counter = error.counterexample match {
       case Some(value: SiliconRawCounterexample) => value
@@ -71,29 +76,23 @@ class ExampleExtractor(teacher: Teacher) {
       val atoms = specification.atoms
       val abstraction = abstractState(initial, atoms)
       // map current location to initial specification predicate
-      val initialLocations: Set[LocationAccess] = currentLocation match {
-        case sil.FieldAccess(receiver, field) =>
-          // compute paths that reach receiver
-          val reachability = Reachability(initial)
-          val term = current.evaluate(receiver)
-          val paths = reachability.get(term)
-          // build actual-to-formal map
-          val map = {
-            val actuals = predicate.args
-            val formals = specification.variables
-            actuals.zip(formals).toMap
-          }
-          // adapt receiver paths and create field accesses
-          paths.map { path =>
-            // TODO: Filter paths that cannot be adapted
-            val adapted = path.transform {
-              case variable: sil.LocalVar => map(variable)
-            }
-            sil.FieldAccess(adapted, field)()
-          }
-        case sil.PredicateAccess(arguments, name) =>
-          // TODO: Implement me.
-          ???
+      val initialLocations: Set[LocationAccess] = {
+        // create reachability information
+        val reachability = {
+          val actuals = predicate.args.map { case sil.LocalVar(name, _) => name }
+          val formals = specification.variables
+          val map = actuals.zip(formals).toMap
+          Reachability(current, initial, map)
+        }
+
+        currentLocation match {
+          case sil.FieldAccess(receiver, field) =>
+            val adaptedSet = reachability.get(receiver)
+            adaptedSet.map { adapted => sil.FieldAccess(adapted, field)() }
+          case sil.PredicateAccess(arguments, name) =>
+            val adaptedSet = Collections.product(arguments.map(reachability.get))
+            adaptedSet.map { adapted => sil.PredicateAccess(adapted, name)() }
+        }
       }
       // create record
       Record(specification.predicate, abstraction, initialLocations)
@@ -114,7 +113,7 @@ class ExampleExtractor(teacher: Teacher) {
     // create and return example
     if (current.label == Labels.POST_STATE) {
       // evaluate permission amount
-      val variable = s"perm_${toSeq(currentLocation).mkString("_")}"
+      val variable = s"perm_${teacher.encode(currentLocation)}"
       val term = current.store(variable)
       val model = counter.model
       val permission = evaluate(term, model)
@@ -271,32 +270,35 @@ class ExampleExtractor(teacher: Teacher) {
   }
 
   /**
-    * A helper class used to express the reachability of terms in a state.
+    * A helper class used to compute a set of expressions that reach the same values in a target state as a given
+    * expression in the source state.
     *
-    * @param state The state.
+    * @param source The source state.
+    * @param target The target state.
+    * @param map    The actual-to-formal map  // TODO: Move somewhere else?
     */
-  private case class Reachability(state: State) {
+  private case class Reachability(source: State, target: State, map: Map[String, sil.LocalVar]) {
     /**
       * The reachability map.
       */
-    private lazy val map = recurse(initial, steps = 3)
+    private lazy val reachability = recurse(zero, steps = 3)
 
-    /**
-      * Returns the reachability of the given term.
-      *
-      * @param term The term.
-      * @return The paths.
-      */
-    def get(term: Term): Set[sil.Exp] = map(term)
+    def get(expression: sil.Exp): Set[sil.Exp] = {
+      val term = source.evaluate(expression)
+      val paths = reachability(term)
+      paths.map { path =>
+        path.transform { case sil.LocalVar(name, _) => map(name) }
+      }
+    }
 
     /**
       * Returns the reachability map of everything that is directly reachable from the store of the state.
       *
       * @return The initial reachability map.
       */
-    private def initial: Map[Term, Set[sil.Exp]] = {
+    private def zero: Map[Term, Set[sil.Exp]] = {
       val empty = Map.empty[Term, Set[sil.Exp]]
-      state
+      target
         .store
         .filterKeys(_.endsWith("_init"))
         .foldLeft(empty) {
@@ -321,7 +323,7 @@ class ExampleExtractor(teacher: Teacher) {
         val empty = Map.empty[Term, Set[sil.Exp]]
         val next = current.foldLeft(empty) {
           case (map1, (term, paths)) =>
-            state.heap.getOrElse(term, Map.empty).foldLeft(map1) {
+            target.heap.getOrElse(term, Map.empty).foldLeft(map1) {
               case (map2, (name, value)) =>
                 val field = sil.Field(name, sil.Ref)()
                 val extendedPaths = paths.map { path => sil.FieldAccess(path, field)() }

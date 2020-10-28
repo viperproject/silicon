@@ -111,7 +111,11 @@ class Learner(val inference: Inference) {
           val location = inference.specifications(name)
           val (instances, local) = computeStructure(resources)
           // drop long access paths
-          val filtered = resources.filter { resource => Expressions.toSeq(resource).length <= 2 }
+          val filtered = resources.filter {
+            case resource: sil.FieldAccess =>
+              Expressions.toSeq(resource).length <= 2
+            case _ => true
+          }
           val body = filtered ++ instances
           val guarded = body.map { resource => Guarded(guardId.getAndIncrement(), resource) }
           val template = Template(location, guarded)

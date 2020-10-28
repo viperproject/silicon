@@ -37,4 +37,7 @@ case class Implication(left: Record, right: Record) extends Example
   * @param locations   The (under-approximate) set of location accesses that can ber used to represent the location for
   *                    which some permissions are required.
   */
-case class Record(predicate: sil.PredicateAccess, abstraction: Seq[Boolean], locations: Set[sil.LocationAccess])
+case class Record(predicate: sil.PredicateAccess, abstraction: Seq[Boolean], locations: Set[sil.LocationAccess]) {
+  override def toString: String =
+    s"${predicate.predicateName}: ${abstraction.mkString("[", ", ", "]")} -> ${locations.mkString("{", ", ", "}")}"
+}

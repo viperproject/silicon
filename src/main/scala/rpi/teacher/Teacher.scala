@@ -72,6 +72,12 @@ class Teacher(val inference: Inference) {
     * @return The verification result.
     */
   def verify(program: sil.Program): VerificationResult = verifier.verify(program)
+
+  def encode(expression: sil.Exp): String = expression match {
+    case sil.LocalVar(name, _) => name
+    case sil.FieldAccess(receiver, sil.Field(name, _)) => s"${encode(receiver)}_$name"
+    case sil.PredicateAccess(arguments, name) => s"${name}___${arguments.map(encode).mkString("_")}___"
+  }
 }
 
 /**

@@ -33,6 +33,7 @@ object Config {
   /**
     * Debug options.
     */
+  val debugPrintError = true
   val debugPrintExamples = true
   val debugPrintTemplates = true
 }
