@@ -129,8 +129,8 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 
     if (initialFailure.nonEmpty) {
       lnsay(s"retrying $description")
-      say(s"s.h = ${s.h}")
-      say(s"h = $h")
+      say(s"s.h = ${v.stateFormatter.format(s.h)}")
+      say(s"h = ${v.stateFormatter.format(h)}")
       say(s"c.reserveHeaps:")
       s.reserveHeaps.map(v.stateFormatter.format).foreach(str => say(str, 2))
     }
@@ -212,8 +212,8 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
             heuristicsSupporter.tryOperation[Heap](s"applying heuristic")(s1, h, v)((s1, h1, v1, QS) =>
               remainingReactions.head.apply(s1, h1, v1)((s2, h2, v2) => {
                 say(s"reaction ${triedReactions + 1} locally succeeded")
-                say(s"s2.h = ${s2.h}")
-                say(s"h2 = $h2")
+                say(s"s2.h = ${v2.stateFormatter.format(s2.h)}")
+                say(s"h2 = ${v2.stateFormatter.format(h2)}")
                 say(s"c3.reserveHeaps:")
                 s2.reserveHeaps.map(v2.stateFormatter.format).foreach(str => say(str, 2))
                 QS(s2, h2, v2)})
