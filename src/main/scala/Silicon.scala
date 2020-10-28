@@ -28,7 +28,7 @@ import viper.silver.plugin.PluginAwareReporter
 
 object Silicon {
   val name = BuildInfo.projectName
-  
+
   val buildRevision = BuildInfo.gitRevision
   val buildBranch = BuildInfo.gitBranch
 
@@ -277,6 +277,7 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
   }
 
   private def setLogLevelsFromConfig() {
+    // Set level of main (package) logger
     config.logLevel
       .map(Level.toLevel)
       .foreach(level => {
@@ -284,12 +285,13 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
 
         val packageLogger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
         packageLogger.setLevel(level)
-
-        config.logger.foreach { case (loggerName, loggerLevelString) =>
-          val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
-          logger.setLevel(Level.toLevel(loggerLevelString))
-        }
     })
+
+    // Set levels of specialised loggers (e.g. for heuristics)
+    config.logger.foreach { case (loggerName, loggerLevelString) =>
+      val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
+      logger.setLevel(Level.toLevel(loggerLevelString))
+    }
   }
 }
 
