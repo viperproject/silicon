@@ -63,6 +63,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
 }
 
 object chunkSupporter extends ChunkSupportRules with Immutable {
+  @inline
   def consume(s: State,
               h: Heap,
               resource: ast.Resource,
@@ -130,10 +131,12 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                             id: ChunkIdentifer,
                             args: Seq[Term],
                             perms: Term,
-                            v: Verifier) = {
+                            v: Verifier)
+                           : (ConsumptionResult, State, Heap, Option[NonQuantifiedChunk]) = {
+
     val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
 
-    def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap) = {
+    def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap): Unit = {
       val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
       val resource = Resources.resourceDescriptions(chunk.resourceID)
       v.decider.assume(interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties))
@@ -173,13 +176,16 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
   }
 
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
-             (Q: (State, Heap, Verifier) => VerificationResult) = {
+             (Q: (State, Heap, Verifier) => VerificationResult)
+             : VerificationResult = {
+
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
     val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, h, ch, v)
     Q(s.copy(functionRecorder = fr1), h1, v)
   }
 
+  @inline
   def lookup(s: State,
              h: Heap,
              resource: ast.Resource,
