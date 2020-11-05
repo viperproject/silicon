@@ -74,6 +74,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
               description: String)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult = {
+
     heuristicsSupporter.tryOperation[Heap, Term](description)(s, h, v)((s1, h1, v1, QS) => {
       consume(s1, h1, resource, args, perms, ve, v1)((s2, h2, optSnap, v2) =>
         optSnap match {
@@ -209,6 +210,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                      v: Verifier)
                     (Q: (State, Heap, Term, Verifier) => VerificationResult)
                     : VerificationResult = {
+
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction =
         if (s.isMethodVerification && Verifier.config.enableMoreCompleteExhale()) moreCompleteExhaleSupporter.lookupComplete _
