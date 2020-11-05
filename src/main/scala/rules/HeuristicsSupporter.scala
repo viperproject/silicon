@@ -228,7 +228,10 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
           remainingReactions = remainingReactions.tail
         }
 
-        stack = stack.tail
+        if (stack.nonEmpty) {
+          // TODO: Emptiness check should not be necessary, but currently is. Find out, why.
+          stack = stack.tail
+        }
 
         lnsay(s"existing tryWithReactions")
         say(s"localActionSuccess = $localActionSuccess")
