@@ -17,7 +17,7 @@ import viper.silver.plugin.PluginAwareReporter
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories =
-    Seq("consistency", "issue387")
+    Seq("consistency", "issue387", "heuristics")
 
   private val silTestDirectories =
     Seq("all",

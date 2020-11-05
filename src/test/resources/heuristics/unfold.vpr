@@ -1,0 +1,55 @@
+field __CONFIG_HEURISTICS: Bool
+
+field next: Ref
+predicate P(x: Ref) { x != null ==> acc(x.next) && P(x.next) }
+
+method test1(a: Ref)
+  requires P(a)
+{
+  var c: Ref := a
+
+  while (c != null)
+    invariant P(c)
+  {
+    c.next := null
+  }
+}
+
+method test2(a: Ref)
+  requires P(a)
+{
+  var c: Ref := a
+
+  while (c != null)
+    invariant P(c)
+  {
+    var v: Ref := c.next
+  }
+}
+
+method test3a(a: Ref)
+  requires P(a)
+{
+  exhale a != null ==> acc(a.next)
+}
+
+method test3b(a: Ref)
+  requires P(a) && a != null
+{
+  var c: Ref := a
+  exhale acc(c.next)
+}
+
+
+method test3(a: Ref)
+  requires P(a)
+{
+  var c: Ref := a
+
+  while (c != null)
+    invariant P(c)
+  {
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/000/)
+    exhale /*c != null ==>*/ acc(c.next)
+  }
+}
