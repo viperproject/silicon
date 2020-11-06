@@ -328,7 +328,7 @@ class TermToSMTLib2Converter
     else
       render(t)
 
-  protected def render(id: Identifier, sanitizeIdentifier: Boolean = true): String = {
+  def render(id: Identifier, sanitizeIdentifier: Boolean = true): String = {
     val repr: String = id match {
       case SimpleIdentifier(name) => name
       case SuffixedIdentifier(prefix, separator, suffix) => s"${render(prefix, false)}$separator$suffix"

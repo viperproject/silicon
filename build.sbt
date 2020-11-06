@@ -28,6 +28,8 @@ lazy val silicon = (project in file("."))
     // scalacOptions ++= Seq("-Xelide-below", "1000"),
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
     libraryDependencies += "org.apache.commons" % "commons-pool2" % "2.6.0",
+    libraryDependencies += "com.microsoft.z3" % "z3" % "4.8.7" from "http://www.sosy-lab.org/ivy/org.sosy_lab/javasmt-solver-z3/com.microsoft.z3-4.8.7.jar",
+    libraryDependencies += "com.regblanc" %% "scala-smtlib" % "0.2.2",
 
     // Only get a few compilation errors at once
     maxErrors := 5,
