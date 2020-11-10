@@ -9,9 +9,9 @@ package viper.silicon.decider
 import java.io.{PrintWriter, StringReader}
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 import com.microsoft.z3
 import com.typesafe.scalalogging.LazyLogging
+import decider.TermToZ3Converter
 import org.scalactic.TimesOnInt.convertIntToRepeater
 import smtlib.trees.Commands._
 import smtlib.trees.Terms.SSymbol
@@ -36,13 +36,8 @@ class Z3ProverStdIO(uniqueId: String,
   private var logfileWriter: PrintWriter = _
   private var ctx: z3.Context = _
   private var solver: z3.Solver = _
+  private var termToZ3Converter: TermToZ3Converter = _
   var lastModel : String = null
-  var sortMap: mutable.Map[String, z3.Sort] = _
-  var sortSymbols: Array[z3.Symbol] = _
-  var sortTypes: Array[z3.Sort] = _
-  var funMap: mutable.Map[String, z3.FuncDecl] = _
-  var funSymbols: Array[z3.Symbol] = _
-  var funDecls: Array[z3.FuncDecl] = _
 
   /// Not very robust, but they work for Silicon.
   private object Patterns {
@@ -83,16 +78,12 @@ class Z3ProverStdIO(uniqueId: String,
     )
     ctx = new z3.Context(mapAsJavaMap(cfg))
     solver = ctx.mkSolver()
-    sortMap = mutable.Map(
-      "Int" -> ctx.getIntSort,
-      "Bool" -> ctx.getBoolSort,
-      "Real" -> ctx.getRealSort,
+    termToZ3Converter = new TermToZ3Converter(
+      ctx,
+      termConverter.convert,
+      termConverter.render(_),
+      termConverter.convert
     )
-    sortSymbols = Array()
-    sortTypes = Array()
-    funMap = mutable.Map()
-    funSymbols = Array()
-    funDecls = Array()
   }
 
   def reset() {
@@ -116,13 +107,11 @@ class Z3ProverStdIO(uniqueId: String,
     }
 
     solver = null
+    termToZ3Converter = null
+    if (ctx != null) {
+      ctx.close()
+    }
     ctx = null
-    sortMap = null
-    sortSymbols = null
-    sortTypes = null
-    funMap = null
-    funSymbols = null
-    funDecls = null
   }
 
   def push(n: Int = 1) {
@@ -139,26 +128,6 @@ class Z3ProverStdIO(uniqueId: String,
     solver.pop(n)
   }
 
-  private def registerSort(name: String, mkSort: (z3.Symbol) => z3.Sort): z3.Sort = {
-    val symbol = ctx.mkSymbol(name)
-    val sort = mkSort(symbol)
-    sortMap.update(name, sort)
-    // FIXME: this is inefficient as it makes a copy of the array each time.
-    sortSymbols = sortSymbols :+ symbol
-    sortTypes = sortTypes :+ sort
-    sort
-  }
-
-  private def registerFuncDecl(name: String, mkSort: (z3.Symbol) => z3.FuncDecl): z3.FuncDecl = {
-    val symbol = ctx.mkSymbol(name)
-    val funDecl = mkSort(symbol)
-    funMap.update(name, funDecl)
-    // FIXME: this is inefficient as it makes a copy of the array each time.
-    funSymbols = funSymbols :+ symbol
-    funDecls = funDecls :+ funDecl
-    funDecl
-  }
-
   private def parseCommand(cmd: String): Command = {
     val input = new StringReader(cmd)
     val lexer = new smtlib.lexer.Lexer(input)
@@ -169,11 +138,11 @@ class Z3ProverStdIO(uniqueId: String,
   def emit(content: String) {
     logToFile(content)
 
-    // HACK: There are too many uses of `emit()`, so we are forced to interpret the command.
     val command = content.replace("\t", " ").replace("\n", " ")
     command match {
       case Patterns.Assert(_) =>
-        parseSMTLIB2Command(command).foreach(solver.add(_))
+        val expr = termToZ3Converter.parseCommand(command)
+        solver.add(expr)
       // FIXME: It seems that these options are not allowed. Why?
       case Patterns.SetOption(key, value) if
           key == "global-decls" || key == "print-success" || key == "type_check" || key == "smt.qi.cost"
@@ -190,30 +159,50 @@ class Z3ProverStdIO(uniqueId: String,
         }
         solver.setParameters(p)
       case Patterns.DeclareSort(name, arity) if arity == null || arity == "0" =>
-        registerSort(name, ctx.mkUninterpretedSort(_))
+        termToZ3Converter.registerSort(name, ctx.mkUninterpretedSort(_))
       case Patterns.DefineSort(name, ref) if ref == "Real" =>
-        registerSort(name, _ => ctx.mkRealSort())
+        termToZ3Converter.registerSort(name, _ => ctx.mkRealSort())
       case Patterns.DeclareConst(name, sortName) =>
-        registerFuncDecl(name, ctx.mkFuncDecl(_, Array[z3.Sort](), sortMap(sortName)))
+        termToZ3Converter.registerFuncDecl(
+          name,
+          ctx.mkFuncDecl(_, Array[z3.Sort](), termToZ3Converter.getSort(sortName))
+        )
       case Patterns.DefineConst(name, sortName, body) =>
-        registerFuncDecl(name, ctx.mkFuncDecl(_, Array[z3.Sort](), sortMap(sortName)))
-        parseSMTLIB2Command(s"(assert (= $name $body))").foreach(solver.add(_))
+        termToZ3Converter.registerFuncDecl(
+          name,
+          ctx.mkFuncDecl(_, Array[z3.Sort](), termToZ3Converter.getSort(sortName))
+        )
+        val expr = termToZ3Converter.parseCommand(s"(assert (= $name $body))")
+        solver.add(expr)
       case complex_command =>
         parseCommand(complex_command) match {
           case DeclareFun(SSymbol(name), params, returnSort) =>
-            val paramSorts = params.map(_.toString).map(sortMap).toArray
-            registerFuncDecl(name, ctx.mkFuncDecl(_, paramSorts, sortMap(returnSort.toString)))
+            val paramSorts = params.map(_.toString).map(termToZ3Converter.getSort).toArray
+            termToZ3Converter.registerFuncDecl(
+              name,
+              ctx.mkFuncDecl(_, paramSorts, termToZ3Converter.getSort(returnSort.toString))
+            )
           case DefineFun(FunDef(SSymbol(name), params, returnSort, body)) =>
-            val paramSorts = params.map(_.sort.toString).map(sortMap).toArray
-            registerFuncDecl(name, ctx.mkFuncDecl(_, paramSorts, sortMap(returnSort.toString)))
+            val paramSorts = params.map(_.sort.toString).map(termToZ3Converter.getSort).toArray
+            termToZ3Converter.registerFuncDecl(
+              name,
+              ctx.mkFuncDecl(_, paramSorts, termToZ3Converter.getSort(returnSort.toString))
+            )
             val paramNames = params.map(_.name.name)
             val vars = params.map(p => s"(${p.name.name} ${p.sort.toString})")
             val triggers = s":pattern (($name ${paramNames.mkString(" ")}))"
-            parseSMTLIB2Command(
+            val expr = termToZ3Converter.parseCommand(
               s"(assert (forall (${vars.mkString(" ")}) (! (= ($name ${paramNames.mkString(" ")}) $body) $triggers)))"
-            ).foreach(solver.add(_))
-          case DeclareDatatypes(Seq((SSymbol(name), constructors))) =>
-            val localSortMap = (sortName: String) => if (sortName == name) { null } else { sortMap(name) }
+            )
+            solver.add(expr)
+          case DeclareDatatypes(Seq((SSymbol(datatypeSortName), constructors))) =>
+            val localSortMap = (sortName: String) => {
+              if (sortName == datatypeSortName) {
+                null
+              } else {
+                termToZ3Converter.getSort(sortName)
+              }
+            }
             var z3Constructors = Seq[z3.Constructor]()
             for (constructor <- constructors) {
               z3Constructors = z3Constructors :+ ctx.mkConstructor(
@@ -224,7 +213,9 @@ class Z3ProverStdIO(uniqueId: String,
                 null
               )
             }
-            registerSort(name, ctx.mkDatatypeSort(_, z3Constructors.toArray))
+            // Register datatype
+            termToZ3Converter.registerSort(datatypeSortName, ctx.mkDatatypeSort(_, z3Constructors.toArray))
+            // It seems that there is no need to register the constructor and field accessors
           case todo =>
             // This should be unreachable
             throw new Exception(s"Unhandled SMTLIB2 command: '$todo''")
@@ -233,17 +224,6 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
-
-  /// Interpret a smtlib2 command, returning the parsed expressions (e.g. those used in `(assert ...)` commands).
-  private def parseSMTLIB2Command(command: String): Array[z3.BoolExpr] = {
-    ctx.parseSMTLIB2String(
-      command.replace("\n", " ").replace("\t", " "),
-      sortSymbols,
-      sortTypes,
-      funSymbols,
-      funDecls
-    )
-  }
 
   def assume(term: Term) = {
 //    /* Detect certain simple problems with quantifiers.
@@ -260,20 +240,15 @@ class Z3ProverStdIO(uniqueId: String,
 //      }
 //    })
 
-    assume(termConverter.convert(term))
-  }
-
-  def assume(term: String) {
 //    bookkeeper.assumptionCounter += 1
 
-    logToFile("(assert " + term + ")")
-    parseSMTLIB2Command("(assert " + term + ")").foreach(solver.add(_))
+    val command = s"(assert ${termConverter.convert(term)})"
+    logToFile(command)
+    val expr = termToZ3Converter.parseCommand(command)
+    solver.add(expr)
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None) =
-    assert(termConverter.convert(goal), timeout)
-
-  def assert(goal: String, timeout: Option[Int]) = {
+  def assert(goal: Term, timeout: Option[Int] = None) = {
 //    bookkeeper.assertionCounter += 1
 
     setTimeout(timeout)
@@ -289,11 +264,13 @@ class Z3ProverStdIO(uniqueId: String,
     result
   }
 
-  private def assertUsingPushPop(goal: String): (Boolean, Long) = {
+  private def assertUsingPushPop(goal: Term): (Boolean, Long) = {
     push()
 
-    logToFile("(assert (not " + goal + "))")
-    parseSMTLIB2Command("(assert (not " + goal + "))").foreach(solver.add(_))
+    val command = "(assert (not " + termConverter.convert(goal) + "))"
+    logToFile(command)
+    val expr = termToZ3Converter.parseCommand(command)
+    solver.add(expr)
 
     val startTime = System.currentTimeMillis()
     val result = solver.check() == z3.Status.UNSATISFIABLE
@@ -329,11 +306,13 @@ class Z3ProverStdIO(uniqueId: String,
     }
   }
 
-  private def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
+  private def assertUsingSoftConstraints(goal: Term): (Boolean, Long) = {
     val guard = fresh("grd", Nil, sorts.Bool)
 
-    logToFile(s"(assert (implies $guard (not $goal)))")
-    parseSMTLIB2Command(s"(assert (implies $guard (not $goal)))").foreach(solver.add(_))
+    val command = s"(assert (implies $guard (not ${termConverter.convert(goal)})))"
+    logToFile(command)
+    val expr = termToZ3Converter.parseCommand(command)
+    solver.add(expr)
 
     val startTime = System.currentTimeMillis()
     logToFile(s"(check-sat $guard)")
@@ -408,40 +387,10 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
   def declare(decl: Decl) {
-    val str = termConverter.convert(decl)
-    logToFile(str)
+    val command = termConverter.convert(decl)
+    logToFile(command)
 
-    decl match {
-      case SortDecl(sort: Sort) =>
-        val name: String = termConverter.convert(sort)
-        registerSort(name, ctx.mkUninterpretedSort(_))
-
-      case FunctionDecl(fun: Function) =>
-        val idDoc: String = termConverter.render(fun.id)
-        val z3ArgSortsDoc = fun.argSorts.map(termConverter.convert).filter(_ != "").map(sortMap).toArray
-        val z3ResultSortDoc = sortMap(termConverter.convert(fun.resultSort))
-        registerFuncDecl(idDoc, ctx.mkFuncDecl(_, z3ArgSortsDoc, z3ResultSortDoc))
-
-      case swd @ SortWrapperDecl(from, to) =>
-        val idDoc: String = termConverter.render(swd.id)
-        val z3ArgSortDoc = sortMap(termConverter.convert(from))
-        val z3ResultSortDoc = sortMap(termConverter.convert(to))
-        registerFuncDecl(idDoc, ctx.mkFuncDecl(_, z3ArgSortDoc, z3ResultSortDoc))
-
-      case MacroDecl(id, args, body) =>
-        val idDoc: String = termConverter.render(id)
-        val z3ArgSortsDoc = args.map(_.sort).map(termConverter.convert).map(sortMap).toArray
-        val z3ResultSortDoc = sortMap(termConverter.convert(body.sort))
-        registerFuncDecl(idDoc, ctx.mkFuncDecl(_, z3ArgSortsDoc, z3ResultSortDoc))
-
-        // HACK: Convert a Term to a Z3 expression by generating and parsing a SMTLIB2 command.
-        val paramNames = args.map(_.id.name)
-        val vars = args.map(p => s"(${p.id.name} ${termConverter.convert(p.sort)})")
-        val triggers = s":pattern (($idDoc ${paramNames.mkString(" ")}))"
-        parseSMTLIB2Command(
-          s"(assert (forall (${vars.mkString(" ")}) (! (= ($idDoc ${paramNames.mkString(" ")}) ${termConverter.convert(body)}) $triggers)))"
-        ).foreach(solver.add(_))
-    }
+    termToZ3Converter.declare(decl).foreach(solver.add(_))
   }
 
 //  def resetAssertionCounter() { bookkeeper.assertionCounter = 0 }

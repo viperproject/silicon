@@ -37,7 +37,7 @@
          (< p $Perm.Write)))
 
 ; min function for permissions
-(define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
+(define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) $Perm
     (ite (<= p1 p2) p1 p2))
 
 ; --- Sort wrappers ---
