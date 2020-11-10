@@ -35,7 +35,6 @@ class Z3ProverStdIO(uniqueId: String,
   private var input: BufferedReader = _
   private var output: PrintWriter = _
   /* private */ var z3Path: Path = _
-  private var preamble = false
   var lastModel : String = null
 
   def z3Version(): Version = {
@@ -401,34 +400,17 @@ class Z3ProverStdIO(uniqueId: String,
     var result = ""
 
     while (repeat) {
-      if (!preamble) {
-        result = input.readLine()
-        if (result.toLowerCase != "success") comment(result)
+      result = input.readLine()
+      if (result.toLowerCase != "success") comment(result)
 
-        val warning = result.startsWith("WARNING")
-        if (warning) {
-          val msg = s"Z3 warning: $result"
-          reporter report InternalWarningMessage(msg)
-          logger warn msg
-        }
-
-        repeat = warning
+      val warning = result.startsWith("WARNING")
+      if (warning) {
+        val msg = s"Z3 warning: $result"
+        reporter report InternalWarningMessage(msg)
+        logger warn msg
       }
-      else {
-        var i = 0
-        while (!input.ready() && i < 10) {
-          Thread.sleep(10)
-          i += 1
-        }
 
-        if (!input.ready()) {
-          System.out.println("Error while importing preamble, please check for issues (e.g. indentation).")
-          System.exit(1)
-        }
-
-        result = input.readLine()
-        repeat = false
-      }
+      repeat = warning
     }
 
     result
@@ -448,8 +430,4 @@ class Z3ProverStdIO(uniqueId: String,
   override def getLastModel(): String = lastModel
 
   override def clearLastModel(): Unit = lastModel = null
-
-  override def preamble(start: Boolean): Unit = {
-    preamble = start
-  }
 }
