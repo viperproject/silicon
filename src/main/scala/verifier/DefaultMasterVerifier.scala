@@ -92,10 +92,6 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
   /* Verifier orchestration */
 
   private object allProvers extends ProverLike {
-    def preamble(start: Boolean) = {
-      decider.prover.preamble(start)
-    }
-
     def emit(content: String): Unit = {
       decider.prover.emit(content)
       _verificationPoolManager.pooledVerifiers.emit(content)
