@@ -12,9 +12,20 @@ import viper.silver.{ast => sil}
   * @param templates The templates.
   */
 class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
-
+  /**
+    * Returns the pointer to the inference.
+    *
+    * @return The inference.
+    */
   def inference: Inference = learner.inference
 
+  /**
+    * Type shortcut for an effective guard.
+    *
+    * The outer sequence represents a choice of exactly one of the options. The inner sequence represents a disjunction
+    * of guards. The guards are represented by their id and which atomic predicates of the context correspond to the
+    * atomic predicates of the guard.
+    */
   private type Guard = Seq[Seq[(Int, Seq[sil.Exp])]]
 
   /**
@@ -134,6 +145,14 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     Expressions.bigOr(clauses)
   }
 
+  /**
+    * Collect the effective guards for this template up to the given depth.
+    *
+    * @param template The template for which to collect the effective guards.
+    * @param store    The store holding the instantiations of the parameters.
+    * @param depth    The depth.
+    * @return The collected effective guards.
+    */
   private def collectGuards(template: Template, store: Store, depth: Int): Map[sil.LocationAccess, Guard] = {
     val empty = Map.empty[sil.LocationAccess, Guard]
     if (depth == 0) empty
