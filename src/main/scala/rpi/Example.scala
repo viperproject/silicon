@@ -1,5 +1,6 @@
 package rpi
 
+import rpi.util.Expressions
 import viper.silver.{ast => sil}
 
 /**
@@ -32,12 +33,32 @@ case class Implication(left: Record, right: Record) extends Example
 /**
   * A data point.
   *
-  * @param predicate   The predicate representing the inferred specifications this data point refers to.
-  * @param abstraction The predicate abstraction of the state.
-  * @param locations   The (under-approximate) set of location accesses that can ber used to represent the location for
-  *                    which some permissions are required.
+  * @param predicate The predicate representing the inferred specifications this data point refers to.
+  * @param state     The abstract state.
+  * @param locations The (under-approximate) set of location accesses that can ber used to represent the location for
+  *                  which some permissions are required.
   */
-case class Record(predicate: sil.PredicateAccess, abstraction: Seq[Boolean], locations: Set[sil.LocationAccess]) {
+case class Record(predicate: sil.PredicateAccess, state: AbstractState, locations: Set[sil.LocationAccess]) {
   override def toString: String =
-    s"${predicate.predicateName}: ${abstraction.mkString("[", ", ", "]")} -> ${locations.mkString("{", ", ", "}")}"
+    s"${predicate.predicateName}: $state -> ${locations.mkString("{", ", ", "}")}"
+}
+
+/**
+  * An abstract state that abstracts the set of concrete state where some set of expressions evaluates to specific
+  * values.
+  *
+  * TODO: Canonical form for atoms (to recognize stuff that is equivalent).
+  *
+  * @param pairs The pairs associating expressions with their value.
+  */
+case class AbstractState(pairs: Seq[(sil.Exp, Boolean)]) {
+  lazy val map = pairs.toMap
+
+  def getValues(atoms: Seq[sil.Exp]): Seq[Boolean] =
+    atoms.map { atom => map(atom) }
+
+  override def toString: String =
+    pairs
+      .map { case (atom, value) => if (value) atom else Expressions.negate(atom) }
+      .mkString("{", ",", "}")
 }

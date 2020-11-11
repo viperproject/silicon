@@ -81,6 +81,19 @@ object Expressions {
   }
 
   /**
+    * Negates the given expression.
+    *
+    * @param expression The expression to negate.
+    * @return The negated expression.
+    */
+  def negate(expression: sil.Exp): sil.Exp = expression match {
+    case sil.Not(argument) => argument
+    case sil.EqCmp(left, right) => sil.NeCmp(left, right)()
+    case sil.NeCmp(left, right) => sil.EqCmp(left, right)()
+    case _ => sil.Not(expression)()
+  }
+
+  /**
     * Simplifies the given expression.
     *
     * @param expression The expression to simplify.

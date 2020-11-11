@@ -17,7 +17,7 @@ class GuardSolver(learner: Learner, constraints: sil.Exp) {
 
   def solveTemplate(template: Template): sil.Exp = {
     val atoms = template.specification.atoms
-    val conjuncts = template.resources.map { resource => createGuarded(resource, atoms) }
+    val conjuncts = template.accesses.map { resource => createGuarded(resource, atoms) }
     Expressions.simplify(Expressions.bigAnd(conjuncts))
   }
 

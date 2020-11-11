@@ -5,7 +5,6 @@ import rpi.util.{Collections, UnionFind}
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.state.{BasicChunk, Heap, Store, terms}
 import viper.silicon.state.terms.Term
-import viper.silver.ast.LocationAccess
 import viper.silver.{ast => sil}
 import viper.silver.verifier.{Model, SingleEntry, VerificationError}
 import viper.silver.verifier.reasons.InsufficientPermission
@@ -36,13 +35,12 @@ class ExampleExtractor(teacher: Teacher) {
       println(error)
     }
 
-    // get counter-example
+    // extract states and model
     val counter = error.counterexample match {
       case Some(value: SiliconRawCounterexample) => value
     }
-
-    // extract states
     val (initial, current) = extractStates(counter)
+    val model = counter.model
 
     // extract location that caused the permission failure
     val offendingLocation = error.reason match {
@@ -74,9 +72,10 @@ class ExampleExtractor(teacher: Teacher) {
       val specification = inference.specifications(predicate.predicateName)
       // compute predicate abstraction of state
       val atoms = specification.atoms
+      // TODO: Map abstraction of post-state and combine.
       val abstraction = abstractState(initial, atoms)
       // map current location to initial specification predicate
-      val initialLocations: Set[LocationAccess] = {
+      val initialLocations: Set[sil.LocationAccess] = {
         // create reachability information
         val reachability = {
           val actuals = predicate.args.map { case sil.LocalVar(name, _) => name }
@@ -105,7 +104,9 @@ class ExampleExtractor(teacher: Teacher) {
       val specifications = inference.specifications(predicate.predicateName)
       // compute predicate abstraction of state
       val atoms = specifications.atoms
+      // TODO: Use this abstraction
       val abstraction = abstractState(current, atoms)
+      println(abstraction)
       // create record
       Record(specifications.predicate, abstraction, Set(offendingLocation))
     }
@@ -115,20 +116,11 @@ class ExampleExtractor(teacher: Teacher) {
       // evaluate permission amount
       val variable = s"perm_${teacher.encode(currentLocation)}"
       val term = current.store(variable)
-      val model = counter.model
       val permission = evaluate(term, model)
       // create implication or negative example depending on permission amount
       if (permission == "0.0") Implication(currentRecord, initialRecord)
       else Negative(currentRecord)
     } else Positive(initialRecord)
-  }
-
-  /**
-    * TODO: Move to teacher and reuse in program builder.
-    */
-  private def toSeq(expression: sil.Exp): Seq[String] = expression match {
-    case sil.LocalVar(name, _) => Seq(name)
-    case sil.FieldAccess(receiver, field) => toSeq(receiver) :+ field.name
   }
 
   /**
@@ -146,24 +138,26 @@ class ExampleExtractor(teacher: Teacher) {
       .get
 
   /**
-    * Returns the predicate abstraction of the given state.
+    * Returns the abstraction of the given state.
     *
-    * Note: The atomic predicates are only passed in order to know how many atomic predicates there are.
+    * NOTE: the atoms are expected to be in the "correct" order.
     *
     * @param state The state.
     * @param atoms The atomic predicates.
-    * @return The predicate abstraction of the state.
+    * @return
     */
-  private def abstractState(state: State, atoms: Seq[sil.Exp]): Seq[Boolean] =
-    atoms
-      .indices
-      .map { i =>
+  private def abstractState(state: State, atoms: Seq[sil.Exp]): AbstractState = {
+    val pairs = atoms
+      .zipWithIndex
+      .map { case (atom, i) =>
         val variable = s"${state.label}_p_$i"
         state.store(variable) match {
-          case terms.True() => true
-          case terms.False() => false
+          case terms.True() => (atom, true)
+          case terms.False() => (atom, false)
         }
       }
+    AbstractState(pairs)
+  }
 
   /**
     * Returns a pair of states where the first state is the pre-state and the second state is either the current state
@@ -281,7 +275,7 @@ class ExampleExtractor(teacher: Teacher) {
     /**
       * The reachability map.
       */
-    private lazy val reachability = recurse(zero, steps = 3)
+    private lazy val reachability = recurse(initial, steps = 3)
 
     def get(expression: sil.Exp): Set[sil.Exp] = {
       val term = source.evaluate(expression)
@@ -296,7 +290,7 @@ class ExampleExtractor(teacher: Teacher) {
       *
       * @return The initial reachability map.
       */
-    private def zero: Map[Term, Set[sil.Exp]] = {
+    private def initial: Map[Term, Set[sil.Exp]] = {
       val empty = Map.empty[Term, Set[sil.Exp]]
       target
         .store

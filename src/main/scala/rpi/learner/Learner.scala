@@ -212,12 +212,14 @@ case class Guarded(id: Int, access: sil.LocationAccess) {
   override def toString: String = s"phi_$id -> $access"
 }
 
-case class Template(specification: Specification, resources: Set[Guarded]) {
+case class Template(specification: Specification, accesses: Set[Guarded]) {
   def name: String = specification.name
+
+  def atoms: Seq[sil.Exp] = specification.atoms
 
   def parameters: Seq[String] = specification.variables.map(_.name)
 
-  override def toString: String = s"$name(${parameters.mkString(", ")}) = ${resources.mkString(" * ")}"
+  override def toString: String = s"$name(${parameters.mkString(", ")}) = ${accesses.mkString(" * ")}"
 }
 
 object Store {
@@ -269,4 +271,9 @@ case class MappedView(indices: Seq[Option[Int]]) extends View {
 
   override def adapt(state: Seq[Boolean]): Seq[Option[Boolean]] =
     indices.map { index => index.map(state(_)) }
+
+  override def toString: String = indices
+    .zipWithIndex
+    .map { case (o, i) => s"$i -> ${o.getOrElse("?")}" }
+    .mkString("[", ", ", "]")
 }

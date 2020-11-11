@@ -48,6 +48,33 @@ class ProgramBuilder(teacher: Teacher) {
     preAtoms.zipWithIndex.foreach { case (atom, i) => saveExp(s"${Labels.PRE_STATE}_p_$i", atom) }
     addLabel(Labels.PRE_STATE)
 
+    // structured unfolding
+    if (!Config.useHeuristics) {
+      hypothesis
+        .find { predicate => predicate.name == preSpec.name }
+        .flatMap { predicate => predicate.body }.toSeq
+        .flatMap { body =>
+          body.collect {
+            case predicate: sil.PredicateAccessPredicate => predicate
+          }
+        }
+        .foreach { predicate =>
+          val adapted = {
+            //
+            val actuals = prePred.loc.args
+            val formals = preSpec.variables.map(_.name)
+            val map = formals.zip(actuals).toMap
+            // update
+            val args = predicate.loc.args.map { argument => Expressions.substitute(argument, map) }
+            val location = sil.PredicateAccess(args, predicate.loc.predicateName)()
+            sil.PredicateAccessPredicate(location, predicate.perm)()
+          }
+          // TODO: Conditionally unfold
+          val unfold = sil.Unfold(adapted)()
+          // addStmt(unfold)
+        }
+    }
+
     // execute loop body
     addStmt(triple.body)
 
@@ -146,11 +173,12 @@ class ProgramBuilder(teacher: Teacher) {
 
   private def buildProgram(hypothesis: Seq[sil.Predicate]): sil.Program = {
     val domains = Seq.empty
-    val fields = {
-      // magic field that enables fold/unfold heuristics
-      val magic = sil.Field("__CONFIG_HEURISTICS", sil.Bool)()
-      magic +: original.fields
-    }
+    val fields =
+      if (Config.useHeuristics) {
+        // magic field that enables fold/unfold heuristics
+        val magic = sil.Field("__CONFIG_HEURISTICS", sil.Bool)()
+        magic +: original.fields
+      } else original.fields
     val functions = Seq.empty
     val predicates = hypothesis
     val methods = Seq(buildMethod())

@@ -31,11 +31,17 @@ object Config {
   val maxRounds = 3
 
   /**
+    * The flag indicating whether the learner should use the fold/unfold heuristics.
+    */
+  val useHeuristics = false
+
+  /**
     * Debug options.
     */
   val debugPrintError = true
   val debugPrintExamples = true
   val debugPrintTemplates = true
+  val debugPrintGuards = true
 }
 
 object Names {
