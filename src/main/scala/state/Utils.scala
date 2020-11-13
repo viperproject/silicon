@@ -74,8 +74,10 @@ package object utils {
     case sr: SeqRanged => List(sr.p0, sr.p1)
     case ss: SeqSingleton => List(ss.p)
     case su: SeqUpdate => List(su.t0, su.t1, su.t2)
+    case mu: MapUpdate => List(mu.base, mu.key, mu.value)
     case ss: SingletonSet => List(ss.p)
     case ss: SingletonMultiset => List(ss.p)
+    case sm: SingletonMap => List(sm.key, sm.value)
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => Seq.empty // d.ts.toList
     case q: Quantification => q.vars ++ List(q.body) ++ q.triggers.flatMap(_.p)

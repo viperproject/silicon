@@ -40,6 +40,7 @@ class TermToSMTLib2Converter
     case sorts.Seq(elementSort) => text("Seq<") <> render(elementSort) <> ">"
     case sorts.Set(elementSort) => text("Set<") <> render(elementSort) <> ">"
     case sorts.Multiset(elementSort) => text("Multiset<") <> render(elementSort) <> ">"
+    case sorts.Map(keySort, valueSort) => text("Map") <> "<" <> render(keySort) <> "~_" <> render(valueSort) <> ">"
     case sorts.UserSort(id) => render(id)
 
     case sorts.Unit =>
@@ -320,6 +321,7 @@ class TermToSMTLib2Converter
     case _: SeqNil => renderApp("Seq_empty", Seq(), literal.sort)
     case _: EmptySet => renderApp("Set_empty", Seq(), literal.sort)
     case _: EmptyMultiset => renderApp("Multiset_empty", Seq(), literal.sort)
+    case _: EmptyMap => renderApp("Map_empty", Seq(), literal.sort)
   }
 
   protected def renderAsReal(t: Term): Cont =

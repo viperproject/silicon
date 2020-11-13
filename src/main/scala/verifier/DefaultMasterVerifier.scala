@@ -54,6 +54,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
   protected val sequencesContributor = new DefaultSequencesContributor(domainTranslator, config)
   protected val setsContributor = new DefaultSetsContributor(domainTranslator, config)
   protected val multisetsContributor = new DefaultMultisetsContributor(domainTranslator, config)
+  protected val mapsContributor = new DefaultMapsContributor(domainTranslator, config)
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
@@ -64,7 +65,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
 
   private val statefulSubcomponents = List[StatefulComponent](
     uniqueIdCounter,
-    sequencesContributor, setsContributor, multisetsContributor, domainsContributor,
+    sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
@@ -316,6 +317,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     sequencesContributor,
     setsContributor,
     multisetsContributor,
+    mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
@@ -327,6 +329,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     sequencesContributor,
     setsContributor,
     multisetsContributor,
+    mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
@@ -338,6 +341,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     sequencesContributor,
     setsContributor,
     multisetsContributor,
+    mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
@@ -349,10 +353,12 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     /* Sequences depend on multisets ($Multiset.fromSeq, which is
      * additionally axiomatised in the sequences axioms).
      * Multisets depend on sets ($Multiset.fromSet).
+     * Maps depend on sets (Map_domain, Map_range, Map_cardinality).
      */
     setsContributor,
     multisetsContributor,
     sequencesContributor,
+    mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
@@ -364,6 +370,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     sequencesContributor,
     setsContributor,
     multisetsContributor,
+    mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,

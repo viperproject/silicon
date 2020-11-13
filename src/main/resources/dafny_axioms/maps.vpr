@@ -1,0 +1,80 @@
+domain $Map[K, V] {
+  function Map_apply(m : $Map[K, V], k : K) : V
+  function Map_card(m : $Map[K, V]) : Int
+  function Map_disjoint(m1 : $Map[K, V], m2 : $Map[K, V]) : Bool
+  function Map_domain(m : $Map[K, V]) : Set[K]
+  function Map_empty() : $Map[K, V]
+  function Map_equal(m1 : $Map[K, V], m2 : $Map[K, V]) : Bool
+  function Map_update(m : $Map[K, V], k : K, v : V) : $Map[K, V]
+  function Map_values(m : $Map[K, V]) : Set[V]
+
+  /* ** Cardinality */
+
+  axiom {
+    forall m : $Map[K, V] :: { Map_card(m) } 0 <= Map_card(m)
+  }
+
+  axiom {
+    forall m : $Map[K, V] :: { |Map_domain(m)| } |Map_domain(m)| == Map_card(m)
+  }
+
+  /* ** Disjointness */
+
+  axiom {
+    forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_disjoint(m1, m2) }
+      Map_disjoint(m1, m2) <==>
+        (forall k : K :: { k in Map_domain(m1) } {k in Map_domain(m2) }
+          !(k in Map_domain(m1)) || !(k in Map_domain(m2)))
+  }
+
+  /* ** Empty */
+
+  axiom {
+    forall k : K :: { k in Map_domain((Map_empty() : $Map[K, V])) }
+      !(k in Map_domain((Map_empty() : $Map[K, V])))
+  }
+
+  axiom {
+    forall m : $Map[K, V] :: { Map_card(m) }
+      (Map_card(m) == 0 <==> m == Map_empty()) &&
+      (Map_card(m) != 0 <==> exists u : K :: u in Map_domain(m))
+  }
+
+  /* Equality */
+
+  axiom {
+    forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_equal(m1, m2) }
+      Map_equal(m1, m2) <==>
+        (Map_domain(m1) == Map_domain(m2) && forall k : K :: { Map_apply(m1, k) } { Map_apply(m2, k) }
+          k in Map_domain(m1) ==> Map_apply(m1, k) == Map_apply(m2, k))
+  }
+
+  axiom {
+    forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_equal(m1, m2) }
+      Map_equal(m1, m2) ==> m1 == m2
+  }
+
+  /* ** Update */
+
+  axiom {
+    forall m : $Map[K, V], k1 : K, k2 : K, v : V ::
+      { k2 in Map_domain(Map_update(m, k1, v)) } { Map_apply(Map_update(m, k1, v), k2) }
+        (k1 == k2 ==> k2 in Map_domain(Map_update(m, k1, v)) && Map_apply(Map_update(m, k1, v), k2) == v) &&
+        (k1 != k2 ==> (k2 in Map_domain(Map_update(m, k1, v)) <==> k2 in Map_domain(m)) && Map_apply(Map_update(m, k1, v), k2) == Map_apply(m, k2))
+  }
+
+  axiom {
+    forall m : $Map[K, V], k : K, v : V :: { Map_card(Map_update(m, k, v)) }
+      (k in Map_domain(m) ==> Map_card(Map_update(m, k, v)) == Map_card(m)) &&
+      (!(k in Map_domain(m)) ==> Map_card(Map_update(m, k, v)) == Map_card(m) + 1)
+  }
+
+  /* ** Values */
+
+  axiom {
+    forall m : $Map[K, V], v : V :: { v in Map_values(m) }
+      v in Map_values(m) <==>
+        exists k : K :: { k in Map_domain(m) } { Map_apply(m, k) }
+          k in Map_domain(m) && v == Map_apply(m, k)
+  }
+}
