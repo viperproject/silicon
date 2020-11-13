@@ -39,7 +39,7 @@ class Learner(val inference: Inference) {
       .map {
         case (name, specification) =>
           val parameters = specification
-            .variables
+            .parameters
             .map { variable =>
               val name = variable.name
               val typ = variable.typ
@@ -72,7 +72,7 @@ class Learner(val inference: Inference) {
     val solver = new GuardSolver(this, constraints)
     templates.foreach {
       case (name, template) =>
-        val arguments = template.specification.variables.map { variable => sil.LocalVarDecl(variable.name, variable.typ)() }
+        val arguments = template.specification.parameters.map { variable => sil.LocalVarDecl(variable.name, variable.typ)() }
         val body = solver.solveTemplate(template)
         println(s"$name(${arguments.mkString(",")}) = $body")
         val inferred = sil.Predicate(name, arguments, Some(body))()
@@ -95,9 +95,9 @@ class Learner(val inference: Inference) {
       val empty = Map.empty[sil.PredicateAccess, Set[sil.LocationAccess]]
       records.foldLeft(empty) {
         case (result, record) =>
-          val name = record.predicate
+          val predicate = record.predicate
           val resources = record.locations
-          result.updated(name, result.getOrElse(name, Set.empty) ++ resources)
+          result.updated(predicate, result.getOrElse(predicate, Set.empty) ++ resources)
       }
     }
 
@@ -217,7 +217,7 @@ case class Template(specification: Specification, accesses: Set[Guarded]) {
 
   def atoms: Seq[sil.Exp] = specification.atoms
 
-  def parameters: Seq[String] = specification.variables.map(_.name)
+  def parameters: Seq[String] = specification.parameters.map(_.name)
 
   override def toString: String = s"$name(${parameters.mkString(", ")}) = ${accesses.mkString(" * ")}"
 }

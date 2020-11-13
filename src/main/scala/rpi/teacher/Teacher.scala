@@ -27,7 +27,7 @@ class Teacher(val inference: Inference) {
   /**
     * The example extractor used to extract examples from verification errors.
     */
-  private val exampleExtractor = new ExampleExtractor(teacher = this)
+  private val extractor = new ExampleExtractor(teacher = this)
 
   /**
     * Starts the teacher and all of its subcomponents.
@@ -60,10 +60,22 @@ class Teacher(val inference: Inference) {
       case Failure(errors) => errors
         .collect { case error: VerificationError => error }
         .map { error =>
-          exampleExtractor.extractExample(error, triple)
+          val pre = getInstance(triple.pres)
+          val post = getInstance(triple.posts)
+          extractor.extract(error, pre, post)
         }
     }
   }
+
+  def getInstance(expressions: Seq[sil.Exp]): Instance =
+    expressions
+      .collectFirst { case predicate: sil.PredicateAccessPredicate =>
+        val access = predicate.loc
+        val name = access.predicateName
+        val specification = inference.specifications(name)
+        val arguments = access.args
+        Instance(specification, arguments)
+      }.get
 
   /**
     * Verifies the given program.

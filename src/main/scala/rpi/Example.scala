@@ -48,11 +48,15 @@ case class Record(predicate: sil.PredicateAccess, state: AbstractState, location
   * values.
   *
   * TODO: Canonical form for atoms (to recognize stuff that is equivalent).
+  * TODO: Replace pairs with map and avoid duplicates.
   *
   * @param pairs The pairs associating expressions with their value.
   */
 case class AbstractState(pairs: Seq[(sil.Exp, Boolean)]) {
-  lazy val map = pairs.toMap
+  private lazy val map = pairs.toMap
+
+  def meet(other: AbstractState): AbstractState =
+    AbstractState(pairs ++ other.pairs)
 
   def getValues(atoms: Seq[sil.Exp]): Seq[Boolean] =
     atoms.map { atom => map(atom) }

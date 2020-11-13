@@ -18,18 +18,19 @@ class ExampleExtractor(teacher: Teacher) {
   /**
     * Returns the pointer to the inference.
     *
-    * @return The inference.
+    * @return The pointer to the inference.
     */
   def inference: Inference = teacher.inference
 
   /**
-    * Extracts examples from the given verification error.
+    * Extracts an example from the given verification error.
     *
-    * @param error  The verification error.
-    * @param triple The offending triple.
-    * @return The extracted examples.
+    * @param error        The verification error.
+    * @param preInstance  The instance of the precondition to infer.
+    * @param postInstance The instance of the postcondition to infer.
     */
-  def extractExample(error: VerificationError, triple: Triple): Example = {
+  def extract(error: VerificationError, preInstance: Instance, postInstance: Instance): Example = {
+    // debug output
     if (Config.debugPrintError) {
       println("----- error -----")
       println(error)
@@ -39,138 +40,72 @@ class ExampleExtractor(teacher: Teacher) {
     val counter = error.counterexample match {
       case Some(value: SiliconRawCounterexample) => value
     }
-    val (initial, current) = extractStates(counter)
+    val (preState, currentState) = extractStates(counter)
     val model = counter.model
 
-    // extract location that caused the permission failure
+    // extract offending location that caused permission failure
     val offendingLocation = error.reason match {
-      case InsufficientPermission(offending) => offending
+      case InsufficientPermission(location) => location
     }
-
-    // adapt the location to to its context if it comes from within a specification predicate
-    val currentLocation =
-      if (current.label == Labels.POST_STATE) {
-        // get specification predicate and specification
-        val predicate = getPredicate(triple.posts)
-        val specification = inference.specifications(predicate.predicateName)
-        // build formal-to-actual map
-        val map = {
-          val actuals = predicate.args
-          val formals = specification.variables
-          formals.zip(actuals).toMap
-        }
-        // adapt location
-        offendingLocation.transform {
-          case variable: sil.LocalVar => map(variable)
-        }
-      } else offendingLocation
-
-    // the initial record
-    lazy val initialRecord = {
-      // get specification predicate and specification
-      val predicate = getPredicate(triple.pres)
-      val specification = inference.specifications(predicate.predicateName)
-      // compute predicate abstraction of state
-      val atoms = specification.atoms
-      // TODO: Map abstraction of post-state and combine.
-      val abstraction = abstractState(initial, atoms)
-      // map current location to initial specification predicate
-      val initialLocations: Set[sil.LocationAccess] = {
-        // create reachability information
-        val reachability = {
-          val actuals = predicate.args.map { case sil.LocalVar(name, _) => name }
-          val formals = specification.variables
-          val map = actuals.zip(formals).toMap
-          Reachability(current, initial, map)
-        }
-
-        currentLocation match {
-          case sil.FieldAccess(receiver, field) =>
-            val adaptedSet = reachability.get(receiver)
-            adaptedSet.map { adapted => sil.FieldAccess(adapted, field)() }
-          case sil.PredicateAccess(arguments, name) =>
-            val adaptedSet = Collections.product(arguments.map(reachability.get))
-            adaptedSet.map { adapted => sil.PredicateAccess(adapted, name)() }
-        }
+    // adapt offending location to current state
+    val isPost = currentState.label == Labels.POST_STATE
+    val currentLocations =
+      if (isPost) offendingLocation match {
+        case sil.FieldAccess(receiver, field) =>
+          sil.FieldAccess(postInstance.toActual(receiver), field)()
+        case sil.PredicateAccess(arguments, name) =>
+          val updated = arguments.map { argument => postInstance.toActual(argument) }
+          sil.PredicateAccess(updated, name)()
       }
-      // create record
-      Record(specification.predicate, abstraction, initialLocations)
+      else offendingLocation
+
+
+    // pre record
+    val preRecord = {
+      val adaptor = Adaptor(preState, currentState, preInstance)
+      val predicate = preInstance.specification.predicate
+      val state =
+        if (isPost) {
+          // combine information from pre and post state
+          val preAbstraction = abstractState(preState, preInstance.formalAtoms)
+          val postAbstraction = abstractState(currentState, postInstance.actualAtoms)
+          preAbstraction.meet(adaptor.adaptState(postAbstraction))
+        } else abstractState(preState, preInstance.formalAtoms)
+      val locations = adaptor.adaptLocation(currentLocations)
+      Record(predicate, state, locations)
     }
 
-    // the current record
-    lazy val currentRecord = {
-      // get predicate and specifications
-      val predicate = getPredicate(triple.posts)
-      val specifications = inference.specifications(predicate.predicateName)
-      // compute predicate abstraction of state
-      val atoms = specifications.atoms
-      // TODO: Use this abstraction
-      val abstraction = abstractState(current, atoms)
-      println(abstraction)
-      // create record
-      Record(specifications.predicate, abstraction, Set(offendingLocation))
+    // post record
+    lazy val postRecord = {
+      val predicate = postInstance.specification.predicate
+      val locations = Set(offendingLocation)
+      val state = abstractState(currentState, postInstance.formalAtoms)
+      Record(predicate, state, locations)
     }
 
-    // create and return example
-    if (current.label == Labels.POST_STATE) {
+    // create example
+    if (isPost) {
       // evaluate permission amount
-      val variable = s"perm_${teacher.encode(currentLocation)}"
-      val term = current.store(variable)
+      val variable = s"perm_${teacher.encode(currentLocations)}"
+      val term = currentState.store(variable)
       val permission = evaluate(term, model)
       // create implication or negative example depending on permission amount
-      if (permission == "0.0") Implication(currentRecord, initialRecord)
-      else Negative(currentRecord)
-    } else Positive(initialRecord)
+      if (permission == "0.0") Implication(postRecord, preRecord)
+      else Negative(postRecord)
+    } else Positive(preRecord)
   }
 
   /**
-    * Returns the predicate access corresponding to the inferred specifications.
-    * TODO: Rework/remove this when reworking the triples.
+    * Extracts the pre state and the current state from the counter-example. The current state represents the state at
+    * which the error happened.
     *
-    * @param specifications The specifications.
-    * @return The predicate.
-    */
-  private def getPredicate(specifications: Seq[sil.Exp]): sil.PredicateAccess =
-    specifications
-      .collectFirst {
-        case sil.PredicateAccessPredicate(location, _) => location
-      }
-      .get
-
-  /**
-    * Returns the abstraction of the given state.
-    *
-    * NOTE: the atoms are expected to be in the "correct" order.
-    *
-    * @param state The state.
-    * @param atoms The atomic predicates.
-    * @return
-    */
-  private def abstractState(state: State, atoms: Seq[sil.Exp]): AbstractState = {
-    val pairs = atoms
-      .zipWithIndex
-      .map { case (atom, i) =>
-        val variable = s"${state.label}_p_$i"
-        state.store(variable) match {
-          case terms.True() => (atom, true)
-          case terms.False() => (atom, false)
-        }
-      }
-    AbstractState(pairs)
-  }
-
-  /**
-    * Returns a pair of states where the first state is the pre-state and the second state is either the current state
-    * or the post-state, depending on whether the execution failed or whether the assertion of the post-condition
-    * failed.
-    *
-    * @param counter The counter-example.
-    * @return The initial and the current state.
+    * @param counter The counterexample.
+    * @return The pre-state and the current state.
     */
   private def extractStates(counter: SiliconRawCounterexample): (State, State) = {
     // get path conditions and silicon state
     val conditions = counter.conditions
-    val siliconState = counter.state
+    val state = counter.state
 
     // build partitions of equivalent terms
     val partitions = new UnionFind[Term]
@@ -181,30 +116,30 @@ class ExampleExtractor(teacher: Teacher) {
     }
 
     // build store
-    val siliconStore = siliconState.g
+    val siliconStore = state.g
     val store = buildStore(siliconStore, partitions)
 
     // build heaps
-    val siliconInitial = siliconState.oldHeaps(Labels.PRE_STATE)
-    val siliconCurrent = siliconState.oldHeaps.getOrElse(Labels.POST_STATE, siliconState.h)
-    val initialHeap = buildHeap(siliconInitial, partitions)
+    val initialPre = state.oldHeaps(Labels.PRE_STATE)
+    val siliconCurrent = state.oldHeaps.getOrElse(Labels.POST_STATE, state.h)
+    val preHeap = buildHeap(initialPre, partitions)
     val currentHeap = buildHeap(siliconCurrent, partitions)
 
     // build states
     // TODO: Possibly restrict stores?
     val currentLabel = {
-      val isPost = siliconState.oldHeaps.isDefinedAt(Labels.POST_STATE)
+      val isPost = state.oldHeaps.isDefinedAt(Labels.POST_STATE)
       if (isPost) Labels.POST_STATE else Labels.CURRENT_STATE
     }
-    val initial = State(Labels.PRE_STATE, store, initialHeap)
-    val current = State(currentLabel, store, currentHeap)
+    val preState = State(Labels.PRE_STATE, store, preHeap)
+    val currentState = State(currentLabel, store, currentHeap)
 
     // return states
-    (initial, current)
+    (preState, currentState)
   }
 
   /**
-    * Builds a store map from a Silicon store.
+    * Builds a store map from a silicon store.
     *
     * @param store      The store.
     * @param partitions The partitions of equivalent terms.
@@ -219,7 +154,7 @@ class ExampleExtractor(teacher: Teacher) {
       }
 
   /**
-    * Builds a heap map from a Silicon heap.
+    * Builds a heap map from a silicon heap.
     *
     * @param heap       The heap.
     * @param partitions The partitions of equivalent terms.
@@ -244,18 +179,40 @@ class ExampleExtractor(teacher: Teacher) {
   }
 
   /**
-    * A state extracted from the Silicon verifier.
+    * Returns an abstraction of the given state.
     *
-    * @param label The label allowing to identify a specific state.
+    * NOTE: The atomic predicates have to be in their canonical order.
+    *
+    * @param state The state.
+    * @param atoms The atomic predicates.
+    * @return The abstracted state.
+    */
+  private def abstractState(state: State, atoms: Seq[sil.Exp]): AbstractState = {
+    val pairs = atoms
+      .zipWithIndex
+      .map { case (atom, i) =>
+        val variable = s"${state.label}_p_$i"
+        state.store(variable) match {
+          case terms.True() => (atom, true)
+          case terms.False() => (atom, false)
+        }
+      }
+    AbstractState(pairs)
+  }
+
+  /**
+    * A state extracted from the silicon verifier.
+    *
+    * @param label The label identifying the state.
     * @param store The store.
     * @param heap  The heap.
     */
   private case class State(label: String, store: Map[String, Term], heap: Map[Term, Map[String, Term]]) {
     /**
-      * Evaluates the given Silver expression into a Silicon term.
+      * Evaluates the given silver expression into a silicon term.
       *
-      * @param expression The expression to evaluate.
-      * @return The resulting term.
+      * @param expression The expression to evaluate
+      * @return The resulting term
       */
     def evaluate(expression: sil.Exp): Term = expression match {
       case sil.LocalVar(name, _) => store(name)
@@ -263,26 +220,49 @@ class ExampleExtractor(teacher: Teacher) {
     }
   }
 
-  /**
-    * A helper class used to compute a set of expressions that reach the same values in a target state as a given
-    * expression in the source state.
-    *
-    * @param source The source state.
-    * @param target The target state.
-    * @param map    The actual-to-formal map  // TODO: Move somewhere else?
-    */
-  private case class Reachability(source: State, target: State, map: Map[String, sil.LocalVar]) {
+  private case class Adaptor(preState: State, currentState: State, preInstance: Instance) {
     /**
       * The reachability map.
+      *
+      * TODO: Number of steps.
       */
-    private lazy val reachability = recurse(initial, steps = 3)
+    private val reachability = recurse(initial, steps = 3)
 
-    def get(expression: sil.Exp): Set[sil.Exp] = {
-      val term = source.evaluate(expression)
-      val paths = reachability(term)
-      paths.map { path =>
-        path.transform { case sil.LocalVar(name, _) => map(name) }
+    /**
+      * Adapts the given expression.
+      *
+      * @param expression The expression to adapt.
+      * @return A set of expressions that can be used to express the given expression in the pre-state.
+      */
+    def adaptPath(expression: sil.Exp): Set[sil.Exp] = {
+      val term = preState.evaluate(expression)
+      reachability
+        .getOrElse(term, Set.empty)
+        .map { adapted => preInstance.toFormal(adapted) }
+    }
+
+    def adapt(expression: sil.Exp): Set[sil.Exp] =
+      expression match {
+        case _: sil.LocalVar | _: sil.FieldAccess => adaptPath(expression)
+        case _: sil.NullLit => Set(expression)
+        case sil.EqCmp(left, right) => for (l <- adapt(left); r <- adapt(right)) yield sil.EqCmp(l, r)()
+        case sil.NeCmp(left, right) => for (l <- adapt(left); r <- adapt(right)) yield sil.NeCmp(l, r)()
+        case _ => ???
       }
+
+    def adaptLocation(location: sil.LocationAccess): Set[sil.LocationAccess] = location match {
+      case sil.FieldAccess(receiver, field) =>
+        adapt(receiver).map { adapted => sil.FieldAccess(adapted, field)() }
+      case sil.PredicateAccess(arguments, name) =>
+        val combinations = Collections.product(arguments.map(adapt))
+        combinations.map { combination => sil.PredicateAccess(combination, name)() }
+    }
+
+    def adaptState(state: AbstractState): AbstractState = {
+      val pairs = state.pairs.flatMap { case (atom, value) =>
+        adapt(atom).map { adapted => (adapted, value) }
+      }
+      AbstractState(pairs)
     }
 
     /**
@@ -292,7 +272,7 @@ class ExampleExtractor(teacher: Teacher) {
       */
     private def initial: Map[Term, Set[sil.Exp]] = {
       val empty = Map.empty[Term, Set[sil.Exp]]
-      target
+      currentState
         .store
         .filterKeys(_.endsWith("_init"))
         .foldLeft(empty) {
@@ -306,18 +286,18 @@ class ExampleExtractor(teacher: Teacher) {
     /**
       * Updates the current reachability map by recursing the given number of steps.
       *
-      * @param current The current reachability map.
-      * @param steps   The number of steps.
+      * @param map   The current reachability map.
+      * @param steps The number of steps.
       * @return The reachability map.
       */
-    private def recurse(current: Map[Term, Set[sil.Exp]], steps: Int): Map[Term, Set[sil.Exp]] =
-      if (steps == 0) current
+    private def recurse(map: Map[Term, Set[sil.Exp]], steps: Int): Map[Term, Set[sil.Exp]] =
+      if (steps == 0) map
       else {
         // compute next step of the reachability map
         val empty = Map.empty[Term, Set[sil.Exp]]
-        val next = current.foldLeft(empty) {
+        val next = map.foldLeft(empty) {
           case (map1, (term, paths)) =>
-            target.heap.getOrElse(term, Map.empty).foldLeft(map1) {
+            currentState.heap.getOrElse(term, Map.empty).foldLeft(map1) {
               case (map2, (name, value)) =>
                 val field = sil.Field(name, sil.Ref)()
                 val extendedPaths = paths.map { path => sil.FieldAccess(path, field)() }
@@ -326,9 +306,10 @@ class ExampleExtractor(teacher: Teacher) {
             }
         }
         // recurse and combine results
-        Collections.combine[Term, Set[sil.Exp]](current, recurse(next, steps - 1), _ ++ _)
+        Collections.combine[Term, Set[sil.Exp]](map, recurse(next, steps - 1), _ ++ _)
       }
   }
+
 
   /**
     * Evaluates the given term in the given model.
@@ -366,5 +347,4 @@ class ExampleExtractor(teacher: Teacher) {
       }
     case _ => ???
   }
-
 }

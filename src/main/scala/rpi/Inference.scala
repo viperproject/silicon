@@ -333,17 +333,20 @@ case class Triple(pres: Seq[sil.Exp], posts: Seq[sil.Exp], body: sil.Seqn) {
 }
 
 /**
+  * TODO: Rename?
+  *
   * Represents a specification that needs to be inferred.
   *
-  * @param name      The unique identifier of the specification.
-  * @param variables The variables relevant for the specification.
-  * @param atoms     The atomic predicates
+  * @param name       The unique identifier of the specification.
+  * @param parameters The variables relevant for the specification.
+  * @param atoms      The atomic predicates
   */
-case class Specification(name: String, variables: Seq[sil.LocalVar], atoms: Seq[sil.Exp]) {
-  lazy val predicate = sil.PredicateAccess(variables, name)()
+case class Specification(name: String, parameters: Seq[sil.LocalVar], atoms: Seq[sil.Exp]) {
+  lazy val predicate = sil.PredicateAccess(parameters, name)()
 
+  // TODO: Move to instance?!
   def adaptedAtoms(arguments: Seq[sil.Exp]): Seq[sil.Exp] = {
-    val substitutions = variables.zip(arguments).toMap
+    val substitutions = parameters.zip(arguments).toMap
     atoms.map { atom =>
       atom.transform {
         case variable: sil.LocalVar =>
@@ -351,4 +354,31 @@ case class Specification(name: String, variables: Seq[sil.LocalVar], atoms: Seq[
       }
     }
   }
+}
+
+/**
+  * Represents a specification that needs to be inferred instantiated with some arguments.
+  *
+  * @param specification The specifications that needs to be inferred.
+  * @param arguments     The arguments.
+  */
+case class Instance(specification: Specification, arguments: Seq[sil.Exp]) {
+  private lazy val toFormalMap = arguments.zip(specification.parameters).toMap
+  private lazy val toActualMap = specification.parameters.zip(arguments).toMap
+
+  def formalAtoms: Seq[sil.Exp] =
+    specification.atoms
+
+  def actualAtoms: Seq[sil.Exp] =
+    specification.adaptedAtoms(arguments)
+
+  def toFormal(expression: sil.Exp): sil.Exp =
+    expression.transform {
+      case variable: sil.LocalVar => toFormalMap(variable)
+    }
+
+  def toActual(expression: sil.Exp): sil.Exp =
+    expression.transform {
+      case variable: sil.LocalVar => toActualMap(variable)
+    }
 }

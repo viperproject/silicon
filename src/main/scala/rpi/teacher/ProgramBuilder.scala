@@ -62,7 +62,7 @@ class ProgramBuilder(teacher: Teacher) {
           val adapted = {
             //
             val actuals = prePred.loc.args
-            val formals = preSpec.variables.map(_.name)
+            val formals = preSpec.parameters.map(_.name)
             val map = formals.zip(actuals).toMap
             // update
             val args = predicate.loc.args.map { argument => Expressions.substitute(argument, map) }
@@ -80,7 +80,7 @@ class ProgramBuilder(teacher: Teacher) {
 
     // reflect on permission amounts
     val subs = {
-      val name = postSpec.variables.map { variable => variable.name }
+      val name = postSpec.parameters.map { variable => variable.name }
       val arguments = postPred.loc.args
       name.zip(arguments).toMap
     }
