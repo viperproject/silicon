@@ -890,7 +890,7 @@ object evaluator extends EvaluationRules with Immutable {
       case ast.MapLookup(base, key) =>
         evals2(s, Seq(base, key), Nil, _ => pve, v)({
           case (s1, Seq(baseT, keyT), v1) if s1.triggerExp => Q(s1, MapLookup(baseT, keyT), v1)
-          case (s1, Seq(baseT, keyT), v1) => v1.decider.assert(MapContains(keyT, baseT)) {
+          case (s1, Seq(baseT, keyT), v1) => v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
             case true => Q(s1, MapLookup(baseT, keyT), v1)
             case false => createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1)
           }
@@ -903,7 +903,7 @@ object evaluator extends EvaluationRules with Immutable {
 
       case ast.MapContains(key, base) =>
         evals2(s, Seq(key, base), Nil, _ => pve, v)({
-          case (s1, Seq(keyT, baseT), v1) => Q(s1, MapContains(keyT, baseT), v1)
+          case (s1, Seq(keyT, baseT), v1) => Q(s1, SetIn(keyT, MapDomain(baseT)), v1)
         })
 
       /* Unexpected nodes */

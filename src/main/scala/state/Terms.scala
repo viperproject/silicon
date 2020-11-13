@@ -1680,16 +1680,6 @@ case class EmptyMap(keySort: Sort, valueSort: Sort) extends MapTerm with Literal
   override lazy val toString = "Ø"
 }
 
-case class SingletonMap(key: Term, value: Term) extends MapTerm {
-  val keySort: Sort = key.sort
-  val valueSort: Sort = value.sort
-  val sort = sorts.Map(keySort, valueSort)
-  override lazy val toString = s"[$key := $value]"
-
-  /** This singleton map, but desugared into 'Ø[`key` := `value`]'. */
-  lazy val desugared : MapTerm = MapUpdate(EmptyMap(keySort, valueSort), key, value)
-}
-
 class MapLookup(base: Term, key: Term) extends Term with StructuralEqualityBinaryOp[Term] {
   val sort: Sort = p0.sort.asInstanceOf[sorts.Map].valueSort
   override def p0: Term = base
@@ -1737,25 +1727,6 @@ object MapUpdate extends ((Term, Term, Term) => MapTerm) {
   }
 
   def unapply(mu: MapUpdate) = Some((mu, mu.key, mu.value))
-}
-
-class MapContains(key: Term, base: Term) extends BooleanTerm with StructuralEqualityBinaryOp[Term] {
-  override def p0: Term = key
-  override def p1: Term = base
-  override val op : String = "in"
-
-  /** The current term, but desugared into '`key` in domain(`base`)' (on the level of sets). */
-  lazy val desugared : BooleanTerm = SetIn(key, MapDomain(base))
-}
-
-object MapContains extends ((Term, Term) => BooleanTerm) {
-  def apply(key: Term, base: Term) : MapContains = {
-    utils.assertSort(base, "first operand", "Map", _.isInstanceOf[sorts.Map])
-    utils.assertSort(key, "second operand", base.sort.asInstanceOf[sorts.Map].keySort)
-    new MapContains(key, base)
-  }
-
-  def unapply(mc: MapContains) = Some((mc.p0, mc.p1))
 }
 
 class MapDomain(val p: Term) extends SetTerm with StructuralEqualityUnaryOp[Term] {

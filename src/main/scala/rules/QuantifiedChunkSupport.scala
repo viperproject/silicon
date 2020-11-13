@@ -1556,7 +1556,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       cond.flatMap(_.find {
         case SeqIn(seq, _) => seq
         case SetIn(_, set) => set
-        case MapContains(_, map) => map
         // TODO: Add a case for function applications
       }).toSeq
 

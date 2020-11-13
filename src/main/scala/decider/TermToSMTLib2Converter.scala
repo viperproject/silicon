@@ -216,9 +216,7 @@ class TermToSMTLib2Converter
 
     /* Maps */
 
-    case m: SingletonMap => render(m.desugared)
     case m: MapCardinality => renderApp("Map_card", Seq(m.p), m.sort)
-    case m: MapContains => render(m.desugared)
     case m: MapDomain => renderApp("Map_domain", Seq(m.p), m.sort)
     case m: MapRange => renderApp("Map_values", Seq(m.p), m.sort)
     case m: MapLookup => renderApp("Map_apply", Seq(m.p0, m.p1), m.sort)

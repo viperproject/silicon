@@ -96,7 +96,6 @@ class TriggerGenerator
          | _: MultisetTerm
          | _: MultisetCardinality
          | _: MultisetCount
-         | _: MapContains
          | _: MapLookup
          | _: MapCardinality
          | _: MapDomain

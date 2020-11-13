@@ -185,10 +185,10 @@ trait ExpressionTranslator {
 
       /* Maps */
 
-      case ast.EmptyMap(keyType, valueType) => EmptyMap(toSort(keyType), toSort(valueType))
       case as: ast.ExplicitMap => f(as.desugared)
-      case ast.KeyValuePair(key, value) => SingletonMap(f(key), f(value))
-      case ast.MapContains(key, base) => MapContains(f(key), f(base))
+      case as: ast.KeyValuePair => f(as.desugared)
+      case ast.EmptyMap(keyType, valueType) => EmptyMap(toSort(keyType), toSort(valueType))
+      case ast.MapContains(key, base) => SetIn(f(key), MapDomain(f(base)))
       case ast.MapUpdate(base, key, value) => MapUpdate(f(base), f(key), f(value))
       case ast.MapCardinality(base) => MapCardinality(f(base))
       case ast.MapLookup(base, key) => MapLookup(f(base), f(key))
