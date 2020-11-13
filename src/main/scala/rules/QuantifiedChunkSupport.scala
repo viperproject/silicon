@@ -1544,6 +1544,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     var hints =
       arguments.flatMap {
         case SeqAt(seq, _) => Some(seq)
+        case MapLookup(map, _) => Some(map)
         // TODO: Add a case for (domain or heap-dep.) function applications, i.e. fun(_)
         case _ => None
       }
@@ -1555,6 +1556,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       cond.flatMap(_.find {
         case SeqIn(seq, _) => seq
         case SetIn(_, set) => set
+        case MapContains(_, map) => map
         // TODO: Add a case for function applications
       }).toSeq
 

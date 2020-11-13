@@ -45,8 +45,8 @@ domain $Map[K, V] {
   axiom {
     forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_equal(m1, m2) }
       Map_equal(m1, m2) <==>
-        (Map_domain(m1) == Map_domain(m2) && forall k : K :: { Map_apply(m1, k) } { Map_apply(m2, k) }
-          k in Map_domain(m1) ==> Map_apply(m1, k) == Map_apply(m2, k))
+        ((forall k : K :: { k in Map_domain(m1) } { k in Map_domain(m2) } k in Map_domain(m1) <==> k in Map_domain(m2)) &&
+         (forall k : K :: { Map_apply(m1, k) } { Map_apply(m2, k) } k in Map_domain(m1) ==> Map_apply(m1, k) == Map_apply(m2, k)))
   }
 
   axiom {

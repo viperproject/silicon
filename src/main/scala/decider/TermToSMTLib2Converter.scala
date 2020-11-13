@@ -143,6 +143,7 @@ class TermToSMTLib2Converter
       case _: sorts.Seq => renderBinaryOp("Seq_equal", bop)
       case _: sorts.Set => renderApp("Set_equal", Seq(bop.p0, bop.p1), bop.sort)
       case _: sorts.Multiset => renderApp("Multiset_equal", Seq(bop.p0, bop.p1), bop.sort)
+      case _: sorts.Map => renderApp("Map_equal", Seq(bop.p0, bop.p1), bop.sort)
       case sort => sys.error(s"Don't know how to translate equality between symbols $sort-typed terms")
     }
 
@@ -212,6 +213,16 @@ class TermToSMTLib2Converter
     case bop: MultisetUnion => renderApp("Multiset_union", Seq(bop.p0, bop.p1), bop.sort)
     case bop: MultisetSubset => renderApp("Multiset_subset", Seq(bop.p0, bop.p1), bop.sort)
     case bop: MultisetCount => renderApp("Multiset_count", Seq(bop.p0, bop.p1), bop.sort)
+
+    /* Maps */
+
+    case m: SingletonMap => render(m.desugared)
+    case m: MapCardinality => renderApp("Map_card", Seq(m.p), m.sort)
+    case m: MapContains => render(m.desugared)
+    case m: MapDomain => renderApp("Map_domain", Seq(m.p), m.sort)
+    case m: MapRange => renderApp("Map_values", Seq(m.p), m.sort)
+    case m: MapLookup => renderApp("Map_apply", Seq(m.p0, m.p1), m.sort)
+    case m: MapUpdate => renderApp("Map_update", Seq(m.base, m.key, m.value), m.sort)
 
     /* Quantified Permissions */
 
