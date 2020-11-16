@@ -186,7 +186,7 @@ trait ExpressionTranslator {
       /* Maps */
 
       case as: ast.ExplicitMap => f(as.desugared)
-      case as: ast.KeyValuePair => f(as.desugared)
+      case as: ast.Maplet => f(as.desugared)
       case ast.EmptyMap(keyType, valueType) => EmptyMap(toSort(keyType), toSort(valueType))
       case ast.MapContains(key, base) => SetIn(f(key), MapDomain(f(base)))
       case ast.MapUpdate(base, key, value) => MapUpdate(f(base), f(key), f(value))
