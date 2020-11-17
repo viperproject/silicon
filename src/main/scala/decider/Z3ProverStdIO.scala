@@ -6,20 +6,23 @@
 
 package viper.silicon.decider
 
-import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
-import java.nio.file.{Path, Paths}
-import java.util.concurrent.TimeUnit
+import java.io.{PrintWriter, StringReader}
 
+import scala.collection.JavaConverters._
+import com.microsoft.z3
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.{Config, Map, toMap}
+import decider.TermToZ3Converter
+import org.scalactic.TimesOnInt.convertIntToRepeater
+import smtlib.trees.Commands._
+import smtlib.trees.Terms.SSymbol
+import viper.silicon.{Config, Map}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Sat, Unknown, Unsat}
-import viper.silicon.reporting.{ExternalToolError, Z3InteractionFailed}
+import viper.silicon.reporting.Z3InteractionFailed
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.plugin.PluginAwareReporter
-import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 
 class Z3ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
@@ -31,19 +34,30 @@ class Z3ProverStdIO(uniqueId: String,
   private var pushPopScopeDepth = 0
   private var lastTimeout: Int = -1
   private var logfileWriter: PrintWriter = _
-  private var z3: Process = _
-  private var input: BufferedReader = _
-  private var output: PrintWriter = _
-  /* private */ var z3Path: Path = _
+  private var ctx: z3.Context = _
+  private var solver: z3.Solver = _
+  private var termToZ3Converter: TermToZ3Converter = _
   var lastModel : String = null
+
+  /// Not very robust, but they work for Silicon.
+  private object Patterns {
+    val Assert = """\(assert (.*)\)""".r
+    val SetOption = """\(set-option :([-_A-Za-z0-9$.]+) ("?[^"]+"?)\)[^(]*""".r
+    val DeclareSort = """\(declare-sort ([A-Za-z$.]+)\s?(\d+)?\)""".r
+    val DefineSort = """\(define-sort ([A-Za-z$.]+) \(\) ([A-Za-z]+)\)""".r
+    val DeclareConst = """\(declare-const ([A-Za-z$._]+) ([A-Za-z$.<>_]+)\)""".r
+    val DefineConst = """\(define-const ([A-Za-z$.]+) ([A-Za-z$.]+) ([A-Za-z0-9$.]+)\)""".r
+    val Int = """\d+""".r
+    val Double = """\|\d+\.\d+\|""".r
+  }
+
+  def z3Path(): String = {
+    "(dynamic library)"
+  }
 
   def z3Version(): Version = {
     val versionPattern = """\(?\s*:version\s+"(.*?)(?:\s*-.*?)?"\)?""".r
-    var line = ""
-
-    writeLine("(get-info :version)")
-
-    line = input.readLine()
+    val line = ":version \"" + z3.Version.getFullVersion().stripPrefix("Z3 ") + "\""
     comment(line)
 
     line match {
@@ -56,50 +70,20 @@ class Z3ProverStdIO(uniqueId: String,
     pushPopScopeDepth = 0
     lastTimeout = -1
     logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.z3LogFile(uniqueId).toFile)
-    z3Path = Paths.get(Verifier.config.z3Exe)
-    z3 = createZ3Instance()
-    input = new BufferedReader(new InputStreamReader(z3.getInputStream))
-    output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(z3.getOutputStream)), true)
-  }
+    z3.Global.ToggleWarningMessages(true)
 
-  private def createZ3Instance() = {
-    // One can pass some options. This allows to check whether they have been received.
-    val msg = s"Starting Z3 at location '$z3Path'"
-    reporter report ConfigurationConfirmation(msg)
-    logger debug msg
-
-    val z3File = z3Path.toFile
-
-    if (!z3File.isFile)
-      throw ExternalToolError("Z3", s"Cannot run Z3 at location '$z3File': not a file.")
-
-    if (!z3File.canExecute)
-      throw ExternalToolError("Z3", s"Cannot run Z3 at location '$z3File': file is not executable.")
-
-    val userProvidedZ3Args: Array[String] = Verifier.config.z3Args.toOption match {
-      case None =>
-        Array()
-
-      case Some(args) =>
-        // One can pass some options. This allows to check whether they have been received.
-        val msg = s"Additional command-line arguments are $args"
-        reporter report ConfigurationConfirmation(msg)
-        logger debug msg
-        args.split(' ').map(_.trim)
-    }
-
-    val builder = new ProcessBuilder(z3Path.toFile.getPath +: "-smt2" +: "-in" +: userProvidedZ3Args :_*)
-    builder.redirectErrorStream(true)
-
-    val process = builder.start()
-
-    Runtime.getRuntime.addShutdownHook(new Thread {
-      override def run() {
-        process.destroy()
-      }
-    })
-
-    process
+    // Initialize Z3 via the API
+    val cfg = Map[String, String](
+      //"global-decls" -> "true"
+    )
+    ctx = new z3.Context(mapAsJavaMap(cfg))
+    solver = ctx.mkSolver()
+    termToZ3Converter = new TermToZ3Converter(
+      ctx,
+      termConverter.convert,
+      termConverter.render(_),
+      termConverter.convert
+    )
   }
 
   def reset() {
@@ -116,43 +100,127 @@ class Z3ProverStdIO(uniqueId: String,
       if (logfileWriter != null) {
         logfileWriter.flush()
       }
-      if (output != null) {
-        output.flush()
-      }
-      if (z3 != null) {
-        z3.destroyForcibly()
-        z3.waitFor(10, TimeUnit.SECONDS) /* Makes the current thread wait until the process has been shut down */
-      }
 
       if (logfileWriter != null) {
         logfileWriter.close()
       }
-      if (input != null) {
-        input.close()
-      }
-      if (output != null) {
-        output.close()
-      }
     }
+
+    solver = null
+    termToZ3Converter = null
+    if (ctx != null) {
+      ctx.close()
+    }
+    ctx = null
   }
 
   def push(n: Int = 1) {
     pushPopScopeDepth += n
     val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + pushPopScopeDepth
-    writeLine(cmd)
-    readSuccess()
+    logToFile(cmd)
+    n times { solver.push() }
   }
 
   def pop(n: Int = 1) {
     val cmd = (if (n == 1) "(pop)" else "(pop " + n + ")") + " ; " + pushPopScopeDepth
     pushPopScopeDepth -= n
-    writeLine(cmd)
-    readSuccess()
+    logToFile(cmd)
+    solver.pop(n)
+  }
+
+  private def parseCommand(cmd: String): Command = {
+    val input = new StringReader(cmd)
+    val lexer = new smtlib.lexer.Lexer(input)
+    val parser = new smtlib.parser.Parser(lexer)
+    parser.parseCommand
   }
 
   def emit(content: String) {
-    writeLine(content)
-    readSuccess()
+    logToFile(content)
+
+    val command = content.replace("\t", " ").replace("\n", " ")
+    command match {
+      case Patterns.Assert(_) =>
+        val expr = termToZ3Converter.parseCommand(command)
+        solver.add(expr)
+      // FIXME: It seems that these options are not allowed. Why?
+      case Patterns.SetOption(key, value) if
+          key == "global-decls" || key == "print-success" || key == "type_check" || key == "smt.qi.cost"
+            || key.startsWith("fp.spacer") || key == "smt.random_seed" || key.startsWith("sls.") => // Skip
+      case Patterns.SetOption(key, value) =>
+        val p = ctx.mkParams()
+        value match {
+          case "true" => p.add(key, true)
+          case "false" => p.add(key, false)
+          case Patterns.Int() if key == "smt.qi.eager_threshold" => p.add(key, value.toDouble)
+          case Patterns.Int() => p.add(key, value.toInt)
+          case Patterns.Double() => p.add(key, value.stripPrefix("|").stripSuffix("|").toDouble)
+          case _ => p.add(key, value)
+        }
+        solver.setParameters(p)
+      case Patterns.DeclareSort(name, arity) if arity == null || arity == "0" =>
+        termToZ3Converter.registerSort(name, ctx.mkUninterpretedSort(_))
+      case Patterns.DefineSort(name, ref) if ref == "Real" =>
+        termToZ3Converter.registerSort(name, _ => ctx.mkRealSort())
+      case Patterns.DeclareConst(name, sortName) =>
+        termToZ3Converter.registerFuncDecl(
+          name,
+          ctx.mkFuncDecl(_, Array[z3.Sort](), termToZ3Converter.getSort(sortName))
+        )
+      case Patterns.DefineConst(name, sortName, body) =>
+        termToZ3Converter.registerFuncDecl(
+          name,
+          ctx.mkFuncDecl(_, Array[z3.Sort](), termToZ3Converter.getSort(sortName))
+        )
+        val expr = termToZ3Converter.parseCommand(s"(assert (= $name $body))")
+        solver.add(expr)
+      case complex_command =>
+        parseCommand(complex_command) match {
+          case DeclareFun(SSymbol(name), params, returnSort) =>
+            val paramSorts = params.map(_.toString).map(termToZ3Converter.getSort).toArray
+            termToZ3Converter.registerFuncDecl(
+              name,
+              ctx.mkFuncDecl(_, paramSorts, termToZ3Converter.getSort(returnSort.toString))
+            )
+          case DefineFun(FunDef(SSymbol(name), params, returnSort, body)) =>
+            val paramSorts = params.map(_.sort.toString).map(termToZ3Converter.getSort).toArray
+            termToZ3Converter.registerFuncDecl(
+              name,
+              ctx.mkFuncDecl(_, paramSorts, termToZ3Converter.getSort(returnSort.toString))
+            )
+            val paramNames = params.map(_.name.name)
+            val vars = params.map(p => s"(${p.name.name} ${p.sort.toString})")
+            val triggers = s":pattern (($name ${paramNames.mkString(" ")}))"
+            val expr = termToZ3Converter.parseCommand(
+              s"(assert (forall (${vars.mkString(" ")}) (! (= ($name ${paramNames.mkString(" ")}) $body) $triggers)))"
+            )
+            solver.add(expr)
+          case DeclareDatatypes(Seq((SSymbol(datatypeSortName), constructors))) =>
+            val localSortMap = (sortName: String) => {
+              if (sortName == datatypeSortName) {
+                null
+              } else {
+                termToZ3Converter.getSort(sortName)
+              }
+            }
+            var z3Constructors = Seq[z3.Constructor]()
+            for (constructor <- constructors) {
+              z3Constructors = z3Constructors :+ ctx.mkConstructor(
+                constructor.sym.name,
+                "is_" + constructor.sym.name, // FIXME: Is this correct? What should we use?
+                constructor.fields.map(_._1.name).toArray,
+                constructor.fields.map(_._2.toString).map(localSortMap).toArray,
+                null
+              )
+            }
+            // Register datatype
+            termToZ3Converter.registerSort(datatypeSortName, ctx.mkDatatypeSort(_, z3Constructors.toArray))
+            // It seems that there is no need to register the constructor and field accessors
+          case todo =>
+            // This should be unreachable
+            throw new Exception(s"Unhandled SMTLIB2 command: '$todo''")
+        }
+    }
   }
 
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
@@ -166,26 +234,21 @@ class Z3ProverStdIO(uniqueId: String,
 //      val problems = QuantifierSupporter.detectQuantificationProblems(q)
 //
 //      if (problems.nonEmpty) {
-//        quantificationLogger.println(s"\n\n${q.toString(true)}")
+//        quantificationLogger.println(solver"\n\n${q.toString(true)}")
 //        quantificationLogger.println("Problems:")
 //        problems.foreach(p => quantificationLogger.println(s"  $p"))
 //      }
 //    })
 
-    assume(termConverter.convert(term))
-  }
-
-  def assume(term: String) {
 //    bookkeeper.assumptionCounter += 1
 
-    writeLine("(assert " + term + ")")
-    readSuccess()
+    val command = s"(assert ${termConverter.convert(term)})"
+    logToFile(command)
+    val expr = termToZ3Converter.parseCommand(command)
+    solver.add(expr)
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None) =
-    assert(termConverter.convert(goal), timeout)
-
-  def assert(goal: String, timeout: Option[Int]) = {
+  def assert(goal: Term, timeout: Option[Int] = None) = {
 //    bookkeeper.assertionCounter += 1
 
     setTimeout(timeout)
@@ -201,15 +264,16 @@ class Z3ProverStdIO(uniqueId: String,
     result
   }
 
-  private def assertUsingPushPop(goal: String): (Boolean, Long) = {
+  private def assertUsingPushPop(goal: Term): (Boolean, Long) = {
     push()
 
-    writeLine("(assert (not " + goal + "))")
-    readSuccess()
+    val command = "(assert (not " + termConverter.convert(goal) + "))"
+    logToFile(command)
+    val expr = termToZ3Converter.parseCommand(command)
+    solver.add(expr)
 
     val startTime = System.currentTimeMillis()
-    writeLine("(check-sat)")
-    val result = readUnsat()
+    val result = solver.check() == z3.Status.UNSATISFIABLE
     val endTime = System.currentTimeMillis()
 
     if (!result) {
@@ -231,31 +295,28 @@ class Z3ProverStdIO(uniqueId: String,
   def saturate(timeout: Int, comment: String): Unit = {
     this.comment(s"State saturation: $comment")
     setTimeout(Some(timeout))
-    writeLine("(check-sat)")
-    readLine()
+    logToFile("(check-sat)")
+    solver.check()
   }
 
   private def getModel(): Unit = {
     if (Verifier.config.counterexample.toOption.isDefined) {
-      writeLine("(get-model)")
-
-      var model = readModel("\n").trim()
-      if (model.startsWith("\"")){
-        model = model.replaceAll("\"", "")
-      }
-      lastModel = model
+      logToFile("(get-model)")
+      lastModel = solver.getModel.toString
     }
   }
 
-  private def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
+  private def assertUsingSoftConstraints(goal: Term): (Boolean, Long) = {
     val guard = fresh("grd", Nil, sorts.Bool)
 
-    writeLine(s"(assert (implies $guard (not $goal)))")
-    readSuccess()
+    val command = s"(assert (implies $guard (not ${termConverter.convert(goal)})))"
+    logToFile(command)
+    val expr = termToZ3Converter.parseCommand(command)
+    solver.add(expr)
 
     val startTime = System.currentTimeMillis()
-    writeLine(s"(check-sat $guard)")
-    val result = readUnsat()
+    logToFile(s"(check-sat $guard)")
+    val result = solver.check() == z3.Status.UNSATISFIABLE
     val endTime = System.currentTimeMillis()
 
     if (!result) {
@@ -268,12 +329,12 @@ class Z3ProverStdIO(uniqueId: String,
   def check(timeout: Option[Int] = None) = {
     setTimeout(timeout)
 
-    writeLine("(check-sat)")
+    logToFile("(check-sat)")
 
-    readLine() match {
-      case "sat" => Sat
-      case "unsat" => Unsat
-      case "unknown" => Unknown
+    solver.check() match {
+      case z3.Status.SATISFIABLE => Sat
+      case z3.Status.UNSATISFIABLE => Unsat
+      case z3.Status.UNKNOWN => Unknown
     }
   }
 
@@ -289,40 +350,22 @@ class Z3ProverStdIO(uniqueId: String,
       lastTimeout = effectiveTimeout
 
       if(Verifier.config.z3EnableResourceBounds()) {
-        writeLine(s"(set-option :rlimit ${effectiveTimeout * (Verifier.config.z3ResourcesPerMillisecond())})")
+        logToFile(s"(set-option :rlimit ${effectiveTimeout * (Verifier.config.z3ResourcesPerMillisecond())})")
+        val p = ctx.mkParams()
+        p.add("rlimit", effectiveTimeout * (Verifier.config.z3ResourcesPerMillisecond()))
+        solver.setParameters(p)
       } else {
-        writeLine(s"(set-option :timeout $effectiveTimeout)")
+        logToFile(s"(set-option :timeout $effectiveTimeout)")
+        val p = ctx.mkParams()
+        p.add("timeout", effectiveTimeout)
+        solver.setParameters(p)
       }
-      readSuccess()
     }
   }
 
   def statistics(): Map[String, String]= {
-    var repeat = true
-    var line = ""
-    var stats = scala.collection.immutable.SortedMap[String, String]()
-    val entryPattern = """\(?\s*:([A-za-z\-]+)\s+((?:\d+\.)?\d+)\)?""".r
-
-    writeLine("(get-info :all-statistics)")
-
-    do {
-      line = input.readLine()
-      comment(line)
-
-      /* Check that the first line starts with "(:". */
-      if (line.isEmpty && !line.startsWith("(:"))
-        throw Z3InteractionFailed(uniqueId, s"Unexpected output of Z3 while reading statistics: $line")
-
-      line match {
-        case entryPattern(entryName, entryNumber) =>
-          stats = stats + (entryName -> entryNumber)
-        case _ =>
-      }
-
-      repeat = !line.endsWith(")")
-    } while (repeat)
-
-    toMap(stats)
+    // TODO
+    Map()
   }
 
   def comment(str: String) = {
@@ -338,14 +381,16 @@ class Z3ProverStdIO(uniqueId: String,
     val fun = Fun(id, argSorts, resultSort)
     val decl = FunctionDecl(fun)
 
-    emit(termConverter.convert(decl))
+    declare(decl)
 
     fun
   }
 
   def declare(decl: Decl) {
-    val str = termConverter.convert(decl)
-    emit(str)
+    val command = termConverter.convert(decl)
+    logToFile(command)
+
+    termToZ3Converter.declare(decl).foreach(solver.add(_))
   }
 
 //  def resetAssertionCounter() { bookkeeper.assertionCounter = 0 }
@@ -356,75 +401,10 @@ class Z3ProverStdIO(uniqueId: String,
 //    resetAssumptionCounter()
 //  }
 
-  /* TODO: Handle multi-line output, e.g. multiple error messages. */
-
-  private def readSuccess() {
-    val answer = readLine()
-
-    if (answer != "success")
-      throw Z3InteractionFailed(uniqueId, s"Unexpected output of Z3. Expected 'success' but found: $answer")
-  }
-
-  private def readUnsat(): Boolean = readLine() match {
-    case "unsat" => true
-    case "sat" => false
-    case "unknown" => false
-
-    case result =>
-      throw Z3InteractionFailed(uniqueId, s"Unexpected output of Z3 while trying to refute an assertion: $result")
-  }
-
-  private def readModel(separator: String = " "): String = {
-    try {
-      var endFound = false
-      var result = ""
-      var firstTime = true
-      while (!endFound) {
-        val nextLine = input.readLine()
-        if (nextLine.trim().endsWith("\"") || (firstTime && !nextLine.startsWith("\""))) {
-          endFound = true
-        }
-        result = result + separator + nextLine
-        firstTime = false
-      }
-      result
-    } catch {
-      case e: Exception =>
-        println("Error reading model: " + e)
-        ""
-    }
-  }
-
-  private def readLine(): String = {
-    var repeat = true
-    var result = ""
-
-    while (repeat) {
-      result = input.readLine()
-      if (result.toLowerCase != "success") comment(result)
-
-      val warning = result.startsWith("WARNING")
-      if (warning) {
-        val msg = s"Z3 warning: $result"
-        reporter report InternalWarningMessage(msg)
-        logger warn msg
-      }
-
-      repeat = warning
-    }
-
-    result
-  }
-
   private def logToFile(str: String) {
     if (logfileWriter != null) {
       logfileWriter.println(str)
     }
-  }
-
-  private def writeLine(out: String) = {
-    logToFile(out)
-    output.println(out)
   }
 
   override def getLastModel(): String = lastModel

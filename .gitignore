@@ -20,3 +20,5 @@ lib/
 silver
 viper_tutorial_examples
 .bsp/
+*.so
+*.log
