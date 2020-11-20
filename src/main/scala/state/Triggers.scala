@@ -26,8 +26,7 @@ object Trigger extends (Seq[Term] => Trigger) {
   * (see, e.g. [[GenericTriggerGenerator.setCustomIsForbiddenInTrigger]]).
   */
 class TriggerGenerator
-    extends GenericTriggerGenerator[Term, Sort, Term, Var, Quantification]
-       with Mutable {
+    extends GenericTriggerGenerator[Term, Sort, Term, Var, Quantification] {
 
   protected def hasSubnode(root: Term, child: Term) = root.hasSubterm(child)
   protected def visit[A](root: Term)(f: PartialFunction[Term, A]) = root.visit(f)

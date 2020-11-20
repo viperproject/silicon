@@ -21,7 +21,7 @@ trait SymbolConverter {
   def toFunction(function: ast.Function): terms.HeapDepFun
 }
 
-class DefaultSymbolConverter extends SymbolConverter with Immutable {
+class DefaultSymbolConverter extends SymbolConverter {
   def toSort(typ: ast.Type): Sort = typ match {
     case ast.Bool => sorts.Bool
     case ast.Int => sorts.Int

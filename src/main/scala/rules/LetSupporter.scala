@@ -25,7 +25,7 @@ trait LetSupportRules extends SymbolicExecutionRules {
             : VerificationResult
 }
 
-object letSupporter extends LetSupportRules with Immutable {
+object letSupporter extends LetSupportRules {
   import evaluator._
 
   def handle[E <: ast.Exp]

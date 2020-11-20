@@ -190,7 +190,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                   : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]
 }
 
-object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
+object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
   /* Chunk creation */
 

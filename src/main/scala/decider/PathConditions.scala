@@ -56,8 +56,7 @@ trait PathConditionStack extends RecordedPathConditions {
  */
 
 private class PathConditionStackLayer
-    extends Mutable
-       with Cloneable {
+    extends Cloneable {
 
   private var _branchCondition: Option[Term] = None
   private var _globalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
@@ -173,8 +172,7 @@ private trait LayeredPathConditionStackLike {
 
 private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer])
     extends LayeredPathConditionStackLike
-       with RecordedPathConditions
-       with Immutable {
+       with RecordedPathConditions {
 
   val branchConditions: Stack[Term] = branchConditions(from)
   val assumptions: InsertionOrderedSet[Term] = assumptions(from)
@@ -199,7 +197,6 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
 private[decider] class LayeredPathConditionStack
     extends LayeredPathConditionStackLike
        with PathConditionStack
-       with Mutable
        with Cloneable {
 
   private var layers: Stack[PathConditionStackLayer] = Stack.empty

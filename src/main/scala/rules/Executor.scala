@@ -40,7 +40,7 @@ trait ExecutionRules extends SymbolicExecutionRules {
            : VerificationResult
 }
 
-object executor extends ExecutionRules with Immutable {
+object executor extends ExecutionRules {
   import consumer._
   import evaluator._
   import producer._

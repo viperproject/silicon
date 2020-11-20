@@ -26,7 +26,7 @@ object Heap extends HeapFactory[ListBackedHeap] {
 }
 
 final class ListBackedHeap private[state] (chunks: Vector[Chunk])
-    extends Heap with Immutable {
+    extends Heap {
 
   def values = chunks
 

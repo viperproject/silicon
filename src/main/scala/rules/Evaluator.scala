@@ -58,7 +58,7 @@ trait EvaluationRules extends SymbolicExecutionRules {
                     : VerificationResult
 }
 
-object evaluator extends EvaluationRules with Immutable {
+object evaluator extends EvaluationRules {
   import consumer._
   import producer._
 
@@ -647,7 +647,7 @@ object evaluator extends EvaluationRules with Immutable {
              * The first approach is slightly simpler and suffices here, though.
              */
             val fargs = func.formalArgs.map(_.localVar)
-            val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+            val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakout)
             val exampleTrafo = CounterexampleTransformer({
               case ce: SiliconCounterexample => ce.withStore(s2.g)
               case ce => ce

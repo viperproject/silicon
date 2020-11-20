@@ -20,7 +20,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.VerificationError
 
-object moreCompleteExhaleSupporter extends SymbolicExecutionRules with Immutable {
+object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
   sealed trait TaggedSummarisingSnapshot {
     def snapshot: Term
   }
@@ -276,7 +276,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules with Immutable
 
       val s0 = s.copy(functionRecorder = currentFunctionRecorder)
 
-      summarise(s0, relevantChunks, resource, args, v)((s1, snap, _, _, v1) =>
+      summarise(s0, relevantChunks.toSeq, resource, args, v)((s1, snap, _, _, v1) =>
         if (!moreNeeded) {
           if (!consumeExact) {
             v1.decider.assume(PermLess(perms, pSum))

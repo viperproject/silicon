@@ -20,7 +20,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 
-object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
+object heuristicsSupporter extends SymbolicExecutionRules {
   import executor._
 
   /* tryOperation-Methods with varying output arity */

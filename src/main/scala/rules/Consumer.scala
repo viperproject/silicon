@@ -58,7 +58,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
               : VerificationResult
 }
 
-object consumer extends ConsumptionRules with Immutable {
+object consumer extends ConsumptionRules {
   import brancher._
   import evaluator._
 

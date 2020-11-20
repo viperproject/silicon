@@ -64,7 +64,7 @@ trait ProductionRules extends SymbolicExecutionRules {
               : VerificationResult
 }
 
-object producer extends ProductionRules with Immutable {
+object producer extends ProductionRules {
   import brancher._
   import evaluator._
 

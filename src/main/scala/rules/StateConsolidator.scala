@@ -25,7 +25,7 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
   def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State
 }
 
-object stateConsolidator extends StateConsolidationRules with Immutable {
+object stateConsolidator extends StateConsolidationRules {
   def consolidate(s: State, v: Verifier): State = {
     if (Verifier.config.disableMostStateConsolidations() || Verifier.config.enableMoreCompleteExhale()) {
       // TODO: Skipping most of what the regular state consolidation performs results in
