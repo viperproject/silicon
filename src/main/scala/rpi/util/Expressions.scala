@@ -3,6 +3,9 @@ package rpi.util
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.{ast => sil}
 
+/**
+  * Some utility methods for silver expressions.
+  */
 object Expressions {
   /**
     * Instantiates the given predicate with the given arguments.
@@ -14,45 +17,11 @@ object Expressions {
   def instantiate(predicate: sil.Predicate, arguments: Seq[sil.Exp]): sil.Exp =
     predicate.body match {
       case Some(body) =>
-        val names = predicate.formalArgs.map(_.name)
-        val substitutions = names.zip(arguments).toMap
-        substitute(body, substitutions)
+        val names = predicate.formalArgs.map { parameter => parameter.name }
+        val map = names.zip(arguments).toMap
+        body.transform { case sil.LocalVar(name, _) => map(name) }
       case _ => ???
     }
-
-  /**
-    * Substitutes all variables of the given expression according to the given substitutions.
-    *
-    * @param expression    The expression.
-    * @param substitutions The substitutions.
-    * @return The substituted expression.
-    */
-  def substitute(expression: sil.Exp, substitutions: Map[String, sil.Exp]): sil.Exp =
-    expression.transform {
-      case variable@sil.LocalVar(name, _) =>
-        substitutions.getOrElse(name, variable)
-    }
-
-  /**
-    * TODO: Is this final?
-    *
-    * @param expression The expression.
-    */
-  def toSeq(expression: sil.Exp): Seq[String] = expression match {
-    case sil.LocalVar(name, _) => Seq(name)
-    case sil.FieldAccess(receiver, field) => toSeq(receiver) :+ field.name
-  }
-
-  /**
-    * Returns the disjunction of the given expressions.
-    *
-    * @param expressions The expressions.
-    * @return The disjunction.
-    */
-  def bigOr(expressions: Iterable[sil.Exp]): sil.Exp =
-    expressions
-      .reduceOption[sil.Exp](sil.Or(_, _)())
-      .getOrElse(sil.FalseLit()())
 
   /**
     * Returns the conjunction of the given expressions.
@@ -62,11 +31,22 @@ object Expressions {
     */
   def bigAnd(expressions: Iterable[sil.Exp]): sil.Exp =
     expressions
-      .reduceOption[sil.Exp](sil.And(_, _)())
+      .reduceOption(sil.And(_, _)())
       .getOrElse(sil.TrueLit()())
 
   /**
-    * Returns an expression that is true if exactly on of the given expressions is true.
+    * Returns the disjunction of the given expressions.
+    *
+    * @param expressions The expressions.
+    * @return The disjunction.
+    */
+  def bigOr(expressions: Iterable[sil.Exp]): sil.Exp =
+    expressions
+      .reduceOption(sil.Or(_, _)())
+      .getOrElse(sil.FalseLit()())
+
+  /**
+    * Returns an expression that is true if exactly one of the given expressions is true.
     *
     * @param expressions The expressions.
     * @return The resulting expression.
@@ -74,8 +54,10 @@ object Expressions {
   def one(expressions: Iterable[sil.Exp]): sil.Exp = {
     val atLeast = bigOr(expressions)
     val atMost = {
-      val pairs = Collections.pairs(expressions)
-      bigAnd(pairs.map { case (first, second) => sil.Not(sil.And(first, second)())() })
+      val pairs = Collections
+        .pairs(expressions)
+        .map { case (first, second) => sil.Not(sil.And(first, second)())() }
+      bigAnd(pairs)
     }
     sil.And(atLeast, atMost)()
   }
@@ -86,12 +68,13 @@ object Expressions {
     * @param expression The expression to negate.
     * @return The negated expression.
     */
-  def negate(expression: sil.Exp): sil.Exp = expression match {
-    case sil.Not(argument) => argument
-    case sil.EqCmp(left, right) => sil.NeCmp(left, right)()
-    case sil.NeCmp(left, right) => sil.EqCmp(left, right)()
-    case _ => sil.Not(expression)()
-  }
+  def negate(expression: sil.Exp): sil.Exp =
+    expression match {
+      case sil.Not(argument) => argument
+      case sil.EqCmp(left, right) => sil.NeCmp(left, right)()
+      case sil.NeCmp(left, right) => sil.EqCmp(left, right)()
+      case _ => sil.Not(expression)()
+    }
 
   /**
     * Simplifies the given expression.

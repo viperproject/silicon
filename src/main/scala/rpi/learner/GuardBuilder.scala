@@ -1,27 +1,26 @@
 package rpi.learner
 
-import rpi._
+import rpi.Config
 import rpi.util.Expressions
 import viper.silver.{ast => sil}
 
-class GuardSolver(learner: Learner, constraints: sil.Exp) {
-  private lazy val model = {
+class GuardBuilder(learner: Learner, constraints: sil.Exp) {
+
+  private val model: Map[String, Boolean] = {
     val solver = learner.solver
     solver.solve(constraints)
   }
 
-  private lazy val fields = {
-    val program = learner.inference.program
-    program.fields.map { field => field.name -> field }.toMap
-  }
-
-  def solveTemplate(template: Template): sil.Exp = {
-    val atoms = template.specification.atoms
-    val conjuncts = template.accesses.map { resource => createGuarded(resource, atoms) }
+  def buildBody(template: Template): sil.Exp = {
+    val atoms = template.atoms
+    val conjuncts = template
+      .accesses
+      .map { guarded => buildGuarded(guarded, atoms) }
     Expressions.simplify(Expressions.bigAnd(conjuncts))
   }
 
-  private def createGuarded(guarded: Guarded, atoms: Seq[sil.Exp]): sil.Exp = {
+  def buildGuarded(guarded: Guarded, atoms: Seq[sil.Exp]): sil.Exp = {
+    // extract guard from model
     val guard = {
       val id = guarded.id
       val clauses = for (j <- 0 until Config.maxClauses) yield {
@@ -44,6 +43,7 @@ class GuardSolver(learner: Learner, constraints: sil.Exp) {
       Expressions.bigOr(clauses)
     }
 
+    // build resource access
     val resource = guarded.access match {
       case access: sil.FieldAccess =>
         sil.FieldAccessPredicate(access, sil.FullPerm()())()
@@ -51,6 +51,8 @@ class GuardSolver(learner: Learner, constraints: sil.Exp) {
         sil.PredicateAccessPredicate(access, sil.FullPerm()())()
     }
 
+    // return guarded resource
     sil.Implies(guard, resource)()
   }
+
 }

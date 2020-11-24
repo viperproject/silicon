@@ -1,19 +1,20 @@
-package rpi
+package rpi.learner
 
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.Paths
 
 import fastparse.core.Parsed.Success
-import viper.silver.ast.{And, EqCmp, Exp, FalseLit, Implies, LocalVar, Not, Or, TrueLit}
+import rpi.Main
+import viper.silver.{ast => sil}
 import viper.silver.verifier.{ModelParser, SingleEntry}
 
 class Smt {
   /**
-    * The Z3 process.
+    * The z3 process.
     */
   private val process: Process = {
-    // check whether z3 file exists and whether it is executable
-    val filename = Inference.z3
+    // check whether the z3 file exists and whether it is executable.
+    val filename = Main.z3
     val file = Paths.get(filename).toFile
     assert(file.isFile, s"$file is not a file.")
     assert(file.canExecute, s"$file is not executable.")
@@ -23,9 +24,10 @@ class Smt {
     val process = builder.start()
 
     // add shutdown hook that destroys the process
-    Runtime.getRuntime.addShutdownHook(new Thread {
+    val thread = new Thread {
       override def run(): Unit = process.destroy()
-    })
+    }
+    Runtime.getRuntime.addShutdownHook(thread)
 
     // return process
     process
@@ -55,10 +57,8 @@ class Smt {
     *
     * @param line The input line.
     */
-  def writeLine(line: String): Unit = {
-    println(line)
+  def writeLine(line: String): Unit =
     writer.println(line)
-  }
 
   /**
     * Initializes Z3.
@@ -111,7 +111,7 @@ class Smt {
     }
   }
 
-  def solve(exp: Exp): Map[String, Boolean] = {
+  def solve(exp: sil.Exp): Map[String, Boolean] = {
     emitCheck(exp)
     readResponse() match {
       case "sat" => readModel()
@@ -121,12 +121,12 @@ class Smt {
     }
   }
 
-  def emitCheck(exp: Exp): Unit = {
+  def emitCheck(exp: sil.Exp): Unit = {
     // enter new scope
     writeLine("(push)")
     // declare variables
     exp
-      .collect { case variable: LocalVar => variable.name }.toSet
+      .collect { case variable: sil.LocalVar => variable.name }.toSet
       .foreach { name: String => writeLine(s"(declare-const $name Bool)") }
     // check
     writeLine(s"(assert ${convert(exp)})")
@@ -136,15 +136,15 @@ class Smt {
     writeLine("(pop)")
   }
 
-  def convert(exp: Exp): String = exp match {
-    case TrueLit() => "true"
-    case FalseLit() => "false"
-    case LocalVar(name, _) => name
-    case Not(arg) => s"(not ${convert(arg)})"
-    case And(left, right) => s"(and ${convert(left)} ${convert(right)})"
-    case Or(left, right) => s"(or ${convert(left)} ${convert(right)})"
-    case Implies(left, right) => s"(=> ${convert(left)} ${convert(right)})"
-    case EqCmp(left, right) => s"(= ${convert(left)} ${convert(right)})"
+  def convert(exp: sil.Exp): String = exp match {
+    case sil.TrueLit() => "true"
+    case sil.FalseLit() => "false"
+    case sil.LocalVar(name, _) => name
+    case sil.Not(arg) => s"(not ${convert(arg)})"
+    case sil.And(left, right) => s"(and ${convert(left)} ${convert(right)})"
+    case sil.Or(left, right) => s"(or ${convert(left)} ${convert(right)})"
+    case sil.Implies(left, right) => s"(=> ${convert(left)} ${convert(right)})"
+    case sil.EqCmp(left, right) => s"(= ${convert(left)} ${convert(right)})"
     case _ => ???
   }
 }

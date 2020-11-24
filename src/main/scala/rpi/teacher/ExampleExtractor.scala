@@ -1,13 +1,14 @@
 package rpi.teacher
 
-import rpi._
+import rpi.inference._
 import rpi.util.{Collections, UnionFind}
 import viper.silicon.interfaces.SiliconRawCounterexample
-import viper.silicon.state.{BasicChunk, Heap, Store, terms}
+import viper.silicon.state._
 import viper.silicon.state.terms.Term
-import viper.silver.{ast => sil}
+import viper.silver.ast.SimpleInfo
 import viper.silver.verifier.{Model, SingleEntry, VerificationError}
 import viper.silver.verifier.reasons.InsufficientPermission
+import viper.silver.{ast => sil}
 
 /**
   * Extracts examples from verification errors.
@@ -25,117 +26,154 @@ class ExampleExtractor(teacher: Teacher) {
   /**
     * Extracts an example from the given verification error.
     *
-    * @param error        The verification error.
-    * @param preInstance  The instance of the precondition to infer.
-    * @param postInstance The instance of the postcondition to infer.
+    * @param error The verification error.
+    * @return The extracted example.
     */
-  def extract(error: VerificationError, preInstance: Instance, postInstance: Instance): Example = {
-    // debug output
-    if (Config.debugPrintError) {
-      println("----- error -----")
-      println(error)
+  def extract(error: VerificationError, context: Context): Example = {
+    // extract counter example and offending location
+    val counter = extractCounter(error)
+    // TODO: I don't like how the optional label is handeled further down.
+    val (offending, label) = extractOffending(error)
+
+
+    // extract states
+    val (currentState, otherStates) = extractStates(counter, label)
+
+    val currentLocation = label match {
+      case Some(name) => context
+        .instance(name)
+        .toActual(offending)
+      case _ => offending
     }
 
-    // extract states and model
-    val counter = error.counterexample match {
-      case Some(value: SiliconRawCounterexample) => value
-    }
-    val (preState, currentState) = extractStates(counter)
-    val model = counter.model
-
-    // extract offending location that caused permission failure
-    val offendingLocation = error.reason match {
-      case InsufficientPermission(location) => location
-    }
-    // adapt offending location to current state
-    val isPost = currentState.label == Labels.POST_STATE
-    val currentLocations =
-      if (isPost) offendingLocation match {
-        case sil.FieldAccess(receiver, field) =>
-          sil.FieldAccess(postInstance.toActual(receiver), field)()
-        case sil.PredicateAccess(arguments, name) =>
-          val updated = arguments.map { argument => postInstance.toActual(argument) }
-          sil.PredicateAccess(updated, name)()
-      }
-      else offendingLocation
-
-
-    // pre record
-    val preRecord = {
-      val adaptor = Adaptor(preState, currentState, preInstance)
-      val predicate = preInstance.specification.predicate
-      val state =
-        if (isPost) {
-          // combine information from pre and post state
-          val preAbstraction = abstractState(preState, preInstance.formalAtoms)
-          val postAbstraction = abstractState(currentState, postInstance.actualAtoms)
-          preAbstraction.meet(adaptor.adaptState(postAbstraction))
-        } else abstractState(preState, preInstance.formalAtoms)
-      val locations = adaptor.adaptLocation(currentLocations)
-      Record(predicate, state, locations)
+    lazy val preRecord = {
+      // TODO: Allow multiple?!
+      assert(otherStates.length == 1)
+      otherStates
+        .map { otherState =>
+          val otherInstance = context.instance(otherState.name)
+          val adaptor = Adaptor(currentState, otherState, otherInstance)
+          val state =
+            if (label.isDefined) {
+              // combine information from pre and post state
+              val currentInstance = context.instance(label.get)
+              val pre = abstractState(otherState, otherInstance)
+              val post = abstractState(currentState, currentInstance)
+              pre.meet(adaptor.adaptState(post))
+            } else abstractState(otherState, otherInstance)
+          // TODO: It could be beneficial to have a set of all equivalent locations.
+          val locations = adaptor.adaptLocation(currentLocation)
+          Record(otherInstance.specification, state, locations)
+        }
+        .head
     }
 
     // post record
     lazy val postRecord = {
-      val predicate = postInstance.specification.predicate
-      val locations = Set(offendingLocation)
-      val state = abstractState(currentState, postInstance.formalAtoms)
-      Record(predicate, state, locations)
+      val currentInstance = context.instance(label.get)
+      val state = abstractState(currentState, currentInstance)
+      val locations = Set(offending)
+      Record(currentInstance.specification, state, locations)
     }
 
     // create example
-    if (isPost) {
+    if (label.isDefined) {
       // evaluate permission amount
-      val variable = s"perm_${teacher.encode(currentLocations)}"
+      val variable = context.variable(currentLocation)
       val term = currentState.store(variable)
-      val permission = evaluate(term, model)
+      val permission = currentState.evaluatePermission(term)
       // create implication or negative example depending on permission amount
-      if (permission == "0.0") Implication(postRecord, preRecord)
+      if (permission == 0) Implication(postRecord, preRecord)
       else Negative(postRecord)
     } else Positive(preRecord)
   }
 
   /**
-    * Extracts the pre state and the current state from the counter-example. The current state represents the state at
-    * which the error happened.
+    * Extracts the counter example from the verification error.
     *
-    * @param counter The counterexample.
-    * @return The pre-state and the current state.
+    * @param error The verification error.
+    * @return The counter example.
     */
-  private def extractStates(counter: SiliconRawCounterexample): (State, State) = {
-    // get path conditions and silicon state
-    val conditions = counter.conditions
-    val state = counter.state
+  private def extractCounter(error: VerificationError): SiliconRawCounterexample =
+    error.counterexample match {
+      case Some(value: SiliconRawCounterexample) => value
+    }
 
+  private def extractOffending(error: VerificationError): (sil.LocationAccess, Option[String]) = {
+    val location = error.reason match {
+      case InsufficientPermission(access) => access
+    }
+    val label = error.offendingNode match {
+      case fold: sil.Fold => fold
+        .info
+        .getUniqueInfo[SimpleInfo]
+        .flatMap { info => info.comment.headOption }
+      case _ => None
+    }
+
+    (location, label)
+  }
+
+  private def extractStates(counter: SiliconRawCounterexample, label: Option[String]): (State, Seq[State]) = {
     // build partitions of equivalent terms
+    // TODO: This might be replaced by evaluating the model?
     val partitions = new UnionFind[Term]
-    conditions.foreach {
+    counter.conditions.foreach {
       case terms.BuiltinEquals(left, right) =>
         partitions.union(left, right)
       case _ => // do nothing
     }
 
+    val state = counter.state
+    val model = counter.model
+
     // build store
+    // TODO: Restrict stores?
     val siliconStore = state.g
     val store = buildStore(siliconStore, partitions)
 
-    // build heaps
-    val initialPre = state.oldHeaps(Labels.PRE_STATE)
-    val siliconCurrent = state.oldHeaps.getOrElse(Labels.POST_STATE, state.h)
-    val preHeap = buildHeap(initialPre, partitions)
-    val currentHeap = buildHeap(siliconCurrent, partitions)
-
-    // build states
-    // TODO: Possibly restrict stores?
-    val currentLabel = {
-      val isPost = state.oldHeaps.isDefinedAt(Labels.POST_STATE)
-      if (isPost) Labels.POST_STATE else Labels.CURRENT_STATE
+    // current state
+    val current = {
+      val siliconHeap = label
+        .flatMap { name => state.oldHeaps.get(name) }
+        .getOrElse(state.h)
+      val name = label.getOrElse("current")
+      val heap = buildHeap(siliconHeap, partitions)
+      State(name, store, heap, model)
     }
-    val preState = State(Labels.PRE_STATE, store, preHeap)
-    val currentState = State(currentLabel, store, currentHeap)
 
-    // return states
-    (preState, currentState)
+    // other states
+    val others = state
+      .oldHeaps
+      .filter { case (name, _) => name != "old" && !label.contains(name) }
+      .map { case (name, siliconHeap) =>
+        val heap = buildHeap(siliconHeap, partitions)
+        State(name, store, heap, model)
+      }
+      .toSeq
+
+    (current, others)
+  }
+
+  /**
+    * Returns an abstraction of the given state for the given instance.
+    *
+    * @param state    The state to abstract.
+    * @param instance The instance (used for the atomic predicates).
+    * @return The abstracted state.
+    */
+  private def abstractState(state: State, instance: Instance): Abstraction = {
+    val label = state.name
+    val atoms = instance.formalAtoms
+    val values = atoms
+      .zipWithIndex
+      .map { case (atom, index) =>
+        val name = s"${label}_$index"
+        val term = state.store(name)
+        atom -> state.evaluateBoolean(term)
+      }
+      .toMap
+    Abstraction(values)
   }
 
   /**
@@ -149,8 +187,9 @@ class ExampleExtractor(teacher: Teacher) {
     store
       .values
       .map { case (variable, term) =>
+        val name = variable.name
         val value = partitions.find(term)
-        variable.name -> value
+        name -> value
       }
 
   /**
@@ -179,48 +218,57 @@ class ExampleExtractor(teacher: Teacher) {
   }
 
   /**
-    * Returns an abstraction of the given state.
-    *
-    * NOTE: The atomic predicates have to be in their canonical order.
-    *
-    * @param state The state.
-    * @param atoms The atomic predicates.
-    * @return The abstracted state.
-    */
-  private def abstractState(state: State, atoms: Seq[sil.Exp]): AbstractState = {
-    val pairs = atoms
-      .zipWithIndex
-      .map { case (atom, i) =>
-        val variable = s"${state.label}_p_$i"
-        state.store(variable) match {
-          case terms.True() => (atom, true)
-          case terms.False() => (atom, false)
-        }
-      }
-    AbstractState(pairs)
-  }
-
-  /**
     * A state extracted from the silicon verifier.
     *
-    * @param label The label identifying the state.
-    * @param store The store.
-    * @param heap  The heap.
+    * @param name  The name identifying the state.
+    * @param store The store map.
+    * @param heap  The heap map.
+    * @param model The model.
     */
-  private case class State(label: String, store: Map[String, Term], heap: Map[Term, Map[String, Term]]) {
+  private case class State(name: String, store: Map[String, Term], heap: Map[Term, Map[String, Term]], model: Model) {
     /**
-      * Evaluates the given silver expression into a silicon term.
+      * Evaluates the given silver expression to a silicon term.
       *
-      * @param expression The expression to evaluate
-      * @return The resulting term
+      * @param expression The expression to evaluate.
+      * @return The resulting term.
       */
-    def evaluate(expression: sil.Exp): Term = expression match {
+    def toTerm(expression: sil.Exp): Term = expression match {
       case sil.LocalVar(name, _) => store(name)
-      case sil.FieldAccess(receiver, field) => heap(evaluate(receiver))(field.name)
+      case sil.FieldAccess(receiver, field) => heap(toTerm(receiver))(field.name)
     }
+
+    def evaluateBoolean(term: Term): Boolean = term match {
+      case terms.True() => true
+      case terms.False() => false
+      case terms.Not(argument) => !evaluateBoolean(argument)
+      case terms.Equals(left, right) => left.sort match {
+        case terms.sorts.Ref => evaluateReference(left) == evaluateReference(right)
+      }
+      case _ => ???
+    }
+
+    def evaluatePermission(term: Term): Double = term match {
+      case terms.NoPerm() => 0.0
+      case terms.FullPerm() => 1.0
+      case terms.Ite(condition, left, right) =>
+        if (evaluateBoolean(condition)) evaluatePermission(left)
+        else evaluatePermission(right)
+      case _ => ???
+    }
+
+    def evaluateReference(term: Term): String = term match {
+      case terms.Var(identifier, _) => readModel(identifier.name)
+      case terms.Null() => readModel(name = "$Ref.null")
+      case _ => ???
+    }
+
+    def readModel(name: String): String =
+      model.entries(name) match {
+        case SingleEntry(value) => value
+      }
   }
 
-  private case class Adaptor(preState: State, currentState: State, preInstance: Instance) {
+  private case class Adaptor(current: State, target: State, instance: Instance) {
     /**
       * The reachability map.
       *
@@ -228,41 +276,42 @@ class ExampleExtractor(teacher: Teacher) {
       */
     private val reachability = recurse(initial, steps = 3)
 
-    /**
-      * Adapts the given expression.
-      *
-      * @param expression The expression to adapt.
-      * @return A set of expressions that can be used to express the given expression in the pre-state.
-      */
-    def adaptPath(expression: sil.Exp): Set[sil.Exp] = {
-      val term = preState.evaluate(expression)
-      reachability
-        .getOrElse(term, Set.empty)
-        .map { adapted => preInstance.toFormal(adapted) }
-    }
-
     def adapt(expression: sil.Exp): Set[sil.Exp] =
       expression match {
         case _: sil.LocalVar | _: sil.FieldAccess => adaptPath(expression)
         case _: sil.NullLit => Set(expression)
         case sil.EqCmp(left, right) => for (l <- adapt(left); r <- adapt(right)) yield sil.EqCmp(l, r)()
         case sil.NeCmp(left, right) => for (l <- adapt(left); r <- adapt(right)) yield sil.NeCmp(l, r)()
-        case _ => ???
       }
 
-    def adaptLocation(location: sil.LocationAccess): Set[sil.LocationAccess] = location match {
-      case sil.FieldAccess(receiver, field) =>
-        adapt(receiver).map { adapted => sil.FieldAccess(adapted, field)() }
-      case sil.PredicateAccess(arguments, name) =>
-        val combinations = Collections.product(arguments.map(adapt))
-        combinations.map { combination => sil.PredicateAccess(combination, name)() }
+    def adaptLocation(location: sil.LocationAccess): Set[sil.LocationAccess] =
+      location match {
+        case sil.FieldAccess(receiver, field) =>
+          adapt(receiver).map { adapted => sil.FieldAccess(adapted, field)() }
+        case sil.PredicateAccess(arguments, name) =>
+          Collections
+            .product(arguments.map { argument => adapt(argument) })
+            .map { combination => sil.PredicateAccess(combination, name)() }
+      }
+
+    def adaptState(state: Abstraction): Abstraction = {
+      val values = state.values.flatMap { case (atom, value) =>
+        adapt(atom).map { adapted => adapted -> value }
+      }
+      Abstraction(values)
     }
 
-    def adaptState(state: AbstractState): AbstractState = {
-      val pairs = state.pairs.flatMap { case (atom, value) =>
-        adapt(atom).map { adapted => (adapted, value) }
-      }
-      AbstractState(pairs)
+    /**
+      * Adapts the access path represented by the given expression.
+      *
+      * @param path The path to adapt.
+      * @return The set of expressions describing the given path in the target state.
+      */
+    private def adaptPath(path: sil.Exp): Set[sil.Exp] = {
+      val term = target.toTerm(path)
+      reachability
+        .getOrElse(term, Set.empty)
+        .map { adapted => instance.toFormal(adapted) }
     }
 
     /**
@@ -272,14 +321,14 @@ class ExampleExtractor(teacher: Teacher) {
       */
     private def initial: Map[Term, Set[sil.Exp]] = {
       val empty = Map.empty[Term, Set[sil.Exp]]
-      currentState
+      current
         .store
-        .filterKeys(_.endsWith("_init"))
+        .filterKeys { name => name.startsWith(target.name) }
         .foldLeft(empty) {
-          case (result, (initial, term)) =>
-            val variable = sil.LocalVar(initial.dropRight(5), sil.Ref)()
-            val variables = result.getOrElse(term, Set.empty) + variable
-            result.updated(term, variables)
+          case (result, (name, value)) =>
+            val variable = sil.LocalVar(name.drop(target.name.length + 1), sil.Ref)()
+            val set = result.getOrElse(value, Set.empty) + variable
+            result.updated(value, set)
         }
     }
 
@@ -297,12 +346,12 @@ class ExampleExtractor(teacher: Teacher) {
         val empty = Map.empty[Term, Set[sil.Exp]]
         val next = map.foldLeft(empty) {
           case (map1, (term, paths)) =>
-            currentState.heap.getOrElse(term, Map.empty).foldLeft(map1) {
+            current.heap.getOrElse(term, Map.empty).foldLeft(map1) {
               case (map2, (name, value)) =>
                 val field = sil.Field(name, sil.Ref)()
-                val extendedPaths = paths.map { path => sil.FieldAccess(path, field)() }
-                val updatedPaths = map2.getOrElse(value, Set.empty) ++ extendedPaths
-                map2.updated(value, updatedPaths)
+                val extended = paths.map { path => sil.FieldAccess(path, field)() }
+                val set = map2.getOrElse(value, Set.empty) ++ extended
+                map2.updated(value, set)
             }
         }
         // recurse and combine results
@@ -310,41 +359,4 @@ class ExampleExtractor(teacher: Teacher) {
       }
   }
 
-
-  /**
-    * Evaluates the given term in the given model.
-    *
-    * @param term  The term to evaluate.
-    * @param model The model.
-    * @return The value of the term in the given model.
-    */
-  private def evaluate(term: Term, model: Model): String = term match {
-    // variable
-    case terms.Var(id, _) => model.entries.get(id.name) match {
-      case Some(SingleEntry(value)) => value
-      case _ => ???
-    }
-    // ???
-    case terms.SortWrapper(wrapped, _) => evaluate(wrapped, model)
-    case terms.First(arg) => s"fst(${evaluate(arg, model)})"
-    case terms.Second(arg) => s"snd(${evaluate(arg, model)}"
-    // permissions
-    case terms.FullPerm() => "1.0"
-    case terms.NoPerm() => "0.0"
-    case terms.PermPlus(left, right) =>
-      val leftValue = evaluate(left, model).toDouble
-      val rightValue = evaluate(right, model).toDouble
-      String.valueOf(leftValue + rightValue)
-    // boolean terms
-    case terms.BuiltinEquals(left, right) =>
-      val leftValue = evaluate(left, model)
-      val rightValue = evaluate(right, model)
-      String.valueOf(leftValue == rightValue)
-    case terms.Ite(cond, left, right) =>
-      evaluate(cond, model) match {
-        case "true" => evaluate(left, model)
-        case "false" => evaluate(right, model)
-      }
-    case _ => ???
-  }
 }

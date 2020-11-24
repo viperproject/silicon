@@ -12,8 +12,14 @@ object Collections {
     if (elements.isEmpty) Seq.empty
     else {
       val first = elements.head
-      val tail = elements.tail
-      tail.map { second => (first, second) } ++ pairs(tail)
+      val rest = elements.tail
+      rest.map { second => (first, second) } ++ pairs(rest)
+    }
+
+  def product[T](sets: Seq[Set[T]]): Set[Seq[T]] =
+    sets match {
+      case head +: tail => product(tail).flatMap { tuple => head.map { element => element +: tuple } }
+      case _ => Set(Seq.empty)
     }
 
   /**
@@ -30,9 +36,4 @@ object Collections {
     map2.foldLeft(map1) { case (map, (key, value)) =>
       map.updated(key, map.get(key).map(combine(_, value)).getOrElse(value))
     }
-
-  def product[T](sets: Seq[Set[T]]): Set[Seq[T]] = sets match {
-    case head +: tail => product(tail).flatMap { tuple => head.map(_ +: tuple) }
-    case _ => Set(Seq.empty)
-  }
 }

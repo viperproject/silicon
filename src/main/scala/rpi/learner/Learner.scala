@@ -2,16 +2,16 @@ package rpi.learner
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import rpi._
-import rpi.util.{Collections, Expressions}
 import viper.silver.{ast => sil}
+import rpi.inference._
+import rpi.util.Collections
 
 /**
-  * The learner.
+  * The learner synthesizing the hypotheses.
   *
-  * @param inference The inference.
+  * @param inference The pointer to the inference.
   */
-class Learner(val inference: Inference) {
+class Learner(inference: Inference) {
   /**
     * The SMT solver.
     */
@@ -20,70 +20,59 @@ class Learner(val inference: Inference) {
   /**
     * The sequence of examples.
     */
-  private var examples = Seq.empty[Example]
+  var examples: Seq[Example] = Seq.empty
 
-  private var predicates = Map.empty[String, sil.Predicate]
-
+  /**
+    * Starts the learner and all of its subcomponents.
+    */
   def start(): Unit = {
     solver.initialize()
   }
 
+  /**
+    * Stops the learner and all of its subcomponents.
+    */
   def stop(): Unit = {}
 
-  def addExamples(examples: Seq[Example]): Unit =
-    this.examples ++= examples
+  /**
+    * Adds the given example.
+    *
+    * @param example The example to add.
+    */
+  def addExample(example: Example): Unit =
+    examples = examples :+ example
 
-  def initial(): Seq[sil.Predicate] = {
-    predicates = inference
-      .specifications
-      .map {
-        case (name, specification) =>
-          val parameters = specification
-            .parameters
-            .map { variable =>
-              val name = variable.name
-              val typ = variable.typ
-              sil.LocalVarDecl(name, typ)()
-            }
-          // create specification predicate
-          name -> sil.Predicate(name, parameters, Some(sil.TrueLit()()))()
-      }
-    // return all specification predicates
-    predicates.values.toSeq
-  }
 
-  def hypothesis(): Seq[sil.Predicate] = {
-    if (Config.debugPrintExamples) {
-      println("----- examples -----")
-      examples.foreach(println)
+  /**
+    * Returns a hypothesis that is consistent with all examples.
+    *
+    * @return The hypothesis.
+    */
+  def hypothesis: Hypothesis =
+    if (examples.isEmpty) Hypothesis(Map.empty)
+    else {
+      // compute templates
+      val templates = computeTemplates(examples)
+
+      // encode examples
+      val encoder = new GuardEncoder(learner = this, templates)
+      val encoding = encoder.encodeExamples(examples)
+
+      // build guards
+      val solver = new GuardBuilder(learner = this, encoding)
+      val predicates = templates
+        .map { case (name, template) =>
+          val arguments = template.parameters
+          val body = solver.buildBody(template)
+          name -> sil.Predicate(name, arguments, Some(body))()
+        }
+
+      // return hypothesis
+      Hypothesis(predicates)
     }
-
-    val templates = computeTemplates(examples)
-    if (Config.debugPrintTemplates) {
-      println("----- templates -----")
-      templates.values.foreach(println)
-    }
-
-    // encode examples
-    val encoder = new GuardEncoder(this, templates)
-    val constraints = encoder.encodeExamples(examples)
-
-    // solve guards
-    val solver = new GuardSolver(this, constraints)
-    templates.foreach {
-      case (name, template) =>
-        val arguments = template.specification.parameters.map { variable => sil.LocalVarDecl(variable.name, variable.typ)() }
-        val body = solver.solveTemplate(template)
-        println(s"$name(${arguments.mkString(",")}) = $body")
-        val inferred = sil.Predicate(name, arguments, Some(body))()
-        predicates = predicates.updated(name, inferred)
-    }
-
-    predicates.values.toSeq
-  }
 
   private def computeTemplates(examples: Seq[Example]): Map[String, Template] = {
-    // collect resources per program position
+    // collect resources per position
     val resources = {
       // collect records from examples
       val records = examples.flatMap {
@@ -92,56 +81,63 @@ class Learner(val inference: Inference) {
         case Implication(left, right) => Seq(left, right)
       }
       // build resource map
-      val empty = Map.empty[sil.PredicateAccess, Set[sil.LocationAccess]]
+      val empty = Map.empty[String, Set[sil.LocationAccess]]
       records.foldLeft(empty) {
-        case (result, record) =>
-          val predicate = record.predicate
-          val resources = record.locations
-          result.updated(predicate, result.getOrElse(predicate, Set.empty) ++ resources)
+        case (map, record) =>
+          val name = record.specification.name
+          val locations = map.getOrElse(name, Set.empty) ++ record.locations
+          map.updated(name, locations)
       }
     }
 
-    // create templates (per program position) and extract structure
-    val guardId = new AtomicInteger
+    // TODO: Compute structure of recursive predicate.
+    val id = new AtomicInteger
     val (templates, structure) = {
       val empty = Map.empty[String, Template]
-      resources.foldLeft((empty, Structure.bottom())) {
-        case ((result, global), (predicate, resources)) =>
-          val name = predicate.predicateName
-          val location = inference.specifications(name)
-          val (instances, local) = computeStructure(resources)
-          // drop long access paths
-          val filtered = resources.filter {
-            case resource: sil.FieldAccess =>
-              Expressions.toSeq(resource).length <= 2
-            case _ => true
+      resources.foldLeft((empty, Structure.bottom)) {
+        case ((map, global), (name, locations)) =>
+          // compute local structure
+          val (instances, local) = {
+            val accesses = locations.collect { case access: sil.FieldAccess => access }
+            Structure.compute(accesses)
           }
-          val body = filtered ++ instances
-          val guarded = body.map { resource => Guarded(guardId.getAndIncrement(), resource) }
-          val template = Template(location, guarded)
-          (result.updated(name, template), global.lub(local))
+          // compute template
+          val template = {
+            // TODO: Drop long access paths.
+            val specification = inference.specification(name)
+            val accesses = locations ++ instances
+            val guarded = accesses.map { access => Guarded(id.getAndIncrement(), access) }
+            Template(specification, guarded)
+          }
+          // add template and update global structure
+          (map.updated(name, template), global.join(local))
       }
     }
 
     // create template for recursive predicate
-    val template = {
-      val location = {
-        val variables = Seq(sil.LocalVar("x", sil.Ref)())
-        val atoms = inference.generateAtoms(variables)
-        Specification(Names.rec, variables, atoms)
+    val recursive = {
+      // create specification
+      val specification = {
+        val parameters = Seq(sil.LocalVarDecl("x", sil.Ref)())
+        val variables = parameters.map { parameter => parameter.localVar }
+        val atoms = inference.instantiateAtoms(variables)
+        Specification("R", parameters, atoms)
       }
-      val accesses = structure.permissions ++ structure.recursions
-      val guarded = accesses.map { access => Guarded(guardId.getAndIncrement(), access) }
-      Template(location, guarded)
+      // create template
+      val accesses = structure.resources ++ structure.recursions
+      val guarded = accesses.map { access => Guarded(id.getAndIncrement(), access) }
+      Template(specification, guarded)
     }
 
-    // return all templates
-    templates.updated(Names.rec, template)
+    // return templates
+    templates.updated("R", recursive)
   }
+}
 
-  private def computeStructure(resources: Set[sil.LocationAccess]): (Set[sil.PredicateAccess], Structure) =
-    resources
-      .collect { case access: sil.FieldAccess => access }
+object Structure {
+  def compute(accesses: Set[sil.FieldAccess]): (Set[sil.PredicateAccess], Structure) = {
+    val empty = Set.empty[sil.PredicateAccess]
+    accesses
       .groupBy { access => access.field }
       .flatMap { case (field, group) =>
         // the resource to add to the structure in case there is a recursion
@@ -149,12 +145,12 @@ class Learner(val inference: Inference) {
           val variable = sil.LocalVar("x", sil.Ref)()
           sil.FieldAccess(variable, field)()
         }
-        // iterate over all pairs of receivers
-        val receivers = group.map { access => Expressions.toSeq(access.rcv) }
+        // iterate over all pairs of receivers in order to detect potential recursions
+        val receivers = group.map { access => toPath(access.rcv) }
         Collections
           .pairs(receivers)
-          .flatMap { case (p1, p2) =>
-            commonPrefix(p1, p2) match {
+          .flatMap { case (receiver1, receiver2) =>
+            commonPrefix(receiver1, receiver2) match {
               case (common, suffix1, suffix2) if suffix2.isEmpty =>
                 val instance = createInstance(common)
                 val recursion = createInstance("x" +: suffix1)
@@ -169,111 +165,58 @@ class Learner(val inference: Inference) {
             }
           }
       }
-      .foldLeft((Set.empty[sil.PredicateAccess], Structure.bottom())) {
+      .foldLeft(empty, bottom) {
         case ((instances, global), (instance, local)) =>
-          (instances + instance, global.lub(local))
+          (instances + instance, global.join(local))
       }
-
-  private def createInstance(path: Seq[String]): sil.PredicateAccess = {
-    val arguments = Seq(toExp(path))
-    sil.PredicateAccess(arguments, Names.rec)()
   }
 
-  private def toExp(path: Seq[String]): sil.Exp = {
-    val variable = sil.LocalVar(path.head, sil.Ref)()
-    path.tail.foldLeft[sil.Exp](variable) {
+  def bottom: Structure = Structure(Set.empty, Set.empty)
+
+  private def createInstance(path: Seq[String]): sil.PredicateAccess = {
+    val arguments = Seq(fromPath(path))
+    sil.PredicateAccess(arguments, "R")()
+  }
+
+  private def toPath(expression: sil.Exp): Seq[String] =
+    expression match {
+      case sil.LocalVar(name, _) => Seq(name)
+      case sil.FieldAccess(receiver, sil.Field(name, _)) => toPath(receiver) :+ name
+    }
+
+  private def fromPath(path: Seq[String]): sil.Exp = {
+    val variable: sil.Exp = sil.LocalVar(path.head, sil.Ref)()
+    path.tail.foldLeft(variable) {
       case (result, name) =>
         val field = sil.Field(name, sil.Ref)()
         sil.FieldAccess(result, field)()
     }
   }
 
-  private def commonPrefix[T](seq1: Seq[T], seq2: Seq[T]): (Seq[T], Seq[T], Seq[T]) = (seq1, seq2) match {
-    case (head1 +: tail1, head2 +: tail2) if head1 == head2 =>
-      val (common, suffix1, suffix2) = commonPrefix(tail1, tail2)
-      (head1 +: common, suffix1, suffix2)
-    case _ => (Seq.empty, seq1, seq2)
+  private def commonPrefix[T](sequence1: Seq[T], sequence2: Seq[T]): (Seq[T], Seq[T], Seq[T]) =
+    (sequence1, sequence2) match {
+      case (head1 +: tail1, head2 +: tail2) if head1 == head2 =>
+        val (common, suffix1, suffix2) = commonPrefix(tail1, tail2)
+        (head1 +: common, suffix1, suffix2)
+      case _ => (Seq.empty, sequence1, sequence2)
+    }
+}
+
+case class Structure(resources: Set[sil.FieldAccess], recursions: Set[sil.PredicateAccess]) {
+  def join(other: Structure): Structure = {
+    val combinedResources = resources ++ other.resources
+    val combinedRecursions = recursions ++ other.recursions
+    Structure(combinedResources, combinedRecursions)
   }
 }
 
-object Structure {
-  def bottom(): Structure = Structure(Set.empty, Set.empty)
-}
+case class Guarded(id: Int, access: sil.LocationAccess)
 
-case class Structure(permissions: Set[sil.FieldAccess], recursions: Set[sil.PredicateAccess]) {
-  def lub(other: Structure): Structure = {
-    val resources = this.permissions ++ other.permissions
-    val recursions = this.recursions ++ other.recursions
-    Structure(resources, recursions)
-  }
-}
-
-case class Guarded(id: Int, access: sil.LocationAccess) {
-  override def toString: String = s"phi_$id -> $access"
-}
 
 case class Template(specification: Specification, accesses: Set[Guarded]) {
   def name: String = specification.name
 
+  def parameters: Seq[sil.LocalVarDecl] = specification.parameters
+
   def atoms: Seq[sil.Exp] = specification.atoms
-
-  def parameters: Seq[String] = specification.parameters.map(_.name)
-
-  override def toString: String = s"$name(${parameters.mkString(", ")}) = ${accesses.mkString(" * ")}"
-}
-
-object Store {
-  def empty: Store = Store(Map.empty)
-}
-
-// TODO: Remove or rename.
-case class Store(map: Map[String, sil.Exp]) {
-  def isEmpty: Boolean = map.isEmpty
-
-  def adapt(expression: sil.Exp): sil.Exp = expression.transform {
-    case variable@sil.LocalVar(name, _) => map.getOrElse(name, variable)
-  }
-}
-
-/**
-  * Used to compute a local view of a state abstraction in terms of the atomic predicates that are available.
-  */
-trait View {
-  def isIdentity: Boolean
-
-  def adapt(state: Seq[Boolean]): Seq[Option[Boolean]]
-}
-
-object View {
-  def identity: View = IdentityView
-
-  def mapped[T](original: Seq[T], adapted: Seq[T]): View = {
-    val indices = adapted.map { element =>
-      val index = original.indexOf(element)
-      if (index == -1) None else Some(index)
-    }
-    MappedView(indices)
-  }
-}
-
-
-case object IdentityView extends View {
-  override def isIdentity: Boolean =
-    true
-
-  override def adapt(state: Seq[Boolean]): Seq[Option[Boolean]] =
-    state.map(Some(_))
-}
-
-case class MappedView(indices: Seq[Option[Int]]) extends View {
-  override def isIdentity: Boolean =
-    false
-
-  override def adapt(state: Seq[Boolean]): Seq[Option[Boolean]] =
-    indices.map { index => index.map(state(_)) }
-
-  override def toString: String = indices
-    .zipWithIndex
-    .map { case (o, i) => s"$i -> ${o.getOrElse("?")}" }
-    .mkString("[", ", ", "]")
 }
