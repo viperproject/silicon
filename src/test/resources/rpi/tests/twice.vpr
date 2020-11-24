@@ -1,0 +1,14 @@
+field val: Int
+
+method main()
+{
+   var x: Ref
+   inhale acc(x.val)
+   increment(x)
+   increment(x)
+}
+
+method increment(a: Ref)
+{
+   a.val := a.val + 1
+}
