@@ -286,11 +286,8 @@ class CheckBuilder(teacher: Teacher) {
   private def buildProgram(): sil.Program = {
     val domains = Seq.empty
     val fields =
-      if (Config.useHeuristics) {
-        // add magic fields that enables fold / unfold heuristics
-        val magic = sil.Field("__CONFIG_HEURISTICS", sil.Bool)()
-        magic +: base.fields
-      } else base.fields
+      if (Config.useHeuristics) inference.magic +: base.fields
+      else base.fields
     val functions = Seq.empty
     val methods = Seq(buildMethod())
     val extensions = Seq.empty

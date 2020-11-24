@@ -2,6 +2,7 @@ package rpi.learner
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import rpi.Config
 import viper.silver.{ast => sil}
 import rpi.inference._
 import rpi.util.Collections
@@ -90,7 +91,6 @@ class Learner(inference: Inference) {
       }
     }
 
-    // TODO: Compute structure of recursive predicate.
     val id = new AtomicInteger
     val (templates, structure) = {
       val empty = Map.empty[String, Template]
@@ -103,10 +103,11 @@ class Learner(inference: Inference) {
           }
           // compute template
           val template = {
-            // TODO: Drop long access paths.
             val specification = inference.specification(name)
             val accesses = locations ++ instances
-            val guarded = accesses.map { access => Guarded(id.getAndIncrement(), access) }
+            val guarded = accesses
+              .filter { access => isAllowed(access) }
+              .map { access => Guarded(id.getAndIncrement(), access) }
             Template(specification, guarded)
           }
           // add template and update global structure
@@ -132,45 +133,59 @@ class Learner(inference: Inference) {
     // return templates
     templates.updated("R", recursive)
   }
+
+  def isAllowed(expression: sil.Exp, complexity: Int = Config.maxLength): Boolean =
+    if (complexity == 0) false
+    else expression match {
+      case sil.FieldAccess(receiver, _) => isAllowed(receiver, complexity - 1)
+      case _ => true
+    }
 }
 
 object Structure {
   def compute(accesses: Set[sil.FieldAccess]): (Set[sil.PredicateAccess], Structure) = {
     val empty = Set.empty[sil.PredicateAccess]
-    accesses
-      .groupBy { access => access.field }
-      .flatMap { case (field, group) =>
-        // the resource to add to the structure in case there is a recursion
-        lazy val resource = {
-          val variable = sil.LocalVar("x", sil.Ref)()
-          sil.FieldAccess(variable, field)()
-        }
-        // iterate over all pairs of receivers in order to detect potential recursions
-        val receivers = group.map { access => toPath(access.rcv) }
-        Collections
-          .pairs(receivers)
-          .flatMap { case (receiver1, receiver2) =>
-            commonPrefix(receiver1, receiver2) match {
-              case (common, suffix1, suffix2) if suffix2.isEmpty =>
-                val instance = createInstance(common)
-                val recursion = createInstance("x" +: suffix1)
-                val structure = Structure(Set(resource), Set(recursion))
-                Some(instance, structure)
-              case (common, suffix1, suffix2) if suffix1.isEmpty =>
-                val instance = createInstance(common)
-                val recursion = createInstance("x" +: suffix2)
-                val structure = Structure(Set(resource), Set(recursion))
-                Some(instance, structure)
-              case _ => None
-            }
+    if (Config.enableRecursion)
+      accesses
+        .groupBy { access => access.field }
+        .flatMap { case (field, group) =>
+          // the resource to add to the structure in case there is a recursion
+          lazy val resource = {
+            val variable = sil.LocalVar("x", sil.Ref)()
+            sil.FieldAccess(variable, field)()
           }
-      }
-      .foldLeft(empty, bottom) {
-        case ((instances, global), (instance, local)) =>
-          (instances + instance, global.join(local))
-      }
+          // iterate over all pairs of receivers in order to detect potential recursions
+          val receivers = group.map { access => toPath(access.rcv) }
+          Collections
+            .pairs(receivers)
+            .flatMap { case (receiver1, receiver2) =>
+              commonPrefix(receiver1, receiver2) match {
+                case (common, suffix1, suffix2) if suffix2.isEmpty =>
+                  val instance = createInstance(common)
+                  val recursion = createInstance("x" +: suffix1)
+                  val structure = Structure(Set(resource), Set(recursion))
+                  Some(instance, structure)
+                case (common, suffix1, suffix2) if suffix1.isEmpty =>
+                  val instance = createInstance(common)
+                  val recursion = createInstance("x" +: suffix2)
+                  val structure = Structure(Set(resource), Set(recursion))
+                  Some(instance, structure)
+                case _ => None
+              }
+            }
+        }
+        .foldLeft(empty, bottom) {
+          case ((instances, global), (instance, local)) =>
+            (instances + instance, global.join(local))
+        }
+    else (empty, bottom)
   }
 
+  /**
+    * Returns the empty structure.
+    *
+    * @return The empty structure.
+    */
   def bottom: Structure = Structure(Set.empty, Set.empty)
 
   private def createInstance(path: Seq[String]): sil.PredicateAccess = {
@@ -212,7 +227,12 @@ case class Structure(resources: Set[sil.FieldAccess], recursions: Set[sil.Predic
 
 case class Guarded(id: Int, access: sil.LocationAccess)
 
-
+/**
+  * A template for a specification that needs to be inferred.
+  *
+  * @param specification The specification for which this is the template.
+  * @param accesses      The guarded accesses that may appear in the specification.
+  */
 case class Template(specification: Specification, accesses: Set[Guarded]) {
   def name: String = specification.name
 

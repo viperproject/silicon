@@ -16,6 +16,11 @@ import viper.silver.{ast => sil}
   */
 class Inference(program: sil.Program) {
   /**
+    * The magic fields that enables fold / unfold heuristics
+    */
+  val magic: sil.Field = sil.Field("__CONFIG_HEURISTICS", sil.Bool)()
+
+  /**
     * The instance of the silicon verifier used to generate the examples.
     */
   private val verifier: Verifier = {
@@ -222,22 +227,31 @@ class Inference(program: sil.Program) {
         case _ => expression
       }
 
-    // annotate methods
-    val methods = program.methods.map { method =>
-      val preconditions = method.pres.map { precondition => substitute(precondition) }
-      val postconditions = method.posts.map { postcondition => substitute(postcondition) }
-      val body = method.body.map { sequence =>
-        sequence.transform({
-          case loop: sil.While =>
-            val invariants = loop.invs.map { invariant => substitute(invariant) }
-            sil.While(loop.cond, invariants, loop.body)()
-        }, Traverse.BottomUp)
-      }
-      // create annotated method
-      sil.Method(method.name, method.formalArgs, method.formalReturns, preconditions, postconditions, body)()
+    // create fields
+    val fields = magic +: program.fields
+    // create predicates
+    val predicates = {
+      val existing = program.predicates
+      val inferred = hypothesis.predicates.get("R").toSeq
+      existing ++ inferred
     }
+    // annotate methods
+    val methods = program
+      .methods
+      .map { method =>
+        val preconditions = method.pres.map { precondition => substitute(precondition) }
+        val postconditions = method.posts.map { postcondition => substitute(postcondition) }
+        val body = method.body.map { sequence =>
+          sequence.transform({
+            case loop: sil.While =>
+              val invariants = loop.invs.map { invariant => substitute(invariant) }
+              sil.While(loop.cond, invariants, loop.body)()
+          }, Traverse.BottomUp)
+        }
+        // create annotated method
+        sil.Method(method.name, method.formalArgs, method.formalReturns, preconditions, postconditions, body)()
+      }
     // return annotated program
-    sil.Program(
-      program.domains, program.fields, program.functions, program.predicates, methods, program.extensions)()
+    sil.Program(program.domains, fields, program.functions, predicates, methods, program.extensions)()
   }
 }

@@ -32,7 +32,7 @@ class ExampleExtractor(teacher: Teacher) {
   def extract(error: VerificationError, context: Context): Example = {
     // extract counter example and offending location
     val counter = extractCounter(error)
-    // TODO: I don't like how the optional label is handeled further down.
+    // TODO: I don't like how the optional label is handled further down.
     val (offending, label) = extractOffending(error)
 
 

@@ -5,14 +5,19 @@ package rpi
   */
 object Config {
   /**
-    * The maximal number of clauses that may be used for a guard.
+    * The flag indicating whether recursive predicates are enabled.
     */
-  val maxClauses = 1
+  val enableRecursion = true
 
   /**
     * The maximal length of access paths allowed to appear in specifications.
     */
   val maxLength = 2
+
+  /**
+    * The maximal number of clauses that may be used for a guard.
+    */
+  val maxClauses = 1
 
   /**
     * The number of rounds after which the learner gets exhausted and gives up.
