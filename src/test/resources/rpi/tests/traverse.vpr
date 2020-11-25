@@ -6,6 +6,7 @@ method main(x: Ref)
    c := x
    while (c != null)
    {
+      __unfold__(c)
       c := c.next
    }
 }

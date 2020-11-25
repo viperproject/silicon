@@ -45,4 +45,8 @@ object Config {
   val renameParameters = true
 
   val debugPrintProgram = true
+
+  val foldAnnotation = "__fold__"
+
+  val unfoldAnnotation = "__unfold__"
 }

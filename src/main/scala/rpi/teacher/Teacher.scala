@@ -44,60 +44,61 @@ class Teacher(val inference: Inference) {
     }
 
     // other helper method to collect checks
-    def complexCollect(prefixes: Seq[Seq[sil.Stmt]], statement: sil.Stmt): (Seq[Seq[sil.Stmt]], Seq[Check]) = statement match {
-      case sil.Seqn(statements, _) =>
-        statements.foldLeft((prefixes, Seq.empty[Check])) {
-          case ((currentPrefixes, checks), currentStatement) =>
-            // process statement
-            val (updated, collected) = complexCollect(currentPrefixes, currentStatement)
+    def complexCollect(prefixes: Seq[Seq[sil.Stmt]], statement: sil.Stmt): (Seq[Seq[sil.Stmt]], Seq[Check]) =
+      statement match {
+        case sil.Seqn(statements, _) =>
+          statements.foldLeft((prefixes, Seq.empty[Check])) {
+            case ((currentPrefixes, checks), currentStatement) =>
+              // process statement
+              val (updated, collected) = complexCollect(currentPrefixes, currentStatement)
+              // combine results
+              val combined = checks ++ collected
+              (updated, combined)
+          }
+        case sil.If(condition, thenBody, elseBody) =>
+          if (Config.useFraming) ???
+          else {
+            // process branches
+            val thenPrefixes = prefixes.map { prefix => prefix :+ sil.Inhale(condition)() }
+            val elsePrefixes = prefixes.map { prefix => prefix :+ sil.Inhale(Expressions.negate(condition))() }
+            val (thenUpdated, thenCollected) = collect(thenPrefixes, thenBody)
+            val (elseUpdated, elseCollected) = collect(elsePrefixes, elseBody)
             // combine results
-            val combined = checks ++ collected
+            val updated = thenUpdated ++ elseUpdated
+            val combined = thenCollected ++ elseCollected
             (updated, combined)
-        }
-      case sil.If(condition, thenBody, elseBody) =>
-        if (Config.useFraming) ???
-        else {
-          // process branches
-          val thenPrefixes = prefixes.map { prefix => prefix :+ sil.Inhale(condition)() }
-          val elsePrefixes = prefixes.map { prefix => prefix :+ sil.Inhale(Expressions.negate(condition))() }
-          val (thenUpdated, thenCollected) = collect(thenPrefixes, thenBody)
-          val (elseUpdated, elseCollected) = collect(elsePrefixes, elseBody)
-          // combine results
-          val updated = thenUpdated ++ elseUpdated
-          val combined = thenCollected ++ elseCollected
-          (updated, combined)
-        }
-      case sil.While(condition, invariants, body) =>
-        val inhales = invariants.map { invariant => sil.Inhale(invariant)() }
-        val exhales = invariants.map { invariant => sil.Exhale(invariant)() }
-        if (Config.useFraming) ???
-        else {
-          // prepare prefixes (inside loop and after loop)
-          val inner = Seq(inhales :+ sil.Inhale(condition)())
-          val after = Seq(inhales :+ sil.Inhale(Expressions.negate(condition))())
-          // process loop body
-          val (updated, collectedChecks) = collect(inner, body)
-          // create checks (before the loop and last inside loop)
-          val beforeChecks = prefixes.map { prefix => Check(prefix ++ exhales) }
-          val lstChecks = updated.map { prefix => Check(prefix ++ exhales) }
-          // combine results
-          val combined = beforeChecks ++ collectedChecks ++ lstChecks
-          (after, combined)
-        }
-      case sil.MethodCall(name, arguments, _) =>
-        val method = methods(name)
-        val exhales = method.pres.map { precondition => sil.Exhale(precondition)() }
-        val inhales = method.posts.map { postcondition => sil.Inhale(postcondition)() }
-        if (Config.useFraming) ???
-        else {
-          val checks = prefixes.map { prefix => Check(prefix ++ exhales) }
-          val after = Seq(inhales)
-          (after, checks)
-        }
-      case _ =>
-        val updated = prefixes.map { prefix => prefix :+ statement }
-        (updated, Seq.empty)
-    }
+          }
+        case sil.While(condition, invariants, body) =>
+          val inhales = invariants.map { invariant => sil.Inhale(invariant)() }
+          val exhales = invariants.map { invariant => sil.Exhale(invariant)() }
+          if (Config.useFraming) ???
+          else {
+            // prepare prefixes (inside loop and after loop)
+            val inner = Seq(inhales :+ sil.Inhale(condition)())
+            val after = Seq(inhales :+ sil.Inhale(Expressions.negate(condition))())
+            // process loop body
+            val (updated, collectedChecks) = collect(inner, body)
+            // create checks (before the loop and last inside loop)
+            val beforeChecks = prefixes.map { prefix => Check(prefix ++ exhales) }
+            val lstChecks = updated.map { prefix => Check(prefix ++ exhales) }
+            // combine results
+            val combined = beforeChecks ++ collectedChecks ++ lstChecks
+            (after, combined)
+          }
+        case sil.MethodCall(name, _, _) if name != Config.unfoldAnnotation =>
+          val method = methods(name)
+          val exhales = method.pres.map { precondition => sil.Exhale(precondition)() }
+          val inhales = method.posts.map { postcondition => sil.Inhale(postcondition)() }
+          if (Config.useFraming) ???
+          else {
+            val checks = prefixes.map { prefix => Check(prefix ++ exhales) }
+            val after = Seq(inhales)
+            (after, checks)
+          }
+        case _ =>
+          val updated = prefixes.map { prefix => prefix :+ statement }
+          (updated, Seq.empty)
+      }
 
     // collect from all methods
     program

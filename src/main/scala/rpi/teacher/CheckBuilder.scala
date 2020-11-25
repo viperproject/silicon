@@ -66,6 +66,16 @@ class CheckBuilder(teacher: Teacher) {
           // exhale specification
           addFold(predicate, Some(label))
           addExhale(predicate)
+        case sil.MethodCall(name, arguments, _) if name == Config.unfoldAnnotation =>
+          hypothesis.predicates.get("R").foreach { predicate =>
+            val access = sil.PredicateAccess(arguments, predicate.name)()
+            val accessPredicate = sil.PredicateAccessPredicate(access, sil.FullPerm()())()
+            val statement = sil.If(
+              sil.EqCmp(sil.CurrentPerm(access)(), sil.FullPerm()())(),
+              sil.Seqn(Seq(sil.Unfold(accessPredicate)()), Seq.empty)(),
+              sil.Seqn(Seq.empty, Seq.empty)())()
+            addStatement(statement)
+          }
         case statement => addStatement(statement)
       }
     // return program and states

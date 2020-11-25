@@ -3,7 +3,8 @@ package rpi.util
 import java.nio.file.{Files, Paths}
 
 import fastparse.core.Parsed.Success
-import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
+import rpi.Config
+import viper.silver.parser._
 import viper.silver.{ast => sil}
 
 import scala.io.Source
@@ -33,7 +34,7 @@ object Parser {
     val stream = Files.newInputStream(path)
     val input = Source.fromInputStream(stream).mkString
     // parse program
-    val result = FastParser.parse(input, path, None)
+    val result = FastParser.parse(input, path)
     val program = result match {
       case Success(program: PProgram, _) if program.errors.isEmpty =>
         program.initProperties()
@@ -42,7 +43,23 @@ object Parser {
     }
     // resolve and translate program
     program
-      .flatMap { parsed => Resolver(parsed).run }
+      .flatMap { parsed => Resolver(beforeResolving(parsed)).run }
       .flatMap { resolved => Translator(resolved).translate }
+      .map { translated => afterTranslating(translated) }
+  }
+
+  private def beforeResolving(input: PProgram): PProgram = {
+    val methods = {
+      val name = PIdnDef(Config.unfoldAnnotation)
+      val arguments = Seq(PFormalArgDecl(PIdnDef("x"), TypeHelper.Ref))
+      val unfoldDummy = PMethod(name, arguments, Seq.empty, Seq.empty, Seq.empty, None)
+      input.methods :+ unfoldDummy
+    }
+    input.copy(methods = methods)
+  }
+
+  private def afterTranslating(input: sil.Program): sil.Program = {
+    val methods = input.methods.filter { method => method.name != Config.unfoldAnnotation }
+    sil.Program(input.domains, input.fields, input.functions, input.predicates, methods, input.extensions)()
   }
 }

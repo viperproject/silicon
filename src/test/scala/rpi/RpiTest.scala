@@ -5,6 +5,7 @@ import java.io.File
 
 import org.scalatest.FunSuite
 import rpi.util.Parser
+import viper.silver.testing.TestAnnotationParser
 import viper.silver.verifier.{Failure, Success}
 
 class RpiTest extends FunSuite {
