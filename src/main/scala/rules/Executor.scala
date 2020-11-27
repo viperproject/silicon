@@ -530,6 +530,15 @@ object executor extends ExecutionRules with Immutable {
         val pve = ApplyFailed(apply)
         magicWandSupporter.applyWand(s, e, pve, v)(Q)
 
+      case viper.silicon.extensions.TryBlock(body) =>
+        var bodySucceeded = false
+        val bodyResult = exec(s, body, v)((s1, v2) => {
+          bodySucceeded = true
+          Q(s1, v2)
+        })
+        if (bodySucceeded) bodyResult
+        else Q(s, v)
+
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: ast.Goto
            | _: ast.If
