@@ -3,7 +3,7 @@ package rpi.util
 import java.nio.file.{Files, Paths}
 
 import fastparse.core.Parsed.Success
-import rpi.Config
+import rpi.Names
 import viper.silver.parser._
 import viper.silver.{ast => sil}
 
@@ -50,16 +50,24 @@ object Parser {
 
   private def beforeResolving(input: PProgram): PProgram = {
     val methods = {
-      val name = PIdnDef(Config.unfoldAnnotation)
       val arguments = Seq(PFormalArgDecl(PIdnDef("x"), TypeHelper.Ref))
-      val unfoldDummy = PMethod(name, arguments, Seq.empty, Seq.empty, Seq.empty, None)
-      input.methods :+ unfoldDummy
+      // dummy fold method
+      val foldDummy = {
+        val name = PIdnDef(Names.foldAnnotation)
+        PMethod(name, arguments, Seq.empty, Seq.empty, Seq.empty, None)
+      }
+      // dummy unfold method
+      val unfoldDummy = {
+        val name = PIdnDef(Names.unfoldAnnotation)
+        PMethod(name, arguments, Seq.empty, Seq.empty, Seq.empty, None)
+      }
+      input.methods :+ foldDummy :+ unfoldDummy
     }
     input.copy(methods = methods)
   }
 
   private def afterTranslating(input: sil.Program): sil.Program = {
-    val methods = input.methods.filter { method => method.name != Config.unfoldAnnotation }
+    val methods = input.methods.filter { method => !Names.isAnnotation(method.name) }
     sil.Program(input.domains, input.fields, input.functions, input.predicates, methods, input.extensions)()
   }
 }

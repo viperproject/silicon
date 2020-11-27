@@ -22,7 +22,7 @@ object Config {
   /**
     * The number of rounds after which the learner gets exhausted and gives up.
     */
-  val maxRounds = 4
+  val maxRounds = 3
 
   /**
     * The flag indicating whether the inference should exploit silicon's framing.
@@ -45,8 +45,25 @@ object Config {
   val renameParameters = true
 
   val debugPrintProgram = true
+}
 
+object Names {
+  /**
+    * The name of the fold annotation.
+    */
   val foldAnnotation = "__fold__"
 
+  /**
+    * The name of the unfold annotation.
+    */
   val unfoldAnnotation = "__unfold__"
+
+  /**
+    * Returns whether the given name corresponds to an annotation.
+    *
+    * @param name The name.
+    * @return True if the name corresponds to an annotation.
+    */
+  def isAnnotation(name: String): Boolean =
+    name == foldAnnotation || name == unfoldAnnotation
 }

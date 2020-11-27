@@ -1,6 +1,6 @@
 package rpi.teacher
 
-import rpi.Config
+import rpi.{Config, Names}
 import rpi.inference._
 import rpi.util.Namespace
 import viper.silver.ast.{NoInfo, SimpleInfo}
@@ -70,12 +70,36 @@ class CheckBuilder(teacher: Teacher) {
           // exhale specification
           addFold(adapted, Some(label))
           addExhale(adapted)
-        case sil.MethodCall(name, arguments, _) if name == Config.unfoldAnnotation =>
+        case sil.MethodCall(name, arguments, _) if name == Names.foldAnnotation =>
+          hypothesis.predicates.get("R").foreach { predicate =>
+            def getCondition(expression: sil.Exp): sil.Exp =
+              expression match {
+                case sil.TrueLit() => expression
+                case sil.FieldAccessPredicate(location, permission) => sil.GeCmp(sil.CurrentPerm(location)(), permission)()
+                case sil.PredicateAccessPredicate(location, permission) => sil.GeCmp(sil.CurrentPerm(location)(), permission)()
+                case sil.And(left, right) => sil.And(getCondition(left), getCondition(right))()
+                case _ => ???
+              }
+
+            // extract condition
+            val condition = predicate.body
+              .map { expression => getCondition(expression) }
+              .getOrElse(sil.TrueLit()())
+
+            val access = sil.PredicateAccess(arguments, "R")()
+            val accessPredicate = sil.PredicateAccessPredicate(access, sil.FullPerm()())()
+            val statement = sil.If(
+              condition,
+              sil.Seqn(Seq(sil.Fold(accessPredicate)()), Seq.empty)(),
+              sil.Seqn(Seq.empty, Seq.empty)())()
+            addStatement(statement)
+          }
+        case sil.MethodCall(name, arguments, _) if name == Names.unfoldAnnotation =>
           hypothesis.predicates.get("R").foreach { predicate =>
             val access = sil.PredicateAccess(arguments, predicate.name)()
             val accessPredicate = sil.PredicateAccessPredicate(access, sil.FullPerm()())()
             val statement = sil.If(
-              sil.EqCmp(sil.CurrentPerm(access)(), sil.FullPerm()())(),
+              sil.GeCmp(sil.CurrentPerm(access)(), sil.FullPerm()())(),
               sil.Seqn(Seq(sil.Unfold(accessPredicate)()), Seq.empty)(),
               sil.Seqn(Seq.empty, Seq.empty)())()
             addStatement(statement)

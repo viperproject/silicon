@@ -1,6 +1,6 @@
 package rpi.teacher
 
-import rpi.Config
+import rpi.{Config, Names}
 import rpi.inference._
 import rpi.util.Expressions
 import viper.silver.verifier.{Failure, Success, VerificationError}
@@ -85,7 +85,7 @@ class Teacher(val inference: Inference) {
             val combined = beforeChecks ++ collectedChecks ++ lstChecks
             (after, combined)
           }
-        case sil.MethodCall(name, arguments, _) if name != Config.unfoldAnnotation =>
+        case sil.MethodCall(name, arguments, _) if !Names.isAnnotation(name) =>
           val method = methods(name)
           val map = Expressions.computeMap(method.formalArgs, arguments)
           val exhales = method.pres.map { condition => sil.Exhale(Expressions.substitute(condition, map))() }
