@@ -1,0 +1,10 @@
+field next: Ref
+
+method traverse(x: Ref)
+{
+   if (x != null)
+   {
+      __unfold__(x)
+      traverse(x.next)
+   }
+}
