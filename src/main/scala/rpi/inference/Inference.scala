@@ -41,6 +41,9 @@ class Inference(program: sil.Program) {
     */
   private val namespace = new Namespace()
 
+  /**
+    * The templates for the atomic predicates.
+    */
   private val templates = {
     // TODO: Implement properly.
     val x0 = sil.LocalVarDecl("x0", sil.Ref)()
@@ -50,15 +53,21 @@ class Inference(program: sil.Program) {
     Seq(t0, t1)
   }
 
-  def instantiateAtoms(variables: Seq[sil.Exp]): Seq[sil.Exp] =
+  /**
+    * Instantiates the atomic predicate templates with the given arguments.
+    *
+    * @param arguments The arguments.
+    * @return The instantiated atomic predicates.
+    */
+  def instantiateAtoms(arguments: Seq[sil.Exp]): Seq[sil.Exp] =
     templates.flatMap { template =>
       template.formalArgs.length match {
-        case 1 => variables
+        case 1 => arguments
           .map { variable =>
             Expressions.instantiate(template, Seq(variable))
           }
         case 2 => Collections
-          .pairs(variables)
+          .pairs(arguments)
           .map { case (first, second) =>
             Expressions.instantiate(template, Seq(first, second))
           }
@@ -159,13 +168,25 @@ class Inference(program: sil.Program) {
     regular ++ recursive
   }
 
+  /**
+    * Returns the specification with the given name.
+    *
+    * @param name The name of the specification.
+    * @return The specifications.
+    */
   def specification(name: String): Specification =
     specifications(name)
 
-  def instance(predicate: sil.PredicateAccess): Instance = {
-    val specification = specifications(predicate.predicateName)
-    val variables = predicate.args.map { case variable: sil.LocalVar => variable }
-    Instance(specification, variables)
+  /**
+    * Returns an instance of the specifications with the given name and arguments.
+    *
+    * @param name      The name of the specification.
+    * @param arguments The arguments with which the specifications should be instantiated.
+    * @return The instance.
+    */
+  def instance(name: String, arguments: Seq[sil.Exp]): Instance = {
+    val specification = specifications(name)
+    Instance(specification, arguments)
   }
 
   /**
@@ -198,6 +219,7 @@ class Inference(program: sil.Program) {
     val hypothesis = learner.hypothesis
     if (rounds == 0) hypothesis
     else {
+      println(s"----- round ${Config.maxRounds - rounds} -----")
       // check hypothesis
       val examples = teacher.check(hypothesis)
       if (examples.isEmpty) hypothesis
@@ -222,8 +244,9 @@ class Inference(program: sil.Program) {
       expression match {
         case sil.PredicateAccessPredicate(predicate, _) =>
           val name = predicate.predicateName
+          val arguments = predicate.args
           val expression = hypothesis.get(name)
-          instance(predicate).toActual(expression)
+          instance(name, arguments).toActual(expression)
         case _ => expression
       }
 

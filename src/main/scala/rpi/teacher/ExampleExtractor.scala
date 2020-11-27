@@ -5,7 +5,6 @@ import rpi.util.{Collections, UnionFind}
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
-import viper.silver.ast.SimpleInfo
 import viper.silver.verifier.{Model, SingleEntry, VerificationError}
 import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silver.{ast => sil}
@@ -34,7 +33,6 @@ class ExampleExtractor(teacher: Teacher) {
     val counter = extractCounter(error)
     // TODO: I don't like how the optional label is handled further down.
     val (offending, label) = extractOffending(error)
-
 
     // extract states
     val (currentState, otherStates) = extractStates(counter, label)
@@ -106,7 +104,7 @@ class ExampleExtractor(teacher: Teacher) {
     val label = error.offendingNode match {
       case fold: sil.Fold => fold
         .info
-        .getUniqueInfo[SimpleInfo]
+        .getUniqueInfo[sil.SimpleInfo]
         .flatMap { info => info.comment.headOption }
       case _ => None
     }

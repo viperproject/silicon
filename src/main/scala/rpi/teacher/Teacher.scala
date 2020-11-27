@@ -85,10 +85,11 @@ class Teacher(val inference: Inference) {
             val combined = beforeChecks ++ collectedChecks ++ lstChecks
             (after, combined)
           }
-        case sil.MethodCall(name, _, _) if name != Config.unfoldAnnotation =>
+        case sil.MethodCall(name, arguments, _) if name != Config.unfoldAnnotation =>
           val method = methods(name)
-          val exhales = method.pres.map { precondition => sil.Exhale(precondition)() }
-          val inhales = method.posts.map { postcondition => sil.Inhale(postcondition)() }
+          val map = Expressions.computeMap(method.formalArgs, arguments)
+          val exhales = method.pres.map { condition => sil.Exhale(Expressions.substitute(condition, map))() }
+          val inhales = method.posts.map { condition => sil.Inhale(Expressions.substitute(condition, map))() }
           if (Config.useFraming) ???
           else {
             val checks = prefixes.map { prefix => Check(prefix ++ exhales) }

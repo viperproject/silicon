@@ -17,10 +17,20 @@ object Expressions {
   def instantiate(predicate: sil.Predicate, arguments: Seq[sil.Exp]): sil.Exp =
     predicate.body match {
       case Some(body) =>
-        val names = predicate.formalArgs.map { parameter => parameter.name }
-        val map = names.zip(arguments).toMap
-        body.transform { case sil.LocalVar(name, _) => map(name) }
+        val map = computeMap(predicate.formalArgs, arguments)
+        substitute(body, map)
       case _ => ???
+    }
+
+  def computeMap(parameters: Seq[sil.LocalVarDecl], arguments: Seq[sil.Exp]): Map[String, sil.Exp] =
+    parameters
+      .map { parameter => parameter.name }
+      .zip(arguments)
+      .toMap
+
+  def substitute(expression: sil.Exp, map: Map[String, sil.Exp]): sil.Exp =
+    expression.transform {
+      case sil.LocalVar(name, _) => map(name)
     }
 
   /**

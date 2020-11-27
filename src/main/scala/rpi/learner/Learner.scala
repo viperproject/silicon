@@ -52,6 +52,7 @@ class Learner(inference: Inference) {
   def hypothesis: Hypothesis =
     if (examples.isEmpty) Hypothesis(Map.empty)
     else {
+      examples.foreach { example => println(example) }
       // compute templates
       val templates = computeTemplates(examples)
 

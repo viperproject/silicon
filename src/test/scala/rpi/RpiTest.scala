@@ -5,14 +5,13 @@ import java.io.File
 
 import org.scalatest.FunSuite
 import rpi.util.Parser
-import viper.silver.testing.TestAnnotationParser
 import viper.silver.verifier.{Failure, Success}
 
 class RpiTest extends FunSuite {
   /**
     * The file to test. If the path points to a directory, all files within this directory are tested.
     */
-  val path = "/rpi/tests/traverse.vpr"
+  val path = "/rpi/tests/recursion.vpr"
 
   /**
     * Run all tests.

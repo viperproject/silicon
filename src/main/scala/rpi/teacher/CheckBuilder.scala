@@ -6,6 +6,8 @@ import rpi.util.Namespace
 import viper.silver.ast.{NoInfo, SimpleInfo}
 import viper.silver.{ast => sil}
 
+import scala.collection.immutable.ListSet
+
 /**
   * Builds programs used to check hypothesis.
   *
@@ -51,21 +53,23 @@ class CheckBuilder(teacher: Teacher) {
       .statements
       .foreach {
         case sil.Inhale(predicate: sil.PredicateAccessPredicate) =>
-          // inhale specification
-          addInhale(predicate)
-          addUnfold(predicate)
+          // adapt predicate and get specification instance
+          val (adapted, instance) = adaptPredicate(predicate, !Config.useFraming)
+          // inhale specifications
+          addInhale(adapted)
+          addUnfold(adapted)
           // save state
-          val instance = inference.instance(predicate.loc)
           saveState(instance)
         case sil.Exhale(predicate: sil.PredicateAccessPredicate) =>
+          // adapt predicate and get specification instance
+          val (adapted, instance) = adaptPredicate(predicate, false)
           // save permissions
-          val instance = inference.instance(predicate.loc)
           savePermissions(instance, hypothesis)
           // save state
           val label = saveState(instance)
           // exhale specification
-          addFold(predicate, Some(label))
-          addExhale(predicate)
+          addFold(adapted, Some(label))
+          addExhale(adapted)
         case sil.MethodCall(name, arguments, _) if name == Config.unfoldAnnotation =>
           hypothesis.predicates.get("R").foreach { predicate =>
             val access = sil.PredicateAccess(arguments, predicate.name)()
@@ -80,6 +84,50 @@ class CheckBuilder(teacher: Teacher) {
       }
     // return program and states
     (buildProgram(), context)
+  }
+
+  def adaptPredicate(predicate: sil.PredicateAccessPredicate, inhale: Boolean): (sil.PredicateAccessPredicate, Instance) = {
+    // make sure all arguments are variables
+    val access = predicate.loc
+    val (arguments, assignments) = {
+      val empty = (Seq.empty[sil.LocalVar], Seq.empty[sil.LocalVarAssign])
+      access.args.foldLeft(empty) {
+        case ((variables, collected), variable: sil.LocalVar) =>
+          (variables :+ variable, collected)
+        case ((variables, collected), argument) =>
+          val name = namespace.uniqueIdentifier(base = "t", Some(0))
+          val variable = sil.LocalVar(name, argument.typ)()
+          val assignment = sil.LocalVarAssign(variable, argument)()
+          (variables :+ variable, collected :+ assignment)
+      }
+    }
+
+    // NOTE: The list set ensures that the insertion order is preserved.
+    def collectAccesses(expression: sil.Exp, set: ListSet[sil.FieldAccess]): ListSet[sil.FieldAccess] =
+      expression match {
+        case access@sil.FieldAccess(receiver, _) => collectAccesses(receiver, set) + access
+        case _ => set
+      }
+
+    // inhale permissions required to access arguments
+    if (inhale) assignments
+      .foldLeft(ListSet.empty[sil.FieldAccess]) {
+        case (accesses, assignment) =>
+          collectAccesses(assignment.rhs, accesses)
+      }
+      .foreach { access =>
+        val predicate = sil.FieldAccessPredicate(access, sil.FullPerm()())()
+        addInhale(predicate)
+      }
+
+    // add assignments
+    assignments.foreach { assignment => addStatement(assignment) }
+
+    // return adapted predicate and instance
+    val adaptedAccess = sil.PredicateAccess(arguments, access.predicateName)()
+    val adapted = sil.PredicateAccessPredicate(adaptedAccess, predicate.perm)()
+    val instance = inference.instance(access.predicateName, arguments)
+    (adapted, instance)
   }
 
   /**
@@ -180,7 +228,7 @@ class CheckBuilder(teacher: Teacher) {
     // save values of all variables
     instance
       .arguments
-      .foreach { variable =>
+      .foreach { case variable: sil.LocalVar =>
         val name = s"${label}_${variable.name}"
         saveValue(name, variable)
       }
