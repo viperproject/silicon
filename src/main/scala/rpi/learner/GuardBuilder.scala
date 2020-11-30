@@ -4,7 +4,7 @@ import rpi.Config
 import rpi.util.Expressions
 import viper.silver.{ast => sil}
 
-class GuardBuilder(learner: Learner, constraints: sil.Exp) {
+class GuardBuilder(learner: Learner, constraints: Seq[sil.Exp]) {
 
   private val model: Map[String, Boolean] = {
     val solver = learner.solver
@@ -54,5 +54,4 @@ class GuardBuilder(learner: Learner, constraints: sil.Exp) {
     // return guarded resource
     sil.Implies(guard, resource)()
   }
-
 }

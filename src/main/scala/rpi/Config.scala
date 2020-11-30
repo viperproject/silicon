@@ -22,7 +22,7 @@ object Config {
   /**
     * The number of rounds after which the learner gets exhausted and gives up.
     */
-  val maxRounds = 3
+  val maxRounds = 5
 
   /**
     * The flag indicating whether the inference should exploit silicon's framing.
@@ -45,6 +45,8 @@ object Config {
   val renameParameters = true
 
   val debugPrintProgram = true
+  val debugPrintTemplates = true
+  val debugPrintGuards = true
 }
 
 object Names {

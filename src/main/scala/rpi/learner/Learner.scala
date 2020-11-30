@@ -58,10 +58,10 @@ class Learner(inference: Inference) {
 
       // encode examples
       val encoder = new GuardEncoder(learner = this, templates)
-      val encoding = encoder.encodeExamples(examples)
+      val encodings = encoder.encodeExamples(examples)
 
       // build guards
-      val solver = new GuardBuilder(learner = this, encoding)
+      val solver = new GuardBuilder(learner = this, encodings)
       val predicates = templates
         .map { case (name, template) =>
           val arguments = template.parameters
@@ -130,9 +130,13 @@ class Learner(inference: Inference) {
       val guarded = accesses.map { access => Guarded(id.getAndIncrement(), access) }
       Template(specification, guarded)
     }
+    val result = templates.updated("R", recursive)
+
+    if (Config.debugPrintTemplates) result
+      .foreach { case (_, template) => println(template) }
 
     // return templates
-    templates.updated("R", recursive)
+    result
   }
 
   def isAllowed(expression: sil.Exp, complexity: Int = Config.maxLength): Boolean =
@@ -235,9 +239,36 @@ case class Guarded(id: Int, access: sil.LocationAccess)
   * @param accesses      The guarded accesses that may appear in the specification.
   */
 case class Template(specification: Specification, accesses: Set[Guarded]) {
+  /**
+    * Returns the name identifying the specification.
+    *
+    * @return The name.
+    */
   def name: String = specification.name
 
+  /**
+    * Returns the parameters for the specifications.
+    *
+    * @return The parameters.
+    */
   def parameters: Seq[sil.LocalVarDecl] = specification.parameters
 
+  /**
+    * Returns the atomic predicates that may be used for the specification.
+    *
+    * @return The atomic predicates.
+    */
   def atoms: Seq[sil.Exp] = specification.atoms
+
+  override def toString: String = {
+    val list = parameters
+      .map { parameter => parameter.name }
+      .mkString(", ")
+    val body = accesses
+      .map { case Guarded(id, access) =>
+        s"phi_$id => $access"
+      }
+      .mkString(" && ")
+    s"$name($list) = $body"
+  }
 }

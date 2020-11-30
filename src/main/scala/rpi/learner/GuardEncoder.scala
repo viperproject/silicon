@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import rpi.Config
 import rpi.inference._
-import rpi.util.Expressions
+import rpi.util.{Collections, Expressions}
 import viper.silver.{ast => sil}
 
 class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
@@ -17,33 +17,79 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     */
   private type Guard = Seq[Seq[(Int, Seq[sil.Exp])]]
 
-  private val guards: Map[String, Map[sil.LocationAccess, Guard]] =
-    templates.map { case (name, template) =>
-      // TODO: Depth depending on length of longest access path.
-      name -> collectGuards(template, View.empty, depth = 3)
-    }
+  private val guards: Map[String, Map[sil.LocationAccess, Guard]] = {
+    // compute effective guards.
+    val result = templates
+      .map { case (name, template) =>
+        // TODO: Depth depending on length of longest access path.
+        name -> collectGuards(template, View.empty, depth = 3)
+      }
+
+    // debug printing
+    if (Config.debugPrintGuards) result
+      .foreach { case (name, map) => map
+        .foreach { case (location, guard) =>
+          val label = s"$location@$name"
+          val string = guard
+            .map { choice =>
+              choice
+                .map { case (id, atoms) =>
+                  s"phi_$id${atoms.mkString("[", ",", "]")}"
+                }
+                .mkString(" && ")
+            }
+            .mkString("{", ", ", "}")
+          println(s"$label: $string")
+        }
+      }
+
+    // return effective guards
+    result
+  }
 
   private val unique = new AtomicInteger
 
-  def encodeExamples(examples: Seq[Example]): sil.Exp = {
-    // encode examples
-    val encoded = examples.map { example => encodeExample(example) }
-    Expressions.bigAnd(encoded)
-  }
+  /**
+    * Returns the encoding of the given examples.
+    *
+    * @param examples The examples to encode.
+    * @return The constraints representing the encodings of the examples.
+    */
+  def encodeExamples(examples: Seq[Example]): Seq[sil.Exp] =
+    examples.flatMap { example => encodeExample(example) }
 
-  def encodeExample(example: Example): sil.Exp =
+  /**
+    * Returns the encoding of the given example.
+    *
+    * @param example The example to encode.
+    * @return The constraints representing the encoding of the example.
+    */
+  def encodeExample(example: Example): Seq[sil.Exp] =
     example match {
-      case Positive(record) => encodeRecord(record)
-      case Negative(record) => sil.Not(encodeRecord(record))()
-      case Implication(left, right) => sil.Implies(encodeRecord(left), encodeRecord(right))()
+      case Positive(record) =>
+        val (encoding, global) = encodeRecord(record)
+        encoding +: global
+      case Negative(record) =>
+        val (encoding, global) = encodeRecord(record)
+        sil.Not(encoding)() +: global
+      case Implication(left, right) =>
+        val (encoding1, global1) = encodeRecord(left)
+        val (encoding2, global2) = encodeRecord(right)
+        sil.Implies(encoding1, encoding2)() +: (global1 ++ global2)
     }
 
-  def encodeRecord(record: Record): sil.Exp = {
+  /**
+    * Returns the encoding of the given record.
+    *
+    * @param record The record to encode.
+    * @return The encoding plus a list of global constraints.
+    */
+  def encodeRecord(record: Record): (sil.Exp, Seq[sil.Exp]) = {
     val name = record.specification.name
     val localGuards = guards.getOrElse(name, Map.empty)
 
-    // compute encoding for all choices
-    val choices = record
+    // compute encodings
+    val encodings = record
       .locations
       .flatMap { location =>
         // get guard for location
@@ -58,10 +104,10 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
         }
       }
 
-    // encode that only one choice can be picked
-    val (auxiliaries, constraints) = {
+    // assign encodings to auxiliary variables
+    val (choices, constraints) = {
       val empty = Seq.empty[sil.Exp]
-      choices.foldLeft((empty, empty)) {
+      encodings.foldLeft((empty, empty)) {
         case ((variables, equalities), choice) =>
           val variable = sil.LocalVar(s"t_${unique.getAndIncrement()}", sil.Bool)()
           val equality = sil.EqCmp(variable, choice)()
@@ -69,8 +115,17 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
       }
     }
 
-    // return encoding
-    sil.And(Expressions.one(auxiliaries), Expressions.bigAnd(constraints))()
+    // compute encodings for picking at least one and at most one choice
+    val atLeast = Expressions.bigOr(choices)
+    val atMost = {
+      val pairs = Collections
+        .pairs(choices)
+        .map { case (first, second) => sil.Not(sil.And(first, second)())() }
+      Expressions.bigAnd(pairs)
+    }
+
+    // return encoding and global constraints
+    (atLeast, atMost +: constraints)
   }
 
   /**

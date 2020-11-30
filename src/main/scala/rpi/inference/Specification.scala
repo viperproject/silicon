@@ -8,8 +8,8 @@ import viper.silver.{ast => sil}
   * Represents a specification that needs to be inferred.
   *
   * @param name       The name identifying the specification.
-  * @param parameters The parameters for the specifications.
-  * @param atoms      The atomic predicates that may be used for the specifications.
+  * @param parameters The parameters for the specification.
+  * @param atoms      The atomic predicates that may be used for the specification.
   */
 case class Specification(name: String, parameters: Seq[sil.LocalVarDecl], atoms: Seq[sil.Exp])
 

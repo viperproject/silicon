@@ -57,8 +57,10 @@ class Smt {
     *
     * @param line The input line.
     */
-  def writeLine(line: String): Unit =
+  def writeLine(line: String): Unit = {
+    println(line)
     writer.println(line)
+  }
 
   /**
     * Initializes Z3.
@@ -111,8 +113,8 @@ class Smt {
     }
   }
 
-  def solve(exp: sil.Exp): Map[String, Boolean] = {
-    emitCheck(exp)
+  def solve(constraints: Seq[sil.Exp]): Map[String, Boolean] = {
+    emitCheck(constraints)
     readResponse() match {
       case "sat" => readModel()
       case response =>
@@ -121,15 +123,21 @@ class Smt {
     }
   }
 
-  def emitCheck(exp: sil.Exp): Unit = {
+  def emitCheck(constraints: Seq[sil.Exp]): Unit = {
     // enter new scope
     writeLine("(push)")
     // declare variables
-    exp
-      .collect { case variable: sil.LocalVar => variable.name }.toSet
+    constraints
+      .flatMap { constraint =>
+        constraint.collect { case variable: sil.LocalVar => variable.name }
+      }
+      .distinct
       .foreach { name: String => writeLine(s"(declare-const $name Bool)") }
     // check
-    writeLine(s"(assert ${convert(exp)})")
+    constraints
+      .foreach { constraint =>
+        writeLine(s"(assert ${convert(constraint)})")
+      }
     writeLine("(check-sat)")
     writeLine("(get-model)")
     // leave scope

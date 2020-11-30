@@ -5,6 +5,11 @@ method main()
     var x: Ref
     var i: Int
 
+    x := null
+    i := 10
+
+    __fold__(x)
+
     while (i > 0)
     {
         var t: Ref
