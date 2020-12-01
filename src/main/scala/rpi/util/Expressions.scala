@@ -56,23 +56,6 @@ object Expressions {
       .getOrElse(sil.FalseLit()())
 
   /**
-    * Returns an expression that is true if exactly one of the given expressions is true.
-    *
-    * @param expressions The expressions.
-    * @return The resulting expression.
-    */
-  def one(expressions: Iterable[sil.Exp]): sil.Exp = {
-    val atLeast = bigOr(expressions)
-    val atMost = {
-      val pairs = Collections
-        .pairs(expressions)
-        .map { case (first, second) => sil.Not(sil.And(first, second)())() }
-      bigAnd(pairs)
-    }
-    sil.And(atLeast, atMost)()
-  }
-
-  /**
     * Negates the given expression.
     *
     * @param expression The expression to negate.
