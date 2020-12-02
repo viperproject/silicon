@@ -43,7 +43,7 @@ case class InverseFunctions(condition: Term,
     /* TODO: Memoisation might be worthwhile, e.g. because often used with `?r` */
     qvarsToInverses.values.map(inv =>
       App(inv, additionalArguments ++ arguments)
-    )(collection.breakOut)
+    ).to(Seq)
 
   def qvarsToInversesOf(argument: Term): Map[Var, App] =
     qvarsToInversesOf(Seq(argument))
@@ -52,7 +52,7 @@ case class InverseFunctions(condition: Term,
     /* TODO: Memoisation might be worthwhile, e.g. because often used with `?r` */
     qvarsToInverses.map {
       case (x, inv) => x -> App(inv, additionalArguments ++ arguments)
-    }(collection.breakOut)
+    }.to(Map)
 
   override lazy val toString: String = indentedToString("")
 
@@ -467,7 +467,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     // Create a replacement map for rewriting e(r_1, r_2, ...) to e(first(s), second(s), ...),
     // including necessary sort wrapper applications
     val snapToCodomainTermsSubstitution: Map[Term, Term] =
-      codomainQVars.zip(fromSnapTree(qvar, codomainQVars))(collection.breakOut)
+      codomainQVars.zip(fromSnapTree(qvar, codomainQVars)).to(Map)
 
     // Rewrite c(r_1, r_2, ...) to c(first(s), second(s), ...)
     val transformedOptSmDomainDefinitionCondition =
@@ -1528,7 +1528,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       additionalInvArgs.toVector,
       axInvsOfFct,
       axFctsOfInvs,
-      qvars.zip(inverseFunctions)(collection.breakOut))
+      qvars.zip(inverseFunctions).to(Map))
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])

@@ -411,7 +411,7 @@ object executor extends ExecutionRules {
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = Verifier.program.findMethod(methodName)
         val fargs = meth.formalArgs.map(_.localVar)
-        val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+        val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
         val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
         val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
 

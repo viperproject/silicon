@@ -9,7 +9,7 @@ package viper.silicon.supporters
 import java.io.File
 import java.net.URL
 import scala.reflect.ClassTag
-import fastparse.all
+import fastparse._
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.PreambleContributor
@@ -94,7 +94,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   protected def computeGroundTypeInstances(program: ast.Program): InsertionOrderedSet[BuiltinDomainType] =
     program.groundTypeInstances.collect {
       case builtinDomainTypeTag(s) => s
-    }.to[InsertionOrderedSet]
+    }.to(InsertionOrderedSet)
 
   protected def transformSourceDomain(sourceDomain: ast.Domain): ast.Domain = sourceDomain
 
@@ -193,7 +193,7 @@ private object utils {
       }
 
     viper.silver.parser.FastParser.parse(content, fromPath) match {
-      case fastparse.core.Parsed.Success(parsedProgram: viper.silver.parser.PProgram, _) =>
+      case fastparse.Parsed.Success(parsedProgram: viper.silver.parser.PProgram, _) =>
         assert(parsedProgram.errors.isEmpty, s"Unexpected parsing errors: ${parsedProgram.errors}")
 
         val resolver = viper.silver.parser.Resolver(parsedProgram)
@@ -203,8 +203,8 @@ private object utils {
 
         program
 
-      case fastparse.core.Parsed.Failure(msg, index, extra) =>
-        val (line, col) = ast.LineCol(extra.input.asInstanceOf[all.ParserInput], index)
+      case fastparse.Parsed.Failure(msg, index, extra) =>
+        val (line, col) = ast.LineCol(extra.input.asInstanceOf[ParserInput], index)
         sys.error(s"Failure: $msg, at ${viper.silver.parser.FilePosition(fromPath, line, col)}")
     }
   }

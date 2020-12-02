@@ -199,7 +199,7 @@ object stateConsolidator extends StateConsolidationRules {
   def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State = {
     heaps.foldLeft(s) { case (si, heap) =>
       val chunks: Seq[QuantifiedFieldChunk] =
-        heap.values.collect({ case ch: QuantifiedFieldChunk => ch })(collection.breakOut)
+        heap.values.collect({ case ch: QuantifiedFieldChunk => ch }).to(Seq)
 
       val receiver = `?r`
       val args = Seq(receiver)

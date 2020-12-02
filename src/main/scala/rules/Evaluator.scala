@@ -647,7 +647,7 @@ object evaluator extends EvaluationRules {
              * The first approach is slightly simpler and suffices here, though.
              */
             val fargs = func.formalArgs.map(_.localVar)
-            val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakout)
+            val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
             val exampleTrafo = CounterexampleTransformer({
               case ce: SiliconCounterexample => ce.withStore(s2.g)
               case ce => ce
