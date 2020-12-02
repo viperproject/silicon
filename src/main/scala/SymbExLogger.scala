@@ -821,7 +821,7 @@ class ExecuteRecord(v: ast.Stmt, s: State, p: PathConditionStack) extends Sequen
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "execute") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "execute") + "," + JsonHelper.pair("pos", viper.silicon.utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }
@@ -836,7 +836,7 @@ class EvaluateRecord(v: ast.Exp, s: State, p: PathConditionStack) extends Sequen
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "evaluate") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "evaluate") + "," + JsonHelper.pair("pos", viper.silicon.utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }
@@ -851,7 +851,7 @@ class ProduceRecord(v: ast.Exp, s: State, p: PathConditionStack) extends Sequent
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "produce") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "produce") + "," + JsonHelper.pair("pos", viper.silicon.utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }
@@ -867,7 +867,7 @@ class ConsumeRecord(v: ast.Exp, s: State, p: PathConditionStack)
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "consume") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "consume") + "," + JsonHelper.pair("pos", viper.silicon.utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }

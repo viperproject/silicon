@@ -527,15 +527,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   validateOpt(timeout) {
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
-    case _ => Right(Unit)
+    case _ => Right(())
   }
 
   validateOpt(ideModeAdvanced, numberOfParallelVerifiers) {
     case (Some(false), _) =>
-      Right(Unit)
+      Right(())
     case (Some(true), Some(n)) =>
       if (n == 1)
-        Right(Unit)
+        Right(())
       else
         Left(  s"Option ${ideModeAdvanced.name} requires setting "
              + s"${numberOfParallelVerifiers.name} to 1")

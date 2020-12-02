@@ -215,7 +215,7 @@ package object utils {
       resource match {
         case l: silver.ast.Location => l.name
         case m: silver.ast.MagicWand => m.toString()
-        case m@silver.ast.MagicWandOp => s"${m.op}@${sourceLineColumn(m)}"
+        case m@silver.ast.MagicWandOp => s"${silver.ast.MagicWandOp.op}@${sourceLineColumn(m)}"
       }
     }
 

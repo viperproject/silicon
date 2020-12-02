@@ -8,6 +8,7 @@ package viper.silicon.supporters
 
 import java.io.File
 import java.net.URL
+
 import scala.reflect.ClassTag
 import fastparse._
 import viper.silver.ast
@@ -92,9 +93,9 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   }
 
   protected def computeGroundTypeInstances(program: ast.Program): InsertionOrderedSet[BuiltinDomainType] =
-    program.groundTypeInstances.collect {
+    InsertionOrderedSet(program.groundTypeInstances.collect {
       case builtinDomainTypeTag(s) => s
-    }.to(InsertionOrderedSet)
+    })
 
   protected def transformSourceDomain(sourceDomain: ast.Domain): ast.Domain = sourceDomain
 
