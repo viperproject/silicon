@@ -2070,7 +2070,7 @@ object utils {
     /* Taken from http://stackoverflow.com/a/8569263.
    * Computes the cartesian product of `xs`.
    */
-  def cartesianProduct[A](xs: Traversable[Traversable[A]]): Seq[Seq[A]] =
+  def cartesianProduct[A](xs: Iterable[Iterable[A]]): Seq[Seq[A]] =
     xs.foldLeft(Seq(Seq.empty[A])){(x, y) => for (a <- x.view; b <- y) yield a :+ b}
 }
 
