@@ -35,55 +35,52 @@ class ExampleExtractor(teacher: Teacher) {
     val (offending, label) = extractOffending(error)
 
     // extract states
-    val (currentState, otherStates) = extractStates(counter, label)
+    val (currentState, inhaledStates) = extractStates(counter, label, context)
 
     val currentLocation = label match {
       case Some(name) => context
-        .instance(name)
+        .getExhale(name)
         .toActual(offending)
       case _ => offending
     }
 
-    lazy val preRecord = {
-      // TODO: Allow multiple?!
-      assert(otherStates.length == 1)
-      otherStates
-        .map { otherState =>
-          val otherInstance = context.instance(otherState.name)
-          val adaptor = Adaptor(currentState, otherState, otherInstance)
+    lazy val preRecords =
+      inhaledStates
+        .map { inhaledState =>
+          val inhaledInstance = context.getInhaled(inhaledState.label)
+          val adaptor = Adaptor(currentState, inhaledState, inhaledInstance)
           val state =
             if (label.isDefined) {
               // combine information from pre and post state
-              val currentInstance = context.instance(label.get)
-              val pre = abstractState(otherState, otherInstance)
+              val currentInstance = context.getExhale(label.get)
+              val pre = abstractState(inhaledState, inhaledInstance)
               val post = abstractState(currentState, currentInstance)
               pre.meet(adaptor.adaptState(post))
-            } else abstractState(otherState, otherInstance)
+            } else abstractState(inhaledState, inhaledInstance)
           // TODO: It could be beneficial to have a set of all equivalent locations.
           val locations = adaptor.adaptLocation(currentLocation)
-          Record(otherInstance.specification, state, locations)
+          Record(inhaledInstance.specification, state, locations)
         }
-        .head
-    }
 
     // post record
-    lazy val postRecord = {
-      val currentInstance = context.instance(label.get)
+    lazy val postRecords = {
+      val currentInstance = context.getExhale(label.get)
       val state = abstractState(currentState, currentInstance)
       val locations = Set(offending)
-      Record(currentInstance.specification, state, locations)
+      val record = Record(currentInstance.specification, state, locations)
+      Seq(record)
     }
 
     // create example
     if (label.isDefined) {
       // evaluate permission amount
-      val variable = context.variable(currentLocation)
-      val term = currentState.store(variable)
+      val name = context.name(currentLocation)
+      val term = currentState.store(name)
       val permission = currentState.evaluatePermission(term)
       // create implication or negative example depending on permission amount
-      if (permission == 0) Implication(postRecord, preRecord)
-      else Negative(postRecord)
-    } else Positive(preRecord)
+      if (permission == 0) Implication(postRecords, preRecords)
+      else Negative(postRecords)
+    } else Positive(preRecords)
   }
 
   /**
@@ -112,7 +109,18 @@ class ExampleExtractor(teacher: Teacher) {
     (location, label)
   }
 
-  private def extractStates(counter: SiliconRawCounterexample, label: Option[String]): (State, Seq[State]) = {
+  /**
+    * Extracts states from the given counter example.
+    *
+    * @param counter The counter example.
+    * @param context The context provided by the check builder.
+    * @return A tuple holding the current state and a sequence of states that precede the current state where some
+    *         specifications were inhaled.
+    */
+  private def extractStates(counter: SiliconRawCounterexample, label: Option[String], context: Context): (State, Seq[State]) = {
+    val state = counter.state
+    val model = counter.model
+
     // build partitions of equivalent terms
     // TODO: This might be replaced by evaluating the model?
     val partitions = new UnionFind[Term]
@@ -122,9 +130,6 @@ class ExampleExtractor(teacher: Teacher) {
       case _ => // do nothing
     }
 
-    val state = counter.state
-    val model = counter.model
-
     // build store
     // TODO: Restrict stores?
     val siliconStore = state.g
@@ -132,25 +137,25 @@ class ExampleExtractor(teacher: Teacher) {
 
     // current state
     val current = {
-      val siliconHeap = label
-        .flatMap { name => state.oldHeaps.get(name) }
-        .getOrElse(state.h)
-      val name = label.getOrElse("current")
+      // TODO: Current heap
+      val siliconHeap = state.h
+      val name = "current"
       val heap = buildHeap(siliconHeap, partitions)
       State(name, store, heap, model)
     }
 
-    // other states
-    val others = state
+    // inhaled states
+    val inhaled = state
       .oldHeaps
-      .filter { case (name, _) => name != "old" && !label.contains(name) }
-      .map { case (name, siliconHeap) =>
+      .filter { case (label, _) => context.isInhaled(label) }
+      .map { case (label, siliconHeap) =>
         val heap = buildHeap(siliconHeap, partitions)
-        State(name, store, heap, model)
+        State(label, store, heap, model)
       }
       .toSeq
 
-    (current, others)
+    // return states
+    (current, inhaled)
   }
 
   /**
@@ -161,7 +166,7 @@ class ExampleExtractor(teacher: Teacher) {
     * @return The abstracted state.
     */
   private def abstractState(state: State, instance: Instance): Abstraction = {
-    val label = state.name
+    val label = state.label
     val atoms = instance.formalAtoms
     val values = atoms
       .zipWithIndex
@@ -218,12 +223,12 @@ class ExampleExtractor(teacher: Teacher) {
   /**
     * A state extracted from the silicon verifier.
     *
-    * @param name  The name identifying the state.
+    * @param label The label identifying the state.
     * @param store The store map.
     * @param heap  The heap map.
     * @param model The model.
     */
-  private case class State(name: String, store: Map[String, Term], heap: Map[Term, Map[String, Term]], model: Model) {
+  private case class State(label: String, store: Map[String, Term], heap: Map[Term, Map[String, Term]], model: Model) {
     /**
       * Evaluates the given silver expression to a silicon term.
       *
@@ -231,7 +236,7 @@ class ExampleExtractor(teacher: Teacher) {
       * @return The resulting term.
       */
     def toTerm(expression: sil.Exp): Term = expression match {
-      case sil.LocalVar(name, _) => store(name)
+      case sil.LocalVar(variable, _) => store(variable)
       case sil.FieldAccess(receiver, field) => heap(toTerm(receiver))(field.name)
     }
 
@@ -321,10 +326,10 @@ class ExampleExtractor(teacher: Teacher) {
       val empty = Map.empty[Term, Set[sil.Exp]]
       current
         .store
-        .filterKeys { name => name.startsWith(target.name) }
+        .filterKeys { name => name.startsWith(target.label) }
         .foldLeft(empty) {
           case (result, (name, value)) =>
-            val variable = sil.LocalVar(name.drop(target.name.length + 1), sil.Ref)()
+            val variable = sil.LocalVar(name.drop(target.label.length + 1), sil.Ref)()
             val set = result.getOrElse(value, Set.empty) + variable
             result.updated(value, set)
         }

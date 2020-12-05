@@ -64,9 +64,9 @@ class Learner(inference: Inference) {
       val solver = new GuardBuilder(learner = this, encodings)
       val predicates = templates
         .map { case (name, template) =>
-          val arguments = template.parameters
+          val parameters = template.parameters
           val body = solver.buildBody(template)
-          name -> sil.Predicate(name, arguments, Some(body))()
+          name -> sil.Predicate(name, parameters, Some(body))()
         }
 
       // return hypothesis
@@ -78,9 +78,9 @@ class Learner(inference: Inference) {
     val resources = {
       // collect records from examples
       val records = examples.flatMap {
-        case Positive(record) => Seq(record)
-        case Negative(record) => Seq(record)
-        case Implication(left, right) => Seq(left, right)
+        case Positive(records) => records
+        case Negative(records) => records
+        case Implication(left, right) => left ++ right
       }
       // build resource map
       val empty = Map.empty[String, Set[sil.LocationAccess]]

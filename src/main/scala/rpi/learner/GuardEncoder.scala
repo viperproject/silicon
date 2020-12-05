@@ -8,6 +8,9 @@ import rpi.util.{Collections, Expressions}
 import viper.silver.{ast => sil}
 
 class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
+  // import utility methods
+  import Expressions._
+
   /**
     * Type shortcut for an effective guard.
     *
@@ -66,67 +69,68 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     */
   def encodeExample(example: Example): Seq[sil.Exp] =
     example match {
-      case Positive(record) =>
-        val (encoding, global) = encodeRecord(record)
-        encoding +: global
-      case Negative(record) =>
-        val (encoding, global) = encodeRecord(record)
-        sil.Not(encoding)() +: global
-      case Implication(left, right) =>
-        val (encoding1, global1) = encodeRecord(left)
-        val (encoding2, global2) = encodeRecord(right)
-        sil.Implies(encoding1, encoding2)() +: (global1 ++ global2)
+      case Positive(records) =>
+        val (variables, equalities) = auxiliary(encodeRecords(records))
+        equalities :+ bigOr(variables) :+ atMost(variables)
+      case Negative(records) =>
+        val (variables, equalities) = auxiliary(encodeRecords(records))
+        equalities :+ not(bigOr(variables))
+      case Implication(leftRecords, rightRecords) =>
+        val (left, equalities1) = auxiliary(encodeRecords(leftRecords))
+        val (right, equalities2) = auxiliary(encodeRecords(rightRecords))
+        equalities1 ++ equalities2 :+ implies(bigOr(left), bigOr(right)) :+ atMost(right)
     }
+
+  private def auxiliary(expressions: Seq[sil.Exp]): (Seq[sil.Exp], Seq[sil.Exp]) = {
+    val empty = Seq.empty[sil.Exp]
+    expressions.foldLeft((empty, empty)) {
+      case ((varibles, equalities), expression) =>
+        val name = s"t_${unique.getAndIncrement}"
+        val variable = sil.LocalVar(name, sil.Bool)()
+        val equality = sil.EqCmp(variable, expression)()
+        (varibles :+ variable, equalities :+ equality)
+    }
+  }
+
+  private def atMost(expressions: Seq[sil.Exp]): sil.Exp = {
+    val constraints = Collections
+      .pairs(expressions)
+      .map { case (first, second) =>
+        sil.Not(sil.And(first, second)())()
+      }
+    bigAnd(constraints)
+  }
+
 
   /**
-    * Returns the encoding of the given record.
+    * Encodes the given records. Returns a list of expression where each expression encodes a choice.
     *
-    * @param record The record to encode.
-    * @return The encoding plus a list of global constraints.
+    * @param records The records to encode.
+    * @return The encodings.
     */
-  def encodeRecord(record: Record): (sil.Exp, Seq[sil.Exp]) = {
-    val name = record.specification.name
-    val localGuards = guards.getOrElse(name, Map.empty)
+  private def encodeRecords(records: Seq[Record]): Seq[sil.Exp] =
+    records
+      .flatMap { record =>
+        // get guards
+        val name = record.specification.name
+        val localGuards = guards.getOrElse(name, Map.empty)
 
-    // compute encodings
-    val encodings = record
-      .locations
-      .flatMap { location =>
-        // get guard for location
-        val locationGuard = localGuards.getOrElse(location, Seq.empty)
-        // choices for this location
-        locationGuard.map { sequence =>
-          val conjuncts = sequence.map { case (id, atoms) =>
-            val values = record.state.getValues(atoms)
-            encodeState(id, values)
+        // compute encodings
+        record
+          .locations
+          .flatMap { location =>
+            // get guard for location
+            val locationGuard = localGuards.getOrElse(location, Seq.empty)
+            // choices for this location
+            locationGuard.map { sequence =>
+              val conjuncts = sequence.map { case (id, atoms) =>
+                val values = record.state.getValues(atoms)
+                encodeState(id, values)
+              }
+              Expressions.bigAnd(conjuncts)
+            }
           }
-          Expressions.bigAnd(conjuncts)
-        }
       }
-
-    // assign encodings to auxiliary variables
-    val (choices, constraints) = {
-      val empty = Seq.empty[sil.Exp]
-      encodings.foldLeft((empty, empty)) {
-        case ((variables, equalities), choice) =>
-          val variable = sil.LocalVar(s"t_${unique.getAndIncrement()}", sil.Bool)()
-          val equality = sil.EqCmp(variable, choice)()
-          (variables :+ variable, equalities :+ equality)
-      }
-    }
-
-    // compute encodings for picking at least one and at most one choice
-    val atLeast = Expressions.bigOr(choices)
-    val atMost = {
-      val pairs = Collections
-        .pairs(choices)
-        .map { case (first, second) => sil.Not(sil.And(first, second)())() }
-      Expressions.bigAnd(pairs)
-    }
-
-    // return encoding and global constraints
-    (atLeast, atMost +: constraints)
-  }
 
   /**
     * Computes the encoding of an abstract state defined by the given values for the guard with the given id.

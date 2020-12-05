@@ -27,7 +27,9 @@ object Config {
   /**
     * The flag indicating whether the inference should exploit silicon's framing.
     */
-  val useFraming = false
+  val useFraming = true
+
+  val batch = true
 
   /**
     * The flag indicating whether silicons branching should be used to concretize values of atomic predicates.

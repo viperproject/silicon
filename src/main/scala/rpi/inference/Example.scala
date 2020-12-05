@@ -13,14 +13,14 @@ trait Example
   *
   * @param record The data point to include.
   */
-case class Positive(record: Record) extends Example
+case class Positive(record: Seq[Record]) extends Example
 
 /**
   * A negative example.
   *
   * @param record The data point to exclude.
   */
-case class Negative(record: Record) extends Example
+case class Negative(record: Seq[Record]) extends Example
 
 /**
   * An implication.
@@ -28,7 +28,7 @@ case class Negative(record: Record) extends Example
   * @param left  The left-hand side of the implication.
   * @param right The right-hand side of the implication.
   */
-case class Implication(left: Record, right: Record) extends Example
+case class Implication(left: Seq[Record], right: Seq[Record]) extends Example
 
 /**
   * A data point.
@@ -42,7 +42,7 @@ case class Implication(left: Record, right: Record) extends Example
   */
 case class Record(specification: Specification, state: Abstraction, locations: Set[sil.LocationAccess]) {
   override def toString: String =
-    s"$state -> ${locations.map { location => s"$location@${specification.name}" }.mkString("{", ", ", "}")}"
+    s"${specification.name}: $state -> ${locations.map { location => s"$location" }.mkString("{", ", ", "}")}"
 }
 
 /**
@@ -80,6 +80,6 @@ case class Abstraction(values: Map[sil.Exp, Boolean]) {
 
   override def toString: String =
     values
-      .map { case (atom, value) => if (value) atom else Expressions.negate(atom) }
+      .map { case (atom, value) => if (value) atom else Expressions.not(atom) }
       .mkString("{", ", ", "}")
 }

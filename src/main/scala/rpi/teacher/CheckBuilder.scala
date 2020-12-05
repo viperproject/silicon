@@ -3,17 +3,19 @@ package rpi.teacher
 import rpi.{Config, Names}
 import rpi.inference._
 import rpi.util.Namespace
-import viper.silver.ast.{NoInfo, SimpleInfo}
 import viper.silver.{ast => sil}
 
-import scala.collection.immutable.ListSet
+import scala.collection.mutable
 
 /**
-  * Builds programs used to check hypothesis.
+  * Builds programs used to check hypotheses.
   *
   * @param teacher The pointer to the teacher.
   */
 class CheckBuilder(teacher: Teacher) {
+  // import utility methods
+  import rpi.util.Statements._
+
   /**
     * Returns the pointer to the inference.
     *
@@ -21,97 +23,142 @@ class CheckBuilder(teacher: Teacher) {
     */
   private def inference: Inference = teacher.inference
 
-  private def base: sil.Program = inference.labeled
+  /**
+    * Returns the pointer to the original program (labeled).
+    *
+    * @return The pointer to the original program.
+    */
+  private def original: sil.Program = inference.labeled
 
+  /**
+    * The namespace used to generate unique identifiers.
+    */
   private var namespace: Namespace = _
 
   /**
-    * The accumulated statements.
+    * The context information for the example extractor.
     */
-  private var statements: Seq[sil.Stmt] = _
-
-  private var predicates: Seq[sil.Predicate] = _
-
   private var context: Context = _
 
   /**
-    * Returns a program that performs a check.
+    * The stack of statement buffers used to accumulate the instrumented statements. The stack is required to properly
+    * handle control flow. The topmost buffer accumulates statements for the current branch.
+    */
+  private var stack: List[mutable.Buffer[sil.Stmt]] = _
+
+  /**
+    * Returns a program that performs the given checks.
     *
-    * @param check      The check to perform.
+    * @param checks     The checks to perform.
     * @param hypothesis The hypothesis.
     * @return The program.
     */
-  def basicCheck(check: Check, hypothesis: Hypothesis): (sil.Program, Context) = {
-    // reset
-    reset()
-    // add predicates
-    inference
-      .predicates(hypothesis)
-      .foreach(addPredicate)
-    // add statements and instrumentation
-    check
-      .statements
-      .foreach {
-        case sil.Inhale(predicate: sil.PredicateAccessPredicate) =>
-          // adapt predicate and get specification instance
-          val (adapted, instance) = adaptPredicate(predicate, !Config.useFraming)
-          // inhale specifications
-          addInhale(adapted)
-          addUnfold(adapted)
-          // save state
-          saveState(instance)
-        case sil.Exhale(predicate: sil.PredicateAccessPredicate) =>
-          // adapt predicate and get specification instance
-          val (adapted, instance) = adaptPredicate(predicate, false)
-          // save permissions
-          savePermissions(instance, hypothesis)
-          // save state
-          val label = saveState(instance)
-          // exhale specification
-          addFold(adapted, Some(label))
-          addExhale(adapted)
-        case sil.MethodCall(name, arguments, _) if name == Names.foldAnnotation =>
-          hypothesis.predicates.get("R").foreach { predicate =>
-            def getCondition(expression: sil.Exp): sil.Exp =
-              expression match {
-                case sil.TrueLit() => expression
-                case sil.FieldAccessPredicate(location, permission) => sil.GeCmp(sil.CurrentPerm(location)(), permission)()
-                case sil.PredicateAccessPredicate(location, permission) => sil.GeCmp(sil.CurrentPerm(location)(), permission)()
-                case sil.And(left, right) => sil.And(getCondition(left), getCondition(right))()
-                case _ => ???
-              }
-
-            // extract condition
-            val condition = predicate.body
-              .map { expression => getCondition(expression) }
-              .getOrElse(sil.TrueLit()())
-
-            val access = sil.PredicateAccess(arguments, "R")()
-            val accessPredicate = sil.PredicateAccessPredicate(access, sil.FullPerm()())()
-            val statement = sil.If(
-              condition,
-              sil.Seqn(Seq(sil.Fold(accessPredicate)()), Seq.empty)(),
-              sil.Seqn(Seq.empty, Seq.empty)())()
-            addStatement(statement)
-          }
-        case sil.MethodCall(name, arguments, _) if name == Names.unfoldAnnotation =>
-          hypothesis.predicates.get("R").foreach { predicate =>
-            val access = sil.PredicateAccess(arguments, predicate.name)()
-            val accessPredicate = sil.PredicateAccessPredicate(access, sil.FullPerm()())()
-            val statement = sil.If(
-              sil.GeCmp(sil.CurrentPerm(access)(), sil.FullPerm()())(),
-              sil.Seqn(Seq(sil.Unfold(accessPredicate)()), Seq.empty)(),
-              sil.Seqn(Seq.empty, Seq.empty)())()
-            addStatement(statement)
-          }
-        case statement => addStatement(statement)
-      }
-    // return program and states
-    (buildProgram(), context)
+  def basicCheck(checks: Seq[sil.Seqn], hypothesis: Hypothesis): (sil.Program, Context) = {
+    clear()
+    val instrumented = checks.map { check => instrument(check) }
+    val program = buildProgram(instrumented, hypothesis)
+    // return program and context
+    (program, context)
   }
 
-  def adaptPredicate(predicate: sil.PredicateAccessPredicate, inhale: Boolean): (sil.PredicateAccessPredicate, Instance) = {
-    // make sure all arguments are variables
+  /**
+    * Builds a program performing to the given checks.
+    *
+    * @param checks The checks.
+    * @return The program.
+    */
+  private def buildProgram(checks: Seq[sil.Seqn], hypothesis: Hypothesis): sil.Program = {
+    val domains = Seq.empty
+    val fields = original.fields
+    val functions = Seq.empty
+    val predicates = {
+      val existing = original.predicates
+      val inferred = inference.predicates(hypothesis)
+      existing ++ inferred
+    }
+    val methods = checks.map { check => builtMethod(check) }
+    val extensions = Seq.empty
+    val program = sil.Program(domains, fields, functions, predicates, methods, extensions)()
+    println(program)
+    program
+  }
+
+  /**
+    * Builds a method performing to the given check.
+    *
+    * @param check The check.
+    * @return The method.
+    */
+  private def builtMethod(check: sil.Seqn): sil.Method = {
+    val name = namespace.uniqueIdentifier(base = "check", Some(0))
+    val arguments = Seq.empty
+    val returns = Seq.empty
+    val preconditions = Seq.empty
+    val postconditions = Seq.empty
+    val body = {
+      val statements = check.ss
+      val declarations = check
+        .deepCollect { case variable: sil.LocalVar => variable }
+        .distinct
+        .map { variable => sil.LocalVarDecl(variable.name, variable.typ)() }
+      Some(sil.Seqn(statements, declarations)())
+    }
+    sil.Method(name, arguments, returns, preconditions, postconditions, body)()
+  }
+
+  /**
+    * Instruments the given sequence.
+    *
+    * @param sequence The sequence to instrument.
+    * @return The instrumented sequence.
+    */
+  private def instrument(sequence: sil.Seqn): sil.Seqn = {
+    push()
+    sequence.ss.foreach { statement => instrument(statement) }
+    asSequence(pop())
+  }
+
+  /**
+    * Instruments the given statement.
+    *
+    * @param statement The statement to instrument.
+    */
+  private def instrument(statement: sil.Stmt): Unit =
+    statement match {
+      case sil.If(condition, thenBody, elseBody) =>
+        // instrument branches
+        val thenInstrumented = instrument(thenBody)
+        val elseInstrumented = instrument(elseBody)
+        // add instrumented conditional
+        val instrumented = sil.If(condition, thenInstrumented, elseInstrumented)()
+        addStatement(instrumented)
+      case sil.Inhale(predicate: sil.PredicateAccessPredicate) =>
+        // get specification instance and adapt predicate
+        val instance = getInstance(predicate)
+        val adapted = adaptPredicate(predicate, instance)
+        // inhale specification
+        addInhale(adapted)
+        // save state
+        val label = saveState(instance)
+        context.addInhaled(label, instance)
+      case sil.Exhale(predicate: sil.PredicateAccessPredicate) =>
+        // get specification instance and adapt predicate
+        val instance = getInstance(predicate)
+        val adapted = adaptPredicate(predicate, instance)
+        // save state
+        val label = saveState(instance)
+        context.addExhaled(label, instance)
+        // exhale specification
+        addExhale(predicate)
+      case sil.MethodCall(name, arguments, _) =>
+        // TODO: Implement me.
+        ???
+      case _ =>
+        addStatement(statement)
+    }
+
+  private def getInstance(predicate: sil.PredicateAccessPredicate): Instance = {
+    // make sure all arguments are variable accesses
     val access = predicate.loc
     val (arguments, assignments) = {
       val empty = (Seq.empty[sil.LocalVar], Seq.empty[sil.LocalVarAssign])
@@ -126,178 +173,54 @@ class CheckBuilder(teacher: Teacher) {
       }
     }
 
-    // NOTE: The list set ensures that the insertion order is preserved.
-    def collectAccesses(expression: sil.Exp, set: ListSet[sil.FieldAccess]): ListSet[sil.FieldAccess] =
-      expression match {
-        case access@sil.FieldAccess(receiver, _) => collectAccesses(receiver, set) + access
-        case _ => set
-      }
-
-    // inhale permissions required to access arguments
-    if (inhale) assignments
-      .foldLeft(ListSet.empty[sil.FieldAccess]) {
-        case (accesses, assignment) =>
-          collectAccesses(assignment.rhs, accesses)
-      }
-      .foreach { access =>
-        val predicate = sil.FieldAccessPredicate(access, sil.FullPerm()())()
-        addInhale(predicate)
-      }
-
-    // add assignments
+    // TODO: Inhale permissions to make stuff self-framing
     assignments.foreach { assignment => addStatement(assignment) }
 
-    // return adapted predicate and instance
-    val adaptedAccess = sil.PredicateAccess(arguments, access.predicateName)()
-    val adapted = sil.PredicateAccessPredicate(adaptedAccess, predicate.perm)()
-    val instance = inference.instance(access.predicateName, arguments)
-    (adapted, instance)
+    // create and return instance
+    val name = access.predicateName
+    inference.instance(name, arguments)
+  }
+
+  private def adaptPredicate(predicate: sil.PredicateAccessPredicate, instance: Instance): sil.PredicateAccessPredicate = {
+    val name = predicate.loc.predicateName
+    val arguments = instance.arguments
+    val access = sil.PredicateAccess(arguments, name)()
+    val permission = predicate.perm
+    sil.PredicateAccessPredicate(access, permission)()
   }
 
   /**
-    * Returns a program that performs a check whether the specification referred to by the given instance is
-    * self-framing.
+    * Saves the state relevant for the given specification instance.
     *
-    * @param instance   The instance.
-    * @param hypothesis The hypothesis containing the actual specification.
-    * @return The program.
+    * @param instance The instance.
+    * @return The label of the state.
     */
-  def framingCheck(instance: Instance, hypothesis: Hypothesis): sil.Program = {
-    // reset
-    reset()
-    // save state
-    saveState(instance, useActuals = false)
-    // inhale hypothesis
-    val name = instance.name
-    addInhale(hypothesis.get(name))
-    // return program
-    buildProgram()
-  }
-
-  /**
-    * Resets the check builder.
-    */
-  private def reset(): Unit = {
-    // TODO: Copy namespace from labeled program.
-    namespace = new Namespace
-    statements = Seq.empty
-    predicates = Seq.empty
-    context = new Context
-  }
-
-  /**
-    * Adds the given statement.
-    *
-    * @param statement The statement to add.
-    */
-  private def addStatement(statement: sil.Stmt): Unit =
-    statements = statements :+ statement
-
-  /**
-    * Adds a statement that inhales the given expression.
-    *
-    * @param expression The expression to inhale.
-    */
-  private def addInhale(expression: sil.Exp): Unit = {
-    val inhale = sil.Inhale(expression)()
-    addStatement(inhale)
-  }
-
-  /**
-    * Adds a statement that exhales the given expression.
-    *
-    * @param expression The expression to exhale.
-    */
-  private def addExhale(expression: sil.Exp): Unit = {
-    val exhale = sil.Exhale(expression)()
-    addStatement(exhale)
-  }
-
-  /**
-    * Adds a statement that folds the given predicate.
-    *
-    * @param predicate The predicate to fold.
-    */
-  private def addFold(predicate: sil.PredicateAccessPredicate, label: Option[String] = None): Unit = {
-    val info = label
-      .map { name => SimpleInfo(Seq(name)) }
-      .getOrElse(NoInfo)
-    val fold = sil.Fold(predicate)(info = info)
-    addStatement(fold)
-  }
-
-  /**
-    * Adds a statement that unfolds the given predicate.
-    *
-    * @param predicate The predicate to unfold.
-    */
-  private def addUnfold(predicate: sil.PredicateAccessPredicate): Unit = {
-    val unfold = sil.Unfold(predicate)()
-    addStatement(unfold)
-  }
-
-  /**
-    * Adds a label with the given name.
-    *
-    * @param name The name of the label.
-    */
-  private def addLabel(name: String): Unit = {
-    val label = sil.Label(name, Seq.empty)()
-    addStatement(label)
-  }
-
-  private def saveState(instance: Instance, useActuals: Boolean = true): String = {
+  private def saveState(instance: Instance): String = {
     val label = namespace.uniqueIdentifier(base = "s", Some(0))
-    context.addInstance(label, instance)
-    // save values of all variables
+    // save values of variables
     instance
       .arguments
-      .foreach { case variable: sil.LocalVar =>
-        val name = s"${label}_${variable.name}"
-        saveValue(name, variable)
+      .foreach {
+        case variable: sil.LocalVar =>
+          val name = s"${label}_${variable.name}"
+          saveValue(name, variable)
       }
-    // save values of all atoms
-    val atoms =
-      if (useActuals) instance.actualAtoms
-      else instance.formalAtoms
-    atoms
+    // save values of atoms
+    instance
+      .actualAtoms
       .zipWithIndex
-      .foreach { case (atom, index) =>
-        val name = s"${label}_$index"
-        saveValue(name, atom)
+      .foreach {
+        case (atom, index) =>
+          val name = s"${label}_$index"
+          saveValue(name, atom)
       }
-    // label state and return name of label
-    addLabel(label)
+    // add label
+    addStatement(sil.Label(label, Seq.empty)())
     label
   }
 
-  private def savePermissions(instance: Instance, hypothesis: Hypothesis): Unit =
-    hypothesis
-      .get(instance.name)
-      .collect {
-        case sil.FieldAccessPredicate(access, _) => access
-        case sil.PredicateAccessPredicate(access, _) => access
-      }
-      .foreach { access =>
-        val adapted = instance.toActual(access)
-        val name = namespace.uniqueIdentifier(base = "p", Some(0))
-        context.addVariable(adapted, name)
-        savePermission(name, adapted)
-      }
-
   /**
-    * Saves the currently held permissions for the given resource using a variable with the given name.
-    *
-    * @param name     The name of the variable.
-    * @param resource The resource.
-    */
-  private def savePermission(name: String, resource: sil.ResourceAccess): Unit = {
-    val value = sil.CurrentPerm(resource)()
-    saveValue(name, value)
-  }
-
-  /**
-    * Saves the value of the given expression using a variable with the given name.
+    * Saves the value of the given expression in a variable with the given name.
     *
     * @param name       The name of the variable.
     * @param expression The expression to save.
@@ -305,74 +228,42 @@ class CheckBuilder(teacher: Teacher) {
   private def saveValue(name: String, expression: sil.Exp): Unit = {
     val variable = sil.LocalVar(name, expression.typ)()
     if (Config.useBranching && expression.typ == sil.Bool) {
-      // build then branch assigning true
-      val thenBody = {
-        val assignment = sil.LocalVarAssign(variable, sil.TrueLit()())()
-        sil.Seqn(Seq(assignment), Seq.empty)()
-      }
-      // build else branch assigning false
-      val elseBody = {
-        val assignment = sil.LocalVarAssign(variable, sil.FalseLit()())()
-        sil.Seqn(Seq(assignment), Seq.empty)()
-      }
-      // build and add conditional
-      val conditional = sil.If(expression, thenBody, elseBody)()
-      addStatement(conditional)
+      // create conditional
+      val thenBody = asSequence(sil.LocalVarAssign(variable, sil.TrueLit()())())
+      val elseBody = asSequence(sil.LocalVarAssign(variable, sil.FalseLit()())())
+      addStatement(sil.If(expression, thenBody, elseBody)())
     } else {
-      // build and add assignment
-      val assignment = sil.LocalVarAssign(variable, expression)()
-      addStatement(assignment)
+      // create assignment
+      addStatement(sil.LocalVarAssign(variable, expression)())
     }
   }
 
-  private def addPredicate(predicate: sil.Predicate): Unit =
-    predicates = predicates :+ predicate
-
-  /**
-    * Builds and returns the body of the check method.
-    *
-    * @return The body.
-    */
-  private def buildBody(): sil.Seqn = {
-    // compute declarations from statements
-    val declarations = statements
-      .flatMap { statement =>
-        statement.deepCollect { case variable: sil.LocalVar => variable }
-      }
-      .distinct
-      .map { variable => sil.LocalVarDecl(variable.name, variable.typ)() }
-    // create body
-    sil.Seqn(statements, declarations)()
+  private def addInhale(predicate: sil.PredicateAccessPredicate): Unit = {
+    addStatement(sil.Inhale(predicate)())
+    addStatement(sil.Unfold(predicate)())
   }
 
-  /**
-    * Builds and returns the check method.
-    *
-    * @return The check method.
-    */
-  private def buildMethod(): sil.Method = {
-    val name = "check"
-    val arguments = Seq.empty
-    val returns = Seq.empty
-    val preconditions = Seq.empty
-    val postconditions = Seq.empty
-    val body = Some(buildBody())
-    sil.Method(name, arguments, returns, preconditions, postconditions, body)()
+  private def addExhale(predicate: sil.PredicateAccessPredicate): Unit = {
+    addStatement(sil.Fold(predicate)())
+    addStatement(sil.Exhale(predicate)())
   }
 
-  /**
-    * Builds and returns a program with the check method.
-    *
-    * @return The program.
-    */
-  private def buildProgram(): sil.Program = {
-    val domains = Seq.empty
-    val fields =
-      if (Config.useHeuristics) inference.magic +: base.fields
-      else base.fields
-    val functions = Seq.empty
-    val methods = Seq(buildMethod())
-    val extensions = Seq.empty
-    sil.Program(domains, fields, functions, predicates, methods, extensions)()
+  private def addStatement(statement: sil.Stmt): Unit =
+    stack.head.append(statement)
+
+  private def clear(): Unit = {
+    namespace = new Namespace
+    context = new Context
+    stack = List.empty
   }
+
+  private def push(): Unit =
+    stack = mutable.Buffer.empty[sil.Stmt] :: stack
+
+  private def pop(): Seq[sil.Stmt] =
+    stack match {
+      case head :: tail =>
+        stack = tail
+        head
+    }
 }

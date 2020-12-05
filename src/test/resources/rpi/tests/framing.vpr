@@ -1,0 +1,12 @@
+field val: Int
+
+method main(x: Ref, y: Ref)
+{
+    foo(y)
+    y.val := x.val
+}
+
+method foo(x: Ref)
+{
+    x.val := 0
+}
