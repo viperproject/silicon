@@ -70,18 +70,62 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
   def encodeExample(example: Example): Seq[sil.Exp] =
     example match {
       case Positive(records) =>
-        val (variables, equalities) = auxiliary(encodeRecords(records))
-        equalities :+ bigOr(variables) :+ atMost(variables)
+        val (encoding, constraints) = encodeRecords(records)
+        constraints :+ encoding
       case Negative(records) =>
-        val (variables, equalities) = auxiliary(encodeRecords(records))
-        equalities :+ not(bigOr(variables))
+        val (encoding, constraints) = encodeRecords(records)
+        constraints :+ not(encoding)
       case Implication(leftRecords, rightRecords) =>
-        val (left, equalities1) = auxiliary(encodeRecords(leftRecords))
-        val (right, equalities2) = auxiliary(encodeRecords(rightRecords))
-        equalities1 ++ equalities2 :+ implies(bigOr(left), bigOr(right)) :+ atMost(right)
+        val (leftEncoding, leftConstraints) = encodeRecords(leftRecords)
+        val (rightEncoding, rightConstraints) = encodeRecords(rightRecords)
+        leftConstraints ++ rightConstraints :+ implies(leftEncoding, rightEncoding)
     }
 
-  private def auxiliary(expressions: Seq[sil.Exp]): (Seq[sil.Exp], Seq[sil.Exp]) = {
+  /**
+    * Encodes the given records.
+    *
+    * @param records The records to encode.
+    * @return A tuple holding the encoding and a sequence of global constraints.
+    */
+  private def encodeRecords(records: Seq[Record]): (sil.Exp, Seq[sil.Exp]) = {
+    // collect encodings and constraints
+    val (variables, constraints) = {
+      val empty = Seq.empty[sil.Exp]
+      records.foldLeft((empty, empty)) {
+        case ((currentVariables, currentConstraints), record) =>
+          // get guards
+          val name = record.specification.name
+          val localGuards = guards.getOrElse(name, Map.empty)
+
+          // compute encodings
+          val encodings = record
+            .locations
+            .flatMap { location =>
+              // get guard for location
+              val locationGuard = localGuards.getOrElse(location, Seq.empty)
+              // choices for this location
+              locationGuard.map { sequence =>
+                val conjuncts = sequence.map { case (id, atoms) =>
+                  val values = record.state.getValues(atoms)
+                  encodeState(id, values)
+                }
+                Expressions.bigAnd(conjuncts)
+              }
+            }
+
+          // update encodings and constraints
+          val (variables, equalities) = auxiliary(encodings)
+          val constraints = equalities :+ atMost(variables)
+          (currentVariables ++ variables, currentConstraints ++ constraints)
+      }
+    }
+
+    // return encoding
+    val encoding = bigOr(variables)
+    (encoding, constraints)
+  }
+
+  private def auxiliary(expressions: Iterable[sil.Exp]): (Seq[sil.Exp], Seq[sil.Exp]) = {
     val empty = Seq.empty[sil.Exp]
     expressions.foldLeft((empty, empty)) {
       case ((varibles, equalities), expression) =>
@@ -100,37 +144,6 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
       }
     bigAnd(constraints)
   }
-
-
-  /**
-    * Encodes the given records. Returns a list of expression where each expression encodes a choice.
-    *
-    * @param records The records to encode.
-    * @return The encodings.
-    */
-  private def encodeRecords(records: Seq[Record]): Seq[sil.Exp] =
-    records
-      .flatMap { record =>
-        // get guards
-        val name = record.specification.name
-        val localGuards = guards.getOrElse(name, Map.empty)
-
-        // compute encodings
-        record
-          .locations
-          .flatMap { location =>
-            // get guard for location
-            val locationGuard = localGuards.getOrElse(location, Seq.empty)
-            // choices for this location
-            locationGuard.map { sequence =>
-              val conjuncts = sequence.map { case (id, atoms) =>
-                val values = record.state.getValues(atoms)
-                encodeState(id, values)
-              }
-              Expressions.bigAnd(conjuncts)
-            }
-          }
-      }
 
   /**
     * Computes the encoding of an abstract state defined by the given values for the guard with the given id.
