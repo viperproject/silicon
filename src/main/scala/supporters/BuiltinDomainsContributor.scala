@@ -44,18 +44,18 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   /* Lifetime */
 
-  def reset() {
+  def reset(): Unit = {
     collectedSorts = InsertionOrderedSet.empty
     collectedFunctions = InsertionOrderedSet.empty
     collectedAxioms = InsertionOrderedSet.empty
   }
 
-  def start() {}
-  def stop() {}
+  def start(): Unit = {}
+  def stop(): Unit = {}
 
   /* Functionality */
 
-  def analyze(program: ast.Program) {
+  def analyze(program: ast.Program): Unit = {
     val builtinDomainTypeInstances = computeGroundTypeInstances(program)
     val sourceProgram = utils.loadProgramFromUrl(sourceUrl)
     val sourceDomain = transformSourceDomain(sourceProgram.findDomain(sourceDomainName))
@@ -101,7 +101,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   protected def transformSourceDomainInstance(sourceDomain: ast.Domain, typ: ast.DomainType): ast.Domain = sourceDomain
 
-  protected def collectSorts(domainTypes: Iterable[ast.DomainType]) {
+  protected def collectSorts(domainTypes: Iterable[ast.DomainType]): Unit = {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")
 
     domainTypes.foreach(domainType => {
@@ -110,13 +110,13 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
     })
   }
 
-  protected def collectFunctions(domains: Set[ast.Domain]) {
+  protected def collectFunctions(domains: Set[ast.Domain]): Unit = {
     domains foreach (
       _.functions foreach (df =>
         collectedFunctions += symbolConverter.toFunction(df)))
   }
 
-  protected def collectAxioms(domains: Set[(ast.DomainType, ast.Domain)]) {
+  protected def collectAxioms(domains: Set[(ast.DomainType, ast.Domain)]): Unit = {
     domains foreach ({d =>
       d._2.axioms foreach (ax =>
         collectedAxioms += translateAxiom(ax, d._1))
@@ -205,7 +205,7 @@ private object utils {
         program
 
       case fastparse.Parsed.Failure(msg, index, extra) =>
-        val (line, col) = ast.LineCol(extra.input.asInstanceOf[ParserInput], index)
+        val (line, col) = ast.LineCol(index)
         sys.error(s"Failure: $msg, at ${viper.silver.parser.FilePosition(fromPath, line, col)}")
     }
   }

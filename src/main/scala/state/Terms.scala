@@ -2026,22 +2026,22 @@ object utils {
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSort(t: Term, desc: => String, s: Sort) {
+  def assertSort(t: Term, desc: => String, s: Sort): Unit = {
     assert(t.sort == s, s"Expected $desc $t to be of sort $s, but found ${t.sort}.")
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSort(t: Term, desc: => String, xs: Seq[Sort]) {
+  def assertSort(t: Term, desc: => String, xs: Seq[Sort]): Unit = {
     assert(xs.contains(t.sort), s"Expected $desc $t to be one of sorts $xs, but found ${t.sort}.")
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSort(t: Term, desc: => String, sortDesc: String, f: Sort => Boolean) {
+  def assertSort(t: Term, desc: => String, sortDesc: String, f: Sort => Boolean): Unit = {
     assert(f(t.sort), s"Expected $desc $t to be of sort $sortDesc, but found ${t.sort}.")
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSameSorts[S <: Sort with Product : ClassTag](t0: Term, t1: Term) {
+  def assertSameSorts[S <: Sort with Product : ClassTag](t0: Term, t1: Term): Unit = {
     val clazz = implicitly[ClassTag[S]].runtimeClass
 
     assert(
@@ -2054,7 +2054,7 @@ object utils {
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertExpectedSorts(applicable: Applicable, args: Seq[Term]) {
+  def assertExpectedSorts(applicable: Applicable, args: Seq[Term]): Unit = {
     assert(applicable.argSorts.length == args.length,
            s"Expected ${applicable.argSorts.length} arguments for ${applicable.id}, but got ${args.length}")
 

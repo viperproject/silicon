@@ -20,7 +20,7 @@ package object utils {
     val refSets = mutable.HashSet[Term]()
     val refSeqs = mutable.HashSet[Term]()
 
-    def collect(t: Term) {
+    def collect(t: Term): Unit = {
       t.sort match {
         case sorts.Ref => if (t != ref) refs += t
         case sorts.Set(sorts.Ref) => refSets += t

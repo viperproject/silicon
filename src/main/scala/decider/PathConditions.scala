@@ -71,7 +71,7 @@ private class PathConditionStackLayer
   def assumptions: InsertionOrderedSet[Term] = globalAssumptions ++ nonGlobalAssumptions
   def pathConditions: InsertionOrderedSet[Term] = assumptions ++ branchCondition
 
-  def branchCondition_=(condition: Term) {
+  def branchCondition_=(condition: Term): Unit = {
     assert(_branchCondition.isEmpty,
              s"Branch condition is already set (to ${_branchCondition.get}), "
            + s"won't override (with $condition).")

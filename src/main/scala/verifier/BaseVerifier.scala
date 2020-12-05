@@ -58,18 +58,18 @@ abstract class BaseVerifier(val config: Config,
 
   /* Lifetime */
 
-  override def start() {
+  override def start(): Unit = {
     super.start()
     statefulSubcomponents foreach (_.start())
   }
 
-  override def reset() {
+  override def reset(): Unit = {
     super.reset()
     statefulSubcomponents foreach (_.reset())
     counters.clear()
   }
 
-  override def stop() {
+  override def stop(): Unit = {
     super.stop()
     statefulSubcomponents foreach (_.stop())
   }

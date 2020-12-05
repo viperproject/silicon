@@ -6,11 +6,11 @@
 
 package viper.silicon.tests
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
 
-class TriggerGeneratorTests extends FunSuite {
+class TriggerGeneratorTests extends AnyFunSuite {
   val triggerGenerator = new TriggerGenerator()
 
   test("Work in simple cases") {
@@ -20,7 +20,7 @@ class TriggerGeneratorTests extends FunSuite {
 
     assert(triggerGenerator.generateTriggerSetGroups(i :: Nil, t) match {
       case Seq((Seq(triggerGenerator.TriggerSet(Seq(`t`))), Seq())) => true
-      case other => false
+      case _ => false
     })
   }
 

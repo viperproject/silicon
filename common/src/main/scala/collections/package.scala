@@ -14,7 +14,7 @@ package object collections {
     * @tparam A Type of the inner sequence's elements.
     * @return The computed cross product.
     */
-  def crossProduct[A](xs: Traversable[Traversable[A]]): Seq[Seq[A]] =
+  def crossProduct[A](xs: Iterable[Iterable[A]]): Seq[Seq[A]] =
     xs.foldLeft(Vector(Vector.empty[A])) {
       (x, y) => for (a <- x; b <- y) yield a :+ b
     }

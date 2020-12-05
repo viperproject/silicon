@@ -74,7 +74,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
 
   /* Lifetime */
 
-  override def start() {
+  override def start(): Unit = {
     super.start()
     statefulSubcomponents foreach (_.start())
   }

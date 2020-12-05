@@ -196,11 +196,11 @@ class AxiomRewriter(counter: Counter/*, logger: MultiRunLogger*/,
 //    logger.println(message)
   }
 
-  protected def log(key: String, item: Any) {
+  protected def log(key: String, item: Any): Unit = {
     log(key, item :: Nil)
   }
 
-  protected def log(key: String, items: Iterable[Any]) {
+  protected def log(key: String, items: Iterable[Any]): Unit = {
 //    if (items.size <= 1)
 //      logger.println(s"  $key: $items")
 //    else {

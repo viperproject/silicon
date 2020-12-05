@@ -102,17 +102,17 @@ object heuristicsSupporter extends SymbolicExecutionRules {
     val baseIdent = "  "
     var printedHeader = false
 
-    def lnsay(msg: String, ident: Int = 1) {
+    def lnsay(msg: String, ident: Int = 1): Unit = {
       val prefix = "\n" + (if (ident == 0) "" else baseIdent)
       dosay(prefix, msg, ident - 1)
     }
 
-    def say(msg: String, ident: Int = 1) {
+    def say(msg: String, ident: Int = 1): Unit = {
       val prefix = if (ident == 0) "" else baseIdent
       dosay(prefix, msg, ident - 1)
     }
 
-    def dosay(prefix: String, msg: String, ident: Int) {
+    def dosay(prefix: String, msg: String, ident: Int): Unit = {
       if (!printedHeader) {
         heuristicsLogger.debug("\n[tryWithReactions]")
         printedHeader = true

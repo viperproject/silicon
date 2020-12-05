@@ -7,12 +7,14 @@
 package viper.silicon.tests
 
 import java.io.{PrintWriter, StringWriter}
-import org.scalatest.{FunSuite, Matchers}
+
+import org.scalatest.matchers.should.Matchers
 import viper.silicon.state.Identifier
 import DSL._
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.state.terms._
 
-class TriggerRewriterTests extends FunSuite with Matchers {
+class TriggerRewriterTests extends AnyFunSuite with Matchers {
   val dummySink = new PrintWriter(new StringWriter())
 //  val dummyLogger = new MultiRunLogger(dummySink, () => None)
   val counter = new viper.silicon.utils.Counter()

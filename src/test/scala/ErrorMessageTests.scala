@@ -6,14 +6,14 @@
 
 package viper.silicon.tests
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter._
 import viper.silver.ast.utility._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier.errors._
 
-class ErrorMessageTests extends FunSuite {
+class ErrorMessageTests extends AnyFunSuite {
   test("MeetingExample") {
     val filePrefix = "errorMessageTests/misc/"
     val files = Seq("simple")

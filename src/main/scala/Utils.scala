@@ -66,10 +66,10 @@ package object utils {
 
     /* Lifetime */
 
-    def start() {}
-    def stop() {}
+    def start(): Unit = {}
+    def stop(): Unit = {}
 
-    def reset() {
+    def reset(): Unit = {
       nextValue = firstValue
     }
 
@@ -85,9 +85,9 @@ package object utils {
    * DefaultElementVerifier, Scala will (rightfully) complain otherwise.
    */
   class NoOpStatefulComponent extends StatefulComponent {
-    @inline def start() {}
-    @inline def reset() {}
-    @inline def stop() {}
+    @inline def start(): Unit = {}
+    @inline def reset(): Unit = {}
+    @inline def stop(): Unit = {}
   }
 
   trait MustBeReinitializedAfterReset { this: StatefulComponent => }

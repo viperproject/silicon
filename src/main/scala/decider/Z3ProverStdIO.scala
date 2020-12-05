@@ -52,7 +52,7 @@ class Z3ProverStdIO(uniqueId: String,
     }
   }
 
-  def start() {
+  def start(): Unit = {
     pushPopScopeDepth = 0
     lastTimeout = -1
     logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.z3LogFile(uniqueId).toFile)
@@ -94,7 +94,7 @@ class Z3ProverStdIO(uniqueId: String,
     val process = builder.start()
 
     Runtime.getRuntime.addShutdownHook(new Thread {
-      override def run() {
+      override def run(): Unit = {
         process.destroy()
       }
     })
@@ -102,7 +102,7 @@ class Z3ProverStdIO(uniqueId: String,
     process
   }
 
-  def reset() {
+  def reset(): Unit = {
     stop()
     start()
   }
@@ -111,7 +111,7 @@ class Z3ProverStdIO(uniqueId: String,
    * It therefore makes sense to first kill the Z3 process because then the channel is closed from
    * the other side first, resulting in the close() method to terminate.
    */
-  def stop() {
+  def stop(): Unit = {
     this.synchronized {
       if (logfileWriter != null) {
         logfileWriter.flush()
@@ -136,21 +136,21 @@ class Z3ProverStdIO(uniqueId: String,
     }
   }
 
-  def push(n: Int = 1) {
+  def push(n: Int = 1): Unit = {
     pushPopScopeDepth += n
     val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + pushPopScopeDepth
     writeLine(cmd)
     readSuccess()
   }
 
-  def pop(n: Int = 1) {
+  def pop(n: Int = 1): Unit = {
     val cmd = (if (n == 1) "(pop)" else "(pop " + n + ")") + " ; " + pushPopScopeDepth
     pushPopScopeDepth -= n
     writeLine(cmd)
     readSuccess()
   }
 
-  def emit(content: String) {
+  def emit(content: String): Unit = {
     writeLine(content)
     readSuccess()
   }
@@ -175,7 +175,7 @@ class Z3ProverStdIO(uniqueId: String,
     assume(termConverter.convert(term))
   }
 
-  def assume(term: String) {
+  def assume(term: String): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
     writeLine("(assert " + term + ")")
@@ -277,7 +277,7 @@ class Z3ProverStdIO(uniqueId: String,
     }
   }
 
-  private def setTimeout(timeout: Option[Int]) {
+  private def setTimeout(timeout: Option[Int]): Unit = {
     val effectiveTimeout = timeout.getOrElse(Verifier.config.z3Timeout)
 
     /* [2015-07-27 Malte] Setting the timeout unnecessarily often seems to
@@ -343,7 +343,7 @@ class Z3ProverStdIO(uniqueId: String,
     fun
   }
 
-  def declare(decl: Decl) {
+  def declare(decl: Decl): Unit = {
     val str = termConverter.convert(decl)
     emit(str)
   }
@@ -358,7 +358,7 @@ class Z3ProverStdIO(uniqueId: String,
 
   /* TODO: Handle multi-line output, e.g. multiple error messages. */
 
-  private def readSuccess() {
+  private def readSuccess(): Unit = {
     val answer = readLine()
 
     if (answer != "success")
@@ -416,7 +416,7 @@ class Z3ProverStdIO(uniqueId: String,
     result
   }
 
-  private def logToFile(str: String) {
+  private def logToFile(str: String): Unit = {
     if (logfileWriter != null) {
       logfileWriter.println(str)
     }

@@ -22,7 +22,7 @@ package object io {
    * @param contents The content to write.
    * @param file The file to which the content will be written.
    */
-  def toFile(contents: String, file: JFile) {
+  def toFile(contents: String, file: JFile): Unit = {
     val sink = PrintWriter(file)
 
     sink.write(contents)
