@@ -1279,7 +1279,7 @@ class SeqDrop(val p0: Term, val p1: Term) extends SeqTerm
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
-  override lazy val toString = p0 + "[" + p1 + ":]"
+  override lazy val toString = p0.toString + "[" + p1.toString + ":]"
 }
 
 object SeqDrop extends ((Term, Term) => SeqTerm) {
@@ -1298,7 +1298,7 @@ class SeqTake(val p0: Term, val p1: Term) extends SeqTerm
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
-  override lazy val toString = p0 + "[:" + p1 + "]"
+  override lazy val toString = p0.toString + "[:" + p1.toString + "]"
 }
 
 object SeqTake extends ((Term, Term) => SeqTerm) {

@@ -84,7 +84,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   val s4 = s3.copy(h = Heap())
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
                   val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-                  produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, v4) => {
+                  produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
                     SymbExLogger.currentLog().collapse(null, sepIdentifier)
                     Success()})})
             && {

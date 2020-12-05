@@ -176,8 +176,8 @@ package object utils {
               case Some((variables, triggerSets)) =>
                 /* Invalid triggers could be generated, now try to rewrite them */
                 val intermediateQ = q match {
-                  case f: silver.ast.Forall => silver.ast.Forall(variables, Nil, q.exp)(q.pos, q.info)
-                  case e: silver.ast.Exists => silver.ast.Exists(variables, Nil, q.exp)(q.pos, q.info)
+                  case _: silver.ast.Forall => silver.ast.Forall(variables, Nil, q.exp)(q.pos, q.info)
+                  case _: silver.ast.Exists => silver.ast.Exists(variables, Nil, q.exp)(q.pos, q.info)
                   case _=> sys.error(s"Unexpected expression ${q}")
                 }
                 silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateQ, triggerSets).getOrElse(q)

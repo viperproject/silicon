@@ -235,7 +235,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     case m: ast.Method => new MethodRecord(m, s, pcs)
     case p: ast.Predicate => new PredicateRecord(p, s, pcs)
     case f: ast.Function => new FunctionRecord(f, s, pcs)
-    case default => null
+    case _ => null
   }
 
   // Maps macros to their body
@@ -346,17 +346,17 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 
   private def isRecordedDifferently(s: SymbolicRecord): Boolean = {
     s.value match {
-      case v: ast.MethodCall =>
+      case _: ast.MethodCall =>
         s match {
           case _: MethodCallRecord => false
           case _ => true
         }
-      case v: ast.CondExp =>
+      case _: ast.CondExp =>
         s match {
           case _: EvaluateRecord | _: ConsumeRecord | _: ProduceRecord => true
           case _ => false
         }
-      case v: ast.Implies =>
+      case _: ast.Implies =>
         s match {
           case _: ConsumeRecord | _: ProduceRecord => true
           case _ => false
@@ -448,7 +448,6 @@ class DotTreeRenderer extends Renderer[String] {
       }
 
       case mc: MethodCallRecord => {
-        val mc_parent = previousNode
         output += "    " + mc.dotNode() + " [label=" + mc.dotLabel() + "];\n"
         previousNode = mc.dotNode()
 
@@ -592,7 +591,7 @@ class JSTreeRenderer extends Renderer[String] {
   def printState(s: SymbolicRecord): String = {
     var res = ""
     if (s.state != null) {
-      var σ = s.state.asInstanceOf[State]
+      val σ = s.state.asInstanceOf[State]
       res = ",\"prestate\":" + JsonHelper.escape(stateFormatter.toJson(σ, s.pcs))
     }
     res
@@ -614,7 +613,7 @@ class SimpleTreeRenderer extends Renderer[String] {
 
   def toSimpleTree(s: SymbolicRecord, n: Int): String = {
     var indent = ""
-    for (i <- 1 to n) {
+    for (_ <- 1 to n) {
       indent = "  " + indent
     }
     var str = ""
@@ -664,14 +663,14 @@ class TypeTreeRenderer extends Renderer[String] {
 
   def toTypeTree(s: SymbolicRecord, n: Int): String = {
     var indent = ""
-    for (i <- 1 to n) {
+    for (_ <- 1 to n) {
       indent = "  " + indent
     }
     var str = ""
 
     s match {
       case gb: GlobalBranchRecord => {
-        str = str + gb.toTypeString + "\n"
+        str = str + gb.toTypeString() + "\n"
         for (sub <- gb.thnSubs) {
           str = str + indent + toTypeTree(sub, n + 1)
         }

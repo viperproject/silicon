@@ -77,7 +77,7 @@ package object utils {
     case ss: SingletonSet => List(ss.p)
     case ss: SingletonMultiset => List(ss.p)
     case sw: SortWrapper => List(sw.t)
-    case d: Distinct => Seq.empty // d.ts.toList
+    case _: Distinct => Seq.empty // d.ts.toList
     case q: Quantification => q.vars ++ List(q.body) ++ q.triggers.flatMap(_.p)
     case l: Let =>
       val (vs, ts) = l.bindings.toSeq.unzip

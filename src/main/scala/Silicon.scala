@@ -356,7 +356,7 @@ object SiliconRunner extends SiliconFrontend(StdIOReporter()) {
 
         /* An exception's root cause might be an error; the following code takes care of that */
         reporting.exceptionToViperError(exception) match {
-          case Right((cause, failure)) =>
+          case Right((cause, _)) =>
             /* Report exceptions in a user-friendly way */
             reporter report ExceptionReport(exception)
             logger debug ("An exception occurred:", cause) /* Log stack trace */

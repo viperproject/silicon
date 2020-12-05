@@ -219,7 +219,7 @@ object evaluator extends EvaluationRules {
                     Q(s2, fvfLookup, v1)}
               }
             case _ =>
-              val (s2, smDef1, pmDef1) =
+              val (_, smDef1, pmDef1) =
                 quantifiedChunkSupporter.heapSummarisingMaps(
                   s = s1,
                   resource = fa.field,
@@ -910,7 +910,7 @@ object evaluator extends EvaluationRules {
         val bc = And(ts1)
         v2.decider.setCurrentBranchCondition(bc)
         evals(s3, es2, _ => pve, v2)((s4, ts2, v3) => {
-          evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, v4) => { // TODO: v4 isn't forward - problem?
+          evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, _) => { // TODO: v4 isn't forward - problem?
             val (auxGlobals, auxNonGlobalQuants) =
               v3.decider.pcs.after(preMark).quantified(quant, tVars, tTriggers, s"$name-aux", isGlobal = false, bc)
             val additionalPossibleTriggers: Map[ast.Exp, Term] =
@@ -1268,7 +1268,7 @@ object evaluator extends EvaluationRules {
       case rcv =>
         val s1 = s.copy(smCache = smCache1)
         val t = s1.possibleTriggers.get(fa)
-        val r = t match { /* TODO: r isn't used - why? */
+        t match { /* TODO: r isn't used - why? */
           case Some(cachedTrigger) =>
             cachedTrigger match {
               case l: Lookup =>

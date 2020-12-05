@@ -10,7 +10,6 @@ import java.io.File
 import java.net.URL
 
 import scala.reflect.ClassTag
-import fastparse._
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.PreambleContributor
@@ -204,7 +203,7 @@ private object utils {
 
         program
 
-      case fastparse.Parsed.Failure(msg, index, extra) =>
+      case fastparse.Parsed.Failure(msg, index, _) =>
         val (line, col) = ast.LineCol(index)
         sys.error(s"Failure: $msg, at ${viper.silver.parser.FilePosition(fromPath, line, col)}")
     }
