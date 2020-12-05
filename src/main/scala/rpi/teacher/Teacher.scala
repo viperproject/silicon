@@ -147,11 +147,11 @@ object Checks {
       case sil.Seqn(statements, _) =>
         val empty = Seq.empty[sil.Seqn]
         statements.foldLeft((prefix, empty)) {
-          case ((currentPrefix, checks), inner) =>
+          case ((currentPrefix, currentCollected), inner) =>
             // process inner statement
             val (updated, collected) = collectFramed(currentPrefix, inner)
             // return combined results
-            val combined = checks ++ collected
+            val combined = currentCollected ++ collected
             (updated, combined)
         }
       // process conditional
@@ -167,8 +167,21 @@ object Checks {
         (updated, combined)
       // process loop
       case sil.While(condition, invariants, body) =>
-        // TODO: Implement me.
-        ???
+        // get inhales and exhales specifying loop
+        val inhales = invariants.map { expression => sil.Inhale(expression)() }
+        val exhales = invariants.map { expression => sil.Exhale(expression)() }
+        // process loop body
+        val collected = {
+          val loopPrefix = inhales :+ sil.Inhale(condition)()
+          val (loopUpdated, loopCollected) = collectFramed(loopPrefix, body)
+          val check = asSequence(loopUpdated ++ exhales)
+          loopCollected :+ check
+        }
+        // update prefix
+        // TODO: Havoc variables.
+        val updated = prefix ++ exhales ++ inhales :+ sil.Inhale(not(condition))()
+        // return result
+        (updated, collected)
       // process method call
       case sil.MethodCall(name, arguments, _) if !Names.isAnnotation(name) =>
         // get inhales and exhales specifying method
