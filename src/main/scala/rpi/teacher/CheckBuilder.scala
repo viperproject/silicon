@@ -149,7 +149,7 @@ class CheckBuilder(teacher: Teacher) {
         val label = saveState(instance)
         context.addExhaled(label, instance)
         // exhale specification
-        addExhale(predicate)
+        addExhale(adapted)
       case sil.MethodCall(name, arguments, _) =>
         // TODO: Implement me.
         ???
