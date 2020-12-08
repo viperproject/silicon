@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.interfaces.{Failure, SiliconNativeCounterexample, SiliconRawCounterexample, SiliconVariableCounterexample}
+import viper.silicon.interfaces.{Failure, SiliconNativeCounterexample, SiliconRawCounterexample, SiliconVariableCounterexample, SiliconMappedCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
@@ -38,9 +38,12 @@ trait SymbolicExecutionRules {
             val pcs = v.decider.pcs
             val conditions = pcs.assumptions.toSeq ++ pcs.branchConditions
             SiliconRawCounterexample(conditions, s, nativeModel)
+          case Some("mapped") => 
+            SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel)
           case _ =>
             SiliconVariableCounterexample(s.g, nativeModel)
         }
+        
         val finalCE = ceTrafo match {
           case Some(trafo) => trafo.f(ce)
           case _ => ce

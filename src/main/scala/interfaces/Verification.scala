@@ -7,8 +7,8 @@
 package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.{State, Store}
-import viper.silver.verifier.{Counterexample, Model, VerificationError}
+import viper.silicon.state.{Heap, State, Store}
+import viper.silver.verifier.{Counterexample, Model, VerificationError, SingleEntry}
 import viper.silicon.state.terms.Term
 
 /*
@@ -87,7 +87,7 @@ case class Failure/*[ST <: Store[ST],
 
   override lazy val toString = message.readableMessage
 }
-
+/* counterexamples defined in silver.verifier */
 trait SiliconCounterexample extends Counterexample {
   val internalStore: Store
   def store: Map[String, Term] = internalStore.values.map{case (k, v) => k.name -> v}
@@ -115,6 +115,49 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
   }
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconVariableCounterexample(s, nativeModel)
+  }
+}
+
+case class SiliconMappedCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps, nativemodel: Model) extends SiliconCounterexample {
+  def storeToString : String = {
+    var s = "Store: \n ------------------------------"
+    for ((k,v) <- internalStore.values) {
+      s = s + "\n " + k.name + " <- " + v.toString
+    }
+    s = s + "\n End Store"
+    s
+  }
+  def heapToString : String = {
+    var s = "Heap: \n ---------------------"
+    for (chunk <- heap) {
+      s = s + "\n new chunk:"
+      s = s + "\n " + chunk.toString
+    }
+    s = s + "\n End Heap"
+    s
+  }
+
+  def oldHeapToString : String = {
+    var s = "Old Heaps: \n -----------------------------"
+    for ((name, h) <- oldHeaps) {
+      s = s + "\n name: " + name
+      for (chunk <- h.values) {
+        s = s + "\n " + chunk.toString
+      }
+    }
+    s = s + "\n End Old Heaps "
+    return s
+  }
+
+  override val model: Model = Model(
+    nativemodel.entries 
+    + (storeToString -> SingleEntry(" "))
+    + (heapToString -> SingleEntry(" "))
+    + (oldHeapToString -> SingleEntry(" "))
+    )
+
+  override def withStore(s: Store) : SiliconCounterexample = {
+    SiliconMappedCounterexample(s, heap, oldHeaps, nativemodel)
   }
 }
 
