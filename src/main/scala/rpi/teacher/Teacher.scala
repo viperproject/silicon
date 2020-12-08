@@ -182,9 +182,15 @@ object Checks {
           val check = asSequence(loopUpdated ++ exhales)
           loopCollected :+ check
         }
+        // havoc variables
+        val havocLoop = {
+          val assignments = body
+            .writtenVars
+            .map { variable => sil.LocalVarAssign(variable, variable)() }
+          sil.While(sil.FalseLit()(), Seq.empty, asSequence(assignments))()
+        }
         // update prefix
-        // TODO: Havoc variables.
-        val updated = prefix ++ exhales ++ inhales :+ sil.Inhale(not(condition))()
+        val updated = prefix ++ exhales ++ Seq(havocLoop) ++ inhales ++ Seq(sil.Inhale(not(condition))())
         // return result
         (updated, collected)
       // process method call
