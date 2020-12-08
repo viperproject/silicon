@@ -74,7 +74,7 @@ class ExampleExtractor(teacher: Teacher) {
     // create example
     if (label.isDefined) {
       // evaluate permission amount
-      val name = context.name(currentLocation)
+      val name = context.getName(label.get, currentLocation)
       val term = currentState.store(name)
       val permission = currentState.evaluatePermission(term)
       // create implication or negative example depending on permission amount
@@ -99,7 +99,7 @@ class ExampleExtractor(teacher: Teacher) {
       case InsufficientPermission(access) => access
     }
     val label = error.offendingNode match {
-      case fold: sil.Fold => fold
+      case sil.Fold(access) => access
         .info
         .getUniqueInfo[sil.SimpleInfo]
         .flatMap { info => info.comment.headOption }
@@ -117,8 +117,8 @@ class ExampleExtractor(teacher: Teacher) {
     * @return A tuple holding the current state and a sequence of states that precede the current state where some
     *         specifications were inhaled.
     */
-  private def extractStates(counter: SiliconRawCounterexample, label: Option[String], context: Context): (State, Seq[State]) = {
-    val state = counter.state
+  private def extractStates(counter: SiliconRawCounterexample, current: Option[String], context: Context): (State, Seq[State]) = {
+    val siliconState = counter.state
     val model = counter.model
 
     // build partitions of equivalent terms
@@ -132,30 +132,32 @@ class ExampleExtractor(teacher: Teacher) {
 
     // build store
     // TODO: Restrict stores?
-    val siliconStore = state.g
+    val siliconStore = siliconState.g
     val store = buildStore(siliconStore, partitions)
 
     // current state
-    val current = {
-      // TODO: Current heap
-      val siliconHeap = state.h
-      val name = "current"
+    val state = {
+      val (label, siliconHeap) = current match {
+        case Some(existing) => (existing, siliconState.oldHeaps(existing))
+        case None => ("current", siliconState.h)
+      }
       val heap = buildHeap(siliconHeap, partitions)
-      State(name, store, heap, model)
+      State(label, store, heap, model)
     }
 
     // inhaled states
-    val inhaled = state
+    val inhaled = siliconState
       .oldHeaps
-      .filter { case (label, _) => context.isInhaled(label) }
-      .map { case (label, siliconHeap) =>
-        val heap = buildHeap(siliconHeap, partitions)
-        State(label, store, heap, model)
+      .flatMap {
+        case (label, siliconHeap) if context.isInhaled(label) =>
+          val heap = buildHeap(siliconHeap, partitions)
+          Some(State(label, store, heap, model))
+        case _ => None
       }
       .toSeq
 
     // return states
-    (current, inhaled)
+    (state, inhaled)
   }
 
   /**

@@ -55,7 +55,7 @@ class CheckBuilder(teacher: Teacher) {
     */
   def basicCheck(checks: Seq[sil.Seqn], hypothesis: Hypothesis): (sil.Program, Context) = {
     clear()
-    val instrumented = checks.map { check => instrument(check) }
+    val instrumented = checks.map { check => instrument(check, hypothesis) }
     val program = buildProgram(instrumented, hypothesis)
     // return program and context
     (program, context)
@@ -76,7 +76,7 @@ class CheckBuilder(teacher: Teacher) {
       val inferred = inference.predicates(hypothesis)
       existing ++ inferred
     }
-    val methods = checks.map { check => builtMethod(check) }
+    val methods = checks.map { check => builtMethod(check, hypothesis) }
     val extensions = Seq.empty
     val program = sil.Program(domains, fields, functions, predicates, methods, extensions)()
     println(program)
@@ -89,7 +89,7 @@ class CheckBuilder(teacher: Teacher) {
     * @param check The check.
     * @return The method.
     */
-  private def builtMethod(check: sil.Seqn): sil.Method = {
+  private def builtMethod(check: sil.Seqn, hypothesis: Hypothesis): sil.Method = {
     val name = namespace.uniqueIdentifier(base = "check", Some(0))
     val arguments = Seq.empty
     val returns = Seq.empty
@@ -112,9 +112,9 @@ class CheckBuilder(teacher: Teacher) {
     * @param sequence The sequence to instrument.
     * @return The instrumented sequence.
     */
-  private def instrument(sequence: sil.Seqn): sil.Seqn = {
+  private def instrument(sequence: sil.Seqn, hypothesis: Hypothesis): sil.Seqn = {
     push()
-    sequence.ss.foreach { statement => instrument(statement) }
+    sequence.ss.foreach { statement => instrument(statement, hypothesis) }
     asSequence(pop())
   }
 
@@ -123,32 +123,34 @@ class CheckBuilder(teacher: Teacher) {
     *
     * @param statement The statement to instrument.
     */
-  private def instrument(statement: sil.Stmt): Unit =
+  private def instrument(statement: sil.Stmt, hypothesis: Hypothesis): Unit =
     statement match {
       case sil.If(condition, thenBody, elseBody) =>
         // instrument branches
-        val thenInstrumented = instrument(thenBody)
-        val elseInstrumented = instrument(elseBody)
+        val thenInstrumented = instrument(thenBody, hypothesis)
+        val elseInstrumented = instrument(elseBody, hypothesis)
         // add instrumented conditional
         val instrumented = sil.If(condition, thenInstrumented, elseInstrumented)()
         addStatement(instrumented)
       case sil.Inhale(predicate: sil.PredicateAccessPredicate) =>
-        // get specification instance and adapt predicate
+        // get specification instance
         val instance = getInstance(predicate)
-        val adapted = adaptPredicate(predicate, instance)
         // inhale specification
+        val adapted = adaptPredicate(predicate, instance, None)
         addInhale(adapted)
         // save state
-        val label = saveState(instance)
-        context.addInhaled(label, instance)
+        saveState(instance, inhaled = true)
       case sil.Exhale(predicate: sil.PredicateAccessPredicate) =>
-        // get specification instance and adapt predicate
+        // get specification instance
         val instance = getInstance(predicate)
-        val adapted = adaptPredicate(predicate, instance)
         // save state
-        val label = saveState(instance)
-        context.addExhaled(label, instance)
+        val label = saveState(instance, inhaled = false)
+        // save permissions
+        // TODO: Implement me.
+        val x = hypothesis.get(instance)
+        foo(x, label)
         // exhale specification
+        val adapted = adaptPredicate(predicate, instance, Some(label))
         addExhale(adapted)
       case sil.MethodCall(name, arguments, _) =>
         // TODO: Implement me.
@@ -174,19 +176,23 @@ class CheckBuilder(teacher: Teacher) {
     }
 
     // TODO: Inhale permissions to make stuff self-framing
+    if (!Config.useFraming) ???
     assignments.foreach { assignment => addStatement(assignment) }
 
     // create and return instance
     val name = access.predicateName
-    inference.instance(name, arguments)
+    inference.getInstance(name, arguments)
   }
 
-  private def adaptPredicate(predicate: sil.PredicateAccessPredicate, instance: Instance): sil.PredicateAccessPredicate = {
+  private def adaptPredicate(predicate: sil.PredicateAccessPredicate, instance: Instance, label: Option[String]): sil.PredicateAccessPredicate = {
     val name = predicate.loc.predicateName
     val arguments = instance.arguments
     val access = sil.PredicateAccess(arguments, name)()
     val permission = predicate.perm
-    sil.PredicateAccessPredicate(access, permission)()
+    val info = label
+      .map { name => sil.SimpleInfo(Seq(name)) }
+      .getOrElse(sil.NoInfo)
+    sil.PredicateAccessPredicate(access, permission)(info = info)
   }
 
   /**
@@ -195,7 +201,7 @@ class CheckBuilder(teacher: Teacher) {
     * @param instance The instance.
     * @return The label of the state.
     */
-  private def saveState(instance: Instance): String = {
+  private def saveState(instance: Instance, inhaled: Boolean): String = {
     val label = namespace.uniqueIdentifier(base = "s", Some(0))
     // save values of variables
     instance
@@ -216,7 +222,30 @@ class CheckBuilder(teacher: Teacher) {
       }
     // add label
     addStatement(sil.Label(label, Seq.empty)())
+    if (inhaled) context.addInhaled(label, instance)
+    else context.addExhaled(label, instance)
     label
+  }
+
+  // TODO: Also extract fold statements.
+  def foo(expression: sil.Exp, label: String): Unit = expression match {
+    case sil.TrueLit() => // do nothing
+    case sil.FieldAccessPredicate(resource, _) =>
+      val name = namespace.uniqueIdentifier(base = "p", Some(0))
+      context.addName(label, resource, name)
+      savePermission(name, resource)
+    case _ => ???
+  }
+
+  /**
+    * Saves the currently held permission amount for the given resource in a variable with the given name.
+    *
+    * @param name     The name of the variable.
+    * @param resource The resource.
+    */
+  private def savePermission(name: String, resource: sil.ResourceAccess): Unit = {
+    val value = sil.CurrentPerm(resource)()
+    saveValue(name, value)
   }
 
   /**

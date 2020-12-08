@@ -49,7 +49,7 @@ class Inference(program: sil.Program) {
     val x0 = sil.LocalVarDecl("x0", sil.Ref)()
     val x1 = sil.LocalVarDecl("x1", sil.Ref)()
     val t0 = sil.Predicate("t0", Seq(x0), Some(sil.NeCmp(x0.localVar, sil.NullLit()())()))()
-    val t1 = sil.Predicate("t1", Seq(x0, x1), Some(sil.EqCmp(x0.localVar, x1.localVar)()))()
+    val t1 = sil.Predicate("t1", Seq(x0, x1), Some(sil.NeCmp(x0.localVar, x1.localVar)()))()
     Seq(t0, t1)
   }
 
@@ -184,7 +184,7 @@ class Inference(program: sil.Program) {
     * @param arguments The arguments with which the specifications should be instantiated.
     * @return The instance.
     */
-  def instance(name: String, arguments: Seq[sil.Exp]): Instance = {
+  def getInstance(name: String, arguments: Seq[sil.Exp]): Instance = {
     val specification = specifications(name)
     Instance(specification, arguments)
   }
@@ -243,10 +243,12 @@ class Inference(program: sil.Program) {
     def substitute(expression: sil.Exp): sil.Exp =
       expression match {
         case sil.PredicateAccessPredicate(predicate, _) =>
-          val name = predicate.predicateName
-          val arguments = predicate.args
-          val expression = hypothesis.get(name)
-          instance(name, arguments).toActual(expression)
+          val instance = {
+            val name = predicate.predicateName
+            val arguments = predicate.args
+            getInstance(name, arguments)
+          }
+          hypothesis.get(instance)
         case _ => expression
       }
 

@@ -74,7 +74,7 @@ class Context {
 
   private var exhaled: Map[String, Instance] = Map.empty
 
-  private var names: Map[sil.LocationAccess, String] = Map.empty
+  private var names: Map[String, Map[sil.LocationAccess, String]] = Map.empty
 
   def isInhaled(label: String): Boolean =
     inhaled.contains(label)
@@ -85,8 +85,12 @@ class Context {
   def addExhaled(label: String, instance: Instance): Unit =
     exhaled = exhaled.updated(label, instance)
 
-  def addName(access: sil.LocationAccess, name: String): Unit =
-    names = names.updated(access, name)
+  def addName(label: String, access: sil.LocationAccess, name: String): Unit = {
+    val updated = names
+      .getOrElse(name, Map.empty)
+      .updated(access, name)
+    names = names.updated(label, updated)
+  }
 
   def getInhaled(label: String): Instance =
     inhaled(label)
@@ -94,8 +98,9 @@ class Context {
   def getExhale(label: String): Instance =
     exhaled(label)
 
-  def name(access: sil.LocationAccess): String =
-    names(access)
+  def getName(label: String, access: sil.LocationAccess): String = {
+    names(label)(access)
+  }
 }
 
 /**

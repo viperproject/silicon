@@ -11,4 +11,9 @@ case class Hypothesis(predicates: Map[String, sil.Predicate]) {
       .get(name)
       .flatMap { predicate => predicate.body }
       .getOrElse(sil.TrueLit()())
+
+  def get(instance: Instance): sil.Exp = {
+    val body = get(instance.name)
+    instance.toActual(body)
+  }
 }
