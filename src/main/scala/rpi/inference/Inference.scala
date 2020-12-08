@@ -49,7 +49,7 @@ class Inference(program: sil.Program) {
     val x0 = sil.LocalVarDecl("x0", sil.Ref)()
     val x1 = sil.LocalVarDecl("x1", sil.Ref)()
     val t0 = sil.Predicate("t0", Seq(x0), Some(sil.NeCmp(x0.localVar, sil.NullLit()())()))()
-    val t1 = sil.Predicate("t1", Seq(x0, x1), Some(sil.NeCmp(x0.localVar, x1.localVar)()))()
+    val t1 = sil.Predicate("t1", Seq(x0, x1), Some(sil.EqCmp(x0.localVar, x1.localVar)()))()
     Seq(t0, t1)
   }
 
@@ -112,7 +112,12 @@ class Inference(program: sil.Program) {
         val transformed = method.copy(pres = preconditions, posts = postconditions)(method.pos, method.info, method.errT)
         (transformed, variables)
       case (loop: sil.While, variables) =>
-        val invariants = create(prefix = "I", variables) +: loop.invs
+        val written = loop
+          .deepCollect {
+            case sil.LocalVar(name, typ) => sil.LocalVarDecl(name, typ)()
+          }
+          .distinct
+        val invariants = create(prefix = "I", written) +: loop.invs
         val transformed = loop.copy(invs = invariants)(loop.pos, loop.info, loop.errT)
         (transformed, variables)
       case (sequence: sil.Seqn, variables) =>
@@ -185,7 +190,7 @@ class Inference(program: sil.Program) {
     * @return The instance.
     */
   def getInstance(name: String, arguments: Seq[sil.Exp]): Instance = {
-    val specification = specifications(name)
+    val specification = specifications.getOrElse(name, learner.getSpecification(name))
     Instance(specification, arguments)
   }
 

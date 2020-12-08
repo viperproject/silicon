@@ -70,6 +70,21 @@ case class Instance(specification: Specification, arguments: Seq[sil.Exp]) {
     Expressions.substitute(expression, toFormalMap)
 
   /**
+    * Replaces the actual arguments of the given location access with their corresponding formal counterparts.
+    *
+    * @param access The location access to translate.
+    * @return The location access in terms of the formal arguments.
+    */
+  def toFormal(access: sil.LocationAccess): sil.LocationAccess =
+    access match {
+      case sil.FieldAccess(receiver, field) =>
+        sil.FieldAccess(toFormal(receiver), field)()
+      case sil.PredicateAccess(arguments, name) =>
+        val updated = arguments.map { argument => toFormal(argument) }
+        sil.PredicateAccess(updated, name)()
+    }
+
+  /**
     * Replaces the formal arguments of the given expression with their corresponding actual counterparts.
     *
     * @param expression The expression to translate.
@@ -92,4 +107,20 @@ case class Instance(specification: Specification, arguments: Seq[sil.Exp]) {
         val updated = arguments.map { argument => toActual(argument) }
         sil.PredicateAccess(updated, name)()
     }
+
+  /**
+    * Replaces the formal arguments of the expressions appearing in given abstraction with their corresponding actual
+    * counterparts.
+    *
+    * @param abstraction The abstraction to translate.
+    * @return The abstraction in terms of the actual arguments.
+    */
+  def toActual(abstraction: Abstraction): Abstraction = {
+    val updated = abstraction
+      .values
+      .map { case (atom, value) =>
+        toActual(atom) -> value
+      }
+    Abstraction(updated)
+  }
 }

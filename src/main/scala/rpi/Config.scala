@@ -24,6 +24,8 @@ object Config {
     */
   val maxRounds = 5
 
+  val foldDepth = 1
+
   /**
     * The flag indicating whether the inference should exploit silicon's framing.
     */
@@ -35,11 +37,6 @@ object Config {
     * The flag indicating whether silicons branching should be used to concretize values of atomic predicates.
     */
   val useBranching = true
-
-  /**
-    * The flag indicating whether fold / unfold heuristics should be used.
-    */
-  val useHeuristics = false
 
   /**
     * The flag indicating whether parameters of inferred predicates should be renamed (mostly to test stuff).

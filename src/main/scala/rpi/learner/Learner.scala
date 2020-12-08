@@ -21,7 +21,9 @@ class Learner(inference: Inference) {
   /**
     * The sequence of examples.
     */
-  var examples: Seq[Example] = Seq.empty
+  private var examples: Seq[Example] = Seq.empty
+
+  private var specifications: Map[String, Specification] = Map.empty
 
   /**
     * Starts the learner and all of its subcomponents.
@@ -43,6 +45,8 @@ class Learner(inference: Inference) {
   def addExample(example: Example): Unit =
     examples = examples :+ example
 
+  def getSpecification(name: String) =
+    specifications(name)
 
   /**
     * Returns a hypothesis that is consistent with all examples.
@@ -125,6 +129,7 @@ class Learner(inference: Inference) {
         val atoms = inference.instantiateAtoms(variables)
         Specification("R", parameters, atoms)
       }
+      specifications = specifications.updated("R", specification)
       // create template
       val accesses = structure.resources ++ structure.recursions
       val guarded = accesses.map { access => Guarded(id.getAndIncrement(), access) }

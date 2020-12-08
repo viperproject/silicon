@@ -29,18 +29,18 @@ class ExampleExtractor(teacher: Teacher) {
     * @return The extracted example.
     */
   def extract(error: VerificationError, context: Context): Example = {
+    println(error)
     // extract counter example and offending location
     val counter = extractCounter(error)
     // TODO: I don't like how the optional label is handled further down.
-    val (offending, label) = extractOffending(error)
+    val (offending, info) = extractOffending(error)
+    val label = info.map(_.label)
 
     // extract states
     val (currentState, inhaledStates) = extractStates(counter, label, context)
 
-    val currentLocation = label match {
-      case Some(name) => context
-        .getExhale(name)
-        .toActual(offending)
+    val currentLocation = info match {
+      case Some(ContextInfo(_, instance)) => instance.toActual(offending)
       case _ => offending
     }
 
@@ -55,7 +55,8 @@ class ExampleExtractor(teacher: Teacher) {
               val currentInstance = context.getExhale(label.get)
               val pre = abstractState(inhaledState, inhaledInstance)
               val post = abstractState(currentState, currentInstance)
-              pre.meet(adaptor.adaptState(post))
+              val x = currentInstance.toActual(post)
+              pre.meet(adaptor.adaptState(x))
             } else abstractState(inhaledState, inhaledInstance)
           // TODO: It could be beneficial to have a set of all equivalent locations.
           val locations = adaptor.adaptLocation(currentLocation)
@@ -66,7 +67,7 @@ class ExampleExtractor(teacher: Teacher) {
     lazy val postRecords = {
       val currentInstance = context.getExhale(label.get)
       val state = abstractState(currentState, currentInstance)
-      val locations = Set(offending)
+      val locations = Set(currentInstance.toFormal(currentLocation))
       val record = Record(currentInstance.specification, state, locations)
       Seq(record)
     }
@@ -94,19 +95,16 @@ class ExampleExtractor(teacher: Teacher) {
       case Some(value: SiliconRawCounterexample) => value
     }
 
-  private def extractOffending(error: VerificationError): (sil.LocationAccess, Option[String]) = {
+  private def extractOffending(error: VerificationError): (sil.LocationAccess, Option[ContextInfo]) = {
     val location = error.reason match {
       case InsufficientPermission(access) => access
     }
-    val label = error.offendingNode match {
-      case sil.Fold(access) => access
-        .info
-        .getUniqueInfo[sil.SimpleInfo]
-        .flatMap { info => info.comment.headOption }
+    val info = error.offendingNode match {
+      case sil.Fold(access) => access.info.getUniqueInfo[ContextInfo]
       case _ => None
     }
 
-    (location, label)
+    (location, info)
   }
 
   /**
@@ -300,9 +298,11 @@ class ExampleExtractor(teacher: Teacher) {
       }
 
     def adaptState(state: Abstraction): Abstraction = {
-      val values = state.values.flatMap { case (atom, value) =>
-        adapt(atom).map { adapted => adapted -> value }
-      }
+      val values = state
+        .values
+        .flatMap { case (atom, value) =>
+          adapt(atom).map { adapted => adapted -> value }
+        }
       Abstraction(values)
     }
 

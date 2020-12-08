@@ -103,6 +103,12 @@ class Context {
   }
 }
 
+case class ContextInfo(label: String, instance: Instance) extends sil.Info{
+  override def comment: Seq[String] = Seq.empty
+
+  override def isCached: Boolean = false
+}
+
 /**
   * Utility object providing methods to collect checks from programs.
   */

@@ -1,9 +1,9 @@
 field next: Ref
 
-method main(x: Ref)
+method main(a: Ref)
 {
    var c: Ref
-   c := x
+   c := a
    while (c != null)
    {
       c := c.next

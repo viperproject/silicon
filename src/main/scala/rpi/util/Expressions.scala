@@ -69,6 +69,9 @@ object Expressions {
       case _ => sil.Not(expression)()
     }
 
+  def and(left: sil.Exp, right: sil.Exp): sil.Exp =
+    sil.And(left, right)()
+
   def implies(left: sil.Exp, right: sil.Exp): sil.Exp =
     sil.Implies(left, right)()
 
