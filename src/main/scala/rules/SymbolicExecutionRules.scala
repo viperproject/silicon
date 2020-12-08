@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.interfaces.{Failure, SiliconNativeCounterexample, SiliconVariableCounterexample}
+import viper.silicon.interfaces.{Failure, SiliconNativeCounterexample, SiliconVariableCounterexample, SiliconMappedCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
@@ -28,14 +28,20 @@ trait SymbolicExecutionRules {
       val model = v.decider.getModel()
       if (model != null && !model.contains("model is not available")){
         val nativeModel = Model(model)
-        val ce: Counterexample = if (Verifier.config.counterexample.toOption.get == "native") {
-          val oldHeap = if (s.oldHeaps.contains(Verifier.PRE_STATE_LABEL))
-            Some(s.oldHeaps(Verifier.PRE_STATE_LABEL).values)
-          else None
-          SiliconNativeCounterexample(s.g, s.h.values, oldHeap, nativeModel)
-        }else{
-          SiliconVariableCounterexample(s.g, nativeModel)
+        val ce_type = Verifier.config.counterexample.toOption.get
+        var ce: Counterexample = ce_type match {
+          case "native" => 
+            val oldHeap = if (s.oldHeaps.contains(Verifier.PRE_STATE_LABEL))
+              Some(s.oldHeaps(Verifier.PRE_STATE_LABEL).values)
+            else None
+            SiliconNativeCounterexample(s.g, s.h.values, oldHeap, nativeModel)
+          case "variables" =>
+            SiliconVariableCounterexample(s.g, nativeModel)
+          case "mapped" => 
+            SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel)
+          case _ => SiliconVariableCounterexample(s.g, nativeModel)
         }
+        
         val finalCE = ceTrafo match {
           case Some(trafo) => trafo.f(ce)
           case _ => ce
