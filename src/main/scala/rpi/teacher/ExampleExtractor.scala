@@ -273,7 +273,8 @@ class ExampleExtractor(teacher: Teacher) {
 
   private case class Adaptor(current: State, target: State, instance: Instance) {
     /**
-      * The reachability map.
+      * The reachability map that associates terms with with a set of expressions that are guaranteed to evaluate to
+      * that term in the target state.
       *
       * TODO: Number of steps.
       */
@@ -313,7 +314,7 @@ class ExampleExtractor(teacher: Teacher) {
       * @return The set of expressions describing the given path in the target state.
       */
     private def adaptPath(path: sil.Exp): Set[sil.Exp] = {
-      val term = target.toTerm(path)
+      val term = current.toTerm(path)
       reachability
         .getOrElse(term, Set.empty)
         .map { adapted => instance.toFormal(adapted) }
@@ -326,7 +327,7 @@ class ExampleExtractor(teacher: Teacher) {
       */
     private def initial: Map[Term, Set[sil.Exp]] = {
       val empty = Map.empty[Term, Set[sil.Exp]]
-      current
+      target
         .store
         .filterKeys { name => name.startsWith(target.label) }
         .foldLeft(empty) {
@@ -351,7 +352,7 @@ class ExampleExtractor(teacher: Teacher) {
         val empty = Map.empty[Term, Set[sil.Exp]]
         val next = map.foldLeft(empty) {
           case (map1, (term, paths)) =>
-            current.heap.getOrElse(term, Map.empty).foldLeft(map1) {
+            target.heap.getOrElse(term, Map.empty).foldLeft(map1) {
               case (map2, (name, value)) =>
                 val field = sil.Field(name, sil.Ref)()
                 val extended = paths.map { path => sil.FieldAccess(path, field)() }
