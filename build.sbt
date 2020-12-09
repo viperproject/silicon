@@ -1,5 +1,3 @@
-import scala.sys.process.{Process, ProcessLogger}
-import scala.util.{Failure, Success, Try}
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -79,6 +77,9 @@ lazy val silicon = (project in file("."))
 
 // Pair of revision and branch information from Mercurial. Empty strings if an error occurred.
 lazy val gitInfo: Def.Initialize[(String, String)] = Def.setting {
+  import scala.sys.process.{Process, ProcessLogger}
+  import scala.util.{Failure, Success, Try}
+
   val gitCommand = "git status --porcelain=v2 --branch"
 
   Try({
