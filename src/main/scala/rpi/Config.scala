@@ -24,6 +24,11 @@ object Config {
     */
   val maxRounds = 5
 
+  /**
+    * TODO: Implement.
+    */
+  val useAnnotations = true
+
   val foldDepth = 1
 
   /**

@@ -48,63 +48,88 @@ class CheckBuilder(teacher: Teacher) {
   private var stack: List[mutable.Buffer[sil.Stmt]] = _
 
   /**
-    * Returns a program that performs the given checks.
+    * Returns a program that performs self-framing checks for the given hypothesis.
     *
-    * @param checks     The checks to perform.
-    * @param hypothesis The hypothesis.
-    * @return The program.
+    * @param hypothesis The hypothesis to check for self-framingness.
+    * @return The program and the context object.
     */
-  def basicCheck(checks: Seq[sil.Seqn], hypothesis: Hypothesis): (sil.Program, Context) = {
+  def framingCheck(hypothesis: Hypothesis): (sil.Program, Context) = {
     clear()
-    val instrumented = checks.map { check => instrument(check, hypothesis) }
-    val program = buildProgram(instrumented, hypothesis)
-    // return program and context
+
+    /**
+      * Helper method that inhales the conjuncts of the given expression.
+      *
+      * @param expression The expression to inhale.
+      */
+    def addInhales(expression: sil.Exp): Unit =
+      expression match {
+        case sil.And(left, right) =>
+          addInhales(left)
+          addInhales(right)
+        case conjunct =>
+          // create context information
+          val info = getLocation(conjunct)
+            .map { location => FramingInfo(location) }
+            .getOrElse(sil.NoInfo)
+          // inhale conjunct
+          val inhale = sil.Inhale(conjunct)(info = info)
+          addStatement(inhale)
+      }
+
+    /**
+      * Helper method that extracts the location from the given expression.
+      *
+      * This method assumes that there is at most one location access that is potentially guarded by some conditions.
+      *
+      * @param expression The expression.
+      * @return The extracted location access.
+      */
+    def getLocation(expression: sil.Exp): Option[sil.LocationAccess] =
+      expression match {
+        case sil.TrueLit() => None
+        case sil.FalseLit() => None
+        case sil.FieldAccessPredicate(location, _) => Some(location)
+        case sil.PredicateAccessPredicate(location, _) => Some(location)
+        case sil.Implies(_, guarded) => getLocation(guarded)
+        case _ => ???
+      }
+
+    val checks = hypothesis
+      .predicates
+      .map { case (name, predicate) =>
+        push()
+        // save state
+        val arguments = predicate.formalArgs.map { parameter => parameter.localVar }
+        val instance = inference.getInstance(name, arguments)
+        val label = saveState(instance)
+        context.addInhaled(label, instance)
+        // inhale inferred specification
+        val inferred = hypothesis.get(instance)
+        addInhales(inferred)
+        // return check
+        asSequence(pop())
+      }
+      .toSeq
+
+    // return program
+    val dummy = Hypothesis(Map.empty)
+    val program = buildProgram(checks, dummy)
     (program, context)
   }
 
   /**
-    * Builds a program performing to the given checks.
+    * Returns a program that performs the given checks.
     *
-    * @param checks The checks.
-    * @return The program.
+    * @param checks     The checks to perform.
+    * @param hypothesis The hypothesis.
+    * @return The program and the context object.
     */
-  private def buildProgram(checks: Seq[sil.Seqn], hypothesis: Hypothesis): sil.Program = {
-    val domains = Seq.empty
-    val fields = inference.magic +: original.fields
-    val functions = Seq.empty
-    val predicates = {
-      val existing = original.predicates
-      val inferred = inference.predicates(hypothesis)
-      existing ++ inferred
-    }
-    val methods = checks.map { check => builtMethod(check, hypothesis) }
-    val extensions = Seq.empty
-    val program = sil.Program(domains, fields, functions, predicates, methods, extensions)()
-    println(program)
-    program
-  }
-
-  /**
-    * Builds a method performing to the given check.
-    *
-    * @param check The check.
-    * @return The method.
-    */
-  private def builtMethod(check: sil.Seqn, hypothesis: Hypothesis): sil.Method = {
-    val name = namespace.uniqueIdentifier(base = "check", Some(0))
-    val arguments = Seq.empty
-    val returns = Seq.empty
-    val preconditions = Seq.empty
-    val postconditions = Seq.empty
-    val body = {
-      val statements = check.ss
-      val declarations = check
-        .deepCollect { case variable: sil.LocalVar => variable }
-        .distinct
-        .map { variable => sil.LocalVarDecl(variable.name, variable.typ)() }
-      Some(sil.Seqn(statements, declarations)())
-    }
-    sil.Method(name, arguments, returns, preconditions, postconditions, body)()
+  def basicCheck(checks: Seq[sil.Seqn], hypothesis: Hypothesis): (sil.Program, Context) = {
+    clear()
+    val instrumented = checks.map { check => instrument(check, hypothesis) }
+    // return program and context
+    val program = buildProgram(instrumented, hypothesis)
+    (program, context)
   }
 
   /**
@@ -138,25 +163,19 @@ class CheckBuilder(teacher: Teacher) {
         val instance = getInstance(predicate)
         // inhale specification
         val adapted = adaptPredicate(predicate, instance, None)
+        // TODO: Replace with inhale and unfold.
         addInhale(adapted)
         // save state
-        saveState(instance, inhaled = true)
+        val label = saveState(instance)
+        context.addInhaled(label, instance)
       case sil.Exhale(predicate: sil.PredicateAccessPredicate) =>
         // get specification instance
         val instance = getInstance(predicate)
         // save state
-        val label = saveState(instance, inhaled = false)
+        val label = saveState(instance)
+        context.addExhaled(label, instance)
         // exhale specification
         foldAndExhale(instance, Seq.empty, depth = 0)(label, hypothesis)
-
-
-      /*val body = hypothesis.get(instance)
-      val folds = bar(sil.TrueLit()(), body)(label)
-
-      folds.foreach { case (guard, resource) =>
-        val fold = sil.If(guard, asSequence(sil.Fold(resource)()), skip)()
-        addStatement(fold)
-      }*/
       case sil.MethodCall(name, arguments, _) =>
         // TODO: Implement me.
         ???
@@ -164,17 +183,106 @@ class CheckBuilder(teacher: Teacher) {
         addStatement(statement)
     }
 
+  /**
+    * Builds a program with the given checks. Most components are taken over from the original  program.
+    *
+    * @param checks     The checks.
+    * @param hypothesis The hypothesis.
+    * @return The program.
+    */
+  private def buildProgram(checks: Seq[sil.Seqn], hypothesis: Hypothesis): sil.Program = {
+    val domains = original.domains
+    val fields = inference.magic +: original.fields
+    val functions = original.functions
+    val predicates = {
+      val existing = original.predicates
+      val inferred = inference.predicates(hypothesis)
+      existing ++ inferred
+    }
+    val methods = checks.map { check => buildMethod(check) }
+    val extensions = Seq.empty
+    sil.Program(domains, fields, functions, predicates, methods, extensions)()
+  }
+
+  /**
+    * Builds a method performing to the given check.
+    *
+    * @param check The check.
+    * @return The method.
+    */
+  private def buildMethod(check: sil.Seqn): sil.Method = {
+    val name = namespace.uniqueIdentifier(base = "check", Some(0))
+    val arguments = Seq.empty
+    val returns = Seq.empty
+    val preconditions = Seq.empty
+    val postconditions = Seq.empty
+    val body = {
+      val statements = check.ss
+      val declarations = check
+        .deepCollect { case variable: sil.LocalVar => variable }
+        .distinct
+        .map { variable => sil.LocalVarDecl(variable.name, variable.typ)() }
+      Some(sil.Seqn(statements, declarations)())
+    }
+    sil.Method(name, arguments, returns, preconditions, postconditions, body)()
+  }
+
+  private def inhaleAndUnfold(instance: Instance, guards: Seq[sil.Exp], depth: Int)
+                             (implicit hypothesis: Hypothesis): Unit = {
+    // auxiliary method to recursively process nested instances
+    def processNested(expression: sil.Exp, guards: Seq[sil.Exp]): Unit =
+      expression match {
+        case sil.And(left, right) =>
+          processNested(left, guards)
+          processNested(right, guards)
+        case sil.Implies(left, right) =>
+          processNested(right, guards :+ left)
+        case sil.PredicateAccessPredicate(resource, _) =>
+          if (depth < Config.foldDepth) {
+            // TODO: Implement me
+            val name = resource.predicateName
+            val arguments = resource.args
+            val inner = inference.getInstance(name, arguments)
+            inhaleAndUnfold(inner, guards, depth + 1)
+          }
+        case _ => // do nothing
+      }
+
+    // create predicate
+    val predicate = {
+      val name = instance.name
+      val arguments = instance.arguments
+      val access = sil.PredicateAccess(arguments, name)()
+      sil.PredicateAccessPredicate(access, sil.FullPerm()())()
+    }
+
+    // inhale top level instance
+    if (depth == 0) addStatement(sil.Inhale(predicate)())
+
+    // create conditional unfold statement
+    val conditional = {
+      val unfold = sil.Unfold(predicate)()
+      if (guards.isEmpty) unfold
+      else sil.If(bigAnd(guards), asSequence(unfold), skip)()
+    }
+    addStatement(conditional)
+
+    // process nested instances
+    val body = hypothesis.get(instance)
+    processNested(body, guards)
+  }
+
   private def foldAndExhale(instance: Instance, guards: Seq[sil.Exp], depth: Int)
                            (implicit label: String, hypothesis: Hypothesis): Unit = {
-    // auxiliary method to recursively process body
-    def process(expression: sil.Exp, guards: Seq[sil.Exp]): Unit =
+    // auxiliary method to recursively process nested instances
+    def processNested(expression: sil.Exp, guards: Seq[sil.Exp]): Unit =
       expression match {
         case sil.TrueLit() => // do nothing
         case sil.And(left, right) =>
-          process(left, guards)
-          process(right, guards)
+          processNested(left, guards)
+          processNested(right, guards)
         case sil.Implies(left, right) =>
-          process(right, guards :+ left)
+          processNested(right, guards :+ left)
         case sil.FieldAccessPredicate(resource, _) =>
           saveResource(resource)
         case sil.PredicateAccessPredicate(resource, _) =>
@@ -193,22 +301,22 @@ class CheckBuilder(teacher: Teacher) {
       savePermission(name, resource)
     }
 
-    // process body
+    // process nested instances
     val body = hypothesis.get(instance)
-    process(body, guards)
+    processNested(body, guards)
 
     // create predicate
     val predicate = {
       val name = instance.name
       val arguments = instance.arguments
       val access = sil.PredicateAccess(arguments, name)()
-      val info = ContextInfo(label, instance)
-      sil.PredicateAccessPredicate(access, sil.FullPerm()())(info = info)
+      sil.PredicateAccessPredicate(access, sil.FullPerm()())()
     }
 
     // create conditional fold statement
     val conditional = {
-      val fold = sil.Fold(predicate)()
+      val info = BasicInfo(label, instance)
+      val fold = sil.Fold(predicate)(info = info)
       if (guards.isEmpty) fold
       else sil.If(bigAnd(guards), asSequence(fold), skip)()
     }
@@ -249,7 +357,7 @@ class CheckBuilder(teacher: Teacher) {
     val arguments = instance.arguments
     val access = sil.PredicateAccess(arguments, name)()
     val permission = predicate.perm
-    val info = label.map { name => ContextInfo(name, instance) }.getOrElse(sil.NoInfo)
+    val info = label.map { name => BasicInfo(name, instance) }.getOrElse(sil.NoInfo)
     sil.PredicateAccessPredicate(access, permission)(info = info)
   }
 
@@ -259,7 +367,7 @@ class CheckBuilder(teacher: Teacher) {
     * @param instance The instance.
     * @return The label of the state.
     */
-  private def saveState(instance: Instance, inhaled: Boolean): String = {
+  private def saveState(instance: Instance): String = {
     val label = namespace.uniqueIdentifier(base = "s", Some(0))
     // save values of variables
     instance
@@ -280,8 +388,6 @@ class CheckBuilder(teacher: Teacher) {
       }
     // add label
     addStatement(sil.Label(label, Seq.empty)())
-    if (inhaled) context.addInhaled(label, instance)
-    else context.addExhaled(label, instance)
     label
   }
 
@@ -307,7 +413,7 @@ class CheckBuilder(teacher: Teacher) {
           inference.getInstance(name, arguments)
         }
 
-        val info = ContextInfo(label, instance)
+        val info = BasicInfo(label, instance)
 
 
         val name = namespace.uniqueIdentifier(base = "p", Some(0))

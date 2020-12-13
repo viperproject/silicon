@@ -51,21 +51,35 @@ class Teacher(val inference: Inference) {
     */
   def check(hypothesis: Hypothesis): Seq[Example] =
     checks.flatMap { group =>
-      // build and verify program
-      val (program, context) = builder.basicCheck(group, hypothesis)
-      val result = inference.verify(program)
-      // extract examples
-      result match {
-        case Success => Seq.empty
-        case Failure(errors) => errors
-          .map {
-            case error: VerificationError =>
-              extractor.extract(error, context)
-            case _ =>
-              // TODO: Error handling.
-              ???
-          }
+      // check self-framingness
+      val framing = {
+        val (check, context) = builder.framingCheck(hypothesis)
+        execute(check, error => extractor.extractFraming(error, context))
       }
+      // perform checks if hypothesis is self-framing
+      if (framing.isEmpty) {
+        // build and verify program
+        val (check, context) = builder.basicCheck(group, hypothesis)
+        execute(check, error => extractor.extractBasic(error, context))
+      } else framing
+    }
+
+  /**
+    * Executes the check represented by the given program and uses the given extraction method to produce examples in
+    * case there are failures.
+    *
+    * @param program The check program.
+    * @param extract The method extracting examples from verification errors.
+    * @return The extracted examples.
+    */
+  private def execute(program: sil.Program, extract: VerificationError => Example): Seq[Example] =
+    inference.verify(program) match {
+      case Success => Seq.empty
+      case Failure(errors) => errors
+        .map {
+          case error: VerificationError => extract(error)
+          case _ => ??? // TODO: Error handling.
+        }
     }
 }
 
@@ -103,11 +117,15 @@ class Context {
   }
 }
 
-case class ContextInfo(label: String, instance: Instance) extends sil.Info{
+trait ContextInfo extends sil.Info {
   override def comment: Seq[String] = Seq.empty
 
   override def isCached: Boolean = false
 }
+
+case class FramingInfo(location: sil.LocationAccess) extends ContextInfo
+
+case class BasicInfo(label: String, instance: Instance) extends ContextInfo
 
 /**
   * Utility object providing methods to collect checks from programs.

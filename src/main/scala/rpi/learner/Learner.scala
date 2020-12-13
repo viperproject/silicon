@@ -45,7 +45,10 @@ class Learner(inference: Inference) {
   def addExample(example: Example): Unit =
     examples = examples :+ example
 
-  def getSpecification(name: String) =
+  def allSpecifications: Seq[Specification] =
+    specifications.values.toSeq
+
+  def getSpecification(name: String): Specification =
     specifications(name)
 
   /**
@@ -108,7 +111,7 @@ class Learner(inference: Inference) {
           }
           // compute template
           val template = {
-            val specification = inference.specification(name)
+            val specification = inference.getSpecification(name)
             val accesses = locations ++ instances
             val guarded = accesses
               .filter { access => isAllowed(access) }

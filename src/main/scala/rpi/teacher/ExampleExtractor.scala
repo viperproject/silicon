@@ -9,12 +9,19 @@ import viper.silver.verifier.{Model, SingleEntry, VerificationError}
 import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silver.{ast => sil}
 
+import scala.reflect.ClassTag
+
 /**
   * Extracts examples from verification errors.
   *
   * @param teacher The pointer to the teacher.
   */
 class ExampleExtractor(teacher: Teacher) {
+  /**
+    * Type shortcut for counter examples.
+    */
+  private type Counter = SiliconRawCounterexample
+
   /**
     * Returns the pointer to the inference.
     *
@@ -23,24 +30,71 @@ class ExampleExtractor(teacher: Teacher) {
   def inference: Inference = teacher.inference
 
   /**
-    * Extracts an example from the given verification error.
+    * Extracts an example from the given verification error corresponding to a self-framingness check.
     *
-    * @param error The verification error.
+    * @param error   The verification error.
+    * @param context The context object.
     * @return The extracted example.
     */
-  def extract(error: VerificationError, context: Context): Example = {
+  def extractFraming(error: VerificationError, context: Context): Example = {
     println(error)
     // extract counter example and offending location
-    val counter = extractCounter(error)
+    val (counter, offending, Some(info)) = extractInformation[FramingInfo](error)
+
+
+    val state = {
+      val siliconState = counter.state
+      val partitions = new UnionFind[Term]
+      val model = counter.model
+
+      val store = {
+        val siliconStore = siliconState.g
+        buildStore(siliconStore, partitions)
+      }
+
+      // get label
+      val labels = siliconState
+        .oldHeaps
+        .flatMap {
+          case (name, _) if context.isInhaled(name) => Some(name)
+          case _ => None
+        }
+      assert(labels.size == 1)
+      val label = labels.head
+
+      // create state
+      State(label, store, Map.empty, model)
+    }
+
+    val instance = context.getInhaled(state.label)
+    val specification = instance.specification
+    val abstraction = abstractState(state, instance)
+
+    // create and return example
+    val left = Record(specification, abstraction, Set(info.location))
+    val right = Record(specification, abstraction, Set(offending))
+    Implication(Seq(left), Seq(right))
+  }
+
+  /**
+    * Extracts an example from the given verification error corresponding to a basic check.
+    *
+    * @param error   The verification error.
+    * @param context The context object.
+    * @return The extracted example.
+    */
+  def extractBasic(error: VerificationError, context: Context): Example = {
+    println(error)
+    // extract counter example, offending location, and context info
     // TODO: I don't like how the optional label is handled further down.
-    val (offending, info) = extractOffending(error)
+    val (counter, offending, info) = extractInformation[BasicInfo](error)
     val label = info.map(_.label)
 
     // extract states
     val (currentState, inhaledStates) = extractStates(counter, label, context)
 
     val currentLocation = info match {
-      case Some(ContextInfo(_, instance)) => instance.toActual(offending)
+      case Some(BasicInfo(_, instance)) => instance.toActual(offending)
       case _ => offending
     }
 
@@ -85,26 +139,31 @@ class ExampleExtractor(teacher: Teacher) {
   }
 
   /**
-    * Extracts the counter example from the verification error.
+    * Extracts information from the given verification error. The information consists of the counter example, the
+    * offending location, and some context information (if available).
     *
     * @param error The verification error.
-    * @return The counter example.
+    * @tparam T The type of the context information.
+    * @return The extracted information.
     */
-  private def extractCounter(error: VerificationError): SiliconRawCounterexample =
-    error.counterexample match {
-      case Some(value: SiliconRawCounterexample) => value
+  private def extractInformation[T <: ContextInfo : ClassTag](error: VerificationError): (Counter, sil.LocationAccess, Option[T]) = {
+    // extract counter example
+    val counter = error.counterexample match {
+      case Some(value: Counter) => value
+      case _ => ??? // should not happen
     }
-
-  private def extractOffending(error: VerificationError): (sil.LocationAccess, Option[ContextInfo]) = {
-    val location = error.reason match {
-      case InsufficientPermission(access) => access
+    // extract offending location
+    val offending = error.reason match {
+      case InsufficientPermission(location) => location
+      case _ => ??? // should not happen
     }
+    // extract context info
     val info = error.offendingNode match {
-      case sil.Fold(access) => access.info.getUniqueInfo[ContextInfo]
+      case node: sil.Infoed => node.info.getUniqueInfo[T]
       case _ => None
     }
-
-    (location, info)
+    // return information
+    (counter, offending, info)
   }
 
   /**
@@ -115,41 +174,36 @@ class ExampleExtractor(teacher: Teacher) {
     * @return A tuple holding the current state and a sequence of states that precede the current state where some
     *         specifications were inhaled.
     */
-  private def extractStates(counter: SiliconRawCounterexample, current: Option[String], context: Context): (State, Seq[State]) = {
+  private def extractStates(counter: Counter, label: Option[String], context: Context): (State, Seq[State]) = {
+    // get silicon state, partitions, and model
     val siliconState = counter.state
+    val partitions = buildPartitions(counter)
     val model = counter.model
-
-    // build partitions of equivalent terms
-    // TODO: This might be replaced by evaluating the model?
-    val partitions = new UnionFind[Term]
-    counter.conditions.foreach {
-      case terms.BuiltinEquals(left, right) =>
-        partitions.union(left, right)
-      case _ => // do nothing
-    }
 
     // build store
     // TODO: Restrict stores?
-    val siliconStore = siliconState.g
-    val store = buildStore(siliconStore, partitions)
+    val store = {
+      val siliconStore = siliconState.g
+      buildStore(siliconStore, partitions)
+    }
 
-    // current state
+    // build current state
     val state = {
-      val (label, siliconHeap) = current match {
+      val (name, siliconHeap) = label match {
         case Some(existing) => (existing, siliconState.oldHeaps(existing))
         case None => ("current", siliconState.h)
       }
       val heap = buildHeap(siliconHeap, partitions)
-      State(label, store, heap, model)
+      State(name, store, heap, model)
     }
 
-    // inhaled states
+    // build inhaled states
     val inhaled = siliconState
       .oldHeaps
       .flatMap {
-        case (label, siliconHeap) if context.isInhaled(label) =>
+        case (name, siliconHeap) if context.isInhaled(name) =>
           val heap = buildHeap(siliconHeap, partitions)
-          Some(State(label, store, heap, model))
+          Some(State(name, store, heap, model))
         case _ => None
       }
       .toSeq
@@ -159,24 +213,25 @@ class ExampleExtractor(teacher: Teacher) {
   }
 
   /**
-    * Returns an abstraction of the given state for the given instance.
+    * Builds the partitions representing equivalent terms.
+    * TODO: This might be replaced by evaluating the model?
     *
-    * @param state    The state to abstract.
-    * @param instance The instance (used for the atomic predicates).
-    * @return The abstracted state.
+    * @param counter The counter example.
+    * @return The partitions.
     */
-  private def abstractState(state: State, instance: Instance): Abstraction = {
-    val label = state.label
-    val atoms = instance.formalAtoms
-    val values = atoms
-      .zipWithIndex
-      .map { case (atom, index) =>
-        val name = s"${label}_$index"
-        val term = state.store(name)
-        atom -> state.evaluateBoolean(term)
+  private def buildPartitions(counter: Counter): UnionFind[Term] = {
+    // initialize data structure
+    val partitions = new UnionFind[Term]
+    // unify equivalent terms
+    counter
+      .conditions
+      .foreach {
+        case terms.BuiltinEquals(left, right) =>
+          partitions.union(left, right)
+        case _ => // do nothing
       }
-      .toMap
-    Abstraction(values)
+    // return partitions
+    partitions
   }
 
   /**
@@ -218,6 +273,27 @@ class ExampleExtractor(teacher: Teacher) {
             .updated(field, value)
           result.updated(receiver, fields)
       }
+  }
+
+  /**
+    * Returns an abstraction of the given state for the given instance.
+    *
+    * @param state    The state to abstract.
+    * @param instance The instance (used for the atomic predicates).
+    * @return The abstracted state.
+    */
+  private def abstractState(state: State, instance: Instance): Abstraction = {
+    val label = state.label
+    val atoms = instance.formalAtoms
+    val values = atoms
+      .zipWithIndex
+      .map { case (atom, index) =>
+        val name = s"${label}_$index"
+        val term = state.store(name)
+        atom -> state.evaluateBoolean(term)
+      }
+      .toMap
+    Abstraction(values)
   }
 
   /**

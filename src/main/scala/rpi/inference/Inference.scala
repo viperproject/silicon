@@ -116,7 +116,7 @@ class Inference(program: sil.Program) {
           .deepCollect {
             case sil.LocalVar(name, typ) => sil.LocalVarDecl(name, typ)()
           }
-          .distinct
+          .distinct intersect variables
         val invariants = create(prefix = "I", written) +: loop.invs
         val transformed = loop.copy(invs = invariants)(loop.pos, loop.info, loop.errT)
         (transformed, variables)
@@ -158,20 +158,21 @@ class Inference(program: sil.Program) {
 
   def labeled: sil.Program = _labeled
 
-  def predicates(hypothesis: Hypothesis): Seq[sil.Predicate] = {
-    val recursive = hypothesis.predicates.get("R").toSeq
-    val regular = specifications
-      .values
-      .map { specification =>
-        val name = specification.name
-        val arguments = specification.parameters
-        val body = Some(hypothesis.get(name))
-        sil.Predicate(name, arguments, body)()
-      }
-      .toSeq
-    // return all predicates
-    regular ++ recursive
-  }
+  def predicates(hypothesis: Hypothesis): Seq[sil.Predicate] =
+    allSpecifications.map { specification =>
+      val name = specification.name
+      val arguments = specification.parameters
+      val body = Some(hypothesis.get(name))
+      sil.Predicate(name, arguments, body)()
+    }
+
+  /**
+    * Returns all specifications, including the ones inferred by the learner.
+    *
+    * @return All specifications.
+    */
+  def allSpecifications: Seq[Specification] =
+    specifications.values.toSeq ++ learner.allSpecifications
 
   /**
     * Returns the specification with the given name.
@@ -179,8 +180,8 @@ class Inference(program: sil.Program) {
     * @param name The name of the specification.
     * @return The specifications.
     */
-  def specification(name: String): Specification =
-    specifications(name)
+  def getSpecification(name: String): Specification =
+    specifications.getOrElse(name, learner.getSpecification(name))
 
   /**
     * Returns an instance of the specifications with the given name and arguments.
@@ -190,7 +191,7 @@ class Inference(program: sil.Program) {
     * @return The instance.
     */
   def getInstance(name: String, arguments: Seq[sil.Exp]): Instance = {
-    val specification = specifications.getOrElse(name, learner.getSpecification(name))
+    val specification = getSpecification(name)
     Instance(specification, arguments)
   }
 
