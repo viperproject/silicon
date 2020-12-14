@@ -40,7 +40,7 @@ trait ExecutionRules extends SymbolicExecutionRules {
            : VerificationResult
 }
 
-object executor extends ExecutionRules with Immutable {
+object executor extends ExecutionRules {
   import consumer._
   import evaluator._
   import producer._
@@ -116,7 +116,7 @@ object executor extends ExecutionRules with Immutable {
          */
         sys.error(s"Unexpected block: $block")
 
-      case block @ cfg.LoopHeadBlock(invs, stmts) =>
+      case block @ cfg.LoopHeadBlock(invs, stmts,_) =>
         incomingEdgeKind match {
           case cfg.Kind.In =>
             /* We've reached a loop head block via an in-edge. Steps to perform:
@@ -166,7 +166,7 @@ object executor extends ExecutionRules with Immutable {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (fatalResult: FatalResult, _) => fatalResult
-                    case (intermediateResult, (s1, pcs, ff1)) => /* [BRANCH-PARALLELISATION] ff1 */
+                    case (intermediateResult, (s1, pcs, _)) => /* [BRANCH-PARALLELISATION] ff1 */
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
                       intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
   //                    v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
@@ -188,11 +188,6 @@ object executor extends ExecutionRules with Immutable {
             consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
               Success())
         }
-
-      case cfg.ConstrainingBlock(vars: Seq[ast.AbstractLocalVar @unchecked], body: SilverCfg) =>
-        val arps = vars map (s.g.apply(_).asInstanceOf[Var])
-        exec(s.setConstrainable(arps, true), body, v)((s1, v1) =>
-          follows(s1.setConstrainable(arps, false), magicWandSupporter.getOutEdges(s1, block), Internal(_), v1)(Q))
     }
   }
 
@@ -351,49 +346,42 @@ object executor extends ExecutionRules with Immutable {
         consume(s, a, pve, v)((s1, _, v1) =>
           Q(s1, v1))
 
+      case assert @ ast.Assert(a: ast.FalseLit) =>
+        /* "assert false" triggers a smoke check. If successful, we backtrack. */
+        executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
+          if (v1.decider.checkSmoke())
+            QS(s1.copy(h = s.h), v1)
+          else
+            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1)
+        })((_, _) => Success())
+
+      case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
+        val r =
+          consume(s, a, AssertFailed(assert), v)((_, _, _) =>
+            Success())
+
+        r && Q(s, v)
+
       case assert @ ast.Assert(a) =>
         val pve = AssertFailed(assert)
 
-        a match {
-          /* "assert true" triggers a heap compression. */
-          case _: ast.TrueLit =>
-            val s1 = stateConsolidator.consolidate(s, v)
-            Q(s1, v)
+        if (s.exhaleExt) {
+          Predef.assert(s.h.values.isEmpty)
+          Predef.assert(s.reserveHeaps.head.values.isEmpty)
 
-          /* "assert false" triggers a smoke check. If successful, we backtrack. */
-          case _: ast.FalseLit =>
-            executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
-              if (v1.decider.checkSmoke())
-                QS(s1.copy(h = s.h), v1)
-              else
-                createFailure(pve dueTo AssertionFalse(a), v1, s1)
-              })((_, _) => Success())
+          /* When exhaleExt is set magicWandSupporter.transfer is used to transfer permissions to
+           * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
+           * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
+           */
+          consume(s, a, pve, v)((s2, _, v1) => {
+            Q(s2.copy(h = s2.reserveHeaps.head), v1)
+          })
+        } else
+          consume(s, a, pve, v)((s1, _, v1) => {
+            val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
+            Q(s2, v1)})
 
-          case _ =>
-            if (Verifier.config.disableSubsumption()) {
-              val r =
-                consume(s, a, pve, v)((_, _, _) =>
-                  Success())
-              r && Q(s, v)
-            } else
-              if (s.exhaleExt) {
-              Predef.assert(s.h.values.isEmpty)
-              Predef.assert(s.reserveHeaps.head.values.isEmpty)
-
-              /* When exhaleExt is set magicWandSupporter.transfer is used to transfer permissions to
-               * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
-               * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
-               */
-              consume(s, a, pve, v)((s2, _, v1) => {
-                Q(s2.copy(h = s2.reserveHeaps.head), v1)
-              })
-            } else
-              consume(s, a, pve, v)((s1, _, v1) => {
-                val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
-                Q(s2, v1)})
-        }
-
-      // A call havoc_all_R() results in Silicon efficiently havocking all instances of resource R.
+      // Calling hack407_R() results in Silicon efficiently havocking all instances of resource R.
       // See also Silicon issue #407.
       case ast.MethodCall(methodName, _, _)
           if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
@@ -414,10 +402,16 @@ object executor extends ExecutionRules with Immutable {
             other})
         Q(s.copy(h = h1), v)
 
+      // Calling hack510() triggers a state consolidation.
+      // See also Silicon issue #510.
+      case ast.MethodCall(`hack510_method_name`, _, _) =>
+        val s1 = stateConsolidator.consolidate(s, v)
+        Q(s1, v)
+
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = Verifier.program.findMethod(methodName)
         val fargs = meth.formalArgs.map(_.localVar)
-        val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+        val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
         val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
         val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
 
@@ -536,6 +530,15 @@ object executor extends ExecutionRules with Immutable {
         val pve = ApplyFailed(apply)
         magicWandSupporter.applyWand(s, e, pve, v)(Q)
 
+      case viper.silicon.extensions.TryBlock(body) =>
+        var bodySucceeded = false
+        val bodyResult = exec(s, body, v)((s1, v2) => {
+          bodySucceeded = true
+          Q(s1, v2)
+        })
+        if (bodySucceeded) bodyResult
+        else Q(s, v)
+
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: ast.Goto
            | _: ast.If
@@ -581,4 +584,6 @@ object executor extends ExecutionRules with Immutable {
       targets = Vector.empty
     )(ast.NoPosition, ast.NoInfo, ast.NoTrafos)
   }
+
+  private val hack510_method_name = "___silicon_hack510_consolidate_state"
 }

@@ -114,7 +114,8 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
 
         tQuant.transform({ case v: Var =>
           v.id match {
-            case sid: SuffixedIdentifier if names.contains(sid.prefix) => Var(SimpleIdentifier(sid.prefix), v.sort)
+            case sid: SuffixedIdentifier if names.contains(sid.prefix.name) =>
+              Var(SimpleIdentifier(sid.prefix.name), v.sort)
             case _ => v
           }
         })()

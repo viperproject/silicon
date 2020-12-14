@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
@@ -58,7 +58,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
               : VerificationResult
 }
 
-object consumer extends ConsumptionRules with Immutable {
+object consumer extends ConsumptionRules {
   import brancher._
   import evaluator._
 
@@ -415,7 +415,7 @@ object consumer extends ConsumptionRules with Immutable {
                 createFailure(pve dueTo NegativePermission(perm), v2, s2)}))
 
       case _: ast.InhaleExhaleExp =>
-        Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a))
+        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
 
       /* Handle wands */
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program)) =>

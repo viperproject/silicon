@@ -20,7 +20,7 @@ import viper.silicon.state.terms.{MagicWandSnapshot, _}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 
-object magicWandSupporter extends SymbolicExecutionRules with Immutable {
+object magicWandSupporter extends SymbolicExecutionRules {
   import consumer._
   import evaluator._
   import producer._

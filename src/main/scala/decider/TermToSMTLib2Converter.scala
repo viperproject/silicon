@@ -10,7 +10,7 @@ import scala.collection.mutable
 import viper.silver.ast.pretty.FastPrettyPrinterBase
 import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
-import viper.silicon.state.Identifier
+import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silicon.state.terms._
 
 class TermToSMTLib2Converter
@@ -42,8 +42,8 @@ class TermToSMTLib2Converter
     case sorts.Seq(elementSort) => text("Seq<") <> doRender(elementSort, true) <> ">"
     case sorts.Set(elementSort) => text("Set<") <> doRender(elementSort, true) <> ">"
     case sorts.Multiset(elementSort) => text("Multiset<") <> doRender(elementSort, true) <> ">"
-    case sorts.UserSort(id) => sanitize(id)
-    case sorts.SMTSort(id) => if (alwaysSanitize) sanitize(id) else id.name
+    case sorts.UserSort(id) => render(id)
+    case sorts.SMTSort(id) => if (alwaysSanitize) render(id) else id.name
 
     case sorts.Unit =>
       /* Sort Unit corresponds to Scala's Unit type and is used, e.g., as the
@@ -67,24 +67,25 @@ class TermToSMTLib2Converter
       parens(text("declare-sort") <+> render(sort))
 
     case FunctionDecl(fun: Function) =>
-      val idDoc = sanitize(fun.id)
+      val idDoc = render(fun.id)
       val argSortsDoc = fun.argSorts.map(render)
       val resultSortDoc = render(fun.resultSort)
 
       if (argSortsDoc.isEmpty)
         parens(text("declare-const") <+> idDoc <+> resultSortDoc)
       else
-        parens(text("declare-fun") <+> idDoc <+> parens(ssep(argSortsDoc.to[collection.immutable.Seq], space)) <+> resultSortDoc)
+        parens(text("declare-fun") <+> idDoc <+> parens(ssep(argSortsDoc.to(collection.immutable.Seq), space)) <+> resultSortDoc)
 
-    case SortWrapperDecl(from, to) =>
-      val id = Identifier(sortWrapperName(from, to))
+    case swd @ SortWrapperDecl(from, to) =>
+//      val id = Identifier(sortWrapperName(from, to))
+      val id = swd.id
       val fct = FunctionDecl(Fun(id, from, to))
 
       render(fct)
 
     case MacroDecl(id, args, body) =>
-      val idDoc = sanitize(id)
-      val argDocs = (args map (v => parens(text(sanitize(v.id)) <+> render(v.sort)))).to[collection.immutable.Seq]
+      val idDoc = render(id)
+      val argDocs = (args map (v => parens(text(render(v.id)) <+> render(v.sort)))).to(collection.immutable.Seq)
       val bodySortDoc = render(body.sort)
       val bodyDoc = render(body)
 
@@ -102,7 +103,7 @@ class TermToSMTLib2Converter
       renderNAryOp("ite", t0, t1, t2)
 
     case x: Var =>
-      sanitize(x.id)
+      render(x.id)
 
     case fapp: Application[_] => {
       fapp.applicable match {
@@ -117,12 +118,12 @@ class TermToSMTLib2Converter
       val docBody = render(body)
 
       if (vars.nonEmpty) {
-        val docVars = ssep((vars map (v => parens(text(sanitize(v.id)) <+> render(v.sort)))).to[collection.immutable.Seq], space)
+        val docVars = ssep((vars map (v => parens(text(render(v.id)) <+> render(v.sort)))).to(collection.immutable.Seq), space)
         val docQuant = render(quant)
 
         val docTriggers =
-          ssep(triggers.map(trigger => ssep((trigger.p map render).to[collection.immutable.Seq], space))
-            .map(d => text(":pattern") <+> parens(d)).to[collection.immutable.Seq],
+          ssep(triggers.map(trigger => ssep((trigger.p map render).to(collection.immutable.Seq), space))
+            .map(d => text(":pattern") <+> parens(d)).to(collection.immutable.Seq),
             line)
 
         val docQid: Cont =
@@ -266,13 +267,13 @@ class TermToSMTLib2Converter
       renderBinaryOp("$Snap.combine", bop)
 
     case SortWrapper(t, to) =>
-      parens(text(sortWrapperName(t.sort, to)) <+> render(t))
+      parens(text(render(SortWrapperId(t.sort, to))) <+> render(t))
 
     case Distinct(symbols) =>
-      parens(text("distinct") <+> ssep((symbols.toSeq map (s => sanitize(s.id): Cont)).to[collection.immutable.Seq], space))
+      parens(text("distinct") <+> ssep((symbols.toSeq map (s => render(s.id): Cont)).to(collection.immutable.Seq), space))
 
     case Let(bindings, body) =>
-      val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to[collection.immutable.Seq], space)
+      val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to(collection.immutable.Seq), space)
       parens(text("let") <+> parens(docBindings) <+> render(body))
 
     case _: MagicWandChunkTerm =>
@@ -297,12 +298,12 @@ class TermToSMTLib2Converter
 
   @inline
   protected def renderNAryOp(op: String, terms: Term*): Cont =
-    parens(text(op) <> nest(defaultIndent, group(line <> ssep((terms map render).to[collection.immutable.Seq], line))))
+    parens(text(op) <> nest(defaultIndent, group(line <> ssep((terms map render).to(collection.immutable.Seq), line))))
 
   @inline
   protected def renderApp(functionName: String, args: Seq[Term], outSort: Sort): Cont = {
     val docAppNoParens =
-      text(sanitize(functionName)) <+> ssep((args map render).to[collection.immutable.Seq], space)
+      text(sanitize(functionName)) <+> ssep((args map render).to(collection.immutable.Seq), space)
 
     if (args.nonEmpty)
       parens(docAppNoParens)
@@ -313,7 +314,7 @@ class TermToSMTLib2Converter
   @inline
   protected def renderSMTApp(functionName: String, args: Seq[Term], outSort: Sort) = {
     val docAppNoParens =
-      text(functionName) <+> ssep((args map render).to[collection.immutable.Seq], space)
+      text(functionName) <+> ssep((args map render).to(collection.immutable.Seq), space)
 
     if (args.nonEmpty)
       parens(docAppNoParens)
@@ -346,11 +347,16 @@ class TermToSMTLib2Converter
     else
       render(t)
 
-  protected def sortWrapperName(from: Sort, to: Sort): String =
-    s"$$SortWrappers.${convert(from)}To${convert(to)}"
+  protected def render(id: Identifier, sanitizeIdentifier: Boolean = true): String = {
+    val repr: String = id match {
+      case SimpleIdentifier(name) => name
+      case SuffixedIdentifier(prefix, separator, suffix) => s"${render(prefix, false)}$separator$suffix"
+      case SortBasedIdentifier(template, sorts) => template.format(sorts.map(convert): _*)
+    }
 
-  @inline
-  private def sanitize(id: Identifier): String = sanitize(id.name)
+    if (sanitizeIdentifier) sanitize(repr)
+    else repr
+  }
 
   private def sanitize(str: String): String = {
     val sanitizedName = sanitizedNamesCache.getOrElseUpdate(str, nameSanitizer.sanitize(str))

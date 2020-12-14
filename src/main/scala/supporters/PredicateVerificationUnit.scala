@@ -128,12 +128,12 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
     /* Lifetime */
 
-    def start() {}
+    def start(): Unit = {}
 
     def reset(): Unit = {
       predicateData = predicateData.empty
     }
 
-    def stop() {}
+    def stop(): Unit = {}
   }
 }

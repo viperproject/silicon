@@ -54,11 +54,11 @@ trait EvaluationRules extends SymbolicExecutionRules {
                      name: String,
                      pve: PartialVerificationError,
                      v: Verifier)
-                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Quantification], Seq[Quantification]), Verifier) => VerificationResult)
+                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Verifier) => VerificationResult)
                     : VerificationResult
 }
 
-object evaluator extends EvaluationRules with Immutable {
+object evaluator extends EvaluationRules {
   import consumer._
   import producer._
 
@@ -219,8 +219,8 @@ object evaluator extends EvaluationRules with Immutable {
                     Q(s2, fvfLookup, v1)}
               }
             case _ =>
-              val (smDef1, smCache1) =
-                quantifiedChunkSupporter.summarisingSnapshotMap(
+              val (_, smDef1, pmDef1) =
+                quantifiedChunkSupporter.heapSummarisingMaps(
                   s = s1,
                   resource = fa.field,
                   codomainQVars = Seq(`?r`),
@@ -234,9 +234,8 @@ object evaluator extends EvaluationRules with Immutable {
                 if (s1.triggerExp) {
                   True()
                 } else {
-                  val totalPermissions = smCache1.get((fa.field, relevantChunks)).get._2
-                    /* TODO: Have totalPermissions returned by quantifiedChunkSupporter.summarisingSnapshotMap */
-                  IsPositive(totalPermissions.replace(`?r`, tRcvr))
+                  val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
+                  IsPositive(totalPermissions)
                 }
               v1.decider.assert(permCheck) {
                 case false =>
@@ -246,16 +245,17 @@ object evaluator extends EvaluationRules with Immutable {
                   val fr2 =
                     s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, smLookup)
                                        .recordFvfAndDomain(smDef1)
-                  val s2 = s1.copy(functionRecorder = fr2,
-                                   smCache = smCache1)
-                  Q(s2, smLookup, v1)}
+                  val s3 = s1.copy(functionRecorder = fr2/*,
+                                   smCache = smCache1*/)
+                  Q(s3, smLookup, v1)}
               }})
 
       case fa: ast.FieldAccess =>
         evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
           val resource = fa.res(Verifier.program)
-          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
+          val description = s"eval ${fa.pos}: $fa"
+          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1, description)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
             Q(s3, tSnap, v1)
@@ -276,7 +276,7 @@ object evaluator extends EvaluationRules with Immutable {
       case old @ ast.LabelledOld(e0, lbl) =>
         s.oldHeaps.get(lbl) match {
           case None =>
-            Failure(pve dueTo LabelledStateNotReached(old))
+            createFailure(pve dueTo LabelledStateNotReached(old), v, s)
           case _ =>
             evalInOldState(s, lbl, e0, pve, v)(Q)}
 
@@ -592,8 +592,17 @@ object evaluator extends EvaluationRules with Immutable {
           case (s1, tVars, _, Seq(tBody), tTriggers, (tAuxGlobal, tAux), v1) =>
             val tAuxHeapIndep = tAux.flatMap(v.quantifierSupporter.makeTriggersHeapIndependent(_, v1.decider.fresh))
 
-            val tlqGlobal = tAuxGlobal flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
-            val tlq = tAux flatMap (q1 => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
+            // TODO: Extracted top-level quantifications (tlqGlobal) are currently assumed twice:
+            //       once directly (tlqGlobal), once nested (tAuxGlobal). It would be better to remove the nested
+            //       instances, e.g. by replacing them with "true".
+
+            val tlqGlobal: Seq[Quantification] = tAuxGlobal flatMap {
+              case q1: Quantification => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2}
+              case _ => Seq.empty
+            }
+
+            val tlq: Seq[Quantification] = tAux flatMap (q1 =>
+              q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
 
             v1.decider.prover.comment("Nested auxiliary terms: globals (aux)")
             v1.decider.assume(tAuxGlobal)
@@ -643,7 +652,7 @@ object evaluator extends EvaluationRules with Immutable {
              * The first approach is slightly simpler and suffices here, though.
              */
             val fargs = func.formalArgs.map(_.localVar)
-            val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+            val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
             val exampleTrafo = CounterexampleTransformer({
               case ce: SiliconCounterexample => ce.withStore(s2.g)
               case ce => ce
@@ -794,9 +803,9 @@ object evaluator extends EvaluationRules with Immutable {
                   case true =>
                     Q(s1, SeqUpdate(t0, t1, t2), v1)
                   case false =>
-                    Failure(pve dueTo SeqIndexExceedsLength(e0, e1))}
+                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)}
               case false =>
-                Failure(pve dueTo SeqIndexNegative(e0, e1))
+                createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
             }
           }
         })
@@ -873,7 +882,7 @@ object evaluator extends EvaluationRules with Immutable {
       /* Unexpected nodes */
 
       case _: ast.InhaleExhaleExp =>
-        Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e))
+        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e), v, s)
     }
 
     resultTerm
@@ -888,7 +897,7 @@ object evaluator extends EvaluationRules with Immutable {
                      name: String,
                      pve: PartialVerificationError,
                      v: Verifier)
-                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Quantification], Seq[Quantification]), Verifier) => VerificationResult)
+                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Verifier) => VerificationResult)
                     : VerificationResult = {
 
     val localVars = vars map (_.localVar)
@@ -899,19 +908,19 @@ object evaluator extends EvaluationRules with Immutable {
                     quantifiedVariables = tVars ++ s.quantifiedVariables,
                     recordPossibleTriggers = true,
                     possibleTriggers = Map.empty) // TODO: Why reset possibleTriggers if they are merged with s.possibleTriggers later anyway?
-    type R = (State, Seq[Term], Seq[Term], Seq[Trigger], (Seq[Quantification], Seq[Quantification]), Map[ast.Exp, Term])
+    type R = (State, Seq[Term], Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Map[ast.Exp, Term])
     executionFlowController.locallyWithResult[R](s1, v)((s2, v1, QB) => {
        val preMark = v1.decider.setPathConditionMark()
       evals(s2, es1, _ => pve, v1)((s3, ts1, v2) => {
         val bc = And(ts1)
         v2.decider.setCurrentBranchCondition(bc)
         evals(s3, es2, _ => pve, v2)((s4, ts2, v3) => {
-          evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, v4) => { // TODO: v4 isn't forward - problem?
-            val (auxGlobalQuants, auxNonGlobalQuants) =
+          evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, _) => { // TODO: v4 isn't forward - problem?
+            val (auxGlobals, auxNonGlobalQuants) =
               v3.decider.pcs.after(preMark).quantified(quant, tVars, tTriggers, s"$name-aux", isGlobal = false, bc)
             val additionalPossibleTriggers: Map[ast.Exp, Term] =
               if (s.recordPossibleTriggers) s5.possibleTriggers else Map()
-            QB((s5, ts1, ts2, tTriggers, (auxGlobalQuants, auxNonGlobalQuants), additionalPossibleTriggers))})})})
+            QB((s5, ts1, ts2, tTriggers, (auxGlobals, auxNonGlobalQuants), additionalPossibleTriggers))})})})
     }){case (s2, ts1, ts2, tTriggers, (tAuxGlobal, tAux), additionalPossibleTriggers) =>
       val s3 = s.copy(possibleTriggers = s.possibleTriggers ++ additionalPossibleTriggers)
                 .preserveAfterLocalEvaluation(s2)
@@ -1264,7 +1273,7 @@ object evaluator extends EvaluationRules with Immutable {
       case rcv =>
         val s1 = s.copy(smCache = smCache1)
         val t = s1.possibleTriggers.get(fa)
-        val r = t match { /* TODO: r isn't used - why? */
+        t match { /* TODO: r isn't used - why? */
           case Some(cachedTrigger) =>
             cachedTrigger match {
               case l: Lookup =>

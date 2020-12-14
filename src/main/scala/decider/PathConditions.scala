@@ -8,7 +8,7 @@ package viper.silicon.decider
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Stack
-import viper.silicon.state.terms.{And, Decl, Implies, Quantification, Quantifier, Term, Trigger, True, Var}
+import viper.silicon.state.terms._
 import viper.silicon.utils.Counter
 
 /*
@@ -35,7 +35,7 @@ trait RecordedPathConditions {
                  name: String,
                  isGlobal: Boolean,
                  ignore: Term /* TODO: Hack, implement properly */)
-                : (Seq[Quantification], Seq[Quantification])
+                : (Seq[Term], Seq[Quantification])
 }
 
 trait PathConditionStack extends RecordedPathConditions {
@@ -56,23 +56,22 @@ trait PathConditionStack extends RecordedPathConditions {
  */
 
 private class PathConditionStackLayer
-    extends Mutable
-       with Cloneable {
+    extends Cloneable {
 
   private var _branchCondition: Option[Term] = None
-  private var _globalAssumptions: InsertionOrderedSet[Quantification] = InsertionOrderedSet.empty
+  private var _globalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _nonGlobalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _declarations: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
 
   def branchCondition: Option[Term] = _branchCondition
-  def globalAssumptions: InsertionOrderedSet[Quantification] = _globalAssumptions
+  def globalAssumptions: InsertionOrderedSet[Term] = _globalAssumptions
   def nonGlobalAssumptions: InsertionOrderedSet[Term] = _nonGlobalAssumptions
   def declarations: InsertionOrderedSet[Decl] = _declarations
 
   def assumptions: InsertionOrderedSet[Term] = globalAssumptions ++ nonGlobalAssumptions
   def pathConditions: InsertionOrderedSet[Term] = assumptions ++ branchCondition
 
-  def branchCondition_=(condition: Term) {
+  def branchCondition_=(condition: Term): Unit = {
     assert(_branchCondition.isEmpty,
              s"Branch condition is already set (to ${_branchCondition.get}), "
            + s"won't override (with $condition).")
@@ -87,12 +86,10 @@ private class PathConditionStackLayer
 
     /* TODO: Don't record branch conditions as assumptions */
 
-    assumption match {
-      case quantification: Quantification if quantification.isGlobal =>
-        _globalAssumptions += quantification
-      case _ =>
-        _nonGlobalAssumptions += assumption
-    }
+    if (PathConditions.isGlobal(assumption))
+      _globalAssumptions += assumption
+    else
+      _nonGlobalAssumptions += assumption
   }
 
   def add(declaration: Decl): Unit = _declarations += declaration
@@ -102,13 +99,11 @@ private class PathConditionStackLayer
       !pathCondition.isInstanceOf[And],
       s"Unexpectedly found a conjunction (should have been split): $pathCondition")
 
-    pathCondition match {
-      case quantification: Quantification if quantification.isGlobal =>
-        /* Assumption: globals are never used as branch conditions */
-        _globalAssumptions.contains(quantification)
-      case _ =>
-        _nonGlobalAssumptions.contains(pathCondition) || _branchCondition.contains(pathCondition)
-    }
+    if (PathConditions.isGlobal(pathCondition))
+      /* Assumption: globals are never used as branch conditions */
+      _globalAssumptions.contains(pathCondition)
+    else
+      _nonGlobalAssumptions.contains(pathCondition) || _branchCondition.contains(pathCondition)
   }
 
   override def clone(): AnyRef = {
@@ -151,9 +146,9 @@ private trait LayeredPathConditionStackLike {
                            name: String,
                            isGlobal: Boolean,
                            ignore: Term)
-                          : (Seq[Quantification], Seq[Quantification]) = {
+                          : (Seq[Term], Seq[Quantification]) = {
 
-    var globals = Vector.empty[Quantification]
+    var globals = Vector.empty[Term]
     var nonGlobals = Vector.empty[Quantification]
 
     val ignores = ignore.topLevelConjuncts
@@ -177,8 +172,7 @@ private trait LayeredPathConditionStackLike {
 
 private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer])
     extends LayeredPathConditionStackLike
-       with RecordedPathConditions
-       with Immutable {
+       with RecordedPathConditions {
 
   val branchConditions: Stack[Term] = branchConditions(from)
   val assumptions: InsertionOrderedSet[Term] = assumptions(from)
@@ -194,7 +188,7 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
                  name: String,
                  isGlobal: Boolean,
                  ignore: Term)
-                : (Seq[Quantification], Seq[Quantification]) = {
+                : (Seq[Term], Seq[Quantification]) = {
 
     quantified(from, quantifier, qvars, triggers, name, isGlobal, ignore)
   }
@@ -203,7 +197,6 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
 private[decider] class LayeredPathConditionStack
     extends LayeredPathConditionStackLike
        with PathConditionStack
-       with Mutable
        with Cloneable {
 
   private var layers: Stack[PathConditionStackLayer] = Stack.empty
@@ -297,7 +290,7 @@ private[decider] class LayeredPathConditionStack
                  name: String,
                  isGlobal: Boolean,
                  ignore: Term)
-                : (Seq[Quantification], Seq[Quantification]) = {
+                : (Seq[Term], Seq[Quantification]) = {
 
     quantified(layers, quantifier, qvars, triggers, name, isGlobal, ignore)
   }
@@ -364,5 +357,15 @@ private[decider] class LayeredPathConditionStack
     })
 
     sb.result()
+  }
+}
+
+private object PathConditions {
+  def isGlobal(assumption: Term): Boolean = {
+    assumption match {
+      case quantification: Quantification => quantification.isGlobal
+      case _: IsReadPermVar => true
+      case _ => false
+    }
   }
 }

@@ -76,7 +76,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       x
     }
 
-    def analyze(program: ast.Program) {
+    def analyze(program: ast.Program): Unit = {
       this.program = program
 
       val heights = Functions.heights(program).toSeq.sortBy(_._2).reverse
@@ -304,13 +304,13 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     def start(): Unit = {}
 
-    def reset() {
+    def reset(): Unit = {
       program = null
       functionData = Map.empty
       emittedFunctionAxioms = Vector.empty
       freshVars = Vector.empty
     }
 
-    def stop() {}
+    def stop(): Unit = {}
   }
 }

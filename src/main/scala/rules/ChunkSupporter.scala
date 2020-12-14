@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silver.verifier.VerificationError
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Failure, Success, VerificationResult}
+import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -38,7 +38,8 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              resource: ast.Resource,
              args: Seq[Term],
              ve: VerificationError,
-             v: Verifier)
+             v: Verifier,
+             description: String)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult
 
@@ -61,7 +62,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                       : Iterable[CH]
 }
 
-object chunkSupporter extends ChunkSupportRules with Immutable {
+object chunkSupporter extends ChunkSupportRules {
   def consume(s: State,
               h: Heap,
               resource: ast.Resource,
@@ -72,6 +73,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
               description: String)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult = {
+
     heuristicsSupporter.tryOperation[Heap, Term](description)(s, h, v)((s1, h1, v1, QS) => {
       consume(s1, h1, resource, args, perms, ve, v1)((s2, h2, optSnap, v2) =>
         optSnap match {
@@ -101,7 +103,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
     val id = ChunkIdentifier(resource, Verifier.program)
     if (s.exhaleExt) {
-      val failure = Failure(ve).withLoad(args)
+      val failure = createFailure(ve, v, s).withLoad(args)
       magicWandSupporter.transfer(s, perms, failure, v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
@@ -129,10 +131,12 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                             id: ChunkIdentifer,
                             args: Seq[Term],
                             perms: Term,
-                            v: Verifier) = {
+                            v: Verifier)
+                           : (ConsumptionResult, State, Heap, Option[NonQuantifiedChunk]) = {
+
     val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
 
-    def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap) = {
+    def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap): Unit = {
       val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
       val resource = Resources.resourceDescriptions(chunk.resourceID)
       v.decider.assume(interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties))
@@ -172,21 +176,40 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
   }
 
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
-             (Q: (State, Heap, Verifier) => VerificationResult) = {
+             (Q: (State, Heap, Verifier) => VerificationResult)
+             : VerificationResult = {
+
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
     val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, h, ch, v)
     Q(s.copy(functionRecorder = fr1), h1, v)
   }
 
+  @inline
   def lookup(s: State,
              h: Heap,
              resource: ast.Resource,
              args: Seq[Term],
              ve: VerificationError,
-             v: Verifier)
+             v: Verifier,
+             description: String)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
+
+    heuristicsSupporter.tryOperation[Heap, Term](description)(s, h, v)((s1, h1, v1, QS) => {
+      lookup(s1, h1, resource, args, ve, v1)(QS)
+    })(Q)
+  }
+
+  private def lookup(s: State,
+                     h: Heap,
+                     resource: ast.Resource,
+                     args: Seq[Term],
+                     ve: VerificationError,
+                     v: Verifier)
+                    (Q: (State, Heap, Term, Verifier) => VerificationResult)
+                    : VerificationResult = {
+
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction =
         if (s.isMethodVerification && Verifier.config.enableMoreCompleteExhale()) moreCompleteExhaleSupporter.lookupComplete _

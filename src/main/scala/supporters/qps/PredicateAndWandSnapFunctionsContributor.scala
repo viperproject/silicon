@@ -59,7 +59,7 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
 
   /* Lifetime */
 
-  def reset() {
+  def reset(): Unit = {
     collectedPredicates = InsertionOrderedSet.empty
     collectedWandIdentifiers = InsertionOrderedSet.empty
     collectedSorts = InsertionOrderedSet.empty
@@ -67,13 +67,13 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
     collectedAxioms = Seq.empty
   }
 
-  def stop() {}
+  def stop(): Unit = {}
 
-  def start() {}
+  def start(): Unit = {}
 
   /* Functionality */
 
-  def analyze(program: ast.Program) {
+  def analyze(program: ast.Program): Unit = {
     // TODO: Use next snippet instead?
     //   collectedPredicates =
     //     ast.utility.QuantifiedPermissions.quantifiedPredicates(program, program).toSet

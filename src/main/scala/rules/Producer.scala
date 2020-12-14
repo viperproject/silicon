@@ -10,7 +10,7 @@ import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms._
@@ -64,7 +64,7 @@ trait ProductionRules extends SymbolicExecutionRules {
               : VerificationResult
 }
 
-object producer extends ProductionRules with Immutable {
+object producer extends ProductionRules {
   import brancher._
   import evaluator._
 
@@ -414,7 +414,7 @@ object producer extends ProductionRules with Immutable {
         }
 
       case _: ast.InhaleExhaleExp =>
-        Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a))
+        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>

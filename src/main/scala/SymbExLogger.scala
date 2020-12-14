@@ -100,7 +100,7 @@ object SymbExLogger {
     * @param c      Current context.
     */
   @elidable(INFO)
-  def insertMember(member: ast.Member, s: State, pcs: PathConditionStack) {
+  def insertMember(member: ast.Member, s: State, pcs: PathConditionStack): Unit = {
     memberList = memberList ++ List(new SymbLog(member, s, pcs))
   }
 
@@ -121,7 +121,7 @@ object SymbExLogger {
     *
     * @param c Config of Silicon.
     */
-  def setConfig(c: Config) {
+  def setConfig(c: Config): Unit = {
     if (config == null) {
       config = c
       // In both cases we need to record the trace
@@ -130,7 +130,7 @@ object SymbExLogger {
   }
 
   @elidable(INFO)
-  private def setEnabled(b: Boolean) {
+  private def setEnabled(b: Boolean): Unit = {
     enabled = b
   }
 
@@ -165,7 +165,7 @@ object SymbExLogger {
     * DOT-file can be interpreted with GraphViz (http://www.graphviz.org/)
     */
   @elidable(INFO)
-  def writeDotFile() {
+  def writeDotFile(): Unit = {
     if (config.writeSymbexLogFile()) {
       val dotRenderer = new DotTreeRenderer()
       val str = dotRenderer.render(memberList)
@@ -179,7 +179,7 @@ object SymbExLogger {
     * and functions in a HTML-file.
     */
   @elidable(INFO)
-  def writeJSFile() {
+  def writeJSFile(): Unit = {
     if (config.writeSymbexLogFile()) {
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "executionTreeData.js"))
       try pw.write(toJSString()) finally pw.close()
@@ -203,7 +203,7 @@ object SymbExLogger {
   var unitTestEngine: SymbExLogUnitTest = null
 
   /** Initialize Unit Testing. Should be done AFTER the file to be tested is known. **/
-  def initUnitTestEngine() {
+  def initUnitTestEngine(): Unit = {
     if (filePath != null)
       unitTestEngine = new SymbExLogUnitTest(filePath)
   }
@@ -212,14 +212,14 @@ object SymbExLogger {
     * Resets the SymbExLogger-object, to make it ready for a new file.
     * Only needed when several files are verified together (e.g., sbt test).
     */
-  def reset() {
+  def reset(): Unit = {
     memberList = List[SymbLog]()
     unitTestEngine = null
     filePath = null
     config = null
   }
 
-  def resetMemberList() {
+  def resetMemberList(): Unit = {
     memberList = List[SymbLog]()
   }
 }
@@ -235,7 +235,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     case m: ast.Method => new MethodRecord(m, s, pcs)
     case p: ast.Predicate => new PredicateRecord(p, s, pcs)
     case f: ast.Function => new FunctionRecord(f, s, pcs)
-    case default => null
+    case _ => null
   }
 
   // Maps macros to their body
@@ -305,7 +305,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     *          value).
     */
   @elidable(INFO)
-  def collapse(v: ast.Node, n: Int) {
+  def collapse(v: ast.Node, n: Int): Unit = {
     if (n != -1 && sepSet.contains(n)) {
       sepSet = sepSet - n
       if (isUsed(v))
@@ -321,7 +321,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     * in Producer/Consumer).
     */
   @elidable(INFO)
-  def initializeBranching() {
+  def initializeBranching(): Unit = {
     sepSet = InsertionOrderedSet[Int]()
   }
 
@@ -334,7 +334,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
     * @param s Record that should record the else-branch.
     */
   @elidable(INFO)
-  def prepareOtherBranch(s: SymbolicRecord) {
+  def prepareOtherBranch(s: SymbolicRecord): Unit = {
     stack = s :: stack
   }
 
@@ -346,17 +346,17 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
 
   private def isRecordedDifferently(s: SymbolicRecord): Boolean = {
     s.value match {
-      case v: ast.MethodCall =>
+      case _: ast.MethodCall =>
         s match {
           case _: MethodCallRecord => false
           case _ => true
         }
-      case v: ast.CondExp =>
+      case _: ast.CondExp =>
         s match {
           case _: EvaluateRecord | _: ConsumeRecord | _: ProduceRecord => true
           case _ => false
         }
-      case v: ast.Implies =>
+      case _: ast.Implies =>
         s match {
           case _: ConsumeRecord | _: ProduceRecord => true
           case _ => false
@@ -448,7 +448,6 @@ class DotTreeRenderer extends Renderer[String] {
       }
 
       case mc: MethodCallRecord => {
-        val mc_parent = previousNode
         output += "    " + mc.dotNode() + " [label=" + mc.dotLabel() + "];\n"
         previousNode = mc.dotNode()
 
@@ -592,7 +591,7 @@ class JSTreeRenderer extends Renderer[String] {
   def printState(s: SymbolicRecord): String = {
     var res = ""
     if (s.state != null) {
-      var σ = s.state.asInstanceOf[State]
+      val σ = s.state.asInstanceOf[State]
       res = ",\"prestate\":" + JsonHelper.escape(stateFormatter.toJson(σ, s.pcs))
     }
     res
@@ -614,7 +613,7 @@ class SimpleTreeRenderer extends Renderer[String] {
 
   def toSimpleTree(s: SymbolicRecord, n: Int): String = {
     var indent = ""
-    for (i <- 1 to n) {
+    for (_ <- 1 to n) {
       indent = "  " + indent
     }
     var str = ""
@@ -664,14 +663,14 @@ class TypeTreeRenderer extends Renderer[String] {
 
   def toTypeTree(s: SymbolicRecord, n: Int): String = {
     var indent = ""
-    for (i <- 1 to n) {
+    for (_ <- 1 to n) {
       indent = "  " + indent
     }
     var str = ""
 
     s match {
       case gb: GlobalBranchRecord => {
-        str = str + gb.toTypeString + "\n"
+        str = str + gb.toTypeString() + "\n"
         for (sub <- gb.thnSubs) {
           str = str + indent + toTypeTree(sub, n + 1)
         }
@@ -821,7 +820,7 @@ class ExecuteRecord(v: ast.Stmt, s: State, p: PathConditionStack) extends Sequen
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "execute") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "execute") + "," + JsonHelper.pair("pos", viper.silicon.utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }
@@ -836,7 +835,7 @@ class EvaluateRecord(v: ast.Exp, s: State, p: PathConditionStack) extends Sequen
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "evaluate") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "evaluate") + "," + JsonHelper.pair("pos", viper.silicon.utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }
@@ -851,7 +850,7 @@ class ProduceRecord(v: ast.Exp, s: State, p: PathConditionStack) extends Sequent
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "produce") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "produce") + "," + JsonHelper.pair("pos", viper.silicon.utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }
@@ -867,7 +866,7 @@ class ConsumeRecord(v: ast.Exp, s: State, p: PathConditionStack)
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "consume") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "consume") + "," + JsonHelper.pair("pos", viper.silicon.utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }

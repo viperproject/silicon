@@ -6,14 +6,14 @@
 
 package viper.silicon.tests
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter._
 import viper.silver.ast.utility._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier.errors._
 
-class ErrorMessageTests extends FunSuite {
+class ErrorMessageTests extends AnyFunSuite {
   test("MeetingExample") {
     val filePrefix = "errorMessageTests/misc/"
     val files = Seq("simple")
@@ -102,7 +102,7 @@ class ErrorMessageTests extends FunSuite {
          * error back-transformer saying that `n` is to be reported.
          */
         val (pos, info, _) = n.getPrettyMetadata
-        (c.c(l).meta = ((pos, info, NodeTrafo(n))), c)
+        (c.c(l).withMeta(pos, info, NodeTrafo(n)), c)
 
     }, Map.empty[Exp, Exp])
 
@@ -125,7 +125,7 @@ class ErrorMessageTests extends FunSuite {
         val exPres = mDecl.pres.map(replaceStrategy.execute[Exp](_, context)).map(x => Exhale(x)(x.pos, x.info, preError(m)))
 
         // Create an inhale statement for every postcondition, replace parameters with arguments and replace result parameters with receivers
-        val replacer2: Map[Exp, Exp] = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap ++ replacer
+        val replacer2: Map[Exp, Exp] = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap ++ replacer to(Map)
         val context2 = new PartialContextC[Node, Map[Exp, Exp]](replacer2)
         val inPosts = mDecl.posts.map(replaceStrategy.execute[Exp](_, context2)).map(x => Inhale(x)(x.pos, x.info, postError(x, mDecl)))
 

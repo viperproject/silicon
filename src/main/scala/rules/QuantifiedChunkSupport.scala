@@ -12,7 +12,7 @@ import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.{Map, SymbExLogger}
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -43,7 +43,7 @@ case class InverseFunctions(condition: Term,
     /* TODO: Memoisation might be worthwhile, e.g. because often used with `?r` */
     qvarsToInverses.values.map(inv =>
       App(inv, additionalArguments ++ arguments)
-    )(collection.breakOut)
+    ).to(Seq)
 
   def qvarsToInversesOf(argument: Term): Map[Var, App] =
     qvarsToInversesOf(Seq(argument))
@@ -52,7 +52,7 @@ case class InverseFunctions(condition: Term,
     /* TODO: Memoisation might be worthwhile, e.g. because often used with `?r` */
     qvarsToInverses.map {
       case (x, inv) => x -> App(inv, additionalArguments ++ arguments)
-    }(collection.breakOut)
+    }.to(Map)
 
   override lazy val toString: String = indentedToString("")
 
@@ -190,7 +190,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                   : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]
 }
 
-object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
+object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
   /* Chunk creation */
 
@@ -467,7 +467,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     // Create a replacement map for rewriting e(r_1, r_2, ...) to e(first(s), second(s), ...),
     // including necessary sort wrapper applications
     val snapToCodomainTermsSubstitution: Map[Term, Term] =
-      codomainQVars.zip(fromSnapTree(qvar, codomainQVars))(collection.breakOut)
+      codomainQVars.zip(fromSnapTree(qvar, codomainQVars)).to(Map)
 
     // Rewrite c(r_1, r_2, ...) to c(first(s), second(s), ...)
     val transformedOptSmDomainDefinitionCondition =
@@ -712,7 +712,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
               qid: String,
               optTrigger: Option[Seq[ast.Trigger]],
               tTriggers: Seq[Trigger],
-              auxGlobals: Seq[Quantification],
+              auxGlobals: Seq[Term],
               auxNonGlobals: Seq[Quantification],
               tCond: Term,
               tArgs: Seq[Term],
@@ -889,7 +889,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
               qid: String,
               optTrigger: Option[Seq[ast.Trigger]],
               tTriggers: Seq[Trigger],
-              auxGlobals: Seq[Quantification],
+              auxGlobals: Seq[Term],
               auxNonGlobals: Seq[Quantification],
               tCond: Term,
               tArgs: Seq[Term],
@@ -983,7 +983,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
               magicWandSupporter.transfer[QuantifiedBasicChunk](
                                           s.copy(smCache = smCache1),
                                           lossOfInvOfLoc,
-                                          Failure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/),
+                                          createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s),
                                           v)((s2, heap, rPerm, v2) => {
                 val (relevantChunks, otherChunks) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
@@ -1083,8 +1083,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     val resource = resourceAccess.res(Verifier.program)
     val failure = resourceAccess match {
-      case locAcc: ast.LocationAccess => Failure(pve dueTo InsufficientPermission(locAcc))
-      case wand: ast.MagicWand => Failure(pve dueTo MagicWandChunkNotFound(wand))
+      case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
+      case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
       case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
     }
     val chunkIdentifier = ChunkIdentifier(resource, Verifier.program)
@@ -1528,7 +1528,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       additionalInvArgs.toVector,
       axInvsOfFct,
       axFctsOfInvs,
-      qvars.zip(inverseFunctions)(collection.breakOut))
+      qvars.zip(inverseFunctions).to(Map))
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])

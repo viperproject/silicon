@@ -7,6 +7,7 @@
 package viper.silicon.state
 
 import viper.silver.components.StatefulComponent
+import viper.silicon.state.terms.Sort
 import viper.silicon.utils.Counter
 
 sealed trait Identifier {
@@ -16,15 +17,11 @@ sealed trait Identifier {
   def withSuffix(suffix: String): SuffixedIdentifier =
     withSuffix(Identifier.defaultSeparator, suffix)
 
-  def withSuffix(separator: String, suffix: String): SuffixedIdentifier = this match {
-    case _: SimpleIdentifier => SuffixedIdentifier(name, separator, suffix)
-    case si: SuffixedIdentifier => si.copy(separator = separator, suffix = suffix)
-  }
+  def withSuffix(separator: String, suffix: String): SuffixedIdentifier
 }
 
-/* TODO: Remove object Identifier, make SimpleIdentifier's and SuffixedIdentifier's
- *       constructors private, and force all clients to go through an
- *       IdentifierFactory.
+/* TODO: Remove object Identifier, make concrete identifiers' constructors private, and force all
+         clients to go through an IdentifierFactory.
  */
 
 object Identifier {
@@ -32,21 +29,54 @@ object Identifier {
 
   def apply(name: String): Identifier = SimpleIdentifier(name)
 
-  def apply(prefix: String, separator: String, suffix: String): Identifier =
+  def apply(prefix: String, separator: String, suffix: String): SuffixedIdentifier =
     SuffixedIdentifier(prefix, separator, suffix)
 }
 
 case class SimpleIdentifier(name: String) extends Identifier {
-  def rename(fn: String => String) = SimpleIdentifier(fn(name))
-  override val toString = name
+  def rename(fn: String => String): SimpleIdentifier =
+    SimpleIdentifier(fn(name))
+
+  def withSuffix(separator: String, suffix: String): SuffixedIdentifier =
+    SuffixedIdentifier(name, separator, suffix)
+
+  override val toString: String = name
 }
 
-case class SuffixedIdentifier(prefix: String, separator: String, suffix: String)
+case class SuffixedIdentifier(prefix: Identifier, separator: String, suffix: String)
     extends Identifier {
 
+  assert(
+    !prefix.isInstanceOf[SuffixedIdentifier],
+    s"A SuffixedIdentifier ($prefix) may not be the prefix of a SuffixedIdentifier")
+
   val name = s"$prefix$separator$suffix"
-  def rename(fn: String => String) = SuffixedIdentifier(fn(prefix), separator, suffix)
-  override val toString = name
+
+  def rename(fn: String => String): SuffixedIdentifier =
+    SuffixedIdentifier(prefix.rename(fn), separator, suffix)
+
+  def withSuffix(separator: String, suffix: String): SuffixedIdentifier =
+    this.copy(separator = separator, suffix = suffix)
+
+  override val toString: String = name
+}
+
+object SuffixedIdentifier extends ((String, String, String) => SuffixedIdentifier) {
+  def apply(prefix: String, separator: String, suffix: String): SuffixedIdentifier =
+    SuffixedIdentifier(SimpleIdentifier(prefix), separator, suffix)
+}
+
+case class SortBasedIdentifier(template: String, sorts: Seq[Sort]) extends Identifier {
+  val name: String = template.format(sorts: _*)
+
+  /** Note: Only renames the template, not the sorts; i.e. fn is only applied to the template. */
+  def rename(fn: String => String): SortBasedIdentifier =
+    SortBasedIdentifier(fn(template), sorts)
+
+  def withSuffix(separator: String, suffix: String): SuffixedIdentifier =
+    SuffixedIdentifier(this, separator, suffix)
+
+  override val toString: String = name
 }
 
 trait IdentifierFactory {
@@ -60,7 +90,7 @@ class DefaultIdentifierFactory(namespace: String)
 
   private val ids: Counter = new Counter
 
-  val separator = Identifier.defaultSeparator
+  val separator: String = Identifier.defaultSeparator
 
   def fresh(name: String): Identifier = {
     SuffixedIdentifier(name, separator, s"${ids.next()}$separator$namespace")

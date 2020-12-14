@@ -21,7 +21,7 @@ trait JoiningRules extends SymbolicExecutionRules {
                  : VerificationResult
 }
 
-object joiner extends JoiningRules with Immutable {
+object joiner extends JoiningRules {
   def join[D, JD](s: State, v: Verifier)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: (Seq[JoinDataEntry[D]]) => (State, JD))

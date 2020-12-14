@@ -6,21 +6,23 @@
 
 package viper.silicon.tests
 
-import org.scalatest.FunSuite
 import java.util.concurrent.Executors
+
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.Silicon
+
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
 /** See also Silicon issue #315. */
-class ConcurrentInstantiationTests extends FunSuite {
+class ConcurrentInstantiationTests extends AnyFunSuite {
   test("ConcurrentInstantiationTest1") {
     implicit val ec: ExecutionContextExecutor =
       ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
     val numTasks = 10
 
-    val tasks: Seq[Future[Unit]] = for (i <- 1 to numTasks) yield Future {
+    val tasks: Seq[Future[Unit]] = for (_ <- 1 to numTasks) yield Future {
       val verifier = new Silicon()
       verifier.parseCommandLine(Seq("--logLevel ALL", "dummy-program.sil"))
     }
@@ -36,7 +38,7 @@ class ConcurrentInstantiationTests extends FunSuite {
 
     val numTasks = 10
 
-    val tasks: Seq[Future[Unit]] = for (i <- 1 to numTasks) yield Future {
+    val tasks: Seq[Future[Unit]] = for (_ <- 1 to numTasks) yield Future {
       val verifier = new Silicon()
       verifier.parseCommandLine(Seq("dummy-program.sil"))
       verifier.start()

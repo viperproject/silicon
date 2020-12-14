@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import org.slf4j.LoggerFactory
+import viper.silicon.Stack
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.HeuristicsFailed
@@ -18,7 +20,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 
-object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
+object heuristicsSupporter extends SymbolicExecutionRules {
   import executor._
 
   /* tryOperation-Methods with varying output arity */
@@ -84,9 +86,9 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 
   /* tryWithReactions, which executes the action-reaction cycle */
 
-//  private var cnt = 0L
-//  private var stack = Stack[Long]()
-//  private val heuristicsLogger = LoggerFactory.getLogger("heuristics")
+  private var cnt = 0L
+  private var stack = Stack[Long]()
+  private val heuristicsLogger = LoggerFactory.getLogger("heuristics")
 
   private def tryWithReactions[O]
                               (description: String)
@@ -96,48 +98,48 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
                               (Q: (State, O, Verifier) => VerificationResult)
                               : VerificationResult = {
 
-//    val myId = cnt; cnt += 1
-//    val baseIdent = "  "
-//    var printedHeader = false
-//
-//    def lnsay(msg: String, ident: Int = 1) {
-//      val prefix = "\n" + (if (ident == 0) "" else baseIdent)
-//      dosay(prefix, msg, ident - 1)
-//    }
-//
-//    def say(msg: String, ident: Int = 1) {
-//      val prefix = if (ident == 0) "" else baseIdent
-//      dosay(prefix, msg, ident - 1)
-//    }
-//
-//    def dosay(prefix: String, msg: String, ident: Int) {
-//      if (!printedHeader) {
-//        heuristicsLogger.debug("\n[tryWithReactions]")
-//        printedHeader = true
-//      }
-//
-//      val messagePrefix = baseIdent * ident
-//      heuristicsLogger.debug(s"$prefix($myId)$messagePrefix $msg")
-//    }
+    val myId = cnt; cnt += 1
+    val baseIdent = "  "
+    var printedHeader = false
+
+    def lnsay(msg: String, ident: Int = 1): Unit = {
+      val prefix = "\n" + (if (ident == 0) "" else baseIdent)
+      dosay(prefix, msg, ident - 1)
+    }
+
+    def say(msg: String, ident: Int = 1): Unit = {
+      val prefix = if (ident == 0) "" else baseIdent
+      dosay(prefix, msg, ident - 1)
+    }
+
+    def dosay(prefix: String, msg: String, ident: Int): Unit = {
+      if (!printedHeader) {
+        heuristicsLogger.debug("\n[tryWithReactions]")
+        printedHeader = true
+      }
+
+      val messagePrefix = baseIdent * ident
+      heuristicsLogger.debug(s"$prefix($myId)$messagePrefix $msg")
+    }
 
     var localActionSuccess = false
     val s =
       if (_s.triggerAction == null) _s.copy(triggerAction = action)
       else _s
 
-//    if (initialFailure.nonEmpty) {
-//      lnsay(s"retrying $description")
-//      say(s"s.h = ${σ.h}")
-//      say(s"h = $h")
-//      say(s"c.reserveHeaps:")
-//      c.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2))
-//    }
+    if (initialFailure.nonEmpty) {
+      lnsay(s"retrying $description")
+      say(s"s.h = ${v.stateFormatter.format(s.h)}")
+      say(s"h = ${v.stateFormatter.format(h)}")
+      say(s"c.reserveHeaps:")
+      s.reserveHeaps.map(v.stateFormatter.format).foreach(str => say(str, 2))
+    }
 
     val globalActionResult =
       action(s, h, v, (s1, outputs, v1) => {
         /* We are here if the `action` invoked the success continuation `QS` */
         localActionSuccess = true
-//        if (initialFailure.nonEmpty) say(s"$description succeeded locally")
+        if (initialFailure.nonEmpty) say(s"$description succeeded locally")
         val s2 =
           if (action.eq(s1.triggerAction))
             s1.copy(triggerAction = null, heuristicsDepth = 0)
@@ -183,24 +185,24 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 //        }
 
       case actionFailure: Failure =>
-//        stack ::= myId
+        stack ::= myId
 
-//        say(s"action $myId failed (locally and globally)")
-//        say(s"description = $description")
-//        say(s"globalActionResult = $globalActionResult")
-//        say(s"stack = $stack")
-//        say("context:")
-//        say(s"depth = ${c.heuristicsDepth}", 2)
-//        say(s"applyHeuristics = ${c.applyHeuristics}", 2)
-//        say(s"exhaleExt = ${c.exhaleExt}", 2)
+        say(s"action $myId failed (locally and globally)")
+        say(s"description = $description")
+        say(s"globalActionResult = $globalActionResult")
+        say(s"stack = $stack")
+        say("context:")
+        say(s"depth = ${s.heuristicsDepth}", 2)
+        say(s"applyHeuristics = ${s.applyHeuristics}", 2)
+        say(s"exhaleExt = ${s.exhaleExt}", 2)
 
         var remainingReactions = generateReactions(s, h, v, actionFailure)
         var triedReactions = 0
 
-//        say(s"generated ${remainingReactions.length} possible reactions")
+        say(s"generated ${remainingReactions.length} possible reactions")
 
         while (reactionResult.isFatal && remainingReactions.nonEmpty) {
-//          lnsay(s"trying next reaction (${triedReactions + 1} out of ${triedReactions + remainingReactions.length})")
+          lnsay(s"trying next reaction (${triedReactions + 1} out of ${triedReactions + remainingReactions.length})")
 
           val s1 = s.copy(h = h,
                           heuristicsDepth = s.heuristicsDepth + 1)
@@ -209,28 +211,31 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
           reactionResult =
             heuristicsSupporter.tryOperation[Heap](s"applying heuristic")(s1, h, v)((s1, h1, v1, QS) =>
               remainingReactions.head.apply(s1, h1, v1)((s2, h2, v2) => {
-//                say(s"reaction ${triedReactions + 1} locally succeeded")
-//                say(s"s2.h = ${σ2.h}")
-//                say(s"h2 = $h2")
-//                say(s"c3.reserveHeaps:")
-//                c3.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2))
+                say(s"reaction ${triedReactions + 1} locally succeeded")
+                say(s"s2.h = ${v2.stateFormatter.format(s2.h)}")
+                say(s"h2 = ${v2.stateFormatter.format(h2)}")
+                say(s"c3.reserveHeaps:")
+                s2.reserveHeaps.map(v2.stateFormatter.format).foreach(str => say(str, 2))
                 QS(s2, h2, v2)})
-            )((σ1, h1, c2) => {
-                tryWithReactions(description)(σ1, h1, c2)(action, initialFailure.orElse(Some(actionFailure)))(Q)})
+            )((s1, h1, c2) => {
+                tryWithReactions(description)(s1, h1, c2)(action, initialFailure.orElse(Some(actionFailure)))(Q)})
 
-//          lnsay(s"returned from reaction ${triedReactions + 1} (out of ${triedReactions + remainingReactions.length})")
-//          say(s"reactionResult = $reactionResult")
+          lnsay(s"returned from reaction ${triedReactions + 1} (out of ${triedReactions + remainingReactions.length})")
+          say(s"reactionResult = $reactionResult")
 
           triedReactions += 1
 
           remainingReactions = remainingReactions.tail
         }
 
-//        stack = stack.tail
-//
-//        lnsay(s"existing tryWithReactions")
-//        say(s"localActionSuccess = $localActionSuccess")
-//        say(s"reactionResult = $reactionResult")
+        if (stack.nonEmpty) {
+          // TODO: Emptiness check should not be necessary, but currently is. Find out, why.
+          stack = stack.tail
+        }
+
+        lnsay(s"existing tryWithReactions")
+        say(s"localActionSuccess = $localActionSuccess")
+        say(s"reactionResult = $reactionResult")
     }
 
     reactionResult match {

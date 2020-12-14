@@ -23,7 +23,7 @@ trait BranchingRules extends SymbolicExecutionRules {
             : VerificationResult
 }
 
-object brancher extends BranchingRules with Immutable {
+object brancher extends BranchingRules {
   def branch(s: State,
              condition: Term,
              v: Verifier,

@@ -1,4 +1,4 @@
-![Silicon's logo](https://bitbucket.org/viperproject/silicon/raw/tip/docs/logo_name.png "Silicon's logo")
+![Silicon's logo](https://github.com/viperproject/silicon/blob/master/docs/logo_name.png?raw=true "Silicon's logo")
 
 Silicon is a state-of-the-art, automated verifier based on symbolic execution,
 and the default verifier of the

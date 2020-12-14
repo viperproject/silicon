@@ -6,12 +6,13 @@
 
 package viper.silicon.tests
 
-import org.scalatest.{FunSuite, Matchers}
+import org.scalatest.matchers.should.Matchers
 import viper.silicon.state.Identifier
 import DSL._
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silicon.state.terms._
 
-class SimpleArithmeticTermSolverTests extends FunSuite with Matchers {
+class SimpleArithmeticTermSolverTests extends AnyFunSuite with Matchers {
   import SimpleArithmeticSolver.{solve, SolverResult, SolvingSuccess, SolvingFailure}
 
   test("Pre-solving errors") {

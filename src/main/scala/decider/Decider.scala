@@ -33,12 +33,12 @@ trait Decider {
 
   def checkSmoke(): Boolean
 
-  def setCurrentBranchCondition(t: Term)
+  def setCurrentBranchCondition(t: Term): Unit
   def setPathConditionMark(): Mark
 
-  def assume(t: Term)
-  def assume(ts: InsertionOrderedSet[Term], enforceAssumption: Boolean = false)
-  def assume(ts: Iterable[Term])
+  def assume(t: Term): Unit
+  def assume(ts: InsertionOrderedSet[Term], enforceAssumption: Boolean = false): Unit
+  def assume(ts: Iterable[Term]): Unit
 
   def check(t: Term, timeout: Int): Boolean
 
@@ -128,37 +128,37 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Life cycle */
 
-    def start() {
+    def start(): Unit = {
       pathConditions = new LayeredPathConditionStack()
 //      _freshFunctions = InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
 //      _freshMacros = Vector.empty
       createProver()
     }
 
-    def reset() {
+    def reset(): Unit = {
       z3.reset()
       pathConditions = new LayeredPathConditionStack()
 //      _freshFunctions = InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
 //      _freshMacros = Vector.empty
     }
 
-    def stop() {
+    def stop(): Unit = {
       if (z3 != null) z3.stop()
     }
 
     /* Assumption scope handling */
 
-    def pushScope() {
+    def pushScope(): Unit = {
       pathConditions.pushScope()
       z3.push()
     }
 
-    def popScope() {
+    def popScope(): Unit = {
       z3.pop()
       pathConditions.popScope()
     }
 
-    def setCurrentBranchCondition(t: Term) {
+    def setCurrentBranchCondition(t: Term): Unit = {
       pathConditions.setCurrentBranchCondition(t)
       assume(InsertionOrderedSet(Seq(t)))
     }
@@ -167,7 +167,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Assuming facts */
 
-    def assume(t: Term) {
+    def assume(t: Term): Unit = {
       assume(InsertionOrderedSet(Seq(t)), false)
     }
 
