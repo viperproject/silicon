@@ -120,6 +120,7 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
 }
 
 case class SiliconMappedCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps, nativemodel: Model) extends SiliconCounterexample {
+  val converter = Converter(nativemodel, internalStore, heap, oldHeaps)
   def storeToString : String = {
     var s = "Store: \n ------------------------------"
     for ((k,v) <- internalStore.values) {
@@ -155,6 +156,7 @@ case class SiliconMappedCounterexample(internalStore: Store, heap: Iterable[Chun
     + (storeToString -> SingleEntry(" "))
     + (heapToString -> SingleEntry(" "))
     + (oldHeapToString -> SingleEntry(" "))
+    ++ converter.heapModel.entries
     )
 
   override def withStore(s: Store) : SiliconCounterexample = {

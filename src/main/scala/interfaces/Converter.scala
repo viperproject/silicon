@@ -3,11 +3,10 @@ package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.{Store, Heap, State, BasicChunk}
-import viper.silver.verifier.{Model}
-import viper.silicon.state.terms.{Term, Unit, IntLiteral, Null, Var, App, Combine,
-                                  First, Second, SortWrapper, PredicateLookup}
-import viper.silicon.reporting.SiliconException
+import viper.silicon.state.{Store, State, BasicChunk, Identifier}
+import viper.silver.verifier.{Model, ModelEntry, SingleEntry, MapEntry, ModelParser}
+import viper.silicon.state.terms.{sorts, Sort, Term, Unit, IntLiteral, Null, Var, App, Combine,
+                                  First, Second, SortWrapper, PredicateLookup, toSnapTree}
 
 /*
 sealed trait ExtModelEntry
@@ -21,75 +20,167 @@ case class OtherEntry(value: String) extends ExtModelEntry
 
 case class ExtModel(entries: Map[String, ExtModelEntry])
 */
+
+
 /* basically a 1 to 1 copy of nagini code */
 object Converter{
-    /*
-    def extractHeap(heap: Heap, label: Option[String], target: ExtModel){
-        for (chunk <- heap.values) extractChunk(chunk, target, label)
+    type SimpleHeap = Map[(Term, String), String]
+    
+    def snapToOneLine(s:String) : String = s.filter(_ >= ' ').split(" +").mkString(" ")
+
+    def getParts(value: String) : Array[String] = {
+        var res : Array[String] = Array()
+        for (part <- ModelParser.getApplication(value)) {
+            res = res :+ part
+        }
+        return res
     }
-    def extractChunk(chunk:Chunk, target: ExtModel, label: Option[String]) = {
-        chunk match{
-            case c@BasicChunk(_,_,_,_,_) => {
-                c.resourceID match {
-                case FieldID => extractField(c, target, label)
-                case PredicateID => extractPredicate(c, target, label)
-                case _ =>
+
+    def getFunctionValue(model: Model, fname: String, args: String) : String = {
+        val entry = model.entries(fname)
+        entry match {
+            case SingleEntry(s) => return s 
+            case MapEntry(m: Map[Seq[String], String], els:String) =>
+                val filtered = m.filter(x => snapToOneLine(x._1.mkString(" ")) == args)
+                if (filtered.size >= 1) {
+                    println("found it")
+                    return filtered.head._2.toString
                 }
-            }
-            case _ => println("WARNING: found non-basic chunk, not implemented")
+                println("didnt find it")
+                return els
         }
     }
 
-    def extractField(chunk:BasicChunk, target: ExtModel, label: Option[String]) = {
-        val fieldname = chunk.id
-        val varname = chunk.args.head 
-        val value = evaluateTerm(chunk.snap)
+    def translateSort(s:Sort) : String = {
+        s match {
+            case sorts.Set(els:Sort) => return "Set<" + translateSort(els)+">"
+            case sorts.Ref => return "$Ref"
+            case sorts.Snap => return "$Snap"
+            case sorts.Perm => return "$Perm"
+            case sorts.Seq(els:Sort) => return "Seq<" + translateSort(els)+">"
+            case _ => s.toString
+        }
     }
-    def extractPredicate(chunk:BasicChunk, target:ExtModel, label:Option[String]) = ???
-    */
+    
+
     def evaluateTerm(term:Term, model: Model) : String = {
-        println("evaluating term: " + term.toString)
         term match {
-            case Unit => println("of type unit")
-                         return "$Snap.unit"
-            case IntLiteral(n) =>   println("of type IntLiteral")
-                                    return term.toString
-            case Null() => 
-                            return model.entries("$Ref.null").toString
+            case Unit => return "$Snap.unit"
+            case IntLiteral(n) => return term.toString
+            case Null() => return model.entries("$Ref.null").toString
             case Var(id, sort) => {
                 val key = term.toString
+                //this can fail : TODO throw and catch exception
                 return model.entries(key).toString
             }
             case t@App(app, args) => {
-                
-                return ""
+                println("Found type APP")
+                var fname = app.id + "%limited"
+                if (!model.entries.contains(fname)){
+                    fname = app.id.toString
+                    if (!model.entries.contains(fname)){
+                        fname = fname.replace("[","<").replace("]",">")
+                    }
+                }
+                var arg = snapToOneLine(args.map(x => evaluateTerm(x, model)).mkString(" "))
+                return getFunctionValue(model, fname, arg)
             }
             case Combine(p0, p1) => {
-                return ""
+                val p0eval = evaluateTerm(p0, model)
+                val p1eval = evaluateTerm(p1, model)
+                return "($Snap.combine " + p0eval + " " + p1eval + ")"
             }
             case First(p) => {
+                val sub = evaluateTerm(p, model)
+                if (sub.startsWith("($Snap.combine")){
+                    return getParts(sub)(1)
+                }
+                println("WARNING: one heap entry could not be resolved")
                 return ""
             }
             case Second(p) => {
+                val sub = evaluateTerm(p, model)
+                if (sub.startsWith("($Snap.combine")){
+                    return getParts(sub)(2)
+                }
+                println("WARNING: one heap entry could not be resolved")
                 return ""
             }
             case SortWrapper(t, to) =>  {
-                return ""
+                val sub = snapToOneLine(evaluateTerm(t, model))
+                val fromSortName : String = translateSort(t.sort)
+                val toSortName : String = translateSort(to)
+                val fname = "$SortWrappers." + fromSortName + "To" + toSortName
+                println("looking for " + sub + " in " + fname)
+                return getFunctionValue(model, fname, sub)
             }
-            case PredicateLookup(pred, psf, args) => {
-                return ""
+            case PredicateLookup(predname, psf, args) => {
+                val lookupFuncName : String = "$PSF.lookup_" + predname
+                val snap = toSnapTree.apply(args)
+                val psfVal = evaluateTerm(psf, model)
+                val snapVal = evaluateTerm(snap, model)
+                val arg = snapToOneLine(psfVal + " " + snapVal)
+                return getFunctionValue(model, lookupFuncName, arg)
             }
-            case _ => return ""
+            case _ =>   println("of unhandled type") 
+                        return ""
         }
     }
+
+    def extractHeap(h:Iterable[Chunk], model: Model) : SimpleHeap = {
+        var target : SimpleHeap = Map()
+        for (chunk <- h) {
+            chunk match {
+                case c@BasicChunk(resId, id, args, snap, perm) => {
+                    resId match {
+                        case FieldID => val (recv, field, value) = extractField(c, model)
+                                        target += ((recv, field) -> value)                                        
+                        case PredicateID => println(".------------------------------------------------------------------------------------------------------------------------------")
+                        case _ => 
+                    }
+                    
+                }
+                case _ => println("WARNING: not handling non-basic chunks")
+            }
+        }
+        return target
+    }
+
+    def extractField(chunk:BasicChunk, model: Model) : (Term, String, String) =  {
+        val fieldname = chunk.id.name //String
+        var recv : Term = chunk.args.head //Term
+        var recvString = recv.toString
+        recv match {
+            case Var(id, sort) => //no evaluation necessary
+            case t: Term => recvString = evaluateTerm(recv, model)
+                            recv = Var(Identifier.apply(recvString), sorts.Ref)
+        }
+        println("trying to get value of " + recvString + "." + fieldname)
+        val value = evaluateTerm(chunk.snap, model) //String
+        println("value is : " + value)
+        return (recv, fieldname, value)
+    }
+
+    def extractPredicate(chunk: BasicChunk, model: Model) {
+        val predName = chunk.id.name
+        val args = chunk.args
+    }
+    
+    def simpleHeapAsModel(simpleHeap: SimpleHeap, label: String = "") : Model = {
+        var entries : Map[String, ModelEntry] = Map()
+        for (((term, field), value) <- simpleHeap) {
+            entries += (("extr. heap: " + label + " : " + term.toString + " " + field) -> SingleEntry(value))
+        }
+        return Model(entries)
+    }
+    
 }
 
-class Converter(model: Model, store: Store, heap: Heap, oldHeaps: State.OldHeaps){
+case class Converter(model: Model, store: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps){
 //    val extendedModel : ExtModel = ???
-    val locals = store.values.keySet
-
-
-
+    val extractedHeap : Converter.SimpleHeap = Converter.extractHeap(heap, model)
+    val extractedHeaps : Map[String, Converter.SimpleHeap] = oldHeaps.map(x => x._1 -> Converter.extractHeap(x._2.values, model))
+    val heapModel : Model = Converter.simpleHeapAsModel(extractedHeap)
 }
 
 
