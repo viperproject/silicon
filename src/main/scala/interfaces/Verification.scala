@@ -8,6 +8,7 @@ package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.interfaces.Converter
 import viper.silver.verifier.{Counterexample, Model, VerificationError, SingleEntry}
 import viper.silicon.state.terms.Term
 
