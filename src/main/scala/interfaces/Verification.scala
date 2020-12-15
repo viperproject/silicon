@@ -156,8 +156,7 @@ case class SiliconMappedCounterexample(internalStore: Store, heap: Iterable[Chun
     + (storeToString -> SingleEntry(" "))
     + (heapToString -> SingleEntry(" "))
     + (oldHeapToString -> SingleEntry(" "))
-    ++ converter.heapModel.entries
-    )
+    ++ converter.heapModel)
 
   override def withStore(s: Store) : SiliconCounterexample = {
     SiliconMappedCounterexample(s, heap, oldHeaps, nativemodel)
