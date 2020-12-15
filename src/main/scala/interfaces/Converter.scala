@@ -1,14 +1,17 @@
 package viper.silicon.interfaces
 
+import viper.silver.verifier.{Model, ModelEntry, SingleEntry, MapEntry, ModelParser}
+import viper.silver.ast
 
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.{Store, State, BasicChunk, Identifier}
-import viper.silver.verifier.{Model, ModelEntry, SingleEntry, MapEntry, ModelParser}
 import viper.silicon.state.terms.{sorts, Sort, Term, Unit, IntLiteral, Null, Var, App, Combine,
                                   First, Second, SortWrapper, PredicateLookup, toSnapTree}
 
-/*
+
+/* Some new classes to describe a more informative model */
+
 sealed trait ExtModelEntry
 case class LitIntEntry(value: BigInt) extends ExtModelEntry 
 case class LitBoolEntry(value: Boolean) extends ExtModelEntry
@@ -19,7 +22,7 @@ case class ExtMapEntry(options: Map[String, ExtModelEntry]) extends ExtModelEntr
 case class OtherEntry(value: String) extends ExtModelEntry
 
 case class ExtModel(entries: Map[String, ExtModelEntry])
-*/
+
 
 
 /* basically a 1 to 1 copy of nagini code */
@@ -37,19 +40,18 @@ object Converter{
     }
 
     def getFunctionValue(model: Model, fname: String, args: String) : String = {
-        val entry = model.entries(fname)
+        val entry : ModelEntry = model.entries(fname)
         entry match {
             case SingleEntry(s) => return s 
             case MapEntry(m: Map[Seq[String], String], els:String) =>
                 val filtered = m.filter(x => snapToOneLine(x._1.mkString(" ")) == args)
                 if (filtered.size >= 1) {
-                    println("found it")
                     return filtered.head._2.toString
                 }
-                println("didnt find it")
                 return els
         }
     }
+
 
     def translateSort(s:Sort) : String = {
         s match {
@@ -75,6 +77,7 @@ object Converter{
             }
             case t@App(app, args) => {
                 println("Found type APP")
+                /* not tested yet, not sure for which examples this occurs on heap*/
                 var fname = app.id + "%limited"
                 if (!model.entries.contains(fname)){
                     fname = app.id.toString
@@ -111,10 +114,10 @@ object Converter{
                 val fromSortName : String = translateSort(t.sort)
                 val toSortName : String = translateSort(to)
                 val fname = "$SortWrappers." + fromSortName + "To" + toSortName
-                println("looking for " + sub + " in " + fname)
                 return getFunctionValue(model, fname, sub)
             }
             case PredicateLookup(predname, psf, args) => {
+                /* not tested! did never occurr in considered examples */
                 val lookupFuncName : String = "$PSF.lookup_" + predname
                 val snap = toSnapTree.apply(args)
                 val psfVal = evaluateTerm(psf, model)
@@ -135,8 +138,8 @@ object Converter{
                     resId match {
                         case FieldID => val (recv, field, value) = extractField(c, model)
                                         target += ((recv, field) -> value)                                        
-                        case PredicateID => println(".------------------------------------------------------------------------------------------------------------------------------")
-                        case _ => 
+                        case PredicateID => println("chunks containing predicates are not evaluated yet")
+                        case _ => println("chunks for magic wands not implemented")
                     }
                     
                 }
@@ -155,32 +158,65 @@ object Converter{
             case t: Term => recvString = evaluateTerm(recv, model)
                             recv = Var(Identifier.apply(recvString), sorts.Ref)
         }
-        println("trying to get value of " + recvString + "." + fieldname)
         val value = evaluateTerm(chunk.snap, model) //String
-        println("value is : " + value)
         return (recv, fieldname, value)
     }
 
     def extractPredicate(chunk: BasicChunk, model: Model) {
         val predName = chunk.id.name
         val args = chunk.args
-    }
-    
-    def simpleHeapAsModel(simpleHeap: SimpleHeap, label: String = "") : Model = {
-        var entries : Map[String, ModelEntry] = Map()
-        for (((term, field), value) <- simpleHeap) {
-            entries += (("extr. heap: " + label + " : " + term.toString + " " + field) -> SingleEntry(value))
+        /* not implemented yet. Maybe not even needed!
+            not sure when this occurrs, how it helps
+        */
+    }    
+    /*
+    def extractRecursive(term: Term) : ExtModelEntry {
+        term match {
+            case Var(id, sort) => 
+            case  => 
         }
-        return Model(entries)
     }
     
-}
+    def extModelFromHeap(heap: SimpleHeap, store:Store, model: Model) {
+        for ((variable: ast.AbstractLocalVar, term: Term) <- store.values) {
+            val name = variable match {
+                ast.LocalVar(n, typ) => n
+                ast.Result(typ) => "Result()"
+            }
+            val sort = term match {
+                case Var(name, sort) => sort
+                case _ => println("Converter.extModelFromHeap(), usually the store only contains 
+                    only variables, no concrete values, this case has yet to be handled")
+            }
+
+        }
+    */
+
+
+    def heapToModel(heap: SimpleHeap, label: String) : Map[String, ModelEntry] = {
+        println("Processed Heap at label: " + label )
+        for (x <- heap) {
+            println("etxr. heap: " + x._1._1.toString + "." + x._1._2 + " <- " + x._2)
+        }
+        Map()
+    }
+
+    def outputOldHeaps(heaps: Map[String, Converter.SimpleHeap]) {
+        for ((lbl, heap) <- heaps) {
+            heapToModel(heap, lbl)
+        }
+    }
+}   
+    
 
 case class Converter(model: Model, store: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps){
 //    val extendedModel : ExtModel = ???
     val extractedHeap : Converter.SimpleHeap = Converter.extractHeap(heap, model)
     val extractedHeaps : Map[String, Converter.SimpleHeap] = oldHeaps.map(x => x._1 -> Converter.extractHeap(x._2.values, model))
-    val heapModel : Model = Converter.simpleHeapAsModel(extractedHeap)
+    val heapModel : Map[String, ModelEntry] = {
+        Converter.outputOldHeaps(extractedHeaps)
+        Converter.heapToModel(extractedHeap, "")
+    }
 }
 
 
