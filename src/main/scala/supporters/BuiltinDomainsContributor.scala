@@ -205,7 +205,7 @@ private object utils {
 
       case fastparse.Parsed.Failure(msg, index, _) =>
         val (line, col) = ast.LineCol(index)
-        sys.error(s"Failure: $msg, at ${viper.silver.parser.FilePosition(fromPath, line, col)}")
+        sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, line, col)}")
     }
   }
 }
