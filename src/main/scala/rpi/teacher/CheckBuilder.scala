@@ -284,22 +284,16 @@ class CheckBuilder(teacher: Teacher) {
         case sil.Implies(left, right) =>
           processNested(right, guards :+ left)
         case sil.FieldAccessPredicate(resource, _) =>
-          saveResource(resource)
+          savePermission(label, resource)
         case sil.PredicateAccessPredicate(resource, _) =>
           if (depth < Config.foldDepth) {
             val name = resource.predicateName
             val arguments = resource.args
             val inner = inference.getInstance(name, arguments)
             foldAndExhale(inner, guards, depth + 1)
-          } else saveResource(resource)
+          } else savePermission(label, resource)
         case _ => ???
       }
-
-    def saveResource(resource: sil.LocationAccess): Unit = {
-      val name = namespace.uniqueIdentifier(base = "p", Some(0))
-      context.addName(label, resource, name)
-      savePermission(name, resource)
-    }
 
     // process nested instances
     val body = hypothesis.get(instance)
@@ -391,50 +385,47 @@ class CheckBuilder(teacher: Teacher) {
     label
   }
 
-  def bar(guard: sil.Exp, expression: sil.Exp)(implicit label: String): Seq[(sil.Exp, sil.PredicateAccessPredicate)] =
-    expression match {
-      case sil.TrueLit() => Seq.empty
-      case sil.And(left, right) =>
-        val a = bar(guard, left)
-        val b = bar(guard, right)
-        b ++ a
-      case sil.Implies(left, right) =>
-        bar(and(guard, left), right)
-      case sil.FieldAccessPredicate(resource, _) =>
-        val name = namespace.uniqueIdentifier(base = "p", Some(0))
-        context.addName(label, resource, name)
-        savePermission(name, resource)
-        Seq.empty
-      case sil.PredicateAccessPredicate(resource, permission) =>
-        // TODO: Prettify me.
-        val instance = {
-          val name = resource.predicateName
-          val arguments = resource.args
-          inference.getInstance(name, arguments)
-        }
-
-        val info = BasicInfo(label, instance)
-
-
-        val name = namespace.uniqueIdentifier(base = "p", Some(0))
-
-
-        val predicate = sil.PredicateAccessPredicate(resource, permission)(info = info)
-        context.addName(label, resource, name)
-        savePermission(name, resource)
-        Seq((guard, predicate))
-      case _ => ???
-    }
-
   /**
-    * Saves the currently held permission amount for the given resource in a variable with the given name.
+    * Saves the currently held permission amount for the given resource.
     *
-    * @param name     The name of the variable.
+    * @param label    The label of the state under which the name of the variable should be stored.
     * @param resource The resource.
     */
-  private def savePermission(name: String, resource: sil.ResourceAccess): Unit = {
-    val value = sil.CurrentPerm(resource)()
-    saveValue(name, value)
+  private def savePermission(label: String, resource: sil.LocationAccess): Unit = {
+    // auxiliary method to extract condition under which we have permission to even talk about this resource
+    def extractConditions(resource: sil.Exp): Seq[sil.Exp] =
+      resource match {
+        case access: sil.FieldAccess =>
+          val name = context.getName(label, access)
+          val variable = sil.LocalVar(name, sil.Perm)()
+          Seq(sil.PermGtCmp(variable, sil.NoPerm()())())
+        case _ => Seq.empty
+      }
+
+    // auxiliary method to actually save the permission
+    def savePermission(conditions: Seq[sil.Exp]): Unit = {
+      // generate unique name
+      val name = namespace.uniqueIdentifier(base = "p", Some(0))
+      context.addName(label, resource, name)
+      // construct potentially conditional value
+      val value = {
+        val current = sil.CurrentPerm(resource)()
+        if (conditions.isEmpty) current
+        else sil.CondExp(bigAnd(conditions), current, sil.NoPerm()())()
+      }
+      // save value
+      saveValue(name, value)
+    }
+
+    // process resource
+    resource match {
+      case sil.FieldAccess(receiver, _) =>
+        val conditions = extractConditions(receiver)
+        savePermission(conditions)
+      case sil.PredicateAccess(arguments, _) =>
+        val conditions = arguments.flatMap { argument => extractConditions(argument) }
+        savePermission(conditions)
+    }
   }
 
   /**

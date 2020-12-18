@@ -101,7 +101,7 @@ class Context {
 
   def addName(label: String, access: sil.LocationAccess, name: String): Unit = {
     val updated = names
-      .getOrElse(name, Map.empty)
+      .getOrElse(label, Map.empty)
       .updated(access, name)
     names = names.updated(label, updated)
   }
