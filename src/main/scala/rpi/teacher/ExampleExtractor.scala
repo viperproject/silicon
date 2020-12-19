@@ -311,38 +311,70 @@ class ExampleExtractor(teacher: Teacher) {
       * @param expression The expression to evaluate.
       * @return The resulting term.
       */
-    def toTerm(expression: sil.Exp): Term = expression match {
-      case sil.LocalVar(variable, _) => store(variable)
-      case sil.FieldAccess(receiver, field) => heap(toTerm(receiver))(field.name)
-    }
-
-    def evaluateBoolean(term: Term): Boolean = term match {
-      case terms.True() => true
-      case terms.False() => false
-      case terms.Not(argument) => !evaluateBoolean(argument)
-      case terms.Equals(left, right) => left.sort match {
-        case terms.sorts.Ref => evaluateReference(left) == evaluateReference(right)
+    def toTerm(expression: sil.Exp): Term =
+      expression match {
+        case sil.LocalVar(variable, _) =>
+          // look up the version of the variable corresponding to this state
+          val name = if (label == "current") variable else s"${label}_$variable"
+          store(name)
+        case sil.FieldAccess(receiver, field) =>
+          heap(toTerm(receiver))(field.name)
       }
-      case _ => ???
-    }
 
-    def evaluatePermission(term: Term): Double = term match {
-      case terms.NoPerm() => 0.0
-      case terms.FullPerm() => 1.0
-      case terms.Ite(condition, left, right) =>
-        if (evaluateBoolean(condition)) evaluatePermission(left)
-        else evaluatePermission(right)
-      case _ => ???
-    }
+    /**
+      * Evaluates the given term to a boolean.
+      *
+      * @param term The term to evaluate.
+      * @return The boolean value.
+      */
+    def evaluateBoolean(term: Term): Boolean =
+      term match {
+        case terms.True() => true
+        case terms.False() => false
+        case terms.Not(argument) => !evaluateBoolean(argument)
+        case terms.Equals(left, right) => left.sort match {
+          case terms.sorts.Ref => evaluateReference(left) == evaluateReference(right)
+        }
+        case _ => ???
+      }
 
-    def evaluateReference(term: Term): String = term match {
-      case terms.Var(identifier, _) => readModel(identifier.name)
-      case terms.Null() => readModel(name = "$Ref.null")
-      case _ => ???
-    }
+    /**
+      * Evaluates the given term to a permission value (represented as a double).
+      *
+      * @param term The term to evaluate.
+      * @return The permission value.
+      */
+    def evaluatePermission(term: Term): Double =
+      term match {
+        case terms.NoPerm() => 0.0
+        case terms.FullPerm() => 1.0
+        case terms.Ite(condition, left, right) =>
+          if (evaluateBoolean(condition)) evaluatePermission(left)
+          else evaluatePermission(right)
+        case _ => ???
+      }
 
-    def readModel(name: String): String =
-      model.entries(name) match {
+    /**
+      * Evaluates the given term to a reference (represented as a string).
+      *
+      * @param term The term.
+      * @return The reference value.
+      */
+    def evaluateReference(term: Term): String =
+      term match {
+        case terms.Var(identifier, _) => readModel(identifier.name)
+        case terms.Null() => readModel(key = "$Ref.null")
+        case _ => ???
+      }
+
+    /**
+      * Reads the value with the given key from the model.
+      *
+      * @param key The key of the value.
+      * @return The value.
+      */
+    private def readModel(key: String): String =
+      model.entries(key) match {
         case SingleEntry(value) => value
       }
   }
