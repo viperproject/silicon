@@ -181,7 +181,6 @@ class ExampleExtractor(teacher: Teacher) {
     val model = counter.model
 
     // build store
-    // TODO: Restrict stores?
     val store = {
       val siliconStore = siliconState.g
       buildStore(siliconStore, partitions)
