@@ -75,8 +75,8 @@ case class Abstraction(values: Map[sil.Exp, Boolean]) {
     * @param atoms The atoms.
     * @return The values of the atoms.
     */
-  def getValues(atoms: Seq[sil.Exp]): Seq[Boolean] =
-    atoms.map(values)
+  def getValues(atoms: Seq[sil.Exp]): Seq[Option[Boolean]] =
+    atoms.map { atom => values.get(atom) }
 
   override def toString: String =
     values

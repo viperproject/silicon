@@ -70,14 +70,14 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
   def encodeExample(example: Example): Seq[sil.Exp] =
     example match {
       case Positive(records) =>
-        val (encoding, constraints) = encodeRecords(records)
+        val (encoding, constraints) = encodeRecords(records, default = false)
         constraints :+ encoding
       case Negative(records) =>
-        val (encoding, constraints) = encodeRecords(records)
+        val (encoding, constraints) = encodeRecords(records, default = false)
         constraints :+ not(encoding)
       case Implication(leftRecords, rightRecords) =>
-        val (leftEncoding, leftConstraints) = encodeRecords(leftRecords)
-        val (rightEncoding, rightConstraints) = encodeRecords(rightRecords)
+        val (leftEncoding, leftConstraints) = encodeRecords(leftRecords, default = true)
+        val (rightEncoding, rightConstraints) = encodeRecords(rightRecords, default = false)
         leftConstraints ++ rightConstraints :+ implies(leftEncoding, rightEncoding)
     }
 
@@ -85,9 +85,32 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * Encodes the given records.
     *
     * @param records The records to encode.
+    * @param default The default value to assume for unknown atoms (approximation).
     * @return A tuple holding the encoding and a sequence of global constraints.
     */
-  private def encodeRecords(records: Seq[Record]): (sil.Exp, Seq[sil.Exp]) = {
+  private def encodeRecords(records: Seq[Record], default: Boolean): (sil.Exp, Seq[sil.Exp]) = {
+    // method used to introduce auxiliary variables.
+    def auxiliary(expressions: Iterable[sil.Exp]): (Seq[sil.Exp], Seq[sil.Exp]) = {
+      val empty = Seq.empty[sil.Exp]
+      expressions.foldLeft((empty, empty)) {
+        case ((varibles, equalities), expression) =>
+          val name = s"t_${unique.getAndIncrement}"
+          val variable = sil.LocalVar(name, sil.Bool)()
+          val equality = sil.EqCmp(variable, expression)()
+          (varibles :+ variable, equalities :+ equality)
+      }
+    }
+
+    // method used to encode that at most one choice should be picked.
+    def atMost(expressions: Seq[sil.Exp]): sil.Exp = {
+      val constraints = Collections
+        .pairs(expressions)
+        .map { case (first, second) =>
+          sil.Not(sil.And(first, second)())()
+        }
+      bigAnd(constraints)
+    }
+
     // collect encodings and constraints
     val (variables, constraints) = {
       val empty = Seq.empty[sil.Exp]
@@ -107,7 +130,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
               locationGuard.map { sequence =>
                 val conjuncts = sequence.map { case (id, atoms) =>
                   val values = record.state.getValues(atoms)
-                  encodeState(id, values)
+                  encodeState(id, values, default)
                 }
                 Expressions.bigAnd(conjuncts)
               }
@@ -125,36 +148,15 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     (encoding, constraints)
   }
 
-  private def auxiliary(expressions: Iterable[sil.Exp]): (Seq[sil.Exp], Seq[sil.Exp]) = {
-    val empty = Seq.empty[sil.Exp]
-    expressions.foldLeft((empty, empty)) {
-      case ((varibles, equalities), expression) =>
-        val name = s"t_${unique.getAndIncrement}"
-        val variable = sil.LocalVar(name, sil.Bool)()
-        val equality = sil.EqCmp(variable, expression)()
-        (varibles :+ variable, equalities :+ equality)
-    }
-  }
-
-  private def atMost(expressions: Seq[sil.Exp]): sil.Exp = {
-    val constraints = Collections
-      .pairs(expressions)
-      .map { case (first, second) =>
-        sil.Not(sil.And(first, second)())()
-      }
-    bigAnd(constraints)
-  }
-
   /**
     * Computes the encoding of an abstract state defined by the given values for the guard with the given id.
     *
-    * TODO: Approximation.
-    *
-    * @param id     The id of the guard.
-    * @param values The values defining the state.
+    * @param id      The id of the guard.
+    * @param values  The values defining the state.
+    * @param default The default value to assume for unknown atoms (approximation).
     * @return The encoding.
     */
-  private def encodeState(id: Int, values: Seq[Boolean]): sil.Exp = {
+  private def encodeState(id: Int, values: Seq[Option[Boolean]], default: Boolean): sil.Exp = {
     // encode clauses
     val clauses = for (j <- 0 until Config.maxClauses) yield {
       val clauseActivation = sil.LocalVar(s"x_${id}_$j", sil.Bool)()
@@ -164,9 +166,12 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
           .zipWithIndex
           .map { case (value, i) =>
             val literalActivation = sil.LocalVar(s"y_${id}_${i}_$j", sil.Bool)()
-            val literalEncoding = {
-              val sign = sil.LocalVar(s"s_${id}_${i}_$j", sil.Bool)()
-              if (value) sign else sil.Not(sign)()
+            val literalEncoding = value match {
+              case Some(sign) =>
+                val variable = sil.LocalVar(s"s_${id}_${i}_$j", sil.Bool)()
+                if (sign) variable else sil.Not(variable)()
+              case None =>
+                if (default) sil.TrueLit()() else sil.FalseLit()()
             }
             sil.Implies(literalActivation, literalEncoding)()
           }
