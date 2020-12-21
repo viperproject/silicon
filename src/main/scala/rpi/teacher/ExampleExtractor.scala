@@ -106,7 +106,7 @@ class ExampleExtractor(teacher: Teacher) {
           val state =
             if (label.isDefined) {
               // combine information from pre and post state
-              val currentInstance = context.getExhale(label.get)
+              val currentInstance = context.getExhaled(label.get)
               val pre = abstractState(inhaledState, inhaledInstance)
               val post = abstractState(currentState, currentInstance)
               val x = currentInstance.toActual(post)
@@ -119,7 +119,7 @@ class ExampleExtractor(teacher: Teacher) {
 
     // post record
     lazy val postRecords = {
-      val currentInstance = context.getExhale(label.get)
+      val currentInstance = context.getExhaled(label.get)
       val state = abstractState(currentState, currentInstance)
       val locations = Set(currentInstance.toFormal(currentLocation))
       val record = Record(currentInstance.specification, state, locations)

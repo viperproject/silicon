@@ -83,22 +83,59 @@ class Teacher(val inference: Inference) {
     }
 }
 
+/**
+  * A context object used to pass information from the check builder to the example ectractor.
+  */
 class Context {
+  /**
+    * A map holding the instances corresponding to the inhaled states.
+    */
   private var inhaled: Map[String, Instance] = Map.empty
 
+  /**
+    * A map holding the instances corresponding to the exhaled states.
+    */
   private var exhaled: Map[String, Instance] = Map.empty
 
+  /**
+    * A map holding variable names for all states.
+    */
   private var names: Map[String, Map[sil.LocationAccess, String]] = Map.empty
 
+  /**
+    * Returns whether the given label corresponds to an inhaled state or not.
+    *
+    * @param label The label of the state.
+    * @return True if the given label corresponds to an inhaled state.
+    */
   def isInhaled(label: String): Boolean =
     inhaled.contains(label)
 
+  /**
+    * Adds the given instance as an instance corresponding to an inhaled state.
+    *
+    * @param label    The label of the state.
+    * @param instance The instance.
+    */
   def addInhaled(label: String, instance: Instance): Unit =
     inhaled = inhaled.updated(label, instance)
 
+  /**
+    * Adds the given instance as an instance corresponding to an exhaled state.
+    *
+    * @param label    The label of the state.
+    * @param instance The instance.
+    */
   def addExhaled(label: String, instance: Instance): Unit =
     exhaled = exhaled.updated(label, instance)
 
+  /**
+    * Associates the given location access with the given variable name in the state with the given label.
+    *
+    * @param label  The label of the state.
+    * @param access The location access.
+    * @param name   The variable name.
+    */
   def addName(label: String, access: sil.LocationAccess, name: String): Unit = {
     val updated = names
       .getOrElse(label, Map.empty)
@@ -106,12 +143,39 @@ class Context {
     names = names.updated(label, updated)
   }
 
+  /**
+    * Returns all instances corresponding to inhaled states.
+    *
+    * @return The instances.
+    */
+  def allInhaled: Seq[Instance] =
+    inhaled.values.toSeq
+
+  /**
+    * Returns the instance corresponding to the inhaled state with the given label.
+    *
+    * @param label The label of the state.
+    * @return The instances.
+    */
   def getInhaled(label: String): Instance =
     inhaled(label)
 
-  def getExhale(label: String): Instance =
+  /**
+    * Returns the instance corresponding to the exhaled state with the given label.
+    *
+    * @param label The label of the state.
+    * @return The instance.
+    */
+  def getExhaled(label: String): Instance =
     exhaled(label)
 
+  /**
+    * Returns the name of the variable associated with the given location access in the given state.
+    *
+    * @param label  The label of the state.
+    * @param access The location access.
+    * @return The variable name.
+    */
   def getName(label: String, access: sil.LocationAccess): String = {
     names(label)(access)
   }
