@@ -184,7 +184,6 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     Expressions.bigOr(clauses)
   }
 
-
   /**
     * Collects the effective guards for the given template up to the given depth.
     *

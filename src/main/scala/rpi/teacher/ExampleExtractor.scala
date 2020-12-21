@@ -98,33 +98,55 @@ class ExampleExtractor(teacher: Teacher) {
       case _ => offending
     }
 
-    lazy val preRecords =
-      inhaledStates
-        .map { inhaledState =>
-          val inhaledInstance = context.getInhaled(inhaledState.label)
-          val adaptor = Adaptor(currentState, inhaledState, inhaledInstance)
-          val state =
-            if (label.isDefined) {
-              // combine information from pre and post state
-              val currentInstance = context.getExhaled(label.get)
-              val pre = abstractState(inhaledState, inhaledInstance)
-              val post = abstractState(currentState, currentInstance)
-              val x = currentInstance.toActual(post)
-              pre.meet(adaptor.adaptState(x))
-            } else abstractState(inhaledState, inhaledInstance)
-          // TODO: It could be beneficial to have a set of all equivalent locations.
-          val locations = adaptor.adaptLocation(currentLocation)
-          Record(inhaledInstance.specification, state, locations)
-        }
+    val inhaled = inhaledStates
+      .map { state =>
+        val instance = context.getInhaled(state.label)
+        val abstraction = abstractState(state, instance)
+        (state, instance, abstraction)
+      }
 
-    // post record
-    lazy val postRecords = {
-      val currentInstance = context.getExhaled(label.get)
-      val state = abstractState(currentState, currentInstance)
-      val locations = Set(currentInstance.toFormal(currentLocation))
-      val record = Record(currentInstance.specification, state, locations)
-      Seq(record)
-    }
+    val exhaled = label
+      .toSeq
+      .map { name =>
+        val instance = context.getExhaled(name)
+        val abstraction = abstractState(currentState, instance)
+        (currentState, instance, abstraction)
+      }
+
+    lazy val inhaledRecords = inhaled
+      .map {
+        case (inhaledState, inhaledInstance, inhaledAbstraction) =>
+          // create adaptor
+          val adaptor = Adaptor(currentState, inhaledState, inhaledInstance)
+          // combine information from pre and post state
+          val abstraction = exhaled.foldLeft(inhaledAbstraction) {
+            case (combinedAbstraction, (_, exhaledInstance, exhaledAbstraction)) =>
+              val actual = exhaledInstance.toActual(exhaledAbstraction)
+              val adapted = adaptor.adaptState(actual)
+              combinedAbstraction.meet(adapted)
+          }
+          // TODO: It could be beneficial to have a set of all equivalent locations.
+          val specification = inhaledInstance.specification
+          val locations = adaptor.adaptLocation(currentLocation)
+          Record(specification, abstraction, locations)
+      }
+
+    lazy val exhaledRecords = exhaled
+      .map {
+        case (exhaledState, exhaledInstance, exhaledAbstraction) =>
+          // TODO:
+          val abstraction = inhaled.foldLeft(exhaledAbstraction) {
+            case (combinedAbstraction, (inhaledState, inhaledInstance, inhaledAbstraction)) =>
+              val adaptor = Adaptor(inhaledState, exhaledState, exhaledInstance)
+              val actual = inhaledInstance.toActual(inhaledAbstraction)
+              val adapted = adaptor.adaptState(actual)
+              combinedAbstraction.meet(adapted)
+          }
+          // create record
+          val specification = exhaledInstance.specification
+          val locations = Set(exhaledInstance.toFormal(currentLocation))
+          Record(specification, abstraction, locations)
+      }
 
     // create example
     if (label.isDefined) {
@@ -133,9 +155,9 @@ class ExampleExtractor(teacher: Teacher) {
       val term = currentState.store(name)
       val permission = currentState.evaluatePermission(term)
       // create implication or negative example depending on permission amount
-      if (permission == 0) Implication(postRecords, preRecords)
-      else Negative(postRecords)
-    } else Positive(preRecords)
+      if (permission == 0) Implication(exhaledRecords, inhaledRecords)
+      else Negative(exhaledRecords)
+    } else Positive(inhaledRecords)
   }
 
   /**

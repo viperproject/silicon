@@ -84,7 +84,7 @@ class Teacher(val inference: Inference) {
 }
 
 /**
-  * A context object used to pass information from the check builder to the example ectractor.
+  * A context object used to pass information from the check builder to the example extractor.
   */
 class Context {
   /**
@@ -142,14 +142,6 @@ class Context {
       .updated(access, name)
     names = names.updated(label, updated)
   }
-
-  /**
-    * Returns all instances corresponding to inhaled states.
-    *
-    * @return The instances.
-    */
-  def allInhaled: Seq[Instance] =
-    inhaled.values.toSeq
 
   /**
     * Returns the instance corresponding to the inhaled state with the given label.
