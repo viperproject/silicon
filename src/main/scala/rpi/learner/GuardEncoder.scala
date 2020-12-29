@@ -2,7 +2,7 @@ package rpi.learner
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import rpi.Config
+import rpi.Settings
 import rpi.inference._
 import rpi.util.{Collections, Expressions}
 import viper.silver.{ast => sil}
@@ -29,7 +29,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
       }
 
     // debug printing
-    if (Config.debugPrintGuards) result
+    if (Settings.debugPrintGuards) result
       .foreach { case (name, map) => map
         .foreach { case (location, guard) =>
           val label = s"$location@$name"
@@ -158,7 +158,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     */
   private def encodeState(id: Int, values: Seq[Option[Boolean]], default: Boolean): sil.Exp = {
     // encode clauses
-    val clauses = for (j <- 0 until Config.maxClauses) yield {
+    val clauses = for (j <- 0 until Settings.maxClauses) yield {
       val clauseActivation = sil.LocalVar(s"x_${id}_$j", sil.Bool)()
       val clauseEncoding = {
         // encode literals

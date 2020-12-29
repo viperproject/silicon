@@ -1,0 +1,29 @@
+field n: Ref
+
+method main()
+{
+    var a: Ref
+    var b: Ref
+    var c: Ref
+    var i: Int
+
+    // create list
+    a := new(n)
+    b := a
+    while (i < 10)
+    {
+        var t: Ref
+
+        t := new(n)
+        b.n := t
+        b := t
+        i := i + 1
+    }
+
+    // traverse list
+    c := a
+    while (c != null)
+    {
+        c := c.n
+    }
+}

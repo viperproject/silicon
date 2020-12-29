@@ -2,10 +2,10 @@ package rpi.learner
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import rpi.Config
-import viper.silver.{ast => sil}
+import rpi.{Settings, Names}
 import rpi.inference._
 import rpi.util.Collections
+import viper.silver.{ast => sil}
 
 /**
   * The learner synthesizing the hypotheses.
@@ -130,24 +130,24 @@ class Learner(inference: Inference) {
         val parameters = Seq(sil.LocalVarDecl("x", sil.Ref)())
         val variables = parameters.map { parameter => parameter.localVar }
         val atoms = inference.instantiateAtoms(variables)
-        Specification("R", parameters, atoms)
+        Specification(Names.recursive, parameters, atoms)
       }
-      specifications = specifications.updated("R", specification)
+      specifications = specifications.updated(Names.recursive, specification)
       // create template
       val accesses = structure.resources ++ structure.recursions
       val guarded = accesses.map { access => Guarded(id.getAndIncrement(), access) }
       Template(specification, guarded)
     }
-    val result = templates.updated("R", recursive)
+    val result = templates.updated(Names.recursive, recursive)
 
-    if (Config.debugPrintTemplates) result
+    if (Settings.debugPrintTemplates) result
       .foreach { case (_, template) => println(template) }
 
     // return templates
     result
   }
 
-  def isAllowed(expression: sil.Exp, complexity: Int = Config.maxLength): Boolean =
+  def isAllowed(expression: sil.Exp, complexity: Int = Settings.maxLength): Boolean =
     if (complexity == 0) false
     else expression match {
       case sil.FieldAccess(receiver, _) => isAllowed(receiver, complexity - 1)
@@ -158,7 +158,7 @@ class Learner(inference: Inference) {
 object Structure {
   def compute(accesses: Set[sil.FieldAccess]): (Set[sil.PredicateAccess], Structure) = {
     val empty = Set.empty[sil.PredicateAccess]
-    if (Config.enableRecursion)
+    if (Settings.useRecursion)
       accesses
         .groupBy { access => access.field }
         .flatMap { case (field, group) =>

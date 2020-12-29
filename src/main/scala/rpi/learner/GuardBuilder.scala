@@ -1,6 +1,6 @@
 package rpi.learner
 
-import rpi.Config
+import rpi.Settings
 import rpi.util.Expressions
 import viper.silver.{ast => sil}
 
@@ -23,7 +23,7 @@ class GuardBuilder(learner: Learner, constraints: Seq[sil.Exp]) {
     // extract guard from model
     val guard = {
       val id = guarded.id
-      val clauses = for (j <- 0 until Config.maxClauses) yield {
+      val clauses = for (j <- 0 until Settings.maxClauses) yield {
         val clauseActivation = model.getOrElse(s"x_${id}_$j", false)
         if (clauseActivation) {
           val literals = atoms.zipWithIndex.map {

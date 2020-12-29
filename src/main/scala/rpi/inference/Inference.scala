@@ -1,6 +1,6 @@
 package rpi.inference
 
-import rpi.{Config, Main, Names}
+import rpi.{Settings, Main, Names}
 import rpi.learner.Learner
 import rpi.teacher.Teacher
 import rpi.util.{Collections, Expressions, Namespace}
@@ -49,7 +49,7 @@ class Inference(program: sil.Program) {
     val x0 = sil.LocalVarDecl("x0", sil.Ref)()
     val x1 = sil.LocalVarDecl("x1", sil.Ref)()
     val t0 = sil.Predicate("t0", Seq(x0), Some(sil.NeCmp(x0.localVar, sil.NullLit()())()))()
-    val t1 = sil.Predicate("t1", Seq(x0, x1), Some(sil.EqCmp(x0.localVar, x1.localVar)()))()
+    val t1 = sil.Predicate("t1", Seq(x0, x1), Some(sil.NeCmp(x0.localVar, x1.localVar)()))()
     Seq(t0, t1)
   }
 
@@ -85,7 +85,7 @@ class Inference(program: sil.Program) {
     def create(prefix: String, parameters: Seq[sil.LocalVarDecl]): sil.PredicateAccessPredicate = {
       // rename parameters
       val renamed =
-        if (Config.renameParameters) parameters
+        if (Settings.renameParameters) parameters
           .zipWithIndex
           .map { case (parameter, index) => sil.LocalVarDecl(s"x_$index", parameter.typ)() }
         else parameters
@@ -107,17 +107,12 @@ class Inference(program: sil.Program) {
     val labeled = program.transformWithContext[Seq[sil.LocalVarDecl]]({
       case (method: sil.Method, _) =>
         val variables = method.formalArgs
-        val preconditions = create(prefix = "P", variables) +: method.pres
-        val postconditions = create(prefix = "Q", variables) +: method.posts
+        val preconditions = create(Names.precondition, variables) +: method.pres
+        val postconditions = create(Names.postcondition, variables) +: method.posts
         val transformed = method.copy(pres = preconditions, posts = postconditions)(method.pos, method.info, method.errT)
         (transformed, variables)
       case (loop: sil.While, variables) =>
-        val written = loop
-          .deepCollect {
-            case sil.LocalVar(name, typ) => sil.LocalVarDecl(name, typ)()
-          }
-          .distinct intersect variables
-        val invariants = create(prefix = "I", written) +: loop.invs
+        val invariants = create(Names.invariant, variables) +: loop.invs
         val transformed = loop.copy(invs = invariants)(loop.pos, loop.info, loop.errT)
         (transformed, variables)
       case (sequence: sil.Seqn, variables) =>
@@ -201,7 +196,7 @@ class Inference(program: sil.Program) {
     * @return The annotated program.
     */
   def annotated(): sil.Program = {
-    val hypothesis = infer(Config.maxRounds)
+    val hypothesis = infer(Settings.maxRounds)
     annotateProgram(labeled, hypothesis)
   }
 
@@ -225,7 +220,7 @@ class Inference(program: sil.Program) {
     val hypothesis = learner.hypothesis
     if (rounds == 0) hypothesis
     else {
-      println(s"----- round ${Config.maxRounds - rounds} -----")
+      println(s"----- round ${Settings.maxRounds - rounds} -----")
       // check hypothesis
       val examples = teacher.check(hypothesis)
       if (examples.isEmpty) hypothesis
@@ -263,7 +258,10 @@ class Inference(program: sil.Program) {
     // create predicates
     val predicates = {
       val existing = program.predicates
-      val inferred = hypothesis.predicates.get("R").toSeq
+      val inferred = hypothesis
+        .predicates
+        .get(Names.recursive)
+        .toSeq
       existing ++ inferred
     }
     // annotate methods
@@ -278,11 +276,11 @@ class Inference(program: sil.Program) {
               val substituted = invariants.map { invariant => substitute(invariant) }
               sil.While(condition, substituted, body)()
             case sil.MethodCall(name, arguments, _) if name == Names.foldAnnotation =>
-              val access = sil.PredicateAccess(arguments, "R")()
+              val access = sil.PredicateAccess(arguments, Names.recursive)()
               val accessPredicate = sil.PredicateAccessPredicate(access, sil.FullPerm()())()
               sil.Fold(accessPredicate)()
             case sil.MethodCall(name, arguments, _) if name == Names.unfoldAnnotation =>
-              val access = sil.PredicateAccess(arguments, "R")()
+              val access = sil.PredicateAccess(arguments, Names.recursive)()
               val accessPredicate = sil.PredicateAccessPredicate(access, sil.FullPerm()())()
               sil.Unfold(accessPredicate)()
           }, Traverse.BottomUp)

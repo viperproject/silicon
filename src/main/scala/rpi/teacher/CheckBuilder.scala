@@ -1,6 +1,6 @@
 package rpi.teacher
 
-import rpi.Config
+import rpi.Settings
 import rpi.inference._
 import rpi.util.Namespace
 import viper.silver.{ast => sil}
@@ -201,7 +201,9 @@ class CheckBuilder(teacher: Teacher) {
     }
     val methods = checks.map { check => buildMethod(check) }
     val extensions = Seq.empty
-    sil.Program(domains, fields, functions, predicates, methods, extensions)()
+    val program = sil.Program(domains, fields, functions, predicates, methods, extensions)()
+    println(program)
+    program
   }
 
   /**
@@ -238,7 +240,7 @@ class CheckBuilder(teacher: Teacher) {
         case sil.Implies(left, right) =>
           processNested(right, guards :+ left)
         case sil.PredicateAccessPredicate(resource, _) =>
-          if (depth < Config.foldDepth) {
+          if (depth < Settings.foldDepth) {
             // TODO: Implement me
             val name = resource.predicateName
             val arguments = resource.args
@@ -286,7 +288,7 @@ class CheckBuilder(teacher: Teacher) {
         case sil.FieldAccessPredicate(resource, _) =>
           savePermission(label, resource)
         case sil.PredicateAccessPredicate(resource, _) =>
-          if (depth < Config.foldDepth) {
+          if (depth < Settings.foldDepth) {
             val name = resource.predicateName
             val arguments = resource.args
             val inner = inference.getInstance(name, arguments)
@@ -338,7 +340,7 @@ class CheckBuilder(teacher: Teacher) {
     }
 
     // TODO: Inhale permissions to make stuff self-framing
-    if (!Config.useFraming) ???
+    if (!Settings.useFraming) ???
     assignments.foreach { assignment => addStatement(assignment) }
 
     // create and return instance
@@ -436,7 +438,7 @@ class CheckBuilder(teacher: Teacher) {
     */
   private def saveValue(name: String, expression: sil.Exp): Unit = {
     val variable = sil.LocalVar(name, expression.typ)()
-    if (Config.useBranching && expression.typ == sil.Bool) {
+    if (Settings.useBranching && expression.typ == sil.Bool) {
       // create conditional
       val thenBody = asSequence(sil.LocalVarAssign(variable, sil.TrueLit()())())
       val elseBody = asSequence(sil.LocalVarAssign(variable, sil.FalseLit()())())

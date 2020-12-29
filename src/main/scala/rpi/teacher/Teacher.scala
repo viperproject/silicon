@@ -1,6 +1,6 @@
 package rpi.teacher
 
-import rpi.{Config, Names}
+import rpi.{Settings, Names}
 import rpi.inference._
 import viper.silver.verifier.{Failure, Success, VerificationError}
 import viper.silver.{ast => sil}
@@ -26,7 +26,7 @@ class Teacher(val inference: Inference) {
     */
   private val checks: Seq[Seq[sil.Seqn]] = {
     val collected = Checks.collect(inference.labeled)
-    if (Config.batch) Seq(collected)
+    if (Settings.batch) Seq(collected)
     else collected.map { check => Seq(check) }
   }
 
@@ -204,6 +204,7 @@ object Checks {
       .map { method => method.name -> method }
       .toMap
 
+    // collect checks from all methods
     program
       .methods
       .flatMap {
@@ -211,7 +212,7 @@ object Checks {
           val inhales = preconditions.map { expression => sil.Inhale(expression)() }
           val exhales = postconditions.map { expression => sil.Exhale(expression)() }
           // collect checks
-          if (Config.useFraming) {
+          if (Settings.useFraming) {
             val (updated, collected) = collectFramed(inhales, body)
             val check = asSequence(updated ++ exhales)
             check +: collected

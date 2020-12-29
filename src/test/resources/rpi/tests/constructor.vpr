@@ -8,22 +8,17 @@ method main()
     x := null
     i := 10
 
-    __fold__(x)
-
     while (i > 0)
     {
         var t: Ref
         t := new(next)
         t.next := x
         x := t
-        __fold__(x)
         i := i - 1
     }
 
-
     while (x != null)
     {
-        __unfold__(x)
         x := x.next
     }
 }

@@ -134,7 +134,6 @@ class ExampleExtractor(teacher: Teacher) {
     lazy val exhaledRecords = exhaled
       .map {
         case (exhaledState, exhaledInstance, exhaledAbstraction) =>
-          // TODO:
           val abstraction = inhaled.foldLeft(exhaledAbstraction) {
             case (combinedAbstraction, (inhaledState, inhaledInstance, inhaledAbstraction)) =>
               val adaptor = Adaptor(inhaledState, exhaledState, exhaledInstance)
