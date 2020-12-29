@@ -2,9 +2,9 @@ package rpi.learner
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import rpi.{Settings, Names}
+import rpi.{Names, Settings}
 import rpi.inference._
-import rpi.util.Collections
+import rpi.util.{Collections, Expressions}
 import viper.silver.{ast => sil}
 
 /**
@@ -76,6 +76,8 @@ class Learner(inference: Inference) {
           name -> sil.Predicate(name, parameters, Some(body))()
         }
 
+      predicates.foreach { predicate => println(predicate) }
+
       // return hypothesis
       Hypothesis(predicates)
     }
@@ -112,10 +114,8 @@ class Learner(inference: Inference) {
           // compute template
           val template = {
             val specification = inference.getSpecification(name)
-            val accesses = locations ++ instances
-            val guarded = accesses
-              .filter { access => isAllowed(access) }
-              .map { access => Guarded(id.getAndIncrement(), access) }
+            val accesses = filterAndSort(locations ++ instances)
+            val guarded = accesses.map { access => Guarded(id.getAndIncrement(), access) }
             Template(specification, guarded)
           }
           // add template and update global structure
@@ -134,7 +134,7 @@ class Learner(inference: Inference) {
       }
       specifications = specifications.updated(Names.recursive, specification)
       // create template
-      val accesses = structure.resources ++ structure.recursions
+      val accesses = filterAndSort(structure.resources ++ structure.recursions)
       val guarded = accesses.map { access => Guarded(id.getAndIncrement(), access) }
       Template(specification, guarded)
     }
@@ -147,12 +147,20 @@ class Learner(inference: Inference) {
     result
   }
 
-  def isAllowed(expression: sil.Exp, complexity: Int = Settings.maxLength): Boolean =
-    if (complexity == 0) false
-    else expression match {
-      case sil.FieldAccess(receiver, _) => isAllowed(receiver, complexity - 1)
-      case _ => true
-    }
+  def filterAndSort(accesses: Set[sil.LocationAccess]): Seq[sil.LocationAccess] = {
+    val sequence = accesses.toSeq
+    // get all field accesses, then filter and sort
+    val fields = sequence
+      .collect { case field: sil.FieldAccess => (Expressions.length(field), field) }
+      .filter { case (length, _) => length <= Settings.maxLength }
+      .sortWith { case ((first, _), (second, _)) => first < second }
+      .map { case (_, field) => field }
+    // get all predicate accesses
+    val predicates = sequence
+      .collect { case predicate: sil.PredicateAccess => predicate }
+    // return filtered and ordered accesses
+    fields ++ predicates
+  }
 }
 
 object Structure {
@@ -246,7 +254,7 @@ case class Guarded(id: Int, access: sil.LocationAccess)
   * @param specification The specification for which this is the template.
   * @param accesses      The guarded accesses that may appear in the specification.
   */
-case class Template(specification: Specification, accesses: Set[Guarded]) {
+case class Template(specification: Specification, accesses: Seq[Guarded]) {
   /**
     * Returns the name identifying the specification.
     *

@@ -8,6 +8,19 @@ import viper.silver.{ast => sil}
   */
 object Expressions {
   /**
+    * Assumes that the given field access is an access path and returns its length.
+    *
+    * @param access The access path.
+    * @return The length of the access path.
+    */
+  def length(access: sil.FieldAccess): Int =
+    access.rcv match {
+      case _: sil.LocalVar => 2
+      case receiver: sil.FieldAccess => length(receiver) + 1
+      case _ => ??? // should not occur
+    }
+
+  /**
     * Instantiates the given predicate with the given arguments.
     *
     * @param predicate The predicate.
