@@ -35,7 +35,7 @@ class Z3ProverStdIO(uniqueId: String,
   private var input: BufferedReader = _
   private var output: PrintWriter = _
   /* private */ var z3Path: Path = _
-  var lastModel : String = null
+  var lastModel : String = _
 
   def z3Version(): Version = {
     val versionPattern = """\(?\s*:version\s+"(.*?)(?:\s*-.*?)?"\)?""".r
