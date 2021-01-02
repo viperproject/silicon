@@ -545,6 +545,8 @@ object executor extends ExecutionRules {
            | _: ast.If
            | _: ast.Label
            | _: ast.Seqn
+           | _: ast.Assume
+           | _: ast.ExtensionStmt
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
     }
 
