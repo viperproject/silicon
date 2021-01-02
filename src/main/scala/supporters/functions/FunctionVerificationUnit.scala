@@ -24,6 +24,8 @@ import viper.silicon.rules.{consumer, evaluator, executionFlowController, produc
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
 
+import scala.annotation.unused
+
 trait FunctionVerificationUnit[SO, SY, AX]
     extends VerifyingPreambleContributor[SO, SY, AX, ast.Function]
 
@@ -42,7 +44,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     import consumer._
     import evaluator._
 
-    private var program: ast.Program = _
+    @unused private var program: ast.Program = _
     private var functionData: Map[ast.Function, FunctionData] = Map.empty
     private var emittedFunctionAxioms: Vector[Term] = Vector.empty
     private var freshVars: Vector[Var] = Vector.empty

@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
@@ -77,7 +78,7 @@ object executor extends ExecutionRules {
 
   private def follows(s: State,
                       edges: Seq[SilverEdge],
-                      pvef: ast.Exp => PartialVerificationError,
+                      @unused pvef: ast.Exp => PartialVerificationError,
                       v: Verifier)
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult = {

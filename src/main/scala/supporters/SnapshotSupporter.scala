@@ -6,6 +6,7 @@
 
 package viper.silicon.supporters
 
+import scala.annotation.unused
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silicon.state.{State, SymbolConverter}
@@ -111,7 +112,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
     (sf0, sf1)
   }
 
-  private def createSnapshotPair(s: State, snap: Term, a0: ast.Exp, a1: ast.Exp, v: Verifier): (Term, Term) = {
+  private def createSnapshotPair(@unused s: State, snap: Term, @unused a0: ast.Exp, @unused a1: ast.Exp, v: Verifier): (Term, Term) = {
     /* [2015-11-17 Malte] If both fresh snapshot terms and first/second datatypes
      * are used, then the overall test suite verifies in 2min 10sec, whereas
      * it takes 2min 20sec when only first/second datatypes are used. Might be

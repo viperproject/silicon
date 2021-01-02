@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import scala.annotation.unused
 import scala.collection.immutable.ArraySeq
 import scala.reflect.ClassTag
 import viper.silver.ast
@@ -528,7 +529,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     (sm, valueDefinitions :+ resourceTriggerDefinition, optDomainDefinition)
   }
 
-  private def summarisePerm(s: State,
+  private def summarisePerm(@unused s: State,
                             relevantChunks: Seq[QuantifiedBasicChunk],
                             codomainQVars: Seq[Var],
                             resource: ast.Resource,

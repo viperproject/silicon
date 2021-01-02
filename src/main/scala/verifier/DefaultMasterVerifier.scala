@@ -8,6 +8,7 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
+import scala.annotation.unused
 import scala.util.Random
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
@@ -262,7 +263,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
           isMethodVerification = member.isInstanceOf[ast.Member])
   }
 
-  private def createInitialState(cfg: SilverCfg, program: ast.Program): State = {
+  private def createInitialState(@unused cfg: SilverCfg, program: ast.Program): State = {
     val quantifiedFields = InsertionOrderedSet(program.fields)
     val quantifiedPredicates = InsertionOrderedSet(program.predicates)
     val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.

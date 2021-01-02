@@ -8,7 +8,7 @@ package viper.silicon.supporters
 
 import java.io.File
 import java.net.URL
-
+import scala.annotation.unused
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -98,7 +98,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   protected def transformSourceDomain(sourceDomain: ast.Domain): ast.Domain = sourceDomain
 
-  protected def transformSourceDomainInstance(sourceDomain: ast.Domain, typ: ast.DomainType): ast.Domain = sourceDomain
+  protected def transformSourceDomainInstance(sourceDomain: ast.Domain, @unused typ: ast.DomainType): ast.Domain = sourceDomain
 
   protected def collectSorts(domainTypes: Iterable[ast.DomainType]): Unit = {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")

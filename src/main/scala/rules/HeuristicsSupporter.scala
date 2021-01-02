@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import scala.annotation.unused
 import org.slf4j.LoggerFactory
 import viper.silicon.Stack
 import viper.silver.ast
@@ -247,7 +248,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
     }
   }
 
-  def generateReactions(s: State, h: Heap, v: Verifier, cause: Failure)
+  def generateReactions(s: State, h: Heap, @unused v: Verifier, cause: Failure)
                        : Seq[(State, Heap, Verifier) => ((State, Heap, Verifier) => VerificationResult) => VerificationResult] = {
 
     val pve = HeuristicsFailed(ast.TrueLit()()) /* TODO: Use a meaningful node */
@@ -325,16 +326,17 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 
   /* Heuristics */
 
-  def packageWand(wand: ast.MagicWand, pve: PartialVerificationError)
+  def packageWand(wand: ast.MagicWand, @unused pve: PartialVerificationError)
                  (s: State, h: Heap, v: Verifier)
                  (Q: (State, Heap, Verifier) => VerificationResult)
                  : VerificationResult = {
+
       val packageStmt = ast.Package(wand, ast.Seqn(Seq(), Seq())())()
       exec(s.copy(h = h), packageStmt, v)((s1, v1) =>
         Q(s1, s1.h, v1))
   }
 
-  def applyWand(wand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], pve: PartialVerificationError)
+  def applyWand(wand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], @unused pve: PartialVerificationError)
                (s: State, h: Heap, v: Verifier)
                (Q: (State, Heap, Verifier) => VerificationResult)
                : VerificationResult = {
@@ -344,19 +346,21 @@ object heuristicsSupporter extends SymbolicExecutionRules {
         Q(s1.copy(g = s.g), s1.h, v1)})
   }
 
-  def unfoldPredicate(acc: ast.PredicateAccessPredicate, pve: PartialVerificationError)
+  def unfoldPredicate(acc: ast.PredicateAccessPredicate, @unused pve: PartialVerificationError)
                      (s: State, h: Heap, v: Verifier)
                      (Q: (State, Heap, Verifier) => VerificationResult)
                      : VerificationResult = {
+
       val unfoldStmt = ast.Unfold(acc)()
       exec(s.copy(h = h), unfoldStmt, v)((s1, v1) =>
         Q(s1, s1.h, v1))
   }
 
-  def foldPredicate(acc: ast.PredicateAccessPredicate, pve: PartialVerificationError)
+  def foldPredicate(acc: ast.PredicateAccessPredicate, @unused pve: PartialVerificationError)
                    (s: State, h: Heap, v: Verifier)
                    (Q: (State, Heap, Verifier) => VerificationResult)
                    : VerificationResult = {
+
       val foldStmt = ast.Fold(acc)()
       exec(s.copy(h = h), foldStmt, v)((s1, v1) =>
         Q(s1, s1.h, v1))
@@ -373,7 +377,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 
   /* Helpers */
 
-  def predicateInstancesMatching(s: State, h: Heap, v: Verifier, f: PartialFunction[ast.Node, _]): Seq[ast.PredicateAccessPredicate] = {
+  def predicateInstancesMatching(s: State, h: Heap, @unused v: Verifier, f: PartialFunction[ast.Node, _]): Seq[ast.PredicateAccessPredicate] = {
     val allChunks = s.h.values ++ h.values ++ s.reserveHeaps.flatMap(_.values)
     val program = Verifier.program
 

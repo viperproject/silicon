@@ -6,6 +6,7 @@
 
 package viper.silicon.supporters.functions
 
+import scala.annotation.unused
 import com.typesafe.scalalogging.LazyLogging
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
@@ -37,8 +38,8 @@ class FunctionData(val programFunction: ast.Function,
                    expressionTranslator: HeapAccessReplacingExpressionTranslator,
                    identifierFactory: IdentifierFactory,
                    predicateData: ast.Predicate => PredicateData,
-                   config: Config,
-                   reporter: PluginAwareReporter)
+                   @unused config: Config,
+                   @unused reporter: PluginAwareReporter)
     extends LazyLogging {
 
   private[this] var phase = 0
