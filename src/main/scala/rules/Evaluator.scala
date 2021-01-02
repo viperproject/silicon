@@ -1132,7 +1132,7 @@ object evaluator extends EvaluationRules {
 
     var optRemainingTriggerTerms: Option[Seq[Term]] = None
     val preMark = v.decider.setPathConditionMark()
-    var πDelta = InsertionOrderedSet.empty[Term]
+    var pcDelta = InsertionOrderedSet.empty[Term]
 
     /* TODO: Evaluate as many remaining expressions as possible, i.e. don't
      *       stop if evaluating one fails
@@ -1169,12 +1169,12 @@ object evaluator extends EvaluationRules {
     val r =
       evals(s, remainingTriggerExpressions, _ => pve, v)((_, remainingTriggerTerms, v1) => {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
-        πDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
+        pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
         Success()})
 
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
-        v.decider.assume(πDelta)
+        v.decider.assume(pcDelta)
         Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>
 //        bookkeeper.logfiles("evalTrigger").println(s"Couldn't evaluate some trigger expressions:\n  $remainingTriggerExpressions\nReason:\n  $r")

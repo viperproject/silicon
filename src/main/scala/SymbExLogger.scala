@@ -582,11 +582,11 @@ class JSTreeRenderer extends Renderer[String] {
     list.map(s => recordToJS(s)).fold("") { (a, b) => if (a.isEmpty) b else a + ",\n" + b } + "\n"
   }
 
-  def printState(s: SymbolicRecord): String = {
+  def printState(record: SymbolicRecord): String = {
     var res = ""
-    if (s.state != null) {
-      val σ = s.state.asInstanceOf[State]
-      res = ",\"prestate\":" + JsonHelper.escape(stateFormatter.toJson(σ, s.pcs))
+    if (record.state != null) {
+      val s = record.state
+      res = ",\"prestate\":" + JsonHelper.escape(stateFormatter.toJson(s, record.pcs))
     }
     res
   }
