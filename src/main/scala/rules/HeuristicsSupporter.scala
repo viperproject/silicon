@@ -171,7 +171,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
     var reactionResult: VerificationResult = globalActionResult
       /* A bit hacky, but having an initial result here simplifies things quite a bit */
 
-    globalActionResult match {
+    (globalActionResult: @unchecked) match {
       case _ if    localActionSuccess
                 || !globalActionResult.isFatal
                 || !s.applyHeuristics
@@ -238,7 +238,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
         say(s"reactionResult = $reactionResult")
     }
 
-    reactionResult match {
+    (reactionResult: @unchecked) match {
       case _ if !reactionResult.isFatal =>
         reactionResult
 
