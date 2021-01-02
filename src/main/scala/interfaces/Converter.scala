@@ -7,7 +7,7 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.{Store, State, BasicChunk, Identifier}
 import viper.silicon.state.terms.{sorts, Sort, Term, Unit, IntLiteral, Null, Var, App, Combine,
-                                  First, Second, SortWrapper, PredicateLookup, toSnapTree}
+                                  First, Second, SortWrapper, PredicateLookup, toSnapTree, Rational, PermLiteral}
 
 
 /* Some new classes to describe a more informative model */
@@ -23,12 +23,19 @@ case class OtherEntry(value: String) extends ExtModelEntry
 
 case class ExtModel(entries: Map[String, ExtModelEntry])
 
+sealed trait HeapEntry
+case class PredHeapEntry(name: String, args: Array[Term]) extends HeapEntry {
+    override def toString = name + "(" + args.mkString(", ") +")"
+}
+case class FieldHeapEntry(recv: Term, field: String, perm: Rational) extends HeapEntry {
+    override def toString = recv.toString + "." + field
+}
+
 
 
 /* basically a 1 to 1 copy of nagini code */
-object Converter{
-    type SimpleHeap = Map[(Term, String), String]
-    
+object Converter{    
+    type ExtractedHeap = Map[HeapEntry, String]
     def snapToOneLine(s:String) : String = s.filter(_ >= ' ').split(" +").mkString(" ")
 
     def getParts(value: String) : Array[String] = {
@@ -130,15 +137,17 @@ object Converter{
         }
     }
 
-    def extractHeap(h:Iterable[Chunk], model: Model) : SimpleHeap = {
-        var target : SimpleHeap = Map()
+    def extractHeap(h:Iterable[Chunk], model: Model) : ExtractedHeap = {
+        var target : ExtractedHeap = Map()
         for (chunk <- h) {
             chunk match {
                 case c@BasicChunk(resId, id, args, snap, perm) => {
                     resId match {
-                        case FieldID => val (recv, field, value) = extractField(c, model)
-                                        target += ((recv, field) -> value)                                        
-                        case PredicateID => println("chunks containing predicates are not evaluated yet")
+                        case FieldID => val (entry, value) = extractField(c, model)
+                                        target += (entry -> value)                                        
+                        case PredicateID => val entry = extractPredicate(c, model)
+                                            target += (entry -> "")
+
                         case _ => println("chunks for magic wands not implemented")
                     }
                     
@@ -149,25 +158,31 @@ object Converter{
         return target
     }
 
-    def extractField(chunk:BasicChunk, model: Model) : (Term, String, String) =  {
+    def extractField(chunk:BasicChunk, model: Model) : (HeapEntry, String) =  {
         val fieldname = chunk.id.name //String
         var recv : Term = chunk.args.head //Term
-        var recvString = recv.toString
         recv match {
             case Var(id, sort) => //no evaluation necessary
-            case t: Term => recvString = evaluateTerm(recv, model)
+            case t: Term => val recvString = evaluateTerm(recv, model)
                             recv = Var(Identifier.apply(recvString), sorts.Ref)
+                            //has to be of sort Ref if there are fields to it
+        }
+        val perm : Rational = chunk.perm match {
+            case p : PermLiteral => p.literal
+            case _ => println("Converter: permission field of chunk is not PermLiteral but " + chunk.perm.toString)
+                      Rational.zero
         }
         val value = evaluateTerm(chunk.snap, model) //String
-        return (recv, fieldname, value)
+        val entry = FieldHeapEntry(recv, fieldname, perm)
+        return (entry, value)
     }
 
-    def extractPredicate(chunk: BasicChunk, model: Model) {
-        val predName = chunk.id.name
-        val args = chunk.args
-        /* not implemented yet. Maybe not even needed!
-            not sure when this occurrs, how it helps
-        */
+    def extractPredicate(chunk: BasicChunk, model: Model) : HeapEntry = {
+        //this might be too simple for some cases but for prusti to tell if some 
+        //variable is part of a class it should be good enough
+        //not really sure if the snap value is needed
+        val entry = PredHeapEntry(chunk.id.toString, chunk.args.toArray) 
+        return entry
     }    
     /*
     def extractRecursive(term: Term) : ExtModelEntry {
@@ -192,16 +207,21 @@ object Converter{
         }
     */
 
-
-    def heapToModel(heap: SimpleHeap, label: String) : Map[String, ModelEntry] = {
+    // might not be possible to display these new models with the old Model structure,
+    // since those are unordered and we would want entries grouped.
+    // so for now they are just printed so they stay in their blocks
+    def heapToModel(heap: ExtractedHeap, label: String) : Map[String, ModelEntry] = {
         println("Processed Heap at label: " + label )
         for (x <- heap) {
-            println("etxr. heap: " + x._1._1.toString + "." + x._1._2 + " <- " + x._2)
+            x._1 match {
+                case h:FieldHeapEntry => println("\t" + h.toString + " <- " + x._2)
+                case h:PredHeapEntry => println("\t" + h.toString)
+            }
         }
         Map()
     }
 
-    def outputOldHeaps(heaps: Map[String, Converter.SimpleHeap]) {
+    def outputOldHeaps(heaps: Map[String, Converter.ExtractedHeap]) {
         for ((lbl, heap) <- heaps) {
             heapToModel(heap, lbl)
         }
@@ -211,17 +231,12 @@ object Converter{
 
 case class Converter(model: Model, store: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps){
 //    val extendedModel : ExtModel = ???
-    val extractedHeap : Converter.SimpleHeap = Converter.extractHeap(heap, model)
-    val extractedHeaps : Map[String, Converter.SimpleHeap] = oldHeaps.map(x => x._1 -> Converter.extractHeap(x._2.values, model))
+    val extractedHeap : Converter.ExtractedHeap = Converter.extractHeap(heap, model)
+    val extractedHeaps : Map[String, Converter.ExtractedHeap] = oldHeaps.map(x => x._1 -> Converter.extractHeap(x._2.values, model))
     val heapModel : Map[String, ModelEntry] = {
         Converter.outputOldHeaps(extractedHeaps)
         Converter.heapToModel(extractedHeap, "")
     }
 }
 
-
-/* basically I dont want to lose information since I may not process all
-of their types, so this type should still be able to represent the previous
-models but give some additional functionality
-Should probably be implemented in silver as child class of current model entries */
 
