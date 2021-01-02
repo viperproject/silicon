@@ -16,7 +16,7 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
 trait JoiningRules extends SymbolicExecutionRules {
   def join[D, JD](s: State, v: Verifier)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
-                 (merge: (Seq[JoinDataEntry[D]]) => (State, JD))
+                 (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
                  : VerificationResult
 }
@@ -24,7 +24,7 @@ trait JoiningRules extends SymbolicExecutionRules {
 object joiner extends JoiningRules {
   def join[D, JD](s: State, v: Verifier)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
-                 (merge: (Seq[JoinDataEntry[D]]) => (State, JD))
+                 (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
                  : VerificationResult = {
 

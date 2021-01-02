@@ -125,7 +125,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
                            body: PropertyExpression[kinds.Boolean],
                            info: Info)
                           : Term = {
-    val builder: (GeneralChunk => Term) = chunkVariables match {
+    val builder: GeneralChunk => Term = chunkVariables match {
       case c +: Seq() => chunk => buildPathCondition(body, info.addMapping(c, chunk))
       case c +: tail => chunk => buildForEach(chunks, tail, body, info.addMapping(c, chunk))
     }
