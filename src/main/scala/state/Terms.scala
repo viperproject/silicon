@@ -15,7 +15,7 @@ import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, Sor
 import viper.silicon.verifier.Verifier
 
 sealed trait Node {
-  override def toString: String
+  def toString: String
 }
 
 sealed trait Symbol extends Node {
