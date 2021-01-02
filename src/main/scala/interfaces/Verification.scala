@@ -105,7 +105,7 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
     Model(internalStore.values.filter{
       case (_,v) => nativeModel.entries.contains(v.toString)
     }.map{
-      case (k, v) => k.name -> nativeModel.entries.get(v.toString).get
+      case (k, v) => k.name -> nativeModel.entries(v.toString)
     })
   }
   override def withStore(s: Store): SiliconCounterexample = {
