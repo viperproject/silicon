@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import scala.collection.immutable.ArraySeq
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
@@ -535,7 +536,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             v: Verifier)
                            : (Term, Seq[Quantification]) = {
 
-    val pm = freshPermMap(s, resource, Seq(), v)
+    val pm = freshPermMap(resource, Seq(), v)
 
     val permSummary = ResourcePermissionLookup(resource, pm, codomainQVars)
 
@@ -797,7 +798,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       else s.conservedPcs
 
     val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
-    val interpreter = new QuantifiedPropertyInterpreter(v)
+    val interpreter = new QuantifiedPropertyInterpreter
     resourceDescription.instanceProperties.foreach (property => {
       v.decider.prover.comment(property.description)
       v.decider.assume(interpreter.buildPathConditionForChunk(
@@ -881,8 +882,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
   def consume(s: State,
               h: Heap,
-              forall: ast.Forall,
-              acc: ast.AccessPredicate,
               resource: ast.Resource,
               qvars: Seq[Var],
               formalQVars: Seq[Var],
@@ -1365,10 +1364,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     freshFvf
   }
 
-  def freshPermMap(s: State,
-                   resource: ast.Resource,
+  def freshPermMap(resource: ast.Resource,
                    appliedArgs: Seq[Term],
-                   v: Verifier): Term = {
+                   v: Verifier)
+                  : Term = {
 
     val permMapSort = resource match {
       case _: ast.Field => sorts.FieldPermFunction()
@@ -1462,10 +1461,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
 
     /* f_1(inv_1(rs), ..., inv_n(rs)), ...,  f_m(inv_1(rs), ..., inv_n(rs)) */
-    val fctsOfInversesOfCodomain = invertibles.map(_.replace(qvars, inversesOfCodomains))
+    val fctsOfInversesOfCodomain =
+      invertibles.map(_.replace(qvars, ArraySeq.unsafeWrapArray(inversesOfCodomains)))
 
     /* c(inv_1(rs), ..., inv_n(rs)) */
-    val conditionOfInverses = condition.replace(qvars, inversesOfCodomains)
+    val conditionOfInverses =
+      condition.replace(qvars, ArraySeq.unsafeWrapArray(inversesOfCodomains))
 
     /* c(xs) ==>
      *       inv_1(f_1(xs), ..., f_m(xs)) == x_1
@@ -1510,7 +1511,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             .map { case (fctOfInvs, r) => fctOfInvs === r }))
 
     val axFctsOfInvsTriggers: Seq[Trigger] =
-      if (Verifier.config.disableISCTriggers()) Nil else inversesOfCodomains.map(Trigger.apply)
+      if (Verifier.config.disableISCTriggers()) Nil
+      else ArraySeq.unsafeWrapArray(inversesOfCodomains.map(Trigger.apply))
 
     val axFctsOfInvs =
       v.triggerGenerator.assembleQuantification(

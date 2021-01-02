@@ -150,7 +150,6 @@ class AxiomRewriter(counter: Counter/*, logger: MultiRunLogger*/,
 
   private type Type = Sort
   private type Exp = Term
-  private type Eq = Equals
 
   def rewrite(quantification: Quantification): Option[Quantification] =
     rewrite(quantification, quantification.triggers.map(trigger => TriggerSet(trigger.p)))
@@ -218,7 +217,6 @@ object SimpleArithmeticSolver extends GenericArithmeticSolver[Sort, Term, Var, P
 
   private type Type = Sort
   private type Exp = Term
-  private type Eq = Equals
 
   /*
    * Abstract members - type arguments

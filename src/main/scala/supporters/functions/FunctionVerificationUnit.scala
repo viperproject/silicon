@@ -55,10 +55,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         +  "an infeasible path, i.e. is dead code. The unresolved expression will be replaced by "
         +  "a fresh symbol, i.e. an arbitrary value.")
 
-      def stopOnResolutionFailure(exp: ast.Positioned, data: FunctionData): Boolean = false
-
       new HeapAccessReplacingExpressionTranslator(
-        symbolConverter, fresh, resolutionFailureMessage, stopOnResolutionFailure, reporter)
+        symbolConverter, fresh, resolutionFailureMessage, (_, _) => false, reporter)
     }
 
     def units = functionData.keys.toSeq

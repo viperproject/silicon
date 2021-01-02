@@ -39,7 +39,7 @@ object stateConsolidator extends StateConsolidationRules {
       if (s.retrying) {
         // TODO: apply to all heaps (s.h +: s.reserveHeaps, as done below)
         // NOTE: Doing this regardless of s.retrying might improve completeness in certain (rare) cases
-        moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds(s, s.h, v)
+        moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds(s.h, v)
       }
 
       return s

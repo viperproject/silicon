@@ -265,7 +265,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 
         /* HS1 (wands) */
         val wand = reason.offendingNode
-        val structureMatcher = matchers.structure(wand, Verifier.program)
+        val structureMatcher = matchers.structure(wand)
         val wandChunks = wandInstancesMatching(chunks, structureMatcher)
         val applyWandReactions = wandChunks flatMap {
           case ch if ok(ch.id.ghostFreeWand) => Some(applyWand(ch.id.ghostFreeWand, ch.bindings, pve) _)
@@ -330,8 +330,8 @@ object heuristicsSupporter extends SymbolicExecutionRules {
                  (Q: (State, Heap, Verifier) => VerificationResult)
                  : VerificationResult = {
       val packageStmt = ast.Package(wand, ast.Seqn(Seq(), Seq())())()
-      exec(s.copy(h = h), packageStmt, v)((s1, v1) => {
-        Q(s1, s1.h, v1)})
+      exec(s.copy(h = h), packageStmt, v)((s1, v1) =>
+        Q(s1, s1.h, v1))
   }
 
   def applyWand(wand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], pve: PartialVerificationError)
@@ -349,8 +349,8 @@ object heuristicsSupporter extends SymbolicExecutionRules {
                      (Q: (State, Heap, Verifier) => VerificationResult)
                      : VerificationResult = {
       val unfoldStmt = ast.Unfold(acc)()
-      exec(s.copy(h = h), unfoldStmt, v)((s1, v1) => {
-        Q(s1, s1.h, v1)})
+      exec(s.copy(h = h), unfoldStmt, v)((s1, v1) =>
+        Q(s1, s1.h, v1))
   }
 
   def foldPredicate(acc: ast.PredicateAccessPredicate, pve: PartialVerificationError)
@@ -358,16 +358,17 @@ object heuristicsSupporter extends SymbolicExecutionRules {
                    (Q: (State, Heap, Verifier) => VerificationResult)
                    : VerificationResult = {
       val foldStmt = ast.Fold(acc)()
-      exec(s.copy(h = h), foldStmt, v)((s1, v1) => {
-        Q(s1, s1.h, v1)})
+      exec(s.copy(h = h), foldStmt, v)((s1, v1) =>
+        Q(s1, s1.h, v1))
   }
 
   def foldPredicate(predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError)
                    (s: State, h: Heap, v: Verifier)
                    (Q: (State, Heap, Verifier) => VerificationResult)
                    : VerificationResult = {
+
     predicateSupporter.fold(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)((s1, v1) =>
-        Q(s1, s1.h, v1))
+      Q(s1, s1.h, v1))
   }
 
   /* Helpers */
@@ -422,7 +423,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
       case ast.AccessPredicate(locacc: ast.LocationAccess, _) if locacc.loc(program) == loc =>
     }
 
-    def structure(wand: ast.MagicWand, program: ast.Program): PartialFunction[ast.Node, Any] = {
+    def structure(wand: ast.MagicWand): PartialFunction[ast.Node, Any] = {
       case other: ast.MagicWand if MagicWandIdentifier(wand, Verifier.program) == MagicWandIdentifier(other, Verifier.program) =>
     }
   }

@@ -419,12 +419,6 @@ class DotTreeRenderer extends Renderer[String] {
   }
 
   private var previousNode = ""
-  private var unique_node_nr = this.hashCode()
-
-  private def unique_node_number(): Int = {
-    unique_node_nr = unique_node_nr + 1
-    unique_node_nr
-  }
 
   private def subsToDot(s: SymbolicRecord): String = {
     previousNode = s.dotNode()

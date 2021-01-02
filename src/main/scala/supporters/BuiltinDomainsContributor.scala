@@ -203,7 +203,7 @@ private object utils {
 
         program
 
-      case fastparse.Parsed.Failure(msg, index, extra) =>
+      case fastparse.Parsed.Failure(msg, index, _) =>
         val (line, col) = ast.LineCol(index)
         sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, line, col)}")
         //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)

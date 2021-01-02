@@ -7,7 +7,6 @@
 package viper.silicon.rules
 
 import viper.silver.ast
-import viper.silver.ast.{Info, PredicateAccess}
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
@@ -609,7 +608,8 @@ object evaluator extends EvaluationRules {
             v1.decider.assume(tlq)
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
-            Q(s1, tQuant, v1)}
+            Q(s1, tQuant, v1)
+        }
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = Verifier.program.findFunction(funcName)
@@ -878,6 +878,14 @@ object evaluator extends EvaluationRules {
 
       case _: ast.InhaleExhaleExp =>
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e), v, s)
+
+      case _: ast.EpsilonPerm
+         | _: ast.FieldAccessPredicate
+         | _: ast.MagicWand
+         | _: ast.PredicateAccess
+         | _: ast.PredicateAccessPredicate
+         | _: ast.ExtensionExp =>
+        sys.error(s"Unexpected expression $e cannot be symbolically evaluated")
     }
 
     resultTerm
@@ -1069,7 +1077,7 @@ object evaluator extends EvaluationRules {
     if (eTriggerSets.isEmpty)
       Q(s, tTriggersSets, v)
     else {
-      if (eTriggerSets.head.collect{case fa: ast.FieldAccess => fa; case pa: PredicateAccess => pa; case wand: ast.MagicWand => wand }.nonEmpty ) {
+      if (eTriggerSets.head.collect{case fa: ast.FieldAccess => fa; case pa: ast.PredicateAccess => pa; case wand: ast.MagicWand => wand }.nonEmpty ) {
         evalHeapTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
           evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
       } else {
@@ -1393,7 +1401,7 @@ object evaluator extends EvaluationRules {
       }})
   }
 
-  private[silicon] case object FromShortCircuitingAnd extends Info {
+  private[silicon] case object FromShortCircuitingAnd extends ast.Info {
     val comment = Nil
     val isCached = false
   }

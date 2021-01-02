@@ -75,7 +75,7 @@ case class SnapshotMapCache private (
 
     val (smDef, totalPermissions) = value
 
-    this + (key, (smDef, totalPermissions, None))
+    this + (key, (smDef, totalPermissions, optSmDomainDefinitionCondition))
   }
 
   def +(key: SnapshotMapCache.InternalKey, value: SnapshotMapCache.InternalValue)

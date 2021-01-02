@@ -374,7 +374,7 @@ class Z3ProverStdIO(uniqueId: String,
       throw Z3InteractionFailed(uniqueId, s"Unexpected output of Z3 while trying to refute an assertion: $result")
   }
 
-  private def readModel(separator: String = " "): String = {
+  private def readModel(separator: String): String = {
     try {
       var endFound = false
       var result = ""

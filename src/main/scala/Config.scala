@@ -7,9 +7,9 @@
 package viper.silicon
 
 import java.nio.file.{Path, Paths}
+import scala.collection.immutable.ArraySeq
 import scala.util.matching.Regex
 import scala.util.Properties._
-import scala.reflect.runtime.universe.{typeTag, TypeTag}
 import org.rogach.scallop._
 import viper.silver.frontend.SilFrontendConfig
 
@@ -48,7 +48,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       case _ => Left(s"unexpected arguments")
     }
 
-    val tag: TypeTag[String] = typeTag[String]
     val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
   }
 
@@ -75,7 +74,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
         Left(s"unexpected arguments")
     }
 
-    val tag: TypeTag[Map[String, String]] = typeTag[Map[String, String]]
     val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
   }
 
@@ -90,7 +88,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       case _ => Left(s"unexpected arguments")
     }
 
-    val tag: TypeTag[AssertionMode] = typeTag[AssertionMode]
     val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
   }
 
@@ -110,7 +107,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
                          .filter(0 <= _)
 
           if (weights.length == Z3SaturationTimeoutWeights.numberOfWeights) {
-            val result = Z3SaturationTimeoutWeights.from(weights)
+            val result = Z3SaturationTimeoutWeights.from(ArraySeq.unsafeWrapArray(weights))
             require(result.isDefined, "Unexpected mismatch")
               /* Should always succeed due to above length check */
             Right(result)
@@ -122,7 +119,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       case _ => Left(s"unexpected arguments")
     }
 
-    val tag: TypeTag[Z3SaturationTimeoutWeights] = typeTag[Z3SaturationTimeoutWeights]
     val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
   }
 

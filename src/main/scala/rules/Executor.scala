@@ -116,7 +116,7 @@ object executor extends ExecutionRules {
          */
         sys.error(s"Unexpected block: $block")
 
-      case block @ cfg.LoopHeadBlock(invs, stmts,_) =>
+      case block @ cfg.LoopHeadBlock(invs, stmts, _) =>
         incomingEdgeKind match {
           case cfg.Kind.In =>
             /* We've reached a loop head block via an in-edge. Steps to perform:
@@ -204,6 +204,7 @@ object executor extends ExecutionRules {
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
+
     val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
       SymbExLogger.currentLog().collapse(stmt, sepIdentifier)
@@ -214,7 +215,7 @@ object executor extends ExecutionRules {
            (continuation: (State, Verifier) => VerificationResult)
            : VerificationResult = {
 
-    val s = state.copy(h=magicWandSupporter.getExecutionHeap(state))
+    val s = state.copy(h = magicWandSupporter.getExecutionHeap(state))
     val Q: (State, Verifier) => VerificationResult = (s, v) => {
       continuation(magicWandSupporter.moveToReserveHeap(s, v), v)}
 

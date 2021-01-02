@@ -7,6 +7,7 @@
 package viper.silicon
 
 import scala.annotation.implicitNotFound
+import scala.collection.immutable.ArraySeq
 import viper.silver
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.{VerificationError, errors}
@@ -277,14 +278,14 @@ package object utils {
       val explanation =
         "InhaleExhale-expressions should have been eliminated by calling expr.whenInhaling/Exhaling."
 
-      val stackTrace = new Throwable().getStackTrace
+      val stackTrace = ArraySeq.unsafeWrapArray(new Throwable().getStackTrace)
 
       Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
     }
 
     def createUnexpectedNodeDuringDomainTranslationError(offendingNode: errors.ErrorNode) = {
       val explanation = "The expression should not occur in domain expressions."
-      val stackTrace = new Throwable().getStackTrace
+      val stackTrace = ArraySeq.unsafeWrapArray(new Throwable().getStackTrace)
 
       Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
     }
@@ -292,7 +293,7 @@ package object utils {
     def createUnexpectedNodeError(offendingNode: errors.ErrorNode, explanation: String)
                                  : Internal = {
 
-      val stackTrace = new Throwable().getStackTrace
+      val stackTrace = ArraySeq.unsafeWrapArray(new Throwable().getStackTrace)
 
       Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
     }
