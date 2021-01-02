@@ -49,20 +49,21 @@ class Teacher(val inference: Inference) {
     * @param hypothesis The hypothesis to check.
     * @return The sequence of examples.
     */
-  def check(hypothesis: Hypothesis): Seq[Example] =
-    checks.flatMap { group =>
-      // check self-framingness
-      val framing = {
-        val (check, context) = builder.framingCheck(hypothesis)
-        execute(check, error => extractor.extractFraming(error, context))
-      }
-      // perform checks if hypothesis is self-framing
-      if (framing.isEmpty) {
-        // build and verify program
-        val (check, context) = builder.basicCheck(group, hypothesis)
-        execute(check, error => extractor.extractBasic(error, context))
-      } else framing
+  def check(hypothesis: Hypothesis): Seq[Example] = {
+    // self-framing check
+    val framing = {
+      val (check, context) = builder.framingCheck(hypothesis)
+      execute(check, error => extractor.extractFraming(error, context))
     }
+    // other checks, if hypothesis is self-framing
+    if (framing.isEmpty)
+      checks
+        .flatMap { group =>
+          val (check, context) = builder.basicCheck(group, hypothesis)
+          execute(check, error => extractor.extractBasic(error, context))
+        }
+    else framing
+  }
 
   /**
     * Executes the check represented by the given program and uses the given extraction method to produce examples in
