@@ -3,6 +3,7 @@ package rpi
 import rpi.inference.Inference
 import rpi.util.Parser
 
+import scala.annotation.tailrec
 import scala.util.Properties
 
 object Main {
@@ -68,6 +69,7 @@ object Main {
     *
     * @param options The options to process.
     */
+  @tailrec
   private def processOptions(options: Seq[String]): Unit = options match {
     case "-z3" +: value +: rest => _z3 = Some(value); processOptions(rest)
     case _ +: rest => processOptions(rest) // ignore unknown option

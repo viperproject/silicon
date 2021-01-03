@@ -1,6 +1,6 @@
 package rpi.inference
 
-import rpi.{Settings, Main, Names}
+import rpi.{Main, Names, Settings}
 import rpi.learner.Learner
 import rpi.teacher.Teacher
 import rpi.util.{Collections, Expressions, Namespace}
@@ -8,6 +8,8 @@ import viper.silicon.Silicon
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.verifier.{VerificationResult, Verifier}
 import viper.silver.{ast => sil}
+
+import scala.annotation.tailrec
 
 /**
   * The inference inferring the specifications for a program.
@@ -217,6 +219,7 @@ class Inference(program: sil.Program) {
     * @param rounds The maximal number of rounds.
     * @return The inferred specification.
     */
+  @tailrec
   private def infer(rounds: Int): Hypothesis = {
     // compute hypothesis
     val hypothesis = learner.hypothesis

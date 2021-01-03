@@ -6,6 +6,7 @@ import rpi.util.Namespace
 import viper.silver.ast.SimpleInfo
 import viper.silver.{ast => sil}
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 /**
@@ -84,6 +85,7 @@ class CheckBuilder(teacher: Teacher) {
       * @param expression The expression.
       * @return The extracted location access.
       */
+    @tailrec
     def getLocation(expression: sil.Exp): Option[sil.LocationAccess] =
       expression match {
         case sil.TrueLit() => None

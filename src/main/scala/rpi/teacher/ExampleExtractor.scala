@@ -461,6 +461,7 @@ class ExampleExtractor(teacher: Teacher) {
       val empty = Map.empty[Term, Set[sil.Exp]]
       target
         .store
+        .view
         .filterKeys { name => name.startsWith(target.label) }
         .foldLeft(empty) {
           case (result, (name, value)) =>
