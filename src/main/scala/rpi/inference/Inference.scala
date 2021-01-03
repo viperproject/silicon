@@ -154,12 +154,14 @@ class Inference(program: sil.Program) {
   def labeled: sil.Program = _labeled
 
   def predicates(hypothesis: Hypothesis): Seq[sil.Predicate] =
-    allSpecifications.map { specification =>
-      val name = specification.name
-      val arguments = specification.parameters
-      val body = Some(hypothesis.get(name))
-      sil.Predicate(name, arguments, body)()
-    }
+    allSpecifications
+      .filter { specification => Names.isPredicate(specification.name) || !Settings.inline }
+      .map { specification =>
+        val name = specification.name
+        val arguments = specification.parameters
+        val body = Some(hypothesis.get(name))
+        sil.Predicate(name, arguments, body)()
+      }
 
   /**
     * Returns all specifications, including the ones inferred by the learner.

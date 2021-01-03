@@ -190,18 +190,15 @@ class CheckBuilder(teacher: Teacher) {
           // save state
           val label = saveState(instance)
           context.addExhaled(label, instance)
-          // TODO: Save and fold
+          // save and fold ingredients
           if (Settings.useAnnotations) {
             annotation match {
               case Some(sil.MethodCall(`foldUpAnnotation`, Seq(argument), _)) =>
                 foldUp(body)(argument, label)
                 annotation = None
-              case None =>
-                save(body)(label)
+              case None => save(body)(label)
             }
-          } else {
-            ???
-          }
+          } else foldAll(body)(label)
           // exhale
           val info = BasicInfo(label, instance)
           if (Settings.inline) {
@@ -215,7 +212,7 @@ class CheckBuilder(teacher: Teacher) {
               val access = sil.PredicateAccess(arguments, name)()
               sil.PredicateAccessPredicate(access, predicate.perm)()
             }
-            addStatement(sil.Fold(adapted)())
+            addStatement(sil.Fold(adapted)(info = info))
             addStatement(sil.Exhale(adapted)())
           }
         case call@sil.MethodCall(name, Seq(argument), _) if Names.isAnnotation(name) =>
@@ -269,17 +266,37 @@ class CheckBuilder(teacher: Teacher) {
           foldUp(right, guards)
         case sil.Implies(guard, guarded) =>
           foldUp(guarded, guards :+ guard)
-        case predicate@sil.PredicateAccessPredicate(access@sil.PredicateAccess(arguments, name), _) =>
+        case predicate@sil.PredicateAccessPredicate(sil.PredicateAccess(arguments, name), _) =>
           // save body
           val instance = inference.getInstance(name, arguments)
           val body = hypothesis.get(instance)
-          save(body)(label)
+          save(body)
           // conditional fold
           val info = BasicInfo(label, instance)
           val fold = sil.Fold(predicate)(info = info)
           val conditions = guards :+ sil.EqCmp(argument, arguments.head)()
           addStatement(sil.If(bigAnd(conditions), asSequence(fold), skip)())
-        case other => save(other)(label)
+        case other => save(other)
+      }
+
+    def foldAll(expression: sil.Exp, guards: Seq[sil.Exp] = Seq.empty, depth: Int = 0)
+               (implicit label: String): Unit =
+      expression match {
+        case sil.And(left, right) =>
+          foldAll(left, guards, depth)
+          foldAll(right, guards, depth)
+        case sil.Implies(guard, guarded) =>
+          foldAll(guarded, guards :+ guard, depth)
+        case predicate@sil.PredicateAccessPredicate(sil.PredicateAccess(arguments, name), _) if depth < Settings.foldDepth =>
+          // recursively fold body
+          val instance = inference.getInstance(name, arguments)
+          val body = hypothesis.get(instance)
+          foldAll(body, guards, depth + 1)
+          // conditional fold
+          val info = BasicInfo(label, instance)
+          val fold = sil.Fold(predicate)(info = info)
+          addStatement(sil.If(bigAnd(guards), asSequence(fold), skip)())
+        case other => save(other)
       }
 
     // build instrumented program

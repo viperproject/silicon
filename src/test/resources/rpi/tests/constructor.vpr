@@ -2,25 +2,26 @@ field n: Ref
 
 method main()
 {
-    var x: Ref
+    var c: Ref
     var i: Int
 
-    x := null
+    c := null
     i := 10
 
+    __foldUp__(c)
     while (i > 0)
     {
         var t: Ref
         t := new(n)
-        t.n := x
-        x := t
+        t.n := c
+        c := t
         i := i - 1
-        __foldUp__(x)
+        __foldUp__(c)
     }
 
-    while (x != null)
+    while (c != null)
     {
-        __unfoldDown__(x)
-        x := x.n
+        __unfoldDown__(c)
+        c := c.n
     }
 }

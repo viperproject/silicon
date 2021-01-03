@@ -1,5 +1,6 @@
 package rpi.teacher
 
+import rpi.{Names, Settings}
 import rpi.inference._
 import rpi.util.{Collections, UnionFind}
 import viper.silicon.interfaces.SiliconRawCounterexample
@@ -94,8 +95,11 @@ class ExampleExtractor(teacher: Teacher) {
     val (currentState, inhaledStates) = extractStates(counter, label, context)
 
     val currentLocation = info match {
-      case Some(BasicInfo(_, instance)) => instance.toActual(offending)
-      case _ => offending
+      case Some(BasicInfo(_, instance)) =>
+        if (Settings.inline && !Names.isPredicate(instance.name)) offending
+        else instance.toActual(offending)
+      case _ =>
+        offending
     }
 
     val inhaled = inhaledStates

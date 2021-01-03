@@ -18,7 +18,7 @@ object Settings {
   /**
     * The number of rounds after which the learner gets exhausted and gives up.
     */
-  val maxRounds = 6
+  val maxRounds = 10
 
   /**
     * The flag indicating whether the inference should exploit silicon's framing.
@@ -54,7 +54,7 @@ object Settings {
 
   val inline = true
 
-  val batch = false
+  val batch = true
 
   /**
     * The flag indicating whether silicons branching should be used to concretize values of atomic predicates.
@@ -64,7 +64,7 @@ object Settings {
   /**
     * The flag indicating whether parameters of inferred predicates should be renamed (mostly to test stuff).
     */
-  val renameParameters = false
+  val renameParameters = true
 
   val debugPrintProgram = true
   val debugPrintTemplates = true
@@ -119,5 +119,8 @@ object Names {
     */
   def isAnnotation(name: String): Boolean =
     allAnnotations.contains(name)
+
+  def isPredicate(name: String): Boolean =
+    name == recursive || name == segment
 
 }
