@@ -239,7 +239,6 @@ object Converter{
                 }
                 return LitBoolEntry(b)
             case ast.Ref =>
-                println("trying to map Ref: " + termEval)
                 var map : Map[String, ExtractedModelEntry] = Map()
                 for ((entry: HeapEntry, value: String) <- heap) {
                     entry match {
@@ -279,31 +278,10 @@ object Converter{
             map += (name -> entry)
         }
         val extrModel = ExtractedModel(map)
-        println(extrModel.toString)
         return extrModel
     }
 
-    // might not be possible to display these new models with the old Model structure,
-    // since those are unordered and we would want entries grouped.
-    // so for now they are just printed so they stay in their blocks
-    def heapToModel(heap: ExtractedHeap, label: String) : Map[String, ModelEntry] = {
-        println("Processed Heap at label: " + label )
-        for (x <- heap) {
-            x._1 match {
-                case h:FieldHeapEntry => println("\t" + h.toString + " <- " + x._2)
-                case h:PredHeapEntry => println("\t" + h.toString)
-            }
-        }
-        Map()
-    }
-
-    def outputOldHeaps(heaps: Map[String, Converter.ExtractedHeap]) {
-        for ((lbl, heap) <- heaps) {
-            heapToModel(heap, lbl)
-        }
-    }
-
-    def extractedModeltoModel(extModel: ExtractedModel) : Model = {
+    def extractedModelToModel(extModel: ExtractedModel) : Model = {
         val map = extModel.entries.map(x => (x._1 -> SingleEntry(x._2.toString)))
         return Model(map)
     }
@@ -314,13 +292,8 @@ case class Converter(model: Model, store: Store, heap: Iterable[Chunk], oldHeaps
 //    val extendedModel : ExtModel = ???
     val extractedHeap : Converter.ExtractedHeap = Converter.extractHeap(heap, model)
     val extractedHeaps : Map[String, Converter.ExtractedHeap] = oldHeaps.map(x => x._1 -> Converter.extractHeap(x._2.values, model))
-    val heapModel : Map[String, ModelEntry] = {
-        Converter.outputOldHeaps(extractedHeaps)
-        Converter.mapHeapToStore(store, extractedHeap, model)
-        Converter.heapToModel(extractedHeap, "")
-    }
-    val extModel = Converter.extractedModeltoModel(Converter.mapHeapToStore(store, extractedHeap, model))
-    
+    val extractedModel = Converter.mapHeapToStore(store, extractedHeap, model)
+    val modelAtLabel : Map[String, ExtractedModel] = extractedHeaps.map(x => (x._1 -> Converter.mapHeapToStore(store, x._2, model)))
 }
 
 
