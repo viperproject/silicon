@@ -121,41 +121,14 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
 
 case class SiliconMappedCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps, nativemodel: Model) extends SiliconCounterexample {
   val converter = Converter(nativemodel, internalStore, heap, oldHeaps)
-  /* 
-  functions to print out store and heaps
   
-  def storeToString : String = {
-    var s = "Store: \n ------------------------------"
-    for ((k,v) <- internalStore.values) {
-      s = s + "\n " + k.name + " <- " + v.toString
-    }
-    s = s + "\n End Store"
-    s
+  override def toString = {
+    var buf : String = ""
+    buf += converter.modelAtLabel.map(x => "model at label: " + x._1 + "\n" + x._2.toString).mkString("\n")
+    buf += "\nfinally: \n" + converter.extractedModel.toString
+    buf
   }
-  def heapToString : String = {
-    var s = "Heap: \n ---------------------"
-    for (chunk <- heap) {
-      s = s + "\n new chunk:"
-      s = s + "\n " + chunk.toString
-    }
-    s = s + "\n End Heap"
-    s
-  }
-
-  def oldHeapToString : String = {
-    var s = "Old Heaps: \n -----------------------------"
-    for ((name, h) <- oldHeaps) {
-      s = s + "\n name: " + name
-      for (chunk <- h.values) {
-        s = s + "\n " + chunk.toString
-      }
-    }
-    s = s + "\n End Old Heaps "
-    return s
-  } */
-
-  override val model: Model = converter.extModel 
-
+  val model : Model = nativemodel
   override def withStore(s: Store) : SiliconCounterexample = {
     SiliconMappedCounterexample(s, heap, oldHeaps, nativemodel)
   }
