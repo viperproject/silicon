@@ -1,0 +1,3725 @@
+domain $SnapshotMirrors$ {
+  
+  
+}
+
+field closure_0: Ref
+
+field closure_1: Ref
+
+field f$a: Ref
+
+field f$buf: Ref
+
+field f$cap: Ref
+
+field f$len: Ref
+
+field f$ptr: Ref
+
+field f$v: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field tuple_2: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$unreach_bool__$TY$__$bool$(): Bool
+  requires false
+
+
+function m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_pure_1), read$())
+  requires true
+  ensures true
+  ensures 0 <= result
+  ensures result <= 18446744073709551615
+
+
+function m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_pure_1), read$())
+  requires true
+  ensures true
+  ensures 0 <= result
+  ensures result <= 18446744073709551615
+
+
+function m_Heapsort_generic$$order$opensqu$0$closesqu$__$TY$____TYPARAM__$T$__$__TYPARAM__$T$__$$bool$(_pure_1: Ref, _pure_2: Ref): Bool
+  requires acc(__TYPARAM__$T$__(_pure_1), read$()) && acc(__TYPARAM__$T$__(_pure_2), read$())
+  requires true
+  ensures true
+
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate __TYPARAM__$T$__(self: Ref) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_12$4$11954709591491712216(self: Ref) 
+
+predicate closure$0_1_13$4$3975231876959819947(self: Ref) 
+
+predicate closure$0_1_14$4$16353099407943472271(self: Ref) 
+
+predicate closure$0_1_15$5$9228659558676986478(self: Ref) 
+
+predicate closure$0_1_20$4$16353099407943472271(self: Ref) 
+
+predicate closure$0_1_21$5$6778908376983593016(self: Ref) 
+
+predicate closure$0_1_22$4$4834813325720458200(self: Ref) 
+
+predicate closure$0_1_23$5$15937944919612014542(self: Ref) 
+
+predicate closure$0_1_24$4$2480206325276483456(self: Ref) 
+
+predicate closure$0_1_28$3$4187078364295441587(self: Ref) 
+
+predicate closure$0_1_29$4$10546764852954676599(self: Ref) 
+
+predicate closure$0_1_30$5$4001058188801141524(self: Ref) 
+
+predicate closure$0_1_31$5$15359138984068225308(self: Ref) 
+
+predicate closure$0_1_32$4$4011530063300199000(self: Ref) 
+
+predicate closure$0_1_33$3$4187078364295441587(self: Ref) 
+
+predicate closure$0_1_34$4$4327170139127358847(self: Ref) 
+
+predicate closure$0_1_35$5$14940418446817107430(self: Ref) 
+
+predicate closure$0_1_36$5$13369081175465569946(self: Ref) 
+
+predicate closure$0_1_37$4$3593140455824456574(self: Ref) 
+
+predicate closure$0_1_40$4$3219469534212954445(self: Ref) 
+
+predicate closure$0_1_42$4$10532743614038247592(self: Ref) 
+
+predicate closure$0_1_44$3$4187078364295441587(self: Ref) 
+
+predicate closure$0_1_45$4$12281678422680400730(self: Ref) 
+
+predicate closure$0_1_46$4$3982590481482752291(self: Ref) 
+
+predicate closure$0_1_47$5$12370509662819782950(self: Ref) 
+
+predicate closure$0_1_48$4$6013390867679712155(self: Ref) 
+
+predicate closure$0_1_49$5$13616979103016852409(self: Ref) 
+
+predicate closure$0_1_50$4$2450401715045862214(self: Ref) 
+
+predicate closure$0_1_53$4$3219469534212954445(self: Ref) 
+
+predicate closure$0_1_54$4$12474208049917393253(self: Ref) 
+
+predicate closure$0_1_55$5$1741994851038149848(self: Ref) 
+
+predicate closure$0_1_56$4$497787689284256809(self: Ref) 
+
+predicate closure$0_1_57$5$2982545638522801093(self: Ref) 
+
+predicate closure$0_1_59$4$10532743614038247592(self: Ref) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write) && (-2147483648 <= self.val_int && self.val_int <= 2147483647)
+}
+
+predicate m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(self: Ref) {
+  acc(self.f$v, write) && acc(m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(self.f$v), write)
+}
+
+predicate m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) {
+  acc(self.f$v, write) && acc(m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_(self.f$v), write)
+}
+
+predicate m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  true
+}
+
+predicate m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.f$ptr, write) && (acc(m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(self.f$ptr), write) && (acc(self.f$cap, write) && (acc(usize(self.f$cap), write) && (acc(self.f$a, write) && acc(m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self.f$a), write)))))
+}
+
+predicate m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.f$ptr, write) && (acc(m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$i32$_end_(self.f$ptr), write) && (acc(self.f$cap, write) && (acc(usize(self.f$cap), write) && (acc(self.f$a, write) && acc(m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self.f$a), write)))))
+}
+
+predicate m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(self: Ref) {
+  acc(self.f$buf, write) && (acc(m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$buf), write) && (acc(self.f$len, write) && acc(usize(self.f$len), write)))
+}
+
+predicate m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) {
+  acc(self.f$buf, write) && (acc(m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$buf), write) && (acc(self.f$len, write) && acc(usize(self.f$len), write)))
+}
+
+predicate m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(self: Ref) 
+
+predicate m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) 
+
+predicate never(self: Ref) 
+
+predicate ref$__TYPARAM__$T$__(self: Ref) {
+  acc(self.val_ref, write) && acc(__TYPARAM__$T$__(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_12$4$11954709591491712216(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_12$4$11954709591491712216(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_13$4$3975231876959819947(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_13$4$3975231876959819947(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_14$4$16353099407943472271(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_14$4$16353099407943472271(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_15$5$9228659558676986478(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_15$5$9228659558676986478(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_20$4$16353099407943472271(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_20$4$16353099407943472271(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_21$5$6778908376983593016(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_21$5$6778908376983593016(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_22$4$4834813325720458200(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_22$4$4834813325720458200(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_23$5$15937944919612014542(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_23$5$15937944919612014542(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_24$4$2480206325276483456(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_24$4$2480206325276483456(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_29$4$10546764852954676599(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_29$4$10546764852954676599(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_30$5$4001058188801141524(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_30$5$4001058188801141524(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_31$5$15359138984068225308(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_31$5$15359138984068225308(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_32$4$4011530063300199000(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_32$4$4011530063300199000(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_34$4$4327170139127358847(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_34$4$4327170139127358847(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_35$5$14940418446817107430(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_35$5$14940418446817107430(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_36$5$13369081175465569946(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_36$5$13369081175465569946(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_37$4$3593140455824456574(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_37$4$3593140455824456574(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_40$4$3219469534212954445(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_40$4$3219469534212954445(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_42$4$10532743614038247592(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_42$4$10532743614038247592(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_45$4$12281678422680400730(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_45$4$12281678422680400730(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_46$4$3982590481482752291(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_46$4$3982590481482752291(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_47$5$12370509662819782950(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_47$5$12370509662819782950(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_48$4$6013390867679712155(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_48$4$6013390867679712155(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_49$5$13616979103016852409(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_49$5$13616979103016852409(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_50$4$2450401715045862214(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_50$4$2450401715045862214(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_53$4$3219469534212954445(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_53$4$3219469534212954445(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_54$4$12474208049917393253(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_54$4$12474208049917393253(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_55$5$1741994851038149848(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_55$5$1741994851038149848(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_56$4$497787689284256809(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_56$4$497787689284256809(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_57$5$2982545638522801093(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_57$5$2982545638522801093(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_59$4$10532743614038247592(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_59$4$10532743614038247592(self.val_ref), write)
+}
+
+predicate ref$m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(self.val_ref), write)
+}
+
+predicate ref$m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(self.val_ref), write)
+}
+
+predicate ref$str(self: Ref) {
+  acc(self.val_ref, write) && acc(str(self.val_ref), write)
+}
+
+predicate ref$tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.val_ref, write) && acc(tuple3$ref$str$u32$u32(self.val_ref), write)
+}
+
+predicate ref$usize(self: Ref) {
+  acc(self.val_ref, write) && acc(usize(self.val_ref), write)
+}
+
+predicate str(self: Ref) 
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$usize$bool(self: Ref) {
+  acc(self.tuple_0, write) && (acc(usize(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(bool(self.tuple_1), write)))
+}
+
+predicate tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(ref$str(self.tuple_0), write) && (acc(self.tuple_1, write) && (acc(u32(self.tuple_1), write) && (acc(self.tuple_2, write) && acc(u32(self.tuple_2), write)))))
+}
+
+predicate u32(self: Ref) {
+  acc(self.val_int, write) && (0 <= self.val_int && self.val_int <= 4294967295)
+}
+
+predicate usize(self: Ref) {
+  acc(self.val_int, write) && (0 <= self.val_int && self.val_int <= 18446744073709551615)
+}
+
+method m_Heapsort_generic$$test$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  var _23: Ref
+  var _24: Ref
+  var _25: Int
+  var _26: Ref
+  var _31: Ref
+  var _32: Ref
+  var _33: Ref
+  var _t37: Ref
+  var _t40: Ref
+  var _t43: Ref
+  var _t46: Ref
+  var _t49: Ref
+  var _t52: Ref
+  var _t55: Ref
+  var _t58: Ref
+  var _t61: Ref
+  var _t64: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Heapsort_generic::test"
+  
+  // Def path: "Heapsort_generic::test[0]"
+  
+  // Span: tests/verify_overflow/pass/rosetta/Heapsort_generic.rs:132:1: 146:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_1)
+  
+  // [mir] _1 = const <VecWrapper<T>>::new() -> [return: bb2, unwind: bb1]
+  
+  label l0
+  _1 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_1), write)
+  inhale true
+  inhale m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_1) == 0
+  label l1
+  goto bb2
+  label bb10
+  // ========== bb10 ==========
+  
+  __t5 := true
+  // [mir] EndRegion('22s)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = &'26s mut _1
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_ref, write)
+  _11.val_ref := _1
+  label l18
+  // [mir] _10 = const <VecWrapper<T>>::push(move _11, const 0i32) -> [return: bb12, unwind: bb13]
+  
+  label l19
+  _t49 := builtin$havoc_ref()
+  inhale acc(i32(_t49), write)
+  assert true
+  exhale acc(_11.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_11.val_ref), write) && acc(i32(_t49), write))
+  _10 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l19](_11.val_ref)), write)
+  inhale acc(tuple0$(_10), write)
+  inhale true
+  inhale !(old[l19](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_11.val_ref)) + 1 < 0 || old[l19](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_11.val_ref)) + 1 > 18446744073709551615) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(old[l19](_11.val_ref)) == old[l19](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_11.val_ref)) + 1
+  label l20
+  goto l21
+  label bb12
+  // ========== bb12 ==========
+  
+  __t6 := true
+  // [mir] EndRegion('26s)
+  
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageLive(_13)
+  
+  // [mir] _13 = &'30s mut _1
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_ref, write)
+  _13.val_ref := _1
+  label l22
+  // [mir] _12 = const <VecWrapper<T>>::push(move _13, const 3i32) -> [return: bb14, unwind: bb15]
+  
+  label l23
+  _t52 := builtin$havoc_ref()
+  inhale acc(i32(_t52), write)
+  assert true
+  exhale acc(_13.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_13.val_ref), write) && acc(i32(_t52), write))
+  _12 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l23](_13.val_ref)), write)
+  inhale acc(tuple0$(_12), write)
+  inhale true
+  inhale !(old[l23](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_13.val_ref)) + 1 < 0 || old[l23](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_13.val_ref)) + 1 > 18446744073709551615) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(old[l23](_13.val_ref)) == old[l23](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_13.val_ref)) + 1
+  label l24
+  goto l25
+  label bb14
+  // ========== bb14 ==========
+  
+  __t7 := true
+  // [mir] EndRegion('30s)
+  
+  // [mir] StorageDead(_13)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = &'34s mut _1
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  _15.val_ref := _1
+  label l26
+  // [mir] _14 = const <VecWrapper<T>>::push(move _15, const 2i32) -> [return: bb16, unwind: bb17]
+  
+  label l27
+  _t55 := builtin$havoc_ref()
+  inhale acc(i32(_t55), write)
+  assert true
+  exhale acc(_15.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_15.val_ref), write) && acc(i32(_t55), write))
+  _14 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l27](_15.val_ref)), write)
+  inhale acc(tuple0$(_14), write)
+  inhale true
+  inhale !(old[l27](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_15.val_ref)) + 1 < 0 || old[l27](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_15.val_ref)) + 1 > 18446744073709551615) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(old[l27](_15.val_ref)) == old[l27](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_15.val_ref)) + 1
+  label l28
+  goto l29
+  label bb16
+  // ========== bb16 ==========
+  
+  __t8 := true
+  // [mir] EndRegion('34s)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] StorageLive(_17)
+  
+  // [mir] _17 = &'38s mut _1
+  
+  _17 := builtin$havoc_ref()
+  inhale acc(_17.val_ref, write)
+  _17.val_ref := _1
+  label l30
+  // [mir] _16 = const <VecWrapper<T>>::push(move _17, const 2i32) -> [return: bb18, unwind: bb19]
+  
+  label l31
+  _t58 := builtin$havoc_ref()
+  inhale acc(i32(_t58), write)
+  assert true
+  exhale acc(_17.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_17.val_ref), write) && acc(i32(_t58), write))
+  _16 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l31](_17.val_ref)), write)
+  inhale acc(tuple0$(_16), write)
+  inhale true
+  inhale !(old[l31](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_17.val_ref)) + 1 < 0 || old[l31](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_17.val_ref)) + 1 > 18446744073709551615) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(old[l31](_17.val_ref)) == old[l31](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_17.val_ref)) + 1
+  label l32
+  goto l33
+  label bb18
+  // ========== bb18 ==========
+  
+  __t9 := true
+  // [mir] EndRegion('38s)
+  
+  // [mir] StorageDead(_17)
+  
+  // [mir] StorageLive(_19)
+  
+  // [mir] _19 = &'42s mut _1
+  
+  _19 := builtin$havoc_ref()
+  inhale acc(_19.val_ref, write)
+  _19.val_ref := _1
+  label l34
+  // [mir] _18 = const <VecWrapper<T>>::push(move _19, const 9i32) -> [return: bb20, unwind: bb21]
+  
+  label l35
+  _t61 := builtin$havoc_ref()
+  inhale acc(i32(_t61), write)
+  assert true
+  exhale acc(_19.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_19.val_ref), write) && acc(i32(_t61), write))
+  _18 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l35](_19.val_ref)), write)
+  inhale acc(tuple0$(_18), write)
+  inhale true
+  inhale !(old[l35](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_19.val_ref)) + 1 < 0 || old[l35](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_19.val_ref)) + 1 > 18446744073709551615) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(old[l35](_19.val_ref)) == old[l35](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_19.val_ref)) + 1
+  label l36
+  goto l37
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = &'10s mut _1
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_ref, write)
+  _3.val_ref := _1
+  label l2
+  // [mir] _2 = const <VecWrapper<T>>::push(move _3, const 4i32) -> [return: bb3, unwind: bb5]
+  
+  label l3
+  _t37 := builtin$havoc_ref()
+  inhale acc(i32(_t37), write)
+  assert true
+  exhale acc(_3.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_3.val_ref), write) && acc(i32(_t37), write))
+  _2 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l3](_3.val_ref)), write)
+  inhale acc(tuple0$(_2), write)
+  inhale true
+  inhale !(old[l3](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_3.val_ref)) + 1 < 0 || old[l3](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_3.val_ref)) + 1 > 18446744073709551615) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(old[l3](_3.val_ref)) == old[l3](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_3.val_ref)) + 1
+  label l4
+  goto l5
+  label bb20
+  // ========== bb20 ==========
+  
+  __t10 := true
+  // [mir] EndRegion('42s)
+  
+  // [mir] StorageDead(_19)
+  
+  // [mir] StorageLive(_21)
+  
+  // [mir] _21 = &'46s mut _1
+  
+  _21 := builtin$havoc_ref()
+  inhale acc(_21.val_ref, write)
+  _21.val_ref := _1
+  label l38
+  // [mir] _20 = const <VecWrapper<T>>::push(move _21, const 5i32) -> [return: bb22, unwind: bb23]
+  
+  label l39
+  _t64 := builtin$havoc_ref()
+  inhale acc(i32(_t64), write)
+  assert true
+  exhale acc(_21.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_21.val_ref), write) && acc(i32(_t64), write))
+  _20 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l39](_21.val_ref)), write)
+  inhale acc(tuple0$(_20), write)
+  inhale true
+  inhale !(old[l39](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_21.val_ref)) + 1 < 0 || old[l39](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_21.val_ref)) + 1 > 18446744073709551615) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(old[l39](_21.val_ref)) == old[l39](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_21.val_ref)) + 1
+  label l40
+  goto l41
+  label bb22
+  // ========== bb22 ==========
+  
+  __t11 := true
+  // [mir] EndRegion('46s)
+  
+  // [mir] StorageDead(_21)
+  
+  // [mir] StorageLive(_23)
+  
+  // [mir] StorageLive(_24)
+  
+  // [mir] StorageLive(_25)
+  
+  // [mir] StorageLive(_26)
+  
+  // [mir] _26 = &'61s _1
+  
+  _26 := builtin$havoc_ref()
+  inhale acc(_26.val_ref, write)
+  _26.val_ref := _1
+  exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_1), write - read$())
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_26.val_ref), read$())
+  label l42
+  // [mir] _25 = const <VecWrapper<T>>::len(move _26) -> [return: bb24, unwind: bb25]
+  
+  label l43
+  _25 := builtin$havoc_int()
+  inhale _25 >= 0 && 18446744073709551615 >= _25
+  inhale _25 >= 0 && 18446744073709551615 >= _25
+  inhale _25 == m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_26.val_ref)
+  // transfer perm _26.val_ref --> old[l43](_26.val_ref) // unchecked: false
+  
+  goto l44
+  label bb24
+  // ========== bb24 ==========
+  
+  __t12 := true
+  // [mir] EndRegion('61s)
+  
+  // [mir] StorageDead(_26)
+  
+  // [mir] _24 = Eq(move _25, const 10usize)
+  
+  _24 := builtin$havoc_ref()
+  inhale acc(_24.val_bool, write)
+  _24.val_bool := _25 == 10
+  // [mir] StorageDead(_25)
+  
+  // [mir] _23 = Not(move _24)
+  
+  _23 := builtin$havoc_ref()
+  inhale acc(_23.val_bool, write)
+  _23.val_bool := !_24.val_bool
+  // [mir] StorageDead(_24)
+  
+  // [mir] switchInt(move _23) -> [false: bb27, otherwise: bb26]
+  
+  __t17 := _23.val_bool
+  if (!__t17) {
+    goto l46
+  }
+  goto l45
+  label bb26
+  // ========== bb26 ==========
+  
+  __t13 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: v.len() == 10", move _28) -> bb28
+  
+  // Rust panic - const "assertion failed: v.len() == 10"
+  
+  assert false
+  goto end_of_method
+  label bb27
+  // ========== bb27 ==========
+  
+  __t14 := true
+  // [mir] _22 = ()
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(tuple0$(_22), write)
+  // [mir] StorageDead(_23)
+  
+  // [mir] StorageLive(_32)
+  
+  // [mir] StorageLive(_33)
+  
+  // [mir] _33 = &'70s mut _1
+  
+  _33 := builtin$havoc_ref()
+  inhale acc(_33.val_ref, write)
+  _33.val_ref := _1
+  label l47
+  // [mir] _32 = &'70s mut (*_33)
+  
+  _32 := builtin$havoc_ref()
+  inhale acc(_32.val_ref, write)
+  _32.val_ref := _33.val_ref
+  label l48
+  // [mir] _31 = const heap_sort(move _32) -> [return: bb29, unwind: bb30]
+  
+  label l49
+  assert m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_32.val_ref) < 9223372036854775807
+  assert true
+  exhale acc(_32.val_ref, write) && acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_32.val_ref), write)
+  _31 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l49](_32.val_ref)), write)
+  inhale acc(tuple0$(_31), write)
+  inhale true
+  inhale m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(old[l49](_32.val_ref)) == old[l49](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_32.val_ref))
+  label l50
+  goto l51
+  label bb29
+  // ========== bb29 ==========
+  
+  __t15 := true
+  // [mir] EndRegion('70s)
+  
+  // [mir] StorageDead(_32)
+  
+  // [mir] StorageDead(_33)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] drop(_1) -> [return: bb31, unwind: bb1]
+  
+  goto bb31
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] EndRegion('10s)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = &'14s mut _1
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  _5.val_ref := _1
+  label l6
+  // [mir] _4 = const <VecWrapper<T>>::push(move _5, const 6i32) -> [return: bb6, unwind: bb7]
+  
+  label l7
+  _t40 := builtin$havoc_ref()
+  inhale acc(i32(_t40), write)
+  assert true
+  exhale acc(_5.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_5.val_ref), write) && acc(i32(_t40), write))
+  _4 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l7](_5.val_ref)), write)
+  inhale acc(tuple0$(_4), write)
+  inhale true
+  inhale !(old[l7](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_5.val_ref)) + 1 < 0 || old[l7](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_5.val_ref)) + 1 > 18446744073709551615) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(old[l7](_5.val_ref)) == old[l7](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_5.val_ref)) + 1
+  label l8
+  goto l9
+  label bb31
+  // ========== bb31 ==========
+  
+  __t16 := true
+  // [mir] StorageDead(_1)
+  
+  // [mir] return
+  
+  goto return
+  label bb6
+  // ========== bb6 ==========
+  
+  __t3 := true
+  // [mir] EndRegion('14s)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = &'18s mut _1
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _1
+  label l10
+  // [mir] _6 = const <VecWrapper<T>>::push(move _7, const 8i32) -> [return: bb8, unwind: bb9]
+  
+  label l11
+  _t43 := builtin$havoc_ref()
+  inhale acc(i32(_t43), write)
+  assert true
+  exhale acc(_7.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_7.val_ref), write) && acc(i32(_t43), write))
+  _6 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l11](_7.val_ref)), write)
+  inhale acc(tuple0$(_6), write)
+  inhale true
+  inhale !(old[l11](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_7.val_ref)) + 1 < 0 || old[l11](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_7.val_ref)) + 1 > 18446744073709551615) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(old[l11](_7.val_ref)) == old[l11](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_7.val_ref)) + 1
+  label l12
+  goto l13
+  label bb8
+  // ========== bb8 ==========
+  
+  __t4 := true
+  // [mir] EndRegion('18s)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = &'22s mut _1
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _1
+  label l14
+  // [mir] _8 = const <VecWrapper<T>>::push(move _9, const 1i32) -> [return: bb10, unwind: bb11]
+  
+  label l15
+  _t46 := builtin$havoc_ref()
+  inhale acc(i32(_t46), write)
+  assert true
+  exhale acc(_9.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_9.val_ref), write) && acc(i32(_t46), write))
+  _8 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l15](_9.val_ref)), write)
+  inhale acc(tuple0$(_8), write)
+  inhale true
+  inhale !(old[l15](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_9.val_ref)) + 1 < 0 || old[l15](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_9.val_ref)) + 1 > 18446744073709551615) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(old[l15](_9.val_ref)) == old[l15](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_$$int$(_9.val_ref)) + 1
+  label l16
+  goto l17
+  label l13
+  // ========== l13 ==========
+  
+  // MIR edge bb6 --> bb8
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L22,L2,)
+
+  
+  goto bb8
+  label l17
+  // ========== l17 ==========
+  
+  // MIR edge bb8 --> bb10
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L19,L3,)
+
+  
+  goto bb10
+  label l21
+  // ========== l21 ==========
+  
+  // MIR edge bb10 --> bb12
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L24,L4,)
+
+  
+  goto bb12
+  label l25
+  // ========== l25 ==========
+  
+  // MIR edge bb12 --> bb14
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L25,L5,)
+
+  
+  goto bb14
+  label l29
+  // ========== l29 ==========
+  
+  // MIR edge bb14 --> bb16
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L20,L6,)
+
+  
+  goto bb16
+  label l33
+  // ========== l33 ==========
+  
+  // MIR edge bb16 --> bb18
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L28,L7,)
+
+  
+  goto bb18
+  label l37
+  // ========== l37 ==========
+  
+  // MIR edge bb18 --> bb20
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L18,L8,)
+
+  
+  goto bb20
+  label l41
+  // ========== l41 ==========
+  
+  // MIR edge bb20 --> bb22
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L16,L9,)
+
+  
+  goto bb22
+  label l44
+  // ========== l44 ==========
+  
+  // MIR edge bb22 --> bb24
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L23,L10,)
+
+  
+  if (__t11 && __t11) {
+    // expire loan L10
+    
+    // transfer perm old[l43](_26.val_ref) --> old[l42](_26.val_ref) // unchecked: false
+    
+    exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(old[l42](_26.val_ref)), read$())
+    inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$i32$_end_(_1), write - read$())
+  }
+  goto bb24
+  label l45
+  // ========== l45 ==========
+  
+  // MIR edge bb24 --> bb26
+  
+  goto bb26
+  label l46
+  // ========== l46 ==========
+  
+  // MIR edge bb24 --> bb27
+  
+  goto bb27
+  label l5
+  // ========== l5 ==========
+  
+  // MIR edge bb2 --> bb3
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L17,L0,)
+
+  
+  goto bb3
+  label l51
+  // ========== l51 ==========
+  
+  // MIR edge bb27 --> bb29
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L27,L14,L13,)
+
+  
+  goto bb29
+  label l9
+  // ========== l9 ==========
+  
+  // MIR edge bb3 --> bb6
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L15,L1,)
+
+  
+  goto bb6
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Heapsort_generic$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  label start
+  // ========== start ==========
+  
+  // Name: "Heapsort_generic::main"
+  
+  // Def path: "Heapsort_generic::main[0]"
+  
+  // Span: tests/verify_overflow/pass/rosetta/Heapsort_generic.rs:148:1: 148:13
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Heapsort_generic$$heap_sort$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var _preserve$0: Ref
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var __t28: Bool
+  var _preserve$1: Ref
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var __t32: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Int
+  var _3: Ref
+  var _4: Ref
+  var _5: Int
+  var _6: Ref
+  var _7: Ref
+  var _8: Int
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _24: Ref
+  var _25: Ref
+  var _26: Ref
+  var _27: Int
+  var _28: Ref
+  var _29: Int
+  var _30: Ref
+  var _31: Int
+  var _32: Ref
+  var _33: Ref
+  var _34: Ref
+  var _35: Int
+  var _36: Ref
+  var _37: Ref
+  var _49: Ref
+  var _50: Int
+  var _51: Ref
+  var _52: Ref
+  var _53: Int
+  var _54: Int
+  var _55: Ref
+  var _56: Ref
+  var _57: Int
+  var _58: Ref
+  var _59: Int
+  var _60: Ref
+  var _61: Int
+  label start
+  // ========== start ==========
+  
+  // Name: "Heapsort_generic::heap_sort"
+  
+  // Def path: "Heapsort_generic::heap_sort[0]"
+  
+  // Span: tests/verify_overflow/pass/rosetta/Heapsort_generic.rs:71:1: 101:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write)
+  inhale true
+  inhale true
+  inhale m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) < 9223372036854775807
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_2)
+  
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = &'4s (*_1)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_ref, write)
+  _3.val_ref := _1.val_ref
+  exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_3.val_ref), read$())
+  label l0
+  // [mir] _2 = const <VecWrapper<T>>::len(move _3) -> [return: bb2, unwind: bb1]
+  
+  label l1
+  _2 := builtin$havoc_int()
+  inhale _2 >= 0 && 18446744073709551615 >= _2
+  inhale _2 >= 0 && 18446744073709551615 >= _2
+  inhale _2 == m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_3.val_ref)
+  // transfer perm _3.val_ref --> old[l1](_3.val_ref) // unchecked: false
+  
+  goto l2
+  label bb14
+  // ========== bb14 ==========
+  
+  __t19 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] StorageDead(_36)
+  
+  // [mir] StorageDead(_34)
+  
+  // [mir] StorageDead(_32)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageDead(_2)
+  
+  // [mir] return
+  
+  goto return
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] EndRegion('4s)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] StorageLive(_4)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = _2
+  
+  _5 := builtin$havoc_int()
+  inhale true
+  _5 := _2
+  label l3
+  // [mir] _6 = Eq(const 2usize, const 0usize)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_bool, write)
+  _6.val_bool := false
+  // [mir] assert(!move _6, "attempt to divide by zero") -> [success: bb3, unwind: bb1]
+  
+  __t20 := _6.val_bool
+  // Rust assertion: attempt to divide by zero
+  
+  assert !__t20
+  goto bb3
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] _4 = Div(move _5, const 2usize)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_int, write)
+  _4.val_int := _5 / 2
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageLive(_7)
+  
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = _4
+  
+  _8 := builtin$havoc_int()
+  inhale true
+  _8 := _4.val_int
+  label l4
+  // [mir] _7 = Gt(move _8, const 0usize)
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_bool, write)
+  _7.val_bool := _8 > 0
+  // [mir] StorageDead(_8)
+  
+  // [mir] goto -> bb4
+  
+  goto loop4_start
+  label bb5
+  // ========== bb5 ==========
+  
+  __t10 := true
+  // [mir] _9 = ()
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(tuple0$(_9), write)
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageLive(_32)
+  
+  // [mir] StorageLive(_33)
+  
+  // [mir] _33 = _2
+  
+  _33 := builtin$havoc_ref()
+  inhale acc(_33.val_int, write)
+  _33.val_int := _2
+  label l20
+  // [mir] _32 = move _33
+  
+  _32 := _33
+  label l21
+  // [mir] StorageDead(_33)
+  
+  // [mir] StorageLive(_34)
+  
+  // [mir] StorageLive(_35)
+  
+  // [mir] _35 = _32
+  
+  _35 := builtin$havoc_int()
+  inhale true
+  _35 := _32.val_int
+  label l22
+  // [mir] _34 = Gt(move _35, const 1usize)
+  
+  _34 := builtin$havoc_ref()
+  inhale acc(_34.val_bool, write)
+  _34.val_bool := _35 > 1
+  // [mir] StorageDead(_35)
+  
+  // [mir] goto -> bb13
+  
+  goto loop13_start
+  label l15
+  // ========== l15 ==========
+  
+  // MIR edge bb11 --> bb12
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L22,L7,)
+
+  
+  goto loop4_group3_bb12
+  label l18
+  // ========== l18 ==========
+  
+  // MIR edge bb4 --> bb5
+  
+  goto l44
+  label l19
+  // ========== l19 ==========
+  
+  // MIR edge bb4 --> bb6
+  
+  goto loop4_group5_bb6
+  label l2
+  // ========== l2 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L24,L0,)
+
+  
+  if (__t0 && __t0) {
+    // expire loan L0
+    
+    // transfer perm old[l1](_3.val_ref) --> old[l0](_3.val_ref) // unchecked: false
+    
+    exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l0](_3.val_ref)), read$())
+    inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write - read$())
+  }
+  goto bb2
+  label l24
+  // ========== l24 ==========
+  
+  // MIR edge bb13 --> bb14
+  
+  goto bb14
+  label l25
+  // ========== l25 ==========
+  
+  // MIR edge bb13 --> bb15
+  
+  goto loop13_group2_bb15
+  label l32
+  // ========== l32 ==========
+  
+  // MIR edge bb19 --> bb20
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L19,L14,)
+
+  
+  goto loop13_group3_bb20
+  label l39
+  // ========== l39 ==========
+  
+  // MIR edge bb21 --> bb22
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L21,L15,)
+
+  
+  goto loop13_group3_bb22
+  label l42
+  // ========== l42 ==========
+  
+  // MIR edge bb13 --> bb14
+  
+  goto l45
+  label l43
+  // ========== l43 ==========
+  
+  // MIR edge bb13 --> bb15
+  
+  goto loop13_group5_bb15
+  label l44
+  // ========== l44 ==========
+  
+  // drop Acc(_29.val_int, write) (Acc(_29.val_int, write))
+  
+  // drop Acc(_31.val_int, write) (Acc(_31.val_int, write))
+  
+  // drop Acc(_24.tuple_1.val_bool, write) (Acc(_24.tuple_1.val_bool, write))
+  
+  // drop Acc(_24.tuple_0, write) (Acc(_24.tuple_0, write))
+  
+  // drop Acc(_30.tuple_0, write) (Acc(_30.tuple_0, write))
+  
+  // drop Acc(_30.tuple_1.val_bool, write) (Acc(_30.tuple_1.val_bool, write))
+  
+  // drop Pred(_11, write) (Pred(_11, write))
+  
+  // drop Pred(_12, write) (Pred(_12, write))
+  
+  // drop Pred(_25, write) (Pred(_25, write))
+  
+  // drop Acc(_24.tuple_1, write) (Acc(_24.tuple_1, write))
+  
+  // drop Acc(_30.tuple_1, write) (Acc(_30.tuple_1, write))
+  
+  goto bb5
+  label l45
+  // ========== l45 ==========
+  
+  // drop Acc(_60.tuple_0, write) (Acc(_60.tuple_0, write))
+  
+  // drop Acc(_60.tuple_1.val_bool, write) (Acc(_60.tuple_1.val_bool, write))
+  
+  inhale _2 >= 0 && 18446744073709551615 >= _2
+  // drop Acc(_61.val_int, write) (Acc(_61.val_int, write))
+  
+  // drop Acc(_50.val_int, write) (Acc(_50.val_int, write))
+  
+  // drop Acc(_59.val_int, write) (Acc(_59.val_int, write))
+  
+  // drop Acc(_49.tuple_0, write) (Acc(_49.tuple_0, write))
+  
+  // drop Acc(_49.tuple_1.val_bool, write) (Acc(_49.tuple_1.val_bool, write))
+  
+  // drop Pred(_55, write) (Pred(_55, write))
+  
+  // drop Pred(_11, write) (Pred(_11, write))
+  
+  // drop Pred(_37, write) (Pred(_37, write))
+  
+  // drop Pred(_51, write) (Pred(_51, write))
+  
+  // drop Acc(_60.tuple_1, write) (Acc(_60.tuple_1, write))
+  
+  // drop Acc(_49.tuple_1, write) (Acc(_49.tuple_1, write))
+  
+  goto bb14
+  label l6
+  // ========== l6 ==========
+  
+  // MIR edge bb4 --> bb5
+  
+  goto bb5
+  label l7
+  // ========== l7 ==========
+  
+  // MIR edge bb4 --> bb6
+  
+  goto loop4_group2_bb6
+  label loop13_end_body
+  // ========== loop13_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb13
+  
+  fold acc(usize(_32), write)
+  // obtain acc(usize(_32), write)
+  
+  fold acc(bool(_34), write)
+  // obtain acc(bool(_34), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write)
+  
+  // obtain ((_2) >= (0)) && ((18446744073709551615) >= (_2))
+  
+  assert m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) < 9223372036854775807 && (_2 == m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_32), write) in _32.val_int) <= _2 && (unfolding acc(usize(_32), write) in _32.val_int) > 1))
+  assert _preserve$1 == _1.val_ref
+  exhale acc(usize(_32), write) && (acc(bool(_34), write) && (acc(_1.val_ref, read$()) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write) && (_2 >= 0 && 18446744073709551615 >= _2))))
+  inhale false
+  goto end_of_method
+  label loop13_group1_bb13
+  // ========== loop13_group1_bb13 ==========
+  
+  // This is a loop head
+  
+  __t11 := true
+  // [mir] StorageLive(_36)
+  
+  // [mir] _36 = _34
+  
+  _36 := builtin$havoc_ref()
+  inhale acc(_36.val_bool, write)
+  _36.val_bool := _34.val_bool
+  label l23
+  // [mir] switchInt(move _36) -> [false: bb14, otherwise: bb15]
+  
+  __t27 := _36.val_bool
+  if (__t27) {
+    goto l25
+  }
+  goto l24
+  label loop13_group2_bb15
+  // ========== loop13_group2_bb15 ==========
+  
+  __t12 := true
+  // [mir] switchInt(const false) -> [false: bb17, otherwise: bb16]
+  
+  __t28 := false
+  // Ignore default target bb16, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop13_inv_pre
+  label loop13_group3_bb17
+  // ========== loop13_group3_bb17 ==========
+  
+  __t13 := true
+  // [mir] _37 = ()
+  
+  _37 := builtin$havoc_ref()
+  inhale acc(tuple0$(_37), write)
+  // [mir] goto -> bb18
+  
+  goto loop13_group3_bb18
+  label loop13_group3_bb18
+  // ========== loop13_group3_bb18 ==========
+  
+  __t14 := true
+  // [mir] _49 = CheckedSub(_32, const 1usize)
+  
+  _49 := builtin$havoc_ref()
+  inhale acc(_49.tuple_0, write)
+  inhale acc(_49.tuple_0.val_int, write)
+  inhale acc(_49.tuple_1, write)
+  inhale acc(_49.tuple_1.val_bool, write)
+  unfold acc(usize(_32), write)
+  _49.tuple_0.val_int := _32.val_int - 1
+  _49.tuple_1.val_bool := _32.val_int - 1 < 0 || _32.val_int - 1 > 18446744073709551615
+  // [mir] assert(!move (_49.1: bool), "attempt to subtract with overflow") -> [success: bb19, unwind: bb1]
+  
+  __t29 := _49.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t29
+  goto loop13_group3_bb19
+  label loop13_group3_bb19
+  // ========== loop13_group3_bb19 ==========
+  
+  __t15 := true
+  // [mir] _32 = move (_49.0: usize)
+  
+  _32 := _49.tuple_0
+  label l26
+  // [mir] StorageLive(_50)
+  
+  // [mir] _50 = const 0usize
+  
+  _50 := builtin$havoc_int()
+  inhale true
+  _50 := 0
+  // [mir] StorageLive(_52)
+  
+  // [mir] _52 = &'160s mut (*_1)
+  
+  _52 := builtin$havoc_ref()
+  inhale acc(_52.val_ref, write)
+  _52.val_ref := _1.val_ref
+  label l27
+  // [mir] StorageLive(_53)
+  
+  // [mir] _53 = _50
+  
+  _53 := builtin$havoc_int()
+  inhale true
+  _53 := _50
+  label l28
+  // [mir] StorageLive(_54)
+  
+  // [mir] _54 = _32
+  
+  _54 := builtin$havoc_int()
+  inhale true
+  _54 := _32.val_int
+  label l29
+  // [mir] _51 = const <VecWrapper<T>>::swap(move _52, move _53, move _54) -> [return: bb20, unwind: bb1]
+  
+  label l30
+  assert 0 <= _53 && _53 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_52.val_ref) && (0 <= _54 && _54 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_52.val_ref))
+  assert _54 >= 0 && 18446744073709551615 >= _54
+  assert _53 >= 0 && 18446744073709551615 >= _53
+  assert true
+  exhale acc(_52.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_52.val_ref), write) && (_53 >= 0 && 18446744073709551615 >= _53 && (_54 >= 0 && 18446744073709551615 >= _54)))
+  _51 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l30](_52.val_ref)), write)
+  inhale acc(tuple0$(_51), write)
+  inhale true
+  inhale m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(old[l30](_52.val_ref)) == old[l30](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_52.val_ref))
+  label l31
+  goto l32
+  label loop13_group3_bb20
+  // ========== loop13_group3_bb20 ==========
+  
+  __t16 := true
+  // [mir] EndRegion('160s)
+  
+  // [mir] StorageDead(_54)
+  
+  // [mir] StorageDead(_53)
+  
+  // [mir] StorageDead(_52)
+  
+  // [mir] StorageLive(_56)
+  
+  // [mir] _56 = &'168s mut (*_1)
+  
+  _56 := builtin$havoc_ref()
+  inhale acc(_56.val_ref, write)
+  _56.val_ref := _1.val_ref
+  label l33
+  // [mir] StorageLive(_57)
+  
+  // [mir] _57 = _50
+  
+  _57 := builtin$havoc_int()
+  inhale true
+  _57 := _50
+  label l34
+  // [mir] StorageLive(_58)
+  
+  // [mir] StorageLive(_59)
+  
+  // [mir] _59 = _32
+  
+  _59 := builtin$havoc_int()
+  inhale true
+  _59 := _32.val_int
+  label l35
+  // [mir] _60 = CheckedSub(move _59, const 1usize)
+  
+  _60 := builtin$havoc_ref()
+  inhale acc(_60.tuple_0, write)
+  inhale acc(_60.tuple_0.val_int, write)
+  inhale acc(_60.tuple_1, write)
+  inhale acc(_60.tuple_1.val_bool, write)
+  _60.tuple_0.val_int := _59 - 1
+  _60.tuple_1.val_bool := _59 - 1 < 0 || _59 - 1 > 18446744073709551615
+  // [mir] assert(!move (_60.1: bool), "attempt to subtract with overflow") -> [success: bb21, unwind: bb1]
+  
+  __t30 := _60.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t30
+  goto loop13_group3_bb21
+  label loop13_group3_bb21
+  // ========== loop13_group3_bb21 ==========
+  
+  __t17 := true
+  // [mir] _58 = move (_60.0: usize)
+  
+  _58 := _60.tuple_0
+  label l36
+  // [mir] StorageDead(_59)
+  
+  // [mir] _55 = const shift_down(move _56, move _57, move _58) -> [return: bb22, unwind: bb1]
+  
+  label l37
+  assert m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_56.val_ref) < 9223372036854775807 && (0 <= _57 && _57 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_56.val_ref) / 2 && (0 <= _58.val_int && _58.val_int < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_56.val_ref)))
+  fold acc(usize(_58), write)
+  assert _57 >= 0 && 18446744073709551615 >= _57
+  assert true
+  exhale acc(_56.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_56.val_ref), write) && (_57 >= 0 && 18446744073709551615 >= _57 && acc(usize(_58), write)))
+  _55 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l37](_56.val_ref)), write)
+  inhale acc(tuple0$(_55), write)
+  inhale true
+  inhale m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(old[l37](_56.val_ref)) == old[l37](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_56.val_ref))
+  label l38
+  goto l39
+  label loop13_group3_bb22
+  // ========== loop13_group3_bb22 ==========
+  
+  __t18 := true
+  // [mir] EndRegion('168s)
+  
+  // [mir] StorageDead(_58)
+  
+  // [mir] StorageDead(_57)
+  
+  // [mir] StorageDead(_56)
+  
+  // [mir] StorageLive(_61)
+  
+  // [mir] _61 = _32
+  
+  _61 := builtin$havoc_int()
+  inhale true
+  _61 := _32.val_int
+  label l40
+  // [mir] _34 = Gt(move _61, const 1usize)
+  
+  unfold acc(bool(_34), write)
+  _34.val_bool := _61 > 1
+  // [mir] StorageDead(_61)
+  
+  // [mir] _11 = ()
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(tuple0$(_11), write)
+  // [mir] StorageDead(_50)
+  
+  // [mir] goto -> bb13
+  
+  goto loop13_group4_bb13
+  label loop13_group4_bb13
+  // ========== loop13_group4_bb13 ==========
+  
+  // This is a loop head
+  
+  __t11 := true
+  // [mir] StorageLive(_36)
+  
+  // [mir] _36 = _34
+  
+  _36 := builtin$havoc_ref()
+  inhale acc(_36.val_bool, write)
+  _36.val_bool := _34.val_bool
+  label l41
+  // [mir] switchInt(move _36) -> [false: bb14, otherwise: bb15]
+  
+  __t31 := _36.val_bool
+  if (__t31) {
+    goto l43
+  }
+  goto l42
+  label loop13_group5_bb15
+  // ========== loop13_group5_bb15 ==========
+  
+  __t12 := true
+  // [mir] switchInt(const false) -> [false: bb17, otherwise: bb16]
+  
+  __t32 := false
+  // Ignore default target bb16, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop13_end_body
+  label loop13_inv_post
+  // ========== loop13_inv_post ==========
+  
+  // Inhale the loop invariant of block bb13
+  
+  inhale acc(usize(_32), write) && (acc(bool(_34), write) && (acc(_1.val_ref, read$()) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write) && (_2 >= 0 && 18446744073709551615 >= _2))))
+  inhale _preserve$1 == _1.val_ref
+  inhale (unfolding acc(usize(_32), write) in m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) < 9223372036854775807 && (_2 == m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && (_32.val_int <= _2 && _32.val_int > 1)))
+  goto loop13_group3_bb17
+  label loop13_inv_pre
+  // ========== loop13_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb13
+  
+  _preserve$1 := _1.val_ref
+  fold acc(usize(_32), write)
+  // obtain acc(usize(_32), write)
+  
+  fold acc(bool(_34), write)
+  // obtain acc(bool(_34), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write)
+  
+  assert _2 >= 0 && 18446744073709551615 >= _2
+  // obtain ((_2) >= (0)) && ((18446744073709551615) >= (_2))
+  
+  assert m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) < 9223372036854775807 && (_2 == m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_32), write) in _32.val_int) <= _2 && (unfolding acc(usize(_32), write) in _32.val_int) > 1))
+  assert _preserve$1 == _1.val_ref
+  exhale acc(usize(_32), write) && (acc(bool(_34), write) && (acc(_1.val_ref, read$()) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write) && (_2 >= 0 && 18446744073709551615 >= _2))))
+  _49 := builtin$havoc_ref()
+  __t16 := builtin$havoc_bool()
+  _50 := builtin$havoc_int()
+  _36 := builtin$havoc_ref()
+  __t31 := builtin$havoc_bool()
+  _57 := builtin$havoc_int()
+  __t13 := builtin$havoc_bool()
+  _54 := builtin$havoc_int()
+  _58 := builtin$havoc_ref()
+  _56 := builtin$havoc_ref()
+  __t14 := builtin$havoc_bool()
+  _53 := builtin$havoc_int()
+  _59 := builtin$havoc_int()
+  _32 := builtin$havoc_ref()
+  __t15 := builtin$havoc_bool()
+  _52 := builtin$havoc_ref()
+  __t32 := builtin$havoc_bool()
+  __t12 := builtin$havoc_bool()
+  _60 := builtin$havoc_ref()
+  __t29 := builtin$havoc_bool()
+  __t30 := builtin$havoc_bool()
+  __t17 := builtin$havoc_bool()
+  _11 := builtin$havoc_ref()
+  _55 := builtin$havoc_ref()
+  _37 := builtin$havoc_ref()
+  _61 := builtin$havoc_int()
+  __t18 := builtin$havoc_bool()
+  __t11 := builtin$havoc_bool()
+  _51 := builtin$havoc_ref()
+  goto loop13_inv_post
+  label loop13_start
+  // ========== loop13_start ==========
+  
+  goto loop13_group1_bb13
+  label loop4_end_body
+  // ========== loop4_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb4
+  
+  fold acc(usize(_4), write)
+  // obtain acc(usize(_4), write)
+  
+  fold acc(bool(_7), write)
+  // obtain acc(bool(_7), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write)
+  
+  assert _2 >= 0 && 18446744073709551615 >= _2
+  // obtain ((_2) >= (0)) && ((18446744073709551615) >= (_2))
+  
+  assert m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) < 9223372036854775807 && (_2 == m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_4), write) in _4.val_int) <= _2 / 2 && (unfolding acc(usize(_4), write) in _4.val_int) > 0))
+  assert _preserve$0 == _1.val_ref
+  exhale acc(usize(_4), write) && (acc(bool(_7), write) && (acc(_1.val_ref, read$()) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write) && (_2 >= 0 && 18446744073709551615 >= _2))))
+  inhale false
+  goto end_of_method
+  label loop4_group1_bb4
+  // ========== loop4_group1_bb4 ==========
+  
+  // This is a loop head
+  
+  __t3 := true
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = _7
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_bool, write)
+  _10.val_bool := _7.val_bool
+  label l5
+  // [mir] switchInt(move _10) -> [false: bb5, otherwise: bb6]
+  
+  __t21 := _10.val_bool
+  if (__t21) {
+    goto l7
+  }
+  goto l6
+  label loop4_group2_bb6
+  // ========== loop4_group2_bb6 ==========
+  
+  __t4 := true
+  // [mir] switchInt(const false) -> [false: bb8, otherwise: bb7]
+  
+  __t22 := false
+  // Ignore default target bb7, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop4_inv_pre
+  label loop4_group3_bb10
+  // ========== loop4_group3_bb10 ==========
+  
+  __t7 := true
+  // [mir] _4 = move (_24.0: usize)
+  
+  _4 := _24.tuple_0
+  label l8
+  // [mir] StorageLive(_26)
+  
+  // [mir] _26 = &'79s mut (*_1)
+  
+  _26 := builtin$havoc_ref()
+  inhale acc(_26.val_ref, write)
+  _26.val_ref := _1.val_ref
+  label l9
+  // [mir] StorageLive(_27)
+  
+  // [mir] _27 = _4
+  
+  _27 := builtin$havoc_int()
+  inhale true
+  _27 := _4.val_int
+  label l10
+  // [mir] StorageLive(_28)
+  
+  // [mir] StorageLive(_29)
+  
+  // [mir] _29 = _2
+  
+  _29 := builtin$havoc_int()
+  inhale true
+  inhale _2 >= 0 && 18446744073709551615 >= _2
+  _29 := _2
+  label l11
+  // [mir] _30 = CheckedSub(move _29, const 1usize)
+  
+  _30 := builtin$havoc_ref()
+  inhale acc(_30.tuple_0, write)
+  inhale acc(_30.tuple_0.val_int, write)
+  inhale acc(_30.tuple_1, write)
+  inhale acc(_30.tuple_1.val_bool, write)
+  _30.tuple_0.val_int := _29 - 1
+  _30.tuple_1.val_bool := _29 - 1 < 0 || _29 - 1 > 18446744073709551615
+  // [mir] assert(!move (_30.1: bool), "attempt to subtract with overflow") -> [success: bb11, unwind: bb1]
+  
+  __t24 := _30.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t24
+  goto loop4_group3_bb11
+  label loop4_group3_bb11
+  // ========== loop4_group3_bb11 ==========
+  
+  __t8 := true
+  // [mir] _28 = move (_30.0: usize)
+  
+  _28 := _30.tuple_0
+  label l12
+  // [mir] StorageDead(_29)
+  
+  // [mir] _25 = const shift_down(move _26, move _27, move _28) -> [return: bb12, unwind: bb1]
+  
+  label l13
+  assert m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_26.val_ref) < 9223372036854775807 && (0 <= _27 && _27 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_26.val_ref) / 2 && (0 <= _28.val_int && _28.val_int < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_26.val_ref)))
+  assert _27 >= 0 && 18446744073709551615 >= _27
+  fold acc(usize(_28), write)
+  assert true
+  exhale acc(_26.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_26.val_ref), write) && (_27 >= 0 && 18446744073709551615 >= _27 && acc(usize(_28), write)))
+  _25 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l13](_26.val_ref)), write)
+  inhale acc(tuple0$(_25), write)
+  inhale true
+  inhale m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(old[l13](_26.val_ref)) == old[l13](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_26.val_ref))
+  label l14
+  goto l15
+  label loop4_group3_bb12
+  // ========== loop4_group3_bb12 ==========
+  
+  __t9 := true
+  // [mir] EndRegion('79s)
+  
+  // [mir] StorageDead(_28)
+  
+  // [mir] StorageDead(_27)
+  
+  // [mir] StorageDead(_26)
+  
+  // [mir] StorageLive(_31)
+  
+  // [mir] _31 = _4
+  
+  _31 := builtin$havoc_int()
+  inhale true
+  _31 := _4.val_int
+  label l16
+  // [mir] _7 = Gt(move _31, const 0usize)
+  
+  unfold acc(bool(_7), write)
+  _7.val_bool := _31 > 0
+  // [mir] StorageDead(_31)
+  
+  // [mir] _11 = ()
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(tuple0$(_11), write)
+  // [mir] goto -> bb4
+  
+  goto loop4_group4_bb4
+  label loop4_group3_bb8
+  // ========== loop4_group3_bb8 ==========
+  
+  __t5 := true
+  // [mir] _12 = ()
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(tuple0$(_12), write)
+  // [mir] goto -> bb9
+  
+  goto loop4_group3_bb9
+  label loop4_group3_bb9
+  // ========== loop4_group3_bb9 ==========
+  
+  __t6 := true
+  // [mir] _24 = CheckedSub(_4, const 1usize)
+  
+  _24 := builtin$havoc_ref()
+  inhale acc(_24.tuple_0, write)
+  inhale acc(_24.tuple_0.val_int, write)
+  inhale acc(_24.tuple_1, write)
+  inhale acc(_24.tuple_1.val_bool, write)
+  unfold acc(usize(_4), write)
+  _24.tuple_0.val_int := _4.val_int - 1
+  _24.tuple_1.val_bool := _4.val_int - 1 < 0 || _4.val_int - 1 > 18446744073709551615
+  // [mir] assert(!move (_24.1: bool), "attempt to subtract with overflow") -> [success: bb10, unwind: bb1]
+  
+  __t23 := _24.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t23
+  goto loop4_group3_bb10
+  label loop4_group4_bb4
+  // ========== loop4_group4_bb4 ==========
+  
+  // This is a loop head
+  
+  __t3 := true
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = _7
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_bool, write)
+  _10.val_bool := _7.val_bool
+  label l17
+  // [mir] switchInt(move _10) -> [false: bb5, otherwise: bb6]
+  
+  __t25 := _10.val_bool
+  if (__t25) {
+    goto l19
+  }
+  goto l18
+  label loop4_group5_bb6
+  // ========== loop4_group5_bb6 ==========
+  
+  __t4 := true
+  // [mir] switchInt(const false) -> [false: bb8, otherwise: bb7]
+  
+  __t26 := false
+  // Ignore default target bb7, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop4_end_body
+  label loop4_inv_post
+  // ========== loop4_inv_post ==========
+  
+  // Inhale the loop invariant of block bb4
+  
+  inhale acc(usize(_4), write) && (acc(bool(_7), write) && (acc(_1.val_ref, read$()) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write) && (_2 >= 0 && 18446744073709551615 >= _2))))
+  inhale _preserve$0 == _1.val_ref
+  inhale (unfolding acc(usize(_4), write) in m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) < 9223372036854775807 && (_2 == m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && (_4.val_int <= _2 / 2 && _4.val_int > 0)))
+  goto loop4_group3_bb8
+  label loop4_inv_pre
+  // ========== loop4_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb4
+  
+  _preserve$0 := _1.val_ref
+  fold acc(usize(_4), write)
+  // obtain acc(usize(_4), write)
+  
+  fold acc(bool(_7), write)
+  // obtain acc(bool(_7), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write)
+  
+  assert _2 >= 0 && 18446744073709551615 >= _2
+  // obtain ((_2) >= (0)) && ((18446744073709551615) >= (_2))
+  
+  assert m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) < 9223372036854775807 && (_2 == m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_4), write) in _4.val_int) <= _2 / 2 && (unfolding acc(usize(_4), write) in _4.val_int) > 0))
+  assert _preserve$0 == _1.val_ref
+  exhale acc(usize(_4), write) && (acc(bool(_7), write) && (acc(_1.val_ref, read$()) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write) && (_2 >= 0 && 18446744073709551615 >= _2))))
+  _29 := builtin$havoc_int()
+  __t23 := builtin$havoc_bool()
+  _10 := builtin$havoc_ref()
+  __t25 := builtin$havoc_bool()
+  _11 := builtin$havoc_ref()
+  _28 := builtin$havoc_ref()
+  _27 := builtin$havoc_int()
+  __t4 := builtin$havoc_bool()
+  __t26 := builtin$havoc_bool()
+  __t5 := builtin$havoc_bool()
+  __t3 := builtin$havoc_bool()
+  _4 := builtin$havoc_ref()
+  _12 := builtin$havoc_ref()
+  _31 := builtin$havoc_int()
+  _24 := builtin$havoc_ref()
+  _26 := builtin$havoc_ref()
+  __t8 := builtin$havoc_bool()
+  __t6 := builtin$havoc_bool()
+  _25 := builtin$havoc_ref()
+  __t7 := builtin$havoc_bool()
+  _30 := builtin$havoc_ref()
+  __t24 := builtin$havoc_bool()
+  __t9 := builtin$havoc_bool()
+  goto loop4_inv_post
+  label loop4_start
+  // ========== loop4_start ==========
+  
+  goto loop4_group1_bb4
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_old$pre$0) == old[pre](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref))
+  assert true
+  exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Heapsort_generic$$shift_down$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var __t28: Bool
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var __t32: Bool
+  var _preserve$0: Ref
+  var __t33: Bool
+  var __t34: Bool
+  var __t35: Bool
+  var __t36: Bool
+  var __t37: Bool
+  var _old$l20$0: Ref
+  var __t38: Bool
+  var _old$l26$0: Ref
+  var __t39: Bool
+  var __t40: Bool
+  var __t41: Bool
+  var _old$l38$0: Ref
+  var _old$l43$0: Ref
+  var __t42: Bool
+  var __t43: Bool
+  var __t44: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Int
+  var _3: Int
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _25: Ref
+  var _26: Ref
+  var _27: Int
+  var _28: Ref
+  var _29: Ref
+  var _30: Ref
+  var _31: Int
+  var _32: Int
+  var _33: Ref
+  var _34: Ref
+  var _35: Ref
+  var _36: Ref
+  var _37: Int
+  var _38: Ref
+  var _39: Int
+  var _40: Ref
+  var _41: Ref
+  var _42: Ref
+  var _43: Ref
+  var _44: Int
+  var _45: Ref
+  var _46: Ref
+  var _47: Ref
+  var _48: Ref
+  var _49: Int
+  var _50: Ref
+  var _51: Ref
+  var _52: Ref
+  var _53: Ref
+  var _54: Ref
+  var _55: Ref
+  var _56: Int
+  var _57: Ref
+  var _58: Ref
+  var _59: Ref
+  var _60: Int
+  var _61: Ref
+  var _62: Ref
+  var _63: Int
+  var _64: Int
+  var _65: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Heapsort_generic::shift_down"
+  
+  // Def path: "Heapsort_generic::shift_down[0]"
+  
+  // Span: tests/verify_overflow/pass/rosetta/Heapsort_generic.rs:107:1: 130:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  __t24 := false
+  __t25 := false
+  __t26 := false
+  __t27 := false
+  __t28 := false
+  __t29 := false
+  __t30 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write) && (_2 >= 0 && 18446744073709551615 >= _2 && (_3 >= 0 && 18446744073709551615 >= _3)))
+  inhale true
+  inhale true
+  inhale m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) < 9223372036854775807 && (0 <= _2 && _2 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) / 2 && (0 <= _3 && _3 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref)))
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_4)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = _2
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_int, write)
+  inhale _2 >= 0 && 18446744073709551615 >= _2
+  _5.val_int := _2
+  label l0
+  // [mir] _4 = move _5
+  
+  _4 := _5
+  label l1
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = const true
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_bool, write)
+  _6.val_bool := true
+  // [mir] goto -> bb2
+  
+  goto loop2_start
+  label bb3
+  // ========== bb3 ==========
+  
+  __t30 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] return
+  
+  goto return
+  label l10
+  // ========== l10 ==========
+  
+  // MIR edge bb9 --> bb11
+  
+  goto loop2_group3_bb11
+  label l11
+  // ========== l11 ==========
+  
+  // MIR edge bb9 --> bb10
+  
+  goto loop2_group3_bb10
+  label l15
+  // ========== l15 ==========
+  
+  // MIR edge bb16 --> bb14
+  
+  goto loop2_group3_bb14
+  label l16
+  // ========== l16 ==========
+  
+  // MIR edge bb16 --> bb13
+  
+  goto loop2_group3_bb13
+  label l29
+  // ========== l29 ==========
+  
+  // MIR edge bb19 --> bb20
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L23,L22,L11,L32,L33,L10,L9,L20,L21,L8,)
+
+  
+  if (__t13 && __t13) {
+    // expire loan L11
+    
+    // transfer perm old[l28](_45.val_ref) --> old[l27](_45.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$T$__(old[l27](_45.val_ref)), read$())
+  }
+  if (__t12 && (__t13 && __t13)) {
+    // expire loan L32
+    
+    _old$l26$0 := _46.val_ref
+    inhale acc(DeadBorrowToken$(32), write) && acc(__TYPARAM__$T$__(_old$l26$0), read$()) --* acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l25](_47.val_ref)), read$())
+    inhale acc(DeadBorrowToken$(32), write)
+    apply acc(DeadBorrowToken$(32), write) && acc(__TYPARAM__$T$__(_old$l26$0), read$()) --* acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l25](_47.val_ref)), read$())
+  }
+  if (__t11 && (__t12 && (__t12 && (__t13 && __t13)))) {
+    // expire loan L10
+    
+    // transfer perm old[l25](_47.val_ref) --> old[l22](_47.val_ref) // unchecked: false
+    
+    exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l22](_47.val_ref)), read$())
+    inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write - read$())
+    // drop Acc(old[l28](_41.val_ref), write) (Acc(old[l28](_41.val_ref), write))
+    
+    // drop Acc(old[l27](_45.val_ref), write) (Acc(old[l27](_45.val_ref), write))
+    
+    // drop Pred(old[l28](_41.val_ref), read) (Pred(old[l28](_41.val_ref), read))
+    
+    // drop Pred(_42.val_ref, read) (Pred(_42.val_ref, read))
+    
+  }
+  if (__t11 && __t13) {
+    // expire loan L9
+    
+    // transfer perm old[l28](_41.val_ref) --> old[l21](_41.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$T$__(old[l21](_41.val_ref)), read$())
+  }
+  if (__t10 && (__t11 && __t13)) {
+    // expire loan L20
+    
+    _old$l20$0 := _42.val_ref
+    inhale acc(DeadBorrowToken$(20), write) && acc(__TYPARAM__$T$__(_old$l20$0), read$()) --* acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l19](_43.val_ref)), read$())
+    inhale acc(DeadBorrowToken$(20), write)
+    apply acc(DeadBorrowToken$(20), write) && acc(__TYPARAM__$T$__(_old$l20$0), read$()) --* acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l19](_43.val_ref)), read$())
+  }
+  if (__t10 && (__t10 && (__t10 && (__t11 && __t13)))) {
+    // expire loan L8
+    
+    // transfer perm old[l19](_43.val_ref) --> old[l17](_43.val_ref) // unchecked: false
+    
+    exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l17](_43.val_ref)), read$())
+    inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write - read$())
+    // drop Acc(old[l28](_45.val_ref), write) (Acc(old[l28](_45.val_ref), write))
+    
+    // drop Acc(old[l21](_41.val_ref), write) (Acc(old[l21](_41.val_ref), write))
+    
+    // drop Pred(_46.val_ref, read) (Pred(_46.val_ref, read))
+    
+    // drop Pred(old[l28](_45.val_ref), read) (Pred(old[l28](_45.val_ref), read))
+    
+  }
+  goto loop2_group3_bb20
+  label l3
+  // ========== l3 ==========
+  
+  // MIR edge bb2 --> bb3
+  
+  goto l65
+  label l30
+  // ========== l30 ==========
+  
+  // MIR edge bb20 --> bb12
+  
+  goto loop2_group3_bb12
+  label l31
+  // ========== l31 ==========
+  
+  // MIR edge bb20 --> bb13
+  
+  goto l60
+  label l32
+  // ========== l32 ==========
+  
+  // MIR edge bb15 --> bb21
+  
+  goto loop2_group3_bb21
+  label l33
+  // ========== l33 ==========
+  
+  // MIR edge bb15 --> bb22
+  
+  goto loop2_group3_bb22
+  label l4
+  // ========== l4 ==========
+  
+  // MIR edge bb2 --> bb4
+  
+  goto loop2_group2_bb4
+  label l46
+  // ========== l46 ==========
+  
+  // MIR edge bb26 --> bb27
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L29,L28,L15,L26,L27,L14,L13,L18,L19,L12,)
+
+  
+  if (__t23 && __t23) {
+    // expire loan L15
+    
+    // transfer perm old[l45](_57.val_ref) --> old[l44](_57.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$T$__(old[l44](_57.val_ref)), read$())
+  }
+  if (__t22 && (__t23 && __t23)) {
+    // expire loan L26
+    
+    _old$l43$0 := _58.val_ref
+    inhale acc(DeadBorrowToken$(26), write) && acc(__TYPARAM__$T$__(_old$l43$0), read$()) --* acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l42](_59.val_ref)), read$())
+    inhale acc(DeadBorrowToken$(26), write)
+    apply acc(DeadBorrowToken$(26), write) && acc(__TYPARAM__$T$__(_old$l43$0), read$()) --* acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l42](_59.val_ref)), read$())
+  }
+  if (__t22 && (__t22 && (__t22 && (__t23 && __t23)))) {
+    // expire loan L14
+    
+    // transfer perm old[l42](_59.val_ref) --> old[l40](_59.val_ref) // unchecked: false
+    
+    exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l40](_59.val_ref)), read$())
+    inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write - read$())
+    // drop Acc(old[l45](_53.val_ref), write) (Acc(old[l45](_53.val_ref), write))
+    
+    // drop Acc(old[l44](_57.val_ref), write) (Acc(old[l44](_57.val_ref), write))
+    
+    // drop Pred(old[l45](_53.val_ref), read) (Pred(old[l45](_53.val_ref), read))
+    
+    // drop Pred(_54.val_ref, read) (Pred(_54.val_ref, read))
+    
+  }
+  if (__t22 && __t23) {
+    // expire loan L13
+    
+    // transfer perm old[l45](_53.val_ref) --> old[l39](_53.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$T$__(old[l39](_53.val_ref)), read$())
+  }
+  if (__t21 && (__t22 && __t23)) {
+    // expire loan L18
+    
+    _old$l38$0 := _54.val_ref
+    inhale acc(DeadBorrowToken$(18), write) && acc(__TYPARAM__$T$__(_old$l38$0), read$()) --* acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l37](_55.val_ref)), read$())
+    inhale acc(DeadBorrowToken$(18), write)
+    apply acc(DeadBorrowToken$(18), write) && acc(__TYPARAM__$T$__(_old$l38$0), read$()) --* acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l37](_55.val_ref)), read$())
+  }
+  if (__t21 && (__t21 && (__t21 && (__t22 && __t23)))) {
+    // expire loan L12
+    
+    // transfer perm old[l37](_55.val_ref) --> old[l35](_55.val_ref) // unchecked: false
+    
+    exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l35](_55.val_ref)), read$())
+    inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write - read$())
+    // drop Acc(old[l39](_53.val_ref), write) (Acc(old[l39](_53.val_ref), write))
+    
+    // drop Acc(old[l45](_57.val_ref), write) (Acc(old[l45](_57.val_ref), write))
+    
+    // drop Pred(old[l45](_57.val_ref), read) (Pred(old[l45](_57.val_ref), read))
+    
+    // drop Pred(_58.val_ref, read) (Pred(_58.val_ref, read))
+    
+  }
+  goto loop2_group3_bb27
+  label l47
+  // ========== l47 ==========
+  
+  // MIR edge bb27 --> bb28
+  
+  goto loop2_group3_bb28
+  label l48
+  // ========== l48 ==========
+  
+  // MIR edge bb27 --> bb29
+  
+  goto loop2_group3_bb29
+  label l54
+  // ========== l54 ==========
+  
+  // MIR edge bb28 --> bb30
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L25,L16,)
+
+  
+  goto loop2_group3_bb30
+  label l58
+  // ========== l58 ==========
+  
+  // MIR edge bb2 --> bb3
+  
+  goto l66
+  label l59
+  // ========== l59 ==========
+  
+  // MIR edge bb2 --> bb4
+  
+  goto loop2_group5_bb4
+  label l60
+  // ========== l60 ==========
+  
+  // drop Acc(_40.val_bool, write) (Acc(_40.val_bool, write))
+  
+  // drop Acc(_46.val_ref, write) (Acc(_46.val_ref, write))
+  
+  // drop Acc(_50.tuple_1.val_bool, write) (Acc(_50.tuple_1.val_bool, write))
+  
+  // drop Acc(_42.val_ref, write) (Acc(_42.val_ref, write))
+  
+  // drop Acc(_49.val_int, write) (Acc(_49.val_int, write))
+  
+  // drop Acc(_41.val_ref, write) (Acc(_41.val_ref, write))
+  
+  // drop Acc(_50.tuple_0, write) (Acc(_50.tuple_0, write))
+  
+  // drop Acc(_45.val_ref, write) (Acc(_45.val_ref, write))
+  
+  // drop Acc(_50.tuple_1, write) (Acc(_50.tuple_1, write))
+  
+  goto loop2_group3_bb13
+  label l61
+  // ========== l61 ==========
+  
+  // drop Acc(_49.val_int, write) (Acc(_49.val_int, write))
+  
+  // drop Acc(_41.val_ref, write) (Acc(_41.val_ref, write))
+  
+  // drop Acc(_50.tuple_0, write) (Acc(_50.tuple_0, write))
+  
+  // drop Acc(_50.tuple_1.val_bool, write) (Acc(_50.tuple_1.val_bool, write))
+  
+  // drop Acc(_45.val_ref, write) (Acc(_45.val_ref, write))
+  
+  // drop Acc(_46.val_ref, write) (Acc(_46.val_ref, write))
+  
+  // drop Acc(_42.val_ref, write) (Acc(_42.val_ref, write))
+  
+  // drop Acc(_40.val_bool, write) (Acc(_40.val_bool, write))
+  
+  // drop Acc(_50.tuple_1, write) (Acc(_50.tuple_1, write))
+  
+  goto loop2_group3_bb15
+  label l62
+  // ========== l62 ==========
+  
+  // drop Acc(_51.tuple_1.val_bool, write) (Acc(_51.tuple_1.val_bool, write))
+  
+  // drop Acc(_51.tuple_0, write) (Acc(_51.tuple_0, write))
+  
+  // drop Acc(_51.tuple_1, write) (Acc(_51.tuple_1, write))
+  
+  goto loop2_group3_bb24
+  label l63
+  // ========== l63 ==========
+  
+  unfold acc(bool(_6), write)
+  // drop Pred(_61, write) (Pred(_61, write))
+  
+  goto loop2_group3_bb31
+  label l64
+  // ========== l64 ==========
+  
+  // drop Acc(_53.val_ref, write) (Acc(_53.val_ref, write))
+  
+  // drop Acc(_37.val_int, write) (Acc(_37.val_int, write))
+  
+  // drop Acc(_34.val_bool, write) (Acc(_34.val_bool, write))
+  
+  // drop Acc(_36.val_int, write) (Acc(_36.val_int, write))
+  
+  // drop Acc(_54.val_ref, write) (Acc(_54.val_ref, write))
+  
+  // drop Acc(_38.tuple_0, write) (Acc(_38.tuple_0, write))
+  
+  // drop Acc(_58.val_ref, write) (Acc(_58.val_ref, write))
+  
+  // drop Acc(_52.val_bool, write) (Acc(_52.val_bool, write))
+  
+  // drop Acc(_39.val_int, write) (Acc(_39.val_int, write))
+  
+  // drop Acc(_57.val_ref, write) (Acc(_57.val_ref, write))
+  
+  // drop Acc(_38.tuple_1.val_bool, write) (Acc(_38.tuple_1.val_bool, write))
+  
+  // drop Acc(_35.val_bool, write) (Acc(_35.val_bool, write))
+  
+  // drop Pred(_33, write) (Pred(_33, write))
+  
+  // drop Acc(_38.tuple_1, write) (Acc(_38.tuple_1, write))
+  
+  goto loop2_group3_bb32
+  label l65
+  // ========== l65 ==========
+  
+  inhale _3 >= 0 && 18446744073709551615 >= _3
+  goto bb3
+  label l66
+  // ========== l66 ==========
+  
+  // drop Acc(_31.val_int, write) (Acc(_31.val_int, write))
+  
+  // drop Acc(_26.val_int, write) (Acc(_26.val_int, write))
+  
+  // drop Acc(_28.tuple_0, write) (Acc(_28.tuple_0, write))
+  
+  // drop Acc(_27.val_int, write) (Acc(_27.val_int, write))
+  
+  // drop Acc(_29.tuple_1.val_bool, write) (Acc(_29.tuple_1.val_bool, write))
+  
+  // drop Acc(_29.tuple_0, write) (Acc(_29.tuple_0, write))
+  
+  // drop Acc(_30.val_bool, write) (Acc(_30.val_bool, write))
+  
+  // drop Acc(_25.val_int, write) (Acc(_25.val_int, write))
+  
+  // drop Acc(_32.val_int, write) (Acc(_32.val_int, write))
+  
+  // drop Acc(_28.tuple_1.val_bool, write) (Acc(_28.tuple_1.val_bool, write))
+  
+  // drop Pred(_8, write) (Pred(_8, write))
+  
+  // drop Pred(_9, write) (Pred(_9, write))
+  
+  // drop Acc(_29.tuple_1, write) (Acc(_29.tuple_1, write))
+  
+  // drop Acc(_28.tuple_1, write) (Acc(_28.tuple_1, write))
+  
+  goto bb3
+  label loop2_end_body
+  // ========== loop2_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb2
+  
+  fold acc(bool(_6), write)
+  // obtain acc(bool(_6), write)
+  
+  fold acc(usize(_4), write)
+  // obtain acc(usize(_4), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write)
+  
+  assert _3 >= 0 && 18446744073709551615 >= _3
+  // obtain ((_3) >= (0)) && ((18446744073709551615) >= (_3))
+  
+  assert m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) < 9223372036854775807 && (0 <= (unfolding acc(usize(_4), write) in _4.val_int) && (unfolding acc(usize(_4), write) in _4.val_int) < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && (0 <= _3 && _3 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) == old[pre](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref))))
+  assert _preserve$0 == _1.val_ref
+  exhale acc(bool(_6), write) && (acc(usize(_4), write) && (acc(_1.val_ref, read$()) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write) && (_3 >= 0 && 18446744073709551615 >= _3))))
+  inhale false
+  goto end_of_method
+  label loop2_group1_bb2
+  // ========== loop2_group1_bb2 ==========
+  
+  // This is a loop head
+  
+  __t1 := true
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _6
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_bool, write)
+  _7.val_bool := _6.val_bool
+  label l2
+  // [mir] switchInt(move _7) -> [false: bb3, otherwise: bb4]
+  
+  __t31 := _7.val_bool
+  if (__t31) {
+    goto l4
+  }
+  goto l3
+  label loop2_group2_bb4
+  // ========== loop2_group2_bb4 ==========
+  
+  __t2 := true
+  // [mir] switchInt(const false) -> [false: bb6, otherwise: bb5]
+  
+  __t32 := false
+  // Ignore default target bb5, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop2_inv_pre
+  label loop2_group3_bb10
+  // ========== loop2_group3_bb10 ==========
+  
+  __t7 := true
+  // [mir] _6 = const false
+  
+  unfold acc(bool(_6), write)
+  _6.val_bool := false
+  // [mir] _8 = ()
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(tuple0$(_8), write)
+  // [mir] goto -> bb32
+  
+  goto loop2_group3_bb32
+  label loop2_group3_bb11
+  // ========== loop2_group3_bb11 ==========
+  
+  __t8 := true
+  // [mir] StorageLive(_34)
+  
+  // [mir] StorageLive(_35)
+  
+  // [mir] StorageLive(_36)
+  
+  // [mir] StorageLive(_37)
+  
+  // [mir] _37 = _25
+  
+  _37 := builtin$havoc_int()
+  inhale true
+  _37 := _25.val_int
+  label l12
+  // [mir] _38 = CheckedAdd(move _37, const 1usize)
+  
+  _38 := builtin$havoc_ref()
+  inhale acc(_38.tuple_0, write)
+  inhale acc(_38.tuple_0.val_int, write)
+  inhale acc(_38.tuple_1, write)
+  inhale acc(_38.tuple_1.val_bool, write)
+  _38.tuple_0.val_int := _37 + 1
+  _38.tuple_1.val_bool := _37 + 1 < 0 || _37 + 1 > 18446744073709551615
+  // [mir] assert(!move (_38.1: bool), "attempt to add with overflow") -> [success: bb16, unwind: bb1]
+  
+  __t36 := _38.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t36
+  goto loop2_group3_bb16
+  label loop2_group3_bb12
+  // ========== loop2_group3_bb12 ==========
+  
+  __t15 := true
+  // [mir] _34 = const true
+  
+  _34 := builtin$havoc_ref()
+  inhale acc(_34.val_bool, write)
+  _34.val_bool := true
+  // [mir] goto -> bb15
+  
+  goto l61
+  label loop2_group3_bb13
+  // ========== loop2_group3_bb13 ==========
+  
+  __t16 := true
+  // [mir] _34 = const false
+  
+  _34 := builtin$havoc_ref()
+  inhale acc(_34.val_bool, write)
+  _34.val_bool := false
+  // [mir] goto -> bb15
+  
+  goto loop2_group3_bb15
+  label loop2_group3_bb14
+  // ========== loop2_group3_bb14 ==========
+  
+  __t10 := true
+  // [mir] StorageLive(_40)
+  
+  // [mir] StorageLive(_41)
+  
+  // [mir] StorageLive(_42)
+  
+  // [mir] StorageLive(_43)
+  
+  // [mir] _43 = &'107s (*_1)
+  
+  _43 := builtin$havoc_ref()
+  inhale acc(_43.val_ref, write)
+  _43.val_ref := _1.val_ref
+  exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_43.val_ref), read$())
+  label l17
+  // [mir] StorageLive(_44)
+  
+  // [mir] _44 = _25
+  
+  _44 := builtin$havoc_int()
+  inhale true
+  _44 := _25.val_int
+  label l18
+  // [mir] _42 = const <VecWrapper<T>>::index(move _43, move _44) -> [return: bb17, unwind: bb1]
+  
+  label l19
+  assert 0 <= _44 && _44 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_43.val_ref)
+  assert _44 >= 0 && 18446744073709551615 >= _44
+  assert true
+  exhale acc(_43.val_ref, write) && (_44 >= 0 && 18446744073709551615 >= _44)
+  // transfer perm _43.val_ref --> old[l19](_43.val_ref) // unchecked: true
+  
+  _42 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_42.val_ref, write) && acc(__TYPARAM__$T$__(_42.val_ref), read$())
+  inhale true
+  inhale true
+  exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l19](_43.val_ref)), read$())
+  label l20
+  goto loop2_group3_bb17
+  label loop2_group3_bb15
+  // ========== loop2_group3_bb15 ==========
+  
+  __t17 := true
+  // [mir] StorageDead(_40)
+  
+  // [mir] StorageDead(_35)
+  
+  // [mir] switchInt(move _34) -> [false: bb22, otherwise: bb21]
+  
+  __t40 := _34.val_bool
+  if (!__t40) {
+    goto l33
+  }
+  goto l32
+  label loop2_group3_bb16
+  // ========== loop2_group3_bb16 ==========
+  
+  __t9 := true
+  // [mir] _36 = move (_38.0: usize)
+  
+  _36 := _38.tuple_0
+  label l13
+  // [mir] StorageDead(_37)
+  
+  // [mir] StorageLive(_39)
+  
+  // [mir] _39 = _3
+  
+  _39 := builtin$havoc_int()
+  inhale true
+  _39 := _3
+  label l14
+  // [mir] _35 = Le(move _36, move _39)
+  
+  _35 := builtin$havoc_ref()
+  inhale acc(_35.val_bool, write)
+  _35.val_bool := _36.val_int <= _39
+  // [mir] StorageDead(_39)
+  
+  // [mir] StorageDead(_36)
+  
+  // [mir] switchInt(move _35) -> [false: bb13, otherwise: bb14]
+  
+  __t37 := _35.val_bool
+  if (!__t37) {
+    goto l16
+  }
+  goto l15
+  label loop2_group3_bb17
+  // ========== loop2_group3_bb17 ==========
+  
+  __t11 := true
+  // [mir] _41 = &'107s (*_42)
+  
+  _41 := builtin$havoc_ref()
+  inhale acc(_41.val_ref, write)
+  _41.val_ref := _42.val_ref
+  inhale acc(__TYPARAM__$T$__(_41.val_ref), read$())
+  label l21
+  // [mir] StorageDead(_44)
+  
+  // [mir] StorageDead(_43)
+  
+  // [mir] StorageLive(_45)
+  
+  // [mir] StorageLive(_46)
+  
+  // [mir] StorageLive(_47)
+  
+  // [mir] _47 = &'107s (*_1)
+  
+  _47 := builtin$havoc_ref()
+  inhale acc(_47.val_ref, write)
+  _47.val_ref := _1.val_ref
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_47.val_ref), read$())
+  label l22
+  // [mir] StorageLive(_48)
+  
+  // [mir] StorageLive(_49)
+  
+  // [mir] _49 = _25
+  
+  _49 := builtin$havoc_int()
+  inhale true
+  _49 := _25.val_int
+  label l23
+  // [mir] _50 = CheckedAdd(move _49, const 1usize)
+  
+  _50 := builtin$havoc_ref()
+  inhale acc(_50.tuple_0, write)
+  inhale acc(_50.tuple_0.val_int, write)
+  inhale acc(_50.tuple_1, write)
+  inhale acc(_50.tuple_1.val_bool, write)
+  _50.tuple_0.val_int := _49 + 1
+  _50.tuple_1.val_bool := _49 + 1 < 0 || _49 + 1 > 18446744073709551615
+  // [mir] assert(!move (_50.1: bool), "attempt to add with overflow") -> [success: bb18, unwind: bb1]
+  
+  __t38 := _50.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t38
+  goto loop2_group3_bb18
+  label loop2_group3_bb18
+  // ========== loop2_group3_bb18 ==========
+  
+  __t12 := true
+  // [mir] _48 = move (_50.0: usize)
+  
+  _48 := _50.tuple_0
+  label l24
+  // [mir] StorageDead(_49)
+  
+  // [mir] _46 = const <VecWrapper<T>>::index(move _47, move _48) -> [return: bb19, unwind: bb1]
+  
+  label l25
+  assert 0 <= _48.val_int && _48.val_int < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_47.val_ref)
+  fold acc(usize(_48), write)
+  assert true
+  exhale acc(_47.val_ref, write) && acc(usize(_48), write)
+  // transfer perm _47.val_ref --> old[l25](_47.val_ref) // unchecked: true
+  
+  _46 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_46.val_ref, write) && acc(__TYPARAM__$T$__(_46.val_ref), read$())
+  inhale true
+  inhale true
+  exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l25](_47.val_ref)), read$())
+  label l26
+  goto loop2_group3_bb19
+  label loop2_group3_bb19
+  // ========== loop2_group3_bb19 ==========
+  
+  __t13 := true
+  // [mir] _45 = &'107s (*_46)
+  
+  _45 := builtin$havoc_ref()
+  inhale acc(_45.val_ref, write)
+  _45.val_ref := _46.val_ref
+  inhale acc(__TYPARAM__$T$__(_45.val_ref), read$())
+  label l27
+  // [mir] StorageDead(_48)
+  
+  // [mir] StorageDead(_47)
+  
+  // [mir] _40 = const order(move _41, move _45) -> [return: bb20, unwind: bb1]
+  
+  label l28
+  _40 := builtin$havoc_ref()
+  inhale acc(bool(_40), write)
+  unfold acc(bool(_40), write)
+  inhale _40.val_bool == m_Heapsort_generic$$order$opensqu$0$closesqu$__$TY$____TYPARAM__$T$__$__TYPARAM__$T$__$$bool$(_41.val_ref, _45.val_ref)
+  // transfer perm _41.val_ref --> old[l28](_41.val_ref) // unchecked: false
+  
+  // transfer perm _45.val_ref --> old[l28](_45.val_ref) // unchecked: false
+  
+  goto l29
+  label loop2_group3_bb20
+  // ========== loop2_group3_bb20 ==========
+  
+  __t14 := true
+  // [mir] EndRegion('107s)
+  
+  // [mir] StorageDead(_45)
+  
+  // [mir] StorageDead(_46)
+  
+  // [mir] StorageDead(_41)
+  
+  // [mir] StorageDead(_42)
+  
+  // [mir] switchInt(move _40) -> [false: bb13, otherwise: bb12]
+  
+  __t39 := _40.val_bool
+  if (!__t39) {
+    goto l31
+  }
+  goto l30
+  label loop2_group3_bb21
+  // ========== loop2_group3_bb21 ==========
+  
+  __t18 := true
+  // [mir] _51 = CheckedAdd(_25, const 1usize)
+  
+  _51 := builtin$havoc_ref()
+  inhale acc(_51.tuple_0, write)
+  inhale acc(_51.tuple_0.val_int, write)
+  inhale acc(_51.tuple_1, write)
+  inhale acc(_51.tuple_1.val_bool, write)
+  _51.tuple_0.val_int := _25.val_int + 1
+  _51.tuple_1.val_bool := _25.val_int + 1 < 0 || _25.val_int + 1 > 18446744073709551615
+  // [mir] assert(!move (_51.1: bool), "attempt to add with overflow") -> [success: bb23, unwind: bb1]
+  
+  __t41 := _51.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t41
+  goto loop2_group3_bb23
+  label loop2_group3_bb22
+  // ========== loop2_group3_bb22 ==========
+  
+  __t20 := true
+  // [mir] _33 = ()
+  
+  _33 := builtin$havoc_ref()
+  inhale acc(tuple0$(_33), write)
+  // [mir] goto -> bb24
+  
+  goto loop2_group3_bb24
+  label loop2_group3_bb23
+  // ========== loop2_group3_bb23 ==========
+  
+  __t19 := true
+  // [mir] _25 = move (_51.0: usize)
+  
+  _25 := _51.tuple_0
+  label l34
+  // [mir] _33 = ()
+  
+  _33 := builtin$havoc_ref()
+  inhale acc(tuple0$(_33), write)
+  // [mir] goto -> bb24
+  
+  goto l62
+  label loop2_group3_bb24
+  // ========== loop2_group3_bb24 ==========
+  
+  __t21 := true
+  // [mir] StorageDead(_34)
+  
+  // [mir] StorageLive(_52)
+  
+  // [mir] StorageLive(_53)
+  
+  // [mir] StorageLive(_54)
+  
+  // [mir] StorageLive(_55)
+  
+  // [mir] _55 = &'134s (*_1)
+  
+  _55 := builtin$havoc_ref()
+  inhale acc(_55.val_ref, write)
+  _55.val_ref := _1.val_ref
+  exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_55.val_ref), read$())
+  label l35
+  // [mir] StorageLive(_56)
+  
+  // [mir] _56 = _4
+  
+  _56 := builtin$havoc_int()
+  inhale true
+  _56 := _4.val_int
+  label l36
+  // [mir] _54 = const <VecWrapper<T>>::index(move _55, move _56) -> [return: bb25, unwind: bb1]
+  
+  label l37
+  assert 0 <= _56 && _56 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_55.val_ref)
+  assert _56 >= 0 && 18446744073709551615 >= _56
+  assert true
+  exhale acc(_55.val_ref, write) && (_56 >= 0 && 18446744073709551615 >= _56)
+  // transfer perm _55.val_ref --> old[l37](_55.val_ref) // unchecked: true
+  
+  _54 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_54.val_ref, write) && acc(__TYPARAM__$T$__(_54.val_ref), read$())
+  inhale true
+  inhale true
+  exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l37](_55.val_ref)), read$())
+  label l38
+  goto loop2_group3_bb25
+  label loop2_group3_bb25
+  // ========== loop2_group3_bb25 ==========
+  
+  __t22 := true
+  // [mir] _53 = &'134s (*_54)
+  
+  _53 := builtin$havoc_ref()
+  inhale acc(_53.val_ref, write)
+  _53.val_ref := _54.val_ref
+  inhale acc(__TYPARAM__$T$__(_53.val_ref), read$())
+  label l39
+  // [mir] StorageDead(_56)
+  
+  // [mir] StorageDead(_55)
+  
+  // [mir] StorageLive(_57)
+  
+  // [mir] StorageLive(_58)
+  
+  // [mir] StorageLive(_59)
+  
+  // [mir] _59 = &'134s (*_1)
+  
+  _59 := builtin$havoc_ref()
+  inhale acc(_59.val_ref, write)
+  _59.val_ref := _1.val_ref
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_59.val_ref), read$())
+  label l40
+  // [mir] StorageLive(_60)
+  
+  // [mir] _60 = _25
+  
+  _60 := builtin$havoc_int()
+  inhale true
+  _60 := _25.val_int
+  label l41
+  // [mir] _58 = const <VecWrapper<T>>::index(move _59, move _60) -> [return: bb26, unwind: bb1]
+  
+  label l42
+  assert 0 <= _60 && _60 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_59.val_ref)
+  assert _60 >= 0 && 18446744073709551615 >= _60
+  assert true
+  exhale acc(_59.val_ref, write) && (_60 >= 0 && 18446744073709551615 >= _60)
+  // transfer perm _59.val_ref --> old[l42](_59.val_ref) // unchecked: true
+  
+  _58 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_58.val_ref, write) && acc(__TYPARAM__$T$__(_58.val_ref), read$())
+  inhale true
+  inhale true
+  exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l42](_59.val_ref)), read$())
+  label l43
+  goto loop2_group3_bb26
+  label loop2_group3_bb26
+  // ========== loop2_group3_bb26 ==========
+  
+  __t23 := true
+  // [mir] _57 = &'134s (*_58)
+  
+  _57 := builtin$havoc_ref()
+  inhale acc(_57.val_ref, write)
+  _57.val_ref := _58.val_ref
+  inhale acc(__TYPARAM__$T$__(_57.val_ref), read$())
+  label l44
+  // [mir] StorageDead(_60)
+  
+  // [mir] StorageDead(_59)
+  
+  // [mir] _52 = const order(move _53, move _57) -> [return: bb27, unwind: bb1]
+  
+  label l45
+  _52 := builtin$havoc_ref()
+  inhale acc(bool(_52), write)
+  unfold acc(bool(_52), write)
+  inhale _52.val_bool == m_Heapsort_generic$$order$opensqu$0$closesqu$__$TY$____TYPARAM__$T$__$__TYPARAM__$T$__$$bool$(_53.val_ref, _57.val_ref)
+  // transfer perm _53.val_ref --> old[l45](_53.val_ref) // unchecked: false
+  
+  // transfer perm _57.val_ref --> old[l45](_57.val_ref) // unchecked: false
+  
+  goto l46
+  label loop2_group3_bb27
+  // ========== loop2_group3_bb27 ==========
+  
+  __t24 := true
+  // [mir] EndRegion('134s)
+  
+  // [mir] StorageDead(_57)
+  
+  // [mir] StorageDead(_58)
+  
+  // [mir] StorageDead(_53)
+  
+  // [mir] StorageDead(_54)
+  
+  // [mir] switchInt(move _52) -> [false: bb29, otherwise: bb28]
+  
+  __t42 := _52.val_bool
+  if (!__t42) {
+    goto l48
+  }
+  goto l47
+  label loop2_group3_bb28
+  // ========== loop2_group3_bb28 ==========
+  
+  __t25 := true
+  // [mir] StorageLive(_62)
+  
+  // [mir] _62 = &'120s mut (*_1)
+  
+  _62 := builtin$havoc_ref()
+  inhale acc(_62.val_ref, write)
+  _62.val_ref := _1.val_ref
+  label l49
+  // [mir] StorageLive(_63)
+  
+  // [mir] _63 = _4
+  
+  _63 := builtin$havoc_int()
+  inhale true
+  _63 := _4.val_int
+  label l50
+  // [mir] StorageLive(_64)
+  
+  // [mir] _64 = _25
+  
+  _64 := builtin$havoc_int()
+  inhale true
+  _64 := _25.val_int
+  label l51
+  // [mir] _61 = const <VecWrapper<T>>::swap(move _62, move _63, move _64) -> [return: bb30, unwind: bb1]
+  
+  label l52
+  assert 0 <= _63 && _63 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_62.val_ref) && (0 <= _64 && _64 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_62.val_ref))
+  assert _63 >= 0 && 18446744073709551615 >= _63
+  assert _64 >= 0 && 18446744073709551615 >= _64
+  assert true
+  exhale acc(_62.val_ref, write) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_62.val_ref), write) && (_63 >= 0 && 18446744073709551615 >= _63 && (_64 >= 0 && 18446744073709551615 >= _64)))
+  _61 := builtin$havoc_ref()
+  inhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(old[l52](_62.val_ref)), write)
+  inhale acc(tuple0$(_61), write)
+  inhale true
+  inhale m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(old[l52](_62.val_ref)) == old[l52](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_62.val_ref))
+  label l53
+  goto l54
+  label loop2_group3_bb29
+  // ========== loop2_group3_bb29 ==========
+  
+  __t27 := true
+  // [mir] _6 = const false
+  
+  unfold acc(bool(_6), write)
+  _6.val_bool := false
+  // [mir] _8 = ()
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(tuple0$(_8), write)
+  // [mir] goto -> bb31
+  
+  goto loop2_group3_bb31
+  label loop2_group3_bb30
+  // ========== loop2_group3_bb30 ==========
+  
+  __t26 := true
+  // [mir] EndRegion('120s)
+  
+  // [mir] StorageDead(_64)
+  
+  // [mir] StorageDead(_63)
+  
+  // [mir] StorageDead(_62)
+  
+  // [mir] StorageLive(_65)
+  
+  // [mir] _65 = _25
+  
+  _65 := builtin$havoc_ref()
+  inhale acc(_65.val_int, write)
+  _65.val_int := _25.val_int
+  label l55
+  // [mir] _4 = move _65
+  
+  _4 := _65
+  label l56
+  // [mir] _8 = ()
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(tuple0$(_8), write)
+  // [mir] StorageDead(_65)
+  
+  // [mir] goto -> bb31
+  
+  goto l63
+  label loop2_group3_bb31
+  // ========== loop2_group3_bb31 ==========
+  
+  __t28 := true
+  // [mir] StorageDead(_52)
+  
+  // [mir] goto -> bb32
+  
+  goto l64
+  label loop2_group3_bb32
+  // ========== loop2_group3_bb32 ==========
+  
+  __t29 := true
+  // [mir] StorageDead(_30)
+  
+  // [mir] StorageDead(_25)
+  
+  // [mir] goto -> bb2
+  
+  goto loop2_group4_bb2
+  label loop2_group3_bb6
+  // ========== loop2_group3_bb6 ==========
+  
+  __t3 := true
+  // [mir] _9 = ()
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(tuple0$(_9), write)
+  // [mir] goto -> bb7
+  
+  goto loop2_group3_bb7
+  label loop2_group3_bb7
+  // ========== loop2_group3_bb7 ==========
+  
+  __t4 := true
+  // [mir] StorageLive(_25)
+  
+  // [mir] StorageLive(_26)
+  
+  // [mir] StorageLive(_27)
+  
+  // [mir] _27 = _4
+  
+  _27 := builtin$havoc_int()
+  inhale true
+  unfold acc(usize(_4), write)
+  _27 := _4.val_int
+  label l5
+  // [mir] _28 = CheckedMul(move _27, const 2usize)
+  
+  _28 := builtin$havoc_ref()
+  inhale acc(_28.tuple_0, write)
+  inhale acc(_28.tuple_0.val_int, write)
+  inhale acc(_28.tuple_1, write)
+  inhale acc(_28.tuple_1.val_bool, write)
+  _28.tuple_0.val_int := _27 * 2
+  _28.tuple_1.val_bool := _27 * 2 < 0 || _27 * 2 > 18446744073709551615
+  // [mir] assert(!move (_28.1: bool), "attempt to multiply with overflow") -> [success: bb8, unwind: bb1]
+  
+  __t33 := _28.tuple_1.val_bool
+  // Rust assertion: attempt to multiply with overflow
+  
+  assert !__t33
+  goto loop2_group3_bb8
+  label loop2_group3_bb8
+  // ========== loop2_group3_bb8 ==========
+  
+  __t5 := true
+  // [mir] _26 = move (_28.0: usize)
+  
+  _26 := _28.tuple_0
+  label l6
+  // [mir] StorageDead(_27)
+  
+  // [mir] _29 = CheckedAdd(move _26, const 1usize)
+  
+  _29 := builtin$havoc_ref()
+  inhale acc(_29.tuple_0, write)
+  inhale acc(_29.tuple_0.val_int, write)
+  inhale acc(_29.tuple_1, write)
+  inhale acc(_29.tuple_1.val_bool, write)
+  _29.tuple_0.val_int := _26.val_int + 1
+  _29.tuple_1.val_bool := _26.val_int + 1 < 0 || _26.val_int + 1 > 18446744073709551615
+  // [mir] assert(!move (_29.1: bool), "attempt to add with overflow") -> [success: bb9, unwind: bb1]
+  
+  __t34 := _29.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t34
+  goto loop2_group3_bb9
+  label loop2_group3_bb9
+  // ========== loop2_group3_bb9 ==========
+  
+  __t6 := true
+  // [mir] _25 = move (_29.0: usize)
+  
+  _25 := _29.tuple_0
+  label l7
+  // [mir] StorageDead(_26)
+  
+  // [mir] StorageLive(_30)
+  
+  // [mir] StorageLive(_31)
+  
+  // [mir] _31 = _25
+  
+  _31 := builtin$havoc_int()
+  inhale true
+  _31 := _25.val_int
+  label l8
+  // [mir] StorageLive(_32)
+  
+  // [mir] _32 = _3
+  
+  _32 := builtin$havoc_int()
+  inhale true
+  inhale _3 >= 0 && 18446744073709551615 >= _3
+  _32 := _3
+  label l9
+  // [mir] _30 = Gt(move _31, move _32)
+  
+  _30 := builtin$havoc_ref()
+  inhale acc(_30.val_bool, write)
+  _30.val_bool := _31 > _32
+  // [mir] StorageDead(_32)
+  
+  // [mir] StorageDead(_31)
+  
+  // [mir] switchInt(move _30) -> [false: bb11, otherwise: bb10]
+  
+  __t35 := _30.val_bool
+  if (__t35) {
+    goto l11
+  }
+  goto l10
+  label loop2_group4_bb2
+  // ========== loop2_group4_bb2 ==========
+  
+  // This is a loop head
+  
+  __t1 := true
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _6
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_bool, write)
+  _7.val_bool := _6.val_bool
+  label l57
+  // [mir] switchInt(move _7) -> [false: bb3, otherwise: bb4]
+  
+  __t43 := _7.val_bool
+  if (__t43) {
+    goto l59
+  }
+  goto l58
+  label loop2_group5_bb4
+  // ========== loop2_group5_bb4 ==========
+  
+  __t2 := true
+  // [mir] switchInt(const false) -> [false: bb6, otherwise: bb5]
+  
+  __t44 := false
+  // Ignore default target bb5, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop2_end_body
+  label loop2_inv_post
+  // ========== loop2_inv_post ==========
+  
+  // Inhale the loop invariant of block bb2
+  
+  inhale acc(bool(_6), write) && (acc(usize(_4), write) && (acc(_1.val_ref, read$()) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write) && (_3 >= 0 && 18446744073709551615 >= _3))))
+  inhale _preserve$0 == _1.val_ref
+  inhale (unfolding acc(usize(_4), write) in m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) < 9223372036854775807 && (0 <= _4.val_int && _4.val_int < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && (0 <= _3 && _3 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) == old[pre](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref)))))
+  goto loop2_group3_bb6
+  label loop2_inv_pre
+  // ========== loop2_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb2
+  
+  _preserve$0 := _1.val_ref
+  fold acc(bool(_6), write)
+  // obtain acc(bool(_6), write)
+  
+  fold acc(usize(_4), write)
+  // obtain acc(usize(_4), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write)
+  
+  // obtain ((_3) >= (0)) && ((18446744073709551615) >= (_3))
+  
+  assert m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) < 9223372036854775807 && (0 <= (unfolding acc(usize(_4), write) in _4.val_int) && (unfolding acc(usize(_4), write) in _4.val_int) < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && (0 <= _3 && _3 < m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) && m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref) == old[pre](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref))))
+  assert _preserve$0 == _1.val_ref
+  exhale acc(bool(_6), write) && (acc(usize(_4), write) && (acc(_1.val_ref, read$()) && (acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write) && (_3 >= 0 && 18446744073709551615 >= _3))))
+  __t13 := builtin$havoc_bool()
+  __t33 := builtin$havoc_bool()
+  _42 := builtin$havoc_ref()
+  _37 := builtin$havoc_int()
+  __t2 := builtin$havoc_bool()
+  __t20 := builtin$havoc_bool()
+  _50 := builtin$havoc_ref()
+  _8 := builtin$havoc_ref()
+  _47 := builtin$havoc_ref()
+  _35 := builtin$havoc_ref()
+  _31 := builtin$havoc_int()
+  __t1 := builtin$havoc_bool()
+  __t43 := builtin$havoc_bool()
+  __t24 := builtin$havoc_bool()
+  __t22 := builtin$havoc_bool()
+  _55 := builtin$havoc_ref()
+  __t23 := builtin$havoc_bool()
+  _9 := builtin$havoc_ref()
+  __t5 := builtin$havoc_bool()
+  __t11 := builtin$havoc_bool()
+  _38 := builtin$havoc_ref()
+  _62 := builtin$havoc_ref()
+  _52 := builtin$havoc_ref()
+  _65 := builtin$havoc_ref()
+  __t17 := builtin$havoc_bool()
+  _7 := builtin$havoc_ref()
+  __t44 := builtin$havoc_bool()
+  __t27 := builtin$havoc_bool()
+  __t10 := builtin$havoc_bool()
+  __t9 := builtin$havoc_bool()
+  __t26 := builtin$havoc_bool()
+  _45 := builtin$havoc_ref()
+  _25 := builtin$havoc_ref()
+  _32 := builtin$havoc_int()
+  _39 := builtin$havoc_int()
+  _43 := builtin$havoc_ref()
+  _59 := builtin$havoc_ref()
+  __t19 := builtin$havoc_bool()
+  _51 := builtin$havoc_ref()
+  __t4 := builtin$havoc_bool()
+  _56 := builtin$havoc_int()
+  _49 := builtin$havoc_int()
+  __t42 := builtin$havoc_bool()
+  _60 := builtin$havoc_int()
+  _29 := builtin$havoc_ref()
+  __t8 := builtin$havoc_bool()
+  __t25 := builtin$havoc_bool()
+  _27 := builtin$havoc_int()
+  __t36 := builtin$havoc_bool()
+  __t21 := builtin$havoc_bool()
+  __t16 := builtin$havoc_bool()
+  _44 := builtin$havoc_int()
+  _58 := builtin$havoc_ref()
+  _64 := builtin$havoc_int()
+  __t14 := builtin$havoc_bool()
+  _46 := builtin$havoc_ref()
+  __t29 := builtin$havoc_bool()
+  _57 := builtin$havoc_ref()
+  __t18 := builtin$havoc_bool()
+  __t15 := builtin$havoc_bool()
+  __t6 := builtin$havoc_bool()
+  _34 := builtin$havoc_ref()
+  _36 := builtin$havoc_ref()
+  _61 := builtin$havoc_ref()
+  _48 := builtin$havoc_ref()
+  _53 := builtin$havoc_ref()
+  __t38 := builtin$havoc_bool()
+  _63 := builtin$havoc_int()
+  _41 := builtin$havoc_ref()
+  _40 := builtin$havoc_ref()
+  __t28 := builtin$havoc_bool()
+  _4 := builtin$havoc_ref()
+  __t37 := builtin$havoc_bool()
+  __t7 := builtin$havoc_bool()
+  _30 := builtin$havoc_ref()
+  _28 := builtin$havoc_ref()
+  _54 := builtin$havoc_ref()
+  _33 := builtin$havoc_ref()
+  __t41 := builtin$havoc_bool()
+  __t40 := builtin$havoc_bool()
+  __t3 := builtin$havoc_bool()
+  __t34 := builtin$havoc_bool()
+  __t39 := builtin$havoc_bool()
+  _26 := builtin$havoc_ref()
+  __t12 := builtin$havoc_bool()
+  __t35 := builtin$havoc_bool()
+  goto loop2_inv_post
+  label loop2_start
+  // ========== loop2_start ==========
+  
+  goto loop2_group1_bb2
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_old$pre$0) == old[pre](m_Heapsort_generic$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_$$int$(_1.val_ref))
+  assert true
+  exhale acc(m_Heapsort_generic$$VecWrapper$opensqu$0$closesqu$$_beg_$__TYPARAM__$T$__$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_ref() returns (ret: Ref)
+
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)

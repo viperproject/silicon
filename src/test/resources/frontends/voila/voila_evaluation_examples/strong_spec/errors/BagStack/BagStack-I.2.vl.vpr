@@ -1,0 +1,3085 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Bag_state_T(r: Ref, lvl: Int, z: Ref): Bool
+  
+  function BagList_state_T(r: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Bag_interferenceReference_df($p0: Int, r: Ref, lvl: Int, z: Ref): Bool
+  
+  function BagList_interferenceReference_df($p0: Int, r: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Bag_interferenceSet_df($p0: Int, r: Ref, lvl: Int, z: Ref): Set[Seq[Int]]
+  
+  function BagList_interferenceSet_df($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Seq[Int]]
+}
+
+domain atomicity_context_Domain {
+  
+  function Bag_atomicity_context_df(r: Ref, lvl: Int, z: Ref): Bool
+  
+  function BagList_atomicity_context_df(r: Ref, lvl: Int, x: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_seq_int_: Seq[Int]
+
+field $stepTo_seq_int_: Seq[Int]
+
+field $entry_$next: Ref
+
+field $entry_$_nextId: Ref
+
+field $entry_$_nextLvl: Int
+
+field $entry_$_nextState: Seq[Int]
+
+field $link_$val: Int
+
+field $link_$next: Ref
+
+field $link_$_nextId: Ref
+
+field $link_$_nextLvl: Int
+
+field $link_$_nextState: Seq[Int]
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function comprehension_58_220(): Set[Seq[Int]]
+  ensures (forall $k: Seq[Int] :: ($k in result) == true)
+
+
+function Bag_atomicity_context_hf(r: Ref, lvl: Int, z: Ref): Set[Seq[Int]]
+  requires acc(Bag_atomicity_context_fp(r, lvl, z), write)
+  ensures [Bag_atomicity_context_df(r, lvl, z), true]
+
+
+function Bag_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, z: Ref): Set[Seq[Int]]
+  requires acc(Bag_interferenceContext_fp(r, lvl, z), write)
+  ensures [(forall $_m: Seq[Int] :: { ($_m in result) } ($_m in result) ==> ($_m in Bag_interferenceSet_df($p0, r, lvl, z))), true]
+
+
+function Bag_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, z: Ref): Seq[Int]
+  requires acc(Bag_interferenceContext_fp(r, lvl, z), write)
+  ensures [Bag_interferenceReference_df($p0, r, lvl, z), true]
+
+
+function Bag_sk_$_action_p(r: Ref, lvl: Int, z: Ref): Seq[Int]
+  requires acc(Bag_sk_fp(), write)
+
+
+function Bag_sk_$_action_q(r: Ref, lvl: Int, z: Ref): Seq[Int]
+  requires acc(Bag_sk_fp(), write)
+
+
+function Bag_state(r: Ref, lvl: Int, z: Ref): Seq[Int]
+  requires acc(Bag(r, lvl, z), write)
+  ensures [Bag_state_T(r, lvl, z), true]
+{
+  (unfolding acc(Bag(r, lvl, z), write) in z.$entry_$_nextState)
+}
+
+function BagList_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Seq[Int]]
+  requires acc(BagList_atomicity_context_fp(r, lvl, x), write)
+  ensures [BagList_atomicity_context_df(r, lvl, x), true]
+
+
+function BagList_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Seq[Int]]
+  requires acc(BagList_interferenceContext_fp(r, lvl, x), write)
+  ensures [(forall $_m: Seq[Int] :: { ($_m in result) } ($_m in result) ==> ($_m in BagList_interferenceSet_df($p0, r, lvl, x))), true]
+
+
+function BagList_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Seq[Int]
+  requires acc(BagList_interferenceContext_fp(r, lvl, x), write)
+  ensures [BagList_interferenceReference_df($p0, r, lvl, x), true]
+
+
+function BagList_sk_$_action_p(r: Ref, lvl: Int, x: Ref): Seq[Int]
+  requires acc(BagList_sk_fp(), write)
+
+
+function BagList_sk_$_action_q(r: Ref, lvl: Int, x: Ref): Seq[Int]
+  requires acc(BagList_sk_fp(), write)
+
+
+function BagList_state(r: Ref, lvl: Int, x: Ref): Seq[Int]
+  requires acc(BagList(r, lvl, x), write)
+  ensures [BagList_state_T(r, lvl, x), true]
+{
+  (unfolding acc(BagList(r, lvl, x), write) in (x == null ? Seq[Int]() : Seq(x.$link_$val) ++ x.$link_$_nextState))
+}
+
+predicate Bag_Z($r: Ref) 
+
+predicate Bag_atomicity_context_fp(r: Ref, lvl: Int, z: Ref) 
+
+predicate Bag_interferenceContext_fp(r: Ref, lvl: Int, z: Ref) 
+
+predicate Bag_sk_fp() 
+
+predicate Bag(r: Ref, lvl: Int, z: Ref) {
+  acc(z.$entry_$next, write) && true && (acc(z.$entry_$_nextId, write) && true && (acc(z.$entry_$_nextLvl, write) && true) && (acc(z.$entry_$_nextState, write) && true)) && (acc(BagList(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next), write) && (z.$entry_$_nextLvl >= 0 && BagList_state(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next) == z.$entry_$_nextState)) && acc(BagList_G(z.$entry_$_nextId), write) && z.$entry_$_nextLvl < lvl
+}
+
+predicate BagList_G($r: Ref) 
+
+predicate BagList_atomicity_context_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate BagList_interferenceContext_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate BagList_sk_fp() 
+
+predicate BagList(r: Ref, lvl: Int, x: Ref) {
+  acc(x.$link_$val, write) && true && (acc(x.$link_$next, write) && true && (acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true))) && (!(x == null) ? acc(BagList(x.$link_$_nextId, x.$link_$_nextLvl, x.$link_$next), write) && (x.$link_$_nextLvl >= 0 && BagList_state(x.$link_$_nextId, x.$link_$_nextLvl, x.$link_$next) == x.$link_$_nextState) && acc(BagList_G(x.$link_$_nextId), write) && x.$link_$_nextLvl < lvl : true)
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method havoc_Seq_Int_() returns ($r: Seq[Int])
+
+
+method ___silicon_hack407_havoc_all_Bag()
+
+
+method ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+
+
+method ___silicon_hack407_havoc_all_BagList()
+
+
+method ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+
+
+method push(r: Ref, lvl: Int, z: Ref, n: Int)
+  requires acc(Bag(r, lvl, z), write) && (lvl >= 0 && Bag_state(r, lvl, z) == Bag_state(r, lvl, z)) && acc(Bag_Z(r), write)
+  requires (Bag_state(r, lvl, z) in comprehension_58_220())
+  ensures acc(Bag(r, lvl, z), write) && (lvl >= 0 && Bag_state(r, lvl, z) == old(Bag_state(r, lvl, z)) ++ Seq(n)) && acc(Bag_Z(r), write)
+{
+  var x: Ref
+  var y: Ref
+  var y_state: Seq[Int]
+  var b: Bool
+  var c: Ref
+  var l: Int
+  var u: Ref
+  var ur: Ref
+  var ul: Int
+  var u_state: Seq[Int]
+  var u$: Ref
+  var ur$: Ref
+  var ul$: Int
+  var u_state$: Seq[Int]
+  var $_levelVar_0: Int
+  var $_levelVar_1: Int
+  var $_levelVar_2: Int
+  var $_levelVar_3: Int
+  var $_levelVar_4: Int
+  var $_levelVar_5: Int
+  var $_levelVar_6: Int
+  var $_levelVar_7: Int
+  var $_levelVar_8: Int
+  var $_levelVar_9: Int
+  var $_levelVar_10: Int
+  var $_levelVar_11: Int
+  inhale $_levelVar_0 >= 0 && $_levelVar_0 > lvl
+  assert $_levelVar_0 >= 0
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  label guard_arg_eval0
+  exhale acc(Bag_Z(r), write)
+  inhale acc(r.$diamond, write)
+  inhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
+  inhale Bag_atomicity_context_hf(r, lvl, z) == comprehension_58_220()
+  
+  // ------- Stabilising regions Bag (before atomic) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising single instance of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(1, r, lvl, z)) } ($$_m in Bag_interferenceSet_hf(1, r, lvl, z)) == ((none < perm(r.$diamond) && none < perm(Bag_atomicity_context_fp(r, lvl, z)) ==> ($$_m in Bag_atomicity_context_hf(r, lvl, z))) && ($$_m == old[pre_stabilize0](Bag_state(r, lvl, z)) || Bag_sk_$_action_p(r, lvl, z) == old[pre_stabilize0](Bag_state(r, lvl, z)) && Bag_sk_$_action_q(r, lvl, z) == $$_m && true && true)))
+  ___silicon_hack407_havoc_all_Bag()
+  inhale (Bag_state(r, lvl, z) in Bag_interferenceSet_hf(1, r, lvl, z))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale Bag_interferenceReference_hf(1, r, lvl, z) == old[pre_stabilize0](Bag_state(r, lvl, z))
+  
+  // ------- Stabilising regions Bag (before atomic) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$link_$val, write) && true && (acc(x.$link_$next, write) && true) && (acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true))
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  x.$link_$val := n
+  
+  // ------- heap-write END ----------
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (after heap-write@72.5) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(2, $r, $lvl, $z)) } none < old[pre_stabilize2](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(2, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize2](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize2](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  ___silicon_hack407_havoc_all_Bag()
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize2](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(2, $r, $lvl, $z)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize2](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(2, $r, $lvl, $z) == old[pre_stabilize2](Bag_state($r, $lvl, $z)))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(2, $r, $lvl, $x)) } none < old[pre_stabilize2](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(2, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize2](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize2](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  ___silicon_hack407_havoc_all_BagList()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize2](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(2, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize2](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(2, $r, $lvl, $x) == old[pre_stabilize2](BagList_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Bag,BagList (after heap-write@72.5) END 
+  
+  
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region0
+  assert $_levelVar_0 > lvl
+  $_levelVar_1 := lvl
+  unfold acc(Bag(r, lvl, z), write)
+  label transitionPre0
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  
+  // no additional linking required
+  
+  
+  
+  // havoc performed by other front resource
+  
+  
+  inhale true ==> BagList_interferenceReference_hf(2, z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next) == old[transitionPre0](BagList_state(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next))
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  y := z.$entry_$next
+  
+  // ------- heap-read END -----------
+  
+  
+  fold acc(Bag(r, lvl, z), write)
+  assert Bag_state(r, lvl, z) == old[pre_open_region0](Bag_state(r, lvl, z))
+  $_levelVar_2 := $_levelVar_0
+  
+  // ------- open-region END ---------
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (after open-region@79.7) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(3, $r, $lvl, $z)) } none < old[pre_stabilize3](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(3, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize3](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize3](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  ___silicon_hack407_havoc_all_Bag()
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize3](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(3, $r, $lvl, $z)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize3](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(3, $r, $lvl, $z) == old[pre_stabilize3](Bag_state($r, $lvl, $z)))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(3, $r, $lvl, $x)) } none < old[pre_stabilize3](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(3, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize3](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize3](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  ___silicon_hack407_havoc_all_BagList()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize3](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(3, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize3](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(3, $r, $lvl, $x) == old[pre_stabilize3](BagList_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Bag,BagList (after open-region@79.7) END 
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  x.$link_$next := y
+  
+  // ------- heap-write END ----------
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (after heap-write@83.7) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(4, $r, $lvl, $z)) } none < old[pre_stabilize4](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(4, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize4](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize4](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  ___silicon_hack407_havoc_all_Bag()
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize4](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(4, $r, $lvl, $z)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize4](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(4, $r, $lvl, $z) == old[pre_stabilize4](Bag_state($r, $lvl, $z)))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(4, $r, $lvl, $x)) } none < old[pre_stabilize4](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(4, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize4](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize4](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  ___silicon_hack407_havoc_all_BagList()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize4](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(4, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize4](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(4, $r, $lvl, $x) == old[pre_stabilize4](BagList_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Bag,BagList (after heap-write@83.7) END 
+  
+  
+  
+  // ------- update-region BEGIN -----
+  
+  
+  exhale acc(r.$diamond, write)
+  label pre_region_update0
+  assert $_levelVar_2 > lvl
+  $_levelVar_3 := lvl
+  exhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
+  unfold acc(Bag(r, lvl, z), write)
+  label transitionPre
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  
+  // no additional linking required
+  
+  
+  
+  // havoc performed by other front resource
+  
+  
+  inhale true ==> BagList_interferenceReference_hf(4, z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next) == old[transitionPre](BagList_state(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next))
+  
+  // ------- Havocking regions Bag (before update-region@85.7) BEGIN 
+  
+  
+  label pre_havoc0
+  
+  // Havocking single instance of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag()
+  
+  // ------- Havocking regions Bag (before update-region@85.7) END 
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(z.$entry_$next, write) && true && (acc(z.$entry_$_nextId, write) && true && (acc(z.$entry_$_nextLvl, write) && true) && (acc(z.$entry_$_nextState, write) && true))
+  u := z.$entry_$next
+  ur := z.$entry_$_nextId
+  ul := z.$entry_$_nextLvl
+  u_state := z.$entry_$_nextState
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- havoc BEGIN -------------
+  
+  
+  y_state := havoc_Seq_Int_()
+  
+  // ------- havoc END ---------------
+  
+  
+  
+  // ------- assume BEGIN ------------
+  
+  
+  inhale y_state == u_state
+  
+  // ------- assume END --------------
+  
+  
+  
+  // ------- call:CAS_entry BEGIN ----
+  
+  
+  assert true
+  label pre_call0
+  assert $_levelVar_3 >= 0
+  assert true
+  exhale acc(z.$entry_$next, write) && true
+  
+  // ------- Stabilising regions Bag,BagList (before call:CAS_entry@91.9) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize5](perm(Bag($r, $lvl, $z))) ==> (none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> (Bag_state($r, $lvl, $z) in Bag_atomicity_context_hf($r, $lvl, $z))) && (Bag_state($r, $lvl, $z) == old[pre_stabilize5](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize5](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == Bag_state($r, $lvl, $z) && true && true))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize5](perm(BagList($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> (BagList_state($r, $lvl, $x) in BagList_atomicity_context_hf($r, $lvl, $x))) && (BagList_state($r, $lvl, $x) == old[pre_stabilize5](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize5](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == BagList_state($r, $lvl, $x) && true && perm(BagList_G($r)) == none))
+  
+  // ------- Stabilising regions Bag,BagList (before call:CAS_entry@91.9) END 
+  
+  
+  b := havoc_Bool()
+  inhale (old[pre_call0](z.$entry_$next) == y ? b && (acc(z.$entry_$next, write) && z.$entry_$next == x) : !b && (acc(z.$entry_$next, write) && z.$entry_$next == old[pre_call0](z.$entry_$next)))
+  
+  // ------- call:CAS_entry END ------
+  
+  
+  
+  // ------- if-then-else BEGIN ------
+  
+  
+  if (b) {
+    
+    // ------- assume BEGIN ------------
+    
+    
+    inhale ul < l && l < lvl
+    
+    // ------- assume END --------------
+    
+    
+    
+    // ------- apply BEGIN -------------
+    
+    
+    createBagList(c, l, x, ur, ul, u_state)
+    
+    // ------- apply END ---------------
+    
+    
+    
+    // ------- apply BEGIN -------------
+    
+    
+    updateEntryGhost(z, c, l)
+    
+    // ------- apply END ---------------
+    
+    
+    assert $_levelVar_3 == $_levelVar_3
+  }
+  $_levelVar_4 := $_levelVar_3
+  
+  // ------- if-then-else END --------
+  
+  
+  fold acc(Bag(r, lvl, z), write)
+  if (Bag_state(r, lvl, z) != old[pre_region_update0](Bag_state(r, lvl, z))) {
+    inhale acc(r.$stepFrom_seq_int_, write) && acc(r.$stepTo_seq_int_, write)
+    r.$stepFrom_seq_int_ := old[pre_region_update0](Bag_state(r, lvl, z))
+    r.$stepTo_seq_int_ := Bag_state(r, lvl, z)
+  } else {
+    inhale acc(r.$diamond, write)
+  }
+  inhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
+  inhale Bag_atomicity_context_hf(r, lvl, z) == old[pre_region_update0](Bag_atomicity_context_hf(r, lvl, z))
+  $_levelVar_5 := $_levelVar_2
+  
+  // ------- update-region END -------
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (after update-region@85.7) BEGIN 
+  
+  
+  label pre_stabilize6
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(5, $r, $lvl, $z)) } none < old[pre_stabilize6](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(5, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize6](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize6](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  ___silicon_hack407_havoc_all_Bag()
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize6](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(5, $r, $lvl, $z)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize6](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(5, $r, $lvl, $z) == old[pre_stabilize6](Bag_state($r, $lvl, $z)))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(5, $r, $lvl, $x)) } none < old[pre_stabilize6](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(5, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize6](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize6](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  ___silicon_hack407_havoc_all_BagList()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize6](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(5, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize6](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(5, $r, $lvl, $x) == old[pre_stabilize6](BagList_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Bag,BagList (after update-region@85.7) END 
+  
+  
+  
+  // ------- while BEGIN -------------
+  
+  
+  label preWhile0
+  while (!b)
+    invariant acc(Bag(r, lvl, z), write) && (lvl >= 0 && true)
+    invariant (!b ? acc(r.$diamond, write) && (acc(x.$link_$val, write) && x.$link_$val == n) && (acc(x.$link_$next, write) && true) && (acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true)) : true)
+    invariant (b ? acc(r.$stepFrom_seq_int_, write) && r.$stepFrom_seq_int_ == y_state && (acc(r.$stepTo_seq_int_, write) && r.$stepTo_seq_int_ == Seq(n) ++ y_state) : true) 
+  {
+    inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+    
+    // no init required
+    
+    
+    
+    // no init required
+    
+    
+    inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+    inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_atomicity_context_fp($r, $lvl, $z), old[preWhile0](perm(Bag_atomicity_context_fp($r, $lvl, $z)))))
+    inhale (forall $r: Ref, $lvl: Int, $z: Ref :: { Bag_atomicity_context_df($r, $lvl, $z) } none < old[preWhile0](perm(Bag_atomicity_context_fp($r, $lvl, $z))) ==> Bag_atomicity_context_hf($r, $lvl, $z) == old[preWhile0](Bag_atomicity_context_hf($r, $lvl, $z)))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_atomicity_context_fp($r, $lvl, $x), old[preWhile0](perm(BagList_atomicity_context_fp($r, $lvl, $x)))))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: { BagList_atomicity_context_df($r, $lvl, $x) } none < old[preWhile0](perm(BagList_atomicity_context_fp($r, $lvl, $x))) ==> BagList_atomicity_context_hf($r, $lvl, $x) == old[preWhile0](BagList_atomicity_context_hf($r, $lvl, $x)))
+    
+    // ------- Inferring interference context Bag,BagList (infer context inside while) BEGIN 
+    
+    
+    label pre_infer0
+    
+    // Inferring interference all instances of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+    exhale acc(Bag_sk_fp(), write)
+    inhale acc(Bag_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(6, $r, $lvl, $z)) } none < old[pre_infer0](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(6, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_infer0](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_infer0](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_infer0](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(6, $r, $lvl, $z) == old[pre_infer0](Bag_state($r, $lvl, $z)))
+    
+    // Inferring interference all instances of region BagList
+    
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    exhale acc(BagList_sk_fp(), write)
+    inhale acc(BagList_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(6, $r, $lvl, $x)) } none < old[pre_infer0](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(6, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer0](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_infer0](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_infer0](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(6, $r, $lvl, $x) == old[pre_infer0](BagList_state($r, $lvl, $x)))
+    
+    // ------- Inferring interference context Bag,BagList (infer context inside while) END 
+    
+    
+    
+    // ------- open-region BEGIN -------
+    
+    
+    label pre_open_region
+    assert $_levelVar_5 > lvl
+    $_levelVar_6 := lvl
+    unfold acc(Bag(r, lvl, z), write)
+    label transitionPre2
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    
+    // no additional linking required
+    
+    
+    
+    // havoc performed by other front resource
+    
+    
+    inhale true ==> BagList_interferenceReference_hf(6, z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next) == old[transitionPre2](BagList_state(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next))
+    
+    // ------- heap-read BEGIN ---------
+    
+    
+    y := z.$entry_$next
+    
+    // ------- heap-read END -----------
+    
+    
+    fold acc(Bag(r, lvl, z), write)
+    assert Bag_state(r, lvl, z) == old[pre_open_region](Bag_state(r, lvl, z))
+    $_levelVar_7 := $_levelVar_5
+    
+    // ------- open-region END ---------
+    
+    
+    
+    // ------- Stabilising regions Bag,BagList (after open-region@79.7) BEGIN 
+    
+    
+    label pre_stabilize7
+    
+    // Stabilising all instances of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+    exhale acc(Bag_sk_fp(), write)
+    inhale acc(Bag_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(7, $r, $lvl, $z)) } none < old[pre_stabilize7](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(7, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize7](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize7](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+    ___silicon_hack407_havoc_all_Bag()
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize7](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(7, $r, $lvl, $z)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize7](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(7, $r, $lvl, $z) == old[pre_stabilize7](Bag_state($r, $lvl, $z)))
+    
+    // Stabilising all instances of region BagList
+    
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    exhale acc(BagList_sk_fp(), write)
+    inhale acc(BagList_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(7, $r, $lvl, $x)) } none < old[pre_stabilize7](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(7, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize7](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize7](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+    ___silicon_hack407_havoc_all_BagList()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize7](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(7, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize7](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(7, $r, $lvl, $x) == old[pre_stabilize7](BagList_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions Bag,BagList (after open-region@79.7) END 
+    
+    
+    
+    // ------- heap-write BEGIN --------
+    
+    
+    x.$link_$next := y
+    
+    // ------- heap-write END ----------
+    
+    
+    
+    // ------- Stabilising regions Bag,BagList (after heap-write@83.7) BEGIN 
+    
+    
+    label pre_stabilize8
+    
+    // Stabilising all instances of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+    exhale acc(Bag_sk_fp(), write)
+    inhale acc(Bag_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(8, $r, $lvl, $z)) } none < old[pre_stabilize8](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(8, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize8](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize8](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+    ___silicon_hack407_havoc_all_Bag()
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize8](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(8, $r, $lvl, $z)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize8](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(8, $r, $lvl, $z) == old[pre_stabilize8](Bag_state($r, $lvl, $z)))
+    
+    // Stabilising all instances of region BagList
+    
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    exhale acc(BagList_sk_fp(), write)
+    inhale acc(BagList_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(8, $r, $lvl, $x)) } none < old[pre_stabilize8](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(8, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize8](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize8](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+    ___silicon_hack407_havoc_all_BagList()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize8](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(8, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize8](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(8, $r, $lvl, $x) == old[pre_stabilize8](BagList_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions Bag,BagList (after heap-write@83.7) END 
+    
+    
+    
+    // ------- update-region BEGIN -----
+    
+    
+    exhale acc(r.$diamond, write)
+    label pre_region_update
+    assert $_levelVar_7 > lvl
+    $_levelVar_8 := lvl
+    exhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
+    unfold acc(Bag(r, lvl, z), write)
+    label transitionPre3
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    
+    // no additional linking required
+    
+    
+    
+    // havoc performed by other front resource
+    
+    
+    inhale true ==> BagList_interferenceReference_hf(8, z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next) == old[transitionPre3](BagList_state(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next))
+    
+    // ------- Havocking regions Bag (before update-region@85.7) BEGIN 
+    
+    
+    label pre_havoc
+    
+    // Havocking single instance of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag()
+    
+    // ------- Havocking regions Bag (before update-region@85.7) END 
+    
+    
+    
+    // ------- assert BEGIN ------------
+    
+    
+    assert acc(z.$entry_$next, write) && true && (acc(z.$entry_$_nextId, write) && true && (acc(z.$entry_$_nextLvl, write) && true) && (acc(z.$entry_$_nextState, write) && true))
+    u$ := z.$entry_$next
+    ur$ := z.$entry_$_nextId
+    ul$ := z.$entry_$_nextLvl
+    u_state$ := z.$entry_$_nextState
+    
+    // ------- assert END --------------
+    
+    
+    
+    // ------- havoc BEGIN -------------
+    
+    
+    y_state := havoc_Seq_Int_()
+    
+    // ------- havoc END ---------------
+    
+    
+    
+    // ------- assume BEGIN ------------
+    
+    
+    inhale y_state == u_state$
+    
+    // ------- assume END --------------
+    
+    
+    
+    // ------- call:CAS_entry BEGIN ----
+    
+    
+    assert true
+    label pre_call
+    assert $_levelVar_8 >= 0
+    assert true
+    exhale acc(z.$entry_$next, write) && true
+    
+    // ------- Stabilising regions Bag,BagList (before call:CAS_entry@91.9) BEGIN 
+    
+    
+    label pre_stabilize9
+    
+    // Stabilising all instances of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag()
+    exhale acc(Bag_sk_fp(), write)
+    inhale acc(Bag_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize9](perm(Bag($r, $lvl, $z))) ==> (none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> (Bag_state($r, $lvl, $z) in Bag_atomicity_context_hf($r, $lvl, $z))) && (Bag_state($r, $lvl, $z) == old[pre_stabilize9](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize9](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == Bag_state($r, $lvl, $z) && true && true))
+    
+    // Stabilising all instances of region BagList
+    
+    ___silicon_hack407_havoc_all_BagList()
+    exhale acc(BagList_sk_fp(), write)
+    inhale acc(BagList_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize9](perm(BagList($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> (BagList_state($r, $lvl, $x) in BagList_atomicity_context_hf($r, $lvl, $x))) && (BagList_state($r, $lvl, $x) == old[pre_stabilize9](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize9](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == BagList_state($r, $lvl, $x) && true && perm(BagList_G($r)) == none))
+    
+    // ------- Stabilising regions Bag,BagList (before call:CAS_entry@91.9) END 
+    
+    
+    b := havoc_Bool()
+    inhale (old[pre_call](z.$entry_$next) == y ? b && (acc(z.$entry_$next, write) && z.$entry_$next == x) : !b && (acc(z.$entry_$next, write) && z.$entry_$next == old[pre_call](z.$entry_$next)))
+    
+    // ------- call:CAS_entry END ------
+    
+    
+    
+    // ------- if-then-else BEGIN ------
+    
+    
+    if (b) {
+      
+      // ------- assume BEGIN ------------
+      
+      
+      inhale ul$ < l && l < lvl
+      
+      // ------- assume END --------------
+      
+      
+      
+      // ------- apply BEGIN -------------
+      
+      
+      createBagList(c, l, x, ur$, ul$, u_state$)
+      
+      // ------- apply END ---------------
+      
+      
+      
+      // ------- apply BEGIN -------------
+      
+      
+      updateEntryGhost(z, c, l)
+      
+      // ------- apply END ---------------
+      
+      
+      assert $_levelVar_8 == $_levelVar_8
+    }
+    $_levelVar_9 := $_levelVar_8
+    
+    // ------- if-then-else END --------
+    
+    
+    fold acc(Bag(r, lvl, z), write)
+    if (Bag_state(r, lvl, z) != old[pre_region_update](Bag_state(r, lvl, z))) {
+      inhale acc(r.$stepFrom_seq_int_, write) && acc(r.$stepTo_seq_int_, write)
+      r.$stepFrom_seq_int_ := old[pre_region_update](Bag_state(r, lvl, z))
+      r.$stepTo_seq_int_ := Bag_state(r, lvl, z)
+    } else {
+      inhale acc(r.$diamond, write)
+    }
+    inhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
+    inhale Bag_atomicity_context_hf(r, lvl, z) == old[pre_region_update](Bag_atomicity_context_hf(r, lvl, z))
+    $_levelVar_10 := $_levelVar_7
+    
+    // ------- update-region END -------
+    
+    
+    
+    // ------- Stabilising regions Bag,BagList (after update-region@85.7) BEGIN 
+    
+    
+    label pre_stabilize10
+    
+    // Stabilising all instances of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+    exhale acc(Bag_sk_fp(), write)
+    inhale acc(Bag_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(9, $r, $lvl, $z)) } none < old[pre_stabilize10](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(9, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize10](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize10](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+    ___silicon_hack407_havoc_all_Bag()
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize10](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(9, $r, $lvl, $z)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize10](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(9, $r, $lvl, $z) == old[pre_stabilize10](Bag_state($r, $lvl, $z)))
+    
+    // Stabilising all instances of region BagList
+    
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    exhale acc(BagList_sk_fp(), write)
+    inhale acc(BagList_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(9, $r, $lvl, $x)) } none < old[pre_stabilize10](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(9, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize10](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize10](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+    ___silicon_hack407_havoc_all_BagList()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize10](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(9, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize10](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(9, $r, $lvl, $x) == old[pre_stabilize10](BagList_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions Bag,BagList (after update-region@85.7) END 
+    
+    
+    assert $_levelVar_10 == $_levelVar_5
+  }
+  $_levelVar_11 := $_levelVar_5
+  
+  // ------- while END ---------------
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (after while@74.5) BEGIN 
+  
+  
+  label pre_stabilize11
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(10, $r, $lvl, $z)) } none < old[pre_stabilize11](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(10, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize11](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize11](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  ___silicon_hack407_havoc_all_Bag()
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize11](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(10, $r, $lvl, $z)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize11](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(10, $r, $lvl, $z) == old[pre_stabilize11](Bag_state($r, $lvl, $z)))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(10, $r, $lvl, $x)) } none < old[pre_stabilize11](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(10, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize11](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize11](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  ___silicon_hack407_havoc_all_BagList()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize11](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(10, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize11](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(10, $r, $lvl, $x) == old[pre_stabilize11](BagList_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Bag,BagList (after while@74.5) END 
+  
+  
+  assert (r.$stepFrom_seq_int_ in Bag_atomicity_context_hf(r, lvl, z))
+  assert true
+  
+  // ------- Stabilising regions Bag (after atomic) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising single instance of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (none < perm(r.$diamond) && none < perm(Bag_atomicity_context_fp(r, lvl, z)) ==> (Bag_state(r, lvl, z) in Bag_atomicity_context_hf(r, lvl, z))) && (Bag_state(r, lvl, z) == old[pre_stabilize](Bag_state(r, lvl, z)) || Bag_sk_$_action_p(r, lvl, z) == old[pre_stabilize](Bag_state(r, lvl, z)) && Bag_sk_$_action_q(r, lvl, z) == Bag_state(r, lvl, z) && true && true)
+  
+  // ------- Stabilising regions Bag (after atomic) END 
+  
+  
+  
+  inhale Bag_state(r, lvl, z) == r.$stepTo_seq_int_
+  inhale old(Bag_state(r, lvl, z)) == r.$stepFrom_seq_int_
+  inhale acc(Bag_Z(r), write)
+  exhale acc(r.$stepFrom_seq_int_, write) && acc(r.$stepTo_seq_int_, write)
+}
+
+method pop(r: Ref, lvl: Int, z: Ref) returns (v: Int)
+  requires acc(Bag(r, lvl, z), write) && (lvl >= 0 && Bag_state(r, lvl, z) == Bag_state(r, lvl, z)) && acc(Bag_Z(r), write)
+  requires (Bag_state(r, lvl, z) in comprehension_58_220())
+  ensures acc(Bag(r, lvl, z), write) && (lvl >= 0 && true) && acc(Bag_Z(r), write) && old(Bag_state(r, lvl, z)) == Seq(v) ++ Bag_state(r, lvl, z)
+{
+  var t: Ref
+  var tn: Ref
+  var b: Bool
+  var x_state: Seq[Int]
+  var vi: Int
+  var jr: Ref
+  var jl: Int
+  var u: Ref
+  var ur: Ref
+  var ul: Int
+  var u_state: Seq[Int]
+  var n: Ref
+  var nr: Ref
+  var nl: Int
+  var n_state: Seq[Int]
+  var e: Int
+  var jr$: Ref
+  var jl$: Int
+  var u$: Ref
+  var ur$: Ref
+  var ul$: Int
+  var u_state$: Seq[Int]
+  var n$: Ref
+  var nr$: Ref
+  var nl$: Int
+  var n_state$: Seq[Int]
+  var e$: Int
+  var $_levelVar_12: Int
+  var $_levelVar_13: Int
+  var $_levelVar_14: Int
+  var $_levelVar_15: Int
+  var $_levelVar_16: Int
+  var $_levelVar_17: Int
+  var $_levelVar_18: Int
+  var $_levelVar_19: Int
+  var $_levelVar_20: Int
+  var $_levelVar_21: Int
+  var $_levelVar_22: Int
+  var $_levelVar_23: Int
+  var $_levelVar_24: Int
+  var $_levelVar_25: Int
+  var $_levelVar_26: Int
+  var $_levelVar_27: Int
+  var $_levelVar_28: Int
+  var $_levelVar_29: Int
+  inhale $_levelVar_12 >= 0 && $_levelVar_12 > lvl
+  assert $_levelVar_12 >= 0
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  label guard_arg_eval
+  exhale acc(Bag_Z(r), write)
+  inhale acc(r.$diamond, write)
+  inhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
+  inhale Bag_atomicity_context_hf(r, lvl, z) == comprehension_58_220()
+  
+  // ------- Stabilising regions Bag (before atomic) BEGIN 
+  
+  
+  label pre_stabilize12
+  
+  // Stabilising single instance of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(11, r, lvl, z)) } ($$_m in Bag_interferenceSet_hf(11, r, lvl, z)) == ((none < perm(r.$diamond) && none < perm(Bag_atomicity_context_fp(r, lvl, z)) ==> ($$_m in Bag_atomicity_context_hf(r, lvl, z))) && ($$_m == old[pre_stabilize12](Bag_state(r, lvl, z)) || Bag_sk_$_action_p(r, lvl, z) == old[pre_stabilize12](Bag_state(r, lvl, z)) && Bag_sk_$_action_q(r, lvl, z) == $$_m && true && true)))
+  ___silicon_hack407_havoc_all_Bag()
+  inhale (Bag_state(r, lvl, z) in Bag_interferenceSet_hf(11, r, lvl, z))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale Bag_interferenceReference_hf(11, r, lvl, z) == old[pre_stabilize12](Bag_state(r, lvl, z))
+  
+  // ------- Stabilising regions Bag (before atomic) END 
+  
+  
+  
+  // ------- assign BEGIN ------------
+  
+  
+  b := false
+  
+  // ------- assign END --------------
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (after assign@122.3) BEGIN 
+  
+  
+  label pre_stabilize14
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(12, $r, $lvl, $z)) } none < old[pre_stabilize14](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(12, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize14](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize14](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  ___silicon_hack407_havoc_all_Bag()
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize14](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(12, $r, $lvl, $z)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize14](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(12, $r, $lvl, $z) == old[pre_stabilize14](Bag_state($r, $lvl, $z)))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(12, $r, $lvl, $x)) } none < old[pre_stabilize14](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(12, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize14](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize14](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  ___silicon_hack407_havoc_all_BagList()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize14](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(12, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize14](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(12, $r, $lvl, $x) == old[pre_stabilize14](BagList_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Bag,BagList (after assign@122.3) END 
+  
+  
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region2
+  assert $_levelVar_12 > lvl
+  $_levelVar_13 := lvl
+  unfold acc(Bag(r, lvl, z), write)
+  label transitionPre4
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  
+  // no additional linking required
+  
+  
+  
+  // havoc performed by other front resource
+  
+  
+  inhale true ==> BagList_interferenceReference_hf(12, z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next) == old[transitionPre4](BagList_state(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next))
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  t := z.$entry_$next
+  
+  // ------- heap-read END -----------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(z.$entry_$next, write) && z.$entry_$next == t && (acc(z.$entry_$_nextId, write) && true && (acc(z.$entry_$_nextLvl, write) && true) && (acc(z.$entry_$_nextState, write) && true))
+  jr := z.$entry_$_nextId
+  jl := z.$entry_$_nextLvl
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(BagList(jr, jl, t), write) && (jl >= 0 && true)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(BagList(jr, jl, t), write) && (jl >= 0 && true)
+  
+  // ------- inhale END --------------
+  
+  
+  fold acc(Bag(r, lvl, z), write)
+  assert Bag_state(r, lvl, z) == old[pre_open_region2](Bag_state(r, lvl, z))
+  $_levelVar_14 := $_levelVar_12
+  
+  // ------- open-region END ---------
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (after open-region@129.5) BEGIN 
+  
+  
+  label pre_stabilize15
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(13, $r, $lvl, $z)) } none < old[pre_stabilize15](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(13, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize15](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize15](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  ___silicon_hack407_havoc_all_Bag()
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize15](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(13, $r, $lvl, $z)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize15](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(13, $r, $lvl, $z) == old[pre_stabilize15](Bag_state($r, $lvl, $z)))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(13, $r, $lvl, $x)) } none < old[pre_stabilize15](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(13, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize15](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize15](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  ___silicon_hack407_havoc_all_BagList()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize15](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(13, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize15](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(13, $r, $lvl, $x) == old[pre_stabilize15](BagList_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Bag,BagList (after open-region@129.5) END 
+  
+  
+  
+  // ------- if-then-else BEGIN ------
+  
+  
+  if (!(t == null)) {
+    
+    // ------- open-region BEGIN -------
+    
+    
+    label pre_open_region3
+    assert $_levelVar_14 > jl
+    $_levelVar_15 := jl
+    unfold acc(BagList(jr, jl, t), write)
+    label transitionPre5
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    
+    // no additional linking required
+    
+    
+    
+    // havoc performed by other front resource
+    
+    
+    inhale !(t == null) ==> BagList_interferenceReference_hf(13, t.$link_$_nextId, t.$link_$_nextLvl, t.$link_$next) == old[transitionPre5](BagList_state(t.$link_$_nextId, t.$link_$_nextLvl, t.$link_$next))
+    
+    // ------- heap-read BEGIN ---------
+    
+    
+    tn := t.$link_$next
+    
+    // ------- heap-read END -----------
+    
+    
+    fold acc(BagList(jr, jl, t), write)
+    assert BagList_state(jr, jl, t) == old[pre_open_region3](BagList_state(jr, jl, t))
+    $_levelVar_16 := $_levelVar_14
+    
+    // ------- open-region END ---------
+    
+    
+    
+    // ------- Stabilising regions Bag,BagList (after open-region@140.7) BEGIN 
+    
+    
+    label pre_stabilize16
+    
+    // Stabilising all instances of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+    exhale acc(Bag_sk_fp(), write)
+    inhale acc(Bag_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(14, $r, $lvl, $z)) } none < old[pre_stabilize16](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(14, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize16](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize16](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+    ___silicon_hack407_havoc_all_Bag()
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize16](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(14, $r, $lvl, $z)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize16](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(14, $r, $lvl, $z) == old[pre_stabilize16](Bag_state($r, $lvl, $z)))
+    
+    // Stabilising all instances of region BagList
+    
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    exhale acc(BagList_sk_fp(), write)
+    inhale acc(BagList_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(14, $r, $lvl, $x)) } none < old[pre_stabilize16](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(14, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize16](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize16](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+    ___silicon_hack407_havoc_all_BagList()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize16](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(14, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize16](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(14, $r, $lvl, $x) == old[pre_stabilize16](BagList_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions Bag,BagList (after open-region@140.7) END 
+    
+    
+    
+    // ------- exhale BEGIN ------------
+    
+    
+    exhale acc(BagList(jr, jl, t), write) && (jl >= 0 && true)
+    
+    // ------- exhale END --------------
+    
+    
+    
+    // ------- update-region BEGIN -----
+    
+    
+    exhale acc(r.$diamond, write)
+    label pre_region_update2
+    assert $_levelVar_16 > lvl
+    $_levelVar_17 := lvl
+    exhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
+    unfold acc(Bag(r, lvl, z), write)
+    label transitionPre6
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    
+    // no additional linking required
+    
+    
+    
+    // havoc performed by other front resource
+    
+    
+    inhale true ==> BagList_interferenceReference_hf(14, z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next) == old[transitionPre6](BagList_state(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next))
+    
+    // ------- Havocking regions Bag (before update-region@146.7) BEGIN 
+    
+    
+    label pre_havoc2
+    
+    // Havocking single instance of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag()
+    
+    // ------- Havocking regions Bag (before update-region@146.7) END 
+    
+    
+    
+    // ------- assert BEGIN ------------
+    
+    
+    assert acc(z.$entry_$next, write) && true && (acc(z.$entry_$_nextId, write) && true && (acc(z.$entry_$_nextLvl, write) && true) && (acc(z.$entry_$_nextState, write) && true))
+    u := z.$entry_$next
+    ur := z.$entry_$_nextId
+    ul := z.$entry_$_nextLvl
+    u_state := z.$entry_$_nextState
+    
+    // ------- assert END --------------
+    
+    
+    
+    // ------- call:CAS_entry BEGIN ----
+    
+    
+    assert true
+    label pre_call2
+    assert $_levelVar_17 >= 0
+    assert true
+    exhale acc(z.$entry_$next, write) && true
+    
+    // ------- Stabilising regions Bag,BagList (before call:CAS_entry@150.9) BEGIN 
+    
+    
+    label pre_stabilize17
+    
+    // Stabilising all instances of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag()
+    exhale acc(Bag_sk_fp(), write)
+    inhale acc(Bag_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize17](perm(Bag($r, $lvl, $z))) ==> (none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> (Bag_state($r, $lvl, $z) in Bag_atomicity_context_hf($r, $lvl, $z))) && (Bag_state($r, $lvl, $z) == old[pre_stabilize17](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize17](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == Bag_state($r, $lvl, $z) && true && true))
+    
+    // Stabilising all instances of region BagList
+    
+    ___silicon_hack407_havoc_all_BagList()
+    exhale acc(BagList_sk_fp(), write)
+    inhale acc(BagList_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize17](perm(BagList($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> (BagList_state($r, $lvl, $x) in BagList_atomicity_context_hf($r, $lvl, $x))) && (BagList_state($r, $lvl, $x) == old[pre_stabilize17](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize17](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == BagList_state($r, $lvl, $x) && true && perm(BagList_G($r)) == none))
+    
+    // ------- Stabilising regions Bag,BagList (before call:CAS_entry@150.9) END 
+    
+    
+    b := havoc_Bool()
+    inhale (old[pre_call2](z.$entry_$next) == t ? b && (acc(z.$entry_$next, write) && z.$entry_$next == tn) : !b && (acc(z.$entry_$next, write) && z.$entry_$next == old[pre_call2](z.$entry_$next)))
+    
+    // ------- call:CAS_entry END ------
+    
+    
+    
+    // ------- if-then-else BEGIN ------
+    
+    
+    if (b) {
+      
+      // ------- unfold BEGIN ------------
+      
+      
+      assert ul >= 0 && true
+      unfold acc(BagList(ur, ul, t), write)
+      
+      // ------- Inferring interference context Bag,BagList (recompute interference context after unfold) BEGIN 
+      
+      
+      label pre_infer
+      
+      // Inferring interference all instances of region Bag
+      
+      ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+      exhale acc(Bag_sk_fp(), write)
+      inhale acc(Bag_sk_fp(), write)
+      inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(15, $r, $lvl, $z)) } none < old[pre_infer](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(15, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_infer](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_infer](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+      
+      // havoc performed by other front resource
+      
+      
+      inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_infer](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(15, $r, $lvl, $z) == old[pre_infer](Bag_state($r, $lvl, $z)))
+      
+      // Inferring interference all instances of region BagList
+      
+      ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+      exhale acc(BagList_sk_fp(), write)
+      inhale acc(BagList_sk_fp(), write)
+      inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(15, $r, $lvl, $x)) } none < old[pre_infer](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(15, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_infer](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+      
+      // havoc performed by other front resource
+      
+      
+      inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_infer](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(15, $r, $lvl, $x) == old[pre_infer](BagList_state($r, $lvl, $x)))
+      
+      // ------- Inferring interference context Bag,BagList (recompute interference context after unfold) END 
+      
+      
+      
+      // ------- unfold END --------------
+      
+      
+      
+      // ------- exhale BEGIN ------------
+      
+      
+      exhale acc(BagList_G(ur), write)
+      
+      // ------- exhale END --------------
+      
+      
+      
+      // ------- assert BEGIN ------------
+      
+      
+      assert acc(t.$link_$next, write) && true && (acc(t.$link_$_nextId, write) && true && (acc(t.$link_$_nextLvl, write) && true) && (acc(t.$link_$_nextState, write) && true))
+      n := t.$link_$next
+      nr := t.$link_$_nextId
+      nl := t.$link_$_nextLvl
+      n_state := t.$link_$_nextState
+      
+      // ------- assert END --------------
+      
+      
+      
+      // ------- assume BEGIN ------------
+      
+      
+      inhale n == tn
+      
+      // ------- assume END --------------
+      
+      
+      
+      // ------- apply BEGIN -------------
+      
+      
+      updateEntryGhost(z, nr, nl)
+      
+      // ------- apply END ---------------
+      
+      
+      
+      // ------- havoc BEGIN -------------
+      
+      
+      x_state := havoc_Seq_Int_()
+      
+      // ------- havoc END ---------------
+      
+      
+      
+      // ------- assume BEGIN ------------
+      
+      
+      inhale x_state == n_state
+      
+      // ------- assume END --------------
+      
+      
+      
+      // ------- assert BEGIN ------------
+      
+      
+      assert acc(t.$link_$val, write) && true
+      e := t.$link_$val
+      
+      // ------- assert END --------------
+      
+      
+      
+      // ------- havoc BEGIN -------------
+      
+      
+      vi := havoc_Int()
+      
+      // ------- havoc END ---------------
+      
+      
+      
+      // ------- assume BEGIN ------------
+      
+      
+      inhale vi == e
+      
+      // ------- assume END --------------
+      
+      
+      assert $_levelVar_17 == $_levelVar_17
+    }
+    $_levelVar_18 := $_levelVar_17
+    
+    // ------- if-then-else END --------
+    
+    
+    fold acc(Bag(r, lvl, z), write)
+    if (Bag_state(r, lvl, z) != old[pre_region_update2](Bag_state(r, lvl, z))) {
+      inhale acc(r.$stepFrom_seq_int_, write) && acc(r.$stepTo_seq_int_, write)
+      r.$stepFrom_seq_int_ := old[pre_region_update2](Bag_state(r, lvl, z))
+      r.$stepTo_seq_int_ := Bag_state(r, lvl, z)
+    } else {
+      inhale acc(r.$diamond, write)
+    }
+    inhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
+    inhale Bag_atomicity_context_hf(r, lvl, z) == old[pre_region_update2](Bag_atomicity_context_hf(r, lvl, z))
+    $_levelVar_19 := $_levelVar_16
+    
+    // ------- update-region END -------
+    
+    
+    
+    // ------- Stabilising regions Bag,BagList (after seq-comp@144.7) BEGIN 
+    
+    
+    label pre_stabilize18
+    
+    // Stabilising all instances of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+    exhale acc(Bag_sk_fp(), write)
+    inhale acc(Bag_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(16, $r, $lvl, $z)) } none < old[pre_stabilize18](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(16, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize18](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize18](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+    ___silicon_hack407_havoc_all_Bag()
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize18](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(16, $r, $lvl, $z)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize18](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(16, $r, $lvl, $z) == old[pre_stabilize18](Bag_state($r, $lvl, $z)))
+    
+    // Stabilising all instances of region BagList
+    
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    exhale acc(BagList_sk_fp(), write)
+    inhale acc(BagList_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(16, $r, $lvl, $x)) } none < old[pre_stabilize18](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(16, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize18](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize18](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+    ___silicon_hack407_havoc_all_BagList()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize18](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(16, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize18](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(16, $r, $lvl, $x) == old[pre_stabilize18](BagList_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions Bag,BagList (after seq-comp@144.7) END 
+    
+    
+    assert $_levelVar_19 == $_levelVar_14
+  }
+  $_levelVar_20 := $_levelVar_14
+  
+  // ------- if-then-else END --------
+  
+  
+  
+  // ------- while BEGIN -------------
+  
+  
+  label preWhile
+  while (!b)
+    invariant acc(Bag(r, lvl, z), write) && (lvl >= 0 && true)
+    invariant (!b ? acc(r.$diamond, write) : true)
+    invariant (b ? acc(r.$stepFrom_seq_int_, write) && r.$stepFrom_seq_int_ == Seq(vi) ++ x_state && (acc(r.$stepTo_seq_int_, write) && r.$stepTo_seq_int_ == x_state) && (acc(t.$link_$val, write) && t.$link_$val == vi) : true) 
+  {
+    inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+    
+    // no init required
+    
+    
+    
+    // no init required
+    
+    
+    inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+    inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_atomicity_context_fp($r, $lvl, $z), old[preWhile](perm(Bag_atomicity_context_fp($r, $lvl, $z)))))
+    inhale (forall $r: Ref, $lvl: Int, $z: Ref :: { Bag_atomicity_context_df($r, $lvl, $z) } none < old[preWhile](perm(Bag_atomicity_context_fp($r, $lvl, $z))) ==> Bag_atomicity_context_hf($r, $lvl, $z) == old[preWhile](Bag_atomicity_context_hf($r, $lvl, $z)))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_atomicity_context_fp($r, $lvl, $x), old[preWhile](perm(BagList_atomicity_context_fp($r, $lvl, $x)))))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: { BagList_atomicity_context_df($r, $lvl, $x) } none < old[preWhile](perm(BagList_atomicity_context_fp($r, $lvl, $x))) ==> BagList_atomicity_context_hf($r, $lvl, $x) == old[preWhile](BagList_atomicity_context_hf($r, $lvl, $x)))
+    
+    // ------- Inferring interference context Bag,BagList (infer context inside while) BEGIN 
+    
+    
+    label pre_infer2
+    
+    // Inferring interference all instances of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+    exhale acc(Bag_sk_fp(), write)
+    inhale acc(Bag_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(17, $r, $lvl, $z)) } none < old[pre_infer2](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(17, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_infer2](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_infer2](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_infer2](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(17, $r, $lvl, $z) == old[pre_infer2](Bag_state($r, $lvl, $z)))
+    
+    // Inferring interference all instances of region BagList
+    
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    exhale acc(BagList_sk_fp(), write)
+    inhale acc(BagList_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(17, $r, $lvl, $x)) } none < old[pre_infer2](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(17, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer2](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_infer2](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_infer2](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(17, $r, $lvl, $x) == old[pre_infer2](BagList_state($r, $lvl, $x)))
+    
+    // ------- Inferring interference context Bag,BagList (infer context inside while) END 
+    
+    
+    
+    // ------- open-region BEGIN -------
+    
+    
+    label pre_open_region4
+    assert $_levelVar_20 > lvl
+    $_levelVar_21 := lvl
+    unfold acc(Bag(r, lvl, z), write)
+    label transitionPre7
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    
+    // no additional linking required
+    
+    
+    
+    // havoc performed by other front resource
+    
+    
+    inhale true ==> BagList_interferenceReference_hf(17, z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next) == old[transitionPre7](BagList_state(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next))
+    
+    // ------- heap-read BEGIN ---------
+    
+    
+    t := z.$entry_$next
+    
+    // ------- heap-read END -----------
+    
+    
+    
+    // ------- assert BEGIN ------------
+    
+    
+    assert acc(z.$entry_$next, write) && z.$entry_$next == t && (acc(z.$entry_$_nextId, write) && true && (acc(z.$entry_$_nextLvl, write) && true) && (acc(z.$entry_$_nextState, write) && true))
+    jr$ := z.$entry_$_nextId
+    jl$ := z.$entry_$_nextLvl
+    
+    // ------- assert END --------------
+    
+    
+    
+    // ------- assert BEGIN ------------
+    
+    
+    assert acc(BagList(jr$, jl$, t), write) && (jl$ >= 0 && true)
+    
+    // ------- assert END --------------
+    
+    
+    
+    // ------- inhale BEGIN ------------
+    
+    
+    inhale acc(BagList(jr$, jl$, t), write) && (jl$ >= 0 && true)
+    
+    // ------- inhale END --------------
+    
+    
+    fold acc(Bag(r, lvl, z), write)
+    assert Bag_state(r, lvl, z) == old[pre_open_region4](Bag_state(r, lvl, z))
+    $_levelVar_22 := $_levelVar_20
+    
+    // ------- open-region END ---------
+    
+    
+    
+    // ------- Stabilising regions Bag,BagList (after open-region@129.5) BEGIN 
+    
+    
+    label pre_stabilize19
+    
+    // Stabilising all instances of region Bag
+    
+    ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+    exhale acc(Bag_sk_fp(), write)
+    inhale acc(Bag_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(18, $r, $lvl, $z)) } none < old[pre_stabilize19](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(18, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize19](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize19](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+    ___silicon_hack407_havoc_all_Bag()
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize19](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(18, $r, $lvl, $z)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize19](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(18, $r, $lvl, $z) == old[pre_stabilize19](Bag_state($r, $lvl, $z)))
+    
+    // Stabilising all instances of region BagList
+    
+    ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+    exhale acc(BagList_sk_fp(), write)
+    inhale acc(BagList_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(18, $r, $lvl, $x)) } none < old[pre_stabilize19](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(18, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize19](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize19](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+    ___silicon_hack407_havoc_all_BagList()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize19](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(18, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize19](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(18, $r, $lvl, $x) == old[pre_stabilize19](BagList_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions Bag,BagList (after open-region@129.5) END 
+    
+    
+    
+    // ------- if-then-else BEGIN ------
+    
+    
+    if (!(t == null)) {
+      
+      // ------- open-region BEGIN -------
+      
+      
+      label pre_open_region5
+      assert $_levelVar_22 > jl$
+      $_levelVar_23 := jl$
+      unfold acc(BagList(jr$, jl$, t), write)
+      label transitionPre8
+      ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+      
+      // no additional linking required
+      
+      
+      
+      // havoc performed by other front resource
+      
+      
+      inhale !(t == null) ==> BagList_interferenceReference_hf(18, t.$link_$_nextId, t.$link_$_nextLvl, t.$link_$next) == old[transitionPre8](BagList_state(t.$link_$_nextId, t.$link_$_nextLvl, t.$link_$next))
+      
+      // ------- heap-read BEGIN ---------
+      
+      
+      tn := t.$link_$next
+      
+      // ------- heap-read END -----------
+      
+      
+      fold acc(BagList(jr$, jl$, t), write)
+      assert BagList_state(jr$, jl$, t) == old[pre_open_region5](BagList_state(jr$, jl$, t))
+      $_levelVar_24 := $_levelVar_22
+      
+      // ------- open-region END ---------
+      
+      
+      
+      // ------- Stabilising regions Bag,BagList (after open-region@140.7) BEGIN 
+      
+      
+      label pre_stabilize20
+      
+      // Stabilising all instances of region Bag
+      
+      ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+      exhale acc(Bag_sk_fp(), write)
+      inhale acc(Bag_sk_fp(), write)
+      inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(19, $r, $lvl, $z)) } none < old[pre_stabilize20](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(19, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize20](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize20](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+      ___silicon_hack407_havoc_all_Bag()
+      inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize20](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(19, $r, $lvl, $z)))
+      
+      // havoc performed by other front resource
+      
+      
+      inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize20](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(19, $r, $lvl, $z) == old[pre_stabilize20](Bag_state($r, $lvl, $z)))
+      
+      // Stabilising all instances of region BagList
+      
+      ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+      exhale acc(BagList_sk_fp(), write)
+      inhale acc(BagList_sk_fp(), write)
+      inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(19, $r, $lvl, $x)) } none < old[pre_stabilize20](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(19, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize20](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize20](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+      ___silicon_hack407_havoc_all_BagList()
+      inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize20](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(19, $r, $lvl, $x)))
+      
+      // havoc performed by other front resource
+      
+      
+      inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize20](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(19, $r, $lvl, $x) == old[pre_stabilize20](BagList_state($r, $lvl, $x)))
+      
+      // ------- Stabilising regions Bag,BagList (after open-region@140.7) END 
+      
+      
+      
+      // ------- exhale BEGIN ------------
+      
+      
+      exhale acc(BagList(jr$, jl$, t), write) && (jl$ >= 0 && true)
+      
+      // ------- exhale END --------------
+      
+      
+      
+      // ------- update-region BEGIN -----
+      
+      
+      exhale acc(r.$diamond, write)
+      label pre_region_update3
+      assert $_levelVar_24 > lvl
+      $_levelVar_25 := lvl
+      exhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
+      unfold acc(Bag(r, lvl, z), write)
+      label transitionPre9
+      ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+      
+      // no additional linking required
+      
+      
+      
+      // havoc performed by other front resource
+      
+      
+      inhale true ==> BagList_interferenceReference_hf(19, z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next) == old[transitionPre9](BagList_state(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next))
+      
+      // ------- Havocking regions Bag (before update-region@146.7) BEGIN 
+      
+      
+      label pre_havoc3
+      
+      // Havocking single instance of region Bag
+      
+      ___silicon_hack407_havoc_all_Bag()
+      
+      // ------- Havocking regions Bag (before update-region@146.7) END 
+      
+      
+      
+      // ------- assert BEGIN ------------
+      
+      
+      assert acc(z.$entry_$next, write) && true && (acc(z.$entry_$_nextId, write) && true && (acc(z.$entry_$_nextLvl, write) && true) && (acc(z.$entry_$_nextState, write) && true))
+      u$ := z.$entry_$next
+      ur$ := z.$entry_$_nextId
+      ul$ := z.$entry_$_nextLvl
+      u_state$ := z.$entry_$_nextState
+      
+      // ------- assert END --------------
+      
+      
+      
+      // ------- call:CAS_entry BEGIN ----
+      
+      
+      assert true
+      label pre_call3
+      assert $_levelVar_25 >= 0
+      assert true
+      exhale acc(z.$entry_$next, write) && true
+      
+      // ------- Stabilising regions Bag,BagList (before call:CAS_entry@150.9) BEGIN 
+      
+      
+      label pre_stabilize21
+      
+      // Stabilising all instances of region Bag
+      
+      ___silicon_hack407_havoc_all_Bag()
+      exhale acc(Bag_sk_fp(), write)
+      inhale acc(Bag_sk_fp(), write)
+      inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize21](perm(Bag($r, $lvl, $z))) ==> (none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> (Bag_state($r, $lvl, $z) in Bag_atomicity_context_hf($r, $lvl, $z))) && (Bag_state($r, $lvl, $z) == old[pre_stabilize21](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize21](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == Bag_state($r, $lvl, $z) && true && true))
+      
+      // Stabilising all instances of region BagList
+      
+      ___silicon_hack407_havoc_all_BagList()
+      exhale acc(BagList_sk_fp(), write)
+      inhale acc(BagList_sk_fp(), write)
+      inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize21](perm(BagList($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> (BagList_state($r, $lvl, $x) in BagList_atomicity_context_hf($r, $lvl, $x))) && (BagList_state($r, $lvl, $x) == old[pre_stabilize21](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize21](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == BagList_state($r, $lvl, $x) && true && perm(BagList_G($r)) == none))
+      
+      // ------- Stabilising regions Bag,BagList (before call:CAS_entry@150.9) END 
+      
+      
+      b := havoc_Bool()
+      inhale (old[pre_call3](z.$entry_$next) == t ? b && (acc(z.$entry_$next, write) && z.$entry_$next == tn) : !b && (acc(z.$entry_$next, write) && z.$entry_$next == old[pre_call3](z.$entry_$next)))
+      
+      // ------- call:CAS_entry END ------
+      
+      
+      
+      // ------- if-then-else BEGIN ------
+      
+      
+      if (b) {
+        
+        // ------- unfold BEGIN ------------
+        
+        
+        assert ul$ >= 0 && true
+        unfold acc(BagList(ur$, ul$, t), write)
+        
+        // ------- Inferring interference context Bag,BagList (recompute interference context after unfold) BEGIN 
+        
+        
+        label pre_infer3
+        
+        // Inferring interference all instances of region Bag
+        
+        ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+        exhale acc(Bag_sk_fp(), write)
+        inhale acc(Bag_sk_fp(), write)
+        inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(20, $r, $lvl, $z)) } none < old[pre_infer3](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(20, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_infer3](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_infer3](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+        
+        // havoc performed by other front resource
+        
+        
+        inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_infer3](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(20, $r, $lvl, $z) == old[pre_infer3](Bag_state($r, $lvl, $z)))
+        
+        // Inferring interference all instances of region BagList
+        
+        ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+        exhale acc(BagList_sk_fp(), write)
+        inhale acc(BagList_sk_fp(), write)
+        inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(20, $r, $lvl, $x)) } none < old[pre_infer3](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(20, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer3](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_infer3](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+        
+        // havoc performed by other front resource
+        
+        
+        inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_infer3](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(20, $r, $lvl, $x) == old[pre_infer3](BagList_state($r, $lvl, $x)))
+        
+        // ------- Inferring interference context Bag,BagList (recompute interference context after unfold) END 
+        
+        
+        
+        // ------- unfold END --------------
+        
+        
+        
+        // ------- exhale BEGIN ------------
+        
+        
+        exhale acc(BagList_G(ur$), write)
+        
+        // ------- exhale END --------------
+        
+        
+        
+        // ------- assert BEGIN ------------
+        
+        
+        assert acc(t.$link_$next, write) && true && (acc(t.$link_$_nextId, write) && true && (acc(t.$link_$_nextLvl, write) && true) && (acc(t.$link_$_nextState, write) && true))
+        n$ := t.$link_$next
+        nr$ := t.$link_$_nextId
+        nl$ := t.$link_$_nextLvl
+        n_state$ := t.$link_$_nextState
+        
+        // ------- assert END --------------
+        
+        
+        
+        // ------- assume BEGIN ------------
+        
+        
+        inhale n$ == tn
+        
+        // ------- assume END --------------
+        
+        
+        
+        // ------- apply BEGIN -------------
+        
+        
+        updateEntryGhost(z, nr$, nl$)
+        
+        // ------- apply END ---------------
+        
+        
+        
+        // ------- havoc BEGIN -------------
+        
+        
+        x_state := havoc_Seq_Int_()
+        
+        // ------- havoc END ---------------
+        
+        
+        
+        // ------- assume BEGIN ------------
+        
+        
+        inhale x_state == n_state$
+        
+        // ------- assume END --------------
+        
+        
+        
+        // ------- assert BEGIN ------------
+        
+        
+        assert acc(t.$link_$val, write) && true
+        e$ := t.$link_$val
+        
+        // ------- assert END --------------
+        
+        
+        
+        // ------- havoc BEGIN -------------
+        
+        
+        vi := havoc_Int()
+        
+        // ------- havoc END ---------------
+        
+        
+        
+        // ------- assume BEGIN ------------
+        
+        
+        inhale vi == e$
+        
+        // ------- assume END --------------
+        
+        
+        assert $_levelVar_25 == $_levelVar_25
+      }
+      $_levelVar_26 := $_levelVar_25
+      
+      // ------- if-then-else END --------
+      
+      
+      fold acc(Bag(r, lvl, z), write)
+      if (Bag_state(r, lvl, z) != old[pre_region_update3](Bag_state(r, lvl, z))) {
+        inhale acc(r.$stepFrom_seq_int_, write) && acc(r.$stepTo_seq_int_, write)
+        r.$stepFrom_seq_int_ := old[pre_region_update3](Bag_state(r, lvl, z))
+        r.$stepTo_seq_int_ := Bag_state(r, lvl, z)
+      } else {
+        inhale acc(r.$diamond, write)
+      }
+      inhale acc(Bag_atomicity_context_fp(r, lvl, z), write)
+      inhale Bag_atomicity_context_hf(r, lvl, z) == old[pre_region_update3](Bag_atomicity_context_hf(r, lvl, z))
+      $_levelVar_27 := $_levelVar_24
+      
+      // ------- update-region END -------
+      
+      
+      
+      // ------- Stabilising regions Bag,BagList (after seq-comp@144.7) BEGIN 
+      
+      
+      label pre_stabilize22
+      
+      // Stabilising all instances of region Bag
+      
+      ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+      exhale acc(Bag_sk_fp(), write)
+      inhale acc(Bag_sk_fp(), write)
+      inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(21, $r, $lvl, $z)) } none < old[pre_stabilize22](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(21, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize22](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize22](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+      ___silicon_hack407_havoc_all_Bag()
+      inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize22](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(21, $r, $lvl, $z)))
+      
+      // havoc performed by other front resource
+      
+      
+      inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize22](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(21, $r, $lvl, $z) == old[pre_stabilize22](Bag_state($r, $lvl, $z)))
+      
+      // Stabilising all instances of region BagList
+      
+      ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+      exhale acc(BagList_sk_fp(), write)
+      inhale acc(BagList_sk_fp(), write)
+      inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(21, $r, $lvl, $x)) } none < old[pre_stabilize22](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(21, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize22](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize22](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+      ___silicon_hack407_havoc_all_BagList()
+      inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize22](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(21, $r, $lvl, $x)))
+      
+      // havoc performed by other front resource
+      
+      
+      inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize22](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(21, $r, $lvl, $x) == old[pre_stabilize22](BagList_state($r, $lvl, $x)))
+      
+      // ------- Stabilising regions Bag,BagList (after seq-comp@144.7) END 
+      
+      
+      assert $_levelVar_27 == $_levelVar_22
+    }
+    $_levelVar_28 := $_levelVar_22
+    
+    // ------- if-then-else END --------
+    
+    
+    assert $_levelVar_28 == $_levelVar_20
+  }
+  $_levelVar_29 := $_levelVar_20
+  
+  // ------- while END ---------------
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (after while@124.3) BEGIN 
+  
+  
+  label pre_stabilize23
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(22, $r, $lvl, $z)) } none < old[pre_stabilize23](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(22, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize23](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize23](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  ___silicon_hack407_havoc_all_Bag()
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize23](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(22, $r, $lvl, $z)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize23](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(22, $r, $lvl, $z) == old[pre_stabilize23](Bag_state($r, $lvl, $z)))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(22, $r, $lvl, $x)) } none < old[pre_stabilize23](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(22, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize23](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize23](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  ___silicon_hack407_havoc_all_BagList()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize23](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(22, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize23](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(22, $r, $lvl, $x) == old[pre_stabilize23](BagList_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Bag,BagList (after while@124.3) END 
+  
+  
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  v := t.$link_$val
+  
+  // ------- heap-read END -----------
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (after heap-read@174.3) BEGIN 
+  
+  
+  label pre_stabilize24
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(23, $r, $lvl, $z)) } none < old[pre_stabilize24](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(23, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_stabilize24](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize24](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  ___silicon_hack407_havoc_all_Bag()
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize24](perm(Bag($r, $lvl, $z))) ==> (Bag_state($r, $lvl, $z) in Bag_interferenceSet_hf(23, $r, $lvl, $z)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize24](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(23, $r, $lvl, $z) == old[pre_stabilize24](Bag_state($r, $lvl, $z)))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(23, $r, $lvl, $x)) } none < old[pre_stabilize24](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(23, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize24](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize24](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  ___silicon_hack407_havoc_all_BagList()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize24](perm(BagList($r, $lvl, $x))) ==> (BagList_state($r, $lvl, $x) in BagList_interferenceSet_hf(23, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize24](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(23, $r, $lvl, $x) == old[pre_stabilize24](BagList_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Bag,BagList (after heap-read@174.3) END 
+  
+  
+  assert (r.$stepFrom_seq_int_ in Bag_atomicity_context_hf(r, lvl, z))
+  assert true
+  
+  // ------- Stabilising regions Bag (after atomic) BEGIN 
+  
+  
+  label pre_stabilize13
+  
+  // Stabilising single instance of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (none < perm(r.$diamond) && none < perm(Bag_atomicity_context_fp(r, lvl, z)) ==> (Bag_state(r, lvl, z) in Bag_atomicity_context_hf(r, lvl, z))) && (Bag_state(r, lvl, z) == old[pre_stabilize13](Bag_state(r, lvl, z)) || Bag_sk_$_action_p(r, lvl, z) == old[pre_stabilize13](Bag_state(r, lvl, z)) && Bag_sk_$_action_q(r, lvl, z) == Bag_state(r, lvl, z) && true && true)
+  
+  // ------- Stabilising regions Bag (after atomic) END 
+  
+  
+  
+  inhale Bag_state(r, lvl, z) == r.$stepTo_seq_int_
+  inhale old(Bag_state(r, lvl, z)) == r.$stepFrom_seq_int_
+  inhale acc(Bag_Z(r), write)
+  exhale acc(r.$stepFrom_seq_int_, write) && acc(r.$stepTo_seq_int_, write)
+}
+
+method updateEntryGhost(x: Ref, c: Ref, l: Int)
+  requires acc(x.$entry_$next, write) && true && (acc(BagList(c, l, x.$entry_$next), write) && (l >= 0 && true)) && (acc(x.$entry_$_nextId, write) && true && (acc(x.$entry_$_nextLvl, write) && true) && (acc(x.$entry_$_nextState, write) && true))
+  ensures acc(x.$entry_$next, write) && x.$entry_$next == old(x.$entry_$next) && (acc(BagList(c, l, old(x.$entry_$next)), write) && (l >= 0 && BagList_state(c, l, old(x.$entry_$next)) == old(BagList_state(c, l, x.$entry_$next)))) && (acc(x.$entry_$_nextId, write) && x.$entry_$_nextId == c && (acc(x.$entry_$_nextLvl, write) && x.$entry_$_nextLvl == l) && (acc(x.$entry_$_nextState, write) && x.$entry_$_nextState == old(BagList_state(c, l, x.$entry_$next))))
+{
+  var hr: Ref
+  var hl: Int
+  var h_state: Seq[Int]
+  var $_levelVar_30: Int
+  inhale $_levelVar_30 >= 0 && $_levelVar_30 > l
+  assert $_levelVar_30 >= 0
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer4
+  
+  // Inferring interference all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(24, $r, $lvl, $z)) } none < old[pre_infer4](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(24, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_infer4](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_infer4](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_infer4](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(24, $r, $lvl, $z) == old[pre_infer4](Bag_state($r, $lvl, $z)))
+  
+  // Inferring interference all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(24, $r, $lvl, $x)) } none < old[pre_infer4](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(24, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer4](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_infer4](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_infer4](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(24, $r, $lvl, $x) == old[pre_infer4](BagList_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  exhale acc(x.$entry_$_nextId, write) && true && (acc(x.$entry_$_nextLvl, write) && true) && (acc(x.$entry_$_nextState, write) && true)
+  
+  // ------- exhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$entry_$_nextId, write) && true && (acc(x.$entry_$_nextLvl, write) && true) && (acc(x.$entry_$_nextState, write) && true)
+  hr := x.$entry_$_nextId
+  hl := x.$entry_$_nextLvl
+  h_state := x.$entry_$_nextState
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- assume BEGIN ------------
+  
+  
+  inhale hr == c && hl == l && h_state == old(BagList_state(c, l, x.$entry_$next))
+  
+  // ------- assume END --------------
+  
+  
+}
+
+method updateLinkGhost(x: Ref, c: Ref, l: Int)
+  requires acc(x.$link_$next, write) && true && (acc(BagList(c, l, x.$link_$next), write) && (l >= 0 && true)) && (acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true))
+  ensures acc(x.$link_$next, write) && x.$link_$next == old(x.$link_$next) && (acc(BagList(c, l, old(x.$link_$next)), write) && (l >= 0 && BagList_state(c, l, old(x.$link_$next)) == old(BagList_state(c, l, x.$link_$next)))) && (acc(x.$link_$_nextId, write) && x.$link_$_nextId == c && (acc(x.$link_$_nextLvl, write) && x.$link_$_nextLvl == l) && (acc(x.$link_$_nextState, write) && x.$link_$_nextState == old(BagList_state(c, l, x.$link_$next))))
+{
+  var hr: Ref
+  var hl: Int
+  var h_state: Seq[Int]
+  var $_levelVar_31: Int
+  inhale $_levelVar_31 >= 0 && $_levelVar_31 > l
+  assert $_levelVar_31 >= 0
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer5
+  
+  // Inferring interference all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(25, $r, $lvl, $z)) } none < old[pre_infer5](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(25, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_infer5](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_infer5](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_infer5](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(25, $r, $lvl, $z) == old[pre_infer5](Bag_state($r, $lvl, $z)))
+  
+  // Inferring interference all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(25, $r, $lvl, $x)) } none < old[pre_infer5](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(25, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer5](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_infer5](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_infer5](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(25, $r, $lvl, $x) == old[pre_infer5](BagList_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  exhale acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true)
+  
+  // ------- exhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true)
+  hr := x.$link_$_nextId
+  hl := x.$link_$_nextLvl
+  h_state := x.$link_$_nextState
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- assume BEGIN ------------
+  
+  
+  inhale hr == c && hl == l && h_state == old(BagList_state(c, l, x.$link_$next))
+  
+  // ------- assume END --------------
+  
+  
+}
+
+method createBagList(r: Ref, lvl: Int, x: Ref, c: Ref, l: Int, vs: Seq[Int])
+  requires acc(x.$link_$val, write) && true && (acc(x.$link_$next, write) && true) && (acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true)) && (!(x == null) ? acc(BagList(c, l, x.$link_$next), write) && (l >= 0 && BagList_state(c, l, x.$link_$next) == vs) && acc(BagList_G(c), write) && l < lvl : true)
+  ensures acc(BagList(r, lvl, x), write) && (lvl >= 0 && BagList_state(r, lvl, x) == Seq(old(x.$link_$val)) ++ vs) && acc(BagList_G(r), write)
+{
+  var $_levelVar_32: Int
+  var $_levelVar_33: Int
+  inhale $_levelVar_32 >= 0 && $_levelVar_32 > l
+  assert $_levelVar_32 >= 0
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer6
+  
+  // Inferring interference all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(26, $r, $lvl, $z)) } none < old[pre_infer6](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(26, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_infer6](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_infer6](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_infer6](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(26, $r, $lvl, $z) == old[pre_infer6](Bag_state($r, $lvl, $z)))
+  
+  // Inferring interference all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(26, $r, $lvl, $x)) } none < old[pre_infer6](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(26, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer6](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_infer6](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_infer6](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(26, $r, $lvl, $x) == old[pre_infer6](BagList_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(BagList_G(r), write)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- if-then-else BEGIN ------
+  
+  
+  if (!(x == null)) {
+    
+    // ------- apply BEGIN -------------
+    
+    
+    updateLinkGhost(x, c, l)
+    
+    // ------- apply END ---------------
+    
+    
+    assert $_levelVar_32 == $_levelVar_32
+  }
+  $_levelVar_33 := $_levelVar_32
+  
+  // ------- if-then-else END --------
+  
+  
+  
+  // ------- fold BEGIN --------------
+  
+  
+  fold acc(BagList(r, lvl, x), write)
+  assert lvl >= 0 && true
+  
+  // ------- fold END ----------------
+  
+  
+}
+
+method CAS_entry(x: Ref, now: Ref, thn: Ref) returns (ret: Bool)
+  requires acc(x.$entry_$next, write) && true
+  ensures (old(x.$entry_$next) == now ? ret && (acc(x.$entry_$next, write) && x.$entry_$next == thn) : !ret && (acc(x.$entry_$next, write) && x.$entry_$next == old(x.$entry_$next)))
+
+
+method $_Bag_interpretation_stability_check(r: Ref, lvl: Int, z: Ref)
+{
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  inhale acc(z.$entry_$next, write) && true && (acc(z.$entry_$_nextId, write) && true && (acc(z.$entry_$_nextLvl, write) && true) && (acc(z.$entry_$_nextState, write) && true)) && (acc(BagList(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next), write) && (z.$entry_$_nextLvl >= 0 && BagList_state(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next) == z.$entry_$_nextState)) && acc(BagList_G(z.$entry_$_nextId), write) && z.$entry_$_nextLvl < lvl
+  
+  // ------- Stabilising regions Bag,BagList (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize25
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize25](perm(Bag($r, $lvl, $z))) ==> (none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> (Bag_state($r, $lvl, $z) in Bag_atomicity_context_hf($r, $lvl, $z))) && (Bag_state($r, $lvl, $z) == old[pre_stabilize25](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize25](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == Bag_state($r, $lvl, $z) && true && true))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize25](perm(BagList($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> (BagList_state($r, $lvl, $x) in BagList_atomicity_context_hf($r, $lvl, $x))) && (BagList_state($r, $lvl, $x) == old[pre_stabilize25](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize25](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == BagList_state($r, $lvl, $x) && true && perm(BagList_G($r)) == none))
+  
+  // ------- Stabilising regions Bag,BagList (check stability of region interpretation) END 
+  
+  
+  assert acc(z.$entry_$next, write) && true && (acc(z.$entry_$_nextId, write) && true && (acc(z.$entry_$_nextLvl, write) && true) && (acc(z.$entry_$_nextState, write) && true)) && (acc(BagList(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next), write) && (z.$entry_$_nextLvl >= 0 && BagList_state(z.$entry_$_nextId, z.$entry_$_nextLvl, z.$entry_$next) == z.$entry_$_nextState)) && acc(BagList_G(z.$entry_$_nextId), write) && z.$entry_$_nextLvl < lvl
+}
+
+method $_Bag_action_transitivity_check()
+{
+  var Z: Bool
+  var $_action_p_0_x: Seq[Int]
+  var $_action_q_0_x: Seq[Int]
+  var $_action_p_0_y: Seq[Int]
+  var $_action_q_0_y: Seq[Int]
+  var aState: Seq[Int]
+  var bState: Seq[Int]
+  var cState: Seq[Int]
+  inhale aState == bState || $_action_p_0_x == aState && $_action_q_0_x == bState && true && Z
+  inhale bState == cState || $_action_p_0_y == bState && $_action_q_0_y == cState && true && Z
+  assert aState == cState || aState == aState && cState == cState && true && Z
+}
+
+method $_BagList_interpretation_stability_check(r: Ref, lvl: Int, x: Ref)
+{
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  inhale acc(x.$link_$val, write) && true && (acc(x.$link_$next, write) && true && (acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true))) && (!(x == null) ? acc(BagList(x.$link_$_nextId, x.$link_$_nextLvl, x.$link_$next), write) && (x.$link_$_nextLvl >= 0 && BagList_state(x.$link_$_nextId, x.$link_$_nextLvl, x.$link_$next) == x.$link_$_nextState) && acc(BagList_G(x.$link_$_nextId), write) && x.$link_$_nextLvl < lvl : true)
+  
+  // ------- Stabilising regions Bag,BagList (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize26
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize26](perm(Bag($r, $lvl, $z))) ==> (none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> (Bag_state($r, $lvl, $z) in Bag_atomicity_context_hf($r, $lvl, $z))) && (Bag_state($r, $lvl, $z) == old[pre_stabilize26](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize26](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == Bag_state($r, $lvl, $z) && true && true))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize26](perm(BagList($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> (BagList_state($r, $lvl, $x) in BagList_atomicity_context_hf($r, $lvl, $x))) && (BagList_state($r, $lvl, $x) == old[pre_stabilize26](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize26](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == BagList_state($r, $lvl, $x) && true && perm(BagList_G($r)) == none))
+  
+  // ------- Stabilising regions Bag,BagList (check stability of region interpretation) END 
+  
+  
+  assert acc(x.$link_$val, write) && true && (acc(x.$link_$next, write) && true && (acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true))) && (!(x == null) ? acc(BagList(x.$link_$_nextId, x.$link_$_nextLvl, x.$link_$next), write) && (x.$link_$_nextLvl >= 0 && BagList_state(x.$link_$_nextId, x.$link_$_nextLvl, x.$link_$next) == x.$link_$_nextState) && acc(BagList_G(x.$link_$_nextId), write) && x.$link_$_nextLvl < lvl : true)
+}
+
+method $_BagList_action_transitivity_check()
+{
+  var G: Bool
+  var $_action_p_0_x: Seq[Int]
+  var $_action_q_0_x: Seq[Int]
+  var $_action_p_0_y: Seq[Int]
+  var $_action_q_0_y: Seq[Int]
+  var aState: Seq[Int]
+  var bState: Seq[Int]
+  var cState: Seq[Int]
+  inhale aState == bState || $_action_p_0_x == aState && $_action_q_0_x == bState && true && G
+  inhale bState == cState || $_action_p_0_y == bState && $_action_q_0_y == cState && true && G
+  assert aState == cState || aState == aState && cState == cState && true && G
+}
+
+method $_push_condition_stability_precondition_check(r: Ref, lvl: Int, z: Ref, n: Int)
+  requires acc(Bag(r, lvl, z), write) && (lvl >= 0 && Bag_state(r, lvl, z) == Bag_state(r, lvl, z)) && acc(Bag_Z(r), write)
+{
+  var $_levelVar_35: Int
+  var x: Ref
+  var y: Ref
+  var y_state: Seq[Int]
+  var b: Bool
+  var c: Ref
+  var l: Int
+  inhale $_levelVar_35 >= 0 && $_levelVar_35 > lvl
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  inhale Bag_interferenceSet_hf(27, r, lvl, z) == comprehension_58_220()
+  inhale Bag_interferenceReference_hf(27, r, lvl, z) == old(Bag_state(r, lvl, z))
+  
+  // ------- Stabilising regions Bag,BagList (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize27
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize27](perm(Bag($r, $lvl, $z))) ==> (none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> (Bag_state($r, $lvl, $z) in Bag_atomicity_context_hf($r, $lvl, $z))) && (Bag_state($r, $lvl, $z) == old[pre_stabilize27](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize27](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == Bag_state($r, $lvl, $z) && true && true))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize27](perm(BagList($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> (BagList_state($r, $lvl, $x) in BagList_atomicity_context_hf($r, $lvl, $x))) && (BagList_state($r, $lvl, $x) == old[pre_stabilize27](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize27](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == BagList_state($r, $lvl, $x) && true && perm(BagList_G($r)) == none))
+  
+  // ------- Stabilising regions Bag,BagList (check stability of method condition) END 
+  
+  
+  assert acc(Bag(r, lvl, z), write) && (lvl >= 0 && Bag_state(r, lvl, z) == Bag_state(r, lvl, z)) && acc(Bag_Z(r), write)
+}
+
+method $_pop_condition_stability_precondition_check(r: Ref, lvl: Int, z: Ref, v: Int)
+  requires acc(Bag(r, lvl, z), write) && (lvl >= 0 && Bag_state(r, lvl, z) == Bag_state(r, lvl, z)) && acc(Bag_Z(r), write)
+{
+  var $_levelVar_36: Int
+  var t: Ref
+  var tn: Ref
+  var b: Bool
+  var x_state: Seq[Int]
+  var vi: Int
+  inhale $_levelVar_36 >= 0 && $_levelVar_36 > lvl
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  inhale Bag_interferenceSet_hf(27, r, lvl, z) == comprehension_58_220()
+  inhale Bag_interferenceReference_hf(27, r, lvl, z) == old(Bag_state(r, lvl, z))
+  
+  // ------- Stabilising regions Bag,BagList (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize28
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize28](perm(Bag($r, $lvl, $z))) ==> (none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> (Bag_state($r, $lvl, $z) in Bag_atomicity_context_hf($r, $lvl, $z))) && (Bag_state($r, $lvl, $z) == old[pre_stabilize28](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize28](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == Bag_state($r, $lvl, $z) && true && true))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize28](perm(BagList($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> (BagList_state($r, $lvl, $x) in BagList_atomicity_context_hf($r, $lvl, $x))) && (BagList_state($r, $lvl, $x) == old[pre_stabilize28](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize28](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == BagList_state($r, $lvl, $x) && true && perm(BagList_G($r)) == none))
+  
+  // ------- Stabilising regions Bag,BagList (check stability of method condition) END 
+  
+  
+  assert acc(Bag(r, lvl, z), write) && (lvl >= 0 && Bag_state(r, lvl, z) == Bag_state(r, lvl, z)) && acc(Bag_Z(r), write)
+}
+
+method $_updateEntryGhost_condition_stability_precondition_check(x: Ref, c: Ref, l: Int)
+  requires acc(x.$entry_$next, write) && true && (acc(BagList(c, l, x.$entry_$next), write) && (l >= 0 && true)) && (acc(x.$entry_$_nextId, write) && true && (acc(x.$entry_$_nextLvl, write) && true) && (acc(x.$entry_$_nextState, write) && true))
+{
+  var $_levelVar_37: Int
+  inhale $_levelVar_37 >= 0 && $_levelVar_37 > l
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer8
+  
+  // Inferring interference all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(28, $r, $lvl, $z)) } none < old[pre_infer8](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(28, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_infer8](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_infer8](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_infer8](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(28, $r, $lvl, $z) == old[pre_infer8](Bag_state($r, $lvl, $z)))
+  
+  // Inferring interference all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(28, $r, $lvl, $x)) } none < old[pre_infer8](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(28, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer8](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_infer8](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_infer8](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(28, $r, $lvl, $x) == old[pre_infer8](BagList_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize29
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize29](perm(Bag($r, $lvl, $z))) ==> (none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> (Bag_state($r, $lvl, $z) in Bag_atomicity_context_hf($r, $lvl, $z))) && (Bag_state($r, $lvl, $z) == old[pre_stabilize29](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize29](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == Bag_state($r, $lvl, $z) && true && true))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize29](perm(BagList($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> (BagList_state($r, $lvl, $x) in BagList_atomicity_context_hf($r, $lvl, $x))) && (BagList_state($r, $lvl, $x) == old[pre_stabilize29](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize29](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == BagList_state($r, $lvl, $x) && true && perm(BagList_G($r)) == none))
+  
+  // ------- Stabilising regions Bag,BagList (check stability of method condition) END 
+  
+  
+  assert acc(x.$entry_$next, write) && true && (acc(BagList(c, l, x.$entry_$next), write) && (l >= 0 && true)) && (acc(x.$entry_$_nextId, write) && true && (acc(x.$entry_$_nextLvl, write) && true) && (acc(x.$entry_$_nextState, write) && true))
+}
+
+method $_updateLinkGhost_condition_stability_precondition_check(x: Ref, c: Ref, l: Int)
+  requires acc(x.$link_$next, write) && true && (acc(BagList(c, l, x.$link_$next), write) && (l >= 0 && true)) && (acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true))
+{
+  var $_levelVar_38: Int
+  inhale $_levelVar_38 >= 0 && $_levelVar_38 > l
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer9
+  
+  // Inferring interference all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(29, $r, $lvl, $z)) } none < old[pre_infer9](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(29, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_infer9](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_infer9](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_infer9](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(29, $r, $lvl, $z) == old[pre_infer9](Bag_state($r, $lvl, $z)))
+  
+  // Inferring interference all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(29, $r, $lvl, $x)) } none < old[pre_infer9](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(29, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer9](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_infer9](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_infer9](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(29, $r, $lvl, $x) == old[pre_infer9](BagList_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize30
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize30](perm(Bag($r, $lvl, $z))) ==> (none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> (Bag_state($r, $lvl, $z) in Bag_atomicity_context_hf($r, $lvl, $z))) && (Bag_state($r, $lvl, $z) == old[pre_stabilize30](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize30](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == Bag_state($r, $lvl, $z) && true && true))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize30](perm(BagList($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> (BagList_state($r, $lvl, $x) in BagList_atomicity_context_hf($r, $lvl, $x))) && (BagList_state($r, $lvl, $x) == old[pre_stabilize30](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize30](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == BagList_state($r, $lvl, $x) && true && perm(BagList_G($r)) == none))
+  
+  // ------- Stabilising regions Bag,BagList (check stability of method condition) END 
+  
+  
+  assert acc(x.$link_$next, write) && true && (acc(BagList(c, l, x.$link_$next), write) && (l >= 0 && true)) && (acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true))
+}
+
+method $_createBagList_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref, c: Ref, l: Int, vs: Seq[Int])
+  requires acc(x.$link_$val, write) && true && (acc(x.$link_$next, write) && true) && (acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true)) && (!(x == null) ? acc(BagList(c, l, x.$link_$next), write) && (l >= 0 && BagList_state(c, l, x.$link_$next) == vs) && acc(BagList_G(c), write) && l < lvl : true)
+{
+  var $_levelVar_39: Int
+  inhale $_levelVar_39 >= 0 && $_levelVar_39 > l
+  inhale acc(Bag_sk_fp(), write) && acc(BagList_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $z: Ref :: acc(Bag_interferenceContext_fp($r, $lvl, $z), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(BagList_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer10
+  
+  // Inferring interference all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag_interferenceContext_fp()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: (forall $$_m: Seq[Int] :: { ($$_m in Bag_interferenceSet_df(30, $r, $lvl, $z)) } none < old[pre_infer10](perm(Bag($r, $lvl, $z))) ==> ($$_m in Bag_interferenceSet_hf(30, $r, $lvl, $z)) == ((none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> ($$_m in Bag_atomicity_context_hf($r, $lvl, $z))) && ($$_m == old[pre_infer10](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_infer10](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_infer10](perm(Bag($r, $lvl, $z))) ==> Bag_interferenceReference_hf(30, $r, $lvl, $z) == old[pre_infer10](Bag_state($r, $lvl, $z)))
+  
+  // Inferring interference all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList_interferenceContext_fp()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: (forall $$_m: Seq[Int] :: { ($$_m in BagList_interferenceSet_df(30, $r, $lvl, $x)) } none < old[pre_infer10](perm(BagList($r, $lvl, $x))) ==> ($$_m in BagList_interferenceSet_hf(30, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in BagList_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer10](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_infer10](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == $$_m && true && perm(BagList_G($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_infer10](perm(BagList($r, $lvl, $x))) ==> BagList_interferenceReference_hf(30, $r, $lvl, $x) == old[pre_infer10](BagList_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Bag,BagList (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Bag,BagList (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize31
+  
+  // Stabilising all instances of region Bag
+  
+  ___silicon_hack407_havoc_all_Bag()
+  exhale acc(Bag_sk_fp(), write)
+  inhale acc(Bag_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $z: Ref [Bag($r, $lvl, $z)] :: none < old[pre_stabilize31](perm(Bag($r, $lvl, $z))) ==> (none < perm($r.$diamond) && none < perm(Bag_atomicity_context_fp($r, $lvl, $z)) ==> (Bag_state($r, $lvl, $z) in Bag_atomicity_context_hf($r, $lvl, $z))) && (Bag_state($r, $lvl, $z) == old[pre_stabilize31](Bag_state($r, $lvl, $z)) || Bag_sk_$_action_p($r, $lvl, $z) == old[pre_stabilize31](Bag_state($r, $lvl, $z)) && Bag_sk_$_action_q($r, $lvl, $z) == Bag_state($r, $lvl, $z) && true && true))
+  
+  // Stabilising all instances of region BagList
+  
+  ___silicon_hack407_havoc_all_BagList()
+  exhale acc(BagList_sk_fp(), write)
+  inhale acc(BagList_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [BagList($r, $lvl, $x)] :: none < old[pre_stabilize31](perm(BagList($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(BagList_atomicity_context_fp($r, $lvl, $x)) ==> (BagList_state($r, $lvl, $x) in BagList_atomicity_context_hf($r, $lvl, $x))) && (BagList_state($r, $lvl, $x) == old[pre_stabilize31](BagList_state($r, $lvl, $x)) || BagList_sk_$_action_p($r, $lvl, $x) == old[pre_stabilize31](BagList_state($r, $lvl, $x)) && BagList_sk_$_action_q($r, $lvl, $x) == BagList_state($r, $lvl, $x) && true && perm(BagList_G($r)) == none))
+  
+  // ------- Stabilising regions Bag,BagList (check stability of method condition) END 
+  
+  
+  assert acc(x.$link_$val, write) && true && (acc(x.$link_$next, write) && true) && (acc(x.$link_$_nextId, write) && true && (acc(x.$link_$_nextLvl, write) && true) && (acc(x.$link_$_nextState, write) && true)) && (!(x == null) ? acc(BagList(c, l, x.$link_$next), write) && (l >= 0 && BagList_state(c, l, x.$link_$next) == vs) && acc(BagList_G(c), write) && l < lvl : true)
+}

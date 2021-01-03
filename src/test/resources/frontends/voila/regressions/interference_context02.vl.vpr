@@ -1,0 +1,2634 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function AA_state_T(a: Ref, alvl: Int, x: Ref): Bool
+  
+  function BB_state_T(b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Bool
+  
+  function CC1_state_T(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Bool
+  
+  function CC2_state_T(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Bool
+  
+  function CC3_state_T(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function AA_interferenceReference_df($p0: Int, a: Ref, alvl: Int, x: Ref): Bool
+  
+  function BB_interferenceReference_df($p0: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Bool
+  
+  function CC1_interferenceReference_df($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Bool
+  
+  function CC2_interferenceReference_df($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Bool
+  
+  function CC3_interferenceReference_df($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function AA_interferenceSet_df($p0: Int, a: Ref, alvl: Int, x: Ref): Set[Int]
+  
+  function BB_interferenceSet_df($p0: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Set[Int]
+  
+  function CC1_interferenceSet_df($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Set[Int]
+  
+  function CC2_interferenceSet_df($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Set[Int]
+  
+  function CC3_interferenceSet_df($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function AA_atomicity_context_df(a: Ref, alvl: Int, x: Ref): Bool
+  
+  function BB_atomicity_context_df(b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Bool
+  
+  function CC1_atomicity_context_df(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Bool
+  
+  function CC2_atomicity_context_df(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Bool
+  
+  function CC3_atomicity_context_df(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $cell_$f: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function comprehension_37_220(): Set[Int]
+  ensures (forall $k: Int :: ($k in result) == $k < 6)
+
+
+function comprehension_59_450(): Set[Int]
+  ensures (forall $k: Int :: ($k in result) == $k < 5)
+
+
+function AA_atomicity_context_hf(a: Ref, alvl: Int, x: Ref): Set[Int]
+  requires acc(AA_atomicity_context_fp(a, alvl, x), write)
+  ensures [AA_atomicity_context_df(a, alvl, x), true]
+
+
+function AA_interferenceSet_hf($p0: Int, a: Ref, alvl: Int, x: Ref): Set[Int]
+  requires acc(AA_interferenceContext_fp(a, alvl, x), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in AA_interferenceSet_df($p0, a, alvl, x))), true]
+
+
+function AA_interferenceReference_hf($p0: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(AA_interferenceContext_fp(a, alvl, x), write)
+  ensures [AA_interferenceReference_df($p0, a, alvl, x), true]
+
+
+function AA_sk_$_action_n(a: Ref, alvl: Int, x: Ref): Int
+  requires acc(AA_sk_fp(), write)
+
+
+function AA_sk_$_action_m(a: Ref, alvl: Int, x: Ref): Int
+  requires acc(AA_sk_fp(), write)
+
+
+function AA_state(a: Ref, alvl: Int, x: Ref): Int
+  requires acc(AA(a, alvl, x), write)
+  ensures [AA_state_T(a, alvl, x), true]
+{
+  (unfolding acc(AA(a, alvl, x), write) in x.$cell_$f + 1)
+}
+
+function BB_atomicity_context_hf(b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Set[Int]
+  requires acc(BB_atomicity_context_fp(b, blvl, a, alvl, x), write)
+  ensures [BB_atomicity_context_df(b, blvl, a, alvl, x), true]
+
+
+function BB_interferenceSet_hf($p0: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Set[Int]
+  requires acc(BB_interferenceContext_fp(b, blvl, a, alvl, x), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in BB_interferenceSet_df($p0, b, blvl, a, alvl, x))), true]
+
+
+function BB_interferenceReference_hf($p0: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(BB_interferenceContext_fp(b, blvl, a, alvl, x), write)
+  ensures [BB_interferenceReference_df($p0, b, blvl, a, alvl, x), true]
+
+
+function BB_sk_$_action_n(b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(BB_sk_fp(), write)
+
+
+function BB_sk_$_action_m(b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(BB_sk_fp(), write)
+
+
+function BB_state(b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(BB(b, blvl, a, alvl, x), write)
+  ensures [BB_state_T(b, blvl, a, alvl, x), true]
+{
+  (unfolding acc(BB(b, blvl, a, alvl, x), write) in AA_state(a, alvl, x) - 1)
+}
+
+function CC1_atomicity_context_hf(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Set[Int]
+  requires acc(CC1_atomicity_context_fp(c, clvl, b, blvl, a, alvl, x), write)
+  ensures [CC1_atomicity_context_df(c, clvl, b, blvl, a, alvl, x), true]
+
+
+function CC1_interferenceSet_hf($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Set[Int]
+  requires acc(CC1_interferenceContext_fp(c, clvl, b, blvl, a, alvl, x), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in CC1_interferenceSet_df($p0, c, clvl, b, blvl, a, alvl, x))), true]
+
+
+function CC1_interferenceReference_hf($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(CC1_interferenceContext_fp(c, clvl, b, blvl, a, alvl, x), write)
+  ensures [CC1_interferenceReference_df($p0, c, clvl, b, blvl, a, alvl, x), true]
+
+
+function CC1_sk_$_action_n(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(CC1_sk_fp(), write)
+
+
+function CC1_sk_$_action_m(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(CC1_sk_fp(), write)
+
+
+function CC1_state(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(CC1(c, clvl, b, blvl, a, alvl, x), write)
+  ensures [CC1_state_T(c, clvl, b, blvl, a, alvl, x), true]
+{
+  (unfolding acc(CC1(c, clvl, b, blvl, a, alvl, x), write) in (BB_state(b, blvl, a, alvl, x) < 5 ? 0 : 1))
+}
+
+function CC2_atomicity_context_hf(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Set[Int]
+  requires acc(CC2_atomicity_context_fp(c, clvl, b, blvl, a, alvl, x), write)
+  ensures [CC2_atomicity_context_df(c, clvl, b, blvl, a, alvl, x), true]
+
+
+function CC2_interferenceSet_hf($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Set[Int]
+  requires acc(CC2_interferenceContext_fp(c, clvl, b, blvl, a, alvl, x), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in CC2_interferenceSet_df($p0, c, clvl, b, blvl, a, alvl, x))), true]
+
+
+function CC2_interferenceReference_hf($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(CC2_interferenceContext_fp(c, clvl, b, blvl, a, alvl, x), write)
+  ensures [CC2_interferenceReference_df($p0, c, clvl, b, blvl, a, alvl, x), true]
+
+
+function CC2_sk_$_action_n(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(CC2_sk_fp(), write)
+
+
+function CC2_sk_$_action_m(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(CC2_sk_fp(), write)
+
+
+function CC2_state(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref): Int
+  requires acc(CC2(c, clvl, b, blvl, a, alvl, x), write)
+  ensures [CC2_state_T(c, clvl, b, blvl, a, alvl, x), true]
+{
+  (unfolding acc(CC2(c, clvl, b, blvl, a, alvl, x), write) in BB_state(b, blvl, a, alvl, x) + 9)
+}
+
+function CC3_atomicity_context_hf(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref): Set[Int]
+  requires acc(CC3_atomicity_context_fp(c, clvl, b, blvl, a, alvl, x, y), write)
+  ensures [CC3_atomicity_context_df(c, clvl, b, blvl, a, alvl, x, y), true]
+
+
+function CC3_interferenceSet_hf($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref): Set[Int]
+  requires acc(CC3_interferenceContext_fp(c, clvl, b, blvl, a, alvl, x, y), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in CC3_interferenceSet_df($p0, c, clvl, b, blvl, a, alvl, x, y))), true]
+
+
+function CC3_interferenceReference_hf($p0: Int, c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref): Int
+  requires acc(CC3_interferenceContext_fp(c, clvl, b, blvl, a, alvl, x, y), write)
+  ensures [CC3_interferenceReference_df($p0, c, clvl, b, blvl, a, alvl, x, y), true]
+
+
+function CC3_sk_$_action_n(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref): Int
+  requires acc(CC3_sk_fp(), write)
+
+
+function CC3_sk_$_action_m(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref): Int
+  requires acc(CC3_sk_fp(), write)
+
+
+function CC3_state(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref): Int
+  requires acc(CC3(c, clvl, b, blvl, a, alvl, x, y), write)
+  ensures [CC3_state_T(c, clvl, b, blvl, a, alvl, x, y), true]
+{
+  (unfolding acc(CC3(c, clvl, b, blvl, a, alvl, x, y), write) in y.$cell_$f)
+}
+
+predicate AA_GA($r: Ref) 
+
+predicate AA_atomicity_context_fp(a: Ref, alvl: Int, x: Ref) 
+
+predicate AA_interferenceContext_fp(a: Ref, alvl: Int, x: Ref) 
+
+predicate AA_sk_fp() 
+
+predicate AA(a: Ref, alvl: Int, x: Ref) {
+  acc(x.$cell_$f, write) && true
+}
+
+predicate BB_GB($r: Ref) 
+
+predicate BB_atomicity_context_fp(b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref) 
+
+predicate BB_interferenceContext_fp(b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref) 
+
+predicate BB_sk_fp() 
+
+predicate BB(b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref) {
+  acc(AA(a, alvl, x), write) && (alvl >= 0 && true) && acc(AA_GA(a), write) && blvl > alvl
+}
+
+predicate CC1_GC1($r: Ref) 
+
+predicate CC1_atomicity_context_fp(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref) 
+
+predicate CC1_interferenceContext_fp(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref) 
+
+predicate CC1_sk_fp() 
+
+predicate CC1(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref) {
+  acc(BB(b, blvl, a, alvl, x), write) && (blvl >= 0 && true) && acc(BB_GB(b), write) && clvl > blvl
+}
+
+predicate CC2_GC2($r: Ref) 
+
+predicate CC2_atomicity_context_fp(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref) 
+
+predicate CC2_interferenceContext_fp(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref) 
+
+predicate CC2_sk_fp() 
+
+predicate CC2(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref) {
+  acc(BB(b, blvl, a, alvl, x), write) && (blvl >= 0 && true) && acc(BB_GB(b), write) && clvl > blvl
+}
+
+predicate CC3_GC3($r: Ref) 
+
+predicate CC3_atomicity_context_fp(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref) 
+
+predicate CC3_interferenceContext_fp(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref) 
+
+predicate CC3_sk_fp() 
+
+predicate CC3(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref) {
+  acc(BB(b, blvl, a, alvl, x), write) && (blvl >= 0 && BB_state(b, blvl, a, alvl, x) == 42) && acc(BB_GB(b), write) && clvl > blvl && (acc(y.$cell_$f, write) && true)
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method ___silicon_hack407_havoc_all_AA()
+
+
+method ___silicon_hack407_havoc_all_AA_interferenceContext_fp()
+
+
+method ___silicon_hack407_havoc_all_BB()
+
+
+method ___silicon_hack407_havoc_all_BB_interferenceContext_fp()
+
+
+method ___silicon_hack407_havoc_all_CC1()
+
+
+method ___silicon_hack407_havoc_all_CC1_interferenceContext_fp()
+
+
+method ___silicon_hack407_havoc_all_CC2()
+
+
+method ___silicon_hack407_havoc_all_CC2_interferenceContext_fp()
+
+
+method ___silicon_hack407_havoc_all_CC3()
+
+
+method ___silicon_hack407_havoc_all_CC3_interferenceContext_fp()
+
+
+method foo1(a: Ref, alvl: Int, x: Ref)
+  requires acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x))
+  requires (AA_state(a, alvl, x) in comprehension_37_220())
+  ensures acc(AA(a, alvl, x), write) && (alvl >= 0 && true)
+{
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0 && $_levelVar_0 > alvl
+  assert $_levelVar_0 >= 0
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale AA_interferenceSet_hf(0, a, alvl, x) == comprehension_37_220()
+  inhale AA_interferenceReference_hf(0, a, alvl, x) == old(AA_state(a, alvl, x))
+  inhale false
+}
+
+method foo2(a: Ref, alvl: Int, x: Ref)
+  requires acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x))
+  requires (AA_state(a, alvl, x) in comprehension_59_450())
+  ensures acc(AA(a, alvl, x), write) && (alvl >= 0 && true)
+{
+  var $_levelVar_1: Int
+  inhale $_levelVar_1 >= 0 && $_levelVar_1 > alvl
+  assert $_levelVar_1 >= 0
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale AA_interferenceSet_hf(0, a, alvl, x) == comprehension_59_450()
+  inhale AA_interferenceReference_hf(0, a, alvl, x) == old(AA_state(a, alvl, x))
+  inhale false
+}
+
+method foo3(a: Ref, alvl: Int, x: Ref)
+  requires acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x))
+  requires (AA_state(a, alvl, x) in Set(AA_state(a, alvl, x)))
+  ensures acc(AA(a, alvl, x), write) && (alvl >= 0 && true)
+{
+  var $_levelVar_2: Int
+  inhale $_levelVar_2 >= 0 && $_levelVar_2 > alvl
+  assert $_levelVar_2 >= 0
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale AA_interferenceSet_hf(0, a, alvl, x) == Set(AA_state(a, alvl, x))
+  inhale AA_interferenceReference_hf(0, a, alvl, x) == old(AA_state(a, alvl, x))
+  inhale false
+}
+
+method test1(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref)
+  requires acc(CC1(c, clvl, b, blvl, a, alvl, x), write) && (clvl >= 0 && CC1_state(c, clvl, b, blvl, a, alvl, x) == CC1_state(c, clvl, b, blvl, a, alvl, x)) && acc(CC1_GC1(c), write)
+  requires (CC1_state(c, clvl, b, blvl, a, alvl, x) in Set(0))
+{
+  var cz: Int
+  var bz: Int
+  var bk: Int
+  var az: Int
+  var ak: Int
+  var $_levelVar_3: Int
+  var $_levelVar_4: Int
+  var $_levelVar_5: Int
+  var $_levelVar_6: Int
+  var $_levelVar_7: Int
+  inhale $_levelVar_3 >= 0 && $_levelVar_3 > clvl
+  assert $_levelVar_3 >= 0
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale CC1_interferenceSet_hf(0, c, clvl, b, blvl, a, alvl, x) == Set(0)
+  inhale CC1_interferenceReference_hf(0, c, clvl, b, blvl, a, alvl, x) == old(CC1_state(c, clvl, b, blvl, a, alvl, x))
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(CC1(c, clvl, b, blvl, a, alvl, x), write) && (clvl >= 0 && true) && (CC1_state(c, clvl, b, blvl, a, alvl, x) in Set(0))
+  cz := CC1_state(c, clvl, b, blvl, a, alvl, x)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic0
+  assert perm(CC1_atomicity_context_fp(c, clvl, b, blvl, a, alvl, x)) == none
+  assert $_levelVar_3 > clvl
+  $_levelVar_4 := clvl
+  exhale acc(CC1_GC1(c), write)
+  
+  // ------- Stabilising regions AA,BB,CC2,CC3 (before use-atomic@57.3) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize3](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize3](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize3](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize3](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize3](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize3](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize3](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize3](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize3](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize3](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize3](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize3](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC2,CC3 (before use-atomic@57.3) END 
+  
+  
+  unfold acc(CC1(c, clvl, b, blvl, a, alvl, x), write)
+  label transitionPre0
+  ___silicon_hack407_havoc_all_BB_interferenceContext_fp()
+  inhale (forall $_m0: Int :: { ($_m0 in BB_interferenceSet_df(0, b, blvl, a, alvl, x)) } (($_m0 < 5 ? 0 : 1) in CC1_interferenceSet_hf(0, c, clvl, b, blvl, a, alvl, x)) == ($_m0 in BB_interferenceSet_hf(0, b, blvl, a, alvl, x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale true ==> BB_interferenceReference_hf(0, b, blvl, a, alvl, x) == old[transitionPre0](BB_state(b, blvl, a, alvl, x))
+  
+  // ------- Stabilising regions CC1 (before use-atomic@57.3) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize4](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize4](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize4](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // ------- Stabilising regions CC1 (before use-atomic@57.3) END 
+  
+  
+  inhale acc(CC1_GC1(c), write)
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(BB(b, blvl, a, alvl, x), write) && (blvl >= 0 && true) && (BB_state(b, blvl, a, alvl, x) in comprehension_59_450())
+  bz := BB_state(b, blvl, a, alvl, x)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic
+  assert perm(BB_atomicity_context_fp(b, blvl, a, alvl, x)) == none
+  assert $_levelVar_4 > blvl
+  $_levelVar_5 := blvl
+  exhale acc(BB_GB(b), write)
+  
+  // ------- Stabilising regions AA,CC1,CC2,CC3 (before use-atomic@60.5) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,CC1,CC2,CC3 (before use-atomic@60.5) END 
+  
+  
+  unfold acc(BB(b, blvl, a, alvl, x), write)
+  label transitionPre
+  ___silicon_hack407_havoc_all_AA_interferenceContext_fp()
+  inhale (forall $_m0: Int :: { ($_m0 in AA_interferenceSet_df(0, a, alvl, x)) } ($_m0 - 1 in BB_interferenceSet_hf(0, b, blvl, a, alvl, x)) == ($_m0 in AA_interferenceSet_hf(0, a, alvl, x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale true ==> AA_interferenceReference_hf(0, a, alvl, x) == old[transitionPre](AA_state(a, alvl, x))
+  
+  // ------- Stabilising regions BB (before use-atomic@60.5) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize2](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize2](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize2](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // ------- Stabilising regions BB (before use-atomic@60.5) END 
+  
+  
+  inhale acc(BB_GB(b), write)
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(AA(a, alvl, x), write) && (alvl >= 0 && true) && (AA_state(a, alvl, x) in comprehension_37_220())
+  az := AA_state(a, alvl, x)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- call:foo1 BEGIN ---------
+  
+  
+  assert (forall $_m: Int :: { ($_m in AA_interferenceSet_hf(0, a, alvl, x)) } ($_m in AA_interferenceSet_hf(0, a, alvl, x)) ==> ($_m in comprehension_37_220()))
+  label pre_call0
+  assert $_levelVar_5 >= 0 && $_levelVar_5 > alvl
+  assert true
+  exhale acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x)) && (AA_state(a, alvl, x) in comprehension_37_220())
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (before call:foo1@63.7) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize0](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize0](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize0](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize0](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize0](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize0](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize0](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize0](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize0](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize0](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize0](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize0](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize0](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize0](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize0](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (before call:foo1@63.7) END 
+  
+  
+  inhale acc(AA(a, alvl, x), write) && (alvl >= 0 && true)
+  
+  // ------- call:foo1 END -----------
+  
+  
+  fold acc(BB(b, blvl, a, alvl, x), write)
+  assert true
+  $_levelVar_6 := $_levelVar_4
+  
+  // ------- use-atomic END ----------
+  
+  
+  fold acc(CC1(c, clvl, b, blvl, a, alvl, x), write)
+  assert true
+  $_levelVar_7 := $_levelVar_3
+  
+  // ------- use-atomic END ----------
+  
+  
+}
+
+method test2(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref)
+  requires acc(CC1(c, clvl, b, blvl, a, alvl, x), write) && (clvl >= 0 && CC1_state(c, clvl, b, blvl, a, alvl, x) == CC1_state(c, clvl, b, blvl, a, alvl, x)) && acc(CC1_GC1(c), write)
+  requires (CC1_state(c, clvl, b, blvl, a, alvl, x) in Set(0))
+{
+  var cz: Int
+  var bz: Int
+  var bk: Int
+  var az: Int
+  var ak: Int
+  var $_levelVar_8: Int
+  var $_levelVar_9: Int
+  var $_levelVar_10: Int
+  var $_levelVar_11: Int
+  var $_levelVar_12: Int
+  inhale $_levelVar_8 >= 0 && $_levelVar_8 > clvl
+  assert $_levelVar_8 >= 0
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale CC1_interferenceSet_hf(0, c, clvl, b, blvl, a, alvl, x) == Set(0)
+  inhale CC1_interferenceReference_hf(0, c, clvl, b, blvl, a, alvl, x) == old(CC1_state(c, clvl, b, blvl, a, alvl, x))
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(CC1(c, clvl, b, blvl, a, alvl, x), write) && (clvl >= 0 && true) && (CC1_state(c, clvl, b, blvl, a, alvl, x) in Set(0))
+  cz := CC1_state(c, clvl, b, blvl, a, alvl, x)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic2
+  assert perm(CC1_atomicity_context_fp(c, clvl, b, blvl, a, alvl, x)) == none
+  assert $_levelVar_8 > clvl
+  $_levelVar_9 := clvl
+  exhale acc(CC1_GC1(c), write)
+  
+  // ------- Stabilising regions AA,BB,CC2,CC3 (before use-atomic@73.3) BEGIN 
+  
+  
+  label pre_stabilize8
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize8](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize8](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize8](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize8](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize8](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize8](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize8](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize8](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize8](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize8](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize8](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize8](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC2,CC3 (before use-atomic@73.3) END 
+  
+  
+  unfold acc(CC1(c, clvl, b, blvl, a, alvl, x), write)
+  label transitionPre2
+  ___silicon_hack407_havoc_all_BB_interferenceContext_fp()
+  inhale (forall $_m0: Int :: { ($_m0 in BB_interferenceSet_df(0, b, blvl, a, alvl, x)) } (($_m0 < 5 ? 0 : 1) in CC1_interferenceSet_hf(0, c, clvl, b, blvl, a, alvl, x)) == ($_m0 in BB_interferenceSet_hf(0, b, blvl, a, alvl, x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale true ==> BB_interferenceReference_hf(0, b, blvl, a, alvl, x) == old[transitionPre2](BB_state(b, blvl, a, alvl, x))
+  
+  // ------- Stabilising regions CC1 (before use-atomic@73.3) BEGIN 
+  
+  
+  label pre_stabilize9
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize9](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize9](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize9](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // ------- Stabilising regions CC1 (before use-atomic@73.3) END 
+  
+  
+  inhale acc(CC1_GC1(c), write)
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(BB(b, blvl, a, alvl, x), write) && (blvl >= 0 && true) && (BB_state(b, blvl, a, alvl, x) in comprehension_59_450())
+  bz := BB_state(b, blvl, a, alvl, x)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic3
+  assert perm(BB_atomicity_context_fp(b, blvl, a, alvl, x)) == none
+  assert $_levelVar_9 > blvl
+  $_levelVar_10 := blvl
+  exhale acc(BB_GB(b), write)
+  
+  // ------- Stabilising regions AA,CC1,CC2,CC3 (before use-atomic@76.5) BEGIN 
+  
+  
+  label pre_stabilize6
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize6](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize6](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize6](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize6](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize6](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize6](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize6](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize6](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize6](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize6](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize6](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize6](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,CC1,CC2,CC3 (before use-atomic@76.5) END 
+  
+  
+  unfold acc(BB(b, blvl, a, alvl, x), write)
+  label transitionPre3
+  ___silicon_hack407_havoc_all_AA_interferenceContext_fp()
+  inhale (forall $_m0: Int :: { ($_m0 in AA_interferenceSet_df(0, a, alvl, x)) } ($_m0 - 1 in BB_interferenceSet_hf(0, b, blvl, a, alvl, x)) == ($_m0 in AA_interferenceSet_hf(0, a, alvl, x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale true ==> AA_interferenceReference_hf(0, a, alvl, x) == old[transitionPre3](AA_state(a, alvl, x))
+  
+  // ------- Stabilising regions BB (before use-atomic@76.5) BEGIN 
+  
+  
+  label pre_stabilize7
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize7](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize7](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize7](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // ------- Stabilising regions BB (before use-atomic@76.5) END 
+  
+  
+  inhale acc(BB_GB(b), write)
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(AA(a, alvl, x), write) && (alvl >= 0 && true) && (AA_state(a, alvl, x) in comprehension_37_220())
+  az := AA_state(a, alvl, x)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- call:foo2 BEGIN ---------
+  
+  
+  assert (forall $_m: Int :: { ($_m in AA_interferenceSet_hf(0, a, alvl, x)) } ($_m in AA_interferenceSet_hf(0, a, alvl, x)) ==> ($_m in comprehension_59_450()))
+  label pre_call
+  assert $_levelVar_10 >= 0 && $_levelVar_10 > alvl
+  assert true
+  exhale acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x)) && (AA_state(a, alvl, x) in comprehension_59_450())
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (before call:foo2@80.7) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize5](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize5](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize5](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize5](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize5](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize5](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize5](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize5](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize5](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize5](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize5](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize5](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize5](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize5](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize5](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (before call:foo2@80.7) END 
+  
+  
+  inhale acc(AA(a, alvl, x), write) && (alvl >= 0 && true)
+  
+  // ------- call:foo2 END -----------
+  
+  
+  fold acc(BB(b, blvl, a, alvl, x), write)
+  assert true
+  $_levelVar_11 := $_levelVar_9
+  
+  // ------- use-atomic END ----------
+  
+  
+  fold acc(CC1(c, clvl, b, blvl, a, alvl, x), write)
+  assert true
+  $_levelVar_12 := $_levelVar_8
+  
+  // ------- use-atomic END ----------
+  
+  
+}
+
+method test3(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref)
+  requires acc(CC2(c, clvl, b, blvl, a, alvl, x), write) && (clvl >= 0 && CC2_state(c, clvl, b, blvl, a, alvl, x) == CC2_state(c, clvl, b, blvl, a, alvl, x)) && acc(CC2_GC2(c), write)
+  requires (CC2_state(c, clvl, b, blvl, a, alvl, x) in Set(CC2_state(c, clvl, b, blvl, a, alvl, x)))
+{
+  var $_levelVar_13: Int
+  var $_levelVar_14: Int
+  var $_levelVar_15: Int
+  var $_levelVar_16: Int
+  var $_levelVar_17: Int
+  inhale $_levelVar_13 >= 0 && $_levelVar_13 > clvl
+  assert $_levelVar_13 >= 0
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale CC2_interferenceSet_hf(0, c, clvl, b, blvl, a, alvl, x) == Set(CC2_state(c, clvl, b, blvl, a, alvl, x))
+  inhale CC2_interferenceReference_hf(0, c, clvl, b, blvl, a, alvl, x) == old(CC2_state(c, clvl, b, blvl, a, alvl, x))
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic4
+  assert perm(CC2_atomicity_context_fp(c, clvl, b, blvl, a, alvl, x)) == none
+  assert $_levelVar_13 > clvl
+  $_levelVar_14 := clvl
+  exhale acc(CC2_GC2(c), write)
+  
+  // ------- Stabilising regions AA,BB,CC1,CC3 (before use-atomic@89.3) BEGIN 
+  
+  
+  label pre_stabilize13
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize13](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize13](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize13](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize13](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize13](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize13](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize13](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize13](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize13](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize13](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize13](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize13](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC3 (before use-atomic@89.3) END 
+  
+  
+  unfold acc(CC2(c, clvl, b, blvl, a, alvl, x), write)
+  label transitionPre4
+  ___silicon_hack407_havoc_all_BB_interferenceContext_fp()
+  inhale (forall $_m0: Int :: { ($_m0 in BB_interferenceSet_df(0, b, blvl, a, alvl, x)) } ($_m0 + 9 in CC2_interferenceSet_hf(0, c, clvl, b, blvl, a, alvl, x)) == ($_m0 in BB_interferenceSet_hf(0, b, blvl, a, alvl, x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale true ==> BB_interferenceReference_hf(0, b, blvl, a, alvl, x) == old[transitionPre4](BB_state(b, blvl, a, alvl, x))
+  
+  // ------- Stabilising regions CC2 (before use-atomic@89.3) BEGIN 
+  
+  
+  label pre_stabilize14
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize14](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize14](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize14](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // ------- Stabilising regions CC2 (before use-atomic@89.3) END 
+  
+  
+  inhale acc(CC2_GC2(c), write)
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic5
+  assert perm(BB_atomicity_context_fp(b, blvl, a, alvl, x)) == none
+  assert $_levelVar_14 > blvl
+  $_levelVar_15 := blvl
+  exhale acc(BB_GB(b), write)
+  
+  // ------- Stabilising regions AA,CC1,CC2,CC3 (before use-atomic@91.5) BEGIN 
+  
+  
+  label pre_stabilize11
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize11](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize11](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize11](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize11](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize11](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize11](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize11](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize11](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize11](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize11](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize11](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize11](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,CC1,CC2,CC3 (before use-atomic@91.5) END 
+  
+  
+  unfold acc(BB(b, blvl, a, alvl, x), write)
+  label transitionPre5
+  ___silicon_hack407_havoc_all_AA_interferenceContext_fp()
+  inhale (forall $_m0: Int :: { ($_m0 in AA_interferenceSet_df(0, a, alvl, x)) } ($_m0 - 1 in BB_interferenceSet_hf(0, b, blvl, a, alvl, x)) == ($_m0 in AA_interferenceSet_hf(0, a, alvl, x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale true ==> AA_interferenceReference_hf(0, a, alvl, x) == old[transitionPre5](AA_state(a, alvl, x))
+  
+  // ------- Stabilising regions BB (before use-atomic@91.5) BEGIN 
+  
+  
+  label pre_stabilize12
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize12](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize12](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize12](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // ------- Stabilising regions BB (before use-atomic@91.5) END 
+  
+  
+  inhale acc(BB_GB(b), write)
+  
+  // ------- call:foo3 BEGIN ---------
+  
+  
+  assert (forall $_m: Int :: { ($_m in AA_interferenceSet_hf(0, a, alvl, x)) } ($_m in AA_interferenceSet_hf(0, a, alvl, x)) ==> ($_m in Set(AA_interferenceReference_hf(0, a, alvl, x))))
+  label pre_call2
+  assert $_levelVar_15 >= 0 && $_levelVar_15 > alvl
+  assert true
+  exhale acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x)) && (AA_state(a, alvl, x) in Set(AA_state(a, alvl, x)))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (before call:foo3@93.7) BEGIN 
+  
+  
+  label pre_stabilize10
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize10](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize10](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize10](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize10](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize10](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize10](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize10](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize10](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize10](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize10](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize10](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize10](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize10](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize10](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize10](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (before call:foo3@93.7) END 
+  
+  
+  inhale acc(AA(a, alvl, x), write) && (alvl >= 0 && true)
+  
+  // ------- call:foo3 END -----------
+  
+  
+  fold acc(BB(b, blvl, a, alvl, x), write)
+  assert true
+  $_levelVar_16 := $_levelVar_14
+  
+  // ------- use-atomic END ----------
+  
+  
+  fold acc(CC2(c, clvl, b, blvl, a, alvl, x), write)
+  assert true
+  $_levelVar_17 := $_levelVar_13
+  
+  // ------- use-atomic END ----------
+  
+  
+}
+
+method test4(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref)
+  requires acc(CC3(c, clvl, b, blvl, a, alvl, x, y), write) && (clvl >= 0 && CC3_state(c, clvl, b, blvl, a, alvl, x, y) == CC3_state(c, clvl, b, blvl, a, alvl, x, y)) && acc(CC3_GC3(c), write)
+  requires (CC3_state(c, clvl, b, blvl, a, alvl, x, y) in IntSet())
+{
+  var $_levelVar_18: Int
+  var $_levelVar_19: Int
+  var $_levelVar_20: Int
+  var $_levelVar_21: Int
+  var $_levelVar_22: Int
+  inhale $_levelVar_18 >= 0 && $_levelVar_18 > clvl
+  assert $_levelVar_18 >= 0
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale CC3_interferenceSet_hf(0, c, clvl, b, blvl, a, alvl, x, y) == IntSet()
+  inhale CC3_interferenceReference_hf(0, c, clvl, b, blvl, a, alvl, x, y) == old(CC3_state(c, clvl, b, blvl, a, alvl, x, y))
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic6
+  assert perm(CC3_atomicity_context_fp(c, clvl, b, blvl, a, alvl, x, y)) == none
+  assert $_levelVar_18 > clvl
+  $_levelVar_19 := clvl
+  exhale acc(CC3_GC3(c), write)
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2 (before use-atomic@102.3) BEGIN 
+  
+  
+  label pre_stabilize18
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize18](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize18](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize18](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize18](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize18](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize18](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize18](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize18](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize18](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize18](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize18](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize18](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2 (before use-atomic@102.3) END 
+  
+  
+  unfold acc(CC3(c, clvl, b, blvl, a, alvl, x, y), write)
+  label transitionPre6
+  ___silicon_hack407_havoc_all_BB_interferenceContext_fp()
+  
+  // no additional linking required
+  
+  
+  
+  // havoc performed by other front resource
+  
+  
+  inhale true ==> BB_interferenceReference_hf(0, b, blvl, a, alvl, x) == old[transitionPre6](BB_state(b, blvl, a, alvl, x))
+  
+  // ------- Stabilising regions CC3 (before use-atomic@102.3) BEGIN 
+  
+  
+  label pre_stabilize19
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize19](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize19](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize19](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions CC3 (before use-atomic@102.3) END 
+  
+  
+  inhale acc(CC3_GC3(c), write)
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic7
+  assert perm(BB_atomicity_context_fp(b, blvl, a, alvl, x)) == none
+  assert $_levelVar_19 > blvl
+  $_levelVar_20 := blvl
+  exhale acc(BB_GB(b), write)
+  
+  // ------- Stabilising regions AA,CC1,CC2,CC3 (before use-atomic@104.5) BEGIN 
+  
+  
+  label pre_stabilize16
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize16](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize16](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize16](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize16](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize16](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize16](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize16](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize16](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize16](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize16](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize16](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize16](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,CC1,CC2,CC3 (before use-atomic@104.5) END 
+  
+  
+  unfold acc(BB(b, blvl, a, alvl, x), write)
+  label transitionPre7
+  ___silicon_hack407_havoc_all_AA_interferenceContext_fp()
+  inhale (forall $_m0: Int :: { ($_m0 in AA_interferenceSet_df(0, a, alvl, x)) } ($_m0 - 1 in BB_interferenceSet_hf(0, b, blvl, a, alvl, x)) == ($_m0 in AA_interferenceSet_hf(0, a, alvl, x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale true ==> AA_interferenceReference_hf(0, a, alvl, x) == old[transitionPre7](AA_state(a, alvl, x))
+  
+  // ------- Stabilising regions BB (before use-atomic@104.5) BEGIN 
+  
+  
+  label pre_stabilize17
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize17](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize17](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize17](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // ------- Stabilising regions BB (before use-atomic@104.5) END 
+  
+  
+  inhale acc(BB_GB(b), write)
+  
+  // ------- call:foo3 BEGIN ---------
+  
+  
+  assert (forall $_m: Int :: { ($_m in AA_interferenceSet_hf(0, a, alvl, x)) } ($_m in AA_interferenceSet_hf(0, a, alvl, x)) ==> ($_m in Set(AA_interferenceReference_hf(0, a, alvl, x))))
+  label pre_call3
+  assert $_levelVar_20 >= 0 && $_levelVar_20 > alvl
+  assert true
+  exhale acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x)) && (AA_state(a, alvl, x) in Set(AA_state(a, alvl, x)))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (before call:foo3@108.7) BEGIN 
+  
+  
+  label pre_stabilize15
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize15](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize15](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize15](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize15](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize15](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize15](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize15](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize15](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize15](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize15](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize15](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize15](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize15](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize15](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize15](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (before call:foo3@108.7) END 
+  
+  
+  inhale acc(AA(a, alvl, x), write) && (alvl >= 0 && true)
+  
+  // ------- call:foo3 END -----------
+  
+  
+  fold acc(BB(b, blvl, a, alvl, x), write)
+  assert true
+  $_levelVar_21 := $_levelVar_19
+  
+  // ------- use-atomic END ----------
+  
+  
+  fold acc(CC3(c, clvl, b, blvl, a, alvl, x, y), write)
+  assert true
+  $_levelVar_22 := $_levelVar_18
+  
+  // ------- use-atomic END ----------
+  
+  
+}
+
+method $_AA_interpretation_stability_check(a: Ref, alvl: Int, x: Ref)
+{
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale acc(x.$cell_$f, write) && true
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize20
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize20](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize20](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize20](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize20](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize20](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize20](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize20](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize20](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize20](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize20](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize20](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize20](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize20](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize20](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize20](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of region interpretation) END 
+  
+  
+  assert acc(x.$cell_$f, write) && true
+}
+
+method $_AA_action_transitivity_check()
+{
+  var GA: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && true && GA
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && true && GA
+  assert aState == cState || aState == aState && cState == cState && true && GA
+}
+
+method $_BB_interpretation_stability_check(b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref)
+{
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale acc(AA(a, alvl, x), write) && (alvl >= 0 && true) && acc(AA_GA(a), write) && blvl > alvl
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize21
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize21](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize21](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize21](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize21](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize21](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize21](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize21](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize21](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize21](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize21](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize21](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize21](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize21](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize21](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize21](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of region interpretation) END 
+  
+  
+  assert acc(AA(a, alvl, x), write) && (alvl >= 0 && true) && acc(AA_GA(a), write) && blvl > alvl
+}
+
+method $_BB_action_transitivity_check()
+{
+  var GB: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && true && GB
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && true && GB
+  assert aState == cState || aState == aState && cState == cState && true && GB
+}
+
+method $_CC1_interpretation_stability_check(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref)
+{
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale acc(BB(b, blvl, a, alvl, x), write) && (blvl >= 0 && true) && acc(BB_GB(b), write) && clvl > blvl
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize22
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize22](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize22](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize22](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize22](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize22](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize22](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize22](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize22](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize22](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize22](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize22](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize22](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize22](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize22](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize22](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of region interpretation) END 
+  
+  
+  assert acc(BB(b, blvl, a, alvl, x), write) && (blvl >= 0 && true) && acc(BB_GB(b), write) && clvl > blvl
+}
+
+method $_CC1_action_transitivity_check()
+{
+  var GC1: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && true && GC1
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && true && GC1
+  assert aState == cState || aState == aState && cState == cState && true && GC1
+}
+
+method $_CC2_interpretation_stability_check(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref)
+{
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale acc(BB(b, blvl, a, alvl, x), write) && (blvl >= 0 && true) && acc(BB_GB(b), write) && clvl > blvl
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize23
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize23](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize23](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize23](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize23](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize23](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize23](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize23](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize23](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize23](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize23](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize23](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize23](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize23](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize23](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize23](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of region interpretation) END 
+  
+  
+  assert acc(BB(b, blvl, a, alvl, x), write) && (blvl >= 0 && true) && acc(BB_GB(b), write) && clvl > blvl
+}
+
+method $_CC2_action_transitivity_check()
+{
+  var GC2: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && true && GC2
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && true && GC2
+  assert aState == cState || aState == aState && cState == cState && true && GC2
+}
+
+method $_CC3_interpretation_stability_check(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref)
+{
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale acc(BB(b, blvl, a, alvl, x), write) && (blvl >= 0 && BB_state(b, blvl, a, alvl, x) == 42) && acc(BB_GB(b), write) && clvl > blvl && (acc(y.$cell_$f, write) && true)
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize24
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize24](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize24](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize24](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize24](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize24](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize24](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize24](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize24](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize24](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize24](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize24](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize24](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize24](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize24](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize24](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of region interpretation) END 
+  
+  
+  assert acc(BB(b, blvl, a, alvl, x), write) && (blvl >= 0 && BB_state(b, blvl, a, alvl, x) == 42) && acc(BB_GB(b), write) && clvl > blvl && (acc(y.$cell_$f, write) && true)
+}
+
+method $_CC3_action_transitivity_check()
+{
+  var GC3: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && true && GC3
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && true && GC3
+  assert aState == cState || aState == aState && cState == cState && true && GC3
+}
+
+method $_foo1_condition_stability_precondition_check(a: Ref, alvl: Int, x: Ref)
+  requires acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x))
+{
+  var $_levelVar_23: Int
+  inhale $_levelVar_23 >= 0 && $_levelVar_23 > alvl
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale AA_interferenceSet_hf(0, a, alvl, x) == comprehension_37_220()
+  inhale AA_interferenceReference_hf(0, a, alvl, x) == old(AA_state(a, alvl, x))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize25
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize25](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize25](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize25](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize25](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize25](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize25](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize25](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize25](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize25](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize25](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize25](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize25](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize25](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize25](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize25](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) END 
+  
+  
+  assert acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x))
+}
+
+method $_foo2_condition_stability_precondition_check(a: Ref, alvl: Int, x: Ref)
+  requires acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x))
+{
+  var $_levelVar_24: Int
+  inhale $_levelVar_24 >= 0 && $_levelVar_24 > alvl
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale AA_interferenceSet_hf(0, a, alvl, x) == comprehension_59_450()
+  inhale AA_interferenceReference_hf(0, a, alvl, x) == old(AA_state(a, alvl, x))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize26
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize26](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize26](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize26](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize26](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize26](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize26](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize26](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize26](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize26](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize26](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize26](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize26](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize26](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize26](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize26](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) END 
+  
+  
+  assert acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x))
+}
+
+method $_foo3_condition_stability_precondition_check(a: Ref, alvl: Int, x: Ref)
+  requires acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x))
+{
+  var $_levelVar_25: Int
+  inhale $_levelVar_25 >= 0 && $_levelVar_25 > alvl
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale AA_interferenceSet_hf(0, a, alvl, x) == Set(AA_state(a, alvl, x))
+  inhale AA_interferenceReference_hf(0, a, alvl, x) == old(AA_state(a, alvl, x))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize27
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize27](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize27](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize27](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize27](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize27](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize27](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize27](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize27](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize27](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize27](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize27](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize27](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize27](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize27](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize27](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) END 
+  
+  
+  assert acc(AA(a, alvl, x), write) && (alvl >= 0 && AA_state(a, alvl, x) == AA_state(a, alvl, x))
+}
+
+method $_test1_condition_stability_precondition_check(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref)
+  requires acc(CC1(c, clvl, b, blvl, a, alvl, x), write) && (clvl >= 0 && CC1_state(c, clvl, b, blvl, a, alvl, x) == CC1_state(c, clvl, b, blvl, a, alvl, x)) && acc(CC1_GC1(c), write)
+{
+  var $_levelVar_26: Int
+  inhale $_levelVar_26 >= 0 && $_levelVar_26 > clvl
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale CC1_interferenceSet_hf(0, c, clvl, b, blvl, a, alvl, x) == Set(0)
+  inhale CC1_interferenceReference_hf(0, c, clvl, b, blvl, a, alvl, x) == old(CC1_state(c, clvl, b, blvl, a, alvl, x))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize28
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize28](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize28](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize28](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize28](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize28](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize28](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize28](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize28](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize28](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize28](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize28](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize28](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize28](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize28](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize28](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) END 
+  
+  
+  assert acc(CC1(c, clvl, b, blvl, a, alvl, x), write) && (clvl >= 0 && CC1_state(c, clvl, b, blvl, a, alvl, x) == CC1_state(c, clvl, b, blvl, a, alvl, x)) && acc(CC1_GC1(c), write)
+}
+
+method $_test2_condition_stability_precondition_check(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref)
+  requires acc(CC1(c, clvl, b, blvl, a, alvl, x), write) && (clvl >= 0 && CC1_state(c, clvl, b, blvl, a, alvl, x) == CC1_state(c, clvl, b, blvl, a, alvl, x)) && acc(CC1_GC1(c), write)
+{
+  var $_levelVar_27: Int
+  inhale $_levelVar_27 >= 0 && $_levelVar_27 > clvl
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale CC1_interferenceSet_hf(0, c, clvl, b, blvl, a, alvl, x) == Set(0)
+  inhale CC1_interferenceReference_hf(0, c, clvl, b, blvl, a, alvl, x) == old(CC1_state(c, clvl, b, blvl, a, alvl, x))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize29
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize29](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize29](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize29](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize29](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize29](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize29](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize29](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize29](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize29](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize29](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize29](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize29](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize29](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize29](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize29](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) END 
+  
+  
+  assert acc(CC1(c, clvl, b, blvl, a, alvl, x), write) && (clvl >= 0 && CC1_state(c, clvl, b, blvl, a, alvl, x) == CC1_state(c, clvl, b, blvl, a, alvl, x)) && acc(CC1_GC1(c), write)
+}
+
+method $_test3_condition_stability_precondition_check(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref)
+  requires acc(CC2(c, clvl, b, blvl, a, alvl, x), write) && (clvl >= 0 && CC2_state(c, clvl, b, blvl, a, alvl, x) == CC2_state(c, clvl, b, blvl, a, alvl, x)) && acc(CC2_GC2(c), write)
+{
+  var $_levelVar_28: Int
+  inhale $_levelVar_28 >= 0 && $_levelVar_28 > clvl
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale CC2_interferenceSet_hf(0, c, clvl, b, blvl, a, alvl, x) == Set(CC2_state(c, clvl, b, blvl, a, alvl, x))
+  inhale CC2_interferenceReference_hf(0, c, clvl, b, blvl, a, alvl, x) == old(CC2_state(c, clvl, b, blvl, a, alvl, x))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize30
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize30](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize30](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize30](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize30](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize30](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize30](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize30](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize30](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize30](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize30](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize30](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize30](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize30](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize30](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize30](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) END 
+  
+  
+  assert acc(CC2(c, clvl, b, blvl, a, alvl, x), write) && (clvl >= 0 && CC2_state(c, clvl, b, blvl, a, alvl, x) == CC2_state(c, clvl, b, blvl, a, alvl, x)) && acc(CC2_GC2(c), write)
+}
+
+method $_test4_condition_stability_precondition_check(c: Ref, clvl: Int, b: Ref, blvl: Int, a: Ref, alvl: Int, x: Ref, y: Ref)
+  requires acc(CC3(c, clvl, b, blvl, a, alvl, x, y), write) && (clvl >= 0 && CC3_state(c, clvl, b, blvl, a, alvl, x, y) == CC3_state(c, clvl, b, blvl, a, alvl, x, y)) && acc(CC3_GC3(c), write)
+{
+  var $_levelVar_29: Int
+  inhale $_levelVar_29 >= 0 && $_levelVar_29 > clvl
+  inhale acc(AA_sk_fp(), write) && acc(BB_sk_fp(), write) && acc(CC1_sk_fp(), write) && acc(CC2_sk_fp(), write) && acc(CC3_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $alvl: Int, $x: Ref :: acc(AA_interferenceContext_fp($a, $alvl, $x), write))
+  inhale (forall $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(BB_interferenceContext_fp($b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC1_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref :: acc(CC2_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x), write))
+  inhale (forall $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref :: acc(CC3_interferenceContext_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y), write))
+  inhale CC3_interferenceSet_hf(0, c, clvl, b, blvl, a, alvl, x, y) == IntSet()
+  inhale CC3_interferenceReference_hf(0, c, clvl, b, blvl, a, alvl, x, y) == old(CC3_state(c, clvl, b, blvl, a, alvl, x, y))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize31
+  
+  // Stabilising all instances of region AA
+  
+  ___silicon_hack407_havoc_all_AA()
+  exhale acc(AA_sk_fp(), write)
+  inhale acc(AA_sk_fp(), write)
+  inhale (forperm $a: Ref, $alvl: Int, $x: Ref [AA($a, $alvl, $x)] :: none < old[pre_stabilize31](perm(AA($a, $alvl, $x))) ==> (none < perm($a.$diamond) && none < perm(AA_atomicity_context_fp($a, $alvl, $x)) ==> (AA_state($a, $alvl, $x) in AA_atomicity_context_hf($a, $alvl, $x))) && (AA_state($a, $alvl, $x) == old[pre_stabilize31](AA_state($a, $alvl, $x)) || AA_sk_$_action_n($a, $alvl, $x) == old[pre_stabilize31](AA_state($a, $alvl, $x)) && AA_sk_$_action_m($a, $alvl, $x) == AA_state($a, $alvl, $x) && true && perm(AA_GA($a)) == none))
+  
+  // Stabilising all instances of region BB
+  
+  ___silicon_hack407_havoc_all_BB()
+  exhale acc(BB_sk_fp(), write)
+  inhale acc(BB_sk_fp(), write)
+  inhale (forperm $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [BB($b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize31](perm(BB($b, $blvl, $a, $alvl, $x))) ==> (none < perm($b.$diamond) && none < perm(BB_atomicity_context_fp($b, $blvl, $a, $alvl, $x)) ==> (BB_state($b, $blvl, $a, $alvl, $x) in BB_atomicity_context_hf($b, $blvl, $a, $alvl, $x))) && (BB_state($b, $blvl, $a, $alvl, $x) == old[pre_stabilize31](BB_state($b, $blvl, $a, $alvl, $x)) || BB_sk_$_action_n($b, $blvl, $a, $alvl, $x) == old[pre_stabilize31](BB_state($b, $blvl, $a, $alvl, $x)) && BB_sk_$_action_m($b, $blvl, $a, $alvl, $x) == BB_state($b, $blvl, $a, $alvl, $x) && true && perm(BB_GB($b)) == none))
+  
+  // Stabilising all instances of region CC1
+  
+  ___silicon_hack407_havoc_all_CC1()
+  exhale acc(CC1_sk_fp(), write)
+  inhale acc(CC1_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC1($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize31](perm(CC1($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC1_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC1_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize31](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC1_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize31](CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC1_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC1_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC1_GC1($c)) == none))
+  
+  // Stabilising all instances of region CC2
+  
+  ___silicon_hack407_havoc_all_CC2()
+  exhale acc(CC2_sk_fp(), write)
+  inhale acc(CC2_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref [CC2($c, $clvl, $b, $blvl, $a, $alvl, $x)] :: none < old[pre_stabilize31](perm(CC2($c, $clvl, $b, $blvl, $a, $alvl, $x))) ==> (none < perm($c.$diamond) && none < perm(CC2_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x)) ==> (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) in CC2_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x))) && (CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize31](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) || CC2_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x) == old[pre_stabilize31](CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x)) && CC2_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x) == CC2_state($c, $clvl, $b, $blvl, $a, $alvl, $x) && true && perm(CC2_GC2($c)) == none))
+  
+  // Stabilising all instances of region CC3
+  
+  ___silicon_hack407_havoc_all_CC3()
+  exhale acc(CC3_sk_fp(), write)
+  inhale acc(CC3_sk_fp(), write)
+  inhale (forperm $c: Ref, $clvl: Int, $b: Ref, $blvl: Int, $a: Ref, $alvl: Int, $x: Ref, $y: Ref [CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)] :: none < old[pre_stabilize31](perm(CC3($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) ==> (none < perm($c.$diamond) && none < perm(CC3_atomicity_context_fp($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) ==> (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) in CC3_atomicity_context_hf($c, $clvl, $b, $blvl, $a, $alvl, $x, $y))) && (CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize31](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) || CC3_sk_$_action_n($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == old[pre_stabilize31](CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y)) && CC3_sk_$_action_m($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) == CC3_state($c, $clvl, $b, $blvl, $a, $alvl, $x, $y) && true && perm(CC3_GC3($c)) == none))
+  
+  // ------- Stabilising regions AA,BB,CC1,CC2,CC3 (check stability of method condition) END 
+  
+  
+  assert acc(CC3(c, clvl, b, blvl, a, alvl, x, y), write) && (clvl >= 0 && CC3_state(c, clvl, b, blvl, a, alvl, x, y) == CC3_state(c, clvl, b, blvl, a, alvl, x, y)) && acc(CC3_GC3(c), write)
+}

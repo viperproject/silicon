@@ -1,0 +1,3706 @@
+domain $SnapshotMirrors$ {
+  
+  
+}
+
+field closure_0: Ref
+
+field closure_1: Ref
+
+field closure_2: Ref
+
+field discriminant: Int
+
+field enum_Empty: Ref
+
+field enum_More: Ref
+
+field enum_None: Ref
+
+field enum_Some: Ref
+
+field f$0: Ref
+
+field f$elem: Ref
+
+field f$head: Ref
+
+field f$next: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field tuple_2: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$undef_bool__$TY$__$bool$(): Bool
+
+
+function builtin$undef_int__$TY$__$int$(): Int
+
+
+function builtin$unreach_bool__$TY$__$bool$(): Bool
+  requires false
+
+
+function builtin$unreach_int__$TY$__$int$(): Int
+  requires false
+
+
+function m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$is_empty$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$bool$(_pure_1: Ref): Bool
+  requires acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures true
+{
+  (unfolding acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in _pure_1.discriminant == 0)
+}
+
+function m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures (!m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$is_empty$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$bool$(_pure_1) ==> result > 0) && result >= 0
+  ensures 0 <= result
+{
+  (unfolding acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in (_pure_1.discriminant == 0 ? 0 : (unfolding acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_More(_pure_1.enum_More), read$()) in (unfolding acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_$_end_(_pure_1.enum_More.f$0), read$()) in (unfolding acc(m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(_pure_1.enum_More.f$0.val_ref), read$()) in 1 + m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1.enum_More.f$0.val_ref.f$next))))))
+}
+
+function m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_pure_1: Ref, _pure_2: Int): Int
+  requires acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires 0 <= _pure_2 && _pure_2 < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1)
+  requires 0 <= _pure_2
+  ensures true
+{
+  (unfolding acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in (_pure_1.discriminant == 0 ? builtin$unreach_int__$TY$__$int$() : (unfolding acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_More(_pure_1.enum_More), read$()) in (unfolding acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_$_end_(_pure_1.enum_More.f$0), read$()) in (unfolding acc(m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(_pure_1.enum_More.f$0.val_ref), read$()) in (unfolding acc(i32(_pure_1.enum_More.f$0.val_ref.f$elem), read$()) in (_pure_2 != 0 ? m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_pure_1.enum_More.f$0.val_ref.f$next, _pure_2 - 1) : _pure_1.enum_More.f$0.val_ref.f$elem.val_int)))))))
+}
+
+function m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_pure_1: Ref): Bool
+  requires acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures true
+{
+  (unfolding acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in !(_pure_1.discriminant == 0))
+}
+
+function m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_pure_1: Ref): Bool
+  requires acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures true
+{
+  (unfolding acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in _pure_1.discriminant == 0)
+}
+
+function m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_pure_1)
+  ensures true
+{
+  (unfolding acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in (_pure_1.discriminant == 0 ? (unfolding acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_Some(_pure_1.enum_Some), read$()) in (unfolding acc(i32(_pure_1.enum_Some.f$0), read$()) in _pure_1.enum_Some.f$0.val_int)) : builtin$unreach_int__$TY$__$int$()))
+}
+
+function m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures true
+  ensures 0 <= result
+{
+  (unfolding acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1.f$head))
+}
+
+function m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_pure_1: Ref, _pure_2: Int): Int
+  requires acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires 0 <= _pure_2 && _pure_2 < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1)
+  requires 0 <= _pure_2
+  ensures true
+{
+  (unfolding acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_pure_1.f$head, _pure_2))
+}
+
+function m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(self: Ref): Int
+  requires acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(self), read$())
+  ensures 0 <= result && result <= 1
+{
+  (unfolding acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(self), read$()) in self.discriminant)
+}
+
+function m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(self: Ref): Int
+  requires acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(self), read$())
+  ensures 0 <= result && result <= 1
+{
+  (unfolding acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(self), read$()) in self.discriminant)
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_13$3$285504012641001254(self: Ref) 
+
+predicate closure$0_1_14$3$15375066495536163397(self: Ref) 
+
+predicate closure$0_1_15$3$2868002597210616443(self: Ref) 
+
+predicate closure$0_1_16$3$9316913858590951640(self: Ref) 
+
+predicate closure$0_1_17$4$532893136756078670(self: Ref) 
+
+predicate closure$0_1_23$3$5372843592026537153(self: Ref) 
+
+predicate closure$0_1_24$3$3010475301938644702(self: Ref) 
+
+predicate closure$0_1_25$3$3868597211286645367(self: Ref) 
+
+predicate closure$0_1_26$4$17874368375826697435(self: Ref) 
+
+predicate closure$0_1_27$4$11880881688395209060(self: Ref) 
+
+predicate closure$0_1_28$4$2464236529596893172(self: Ref) 
+
+predicate closure$0_1_29$5$13550867090471520830(self: Ref) 
+
+predicate closure$0_1_30$3$9316913858590951640(self: Ref) 
+
+predicate closure$0_1_31$4$10198083371420618695(self: Ref) 
+
+predicate closure$0_1_32$3$14146303487322046002(self: Ref) 
+
+predicate closure$0_1_33$3$10819110499908836502(self: Ref) 
+
+predicate closure$0_1_34$4$18248137411596842664(self: Ref) 
+
+predicate closure$0_1_35$3$1800990638667843567(self: Ref) 
+
+predicate closure$0_1_36$4$4559978894891083623(self: Ref) 
+
+predicate closure$0_1_37$4$8424733456540362922(self: Ref) 
+
+predicate closure$0_1_38$3$11417723233936340610(self: Ref) 
+
+predicate closure$0_1_39$3$1132657330059599590(self: Ref) 
+
+predicate closure$0_1_40$3$7625693188187510870(self: Ref) 
+
+predicate closure$0_1_41$3$13640473792123223955(self: Ref) 
+
+predicate closure$0_1_42$3$1451880131427103804(self: Ref) 
+
+predicate closure$0_1_43$3$17900001731891322914(self: Ref) 
+
+predicate closure$0_1_44$3$11711303054302998842(self: Ref) 
+
+predicate closure$0_1_45$4$16397435947654686472(self: Ref) 
+
+predicate closure$0_1_46$3$5039206468203838448(self: Ref) 
+
+predicate closure$0_1_47$3$8565491267176139305(self: Ref) 
+
+predicate closure$0_1_48$3$12939604231988721118(self: Ref) 
+
+predicate closure$0_1_49$3$2385238782922955094(self: Ref) 
+
+predicate closure$0_1_50$4$11829941760534454793(self: Ref) 
+
+predicate closure$0_1_51$4$13939029741107599013(self: Ref) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate isize(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.discriminant, write) && (0 <= self.discriminant && self.discriminant <= 1 && (acc(self.enum_More, write) && (self.discriminant == 1 ==> acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_More(self.enum_More), write))))
+}
+
+predicate m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_More(self: Ref) {
+  acc(self.f$0, write) && acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$0), write)
+}
+
+predicate m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$head, write) && acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(self.f$head), write)
+}
+
+predicate m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$elem, write) && (acc(i32(self.f$elem), write) && (acc(self.f$next, write) && acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(self.f$next), write)))
+}
+
+predicate m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.discriminant, write) && (0 <= self.discriminant && self.discriminant <= 1 && (acc(self.enum_Some, write) && (self.discriminant == 0 ==> acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_Some(self.enum_Some), write))))
+}
+
+predicate m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_Some(self: Ref) {
+  acc(self.f$0, write) && acc(i32(self.f$0), write)
+}
+
+predicate never(self: Ref) 
+
+predicate ref$closure$0_1_13$3$285504012641001254(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_13$3$285504012641001254(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_14$3$15375066495536163397(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_14$3$15375066495536163397(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_15$3$2868002597210616443(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_15$3$2868002597210616443(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_16$3$9316913858590951640(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_16$3$9316913858590951640(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_17$4$532893136756078670(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_17$4$532893136756078670(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_23$3$5372843592026537153(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_23$3$5372843592026537153(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_24$3$3010475301938644702(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_24$3$3010475301938644702(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_25$3$3868597211286645367(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_25$3$3868597211286645367(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_26$4$17874368375826697435(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_26$4$17874368375826697435(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_27$4$11880881688395209060(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_27$4$11880881688395209060(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_28$4$2464236529596893172(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_28$4$2464236529596893172(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_29$5$13550867090471520830(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_29$5$13550867090471520830(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_30$3$9316913858590951640(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_30$3$9316913858590951640(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_31$4$10198083371420618695(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_31$4$10198083371420618695(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_32$3$14146303487322046002(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_32$3$14146303487322046002(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_33$3$10819110499908836502(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_33$3$10819110499908836502(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_34$4$18248137411596842664(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_34$4$18248137411596842664(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_35$3$1800990638667843567(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_35$3$1800990638667843567(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_36$4$4559978894891083623(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_36$4$4559978894891083623(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_37$4$8424733456540362922(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_37$4$8424733456540362922(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_38$3$11417723233936340610(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_38$3$11417723233936340610(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_39$3$1132657330059599590(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_39$3$1132657330059599590(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_40$3$7625693188187510870(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_40$3$7625693188187510870(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_41$3$13640473792123223955(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_41$3$13640473792123223955(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_42$3$1451880131427103804(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_42$3$1451880131427103804(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_43$3$17900001731891322914(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_43$3$17900001731891322914(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_44$3$11711303054302998842(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_44$3$11711303054302998842(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_45$4$16397435947654686472(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_45$4$16397435947654686472(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_46$3$5039206468203838448(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_46$3$5039206468203838448(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_47$3$8565491267176139305(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_47$3$8565491267176139305(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_48$3$12939604231988721118(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_48$3$12939604231988721118(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_49$3$2385238782922955094(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_49$3$2385238782922955094(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_50$4$11829941760534454793(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_50$4$11829941760534454793(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_51$4$13939029741107599013(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_51$4$13939029741107599013(self.val_ref), write)
+}
+
+predicate ref$i32(self: Ref) {
+  acc(self.val_ref, write) && acc(i32(self.val_ref), write)
+}
+
+predicate ref$m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$str(self: Ref) {
+  acc(self.val_ref, write) && acc(str(self.val_ref), write)
+}
+
+predicate ref$tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.val_ref, write) && acc(tuple3$ref$str$u32$u32(self.val_ref), write)
+}
+
+predicate ref$usize(self: Ref) {
+  acc(self.val_ref, write) && acc(usize(self.val_ref), write)
+}
+
+predicate str(self: Ref) 
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$usize$bool(self: Ref) {
+  acc(self.tuple_0, write) && (acc(usize(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(bool(self.tuple_1), write)))
+}
+
+predicate tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(ref$str(self.tuple_0), write) && (acc(self.tuple_1, write) && (acc(u32(self.tuple_1), write) && (acc(self.tuple_2, write) && acc(u32(self.tuple_2), write)))))
+}
+
+predicate u32(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+predicate u8(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+predicate usize(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+method m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$push$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var _aux_havoc_m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_: Ref
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Int
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "first_final::List::push"
+  
+  // Def path: "first_final::{{impl}}[5]::push[0]"
+  
+  // Span: tests/verify/pass/larger/first-final.rs:134:5: 141:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && acc(i32(_2), write))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = &'5s ((*_1).0: Link)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  unfold acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  _4.val_ref := _1.val_ref.f$head
+  exhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref.f$head), write - read$())
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_4.val_ref), read$())
+  label l0
+  // [mir] _3 = const Link::len(move _4) -> [return: bb2, unwind: bb1]
+  
+  label l1
+  _3 := builtin$havoc_int()
+  inhale _3 >= 0
+  inhale _3 >= 0
+  inhale _3 == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_4.val_ref)
+  // transfer perm _4.val_ref --> old[l1](_4.val_ref) // unchecked: false
+  
+  goto l2
+  label bb10
+  // ========== bb10 ==========
+  
+  __t6 := true
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageLive(_12)
+  
+  // [mir] StorageLive(_13)
+  
+  // [mir] _13 = move _5
+  
+  _13 := _5
+  label l12
+  // [mir] _12 = Link::More(move _13,)
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_12), write)
+  inhale m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_12) == 1
+  unfold acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_12), write)
+  unfold acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_More(_12.enum_More), write)
+  _12.enum_More.f$0 := _13
+  label l13
+  // [mir] drop(_13) -> [return: bb13, unwind: bb12]
+  
+  goto bb13
+  label bb13
+  // ========== bb13 ==========
+  
+  __t7 := true
+  // [mir] StorageDead(_13)
+  
+  // [mir] replace(((*_1).0: Link) <- move _12) -> [return: bb14, unwind: bb12]
+  
+  _1.val_ref.f$head := _12
+  label l14
+  goto bb14
+  label bb14
+  // ========== bb14 ==========
+  
+  __t8 := true
+  // [mir] drop(_12) -> [return: bb15, unwind: bb11]
+  
+  goto bb15
+  label bb15
+  // ========== bb15 ==========
+  
+  __t9 := true
+  // [mir] StorageDead(_12)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] drop(_5) -> [return: bb16, unwind: bb1]
+  
+  goto bb16
+  label bb16
+  // ========== bb16 ==========
+  
+  __t10 := true
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] return
+  
+  goto return
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] EndRegion('5s)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _2
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_int, write)
+  unfold acc(i32(_2), write)
+  _7.val_int := _2.val_int
+  label l3
+  // [mir] StorageLive(_8)
+  
+  // [mir] StorageLive(_9)
+  
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = &'19s mut ((*_1).0: Link)
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_ref, write)
+  _10.val_ref := _1.val_ref.f$head
+  label l4
+  // [mir] _9 = &'19s mut (*_10)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _10.val_ref
+  label l5
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = Link::Empty
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_11), write)
+  inhale m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_11) == 0
+  // [mir] _8 = const replace(move _9, move _11) -> [return: bb3, unwind: bb4]
+  
+  label l6
+  assert m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$is_empty$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$bool$(_11)
+  assert true
+  exhale acc(_9.val_ref, write) && (acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_9.val_ref), write) && acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_11), write))
+  _8 := builtin$havoc_ref()
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(old[l6](_9.val_ref)), write)
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_8), write)
+  inhale true
+  inhale m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$is_empty$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$bool$(old[l6](_9.val_ref)) && (old[l6](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_8) && (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_8) ==> old[l6](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_9.val_ref, i)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_8, i)))
+  label l7
+  goto l8
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] EndRegion('19s)
+  
+  // [mir] drop(_11) -> [return: bb6, unwind: bb5]
+  
+  goto bb6
+  label bb6
+  // ========== bb6 ==========
+  
+  __t3 := true
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] _6 = Node { elem: move _7, next: move _8 }
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(_6), write)
+  unfold acc(m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(_6), write)
+  _6.f$elem := _7
+  label l9
+  _6.f$next := _8
+  label l10
+  // [mir] drop(_8) -> [return: bb8, unwind: bb7]
+  
+  goto bb8
+  label bb8
+  // ========== bb8 ==========
+  
+  __t4 := true
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] _5 = const <std::boxed::Box<T>>::new(move _6) -> [return: bb9, unwind: bb7]
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  _aux_havoc_m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_ := builtin$havoc_ref()
+  _5.val_ref := _aux_havoc_m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_
+  inhale acc(m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(_5.val_ref), write)
+  _5.val_ref := _6
+  label l11
+  goto bb9
+  label bb9
+  // ========== bb9 ==========
+  
+  __t5 := true
+  // [mir] drop(_6) -> [return: bb10, unwind: bb1]
+  
+  goto bb10
+  label l2
+  // ========== l2 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L3,L0,)
+
+  
+  if (__t0 && __t0) {
+    // expire loan L0
+    
+    // transfer perm old[l1](_4.val_ref) --> old[l0](_4.val_ref) // unchecked: false
+    
+    exhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(old[l0](_4.val_ref)), read$())
+    inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref.f$head), write - read$())
+  }
+  goto bb2
+  label l8
+  // ========== l8 ==========
+  
+  // MIR edge bb2 --> bb3
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L4,L2,L1,)
+
+  
+  goto bb3
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(i32(_1.val_ref.f$head.enum_More.f$0.val_ref.f$elem), write)
+  fold acc(m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref.f$head.enum_More.f$0.val_ref), write)
+  fold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_$_end_(_1.val_ref.f$head.enum_More.f$0), write)
+  fold acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_More(_1.val_ref.f$head.enum_More), write)
+  fold acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref.f$head), write)
+  fold acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  // obtain acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) == old[pre](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) + 1 && (m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, 0) == old[pre]((unfolding acc(i32(_2), write) in _2.val_int)) && (forall i: Int :: 1 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) ==> old[pre](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, i - 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, i)))
+  assert true
+  exhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$pop$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Int
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Int
+  var _7: Ref
+  var _8: Ref
+  var _9: Int
+  var _10: Ref
+  var _11: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "first_final::List::pop"
+  
+  // Def path: "first_final::{{impl}}[5]::pop[0]"
+  
+  // Span: tests/verify/pass/larger/first-final.rs:151:5: 161:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_2)
+  
+  // [mir] StorageLive(_3)
+  
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = &'6s mut ((*_1).0: Link)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  unfold acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  _4.val_ref := _1.val_ref.f$head
+  label l0
+  // [mir] _3 = &'6s mut (*_4)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_ref, write)
+  _3.val_ref := _4.val_ref
+  label l1
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = Link::Empty
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_5), write)
+  inhale m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_5) == 0
+  // [mir] _2 = const replace(move _3, move _5) -> [return: bb2, unwind: bb3]
+  
+  label l2
+  assert m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$is_empty$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$bool$(_5)
+  assert true
+  exhale acc(_3.val_ref, write) && (acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_3.val_ref), write) && acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_5), write))
+  _2 := builtin$havoc_ref()
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(old[l2](_3.val_ref)), write)
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  inhale true
+  inhale m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$is_empty$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$bool$(old[l2](_3.val_ref)) && (old[l2](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_2) && (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_2) ==> old[l2](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_3.val_ref, i)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_2, i)))
+  label l3
+  goto l4
+  label bb10
+  // ========== bb10 ==========
+  
+  __t3 := true
+  // [mir] unreachable
+  
+  goto end_of_method
+  label bb11
+  // ========== bb11 ==========
+  
+  __t6 := true
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = move ((_2 as More).0: std::boxed::Box<Node>)
+  
+  unfold acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  unfold acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_More(_2.enum_More), write)
+  _8 := _2.enum_More.f$0
+  label l9
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = move ((*_8).1: Link)
+  
+  unfold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_$_end_(_8), write)
+  unfold acc(m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(_8.val_ref), write)
+  _10 := _8.val_ref.f$next
+  label l10
+  // [mir] replace(((*_1).0: Link) <- move _10) -> [return: bb13, unwind: bb15]
+  
+  _1.val_ref.f$head := _10
+  label l11
+  goto bb13
+  label bb12
+  // ========== bb12 ==========
+  
+  __t10 := true
+  // [mir] drop(_8) -> [return: bb17, unwind: bb4]
+  
+  goto bb17
+  label bb13
+  // ========== bb13 ==========
+  
+  __t7 := true
+  // [mir] drop(_10) -> [return: bb16, unwind: bb14]
+  
+  goto bb16
+  label bb16
+  // ========== bb16 ==========
+  
+  __t8 := true
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = ((*_8).0: i32)
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_int, write)
+  unfold acc(i32(_8.val_ref.f$elem), write)
+  _11.val_int := _8.val_ref.f$elem.val_int
+  label l12
+  // [mir] _0 = TrustedOption::Some(move _11,)
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  inhale m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_0) == 0
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_Some(_0.enum_Some), write)
+  _0.enum_Some.f$0 := _11
+  label l13
+  // [mir] StorageDead(_11)
+  
+  // [mir] goto -> bb12
+  
+  goto l14
+  label bb17
+  // ========== bb17 ==========
+  
+  __t11 := true
+  // [mir] StorageDead(_8)
+  
+  // [mir] drop(_2) -> [return: bb18, unwind: bb1]
+  
+  goto bb18
+  label bb18
+  // ========== bb18 ==========
+  
+  __t12 := true
+  // [mir] StorageDead(_2)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] return
+  
+  goto return
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] EndRegion('6s)
+  
+  // [mir] drop(_5) -> [return: bb5, unwind: bb4]
+  
+  goto bb5
+  label bb5
+  // ========== bb5 ==========
+  
+  __t2 := true
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] _6 = discriminant(_2)
+  
+  _6 := builtin$havoc_int()
+  inhale true
+  _6 := m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_2)
+  // [mir] _7 = &'<empty> _2
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _2
+  exhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write - read$())
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_7.val_ref), read$())
+  label l5
+  // [mir] _9 = discriminant(_2)
+  
+  _9 := builtin$havoc_int()
+  inhale true
+  _9 := m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)
+  // [mir] switchInt(move _9) -> [0isize: bb7, 1isize: bb8, otherwise: bb10]
+  
+  __t13 := _9
+  // Ignore default target bb10, as the compiler marked it as unreachable.
+  
+  if (__t13 == 0) {
+    goto l7
+  }
+  goto l6
+  label bb6
+  // ========== bb6 ==========
+  
+  __t9 := true
+  // [mir] _0 = TrustedOption::None
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  inhale m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_0) == 1
+  // [mir] goto -> bb12
+  
+  goto l15
+  label bb7
+  // ========== bb7 ==========
+  
+  __t4 := true
+  // [mir] ReadForMatch(_7)
+  
+  // [mir] falseEdges -> [real: bb6, imaginary: bb8]
+  
+  goto l8
+  label bb8
+  // ========== bb8 ==========
+  
+  __t5 := true
+  // [mir] ReadForMatch(_7)
+  
+  // expire_borrows ReborrowingDAG(L2,)
+
+  
+  if (__t2) {
+    // expire loan L2
+    
+    exhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_7.val_ref), read$())
+    inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb11, imaginary: bb9]
+  
+  goto bb11
+  label l14
+  // ========== l14 ==========
+  
+  // drop Acc(_2.discriminant, write) (Pred(_2[enum_More].f$0, write))
+  
+  // drop Acc(_2[enum_More], write) (Pred(_2[enum_More].f$0, write))
+  
+  // drop Acc(_2[enum_More].f$0, write) (Pred(_2[enum_More].f$0, write))
+  
+  fold acc(i32(_0.enum_Some.f$0), write)
+  fold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_Some(_0.enum_Some), write)
+  fold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // drop Acc(_8.val_ref.f$elem.val_int, write) (Acc(_8.val_ref.f$elem.val_int, write))
+  
+  // drop Acc(_8.val_ref.f$next, write) (Acc(_8.val_ref.f$next, write))
+  
+  // drop Acc(_8.val_ref.f$elem, write) (Acc(_8.val_ref.f$elem, write))
+  
+  // drop Acc(_8.val_ref, write) (Acc(_8.val_ref, write))
+  
+  goto bb12
+  label l15
+  // ========== l15 ==========
+  
+  // drop Pred(_2, write) (Pred(_2[enum_More].f$0, write))
+  
+  goto bb12
+  label l4
+  // ========== l4 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L3,L1,L0,)
+
+  
+  goto bb2
+  label l6
+  // ========== l6 ==========
+  
+  // MIR edge bb5 --> bb8
+  
+  goto bb8
+  label l7
+  // ========== l7 ==========
+  
+  // MIR edge bb5 --> bb7
+  
+  goto bb7
+  label l8
+  // ========== l8 ==========
+  
+  // MIR edge bb7 --> bb6
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L2,)
+
+  
+  if (__t2) {
+    // expire loan L2
+    
+    exhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_7.val_ref), read$())
+    inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write - read$())
+  }
+  goto bb6
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  // obtain acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert (old[pre](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_0)) && ((old[pre](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) == 0) && ((old[pre](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_0)) && ((old[pre](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_0) == old[pre](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, 0))) && ((old[pre](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) == old[pre](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) - 1)) && (old[pre](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) > 0 ==> (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) ==> old[pre](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, i + 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, i)))))))
+  assert true
+  exhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$6$closesqu$$$drop$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Int
+  var __t19: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Int
+  var _10: Ref
+  var _11: Ref
+  var _12: Int
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "<List as std::ops::Drop>::drop"
+  
+  // Def path: "first_final::{{impl}}[6]::drop[0]"
+  
+  // Span: tests/verify/pass/larger/first-final.rs:165:5: 177:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_2)
+  
+  // [mir] StorageLive(_3)
+  
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = &'8s mut ((*_1).0: Link)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  unfold acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  _4.val_ref := _1.val_ref.f$head
+  label l0
+  // [mir] _3 = &'8s mut (*_4)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_ref, write)
+  _3.val_ref := _4.val_ref
+  label l1
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = Link::Empty
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_5), write)
+  inhale m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_5) == 0
+  // [mir] _2 = const replace(move _3, move _5) -> [return: bb2, unwind: bb3]
+  
+  label l2
+  assert m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$is_empty$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$bool$(_5)
+  assert true
+  exhale acc(_3.val_ref, write) && (acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_3.val_ref), write) && acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_5), write))
+  _2 := builtin$havoc_ref()
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(old[l2](_3.val_ref)), write)
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  inhale true
+  inhale m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$is_empty$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$bool$(old[l2](_3.val_ref)) && (old[l2](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_2) && (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_2) ==> old[l2](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_3.val_ref, i)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_2, i)))
+  label l3
+  goto l4
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] EndRegion('8s)
+  
+  // [mir] drop(_5) -> [return: bb4, unwind: bb1]
+  
+  goto bb4
+  label bb23
+  // ========== bb23 ==========
+  
+  __t16 := true
+  // [mir] StorageDead(_2)
+  
+  // [mir] return
+  
+  goto return
+  label bb4
+  // ========== bb4 ==========
+  
+  __t2 := true
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = const true
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_bool, write)
+  _6.val_bool := true
+  // [mir] goto -> bb5
+  
+  goto loop5_start
+  label bb6
+  // ========== bb6 ==========
+  
+  __t15 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] drop(_2) -> [return: bb23, unwind: bb1]
+  
+  goto bb23
+  label l10
+  // ========== l10 ==========
+  
+  // MIR edge bb7 --> bb9
+  
+  goto loop5_group3_bb9
+  label l11
+  // ========== l11 ==========
+  
+  // MIR edge bb9 --> bb12
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L2,)
+
+  
+  if (__t4) {
+    // expire loan L2
+    
+    exhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_10.val_ref), read$())
+    inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write - read$())
+  }
+  goto loop5_group3_bb12
+  label l17
+  // ========== l17 ==========
+  
+  // MIR edge bb12 --> bb14
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L6,L4,L3,)
+
+  
+  goto loop5_group3_bb14
+  label l20
+  // ========== l20 ==========
+  
+  // MIR edge bb5 --> bb6
+  
+  goto l23
+  label l21
+  // ========== l21 ==========
+  
+  // MIR edge bb5 --> bb7
+  
+  goto loop5_end_body
+  label l22
+  // ========== l22 ==========
+  
+  unfold acc(bool(_6), write)
+  // drop Acc(_11.val_ref.f$elem, write) (Acc(_11.val_ref.f$elem, write))
+  
+  // drop Acc(_11.val_ref.f$next, write) (Acc(_11.val_ref.f$next, write))
+  
+  // drop Acc(_15.val_ref, write) (Acc(_15.val_ref, write))
+  
+  // drop Pred(_11.val_ref.f$next, write) (Pred(_11.val_ref.f$next, write))
+  
+  // drop Pred(_11.val_ref.f$elem, write) (Pred(_11.val_ref.f$elem, write))
+  
+  // drop Acc(_11.val_ref, write) (Acc(_11.val_ref, write))
+  
+  goto loop5_group3_bb13
+  label l23
+  // ========== l23 ==========
+  
+  // drop Acc(_9.val_int, write) (Acc(_9.val_int, write))
+  
+  // drop Acc(_12.val_int, write) (Acc(_12.val_int, write))
+  
+  // drop Acc(_10.val_ref, write) (Acc(_10.val_ref, write))
+  
+  // drop Pred(_8, write) (Pred(_8, write))
+  
+  goto bb6
+  label l4
+  // ========== l4 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L5,L1,L0,)
+
+  
+  goto bb2
+  label l6
+  // ========== l6 ==========
+  
+  // MIR edge bb5 --> bb6
+  
+  goto bb6
+  label l7
+  // ========== l7 ==========
+  
+  // MIR edge bb5 --> bb7
+  
+  goto loop5_inv_pre
+  label l9
+  // ========== l9 ==========
+  
+  // MIR edge bb7 --> bb10
+  
+  goto loop5_group3_bb10
+  label loop5_end_body
+  // ========== loop5_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb5
+  
+  fold acc(bool(_6), write)
+  // obtain acc(bool(_6), write)
+  
+  // obtain acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  
+  exhale acc(bool(_6), write) && acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  inhale false
+  goto end_of_method
+  label loop5_group1_bb5
+  // ========== loop5_group1_bb5 ==========
+  
+  // This is a loop head
+  
+  __t3 := true
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _6
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_bool, write)
+  _7.val_bool := _6.val_bool
+  label l5
+  // [mir] switchInt(move _7) -> [false: bb6, otherwise: bb7]
+  
+  __t17 := _7.val_bool
+  if (__t17) {
+    goto l7
+  }
+  goto l6
+  label loop5_group3_bb10
+  // ========== loop5_group3_bb10 ==========
+  
+  __t6 := true
+  // [mir] ReadForMatch(_10)
+  
+  // expire_borrows ReborrowingDAG(L2,)
+
+  
+  if (__t4) {
+    // expire loan L2
+    
+    exhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_10.val_ref), read$())
+    inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb8, imaginary: bb11]
+  
+  goto loop5_group3_bb8
+  label loop5_group3_bb12
+  // ========== loop5_group3_bb12 ==========
+  
+  __t8 := true
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = move ((_2 as More).0: std::boxed::Box<Node>)
+  
+  unfold acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  unfold acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_More(_2.enum_More), write)
+  _11 := _2.enum_More.f$0
+  label l12
+  // [mir] StorageLive(_13)
+  
+  // [mir] StorageLive(_14)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = &'21s mut ((*_11).1: Link)
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  unfold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_$_end_(_11), write)
+  unfold acc(m_first_final$$Node$opensqu$0$closesqu$$_beg_$_end_(_11.val_ref), write)
+  _15.val_ref := _11.val_ref.f$next
+  label l13
+  // [mir] _14 = &'21s mut (*_15)
+  
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.val_ref, write)
+  _14.val_ref := _15.val_ref
+  label l14
+  // [mir] StorageLive(_16)
+  
+  // [mir] _16 = Link::Empty
+  
+  _16 := builtin$havoc_ref()
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_16), write)
+  inhale m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_16) == 0
+  // [mir] _13 = const replace(move _14, move _16) -> [return: bb14, unwind: bb17]
+  
+  label l15
+  assert m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$is_empty$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$bool$(_16)
+  assert true
+  exhale acc(_14.val_ref, write) && (acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_14.val_ref), write) && acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_16), write))
+  _13 := builtin$havoc_ref()
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(old[l15](_14.val_ref)), write)
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_13), write)
+  inhale true
+  inhale m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$is_empty$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$bool$(old[l15](_14.val_ref)) && (old[l15](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_14.val_ref)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_13) && (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_13) ==> old[l15](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_14.val_ref, i)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_13, i)))
+  label l16
+  goto l17
+  label loop5_group3_bb13
+  // ========== loop5_group3_bb13 ==========
+  
+  __t13 := true
+  // [mir] drop(_11) -> [return: bb22, unwind: bb15]
+  
+  goto loop5_group3_bb22
+  label loop5_group3_bb14
+  // ========== loop5_group3_bb14 ==========
+  
+  __t9 := true
+  // [mir] EndRegion('21s)
+  
+  // [mir] drop(_16) -> [return: bb19, unwind: bb18]
+  
+  goto loop5_group3_bb19
+  label loop5_group3_bb19
+  // ========== loop5_group3_bb19 ==========
+  
+  __t10 := true
+  // [mir] StorageDead(_16)
+  
+  // [mir] StorageDead(_14)
+  
+  // [mir] replace(_2 <- move _13) -> [return: bb20, unwind: bb18]
+  
+  _2 := _13
+  label l18
+  goto loop5_group3_bb20
+  label loop5_group3_bb20
+  // ========== loop5_group3_bb20 ==========
+  
+  __t11 := true
+  // [mir] drop(_13) -> [return: bb21, unwind: bb16]
+  
+  goto loop5_group3_bb21
+  label loop5_group3_bb21
+  // ========== loop5_group3_bb21 ==========
+  
+  __t12 := true
+  // [mir] StorageDead(_13)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] _8 = ()
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(tuple0$(_8), write)
+  // [mir] goto -> bb13
+  
+  goto l22
+  label loop5_group3_bb22
+  // ========== loop5_group3_bb22 ==========
+  
+  __t14 := true
+  // [mir] StorageDead(_11)
+  
+  // [mir] goto -> bb5
+  
+  goto loop5_group4_bb5
+  label loop5_group3_bb7
+  // ========== loop5_group3_bb7 ==========
+  
+  __t4 := true
+  // [mir] _9 = discriminant(_2)
+  
+  _9 := builtin$havoc_int()
+  inhale true
+  _9 := m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_2)
+  // [mir] _10 = &'<empty> _2
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_ref, write)
+  _10.val_ref := _2
+  exhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write - read$())
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_10.val_ref), read$())
+  label l8
+  // [mir] _12 = discriminant(_2)
+  
+  _12 := builtin$havoc_int()
+  inhale true
+  _12 := m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_10.val_ref)
+  // [mir] switchInt(move _12) -> [1isize: bb9, otherwise: bb10]
+  
+  __t18 := _12
+  if (__t18 == 1) {
+    goto l10
+  }
+  goto l9
+  label loop5_group3_bb8
+  // ========== loop5_group3_bb8 ==========
+  
+  __t7 := true
+  // [mir] _6 = const false
+  
+  unfold acc(bool(_6), write)
+  _6.val_bool := false
+  // [mir] _8 = ()
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(tuple0$(_8), write)
+  // [mir] goto -> bb13
+  
+  goto loop5_group3_bb13
+  label loop5_group3_bb9
+  // ========== loop5_group3_bb9 ==========
+  
+  __t5 := true
+  // [mir] ReadForMatch(_10)
+  
+  // [mir] falseEdges -> [real: bb12, imaginary: bb10]
+  
+  goto l11
+  label loop5_group4_bb5
+  // ========== loop5_group4_bb5 ==========
+  
+  // This is a loop head
+  
+  __t3 := true
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _6
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_bool, write)
+  _7.val_bool := _6.val_bool
+  label l19
+  // [mir] switchInt(move _7) -> [false: bb6, otherwise: bb7]
+  
+  __t19 := _7.val_bool
+  if (__t19) {
+    goto l21
+  }
+  goto l20
+  label loop5_inv_post
+  // ========== loop5_inv_post ==========
+  
+  // Inhale the loop invariant of block bb5
+  
+  inhale acc(bool(_6), write) && acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  inhale true
+  inhale true
+  goto loop5_group3_bb7
+  label loop5_inv_pre
+  // ========== loop5_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb5
+  
+  fold acc(bool(_6), write)
+  // obtain acc(bool(_6), write)
+  
+  // obtain acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  
+  exhale acc(bool(_6), write) && acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  __t10 := builtin$havoc_bool()
+  __t3 := builtin$havoc_bool()
+  __t19 := builtin$havoc_bool()
+  __t18 := builtin$havoc_int()
+  _14 := builtin$havoc_ref()
+  __t14 := builtin$havoc_bool()
+  __t12 := builtin$havoc_bool()
+  __t11 := builtin$havoc_bool()
+  __t7 := builtin$havoc_bool()
+  _13 := builtin$havoc_ref()
+  __t5 := builtin$havoc_bool()
+  _12 := builtin$havoc_int()
+  _7 := builtin$havoc_ref()
+  _16 := builtin$havoc_ref()
+  _11 := builtin$havoc_ref()
+  _2 := builtin$havoc_ref()
+  _15 := builtin$havoc_ref()
+  _9 := builtin$havoc_int()
+  __t4 := builtin$havoc_bool()
+  _8 := builtin$havoc_ref()
+  __t6 := builtin$havoc_bool()
+  __t8 := builtin$havoc_bool()
+  __t9 := builtin$havoc_bool()
+  _10 := builtin$havoc_ref()
+  __t13 := builtin$havoc_bool()
+  goto loop5_inv_post
+  label loop5_start
+  // ========== loop5_start ==========
+  
+  goto loop5_group1_bb5
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  // obtain acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$new$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var _1: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "first_final::List::new"
+  
+  // Def path: "first_final::{{impl}}[5]::new[0]"
+  
+  // Span: tests/verify/pass/larger/first-final.rs:124:5: 128:6
+  
+  __t0 := false
+  __t1 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_1)
+  
+  // [mir] _1 = Link::Empty
+  
+  _1 := builtin$havoc_ref()
+  inhale acc(m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_(_1), write)
+  inhale m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$Link$opensqu$0$closesqu$$_beg_$_end_$$int$(_1) == 0
+  // [mir] _0 = List { head: move _1 }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  unfold acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$head := _1
+  label l0
+  // [mir] drop(_1) -> [return: bb2, unwind: bb1]
+  
+  goto bb2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageDead(_1)
+  
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  fold acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_0) == 0
+  assert true
+  exhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_first_final$$test$opensqu$0$closesqu$$$basics$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var __t28: Bool
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var __t32: Bool
+  var __t33: Bool
+  var __t34: Bool
+  var __t35: Bool
+  var __t36: Bool
+  var __t37: Bool
+  var __t38: Bool
+  var __t39: Bool
+  var __t40: Bool
+  var __t41: Bool
+  var __t42: Bool
+  var __t43: Bool
+  var __t44: Bool
+  var __t45: Bool
+  var __t46: Bool
+  var __t47: Bool
+  var __t48: Bool
+  var __t49: Bool
+  var __t50: Bool
+  var __t51: Bool
+  var __t52: Int
+  var __t53: Bool
+  var __t54: Int
+  var __t55: Bool
+  var __t56: Int
+  var __t57: Bool
+  var __t58: Int
+  var __t59: Bool
+  var __t60: Int
+  var __t61: Bool
+  var __t62: Bool
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Int
+  var _22: Ref
+  var _23: Int
+  var _24: Int
+  var _25: Ref
+  var _26: Ref
+  var _27: Int
+  var _36: Ref
+  var _37: Ref
+  var _38: Ref
+  var _39: Int
+  var _40: Ref
+  var _41: Int
+  var _42: Int
+  var _43: Ref
+  var _44: Ref
+  var _45: Int
+  var _54: Ref
+  var _55: Ref
+  var _56: Ref
+  var _57: Ref
+  var _58: Ref
+  var _59: Ref
+  var _60: Ref
+  var _61: Int
+  var _62: Ref
+  var _63: Int
+  var _64: Int
+  var _65: Ref
+  var _66: Ref
+  var _67: Int
+  var _76: Ref
+  var _77: Ref
+  var _78: Ref
+  var _79: Int
+  var _80: Ref
+  var _81: Int
+  var _82: Int
+  var _83: Ref
+  var _84: Ref
+  var _85: Int
+  var _94: Ref
+  var _95: Ref
+  var _96: Ref
+  var _97: Int
+  var _98: Ref
+  var _99: Int
+  var _100: Int
+  var _101: Ref
+  var _102: Ref
+  var _103: Int
+  var _112: Ref
+  var _113: Ref
+  var _114: Ref
+  var _115: Ref
+  var _116: Ref
+  var _117: Ref
+  var _t138: Ref
+  var _t141: Ref
+  var _t144: Ref
+  var _t151: Ref
+  var _t154: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "first_final::test::basics"
+  
+  // Def path: "first_final::test[0]::basics[0]"
+  
+  // Span: tests/verify/pass/larger/first-final.rs:183:5: 224:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  __t24 := false
+  __t25 := false
+  __t26 := false
+  __t27 := false
+  __t28 := false
+  __t29 := false
+  __t30 := false
+  __t31 := false
+  __t32 := false
+  __t33 := false
+  __t34 := false
+  __t35 := false
+  __t36 := false
+  __t37 := false
+  __t38 := false
+  __t39 := false
+  __t40 := false
+  __t41 := false
+  __t42 := false
+  __t43 := false
+  __t44 := false
+  __t45 := false
+  __t46 := false
+  __t47 := false
+  __t48 := false
+  __t49 := false
+  __t50 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_1)
+  
+  // [mir] _1 = const List::new() -> [return: bb2, unwind: bb1]
+  
+  label l0
+  _1 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_1), write)
+  inhale true
+  inhale m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1) == 0
+  label l1
+  goto bb2
+  label bb11
+  // ========== bb11 ==========
+  
+  __t6 := true
+  // [mir] EndRegion('27s)
+  
+  // [mir] StorageDead(_13)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = &'31s mut _1
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  _15.val_ref := _1
+  label l15
+  // [mir] _14 = const List::push(move _15, const 2i32) -> [return: bb13, unwind: bb14]
+  
+  label l16
+  _t141 := builtin$havoc_ref()
+  inhale acc(i32(_t141), write)
+  assert true
+  exhale acc(_15.val_ref, write) && (acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_15.val_ref), write) && acc(i32(_t141), write))
+  _14 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l16](_15.val_ref)), write)
+  inhale acc(tuple0$(_14), write)
+  inhale true
+  inhale m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l16](_15.val_ref)) == old[l16](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_15.val_ref)) + 1 && (m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l16](_15.val_ref), 0) == old[l16](2) && (forall i: Int :: 1 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l16](_15.val_ref)) ==> old[l16](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_15.val_ref, i - 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l16](_15.val_ref), i)))
+  label l17
+  goto l18
+  label bb13
+  // ========== bb13 ==========
+  
+  __t7 := true
+  // [mir] EndRegion('31s)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] StorageLive(_17)
+  
+  // [mir] _17 = &'35s mut _1
+  
+  _17 := builtin$havoc_ref()
+  inhale acc(_17.val_ref, write)
+  _17.val_ref := _1
+  label l19
+  // [mir] _16 = const List::push(move _17, const 3i32) -> [return: bb15, unwind: bb16]
+  
+  label l20
+  _t144 := builtin$havoc_ref()
+  inhale acc(i32(_t144), write)
+  assert true
+  exhale acc(_17.val_ref, write) && (acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_17.val_ref), write) && acc(i32(_t144), write))
+  _16 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l20](_17.val_ref)), write)
+  inhale acc(tuple0$(_16), write)
+  inhale true
+  inhale m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l20](_17.val_ref)) == old[l20](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_17.val_ref)) + 1 && (m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l20](_17.val_ref), 0) == old[l20](3) && (forall i: Int :: 1 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l20](_17.val_ref)) ==> old[l20](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_17.val_ref, i - 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l20](_17.val_ref), i)))
+  label l21
+  goto l22
+  label bb15
+  // ========== bb15 ==========
+  
+  __t8 := true
+  // [mir] EndRegion('35s)
+  
+  // [mir] StorageDead(_17)
+  
+  // [mir] StorageLive(_19)
+  
+  // [mir] StorageLive(_20)
+  
+  // [mir] _20 = &'38s mut _1
+  
+  _20 := builtin$havoc_ref()
+  inhale acc(_20.val_ref, write)
+  _20.val_ref := _1
+  label l23
+  // [mir] _19 = const List::pop(move _20) -> [return: bb17, unwind: bb18]
+  
+  label l24
+  assert true
+  exhale acc(_20.val_ref, write) && acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_20.val_ref), write)
+  _19 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l24](_20.val_ref)), write)
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_19), write)
+  inhale true
+  inhale (old[l24](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_20.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_19)) && ((old[l24](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_20.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l24](_20.val_ref)) == 0) && ((old[l24](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_20.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_19)) && ((old[l24](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_20.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_19) == old[l24](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_20.val_ref, 0))) && ((old[l24](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_20.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l24](_20.val_ref)) == old[l24](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_20.val_ref) - 1)) && (old[l24](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_20.val_ref)) > 0 ==> (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l24](_20.val_ref)) ==> old[l24](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_20.val_ref, i + 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l24](_20.val_ref), i)))))))
+  label l25
+  goto l26
+  label bb17
+  // ========== bb17 ==========
+  
+  __t9 := true
+  // [mir] EndRegion('38s)
+  
+  // [mir] StorageDead(_20)
+  
+  // [mir] _21 = discriminant(_19)
+  
+  _21 := builtin$havoc_int()
+  inhale true
+  _21 := m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_19)
+  // [mir] _22 = &'<empty> _19
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_ref, write)
+  _22.val_ref := _19
+  exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_19), write - read$())
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_22.val_ref), read$())
+  label l27
+  // [mir] _24 = discriminant(_19)
+  
+  _24 := builtin$havoc_int()
+  inhale true
+  _24 := m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_22.val_ref)
+  // [mir] switchInt(move _24) -> [0isize: bb20, otherwise: bb21]
+  
+  __t52 := _24
+  if (__t52 == 0) {
+    goto l29
+  }
+  goto l28
+  label bb19
+  // ========== bb19 ==========
+  
+  __t12 := true
+  // [mir] const std::rt::begin_panic(const "internal error: entered unreachable code", move _33) -> bb27
+  
+  // Rust panic - const "internal error: entered unreachable code"
+  
+  assert false
+  goto end_of_method
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] StorageLive(_4)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = &'20s mut _1
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _1
+  label l2
+  // [mir] _6 = const List::pop(move _7) -> [return: bb3, unwind: bb6]
+  
+  label l3
+  assert true
+  exhale acc(_7.val_ref, write) && acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_7.val_ref), write)
+  _6 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l3](_7.val_ref)), write)
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_6), write)
+  inhale true
+  inhale (old[l3](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_6)) && ((old[l3](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l3](_7.val_ref)) == 0) && ((old[l3](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_6)) && ((old[l3](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6) == old[l3](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_7.val_ref, 0))) && ((old[l3](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l3](_7.val_ref)) == old[l3](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref) - 1)) && (old[l3](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) > 0 ==> (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l3](_7.val_ref)) ==> old[l3](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_7.val_ref, i + 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l3](_7.val_ref), i)))))))
+  label l4
+  goto l5
+  label bb20
+  // ========== bb20 ==========
+  
+  __t10 := true
+  // [mir] ReadForMatch(_22)
+  
+  // [mir] falseEdges -> [real: bb23, imaginary: bb21]
+  
+  goto l30
+  label bb21
+  // ========== bb21 ==========
+  
+  __t11 := true
+  // [mir] ReadForMatch(_22)
+  
+  // expire_borrows ReborrowingDAG(L8,)
+
+  
+  if (__t9) {
+    // expire loan L8
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_22.val_ref), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_19), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb19, imaginary: bb22]
+  
+  goto bb19
+  label bb23
+  // ========== bb23 ==========
+  
+  __t13 := true
+  // [mir] StorageLive(_23)
+  
+  // [mir] _23 = ((_19 as Some).0: i32)
+  
+  _23 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_19), write)
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_Some(_19.enum_Some), write)
+  unfold acc(i32(_19.enum_Some.f$0), write)
+  _23 := _19.enum_Some.f$0.val_int
+  label l31
+  // [mir] StorageLive(_25)
+  
+  // [mir] StorageLive(_26)
+  
+  // [mir] StorageLive(_27)
+  
+  // [mir] _27 = _23
+  
+  _27 := builtin$havoc_int()
+  inhale true
+  _27 := _23
+  label l32
+  // [mir] _26 = Eq(move _27, const 3i32)
+  
+  _26 := builtin$havoc_ref()
+  inhale acc(_26.val_bool, write)
+  _26.val_bool := _27 == 3
+  // [mir] StorageDead(_27)
+  
+  // [mir] _25 = Not(move _26)
+  
+  _25 := builtin$havoc_ref()
+  inhale acc(_25.val_bool, write)
+  _25.val_bool := !_26.val_bool
+  // [mir] StorageDead(_26)
+  
+  // [mir] switchInt(move _25) -> [false: bb25, otherwise: bb24]
+  
+  __t53 := _25.val_bool
+  if (!__t53) {
+    goto l34
+  }
+  goto l33
+  label bb24
+  // ========== bb24 ==========
+  
+  __t14 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: val == 3", move _29) -> bb26
+  
+  // Rust panic - const "assertion failed: val == 3"
+  
+  assert false
+  goto end_of_method
+  label bb25
+  // ========== bb25 ==========
+  
+  __t15 := true
+  // [mir] _18 = ()
+  
+  _18 := builtin$havoc_ref()
+  inhale acc(tuple0$(_18), write)
+  // [mir] StorageDead(_25)
+  
+  // [mir] StorageDead(_23)
+  
+  // [mir] StorageDead(_19)
+  
+  // [mir] StorageLive(_37)
+  
+  // [mir] StorageLive(_38)
+  
+  // [mir] _38 = &'74s mut _1
+  
+  _38 := builtin$havoc_ref()
+  inhale acc(_38.val_ref, write)
+  _38.val_ref := _1
+  label l35
+  // [mir] _37 = const List::pop(move _38) -> [return: bb28, unwind: bb29]
+  
+  label l36
+  assert true
+  exhale acc(_38.val_ref, write) && acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_38.val_ref), write)
+  _37 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l36](_38.val_ref)), write)
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_37), write)
+  inhale true
+  inhale (old[l36](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_38.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_37)) && ((old[l36](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_38.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l36](_38.val_ref)) == 0) && ((old[l36](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_38.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_37)) && ((old[l36](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_38.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_37) == old[l36](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_38.val_ref, 0))) && ((old[l36](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_38.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l36](_38.val_ref)) == old[l36](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_38.val_ref) - 1)) && (old[l36](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_38.val_ref)) > 0 ==> (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l36](_38.val_ref)) ==> old[l36](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_38.val_ref, i + 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l36](_38.val_ref), i)))))))
+  label l37
+  goto l38
+  label bb28
+  // ========== bb28 ==========
+  
+  __t16 := true
+  // [mir] EndRegion('74s)
+  
+  // [mir] StorageDead(_38)
+  
+  // [mir] _39 = discriminant(_37)
+  
+  _39 := builtin$havoc_int()
+  inhale true
+  _39 := m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_37)
+  // [mir] _40 = &'<empty> _37
+  
+  _40 := builtin$havoc_ref()
+  inhale acc(_40.val_ref, write)
+  _40.val_ref := _37
+  exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_37), write - read$())
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_40.val_ref), read$())
+  label l39
+  // [mir] _42 = discriminant(_37)
+  
+  _42 := builtin$havoc_int()
+  inhale true
+  _42 := m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_40.val_ref)
+  // [mir] switchInt(move _42) -> [0isize: bb31, otherwise: bb32]
+  
+  __t54 := _42
+  if (__t54 == 0) {
+    goto l41
+  }
+  goto l40
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] _5 = &'21s _6
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  _5.val_ref := _6
+  exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_6), write - read$())
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_5.val_ref), read$())
+  label l6
+  // [mir] EndRegion('20s)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] _4 = const TrustedOption::is_none(move _5) -> [return: bb7, unwind: bb5]
+  
+  label l7
+  _4 := builtin$havoc_ref()
+  inhale acc(bool(_4), write)
+  unfold acc(bool(_4), write)
+  inhale _4.val_bool == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_5.val_ref)
+  // transfer perm _5.val_ref --> old[l7](_5.val_ref) // unchecked: false
+  
+  goto l8
+  label bb30
+  // ========== bb30 ==========
+  
+  __t19 := true
+  // [mir] const std::rt::begin_panic(const "internal error: entered unreachable code", move _51) -> bb38
+  
+  // Rust panic - const "internal error: entered unreachable code"
+  
+  assert false
+  goto end_of_method
+  label bb31
+  // ========== bb31 ==========
+  
+  __t17 := true
+  // [mir] ReadForMatch(_40)
+  
+  // [mir] falseEdges -> [real: bb34, imaginary: bb32]
+  
+  goto l42
+  label bb32
+  // ========== bb32 ==========
+  
+  __t18 := true
+  // [mir] ReadForMatch(_40)
+  
+  // expire_borrows ReborrowingDAG(L14,)
+
+  
+  if (__t16) {
+    // expire loan L14
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_40.val_ref), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_37), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb30, imaginary: bb33]
+  
+  goto bb30
+  label bb34
+  // ========== bb34 ==========
+  
+  __t20 := true
+  // [mir] StorageLive(_41)
+  
+  // [mir] _41 = ((_37 as Some).0: i32)
+  
+  _41 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_37), write)
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_Some(_37.enum_Some), write)
+  unfold acc(i32(_37.enum_Some.f$0), write)
+  _41 := _37.enum_Some.f$0.val_int
+  label l43
+  // [mir] StorageLive(_43)
+  
+  // [mir] StorageLive(_44)
+  
+  // [mir] StorageLive(_45)
+  
+  // [mir] _45 = _41
+  
+  _45 := builtin$havoc_int()
+  inhale true
+  _45 := _41
+  label l44
+  // [mir] _44 = Eq(move _45, const 2i32)
+  
+  _44 := builtin$havoc_ref()
+  inhale acc(_44.val_bool, write)
+  _44.val_bool := _45 == 2
+  // [mir] StorageDead(_45)
+  
+  // [mir] _43 = Not(move _44)
+  
+  _43 := builtin$havoc_ref()
+  inhale acc(_43.val_bool, write)
+  _43.val_bool := !_44.val_bool
+  // [mir] StorageDead(_44)
+  
+  // [mir] switchInt(move _43) -> [false: bb36, otherwise: bb35]
+  
+  __t55 := _43.val_bool
+  if (!__t55) {
+    goto l46
+  }
+  goto l45
+  label bb35
+  // ========== bb35 ==========
+  
+  __t21 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: val == 2", move _47) -> bb37
+  
+  // Rust panic - const "assertion failed: val == 2"
+  
+  assert false
+  goto end_of_method
+  label bb36
+  // ========== bb36 ==========
+  
+  __t22 := true
+  // [mir] _36 = ()
+  
+  _36 := builtin$havoc_ref()
+  inhale acc(tuple0$(_36), write)
+  // [mir] StorageDead(_43)
+  
+  // [mir] StorageDead(_41)
+  
+  // [mir] StorageDead(_37)
+  
+  // [mir] StorageLive(_55)
+  
+  // [mir] _55 = &'111s mut _1
+  
+  _55 := builtin$havoc_ref()
+  inhale acc(_55.val_ref, write)
+  _55.val_ref := _1
+  label l47
+  // [mir] _54 = const List::push(move _55, const 4i32) -> [return: bb39, unwind: bb40]
+  
+  label l48
+  _t151 := builtin$havoc_ref()
+  inhale acc(i32(_t151), write)
+  assert true
+  exhale acc(_55.val_ref, write) && (acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_55.val_ref), write) && acc(i32(_t151), write))
+  _54 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l48](_55.val_ref)), write)
+  inhale acc(tuple0$(_54), write)
+  inhale true
+  inhale m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l48](_55.val_ref)) == old[l48](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_55.val_ref)) + 1 && (m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l48](_55.val_ref), 0) == old[l48](4) && (forall i: Int :: 1 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l48](_55.val_ref)) ==> old[l48](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_55.val_ref, i - 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l48](_55.val_ref), i)))
+  label l49
+  goto l50
+  label bb39
+  // ========== bb39 ==========
+  
+  __t23 := true
+  // [mir] EndRegion('111s)
+  
+  // [mir] StorageDead(_55)
+  
+  // [mir] StorageLive(_57)
+  
+  // [mir] _57 = &'115s mut _1
+  
+  _57 := builtin$havoc_ref()
+  inhale acc(_57.val_ref, write)
+  _57.val_ref := _1
+  label l51
+  // [mir] _56 = const List::push(move _57, const 5i32) -> [return: bb41, unwind: bb42]
+  
+  label l52
+  _t154 := builtin$havoc_ref()
+  inhale acc(i32(_t154), write)
+  assert true
+  exhale acc(_57.val_ref, write) && (acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_57.val_ref), write) && acc(i32(_t154), write))
+  _56 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l52](_57.val_ref)), write)
+  inhale acc(tuple0$(_56), write)
+  inhale true
+  inhale m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l52](_57.val_ref)) == old[l52](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_57.val_ref)) + 1 && (m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l52](_57.val_ref), 0) == old[l52](5) && (forall i: Int :: 1 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l52](_57.val_ref)) ==> old[l52](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_57.val_ref, i - 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l52](_57.val_ref), i)))
+  label l53
+  goto l54
+  label bb41
+  // ========== bb41 ==========
+  
+  __t24 := true
+  // [mir] EndRegion('115s)
+  
+  // [mir] StorageDead(_57)
+  
+  // [mir] StorageLive(_59)
+  
+  // [mir] StorageLive(_60)
+  
+  // [mir] _60 = &'118s mut _1
+  
+  _60 := builtin$havoc_ref()
+  inhale acc(_60.val_ref, write)
+  _60.val_ref := _1
+  label l55
+  // [mir] _59 = const List::pop(move _60) -> [return: bb43, unwind: bb44]
+  
+  label l56
+  assert true
+  exhale acc(_60.val_ref, write) && acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_60.val_ref), write)
+  _59 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l56](_60.val_ref)), write)
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_59), write)
+  inhale true
+  inhale (old[l56](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_60.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_59)) && ((old[l56](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_60.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l56](_60.val_ref)) == 0) && ((old[l56](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_60.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_59)) && ((old[l56](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_60.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_59) == old[l56](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_60.val_ref, 0))) && ((old[l56](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_60.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l56](_60.val_ref)) == old[l56](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_60.val_ref) - 1)) && (old[l56](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_60.val_ref)) > 0 ==> (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l56](_60.val_ref)) ==> old[l56](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_60.val_ref, i + 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l56](_60.val_ref), i)))))))
+  label l57
+  goto l58
+  label bb43
+  // ========== bb43 ==========
+  
+  __t25 := true
+  // [mir] EndRegion('118s)
+  
+  // [mir] StorageDead(_60)
+  
+  // [mir] _61 = discriminant(_59)
+  
+  _61 := builtin$havoc_int()
+  inhale true
+  _61 := m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_59)
+  // [mir] _62 = &'<empty> _59
+  
+  _62 := builtin$havoc_ref()
+  inhale acc(_62.val_ref, write)
+  _62.val_ref := _59
+  exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_59), write - read$())
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_62.val_ref), read$())
+  label l59
+  // [mir] _64 = discriminant(_59)
+  
+  _64 := builtin$havoc_int()
+  inhale true
+  _64 := m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_62.val_ref)
+  // [mir] switchInt(move _64) -> [0isize: bb46, otherwise: bb47]
+  
+  __t56 := _64
+  if (__t56 == 0) {
+    goto l61
+  }
+  goto l60
+  label bb45
+  // ========== bb45 ==========
+  
+  __t28 := true
+  // [mir] const std::rt::begin_panic(const "internal error: entered unreachable code", move _73) -> bb53
+  
+  // Rust panic - const "internal error: entered unreachable code"
+  
+  assert false
+  goto end_of_method
+  label bb46
+  // ========== bb46 ==========
+  
+  __t26 := true
+  // [mir] ReadForMatch(_62)
+  
+  // [mir] falseEdges -> [real: bb49, imaginary: bb47]
+  
+  goto l62
+  label bb47
+  // ========== bb47 ==========
+  
+  __t27 := true
+  // [mir] ReadForMatch(_62)
+  
+  // expire_borrows ReborrowingDAG(L22,)
+
+  
+  if (__t25) {
+    // expire loan L22
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_62.val_ref), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_59), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb45, imaginary: bb48]
+  
+  goto bb45
+  label bb49
+  // ========== bb49 ==========
+  
+  __t29 := true
+  // [mir] StorageLive(_63)
+  
+  // [mir] _63 = ((_59 as Some).0: i32)
+  
+  _63 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_59), write)
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_Some(_59.enum_Some), write)
+  unfold acc(i32(_59.enum_Some.f$0), write)
+  _63 := _59.enum_Some.f$0.val_int
+  label l63
+  // [mir] StorageLive(_65)
+  
+  // [mir] StorageLive(_66)
+  
+  // [mir] StorageLive(_67)
+  
+  // [mir] _67 = _63
+  
+  _67 := builtin$havoc_int()
+  inhale true
+  _67 := _63
+  label l64
+  // [mir] _66 = Eq(move _67, const 5i32)
+  
+  _66 := builtin$havoc_ref()
+  inhale acc(_66.val_bool, write)
+  _66.val_bool := _67 == 5
+  // [mir] StorageDead(_67)
+  
+  // [mir] _65 = Not(move _66)
+  
+  _65 := builtin$havoc_ref()
+  inhale acc(_65.val_bool, write)
+  _65.val_bool := !_66.val_bool
+  // [mir] StorageDead(_66)
+  
+  // [mir] switchInt(move _65) -> [false: bb51, otherwise: bb50]
+  
+  __t57 := _65.val_bool
+  if (!__t57) {
+    goto l66
+  }
+  goto l65
+  label bb50
+  // ========== bb50 ==========
+  
+  __t30 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: val == 5", move _69) -> bb52
+  
+  // Rust panic - const "assertion failed: val == 5"
+  
+  assert false
+  goto end_of_method
+  label bb51
+  // ========== bb51 ==========
+  
+  __t31 := true
+  // [mir] _58 = ()
+  
+  _58 := builtin$havoc_ref()
+  inhale acc(tuple0$(_58), write)
+  // [mir] StorageDead(_65)
+  
+  // [mir] StorageDead(_63)
+  
+  // [mir] StorageDead(_59)
+  
+  // [mir] StorageLive(_77)
+  
+  // [mir] StorageLive(_78)
+  
+  // [mir] _78 = &'154s mut _1
+  
+  _78 := builtin$havoc_ref()
+  inhale acc(_78.val_ref, write)
+  _78.val_ref := _1
+  label l67
+  // [mir] _77 = const List::pop(move _78) -> [return: bb54, unwind: bb55]
+  
+  label l68
+  assert true
+  exhale acc(_78.val_ref, write) && acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_78.val_ref), write)
+  _77 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l68](_78.val_ref)), write)
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_77), write)
+  inhale true
+  inhale (old[l68](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_78.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_77)) && ((old[l68](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_78.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l68](_78.val_ref)) == 0) && ((old[l68](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_78.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_77)) && ((old[l68](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_78.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_77) == old[l68](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_78.val_ref, 0))) && ((old[l68](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_78.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l68](_78.val_ref)) == old[l68](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_78.val_ref) - 1)) && (old[l68](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_78.val_ref)) > 0 ==> (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l68](_78.val_ref)) ==> old[l68](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_78.val_ref, i + 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l68](_78.val_ref), i)))))))
+  label l69
+  goto l70
+  label bb54
+  // ========== bb54 ==========
+  
+  __t32 := true
+  // [mir] EndRegion('154s)
+  
+  // [mir] StorageDead(_78)
+  
+  // [mir] _79 = discriminant(_77)
+  
+  _79 := builtin$havoc_int()
+  inhale true
+  _79 := m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_77)
+  // [mir] _80 = &'<empty> _77
+  
+  _80 := builtin$havoc_ref()
+  inhale acc(_80.val_ref, write)
+  _80.val_ref := _77
+  exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_77), write - read$())
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_80.val_ref), read$())
+  label l71
+  // [mir] _82 = discriminant(_77)
+  
+  _82 := builtin$havoc_int()
+  inhale true
+  _82 := m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_80.val_ref)
+  // [mir] switchInt(move _82) -> [0isize: bb57, otherwise: bb58]
+  
+  __t58 := _82
+  if (__t58 == 0) {
+    goto l73
+  }
+  goto l72
+  label bb56
+  // ========== bb56 ==========
+  
+  __t35 := true
+  // [mir] const std::rt::begin_panic(const "internal error: entered unreachable code", move _91) -> bb64
+  
+  // Rust panic - const "internal error: entered unreachable code"
+  
+  assert false
+  goto end_of_method
+  label bb57
+  // ========== bb57 ==========
+  
+  __t33 := true
+  // [mir] ReadForMatch(_80)
+  
+  // [mir] falseEdges -> [real: bb60, imaginary: bb58]
+  
+  goto l74
+  label bb58
+  // ========== bb58 ==========
+  
+  __t34 := true
+  // [mir] ReadForMatch(_80)
+  
+  // expire_borrows ReborrowingDAG(L28,)
+
+  
+  if (__t32) {
+    // expire loan L28
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_80.val_ref), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_77), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb56, imaginary: bb59]
+  
+  goto bb56
+  label bb60
+  // ========== bb60 ==========
+  
+  __t36 := true
+  // [mir] StorageLive(_81)
+  
+  // [mir] _81 = ((_77 as Some).0: i32)
+  
+  _81 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_77), write)
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_Some(_77.enum_Some), write)
+  unfold acc(i32(_77.enum_Some.f$0), write)
+  _81 := _77.enum_Some.f$0.val_int
+  label l75
+  // [mir] StorageLive(_83)
+  
+  // [mir] StorageLive(_84)
+  
+  // [mir] StorageLive(_85)
+  
+  // [mir] _85 = _81
+  
+  _85 := builtin$havoc_int()
+  inhale true
+  _85 := _81
+  label l76
+  // [mir] _84 = Eq(move _85, const 4i32)
+  
+  _84 := builtin$havoc_ref()
+  inhale acc(_84.val_bool, write)
+  _84.val_bool := _85 == 4
+  // [mir] StorageDead(_85)
+  
+  // [mir] _83 = Not(move _84)
+  
+  _83 := builtin$havoc_ref()
+  inhale acc(_83.val_bool, write)
+  _83.val_bool := !_84.val_bool
+  // [mir] StorageDead(_84)
+  
+  // [mir] switchInt(move _83) -> [false: bb62, otherwise: bb61]
+  
+  __t59 := _83.val_bool
+  if (!__t59) {
+    goto l78
+  }
+  goto l77
+  label bb61
+  // ========== bb61 ==========
+  
+  __t37 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: val == 4", move _87) -> bb63
+  
+  // Rust panic - const "assertion failed: val == 4"
+  
+  assert false
+  goto end_of_method
+  label bb62
+  // ========== bb62 ==========
+  
+  __t38 := true
+  // [mir] _76 = ()
+  
+  _76 := builtin$havoc_ref()
+  inhale acc(tuple0$(_76), write)
+  // [mir] StorageDead(_83)
+  
+  // [mir] StorageDead(_81)
+  
+  // [mir] StorageDead(_77)
+  
+  // [mir] StorageLive(_95)
+  
+  // [mir] StorageLive(_96)
+  
+  // [mir] _96 = &'190s mut _1
+  
+  _96 := builtin$havoc_ref()
+  inhale acc(_96.val_ref, write)
+  _96.val_ref := _1
+  label l79
+  // [mir] _95 = const List::pop(move _96) -> [return: bb65, unwind: bb66]
+  
+  label l80
+  assert true
+  exhale acc(_96.val_ref, write) && acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_96.val_ref), write)
+  _95 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l80](_96.val_ref)), write)
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_95), write)
+  inhale true
+  inhale (old[l80](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_96.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_95)) && ((old[l80](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_96.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l80](_96.val_ref)) == 0) && ((old[l80](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_96.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_95)) && ((old[l80](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_96.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_95) == old[l80](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_96.val_ref, 0))) && ((old[l80](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_96.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l80](_96.val_ref)) == old[l80](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_96.val_ref) - 1)) && (old[l80](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_96.val_ref)) > 0 ==> (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l80](_96.val_ref)) ==> old[l80](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_96.val_ref, i + 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l80](_96.val_ref), i)))))))
+  label l81
+  goto l82
+  label bb65
+  // ========== bb65 ==========
+  
+  __t39 := true
+  // [mir] EndRegion('190s)
+  
+  // [mir] StorageDead(_96)
+  
+  // [mir] _97 = discriminant(_95)
+  
+  _97 := builtin$havoc_int()
+  inhale true
+  _97 := m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_95)
+  // [mir] _98 = &'<empty> _95
+  
+  _98 := builtin$havoc_ref()
+  inhale acc(_98.val_ref, write)
+  _98.val_ref := _95
+  exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_95), write - read$())
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_98.val_ref), read$())
+  label l83
+  // [mir] _100 = discriminant(_95)
+  
+  _100 := builtin$havoc_int()
+  inhale true
+  _100 := m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_98.val_ref)
+  // [mir] switchInt(move _100) -> [0isize: bb68, otherwise: bb69]
+  
+  __t60 := _100
+  if (__t60 == 0) {
+    goto l85
+  }
+  goto l84
+  label bb67
+  // ========== bb67 ==========
+  
+  __t42 := true
+  // [mir] const std::rt::begin_panic(const "internal error: entered unreachable code", move _109) -> bb75
+  
+  // Rust panic - const "internal error: entered unreachable code"
+  
+  assert false
+  goto end_of_method
+  label bb68
+  // ========== bb68 ==========
+  
+  __t40 := true
+  // [mir] ReadForMatch(_98)
+  
+  // [mir] falseEdges -> [real: bb71, imaginary: bb69]
+  
+  goto l86
+  label bb69
+  // ========== bb69 ==========
+  
+  __t41 := true
+  // [mir] ReadForMatch(_98)
+  
+  // expire_borrows ReborrowingDAG(L34,)
+
+  
+  if (__t39) {
+    // expire loan L34
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_98.val_ref), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_95), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb67, imaginary: bb70]
+  
+  goto bb67
+  label bb7
+  // ========== bb7 ==========
+  
+  __t3 := true
+  // [mir] EndRegion('21s)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] _3 = Not(move _4)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_bool, write)
+  _3.val_bool := !_4.val_bool
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] switchInt(move _3) -> [false: bb9, otherwise: bb8]
+  
+  __t51 := _3.val_bool
+  if (!__t51) {
+    goto l10
+  }
+  goto l9
+  label bb71
+  // ========== bb71 ==========
+  
+  __t43 := true
+  // [mir] StorageLive(_99)
+  
+  // [mir] _99 = ((_95 as Some).0: i32)
+  
+  _99 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_95), write)
+  unfold acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_Some(_95.enum_Some), write)
+  unfold acc(i32(_95.enum_Some.f$0), write)
+  _99 := _95.enum_Some.f$0.val_int
+  label l87
+  // [mir] StorageLive(_101)
+  
+  // [mir] StorageLive(_102)
+  
+  // [mir] StorageLive(_103)
+  
+  // [mir] _103 = _99
+  
+  _103 := builtin$havoc_int()
+  inhale true
+  _103 := _99
+  label l88
+  // [mir] _102 = Eq(move _103, const 1i32)
+  
+  _102 := builtin$havoc_ref()
+  inhale acc(_102.val_bool, write)
+  _102.val_bool := _103 == 1
+  // [mir] StorageDead(_103)
+  
+  // [mir] _101 = Not(move _102)
+  
+  _101 := builtin$havoc_ref()
+  inhale acc(_101.val_bool, write)
+  _101.val_bool := !_102.val_bool
+  // [mir] StorageDead(_102)
+  
+  // [mir] switchInt(move _101) -> [false: bb73, otherwise: bb72]
+  
+  __t61 := _101.val_bool
+  if (!__t61) {
+    goto l90
+  }
+  goto l89
+  label bb72
+  // ========== bb72 ==========
+  
+  __t44 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: val == 1", move _105) -> bb74
+  
+  // Rust panic - const "assertion failed: val == 1"
+  
+  assert false
+  goto end_of_method
+  label bb73
+  // ========== bb73 ==========
+  
+  __t45 := true
+  // [mir] _94 = ()
+  
+  _94 := builtin$havoc_ref()
+  inhale acc(tuple0$(_94), write)
+  // [mir] StorageDead(_101)
+  
+  // [mir] StorageDead(_99)
+  
+  // [mir] StorageDead(_95)
+  
+  // [mir] StorageLive(_113)
+  
+  // [mir] StorageLive(_114)
+  
+  // [mir] StorageLive(_115)
+  
+  // [mir] StorageLive(_116)
+  
+  // [mir] StorageLive(_117)
+  
+  // [mir] _117 = &'238s mut _1
+  
+  _117 := builtin$havoc_ref()
+  inhale acc(_117.val_ref, write)
+  _117.val_ref := _1
+  label l91
+  // [mir] _116 = const List::pop(move _117) -> [return: bb76, unwind: bb78]
+  
+  label l92
+  assert true
+  exhale acc(_117.val_ref, write) && acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_117.val_ref), write)
+  _116 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l92](_117.val_ref)), write)
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_116), write)
+  inhale true
+  inhale (old[l92](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_117.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_116)) && ((old[l92](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_117.val_ref)) == 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l92](_117.val_ref)) == 0) && ((old[l92](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_117.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_116)) && ((old[l92](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_117.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_116) == old[l92](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_117.val_ref, 0))) && ((old[l92](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_117.val_ref)) > 0 ==> m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l92](_117.val_ref)) == old[l92](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_117.val_ref) - 1)) && (old[l92](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_117.val_ref)) > 0 ==> (forall i: Int :: 0 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l92](_117.val_ref)) ==> old[l92](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_117.val_ref, i + 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l92](_117.val_ref), i)))))))
+  label l93
+  goto l94
+  label bb76
+  // ========== bb76 ==========
+  
+  __t46 := true
+  // [mir] _115 = &'239s _116
+  
+  _115 := builtin$havoc_ref()
+  inhale acc(_115.val_ref, write)
+  _115.val_ref := _116
+  exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_116), write - read$())
+  inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_115.val_ref), read$())
+  label l95
+  // [mir] EndRegion('238s)
+  
+  // [mir] StorageDead(_117)
+  
+  // [mir] _114 = const TrustedOption::is_none(move _115) -> [return: bb79, unwind: bb77]
+  
+  label l96
+  _114 := builtin$havoc_ref()
+  inhale acc(bool(_114), write)
+  unfold acc(bool(_114), write)
+  inhale _114.val_bool == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_115.val_ref)
+  // transfer perm _115.val_ref --> old[l96](_115.val_ref) // unchecked: false
+  
+  goto l97
+  label bb79
+  // ========== bb79 ==========
+  
+  __t47 := true
+  // [mir] EndRegion('239s)
+  
+  // [mir] StorageDead(_115)
+  
+  // [mir] _113 = Not(move _114)
+  
+  _113 := builtin$havoc_ref()
+  inhale acc(_113.val_bool, write)
+  _113.val_bool := !_114.val_bool
+  // [mir] StorageDead(_114)
+  
+  // [mir] StorageDead(_116)
+  
+  // [mir] switchInt(move _113) -> [false: bb81, otherwise: bb80]
+  
+  __t62 := _113.val_bool
+  if (!__t62) {
+    goto l99
+  }
+  goto l98
+  label bb8
+  // ========== bb8 ==========
+  
+  __t4 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: list.pop().is_none()", move _9) -> bb10
+  
+  // Rust panic - const "assertion failed: list.pop().is_none()"
+  
+  assert false
+  goto end_of_method
+  label bb80
+  // ========== bb80 ==========
+  
+  __t48 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: list.pop().is_none()", move _119) -> bb82
+  
+  // Rust panic - const "assertion failed: list.pop().is_none()"
+  
+  assert false
+  goto end_of_method
+  label bb81
+  // ========== bb81 ==========
+  
+  __t49 := true
+  // [mir] _112 = ()
+  
+  _112 := builtin$havoc_ref()
+  inhale acc(tuple0$(_112), write)
+  // [mir] StorageDead(_113)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] drop(_1) -> [return: bb83, unwind: bb1]
+  
+  goto bb83
+  label bb83
+  // ========== bb83 ==========
+  
+  __t50 := true
+  // [mir] StorageDead(_1)
+  
+  // [mir] return
+  
+  goto return
+  label bb9
+  // ========== bb9 ==========
+  
+  __t5 := true
+  // [mir] _2 = ()
+  
+  _2 := builtin$havoc_ref()
+  inhale acc(tuple0$(_2), write)
+  // [mir] StorageDead(_3)
+  
+  // [mir] StorageLive(_13)
+  
+  // [mir] _13 = &'27s mut _1
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_ref, write)
+  _13.val_ref := _1
+  label l11
+  // [mir] _12 = const List::push(move _13, const 1i32) -> [return: bb11, unwind: bb12]
+  
+  label l12
+  _t138 := builtin$havoc_ref()
+  inhale acc(i32(_t138), write)
+  assert true
+  exhale acc(_13.val_ref, write) && (acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(_13.val_ref), write) && acc(i32(_t138), write))
+  _12 := builtin$havoc_ref()
+  inhale acc(m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_(old[l12](_13.val_ref)), write)
+  inhale acc(tuple0$(_12), write)
+  inhale true
+  inhale m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l12](_13.val_ref)) == old[l12](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_13.val_ref)) + 1 && (m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l12](_13.val_ref), 0) == old[l12](1) && (forall i: Int :: 1 <= i && i < m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l12](_13.val_ref)) ==> old[l12](m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_13.val_ref, i - 1)) == m_first_final$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_first_final$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l12](_13.val_ref), i)))
+  label l13
+  goto l14
+  label l10
+  // ========== l10 ==========
+  
+  // MIR edge bb7 --> bb9
+  
+  goto bb9
+  label l14
+  // ========== l14 ==========
+  
+  // MIR edge bb9 --> bb11
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L74,L4,)
+
+  
+  goto bb11
+  label l18
+  // ========== l18 ==========
+  
+  // MIR edge bb11 --> bb13
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L69,L5,)
+
+  
+  goto bb13
+  label l22
+  // ========== l22 ==========
+  
+  // MIR edge bb13 --> bb15
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L71,L6,)
+
+  
+  goto bb15
+  label l26
+  // ========== l26 ==========
+  
+  // MIR edge bb15 --> bb17
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L45,L7,)
+
+  
+  goto bb17
+  label l28
+  // ========== l28 ==========
+  
+  // MIR edge bb17 --> bb21
+  
+  goto bb21
+  label l29
+  // ========== l29 ==========
+  
+  // MIR edge bb17 --> bb20
+  
+  goto bb20
+  label l30
+  // ========== l30 ==========
+  
+  // MIR edge bb20 --> bb23
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L8,)
+
+  
+  if (__t9) {
+    // expire loan L8
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_22.val_ref), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_19), write - read$())
+  }
+  goto bb23
+  label l33
+  // ========== l33 ==========
+  
+  // MIR edge bb23 --> bb24
+  
+  goto bb24
+  label l34
+  // ========== l34 ==========
+  
+  // MIR edge bb23 --> bb25
+  
+  goto bb25
+  label l38
+  // ========== l38 ==========
+  
+  // MIR edge bb25 --> bb28
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L49,L13,)
+
+  
+  goto bb28
+  label l40
+  // ========== l40 ==========
+  
+  // MIR edge bb28 --> bb32
+  
+  goto bb32
+  label l41
+  // ========== l41 ==========
+  
+  // MIR edge bb28 --> bb31
+  
+  goto bb31
+  label l42
+  // ========== l42 ==========
+  
+  // MIR edge bb31 --> bb34
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L14,)
+
+  
+  if (__t16) {
+    // expire loan L14
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_40.val_ref), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_37), write - read$())
+  }
+  goto bb34
+  label l45
+  // ========== l45 ==========
+  
+  // MIR edge bb34 --> bb35
+  
+  goto bb35
+  label l46
+  // ========== l46 ==========
+  
+  // MIR edge bb34 --> bb36
+  
+  goto bb36
+  label l5
+  // ========== l5 ==========
+  
+  // MIR edge bb2 --> bb3
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L57,L0,)
+
+  
+  goto bb3
+  label l50
+  // ========== l50 ==========
+  
+  // MIR edge bb36 --> bb39
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L67,L19,)
+
+  
+  goto bb39
+  label l54
+  // ========== l54 ==========
+  
+  // MIR edge bb39 --> bb41
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L65,L20,)
+
+  
+  goto bb41
+  label l58
+  // ========== l58 ==========
+  
+  // MIR edge bb41 --> bb43
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L73,L21,)
+
+  
+  goto bb43
+  label l60
+  // ========== l60 ==========
+  
+  // MIR edge bb43 --> bb47
+  
+  goto bb47
+  label l61
+  // ========== l61 ==========
+  
+  // MIR edge bb43 --> bb46
+  
+  goto bb46
+  label l62
+  // ========== l62 ==========
+  
+  // MIR edge bb46 --> bb49
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L22,)
+
+  
+  if (__t25) {
+    // expire loan L22
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_62.val_ref), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_59), write - read$())
+  }
+  goto bb49
+  label l65
+  // ========== l65 ==========
+  
+  // MIR edge bb49 --> bb50
+  
+  goto bb50
+  label l66
+  // ========== l66 ==========
+  
+  // MIR edge bb49 --> bb51
+  
+  goto bb51
+  label l70
+  // ========== l70 ==========
+  
+  // MIR edge bb51 --> bb54
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L53,L27,)
+
+  
+  goto bb54
+  label l72
+  // ========== l72 ==========
+  
+  // MIR edge bb54 --> bb58
+  
+  goto bb58
+  label l73
+  // ========== l73 ==========
+  
+  // MIR edge bb54 --> bb57
+  
+  goto bb57
+  label l74
+  // ========== l74 ==========
+  
+  // MIR edge bb57 --> bb60
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L28,)
+
+  
+  if (__t32) {
+    // expire loan L28
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_80.val_ref), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_77), write - read$())
+  }
+  goto bb60
+  label l77
+  // ========== l77 ==========
+  
+  // MIR edge bb60 --> bb61
+  
+  goto bb61
+  label l78
+  // ========== l78 ==========
+  
+  // MIR edge bb60 --> bb62
+  
+  goto bb62
+  label l8
+  // ========== l8 ==========
+  
+  // MIR edge bb3 --> bb7
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L61,L1,)
+
+  
+  if (__t2 && __t2) {
+    // expire loan L1
+    
+    // transfer perm old[l7](_5.val_ref) --> old[l6](_5.val_ref) // unchecked: false
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(old[l6](_5.val_ref)), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_6), write - read$())
+  }
+  goto bb7
+  label l82
+  // ========== l82 ==========
+  
+  // MIR edge bb62 --> bb65
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L43,L33,)
+
+  
+  goto bb65
+  label l84
+  // ========== l84 ==========
+  
+  // MIR edge bb65 --> bb69
+  
+  goto bb69
+  label l85
+  // ========== l85 ==========
+  
+  // MIR edge bb65 --> bb68
+  
+  goto bb68
+  label l86
+  // ========== l86 ==========
+  
+  // MIR edge bb68 --> bb71
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L34,)
+
+  
+  if (__t39) {
+    // expire loan L34
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_98.val_ref), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_95), write - read$())
+  }
+  goto bb71
+  label l89
+  // ========== l89 ==========
+  
+  // MIR edge bb71 --> bb72
+  
+  goto bb72
+  label l9
+  // ========== l9 ==========
+  
+  // MIR edge bb7 --> bb8
+  
+  goto bb8
+  label l90
+  // ========== l90 ==========
+  
+  // MIR edge bb71 --> bb73
+  
+  goto bb73
+  label l94
+  // ========== l94 ==========
+  
+  // MIR edge bb73 --> bb76
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L75,L39,)
+
+  
+  goto bb76
+  label l97
+  // ========== l97 ==========
+  
+  // MIR edge bb76 --> bb79
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L68,L40,)
+
+  
+  if (__t46 && __t46) {
+    // expire loan L40
+    
+    // transfer perm old[l96](_115.val_ref) --> old[l95](_115.val_ref) // unchecked: false
+    
+    exhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(old[l95](_115.val_ref)), read$())
+    inhale acc(m_first_final$$TrustedOption$opensqu$0$closesqu$$_beg_$_end_(_116), write - read$())
+  }
+  goto bb79
+  label l98
+  // ========== l98 ==========
+  
+  // MIR edge bb79 --> bb80
+  
+  goto bb80
+  label l99
+  // ========== l99 ==========
+  
+  // MIR edge bb79 --> bb81
+  
+  goto bb81
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_first_final$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  label start
+  // ========== start ==========
+  
+  // Name: "first_final::main"
+  
+  // Def path: "first_final::main[0]"
+  
+  // Span: tests/verify/pass/larger/first-final.rs:227:1: 227:13
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_ref() returns (ret: Ref)
+
+
+method builtin$havoc_int() returns (ret: Int)

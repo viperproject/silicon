@@ -1,0 +1,393 @@
+domain $SnapshotMirrors$ {
+  
+  function mirror$m_Dijkstras_algorithm_simpl$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$int$__$TY$__Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_): Int
+}
+
+domain Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_ {
+  
+  function cons$__$TY$__Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(): Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_
+  
+  axiom Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$injectivity {
+    true
+  }
+}
+
+field closure_0: Ref
+
+field f$nodes: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$unreach_bool__$TY$__$bool$(): Bool
+  requires false
+
+
+function equals$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_left), read$())
+  requires acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_right), read$())
+{
+  snap$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_left) == snap$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_right)
+}
+
+function equals$__$TY$__ref$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$ref$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(_left.val_ref, read$())
+  requires acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_left.val_ref), read$())
+  requires acc(_right.val_ref, read$())
+  requires acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_right.val_ref), read$())
+{
+  snap$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_left.val_ref) == snap$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_right.val_ref)
+}
+
+function m_Dijkstras_algorithm_simpl$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures true
+  ensures 0 <= result
+  ensures [result == mirror$m_Dijkstras_algorithm_simpl$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$int$__$TY$__Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$int$(snap$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_pure_1)), true]
+{
+  5
+}
+
+function not_equals$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_left), read$())
+  requires acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_right), read$())
+{
+  snap$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_left) != snap$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_right)
+}
+
+function not_equals$__$TY$__ref$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$ref$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(_left.val_ref, read$())
+  requires acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_left.val_ref), read$())
+  requires acc(_right.val_ref, read$())
+  requires acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_right.val_ref), read$())
+{
+  snap$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_left.val_ref) != snap$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_right.val_ref)
+}
+
+function snap$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_arg: Ref): Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_
+  requires acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_arg), read$())
+{
+  (unfolding acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(_arg), read$()) in cons$__$TY$__Snap$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_())
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_10$2$2109013088548461081(self: Ref) 
+
+predicate closure$0_1_11$3$5463938439829385733(self: Ref) 
+
+predicate m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$nodes, write) && acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(self.f$nodes), write)
+}
+
+predicate m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  true
+}
+
+predicate ref$closure$0_1_11$3$5463938439829385733(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_11$3$5463938439829385733(self.val_ref), write)
+}
+
+predicate ref$m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate usize(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+method m_Dijkstras_algorithm_simpl$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  label start
+  // ========== start ==========
+  
+  // Name: "Dijkstras_algorithm_simpl::main"
+  
+  // Def path: "Dijkstras_algorithm_simpl::main[0]"
+  
+  // Span: tests/verify/pass/pure-fn/Dijkstras_algorithm-simpl.rs:32:1: 32:13
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Dijkstras_algorithm_simpl$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$find_path$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var _preserve$0: Ref
+  var __t7: Bool
+  var __t8: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Dijkstras_algorithm_simpl::Grid::find_path"
+  
+  // Def path: "Dijkstras_algorithm_simpl::{{impl}}[1]::find_path[0]"
+  
+  // Span: tests/verify/pass/pure-fn/Dijkstras_algorithm-simpl.rs:26:5: 29:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] goto -> bb1
+  
+  goto loop1_start
+  label bb2
+  // ========== bb2 ==========
+  
+  __t4 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label l0
+  // ========== l0 ==========
+  
+  // MIR edge bb1 --> bb2
+  
+  goto bb2
+  label l1
+  // ========== l1 ==========
+  
+  // MIR edge bb1 --> bb3
+  
+  goto loop1_group2_bb3
+  label l2
+  // ========== l2 ==========
+  
+  // MIR edge bb1 --> bb2
+  
+  goto l4
+  label l3
+  // ========== l3 ==========
+  
+  // MIR edge bb1 --> bb3
+  
+  goto loop1_group5_bb3
+  label l4
+  // ========== l4 ==========
+  
+  // drop Pred(_2, write) (Pred(_2, write))
+  
+  goto bb2
+  label loop1_end_body
+  // ========== loop1_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb1
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read)
+  
+  assert (unfolding acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in m_Dijkstras_algorithm_simpl$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref.f$nodes)) >= 0
+  assert _preserve$0 == _1.val_ref
+  exhale acc(_1.val_ref, read$()) && acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale false
+  goto end_of_method
+  label loop1_group1_bb1
+  // ========== loop1_group1_bb1 ==========
+  
+  // This is a loop head
+  
+  __t1 := true
+  // [mir] switchInt(const true) -> [false: bb2, otherwise: bb3]
+  
+  __t5 := true
+  if (__t5) {
+    goto l1
+  }
+  goto l0
+  label loop1_group2_bb3
+  // ========== loop1_group2_bb3 ==========
+  
+  __t2 := true
+  // [mir] switchInt(const false) -> [false: bb5, otherwise: bb4]
+  
+  __t6 := false
+  // Ignore default target bb4, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop1_inv_pre
+  label loop1_group3_bb5
+  // ========== loop1_group3_bb5 ==========
+  
+  __t3 := true
+  // [mir] _2 = ()
+  
+  _2 := builtin$havoc_ref()
+  inhale acc(tuple0$(_2), write)
+  // [mir] goto -> bb1
+  
+  goto loop1_group4_bb1
+  label loop1_group4_bb1
+  // ========== loop1_group4_bb1 ==========
+  
+  // This is a loop head
+  
+  __t1 := true
+  // [mir] switchInt(const true) -> [false: bb2, otherwise: bb3]
+  
+  __t7 := true
+  if (__t7) {
+    goto l3
+  }
+  goto l2
+  label loop1_group5_bb3
+  // ========== loop1_group5_bb3 ==========
+  
+  __t2 := true
+  // [mir] switchInt(const false) -> [false: bb5, otherwise: bb4]
+  
+  __t8 := false
+  // Ignore default target bb4, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop1_end_body
+  label loop1_inv_post
+  // ========== loop1_inv_post ==========
+  
+  // Inhale the loop invariant of block bb1
+  
+  inhale acc(_1.val_ref, read$()) && acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale _preserve$0 == _1.val_ref
+  inhale (unfolding acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in m_Dijkstras_algorithm_simpl$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref.f$nodes) >= 0)
+  goto loop1_group3_bb5
+  label loop1_inv_pre
+  // ========== loop1_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb1
+  
+  _preserve$0 := _1.val_ref
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read)
+  
+  assert (unfolding acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in m_Dijkstras_algorithm_simpl$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Dijkstras_algorithm_simpl$$VecWrapperNode$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref.f$nodes)) >= 0
+  assert _preserve$0 == _1.val_ref
+  exhale acc(_1.val_ref, read$()) && acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  __t7 := builtin$havoc_bool()
+  __t8 := builtin$havoc_bool()
+  __t3 := builtin$havoc_bool()
+  __t2 := builtin$havoc_bool()
+  __t1 := builtin$havoc_bool()
+  _2 := builtin$havoc_ref()
+  goto loop1_inv_post
+  label loop1_start
+  // ========== loop1_start ==========
+  
+  goto loop1_group1_bb1
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(m_Dijkstras_algorithm_simpl$$Grid$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_ref() returns (ret: Ref)
+
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)
