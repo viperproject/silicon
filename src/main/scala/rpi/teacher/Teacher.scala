@@ -175,14 +175,18 @@ class Context {
 }
 
 trait ContextInfo extends sil.Info {
-  override def comment: Seq[String] = Seq.empty
-
   override def isCached: Boolean = false
 }
 
-case class FramingInfo(location: sil.LocationAccess) extends ContextInfo
+case class FramingInfo(location: sil.LocationAccess) extends ContextInfo {
+  override def comment: Seq[String] =
+    Seq.empty
+}
 
-case class BasicInfo(label: String, instance: Instance) extends ContextInfo
+case class BasicInfo(label: String, instance: Instance) extends ContextInfo {
+  override def comment: Seq[String] =
+    Seq(instance.name)
+}
 
 /**
   * Utility object providing methods to collect checks from programs.

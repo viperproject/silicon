@@ -10,20 +10,22 @@ method main()
     // create list
     a := new(n)
     b := a
+    __init__(a)
     while (i < 10)
     {
         var t: Ref
-
         t := new(n)
         b.n := t
         b := t
         i := i + 1
+        __down__(b)
     }
 
     // traverse list
     c := a
     while (c != null)
     {
+        __down__(c)
         c := c.n
     }
 }

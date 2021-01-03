@@ -18,7 +18,7 @@ object Settings {
   /**
     * The number of rounds after which the learner gets exhausted and gives up.
     */
-  val maxRounds = 10
+  val maxRounds = 6
 
   /**
     * The flag indicating whether the inference should exploit silicon's framing.
@@ -37,11 +37,22 @@ object Settings {
   val useSegments = true
 
   /**
-    * TODO: Implement or remove.
+    * The flag indicating whether the black box verifier used by the inference should use annotations or heuristics for
+    * unfolds, folds, and related lemmas.
+    *
+    * Note: The heuristics implemented in the Silicon verifier are currently experimental and limited to folds and
+    * unfolds.
     */
   val useAnnotations = true
 
+  /**
+    * Since Silicon is a iso-recursive verifier, we force folds in positions where a predicate needs to be
+    * established, such that we only have to rely on unfold heuristics (as failing fold heuristics may yield incorrect
+    * examples). This parameter regulates up to which depth we statically fold predicates.
+    */
   val foldDepth = 1
+
+  val inline = true
 
   val batch = false
 
@@ -86,15 +97,19 @@ object Names {
     */
   val segment = "S"
 
-  /**
-    * The name of the fold annotation.
-    */
-  val foldAnnotation = "__fold__"
+  val initAnnotation = "__init__"
 
-  /**
-    * The name of the unfold annotation.
-    */
-  val unfoldAnnotation = "__unfold__"
+  val unfoldDownAnnotation = "__unfoldDown__"
+
+  val foldDownAnnotation = "__foldDown__"
+
+  val foldUpAnnotation = "__foldUp__"
+
+  val allAnnotations = Seq(
+    initAnnotation,
+    unfoldDownAnnotation,
+    foldDownAnnotation,
+    foldUpAnnotation)
 
   /**
     * Returns whether the given name corresponds to an annotation.
@@ -103,5 +118,6 @@ object Names {
     * @return True if the name corresponds to an annotation.
     */
   def isAnnotation(name: String): Boolean =
-    name == foldAnnotation || name == unfoldAnnotation
+    allAnnotations.contains(name)
+
 }

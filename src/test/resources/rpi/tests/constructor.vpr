@@ -1,4 +1,4 @@
-field next: Ref
+field n: Ref
 
 method main()
 {
@@ -11,14 +11,16 @@ method main()
     while (i > 0)
     {
         var t: Ref
-        t := new(next)
-        t.next := x
+        t := new(n)
+        t.n := x
         x := t
         i := i - 1
+        __foldUp__(x)
     }
 
     while (x != null)
     {
-        x := x.next
+        __unfoldDown__(x)
+        x := x.n
     }
 }

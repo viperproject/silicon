@@ -123,4 +123,7 @@ case class Instance(specification: Specification, arguments: Seq[sil.Exp]) {
       }
     Abstraction(updated)
   }
+
+  override def toString: String =
+    s"$name(${arguments.mkString(", ")})"
 }

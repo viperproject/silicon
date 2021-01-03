@@ -275,14 +275,9 @@ class Inference(program: sil.Program) {
             case sil.While(condition, invariants, body) =>
               val substituted = invariants.map { invariant => substitute(invariant) }
               sil.While(condition, substituted, body)()
-            case sil.MethodCall(name, arguments, _) if name == Names.foldAnnotation =>
-              val access = sil.PredicateAccess(arguments, Names.recursive)()
-              val accessPredicate = sil.PredicateAccessPredicate(access, sil.FullPerm()())()
-              sil.Fold(accessPredicate)()
-            case sil.MethodCall(name, arguments, _) if name == Names.unfoldAnnotation =>
-              val access = sil.PredicateAccess(arguments, Names.recursive)()
-              val accessPredicate = sil.PredicateAccessPredicate(access, sil.FullPerm()())()
-              sil.Unfold(accessPredicate)()
+            case sil.MethodCall(name, _, _) if Names.isAnnotation(name) =>
+              // TODO: Handle annotations.
+              sil.Seqn(Seq.empty, Seq.empty)()
           }, Traverse.BottomUp)
         }
         // create annotated method

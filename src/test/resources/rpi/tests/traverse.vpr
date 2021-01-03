@@ -1,11 +1,12 @@
-field next: Ref
+field n: Ref
 
 method main(a: Ref)
 {
-   var c: Ref
-   c := a
-   while (c != null)
-   {
-      c := c.next
-   }
+    var c: Ref
+    c := a
+    while (c != null)
+    {
+        __unfoldDown__(c)
+        c := c.n
+    }
 }

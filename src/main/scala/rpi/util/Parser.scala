@@ -50,18 +50,15 @@ object Parser {
 
   private def beforeResolving(input: PProgram): PProgram = {
     val methods = {
-      val arguments = Seq(PFormalArgDecl(PIdnDef("x"), TypeHelper.Ref))
-      // dummy fold method
-      val foldDummy = {
-        val name = PIdnDef(Names.foldAnnotation)
-        PMethod(name, arguments, Seq.empty, Seq.empty, Seq.empty, None)
-      }
-      // dummy unfold method
-      val unfoldDummy = {
-        val name = PIdnDef(Names.unfoldAnnotation)
-        PMethod(name, arguments, Seq.empty, Seq.empty, Seq.empty, None)
-      }
-      input.methods :+ foldDummy :+ unfoldDummy
+      // add dummy annotation methods
+      val dummies = Names
+        .allAnnotations
+        .map { annotation =>
+          val name = PIdnDef(annotation)
+          val arguments = Seq(PFormalArgDecl(PIdnDef("x"), TypeHelper.Ref))
+          PMethod(name, arguments, Seq.empty, Seq.empty, Seq.empty, None)
+        }
+      input.methods ++ dummies
     }
     input.copy(methods = methods)
   }
