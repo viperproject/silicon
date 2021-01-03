@@ -5,12 +5,31 @@ import viper.silver.ast
 
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.{Store, State, BasicChunk, Identifier}
+import viper.silicon.state.{Store, State, BasicChunk}
 import viper.silicon.state.terms.{sorts, Sort, Term, Unit, IntLiteral, BooleanLiteral, Null, Var, App, Combine,
                                   First, Second, SortWrapper, PredicateLookup, toSnapTree, Rational, PermLiteral}
 
 
 /* Some new classes to describe a more informative model */
+
+/* Explanation: (to be removed later)
+    To use these new extracted counterexamples, you can use the flag "--counterexample mapped"
+    The new trait ExtractedModelEntry should make the counterexamples more readable and extract
+    information from the heap, but heap values such as predicates can still be accessed,
+    also in a more processed way since all the first/second/Sortwrappers should be gone now and 
+    replaced with their corresponding values in the extracted Heap fields of the converter class
+
+    A lot of types like sequences etc are not handled yet, and I am not sure if I plan to do so
+    since they are not used in Rust
+
+    The various parts in this file should probably be moved out of the interfaces package,
+    but for now to keep everything in one place is simpler to work on it.
+
+    To see the advantage of these new counterexamples you can run it on the
+    files in src/test/resourcers/demo-counterexamples, the file simple-refs-rec.vpr is 
+    probably the most interesting.
+
+*/
 
 sealed trait ExtractedModelEntry
 case class LitIntEntry(value: BigInt) extends ExtractedModelEntry {
@@ -21,7 +40,7 @@ case class LitBoolEntry(value: Boolean) extends ExtractedModelEntry {
 }
 case class RefEntry(fields: Map[String, ExtractedModelEntry]) extends ExtractedModelEntry {
     override def toString : String = {
-        var buf = "Ref : { \n"
+        var buf = "Ref {\n"
         for ((name, entry) <- fields) {
             buf += "\t" + name + " <- " + entry.toString.split("\n").mkString("\n\t") + "\n"
         }
