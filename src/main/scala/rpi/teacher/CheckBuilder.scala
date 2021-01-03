@@ -15,6 +15,7 @@ import scala.collection.mutable
   */
 class CheckBuilder(teacher: Teacher) {
   // import utility methods
+
   import rpi.util.Expressions._
   import rpi.util.Statements._
 
@@ -488,6 +489,6 @@ class CheckBuilder(teacher: Teacher) {
     stack match {
       case head :: tail =>
         stack = tail
-        head
+        head.toSeq
     }
 }

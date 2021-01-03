@@ -1,8 +1,8 @@
 package rpi.util
 
-import java.nio.file.{Files, Paths}
+import fastparse.Parsed
 
-import fastparse.core.Parsed.Success
+import java.nio.file.{Files, Paths}
 import rpi.Names
 import viper.silver.parser._
 import viper.silver.{ast => sil}
@@ -36,7 +36,7 @@ object Parser {
     // parse program
     val result = FastParser.parse(input, path)
     val program = result match {
-      case Success(program: PProgram, _) if program.errors.isEmpty =>
+      case Parsed.Success(program: PProgram, _) if program.errors.isEmpty =>
         program.initProperties()
         Some(program)
       case _ => None
@@ -54,13 +54,13 @@ object Parser {
       val dummies = Names
         .allAnnotations
         .map { annotation =>
-          val name = PIdnDef(annotation)
-          val arguments = Seq(PFormalArgDecl(PIdnDef("x"), TypeHelper.Ref))
-          PMethod(name, arguments, Seq.empty, Seq.empty, Seq.empty, None)
+          val name = PIdnDef(annotation)()
+          val arguments = Seq(PFormalArgDecl(PIdnDef("x")(), TypeHelper.Ref)())
+          PMethod(name, arguments, Seq.empty, Seq.empty, Seq.empty, None)()
         }
       input.methods ++ dummies
     }
-    input.copy(methods = methods)
+    input.copy(methods = methods)(input.pos)
   }
 
   private def afterTranslating(input: sil.Program): sil.Program = {

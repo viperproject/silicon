@@ -1,9 +1,9 @@
 package rpi.learner
 
+import fastparse.Parsed
+
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.Paths
-
-import fastparse.core.Parsed.Success
 import rpi.Main
 import viper.silver.{ast => sil}
 import viper.silver.verifier.{ModelParser, SingleEntry}
@@ -105,11 +105,16 @@ class Smt {
     }
     response = response.replace("\"", "")
     // parse response and create model
-    ModelParser.model.parse(response) match {
-      case Success(model, _) => model.entries.mapValues {
-        case SingleEntry("true") => true
-        case SingleEntry("false") => false
-      }
+    fastparse.parse(response, ModelParser.model(_)) match {
+      case Parsed.Success(model, _) =>
+        model
+          .entries
+          .view
+          .mapValues {
+            case SingleEntry("true") => true
+            case SingleEntry("false") => false
+          }
+          .toMap
     }
   }
 
