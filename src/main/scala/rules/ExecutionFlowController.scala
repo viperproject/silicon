@@ -12,7 +12,7 @@ import viper.silicon.verifier.Verifier
 
 trait ExecutionFlowRules extends SymbolicExecutionRules {
   def locallyWithResult[R](s: State, v: Verifier)
-                          (block: (State, Verifier, (R => VerificationResult)) => VerificationResult)
+                          (block: (State, Verifier, R => VerificationResult) => VerificationResult)
                           (Q: R => VerificationResult)
                           : VerificationResult
 
@@ -45,9 +45,9 @@ trait ExecutionFlowRules extends SymbolicExecutionRules {
                         : VerificationResult
 }
 
-object executionFlowController extends ExecutionFlowRules with Immutable {
+object executionFlowController extends ExecutionFlowRules {
   def locallyWithResult[R](s: State, v: Verifier)
-                          (block: (State, Verifier, (R => VerificationResult)) => VerificationResult)
+                          (block: (State, Verifier, R => VerificationResult) => VerificationResult)
                           (Q: R => VerificationResult)
                           : VerificationResult = {
 
@@ -102,7 +102,6 @@ object executionFlowController extends ExecutionFlowRules with Immutable {
                                     : VerificationResult = {
 
     var localActionSuccess = false
-    var compressed = false
 
     /* TODO: Consider how to handle situations where the action branches and the first branch
      *       succeeds, i.e. localActionSuccess has been set to true, but the second fails.
@@ -136,7 +135,7 @@ object executionFlowController extends ExecutionFlowRules with Immutable {
                 (Q: (State, Verifier) => VerificationResult)
                 : VerificationResult =
 
-      tryOrFailWithResult[scala.Null](s, v)((s1, v1, QS) => action(s1, v1, (s2, v2) => QS(s2, null, v2)))((s2, `null`, v2) => Q(s2, v2))
+      tryOrFailWithResult[scala.Null](s, v)((s1, v1, QS) => action(s1, v1, (s2, v2) => QS(s2, null, v2)))((s2, _, v2) => Q(s2, v2))
 
   def tryOrFail1[R1](s: State, v: Verifier)
                     (action: (State, Verifier, (State, R1, Verifier) => VerificationResult) => VerificationResult)

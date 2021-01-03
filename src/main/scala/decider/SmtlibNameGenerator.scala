@@ -34,11 +34,11 @@ abstract class AbstractNameSanitizer extends NameSanitizer {
     handle(first, firstCharacters)
     for (c <- name.tail) handle(c, otherCharacters)
 
-    while (reservedNames.contains(builder.result)) {
+    while (reservedNames.contains(builder.result())) {
       builder.append(fallback)
     }
 
-    builder.result
+    builder.result()
   }
 }
 

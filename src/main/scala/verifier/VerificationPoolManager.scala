@@ -55,7 +55,7 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
     new GenericObjectPool[SlaveVerifier](factory, poolConfig)
     //    )
 
-    PoolUtils.prefill(slaveVerifierPool, poolConfig.getMaxTotal)
+    slaveVerifierPool.addObjects(poolConfig.getMaxTotal)
     //  Thread.sleep(2000)
 
     assert(slaveVerifiers.length == poolConfig.getMaxTotal)

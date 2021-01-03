@@ -7,7 +7,6 @@
 package viper.silicon.rules
 
 import viper.silver.ast
-import viper.silver.ast.{Info, PredicateAccess}
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
@@ -58,7 +57,7 @@ trait EvaluationRules extends SymbolicExecutionRules {
                     : VerificationResult
 }
 
-object evaluator extends EvaluationRules with Immutable {
+object evaluator extends EvaluationRules {
   import consumer._
   import producer._
 
@@ -219,7 +218,7 @@ object evaluator extends EvaluationRules with Immutable {
                     Q(s2, fvfLookup, v1)}
               }
             case _ =>
-              val (s2, smDef1, pmDef1) =
+              val (_, smDef1, pmDef1) =
                 quantifiedChunkSupporter.heapSummarisingMaps(
                   s = s1,
                   resource = fa.field,
@@ -609,7 +608,8 @@ object evaluator extends EvaluationRules with Immutable {
             v1.decider.assume(tlq)
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
-            Q(s1, tQuant, v1)}
+            Q(s1, tQuant, v1)
+        }
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = Verifier.program.findFunction(funcName)
@@ -647,7 +647,7 @@ object evaluator extends EvaluationRules with Immutable {
              * The first approach is slightly simpler and suffices here, though.
              */
             val fargs = func.formalArgs.map(_.localVar)
-            val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+            val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
             val exampleTrafo = CounterexampleTransformer({
               case ce: SiliconCounterexample => ce.withStore(s2.g)
               case ce => ce
@@ -878,6 +878,14 @@ object evaluator extends EvaluationRules with Immutable {
 
       case _: ast.InhaleExhaleExp =>
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e), v, s)
+
+      case _: ast.EpsilonPerm
+         | _: ast.FieldAccessPredicate
+         | _: ast.MagicWand
+         | _: ast.PredicateAccess
+         | _: ast.PredicateAccessPredicate
+         | _: ast.ExtensionExp =>
+        sys.error(s"Unexpected expression $e cannot be symbolically evaluated")
     }
 
     resultTerm
@@ -910,7 +918,7 @@ object evaluator extends EvaluationRules with Immutable {
         val bc = And(ts1)
         v2.decider.setCurrentBranchCondition(bc)
         evals(s3, es2, _ => pve, v2)((s4, ts2, v3) => {
-          evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, v4) => { // TODO: v4 isn't forward - problem?
+          evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, _) => { // TODO: v4 isn't forward - problem?
             val (auxGlobals, auxNonGlobalQuants) =
               v3.decider.pcs.after(preMark).quantified(quant, tVars, tTriggers, s"$name-aux", isGlobal = false, bc)
             val additionalPossibleTriggers: Map[ast.Exp, Term] =
@@ -1069,7 +1077,7 @@ object evaluator extends EvaluationRules with Immutable {
     if (eTriggerSets.isEmpty)
       Q(s, tTriggersSets, v)
     else {
-      if (eTriggerSets.head.collect{case fa: ast.FieldAccess => fa; case pa: PredicateAccess => pa; case wand: ast.MagicWand => wand }.nonEmpty ) {
+      if (eTriggerSets.head.collect{case fa: ast.FieldAccess => fa; case pa: ast.PredicateAccess => pa; case wand: ast.MagicWand => wand }.nonEmpty ) {
         evalHeapTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
           evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
       } else {
@@ -1124,7 +1132,7 @@ object evaluator extends EvaluationRules with Immutable {
 
     var optRemainingTriggerTerms: Option[Seq[Term]] = None
     val preMark = v.decider.setPathConditionMark()
-    var πDelta = InsertionOrderedSet.empty[Term]
+    var pcDelta = InsertionOrderedSet.empty[Term]
 
     /* TODO: Evaluate as many remaining expressions as possible, i.e. don't
      *       stop if evaluating one fails
@@ -1161,12 +1169,12 @@ object evaluator extends EvaluationRules with Immutable {
     val r =
       evals(s, remainingTriggerExpressions, _ => pve, v)((_, remainingTriggerTerms, v1) => {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
-        πDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
+        pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
         Success()})
 
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
-        v.decider.assume(πDelta)
+        v.decider.assume(pcDelta)
         Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>
 //        bookkeeper.logfiles("evalTrigger").println(s"Couldn't evaluate some trigger expressions:\n  $remainingTriggerExpressions\nReason:\n  $r")
@@ -1268,7 +1276,7 @@ object evaluator extends EvaluationRules with Immutable {
       case rcv =>
         val s1 = s.copy(smCache = smCache1)
         val t = s1.possibleTriggers.get(fa)
-        val r = t match { /* TODO: r isn't used - why? */
+        t match { /* TODO: r isn't used - why? */
           case Some(cachedTrigger) =>
             cachedTrigger match {
               case l: Lookup =>
@@ -1393,7 +1401,7 @@ object evaluator extends EvaluationRules with Immutable {
       }})
   }
 
-  private[silicon] case object FromShortCircuitingAnd extends Info {
+  private[silicon] case object FromShortCircuitingAnd extends ast.Info {
     val comment = Nil
     val isCached = false
   }

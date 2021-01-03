@@ -6,8 +6,10 @@
 
 package viper.silicon.tests
 
-import org.scalatest.{Tag, FlatSpec}
+import org.scalatest.Tag
 import java.nio.file.Paths
+
+import org.scalatest.flatspec.AnyFlatSpec
 import viper.silver.frontend.SilFrontend
 import viper.silicon.Silicon
 
@@ -21,7 +23,7 @@ import viper.silicon.Silicon
   * This test is therefore ignored by default, but it should be run from time
   * to time to get a feeling of how much memory Silicon consumes.
   */
-class MemoryTests extends FlatSpec {
+class MemoryTests extends AnyFlatSpec {
   ignore should "not leak memory when verifying multiple files" taggedAs Tag("silicon.MemoryTests") in {
     val rt = Runtime.getRuntime
 
@@ -35,7 +37,7 @@ class MemoryTests extends FlatSpec {
     silver.reset(Paths.get("src/test/scala/linkedlist.silver"))
     silver.runTo(silver.Translation)
 
-    var lb = collection.mutable.ListBuffer[Long]()
+    val lb = collection.mutable.ListBuffer[Long]()
 
     for (i <- 0 to 1000) {
       silicon.verify(silver.translationResult)

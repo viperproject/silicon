@@ -9,7 +9,7 @@ package viper.silicon
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
-
+import scala.collection.immutable.ArraySeq
 import scala.util.{Left, Right}
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
@@ -108,22 +108,21 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
 
   private var startTime: Long = _
   private var elapsedMillis: Long = _
-  private def overallTime = System.currentTimeMillis() - startTime
 
-  def parseCommandLine(args: Seq[String]) {
+  def parseCommandLine(args: Seq[String]): Unit = {
     assert(lifetimeState == LifetimeState.Instantiated, "Silicon can only be configured once")
     lifetimeState = LifetimeState.Configured
 
     _config = new Config(args)
   }
 
-  def debugInfo(debugInfo: Seq[(String, Any)]) { this.debugInfo = debugInfo }
+  def debugInfo(debugInfo: Seq[(String, Any)]): Unit = { this.debugInfo = debugInfo }
 
   /** Start Silicon.
     * Can throw a org.rogach.scallop.exceptions.ScallopResult if command-line
     * parsing failed, or if --help or --version were supplied.
     */
-  def start() {
+  def start(): Unit = {
     assert(lifetimeState == LifetimeState.Configured,
            "Silicon must be configured before it can be initialized, and it can only be initialized once")
 
@@ -135,7 +134,7 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
     verifier.start()
   }
 
-  private def reset() {
+  private def reset(): Unit = {
     assert(lifetimeState == LifetimeState.Started || lifetimeState == LifetimeState.Running,
            "Silicon must be started before it can be reset")
 
@@ -145,7 +144,7 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
     verifier.reset()
   }
 
-  def stop() {
+  def stop(): Unit = {
     if (verifier != null) verifier.stop()
   }
 
@@ -272,11 +271,11 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
     failures
   }
 
-  private def logFailure(failure: Failure, log: String => Unit) {
+  private def logFailure(failure: Failure, log: String => Unit): Unit = {
     log("\n" + failure.message.readableMessage(withId = true, withPosition = true))
   }
 
-  private def setLogLevelsFromConfig() {
+  private def setLogLevelsFromConfig(): Unit = {
     // Set level of main (package) logger
     config.logLevel
       .map(Level.toLevel)
@@ -339,11 +338,11 @@ class SiliconFrontend(override val reporter: PluginAwareReporter,
 }
 
 object SiliconRunner extends SiliconFrontend(StdIOReporter()) {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
 
     try {
-      execute(args)
+      execute(ArraySeq.unsafeWrapArray(args))
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
 
       if (state >= DefaultStates.Verification && result == SilSuccess) {
@@ -356,7 +355,7 @@ object SiliconRunner extends SiliconFrontend(StdIOReporter()) {
 
         /* An exception's root cause might be an error; the following code takes care of that */
         reporting.exceptionToViperError(exception) match {
-          case Right((cause, failure)) =>
+          case Right((cause, _)) =>
             /* Report exceptions in a user-friendly way */
             reporter report ExceptionReport(exception)
             logger debug ("An exception occurred:", cause) /* Log stack trace */

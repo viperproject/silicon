@@ -8,12 +8,10 @@ package viper.silicon.resources
 
 import viper.silicon.state.terms
 import viper.silicon.state.terms.Term
-import viper.silicon.verifier.Verifier
 
-abstract class PropertyInterpreter(verifier: Verifier) {
-  
+abstract class PropertyInterpreter {
   protected type Info
-  
+
   protected def buildPathCondition[K <: Kind](expression: PropertyExpression[K], info: Info): Term = expression match {
     // Literals
     case True() => terms.True()

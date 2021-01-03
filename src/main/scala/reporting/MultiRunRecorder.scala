@@ -51,9 +51,9 @@ trait MultiRunRecorder extends StatefulComponent {
 
   protected def onSourceChanged(previousSource: Option[String], currentSource: Option[String]): Unit
 
-  def start() { /* nothing to do */ }
-  def reset() { /* nothing to do */ }
-  def stop() { /* nothing to do */ }
+  def start(): Unit = { /* nothing to do */ }
+  def reset(): Unit = { /* nothing to do */ }
+  def stop(): Unit = { /* nothing to do */ }
 }
 
 abstract class PrintWriterBasedMultiRunRecorder extends MultiRunRecorder {
@@ -128,12 +128,12 @@ object MultiRunRecorders extends StatefulComponent {
     assert(sinks.isEmpty)
   }
 
-  def reset() {
+  def reset(): Unit = {
     recorders.valuesIterator.foreach(_.reset())
     sinks.foreach(_.flush())
   }
 
-  def stop() {
+  def stop(): Unit = {
     recorders.valuesIterator.foreach(_.stop())
     sinks.foreach(_.close())
 

@@ -34,19 +34,19 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
 
   /* Lifetime */
 
-  def reset() {
+  def reset(): Unit = {
     collectedFields = InsertionOrderedSet.empty
     collectedSorts = InsertionOrderedSet.empty
     collectedFunctionDecls = Seq.empty
     collectedAxioms = Seq.empty
   }
 
-  def stop() {}
-  def start() {}
+  def stop(): Unit = {}
+  def start(): Unit = {}
 
   /* Functionality */
 
-  def analyze(program: ast.Program) {
+  def analyze(program: ast.Program): Unit = {
     /* TODO: Use viper.silver.ast.utility.QuantifiedPermissions.quantifiedFields instead? */
     program visit {
       case QuantifiedPermissionAssertion(_, _, acc: ast.FieldAccessPredicate) =>

@@ -19,7 +19,7 @@ object Unknown extends Result
 trait ProverLike {
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
-  def assume(term: Term)
+  def assume(term: Term): Unit
   def declare(decl: Decl): Unit
   def comment(content: String): Unit
   def saturate(timeout: Int, comment: String): Unit

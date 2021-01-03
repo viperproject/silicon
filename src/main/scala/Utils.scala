@@ -7,6 +7,7 @@
 package viper.silicon
 
 import scala.annotation.implicitNotFound
+import scala.collection.immutable.ArraySeq
 import viper.silver
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.{VerificationError, errors}
@@ -66,10 +67,10 @@ package object utils {
 
     /* Lifetime */
 
-    def start() {}
-    def stop() {}
+    def start(): Unit = {}
+    def stop(): Unit = {}
 
-    def reset() {
+    def reset(): Unit = {
       nextValue = firstValue
     }
 
@@ -85,9 +86,9 @@ package object utils {
    * DefaultElementVerifier, Scala will (rightfully) complain otherwise.
    */
   class NoOpStatefulComponent extends StatefulComponent {
-    @inline def start() {}
-    @inline def reset() {}
-    @inline def stop() {}
+    @inline def start(): Unit = {}
+    @inline def reset(): Unit = {}
+    @inline def stop(): Unit = {}
   }
 
   trait MustBeReinitializedAfterReset { this: StatefulComponent => }
@@ -176,8 +177,8 @@ package object utils {
               case Some((variables, triggerSets)) =>
                 /* Invalid triggers could be generated, now try to rewrite them */
                 val intermediateQ = q match {
-                  case f: silver.ast.Forall => silver.ast.Forall(variables, Nil, q.exp)(q.pos, q.info)
-                  case e: silver.ast.Exists => silver.ast.Exists(variables, Nil, q.exp)(q.pos, q.info)
+                  case _: silver.ast.Forall => silver.ast.Forall(variables, Nil, q.exp)(q.pos, q.info)
+                  case _: silver.ast.Exists => silver.ast.Exists(variables, Nil, q.exp)(q.pos, q.info)
                   case _=> sys.error(s"Unexpected expression ${q}")
                 }
                 silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateQ, triggerSets).getOrElse(q)
@@ -215,7 +216,7 @@ package object utils {
       resource match {
         case l: silver.ast.Location => l.name
         case m: silver.ast.MagicWand => m.toString()
-        case m @ silver.ast.MagicWandOp => s"${m.op}@${sourceLineColumn(m)}"
+        case m@silver.ast.MagicWandOp => s"${silver.ast.MagicWandOp.op}@${sourceLineColumn(m)}"
       }
     }
 
@@ -277,14 +278,14 @@ package object utils {
       val explanation =
         "InhaleExhale-expressions should have been eliminated by calling expr.whenInhaling/Exhaling."
 
-      val stackTrace = new Throwable().getStackTrace
+      val stackTrace = ArraySeq.unsafeWrapArray(new Throwable().getStackTrace)
 
       Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
     }
 
     def createUnexpectedNodeDuringDomainTranslationError(offendingNode: errors.ErrorNode) = {
       val explanation = "The expression should not occur in domain expressions."
-      val stackTrace = new Throwable().getStackTrace
+      val stackTrace = ArraySeq.unsafeWrapArray(new Throwable().getStackTrace)
 
       Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
     }
@@ -292,7 +293,7 @@ package object utils {
     def createUnexpectedNodeError(offendingNode: errors.ErrorNode, explanation: String)
                                  : Internal = {
 
-      val stackTrace = new Throwable().getStackTrace
+      val stackTrace = ArraySeq.unsafeWrapArray(new Throwable().getStackTrace)
 
       Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
     }

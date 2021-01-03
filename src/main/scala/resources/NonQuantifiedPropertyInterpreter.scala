@@ -12,7 +12,7 @@ import viper.silicon.state.terms.Term
 import viper.silicon.state.{QuantifiedBasicChunk, terms}
 import viper.silicon.verifier.Verifier
 
-class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) extends PropertyInterpreter(verifier) {
+class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) extends PropertyInterpreter {
 
   protected case class Info(pm: Map[ChunkPlaceholder, GeneralChunk], resourceID: ResourceID) {
     def addMapping(cp: ChunkPlaceholder, ch: GeneralChunk) = Info(pm + (cp -> ch), resourceID)
@@ -125,7 +125,7 @@ class NonQuantifiedPropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier
                            body: PropertyExpression[kinds.Boolean],
                            info: Info)
                           : Term = {
-    val builder: (GeneralChunk => Term) = chunkVariables match {
+    val builder: GeneralChunk => Term = chunkVariables match {
       case c +: Seq() => chunk => buildPathCondition(body, info.addMapping(c, chunk))
       case c +: tail => chunk => buildForEach(chunks, tail, body, info.addMapping(c, chunk))
     }

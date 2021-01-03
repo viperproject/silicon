@@ -8,8 +8,8 @@ package viper.silicon.supporters
 
 import java.io.File
 import java.net.URL
+import scala.annotation.unused
 import scala.reflect.ClassTag
-import fastparse.all
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.PreambleContributor
@@ -43,18 +43,18 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   /* Lifetime */
 
-  def reset() {
+  def reset(): Unit = {
     collectedSorts = InsertionOrderedSet.empty
     collectedFunctions = InsertionOrderedSet.empty
     collectedAxioms = InsertionOrderedSet.empty
   }
 
-  def start() {}
-  def stop() {}
+  def start(): Unit = {}
+  def stop(): Unit = {}
 
   /* Functionality */
 
-  def analyze(program: ast.Program) {
+  def analyze(program: ast.Program): Unit = {
     val builtinDomainTypeInstances = computeGroundTypeInstances(program)
     val sourceProgram = utils.loadProgramFromUrl(sourceUrl)
     val sourceDomain = transformSourceDomain(sourceProgram.findDomain(sourceDomainName))
@@ -92,15 +92,15 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   }
 
   protected def computeGroundTypeInstances(program: ast.Program): InsertionOrderedSet[BuiltinDomainType] =
-    program.groundTypeInstances.collect {
+    InsertionOrderedSet(program.groundTypeInstances.collect {
       case builtinDomainTypeTag(s) => s
-    }.to[InsertionOrderedSet]
+    })
 
   protected def transformSourceDomain(sourceDomain: ast.Domain): ast.Domain = sourceDomain
 
-  protected def transformSourceDomainInstance(sourceDomain: ast.Domain, typ: ast.DomainType): ast.Domain = sourceDomain
+  protected def transformSourceDomainInstance(sourceDomain: ast.Domain, @unused typ: ast.DomainType): ast.Domain = sourceDomain
 
-  protected def collectSorts(domainTypes: Iterable[ast.DomainType]) {
+  protected def collectSorts(domainTypes: Iterable[ast.DomainType]): Unit = {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")
 
     domainTypes.foreach(domainType => {
@@ -109,17 +109,16 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
     })
   }
 
-  protected def collectFunctions(domains: Set[ast.Domain]) {
+  protected def collectFunctions(domains: Set[ast.Domain]): Unit = {
     domains foreach (
       _.functions foreach (df =>
         collectedFunctions += symbolConverter.toFunction(df)))
   }
 
-  protected def collectAxioms(domains: Set[(ast.DomainType, ast.Domain)]) {
-    domains foreach ({d =>
+  protected def collectAxioms(domains: Set[(ast.DomainType, ast.Domain)]): Unit = {
+    domains foreach (d =>
       d._2.axioms foreach (ax =>
-        collectedAxioms += translateAxiom(ax, d._1))
-        })
+        collectedAxioms += translateAxiom(ax, d._1)))
   }
 
   protected def translateAxiom(ax: ast.DomainAxiom, d: ast.DomainType): Term = {
@@ -129,9 +128,8 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
      */
     val domainName = f"${d.domainName}[${d.typVarsMap.values.map(t => symbolConverter.toSort(t)).mkString(",")}]"
     domainTranslator.translateAxiom(ax, symbolConverter.toSort).transform {
-      case q@Quantification(_,_,_,_,name,_) if name != "" => {
+      case q@Quantification(_,_,_,_,name,_) if name != "" =>
         q.copy(name = f"${domainName}_${name}")
-      }
       case Equals(t1, t2) => BuiltinEquals(t1, t2)
     }(recursive = _ => true)
   }
@@ -193,7 +191,7 @@ private object utils {
       }
 
     viper.silver.parser.FastParser.parse(content, fromPath) match {
-      case fastparse.core.Parsed.Success(parsedProgram: viper.silver.parser.PProgram, _) =>
+      case fastparse.Parsed.Success(parsedProgram: viper.silver.parser.PProgram, _) =>
         assert(parsedProgram.errors.isEmpty, s"Unexpected parsing errors: ${parsedProgram.errors}")
 
         val resolver = viper.silver.parser.Resolver(parsedProgram)
@@ -203,9 +201,11 @@ private object utils {
 
         program
 
-      case fastparse.core.Parsed.Failure(msg, index, extra) =>
-        val (line, col) = ast.LineCol(extra.input.asInstanceOf[all.ParserInput], index)
-        sys.error(s"Failure: $msg, at ${viper.silver.parser.FilePosition(fromPath, line, col)}")
+      case fastparse.Parsed.Failure(msg, index, _) =>
+        val (line, col) = ast.LineCol(index)
+        sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, line, col)}")
+        //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
+        //? sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, pos(0), pos(1))}")
     }
   }
 }

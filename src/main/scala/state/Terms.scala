@@ -6,6 +6,7 @@
 
 package viper.silicon.state.terms
 
+import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -14,7 +15,7 @@ import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, Sor
 import viper.silicon.verifier.Verifier
 
 sealed trait Node {
-  override def toString: String
+  def toString: String
 }
 
 sealed trait Symbol extends Node {
@@ -122,7 +123,7 @@ sealed trait Application[A <: Applicable] extends Term {
 sealed trait Function extends Applicable
 
 object Function {
-  def unapply(fun: Function): Option[(Identifier, Seq[Sort], Sort)] =
+  def unapply(fun: Function): Some[(Identifier, Seq[Sort], Sort)] =
     Some((fun.id, fun.argSorts, fun.resultSort))
 }
 
@@ -147,7 +148,7 @@ trait GenericFunctionCompanion[F <: Function] {
   def apply(id: Identifier, argSort: Sort, resultSort: Sort): F =
     apply(id, Seq(argSort), resultSort)
 
-  def unapply(fun: F): Option[(Identifier, Seq[Sort], Sort)] =
+  def unapply(fun: F): Some[(Identifier, Seq[Sort], Sort)] =
     Some((fun.id, fun.argSorts, fun.resultSort))
 }
 
@@ -470,7 +471,7 @@ case object Forall extends Quantifier {
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String, isGlobal: Boolean) =
     Quantification(Forall, qvars, tBody, triggers, name, isGlobal)
 
-  def unapply(q: Quantification): Option[(Seq[Var], Term, Seq[Trigger], String, Boolean)] =
+  def unapply(q: Quantification): Some[(Seq[Var], Term, Seq[Trigger], String, Boolean)] =
     Some(q.vars, q.body, q.triggers, q.name, q.isGlobal)
 
   override lazy val toString = "QA"
@@ -562,7 +563,7 @@ object Quantification
   }
 
   def unapply(q: Quantification)
-             : Option[(Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean)] = {
+             : Some[(Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean)] = {
 
     Some((q.q, q.vars, q.body, q.triggers, q.name, q.isGlobal))
   }
@@ -754,6 +755,7 @@ class Implies(val p0: Term, val p1: Term) extends BooleanTerm
 }
 
 object Implies extends ((Term, Term) => Term) {
+  @tailrec
   def apply(e0: Term, e1: Term): Term = (e0, e1) match {
     case (True(), _) => e1
     case (False(), _) => True()
@@ -1279,7 +1281,7 @@ class SeqDrop(val p0: Term, val p1: Term) extends SeqTerm
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
-  override lazy val toString = p0 + "[" + p1 + ":]"
+  override lazy val toString = p0.toString + "[" + p1.toString + ":]"
 }
 
 object SeqDrop extends ((Term, Term) => SeqTerm) {
@@ -1298,7 +1300,7 @@ class SeqTake(val p0: Term, val p1: Term) extends SeqTerm
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
-  override lazy val toString = p0 + "[:" + p1 + "]"
+  override lazy val toString = p0.toString + "[:" + p1.toString + "]"
 }
 
 object SeqTake extends ((Term, Term) => SeqTerm) {
@@ -2026,22 +2028,22 @@ object utils {
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSort(t: Term, desc: => String, s: Sort) {
+  def assertSort(t: Term, desc: => String, s: Sort): Unit = {
     assert(t.sort == s, s"Expected $desc $t to be of sort $s, but found ${t.sort}.")
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSort(t: Term, desc: => String, xs: Seq[Sort]) {
+  def assertSort(t: Term, desc: => String, xs: Seq[Sort]): Unit = {
     assert(xs.contains(t.sort), s"Expected $desc $t to be one of sorts $xs, but found ${t.sort}.")
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSort(t: Term, desc: => String, sortDesc: String, f: Sort => Boolean) {
+  def assertSort(t: Term, desc: => String, sortDesc: String, f: Sort => Boolean): Unit = {
     assert(f(t.sort), s"Expected $desc $t to be of sort $sortDesc, but found ${t.sort}.")
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSameSorts[S <: Sort with Product : ClassTag](t0: Term, t1: Term) {
+  def assertSameSorts[S <: Sort with Product : ClassTag](t0: Term, t1: Term): Unit = {
     val clazz = implicitly[ClassTag[S]].runtimeClass
 
     assert(
@@ -2054,7 +2056,7 @@ object utils {
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertExpectedSorts(applicable: Applicable, args: Seq[Term]) {
+  def assertExpectedSorts(applicable: Applicable, args: Seq[Term]): Unit = {
     assert(applicable.argSorts.length == args.length,
            s"Expected ${applicable.argSorts.length} arguments for ${applicable.id}, but got ${args.length}")
 
@@ -2070,8 +2072,8 @@ object utils {
     /* Taken from http://stackoverflow.com/a/8569263.
    * Computes the cartesian product of `xs`.
    */
-  def cartesianProduct[A](xs: Traversable[Traversable[A]]): Seq[Seq[A]] =
-    xs.foldLeft(Seq(Seq.empty[A])){(x, y) => for (a <- x.view; b <- y) yield a :+ b}
+  def cartesianProduct[A](xs: Iterable[Iterable[A]]): Seq[Seq[A]] =
+    xs.foldLeft(Seq(Seq.empty[A])){(x, y) => for (a <- x; b <- y) yield a :+ b}
 }
 
 object implicits {

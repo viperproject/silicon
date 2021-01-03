@@ -62,8 +62,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                       : Iterable[CH]
 }
 
-object chunkSupporter extends ChunkSupportRules with Immutable {
-  @inline
+object chunkSupporter extends ChunkSupportRules {
   def consume(s: State,
               h: Heap,
               resource: ast.Resource,

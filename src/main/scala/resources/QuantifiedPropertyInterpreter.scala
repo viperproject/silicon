@@ -9,9 +9,8 @@ package viper.silicon.resources
 import viper.silicon.interfaces.state.QuantifiedChunk
 import viper.silicon.state.terms
 import viper.silicon.state.terms.{Term, Trigger, Var}
-import viper.silicon.verifier.Verifier
 
-class QuantifiedPropertyInterpreter(verifier: Verifier) extends PropertyInterpreter(verifier) {
+class QuantifiedPropertyInterpreter extends PropertyInterpreter {
 
   protected case class Info(chunk: QuantifiedChunk, args: Seq[Term], perms: Term)
 

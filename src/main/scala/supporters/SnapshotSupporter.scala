@@ -6,6 +6,7 @@
 
 package viper.silicon.supporters
 
+import scala.annotation.unused
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silicon.state.{State, SymbolConverter}
@@ -64,7 +65,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
 
       case ast.And(a1, a2) =>
         /* At least one of a1, a2 must be impure, otherwise ... */
-        getOptimalSnapshotSortFromPair(a1, a2, () => (sorts.Snap, false), program, visited)
+        getOptimalSnapshotSortFromPair(a1, a2, () => (sorts.Snap, false))
 
       case ast.CondExp(_, a1, a2) =>
         /* At least one of a1, a2 must be impure, otherwise ... */
@@ -78,7 +79,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
           (s, isPure)
         }
 
-        getOptimalSnapshotSortFromPair(a1, a2, () => findCommonSort(), program, visited)
+        getOptimalSnapshotSortFromPair(a1, a2, () => findCommonSort())
 
       case QuantifiedPermissionAssertion(_, _, acc: ast.FieldAccessPredicate) =>
         (sorts.FieldValueFunction(symbolConverter.toSort(acc.loc.field.typ)), false)
@@ -89,20 +90,12 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
 
   private def getOptimalSnapshotSortFromPair(a1: ast.Exp,
                                              a2: ast.Exp,
-                                             fIfBothPure: () => (Sort, Boolean),
-                                             program: ast.Program,
-                                             visited: Seq[String])
+                                             fIfBothPure: () => (Sort, Boolean))
                                             : (Sort, Boolean) = {
 
     if (a1.isPure && a2.isPure) fIfBothPure()
     else (sorts.Snap, false)
   }
-
-  private def mkSnap(a: ast.Exp, program: ast.Program, v: Verifier, visited: Seq[String] = Nil): Term =
-    optimalSnapshotSort(a, program, visited) match {
-      case (sorts.Snap, true) => Unit
-      case (sort, _) => v.decider.fresh(sort)
-    }
 
   def createSnapshotPair(s: State,
                          sf: (Sort, Verifier) => Term,
@@ -119,7 +112,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
     (sf0, sf1)
   }
 
-  private def createSnapshotPair(s: State, snap: Term, a0: ast.Exp, a1: ast.Exp, v: Verifier): (Term, Term) = {
+  private def createSnapshotPair(@unused s: State, snap: Term, @unused a0: ast.Exp, @unused a1: ast.Exp, v: Verifier): (Term, Term) = {
     /* [2015-11-17 Malte] If both fresh snapshot terms and first/second datatypes
      * are used, then the overall test suite verifies in 2min 10sec, whereas
      * it takes 2min 20sec when only first/second datatypes are used. Might be

@@ -20,7 +20,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.VerificationError
 
-object moreCompleteExhaleSupporter extends SymbolicExecutionRules with Immutable {
+object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
   sealed trait TaggedSummarisingSnapshot {
     def snapshot: Term
   }
@@ -170,14 +170,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules with Immutable
     if (s.functionRecorder == NoopFunctionRecorder && !s.hackIssue387DisablePermissionConsumption)
       actualConsumeComplete(s, h, resource, args, perms, ve, v)(Q)
     else
-      summariseHeapAndAssertReadAccess(s, h, resource, args, perms, ve, v)(Q)
+      summariseHeapAndAssertReadAccess(s, h, resource, args, ve, v)(Q)
   }
 
   private def summariseHeapAndAssertReadAccess(s: State,
                                                h: Heap,
                                                resource: ast.Resource,
                                                args: Seq[Term],
-                                               perms: Term,
                                                ve: VerificationError,
                                                v: Verifier)
                                               (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
@@ -276,7 +275,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules with Immutable
 
       val s0 = s.copy(functionRecorder = currentFunctionRecorder)
 
-      summarise(s0, relevantChunks, resource, args, v)((s1, snap, _, _, v1) =>
+      summarise(s0, relevantChunks.toSeq, resource, args, v)((s1, snap, _, _, v1) =>
         if (!moreNeeded) {
           if (!consumeExact) {
             v1.decider.assume(PermLess(perms, pSum))
@@ -299,7 +298,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules with Immutable
 
   private val freeReceiver = Var(Identifier("?rcvr"), sorts.Ref)
 
-  def assumeFieldPermissionUpperBounds(s: State, h: Heap, v: Verifier): Unit = {
+  def assumeFieldPermissionUpperBounds(h: Heap, v: Verifier): Unit = {
     // TODO: Instead of "manually" assuming such upper bounds, appropriate PropertyInterpreters
     //       should be used, see StateConsolidator
     val relevantChunksPerField = MMap.empty[String, MList[BasicChunk]]

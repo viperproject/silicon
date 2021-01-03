@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import scala.annotation.unused
+import scala.collection.immutable.ArraySeq
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
@@ -43,7 +45,7 @@ case class InverseFunctions(condition: Term,
     /* TODO: Memoisation might be worthwhile, e.g. because often used with `?r` */
     qvarsToInverses.values.map(inv =>
       App(inv, additionalArguments ++ arguments)
-    )(collection.breakOut)
+    ).to(Seq)
 
   def qvarsToInversesOf(argument: Term): Map[Var, App] =
     qvarsToInversesOf(Seq(argument))
@@ -52,7 +54,7 @@ case class InverseFunctions(condition: Term,
     /* TODO: Memoisation might be worthwhile, e.g. because often used with `?r` */
     qvarsToInverses.map {
       case (x, inv) => x -> App(inv, additionalArguments ++ arguments)
-    }(collection.breakOut)
+    }.to(Map)
 
   override lazy val toString: String = indentedToString("")
 
@@ -190,7 +192,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                   : Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]
 }
 
-object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
+object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
   /* Chunk creation */
 
@@ -467,7 +469,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     // Create a replacement map for rewriting e(r_1, r_2, ...) to e(first(s), second(s), ...),
     // including necessary sort wrapper applications
     val snapToCodomainTermsSubstitution: Map[Term, Term] =
-      codomainQVars.zip(fromSnapTree(qvar, codomainQVars))(collection.breakOut)
+      codomainQVars.zip(fromSnapTree(qvar, codomainQVars)).to(Map)
 
     // Rewrite c(r_1, r_2, ...) to c(first(s), second(s), ...)
     val transformedOptSmDomainDefinitionCondition =
@@ -527,7 +529,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     (sm, valueDefinitions :+ resourceTriggerDefinition, optDomainDefinition)
   }
 
-  private def summarisePerm(s: State,
+  private def summarisePerm(@unused s: State,
                             relevantChunks: Seq[QuantifiedBasicChunk],
                             codomainQVars: Seq[Var],
                             resource: ast.Resource,
@@ -535,7 +537,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                             v: Verifier)
                            : (Term, Seq[Quantification]) = {
 
-    val pm = freshPermMap(s, resource, Seq(), v)
+    val pm = freshPermMap(resource, Seq(), v)
 
     val permSummary = ResourcePermissionLookup(resource, pm, codomainQVars)
 
@@ -797,7 +799,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       else s.conservedPcs
 
     val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
-    val interpreter = new QuantifiedPropertyInterpreter(v)
+    val interpreter = new QuantifiedPropertyInterpreter
     resourceDescription.instanceProperties.foreach (property => {
       v.decider.prover.comment(property.description)
       v.decider.assume(interpreter.buildPathConditionForChunk(
@@ -881,8 +883,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
   def consume(s: State,
               h: Heap,
-              forall: ast.Forall,
-              acc: ast.AccessPredicate,
               resource: ast.Resource,
               qvars: Seq[Var],
               formalQVars: Seq[Var],
@@ -1365,10 +1365,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     freshFvf
   }
 
-  def freshPermMap(s: State,
-                   resource: ast.Resource,
+  def freshPermMap(resource: ast.Resource,
                    appliedArgs: Seq[Term],
-                   v: Verifier): Term = {
+                   v: Verifier)
+                  : Term = {
 
     val permMapSort = resource match {
       case _: ast.Field => sorts.FieldPermFunction()
@@ -1462,10 +1462,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     }
 
     /* f_1(inv_1(rs), ..., inv_n(rs)), ...,  f_m(inv_1(rs), ..., inv_n(rs)) */
-    val fctsOfInversesOfCodomain = invertibles.map(_.replace(qvars, inversesOfCodomains))
+    val fctsOfInversesOfCodomain =
+      invertibles.map(_.replace(qvars, ArraySeq.unsafeWrapArray(inversesOfCodomains)))
 
     /* c(inv_1(rs), ..., inv_n(rs)) */
-    val conditionOfInverses = condition.replace(qvars, inversesOfCodomains)
+    val conditionOfInverses =
+      condition.replace(qvars, ArraySeq.unsafeWrapArray(inversesOfCodomains))
 
     /* c(xs) ==>
      *       inv_1(f_1(xs), ..., f_m(xs)) == x_1
@@ -1510,7 +1512,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
             .map { case (fctOfInvs, r) => fctOfInvs === r }))
 
     val axFctsOfInvsTriggers: Seq[Trigger] =
-      if (Verifier.config.disableISCTriggers()) Nil else inversesOfCodomains.map(Trigger.apply)
+      if (Verifier.config.disableISCTriggers()) Nil
+      else ArraySeq.unsafeWrapArray(inversesOfCodomains.map(Trigger.apply))
 
     val axFctsOfInvs =
       v.triggerGenerator.assembleQuantification(
@@ -1528,7 +1531,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       additionalInvArgs.toVector,
       axInvsOfFct,
       axFctsOfInvs,
-      qvars.zip(inverseFunctions)(collection.breakOut))
+      qvars.zip(inverseFunctions).to(Map))
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])

@@ -108,7 +108,7 @@ case class SiliconRawCounterexample(conditions: Seq[Term], state: State, model: 
 case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Model) extends SiliconCounterexample {
   override val model: Model = {
     Model(internalStore.values.filter{
-      case (k,v) => nativeModel.entries.contains(v.toString)
+      case (_,v) => nativeModel.entries.contains(v.toString)
     }.map{
       case (k, v) => k.name -> nativeModel.entries(v.toString)
     })

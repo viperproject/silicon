@@ -40,7 +40,7 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
             : VerificationResult
 }
 
-object predicateSupporter extends PredicateSupportRules with Immutable {
+object predicateSupporter extends PredicateSupportRules {
   import consumer._
   import producer._
 
