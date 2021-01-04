@@ -1,0 +1,1176 @@
+domain PyType {
+  
+  function extends_(sub: PyType, super: PyType): Bool
+  
+  function issubtype(sub: PyType, super: PyType): Bool
+  
+  function isnotsubtype(sub: PyType, super: PyType): Bool
+  
+  function tuple_args(t: PyType): Seq[PyType]
+  
+  function typeof(obj: Ref): PyType
+  
+  function get_basic(t: PyType): PyType
+  
+  function union_type_1(arg_1: PyType): PyType
+  
+  function union_type_2(arg_1: PyType, arg_2: PyType): PyType
+  
+  function union_type_3(arg_1: PyType, arg_2: PyType, arg_3: PyType): PyType
+  
+  function union_type_4(arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType): PyType
+  
+  unique function object(): PyType
+  
+  unique function list_basic(): PyType
+  
+  function list(arg0: PyType): PyType
+  
+  function list_arg(typ: PyType, index: Int): PyType
+  
+  unique function set_basic(): PyType
+  
+  function set(arg0: PyType): PyType
+  
+  function set_arg(typ: PyType, index: Int): PyType
+  
+  unique function dict_basic(): PyType
+  
+  function dict(arg0: PyType, arg1: PyType): PyType
+  
+  function dict_arg(typ: PyType, index: Int): PyType
+  
+  unique function int(): PyType
+  
+  unique function float(): PyType
+  
+  unique function bool(): PyType
+  
+  unique function NoneType(): PyType
+  
+  unique function Exception(): PyType
+  
+  unique function ConnectionRefusedError(): PyType
+  
+  unique function traceback(): PyType
+  
+  unique function str(): PyType
+  
+  unique function bytes(): PyType
+  
+  unique function tuple_basic(): PyType
+  
+  function tuple(args: Seq[PyType]): PyType
+  
+  function tuple_arg(typ: PyType, index: Int): PyType
+  
+  unique function PSeq_basic(): PyType
+  
+  function PSeq(arg0: PyType): PyType
+  
+  function PSeq_arg(typ: PyType, index: Int): PyType
+  
+  unique function PSet_basic(): PyType
+  
+  function PSet(arg0: PyType): PyType
+  
+  function PSet_arg(typ: PyType, index: Int): PyType
+  
+  unique function PMultiset_basic(): PyType
+  
+  function PMultiset(arg0: PyType): PyType
+  
+  function PMultiset_arg(typ: PyType, index: Int): PyType
+  
+  unique function slice(): PyType
+  
+  unique function range(): PyType
+  
+  unique function Iterator_basic(): PyType
+  
+  function Iterator(arg0: PyType): PyType
+  
+  function Iterator_arg(typ: PyType, index: Int): PyType
+  
+  unique function Thread_0(): PyType
+  
+  unique function LevelType(): PyType
+  
+  unique function type(): PyType
+  
+  unique function Place(): PyType
+  
+  unique function __prim__Seq_type(): PyType
+  
+  unique function TreeNode(): PyType
+  
+  unique function BinarySearchTree(): PyType
+  
+  axiom issubtype_transitivity {
+    (forall sub: PyType, middle: PyType, super: PyType :: { issubtype(sub, middle),issubtype(middle, super) } issubtype(sub, middle) && issubtype(middle, super) ==> issubtype(sub, super))
+  }
+  
+  axiom issubtype_reflexivity {
+    (forall type_: PyType :: { issubtype(type_, type_) } issubtype(type_, type_))
+  }
+  
+  axiom extends_implies_subtype {
+    (forall sub: PyType, sub2: PyType :: { extends_(sub, sub2) } extends_(sub, sub2) ==> issubtype(sub, sub2))
+  }
+  
+  axiom null_nonetype {
+    (forall r: Ref :: { typeof(r) } issubtype(typeof(r), NoneType()) == (r == null))
+  }
+  
+  axiom issubtype_object {
+    (forall type_: PyType :: { issubtype(type_, object()) } issubtype(type_, object()))
+  }
+  
+  axiom issubtype_exclusion {
+    (forall sub: PyType, sub2: PyType, super: PyType :: { extends_(sub, super),extends_(sub2, super) } extends_(sub, super) && extends_(sub2, super) && sub != sub2 ==> isnotsubtype(sub, sub2) && isnotsubtype(sub2, sub))
+  }
+  
+  axiom issubtype_exclusion_2 {
+    (forall sub: PyType, super: PyType :: { issubtype(sub, super) } { issubtype(super, sub) } issubtype(sub, super) && sub != super ==> !issubtype(super, sub))
+  }
+  
+  axiom issubtype_exclusion_propagation {
+    (forall sub: PyType, middle: PyType, super: PyType :: { issubtype(sub, middle),isnotsubtype(middle, super) } issubtype(sub, middle) && isnotsubtype(middle, super) ==> !issubtype(sub, super))
+  }
+  
+  axiom tuple_arg_def {
+    (forall seq: Seq[PyType], i: Int, Z: PyType :: { tuple(seq),tuple_arg(Z, i) } issubtype(Z, tuple(seq)) ==> issubtype(tuple_arg(Z, i), seq[i]))
+  }
+  
+  axiom tuple_args_def {
+    (forall seq: Seq[PyType], Z: PyType :: { issubtype(Z, tuple(seq)) } issubtype(Z, tuple(seq)) ==> |tuple_args(Z)| == |seq|)
+  }
+  
+  axiom tuple_self_subtype {
+    (forall seq1: Seq[PyType], seq2: Seq[PyType] :: seq1 != seq2 && |seq1| == |seq2| && (forall i: Int :: i >= 0 && i < |seq1| ==> issubtype(seq1[i], seq2[i])) ==> issubtype(tuple(seq1), tuple(seq2)))
+  }
+  
+  axiom union_subtype_1 {
+    (forall arg_1: PyType, X: PyType :: { issubtype(X, union_type_1(arg_1)) } issubtype(X, union_type_1(arg_1)) == (false || issubtype(X, arg_1)))
+  }
+  
+  axiom union_subtype_2 {
+    (forall arg_1: PyType, arg_2: PyType, X: PyType :: { issubtype(X, union_type_2(arg_1, arg_2)) } issubtype(X, union_type_2(arg_1, arg_2)) == (false || issubtype(X, arg_1) || issubtype(X, arg_2)))
+  }
+  
+  axiom union_subtype_3 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, X: PyType :: { issubtype(X, union_type_3(arg_1, arg_2, arg_3)) } issubtype(X, union_type_3(arg_1, arg_2, arg_3)) == (false || issubtype(X, arg_1) || issubtype(X, arg_2) || issubtype(X, arg_3)))
+  }
+  
+  axiom union_subtype_4 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType, X: PyType :: { issubtype(X, union_type_4(arg_1, arg_2, arg_3, arg_4)) } issubtype(X, union_type_4(arg_1, arg_2, arg_3, arg_4)) == (false || issubtype(X, arg_1) || issubtype(X, arg_2) || issubtype(X, arg_3) || issubtype(X, arg_4)))
+  }
+  
+  axiom subtype_union_1 {
+    (forall arg_1: PyType, X: PyType :: { issubtype(union_type_1(arg_1), X) } issubtype(union_type_1(arg_1), X) == (true && issubtype(arg_1, X)))
+  }
+  
+  axiom subtype_union_2 {
+    (forall arg_1: PyType, arg_2: PyType, X: PyType :: { issubtype(union_type_2(arg_1, arg_2), X) } issubtype(union_type_2(arg_1, arg_2), X) == (true && issubtype(arg_1, X) && issubtype(arg_2, X)))
+  }
+  
+  axiom subtype_union_3 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, X: PyType :: { issubtype(union_type_3(arg_1, arg_2, arg_3), X) } issubtype(union_type_3(arg_1, arg_2, arg_3), X) == (true && issubtype(arg_1, X) && issubtype(arg_2, X) && issubtype(arg_3, X)))
+  }
+  
+  axiom subtype_union_4 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType, X: PyType :: { issubtype(union_type_4(arg_1, arg_2, arg_3, arg_4), X) } issubtype(union_type_4(arg_1, arg_2, arg_3, arg_4), X) == (true && issubtype(arg_1, X) && issubtype(arg_2, X) && issubtype(arg_3, X) && issubtype(arg_4, X)))
+  }
+  
+  axiom subtype_list {
+    (forall var0: PyType :: { list(var0) } extends_(list(var0), object()) && get_basic(list(var0)) == list_basic())
+  }
+  
+  axiom list_args0 {
+    (forall Z: PyType, arg0: PyType :: { list(arg0),list_arg(Z, 0) } issubtype(Z, list(arg0)) ==> list_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_set {
+    (forall var0: PyType :: { set(var0) } extends_(set(var0), object()) && get_basic(set(var0)) == set_basic())
+  }
+  
+  axiom set_args0 {
+    (forall Z: PyType, arg0: PyType :: { set(arg0),set_arg(Z, 0) } issubtype(Z, set(arg0)) ==> set_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_dict {
+    (forall var0: PyType, var1: PyType :: { dict(var0, var1) } extends_(dict(var0, var1), object()) && get_basic(dict(var0, var1)) == dict_basic())
+  }
+  
+  axiom dict_args0 {
+    (forall Z: PyType, arg0: PyType, arg1: PyType :: { dict(arg0, arg1),dict_arg(Z, 0) } issubtype(Z, dict(arg0, arg1)) ==> dict_arg(Z, 0) == arg0)
+  }
+  
+  axiom dict_args1 {
+    (forall Z: PyType, arg0: PyType, arg1: PyType :: { dict(arg0, arg1),dict_arg(Z, 1) } issubtype(Z, dict(arg0, arg1)) ==> dict_arg(Z, 1) == arg1)
+  }
+  
+  axiom subtype_int {
+    extends_(int(), float()) && get_basic(int()) == int()
+  }
+  
+  axiom subtype_float {
+    extends_(float(), object()) && get_basic(float()) == float()
+  }
+  
+  axiom subtype_bool {
+    extends_(bool(), int()) && get_basic(bool()) == bool()
+  }
+  
+  axiom subtype_NoneType {
+    extends_(NoneType(), object()) && get_basic(NoneType()) == NoneType()
+  }
+  
+  axiom subtype_Exception {
+    extends_(Exception(), object()) && get_basic(Exception()) == Exception()
+  }
+  
+  axiom subtype_ConnectionRefusedError {
+    extends_(ConnectionRefusedError(), Exception()) && get_basic(ConnectionRefusedError()) == ConnectionRefusedError()
+  }
+  
+  axiom subtype_traceback {
+    extends_(traceback(), object()) && get_basic(traceback()) == traceback()
+  }
+  
+  axiom subtype_str {
+    extends_(str(), object()) && get_basic(str()) == str()
+  }
+  
+  axiom subtype_bytes {
+    extends_(bytes(), object()) && get_basic(bytes()) == bytes()
+  }
+  
+  axiom subtype_tuple {
+    (forall args: Seq[PyType] :: { tuple(args) } ((forall e: PyType :: (e in args) ==> e == object()) ==> extends_(tuple(args), object())) && get_basic(tuple(args)) == tuple_basic())
+  }
+  
+  axiom subtype_PSeq {
+    (forall var0: PyType :: { PSeq(var0) } extends_(PSeq(var0), object()) && get_basic(PSeq(var0)) == PSeq_basic())
+  }
+  
+  axiom PSeq_args0 {
+    (forall Z: PyType, arg0: PyType :: { PSeq(arg0),PSeq_arg(Z, 0) } issubtype(Z, PSeq(arg0)) ==> PSeq_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_PSet {
+    (forall var0: PyType :: { PSet(var0) } extends_(PSet(var0), object()) && get_basic(PSet(var0)) == PSet_basic())
+  }
+  
+  axiom PSet_args0 {
+    (forall Z: PyType, arg0: PyType :: { PSet(arg0),PSet_arg(Z, 0) } issubtype(Z, PSet(arg0)) ==> PSet_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_PMultiset {
+    (forall var0: PyType :: { PMultiset(var0) } extends_(PMultiset(var0), object()) && get_basic(PMultiset(var0)) == PMultiset_basic())
+  }
+  
+  axiom PMultiset_args0 {
+    (forall Z: PyType, arg0: PyType :: { PMultiset(arg0),PMultiset_arg(Z, 0) } issubtype(Z, PMultiset(arg0)) ==> PMultiset_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_slice {
+    extends_(slice(), object()) && get_basic(slice()) == slice()
+  }
+  
+  axiom subtype_range {
+    extends_(range(), object()) && get_basic(range()) == range()
+  }
+  
+  axiom subtype_Iterator {
+    (forall var0: PyType :: { Iterator(var0) } extends_(Iterator(var0), object()) && get_basic(Iterator(var0)) == Iterator_basic())
+  }
+  
+  axiom Iterator_args0 {
+    (forall Z: PyType, arg0: PyType :: { Iterator(arg0),Iterator_arg(Z, 0) } issubtype(Z, Iterator(arg0)) ==> Iterator_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_Thread_0 {
+    extends_(Thread_0(), object()) && get_basic(Thread_0()) == Thread_0()
+  }
+  
+  axiom subtype_LevelType {
+    extends_(LevelType(), object()) && get_basic(LevelType()) == LevelType()
+  }
+  
+  axiom subtype_type {
+    extends_(type(), object()) && get_basic(type()) == type()
+  }
+  
+  axiom subtype_Place {
+    extends_(Place(), object()) && get_basic(Place()) == Place()
+  }
+  
+  axiom subtype___prim__Seq_type {
+    extends_(__prim__Seq_type(), object()) && get_basic(__prim__Seq_type()) == __prim__Seq_type()
+  }
+  
+  axiom subtype_TreeNode {
+    extends_(TreeNode(), object()) && get_basic(TreeNode()) == TreeNode()
+  }
+  
+  axiom subtype_BinarySearchTree {
+    extends_(BinarySearchTree(), object()) && get_basic(BinarySearchTree()) == BinarySearchTree()
+  }
+}
+
+domain SIFDomain[T] {
+  
+  function Low(x: T): Bool
+  
+  axiom low_true {
+    (forall x: T :: { Low(x) } Low(x))
+  }
+}
+
+domain _list_ce_helper {
+  
+  function seq_ref_length(___s: Seq[Ref]): Int
+  
+  function seq_ref_index(___s: Seq[Ref], i: Int): Ref
+  
+  axiom relate_length {
+    (forall ___s: Seq[Ref] :: { |___s| } |___s| == seq_ref_length(___s))
+  }
+  
+  axiom relate_index {
+    (forall ___s: Seq[Ref], ___i: Int :: { ___s[___i] } ___s[___i] == seq_ref_index(___s, ___i))
+  }
+}
+
+domain Measure$ {
+  
+  function Measure$create(guard: Bool, key: Ref, value: Int): Measure$
+  
+  function Measure$guard(m: Measure$): Bool
+  
+  function Measure$key(m: Measure$): Ref
+  
+  function Measure$value(m: Measure$): Int
+  
+  axiom Measure$A0 {
+    (forall g: Bool, k: Ref, v: Int :: { Measure$guard(Measure$create(g, k, v)) } Measure$guard(Measure$create(g, k, v)) == g)
+  }
+  
+  axiom Measure$A1 {
+    (forall g: Bool, k: Ref, v: Int :: { Measure$key(Measure$create(g, k, v)) } Measure$key(Measure$create(g, k, v)) == k)
+  }
+  
+  axiom Measure$A2 {
+    (forall g: Bool, k: Ref, v: Int :: { Measure$value(Measure$create(g, k, v)) } Measure$value(Measure$create(g, k, v)) == v)
+  }
+}
+
+domain _dict_ce_helper {
+  
+  function dict_get_helper(___s: Set[Ref], ___s2: Ref, ___s3: Ref): Ref
+}
+
+domain _Name {
+  
+  function _combine(n1: _Name, n2: _Name): _Name
+  
+  function _single(n: Int): _Name
+  
+  function _get_combined_prefix(n: _Name): _Name
+  
+  function _get_combined_name(n: _Name): _Name
+  
+  function _get_value(n: _Name): Int
+  
+  function _name_type(n: _Name): Bool
+  
+  function _is_single(n: _Name): Bool
+  
+  function _is_combined(n: _Name): Bool
+  
+  axiom decompose_single {
+    (forall i: Int :: { _single(i) } _get_value(_single(i)) == i)
+  }
+  
+  axiom compose_single {
+    (forall n: _Name :: { _get_value(n) } _is_single(n) ==> n == _single(_get_value(n)))
+  }
+  
+  axiom type_of_single {
+    (forall i: Int :: { _single(i) } _name_type(_single(i)))
+  }
+  
+  axiom decompose_combined {
+    (forall n1: _Name, n2: _Name :: { _combine(n1, n2) } _get_combined_prefix(_combine(n1, n2)) == n1 && _get_combined_name(_combine(n1, n2)) == n2)
+  }
+  
+  axiom compose_combined {
+    (forall n: _Name :: { _get_combined_prefix(n) } { _get_combined_name(n) } _is_combined(n) ==> n == _combine(_get_combined_prefix(n), _get_combined_name(n)))
+  }
+  
+  axiom type_of_composed {
+    (forall n1: _Name, n2: _Name :: { _combine(n1, n2) } !_name_type(_combine(n1, n2)))
+  }
+  
+  axiom type_is_single {
+    (forall n: _Name :: { _name_type(n) } _name_type(n) == _is_single(n))
+  }
+  
+  axiom type_is_combined {
+    (forall n: _Name :: { _name_type(n) } !_name_type(n) == _is_combined(n))
+  }
+}
+
+field _val: Ref
+
+field __container: Ref
+
+field __iter_index: Int
+
+field __previous: Seq[Ref]
+
+field list_acc: Seq[Ref]
+
+field set_acc: Set[Ref]
+
+field dict_acc: Set[Ref]
+
+field dict_acc2: Ref
+
+field Measure$acc: Seq[Ref]
+
+field MustReleaseBounded: Int
+
+field MustReleaseUnbounded: Int
+
+field TreeNode_key: Ref
+
+field TreeNode_payload: Ref
+
+field TreeNode_leftChild: Ref
+
+field TreeNode_rightChild: Ref
+
+field TreeNode_parent: Ref
+
+field BinarySearchTree_root: Ref
+
+field BinarySearchTree_size: Ref
+
+function _isDefined(id: Int): Bool
+
+
+function _checkDefined(val: Ref, id: Int): Ref
+  requires _isDefined(id)
+{
+  val
+}
+
+function _asserting(val: Ref, ass: Bool): Ref
+  requires ass
+{
+  val
+}
+
+function sorted(n_0: Ref, upper_0: Ref, lower_0: Ref): Ref
+  requires issubtype(typeof(n_0), TreeNode())
+  requires upper_0 == null || issubtype(typeof(upper_0), int())
+  requires lower_0 == null || issubtype(typeof(lower_0), int())
+  requires acc(tree(n_0), write)
+  ensures issubtype(typeof(result), bool())
+{
+  __prim__bool___box__((unfolding acc(tree(n_0), write) in (upper_0 != null ==> int___lt__(int___unbox__(n_0.TreeNode_key), int___unbox__(upper_0))) && ((lower_0 != null ==> int___gt__(int___unbox__(n_0.TreeNode_key), int___unbox__(lower_0))) && ((n_0.TreeNode_leftChild != null ==> bool___unbox__(sorted(n_0.TreeNode_leftChild, n_0.TreeNode_key, lower_0))) && (n_0.TreeNode_rightChild != null ==> bool___unbox__(sorted(n_0.TreeNode_rightChild, upper_0, n_0.TreeNode_key)))))))
+}
+
+function getParent(node: Ref): Ref
+  requires issubtype(typeof(node), TreeNode())
+  requires acc(tree(node), write)
+  ensures result == null || issubtype(typeof(result), TreeNode())
+{
+  (unfolding acc(tree(node), write) in node.TreeNode_parent)
+}
+
+function TreeNode_hasLeftChild(self: Ref): Ref
+  requires issubtype(typeof(self), TreeNode())
+  requires self != null
+  requires acc(self.TreeNode_leftChild, write) && (self.TreeNode_leftChild == null || issubtype(typeof(self.TreeNode_leftChild), TreeNode()))
+  ensures result == null || issubtype(typeof(result), TreeNode())
+{
+  self.TreeNode_leftChild
+}
+
+function TreeNode_hasRightChild(self_0: Ref): Ref
+  requires issubtype(typeof(self_0), TreeNode())
+  requires self_0 != null
+  requires acc(self_0.TreeNode_rightChild, write) && (self_0.TreeNode_rightChild == null || issubtype(typeof(self_0.TreeNode_rightChild), TreeNode()))
+  ensures result == null || issubtype(typeof(result), TreeNode())
+{
+  self_0.TreeNode_rightChild
+}
+
+function TreeNode_isRoot(self_1: Ref): Ref
+  requires issubtype(typeof(self_1), TreeNode())
+  requires self_1 != null
+  requires acc(tree(self_1), write)
+  ensures issubtype(typeof(result), bool())
+{
+  __prim__bool___box__((unfolding acc(tree(self_1), write) in !object___bool__(self_1.TreeNode_parent)))
+}
+
+function TreeNode_isLeaf(self_2: Ref): Ref
+  requires issubtype(typeof(self_2), TreeNode())
+  requires self_2 != null
+  requires acc(tree(self_2), write)
+  ensures issubtype(typeof(result), bool())
+{
+  __prim__bool___box__((unfolding acc(tree(self_2), write) in !object___bool__((object___bool__(self_2.TreeNode_rightChild) ? self_2.TreeNode_rightChild : self_2.TreeNode_leftChild))))
+}
+
+function TreeNode_hasAnyChildren(self_3: Ref): Ref
+  requires issubtype(typeof(self_3), TreeNode())
+  requires self_3 != null
+  requires acc(tree(self_3), write)
+  ensures result == null || issubtype(typeof(result), TreeNode())
+{
+  (unfolding acc(tree(self_3), write) in (object___bool__(self_3.TreeNode_rightChild) ? self_3.TreeNode_rightChild : self_3.TreeNode_leftChild))
+}
+
+function TreeNode_hasBothChildren(self_4: Ref): Ref
+  requires issubtype(typeof(self_4), TreeNode())
+  requires self_4 != null
+  requires acc(tree(self_4), write)
+  ensures result == null || issubtype(typeof(result), TreeNode())
+{
+  (unfolding acc(tree(self_4), write) in (object___bool__(self_4.TreeNode_rightChild) ? self_4.TreeNode_leftChild : self_4.TreeNode_rightChild))
+}
+
+function __file__(): Ref
+
+
+function __name__(): Ref
+
+
+function mytree(): Ref
+  ensures issubtype(typeof(result), BinarySearchTree())
+
+
+function object___bool__(self: Ref): Bool
+  ensures self == null ==> !result
+  ensures self != null ==> (let t == (typeof(self)) in !issubtype(t, list(list_arg(t, 0))) && (!issubtype(t, set(set_arg(t, 0))) && !issubtype(t, dict(dict_arg(t, 0), dict_arg(t, 1)))) ==> result)
+
+
+function __prim__int___box__(prim: Int): Ref
+  ensures typeof(result) == int()
+  ensures int___unbox__(result) == prim
+
+
+function int___unbox__(box: Ref): Int
+  requires issubtype(typeof(box), int())
+  ensures !issubtype(typeof(box), bool()) ==> __prim__int___box__(result) == box
+  ensures issubtype(typeof(box), bool()) ==> __prim__bool___box__(result != 0) == box
+
+
+function __prim__bool___box__(prim: Bool): Ref
+  ensures typeof(result) == bool()
+  ensures bool___unbox__(result) == prim
+  ensures int___unbox__(result) == (prim ? 1 : 0)
+
+
+function bool___unbox__(box: Ref): Bool
+  requires issubtype(typeof(box), bool())
+  ensures __prim__bool___box__(result) == box
+
+
+function int___eq__(self: Ref, other: Ref): Bool
+  requires issubtype(typeof(self), int())
+  requires issubtype(typeof(other), int())
+{
+  int___unbox__(self) == int___unbox__(other)
+}
+
+function int___gt__(self: Int, other: Int): Bool
+{
+  self > other
+}
+
+function int___lt__(self: Int, other: Int): Bool
+{
+  self < other
+}
+
+function int___add__(self: Int, other: Int): Int
+{
+  self + other
+}
+
+function int___mul__(self: Int, other: Int): Int
+{
+  self * other
+}
+
+function Level(r: Ref): Perm
+
+
+function str___len__(self: Ref): Int
+  ensures result >= 0
+
+
+function str___val__(self: Ref): Int
+
+
+function str___create__(len: Int, value: Int): Ref
+  ensures str___len__(result) == len
+  ensures str___val__(result) == value
+  ensures typeof(result) == str()
+
+
+function str___eq__(self: Ref, other: Ref): Bool
+  requires issubtype(typeof(self), str())
+  ensures (str___val__(self) == str___val__(other)) == result
+  ensures result ==> str___len__(self) == str___len__(other)
+
+
+predicate MustTerminate(r: Ref) 
+
+predicate MustInvokeBounded(r: Ref) 
+
+predicate MustInvokeUnbounded(r: Ref) 
+
+predicate _MaySet(rec: Ref, id: Int) 
+
+predicate tree(n_1: Ref) {
+  true && issubtype(typeof(n_1), TreeNode()) && (acc(n_1.TreeNode_key, write) && issubtype(typeof(n_1.TreeNode_key), int()) && (acc(n_1.TreeNode_payload, write) && issubtype(typeof(n_1.TreeNode_payload), str()) && (acc(n_1.TreeNode_leftChild, write) && (n_1.TreeNode_leftChild == null || issubtype(typeof(n_1.TreeNode_leftChild), TreeNode())) && (acc(n_1.TreeNode_rightChild, write) && (n_1.TreeNode_rightChild == null || issubtype(typeof(n_1.TreeNode_rightChild), TreeNode())) && (acc(n_1.TreeNode_parent, write) && (n_1.TreeNode_parent == null || issubtype(typeof(n_1.TreeNode_parent), TreeNode())) && ((n_1.TreeNode_leftChild != null ==> acc(tree(n_1.TreeNode_leftChild), write) && getParent(n_1.TreeNode_leftChild) == n_1) && (n_1.TreeNode_rightChild != null ==> acc(tree(n_1.TreeNode_rightChild), write) && getParent(n_1.TreeNode_rightChild) == n_1)))))))
+}
+
+predicate bst(t_0: Ref) {
+  true && issubtype(typeof(t_0), BinarySearchTree()) && (acc(t_0.BinarySearchTree_root, write) && (t_0.BinarySearchTree_root == null || issubtype(typeof(t_0.BinarySearchTree_root), TreeNode())) && (acc(t_0.BinarySearchTree_size, write) && issubtype(typeof(t_0.BinarySearchTree_size), int()) && (t_0.BinarySearchTree_root != null ==> acc(tree(t_0.BinarySearchTree_root), write) && bool___unbox__(sorted(t_0.BinarySearchTree_root, null, null)))))
+}
+
+method print_0(_cthread_172: Ref, _caller_measures_172: Seq[Measure$], _residue_172: Perm, o: Ref) returns (_current_wait_level_172: Perm)
+  requires _cthread_172 != null
+  requires issubtype(typeof(_cthread_172), Thread_0())
+  requires issubtype(typeof(o), object())
+  requires [true, perm(MustTerminate(_cthread_172)) == none && ((forperm _r_1: Ref [MustInvokeBounded(_r_1)] :: false) && ((forperm _r_1: Ref [MustInvokeUnbounded(_r_1)] :: false) && ((forperm _r_1: Ref [_r_1.MustReleaseBounded] :: false) && (forperm _r_1: Ref [_r_1.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _current_wait_level_172) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _current_wait_level_172) && _residue_172 <= _current_wait_level_172), true]
+  ensures [true, (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var o_0: Ref
+  var _cwl_172: Perm
+  var _method_measures_172: Seq[Measure$]
+  _method_measures_172 := Seq[Measure$]()
+  _err := null
+  o_0 := o
+  goto __end
+  label __end
+}
+
+method TreeNode___init__(_cthread_162: Ref, _caller_measures_162: Seq[Measure$], _residue_162: Perm, self_5: Ref, key_0: Ref, val: Ref, left: Ref, right: Ref, parent: Ref) returns (_current_wait_level_162: Perm)
+  requires _cthread_162 != null
+  requires issubtype(typeof(_cthread_162), Thread_0())
+  requires self_5 != null
+  requires acc(_MaySet(self_5, 37570294749124271794790167124), write)
+  requires acc(_MaySet(self_5, 133428712315442505103991910045925601876), write)
+  requires acc(_MaySet(self_5, 8748119199110060322885764141532520454124116), write)
+  requires acc(_MaySet(self_5, 2239518514972175601730513505296554308663603796), write)
+  requires acc(_MaySet(self_5, 604545538089943218283080865013920340), write)
+  requires issubtype(typeof(self_5), TreeNode())
+  requires issubtype(typeof(key_0), int())
+  requires issubtype(typeof(val), str())
+  requires left == null || issubtype(typeof(left), TreeNode())
+  requires right == null || issubtype(typeof(right), TreeNode())
+  requires parent == null || issubtype(typeof(parent), TreeNode())
+  requires self_5 != null
+  requires [true, perm(MustTerminate(_cthread_162)) == none && ((forperm _r_4: Ref [MustInvokeBounded(_r_4)] :: false) && ((forperm _r_4: Ref [MustInvokeUnbounded(_r_4)] :: false) && ((forperm _r_4: Ref [_r_4.MustReleaseBounded] :: false) && (forperm _r_4: Ref [_r_4.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_2: Ref [_r_2.MustReleaseBounded] :: Level(_r_2) <= _current_wait_level_162) && ((forperm _r_2: Ref [_r_2.MustReleaseUnbounded] :: Level(_r_2) <= _current_wait_level_162) && _residue_162 <= _current_wait_level_162), true]
+  ensures acc(self_5.TreeNode_key, write) && issubtype(typeof(self_5.TreeNode_key), int()) && (self_5.TreeNode_key == key_0 && (acc(self_5.TreeNode_payload, write) && issubtype(typeof(self_5.TreeNode_payload), str()) && (self_5.TreeNode_payload == val && (acc(self_5.TreeNode_leftChild, write) && (self_5.TreeNode_leftChild == null || issubtype(typeof(self_5.TreeNode_leftChild), TreeNode())) && (self_5.TreeNode_leftChild == left && (acc(self_5.TreeNode_rightChild, write) && (self_5.TreeNode_rightChild == null || issubtype(typeof(self_5.TreeNode_rightChild), TreeNode())) && (self_5.TreeNode_rightChild == right && (acc(self_5.TreeNode_parent, write) && (self_5.TreeNode_parent == null || issubtype(typeof(self_5.TreeNode_parent), TreeNode())) && self_5.TreeNode_parent == parent))))))))
+  ensures [true, (forperm _r_3: Ref [MustInvokeBounded(_r_3)] :: false) && ((forperm _r_3: Ref [MustInvokeUnbounded(_r_3)] :: false) && ((forperm _r_3: Ref [_r_3.MustReleaseBounded] :: false) && (forperm _r_3: Ref [_r_3.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var self_13: Ref
+  var key_6: Ref
+  var val_2: Ref
+  var left_0: Ref
+  var right_0: Ref
+  var parent_0: Ref
+  var _cwl_162: Perm
+  var _method_measures_162: Seq[Measure$]
+  _method_measures_162 := Seq[Measure$]()
+  inhale typeof(self_5) == TreeNode()
+  _err := null
+  self_13 := self_5
+  key_6 := key_0
+  val_2 := val
+  left_0 := left
+  right_0 := right
+  parent_0 := parent
+  if (perm(_MaySet(self_13, 37570294749124271794790167124)) > none) {
+    exhale acc(_MaySet(self_13, 37570294749124271794790167124), write)
+    inhale acc(self_13.TreeNode_key, write)
+  }
+  self_13.TreeNode_key := key_6
+  if (perm(_MaySet(self_13, 133428712315442505103991910045925601876)) > none) {
+    exhale acc(_MaySet(self_13, 133428712315442505103991910045925601876), write)
+    inhale acc(self_13.TreeNode_payload, write)
+  }
+  self_13.TreeNode_payload := val_2
+  if (perm(_MaySet(self_13, 8748119199110060322885764141532520454124116)) > none) {
+    exhale acc(_MaySet(self_13, 8748119199110060322885764141532520454124116), write)
+    inhale acc(self_13.TreeNode_leftChild, write)
+  }
+  self_13.TreeNode_leftChild := left_0
+  if (perm(_MaySet(self_13, 2239518514972175601730513505296554308663603796)) > none) {
+    exhale acc(_MaySet(self_13, 2239518514972175601730513505296554308663603796), write)
+    inhale acc(self_13.TreeNode_rightChild, write)
+  }
+  self_13.TreeNode_rightChild := right_0
+  if (perm(_MaySet(self_13, 604545538089943218283080865013920340)) > none) {
+    exhale acc(_MaySet(self_13, 604545538089943218283080865013920340), write)
+    inhale acc(self_13.TreeNode_parent, write)
+  }
+  self_13.TreeNode_parent := parent_0
+  goto __end
+  label __end
+}
+
+method BinarySearchTree___init__(_cthread_163: Ref, _caller_measures_163: Seq[Measure$], _residue_163: Perm, self_6: Ref) returns (_current_wait_level_163: Perm)
+  requires _cthread_163 != null
+  requires issubtype(typeof(_cthread_163), Thread_0())
+  requires self_6 != null
+  requires acc(_MaySet(self_6, 170170373251925421444582457427464176135250765572418), write)
+  requires acc(_MaySet(self_6, 148310513873082034654315146951689972238776244529474), write)
+  requires issubtype(typeof(self_6), BinarySearchTree())
+  requires self_6 != null
+  requires [true, perm(MustTerminate(_cthread_163)) == none && ((forperm _r_7: Ref [MustInvokeBounded(_r_7)] :: false) && ((forperm _r_7: Ref [MustInvokeUnbounded(_r_7)] :: false) && ((forperm _r_7: Ref [_r_7.MustReleaseBounded] :: false) && (forperm _r_7: Ref [_r_7.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_5: Ref [_r_5.MustReleaseBounded] :: Level(_r_5) <= _current_wait_level_163) && ((forperm _r_5: Ref [_r_5.MustReleaseUnbounded] :: Level(_r_5) <= _current_wait_level_163) && _residue_163 <= _current_wait_level_163), true]
+  ensures acc(bst(self_6), write)
+  ensures [true, (forperm _r_6: Ref [MustInvokeBounded(_r_6)] :: false) && ((forperm _r_6: Ref [MustInvokeUnbounded(_r_6)] :: false) && ((forperm _r_6: Ref [_r_6.MustReleaseBounded] :: false) && (forperm _r_6: Ref [_r_6.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var self_14: Ref
+  var _cwl_163: Perm
+  var _method_measures_163: Seq[Measure$]
+  _method_measures_163 := Seq[Measure$]()
+  inhale typeof(self_6) == BinarySearchTree()
+  _err := null
+  self_14 := self_6
+  if (perm(_MaySet(self_14, 170170373251925421444582457427464176135250765572418)) > none) {
+    exhale acc(_MaySet(self_14, 170170373251925421444582457427464176135250765572418), write)
+    inhale acc(self_14.BinarySearchTree_root, write)
+  }
+  self_14.BinarySearchTree_root := null
+  if (perm(_MaySet(self_14, 148310513873082034654315146951689972238776244529474)) > none) {
+    exhale acc(_MaySet(self_14, 148310513873082034654315146951689972238776244529474), write)
+    inhale acc(self_14.BinarySearchTree_size, write)
+  }
+  self_14.BinarySearchTree_size := __prim__int___box__(0)
+  fold acc(bst(self_14), write)
+  goto __end
+  label __end
+}
+
+method BinarySearchTree_put(_cthread_164: Ref, _caller_measures_164: Seq[Measure$], _residue_164: Perm, self_7: Ref, key_1: Ref, val_0: Ref) returns (_current_wait_level_164: Perm)
+  requires _cthread_164 != null
+  requires issubtype(typeof(_cthread_164), Thread_0())
+  requires issubtype(typeof(self_7), BinarySearchTree())
+  requires issubtype(typeof(key_1), int())
+  requires issubtype(typeof(val_0), str())
+  requires self_7 != null
+  requires acc(bst(self_7), write)
+  requires [true, perm(MustTerminate(_cthread_164)) == none && ((forperm _r_10: Ref [MustInvokeBounded(_r_10)] :: false) && ((forperm _r_10: Ref [MustInvokeUnbounded(_r_10)] :: false) && ((forperm _r_10: Ref [_r_10.MustReleaseBounded] :: false) && (forperm _r_10: Ref [_r_10.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_8: Ref [_r_8.MustReleaseBounded] :: Level(_r_8) <= _current_wait_level_164) && ((forperm _r_8: Ref [_r_8.MustReleaseUnbounded] :: Level(_r_8) <= _current_wait_level_164) && _residue_164 <= _current_wait_level_164), true]
+  ensures acc(bst(self_7), write)
+  ensures [true, (forperm _r_9: Ref [MustInvokeBounded(_r_9)] :: false) && ((forperm _r_9: Ref [MustInvokeUnbounded(_r_9)] :: false) && ((forperm _r_9: Ref [_r_9.MustReleaseBounded] :: false) && (forperm _r_9: Ref [_r_9.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var increased_size: Ref
+  var self_15: Ref
+  var key_7: Ref
+  var val_3: Ref
+  var _put_res: Ref
+  var TreeNode_res: Ref
+  var _cwl_164: Perm
+  var _method_measures_164: Seq[Measure$]
+  _method_measures_164 := Seq[Measure$]()
+  inhale typeof(self_7) == BinarySearchTree()
+  _err := null
+  self_15 := self_7
+  key_7 := key_1
+  val_3 := val_0
+  unfold acc(bst(self_15), write)
+  if (object___bool__(self_15.BinarySearchTree_root)) {
+    _cwl_164, _put_res := BinarySearchTree__put(_cthread_164, _method_measures_164, _residue_164, self_15, key_7, val_3, self_15.BinarySearchTree_root, null, null)
+    increased_size := _put_res
+    inhale _isDefined(2058221841198536259493351676669545)
+  } else {
+    TreeNode_res := new()
+    inhale typeof(TreeNode_res) == TreeNode()
+    inhale acc(_MaySet(TreeNode_res, 37570294749124271794790167124), write)
+    inhale acc(_MaySet(TreeNode_res, 133428712315442505103991910045925601876), write)
+    inhale acc(_MaySet(TreeNode_res, 8748119199110060322885764141532520454124116), write)
+    inhale acc(_MaySet(TreeNode_res, 2239518514972175601730513505296554308663603796), write)
+    inhale acc(_MaySet(TreeNode_res, 604545538089943218283080865013920340), write)
+    _cwl_164 := TreeNode___init__(_cthread_164, _method_measures_164, _residue_164, TreeNode_res, key_7, val_3, null, null, null)
+    if (perm(_MaySet(self_15, 170170373251925421444582457427464176135250765572418)) > none) {
+      exhale acc(_MaySet(self_15, 170170373251925421444582457427464176135250765572418), write)
+      inhale acc(self_15.BinarySearchTree_root, write)
+    }
+    self_15.BinarySearchTree_root := TreeNode_res
+    fold acc(tree(self_15.BinarySearchTree_root), write)
+    increased_size := __prim__bool___box__(true)
+    inhale _isDefined(2058221841198536259493351676669545)
+  }
+  if (bool___unbox__(_checkDefined(increased_size, 2058221841198536259493351676669545))) {
+    if (perm(_MaySet(self_15, 148310513873082034654315146951689972238776244529474)) > none) {
+      exhale acc(_MaySet(self_15, 148310513873082034654315146951689972238776244529474), write)
+      inhale acc(self_15.BinarySearchTree_size, write)
+    }
+    self_15.BinarySearchTree_size := __prim__int___box__(int___add__(int___unbox__(self_15.BinarySearchTree_size), 1))
+  }
+  fold acc(bst(self_15), write)
+  goto __end
+  label __end
+}
+
+method BinarySearchTree__put(_cthread_165: Ref, _caller_measures_165: Seq[Measure$], _residue_165: Perm, self_8: Ref, key_2: Ref, val_1: Ref, currentNode: Ref, upper: Ref, lower: Ref) returns (_current_wait_level_165: Perm, _res: Ref)
+  requires _cthread_165 != null
+  requires issubtype(typeof(_cthread_165), Thread_0())
+  requires issubtype(typeof(self_8), BinarySearchTree())
+  requires issubtype(typeof(key_2), int())
+  requires issubtype(typeof(val_1), str())
+  requires issubtype(typeof(currentNode), TreeNode())
+  requires upper == null || issubtype(typeof(upper), int())
+  requires lower == null || issubtype(typeof(lower), int())
+  requires self_8 != null
+  requires acc(tree(currentNode), write) && bool___unbox__(sorted(currentNode, upper, lower))
+  requires upper != null ==> int___lt__(int___unbox__(key_2), int___unbox__(upper))
+  requires lower != null ==> int___gt__(int___unbox__(key_2), int___unbox__(lower))
+  requires [true, perm(MustTerminate(_cthread_165)) == none && ((forperm _r_13: Ref [MustInvokeBounded(_r_13)] :: false) && ((forperm _r_13: Ref [MustInvokeUnbounded(_r_13)] :: false) && ((forperm _r_13: Ref [_r_13.MustReleaseBounded] :: false) && (forperm _r_13: Ref [_r_13.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_11: Ref [_r_11.MustReleaseBounded] :: Level(_r_11) <= _current_wait_level_165) && ((forperm _r_11: Ref [_r_11.MustReleaseUnbounded] :: Level(_r_11) <= _current_wait_level_165) && _residue_165 <= _current_wait_level_165), true]
+  ensures issubtype(typeof(_res), bool())
+  ensures acc(tree(currentNode), write) && bool___unbox__(sorted(currentNode, upper, lower))
+  ensures getParent(currentNode) == old(getParent(currentNode))
+  ensures [true, (forperm _r_12: Ref [MustInvokeBounded(_r_12)] :: false) && ((forperm _r_12: Ref [MustInvokeUnbounded(_r_12)] :: false) && ((forperm _r_12: Ref [_r_12.MustReleaseBounded] :: false) && (forperm _r_12: Ref [_r_12.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var res: Ref
+  var self_16: Ref
+  var key_8: Ref
+  var val_4: Ref
+  var currentNode_1: Ref
+  var upper_1: Ref
+  var lower_1: Ref
+  var _put_res_0: Ref
+  var TreeNode_res_0: Ref
+  var _put_res_1: Ref
+  var TreeNode_res_1: Ref
+  var _cwl_165: Perm
+  var _method_measures_165: Seq[Measure$]
+  _method_measures_165 := Seq[Measure$]()
+  inhale typeof(self_8) == BinarySearchTree()
+  _res := null
+  _err := null
+  self_16 := self_8
+  key_8 := key_2
+  val_4 := val_1
+  currentNode_1 := currentNode
+  upper_1 := upper
+  lower_1 := lower
+  unfold acc(tree(currentNode_1), write)
+  res := __prim__bool___box__(true)
+  inhale _isDefined(7562610)
+  if (int___lt__(int___unbox__(key_8), int___unbox__(currentNode_1.TreeNode_key))) {
+    if (object___bool__(TreeNode_hasLeftChild(currentNode_1))) {
+      _cwl_165, _put_res_0 := BinarySearchTree__put(_cthread_165, _method_measures_165, _residue_165, self_16, key_8, val_4, currentNode_1.TreeNode_leftChild, currentNode_1.TreeNode_key, lower_1)
+      res := _put_res_0
+      inhale _isDefined(7562610)
+    } else {
+      TreeNode_res_0 := new()
+      inhale typeof(TreeNode_res_0) == TreeNode()
+      inhale acc(_MaySet(TreeNode_res_0, 37570294749124271794790167124), write)
+      inhale acc(_MaySet(TreeNode_res_0, 133428712315442505103991910045925601876), write)
+      inhale acc(_MaySet(TreeNode_res_0, 8748119199110060322885764141532520454124116), write)
+      inhale acc(_MaySet(TreeNode_res_0, 2239518514972175601730513505296554308663603796), write)
+      inhale acc(_MaySet(TreeNode_res_0, 604545538089943218283080865013920340), write)
+      _cwl_165 := TreeNode___init__(_cthread_165, _method_measures_165, _residue_165, TreeNode_res_0, key_8, val_4, null, null, currentNode_1)
+      if (perm(_MaySet(currentNode_1, 8748119199110060322885764141532520454124116)) > none) {
+        exhale acc(_MaySet(currentNode_1, 8748119199110060322885764141532520454124116), write)
+        inhale acc(currentNode_1.TreeNode_leftChild, write)
+      }
+      currentNode_1.TreeNode_leftChild := TreeNode_res_0
+      fold acc(tree(currentNode_1.TreeNode_leftChild), write)
+    }
+  } elseif (int___gt__(int___unbox__(key_8), int___unbox__(currentNode_1.TreeNode_key))) {
+    if (object___bool__(TreeNode_hasRightChild(currentNode_1))) {
+      _cwl_165, _put_res_1 := BinarySearchTree__put(_cthread_165, _method_measures_165, _residue_165, self_16, key_8, val_4, currentNode_1.TreeNode_rightChild, upper_1, currentNode_1.TreeNode_key)
+      res := _put_res_1
+      inhale _isDefined(7562610)
+    } else {
+      TreeNode_res_1 := new()
+      inhale typeof(TreeNode_res_1) == TreeNode()
+      inhale acc(_MaySet(TreeNode_res_1, 37570294749124271794790167124), write)
+      inhale acc(_MaySet(TreeNode_res_1, 133428712315442505103991910045925601876), write)
+      inhale acc(_MaySet(TreeNode_res_1, 8748119199110060322885764141532520454124116), write)
+      inhale acc(_MaySet(TreeNode_res_1, 2239518514972175601730513505296554308663603796), write)
+      inhale acc(_MaySet(TreeNode_res_1, 604545538089943218283080865013920340), write)
+      _cwl_165 := TreeNode___init__(_cthread_165, _method_measures_165, _residue_165, TreeNode_res_1, key_8, val_4, null, null, currentNode_1)
+      if (perm(_MaySet(currentNode_1, 2239518514972175601730513505296554308663603796)) > none) {
+        exhale acc(_MaySet(currentNode_1, 2239518514972175601730513505296554308663603796), write)
+        inhale acc(currentNode_1.TreeNode_rightChild, write)
+      }
+      currentNode_1.TreeNode_rightChild := TreeNode_res_1
+      fold acc(tree(currentNode_1.TreeNode_rightChild), write)
+    }
+  } else {
+    if (perm(_MaySet(currentNode_1, 133428712315442505103991910045925601876)) > none) {
+      exhale acc(_MaySet(currentNode_1, 133428712315442505103991910045925601876), write)
+      inhale acc(currentNode_1.TreeNode_payload, write)
+    }
+    currentNode_1.TreeNode_payload := val_4
+    res := __prim__bool___box__(false)
+    inhale _isDefined(7562610)
+  }
+  fold acc(tree(currentNode_1), write)
+  _res := _checkDefined(res, 7562610)
+  goto __end
+  goto __end
+  label __end
+}
+
+method BinarySearchTree___setitem__(_cthread_166: Ref, _caller_measures_166: Seq[Measure$], _residue_166: Perm, self_9: Ref, k: Ref, v: Ref) returns (_current_wait_level_166: Perm)
+  requires _cthread_166 != null
+  requires issubtype(typeof(_cthread_166), Thread_0())
+  requires issubtype(typeof(self_9), BinarySearchTree())
+  requires issubtype(typeof(k), int())
+  requires issubtype(typeof(v), str())
+  requires self_9 != null
+  requires acc(bst(self_9), write)
+  requires [true, perm(MustTerminate(_cthread_166)) == none && ((forperm _r_16: Ref [MustInvokeBounded(_r_16)] :: false) && ((forperm _r_16: Ref [MustInvokeUnbounded(_r_16)] :: false) && ((forperm _r_16: Ref [_r_16.MustReleaseBounded] :: false) && (forperm _r_16: Ref [_r_16.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_14: Ref [_r_14.MustReleaseBounded] :: Level(_r_14) <= _current_wait_level_166) && ((forperm _r_14: Ref [_r_14.MustReleaseUnbounded] :: Level(_r_14) <= _current_wait_level_166) && _residue_166 <= _current_wait_level_166), true]
+  ensures acc(bst(self_9), write)
+  ensures [true, (forperm _r_15: Ref [MustInvokeBounded(_r_15)] :: false) && ((forperm _r_15: Ref [MustInvokeUnbounded(_r_15)] :: false) && ((forperm _r_15: Ref [_r_15.MustReleaseBounded] :: false) && (forperm _r_15: Ref [_r_15.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var self_17: Ref
+  var k_0: Ref
+  var v_0: Ref
+  var _cwl_166: Perm
+  var _method_measures_166: Seq[Measure$]
+  _method_measures_166 := Seq[Measure$]()
+  inhale typeof(self_9) == BinarySearchTree()
+  _err := null
+  self_17 := self_9
+  k_0 := k
+  v_0 := v
+  _cwl_166 := BinarySearchTree_put(_cthread_166, _method_measures_166, _residue_166, self_17, k_0, v_0)
+  goto __end
+  label __end
+}
+
+method BinarySearchTree_get(_cthread_167: Ref, _caller_measures_167: Seq[Measure$], _residue_167: Perm, self_10: Ref, key_3: Ref) returns (_current_wait_level_167: Perm, _res: Ref)
+  requires _cthread_167 != null
+  requires issubtype(typeof(_cthread_167), Thread_0())
+  requires issubtype(typeof(self_10), BinarySearchTree())
+  requires issubtype(typeof(key_3), int())
+  requires self_10 != null
+  requires acc(bst(self_10), write)
+  requires [true, perm(MustTerminate(_cthread_167)) == none && ((forperm _r_19: Ref [MustInvokeBounded(_r_19)] :: false) && ((forperm _r_19: Ref [MustInvokeUnbounded(_r_19)] :: false) && ((forperm _r_19: Ref [_r_19.MustReleaseBounded] :: false) && (forperm _r_19: Ref [_r_19.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_17: Ref [_r_17.MustReleaseBounded] :: Level(_r_17) <= _current_wait_level_167) && ((forperm _r_17: Ref [_r_17.MustReleaseUnbounded] :: Level(_r_17) <= _current_wait_level_167) && _residue_167 <= _current_wait_level_167), true]
+  ensures _res == null || issubtype(typeof(_res), str())
+  ensures acc(bst(self_10), write)
+  ensures [true, (forperm _r_18: Ref [MustInvokeBounded(_r_18)] :: false) && ((forperm _r_18: Ref [MustInvokeUnbounded(_r_18)] :: false) && ((forperm _r_18: Ref [_r_18.MustReleaseBounded] :: false) && (forperm _r_18: Ref [_r_18.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var res_0: Ref
+  var self_18: Ref
+  var key_9: Ref
+  var _get_res: Ref
+  var _cwl_167: Perm
+  var _method_measures_167: Seq[Measure$]
+  _method_measures_167 := Seq[Measure$]()
+  inhale typeof(self_10) == BinarySearchTree()
+  _res := null
+  _err := null
+  self_18 := self_10
+  key_9 := key_3
+  unfold acc(bst(self_18), write)
+  if (object___bool__(self_18.BinarySearchTree_root)) {
+    _cwl_167, _get_res := BinarySearchTree__get(_cthread_167, _method_measures_167, _residue_167, self_18, key_9, self_18.BinarySearchTree_root, __prim__int___box__(2))
+    res_0 := _get_res
+    inhale _isDefined(207759828338)
+    fold acc(bst(self_18), write)
+    _res := _checkDefined(res_0, 207759828338)
+    goto __end
+  } else {
+    fold acc(bst(self_18), write)
+    _res := null
+    goto __end
+  }
+  goto __end
+  label __end
+}
+
+method BinarySearchTree__get(_cthread_168: Ref, _caller_measures_168: Seq[Measure$], _residue_168: Perm, self_11: Ref, key_4: Ref, currentNode_0: Ref, perm_0: Ref) returns (_current_wait_level_168: Perm, _res: Ref)
+  requires _cthread_168 != null
+  requires issubtype(typeof(_cthread_168), Thread_0())
+  requires issubtype(typeof(self_11), BinarySearchTree())
+  requires issubtype(typeof(key_4), int())
+  requires currentNode_0 == null || issubtype(typeof(currentNode_0), TreeNode())
+  requires issubtype(typeof(perm_0), int())
+  requires self_11 != null
+  requires int___gt__(int___unbox__(perm_0), 0)
+  requires currentNode_0 != null ==> acc(tree(currentNode_0), 1 / int___unbox__(perm_0))
+  requires [true, perm(MustTerminate(_cthread_168)) == none && ((forperm _r_22: Ref [MustInvokeBounded(_r_22)] :: false) && ((forperm _r_22: Ref [MustInvokeUnbounded(_r_22)] :: false) && ((forperm _r_22: Ref [_r_22.MustReleaseBounded] :: false) && (forperm _r_22: Ref [_r_22.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_20: Ref [_r_20.MustReleaseBounded] :: Level(_r_20) <= _current_wait_level_168) && ((forperm _r_20: Ref [_r_20.MustReleaseUnbounded] :: Level(_r_20) <= _current_wait_level_168) && _residue_168 <= _current_wait_level_168), true]
+  ensures _res == null || issubtype(typeof(_res), str())
+  ensures currentNode_0 != null ==> acc(tree(currentNode_0), 1 / int___unbox__(perm_0))
+  ensures [true, (forperm _r_21: Ref [MustInvokeBounded(_r_21)] :: false) && ((forperm _r_21: Ref [MustInvokeUnbounded(_r_21)] :: false) && ((forperm _r_21: Ref [_r_21.MustReleaseBounded] :: false) && (forperm _r_21: Ref [_r_21.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var res_1: Ref
+  var self_19: Ref
+  var key_10: Ref
+  var currentNode_2: Ref
+  var perm_1: Ref
+  var _get_res_0: Ref
+  var _get_res_1: Ref
+  var _cwl_168: Perm
+  var _method_measures_168: Seq[Measure$]
+  _method_measures_168 := Seq[Measure$]()
+  inhale typeof(self_11) == BinarySearchTree()
+  _res := null
+  _err := null
+  self_19 := self_11
+  key_10 := key_4
+  currentNode_2 := currentNode_0
+  perm_1 := perm_0
+  if (!object___bool__(currentNode_2)) {
+    _res := null
+    goto __end
+  }
+  unfold acc(tree(currentNode_2), 1 / int___unbox__(perm_1))
+  if (int___eq__(currentNode_2.TreeNode_key, key_10)) {
+    res_1 := currentNode_2.TreeNode_payload
+    inhale _isDefined(212054795634)
+  } elseif (int___lt__(int___unbox__(key_10), int___unbox__(currentNode_2.TreeNode_key))) {
+    _cwl_168, _get_res_0 := BinarySearchTree__get(_cthread_168, _method_measures_168, _residue_168, self_19, key_10, currentNode_2.TreeNode_leftChild, __prim__int___box__(int___mul__(int___unbox__(perm_1), 2)))
+    res_1 := _get_res_0
+    inhale _isDefined(212054795634)
+  } else {
+    _cwl_168, _get_res_1 := BinarySearchTree__get(_cthread_168, _method_measures_168, _residue_168, self_19, key_10, currentNode_2.TreeNode_rightChild, __prim__int___box__(int___mul__(int___unbox__(perm_1), 2)))
+    res_1 := _get_res_1
+    inhale _isDefined(212054795634)
+  }
+  fold acc(tree(currentNode_2), 1 / int___unbox__(perm_1))
+  _res := _checkDefined(res_1, 212054795634)
+  goto __end
+  goto __end
+  label __end
+}
+
+method BinarySearchTree___getitem__(_cthread_169: Ref, _caller_measures_169: Seq[Measure$], _residue_169: Perm, self_12: Ref, key_5: Ref) returns (_current_wait_level_169: Perm, _res: Ref)
+  requires _cthread_169 != null
+  requires issubtype(typeof(_cthread_169), Thread_0())
+  requires issubtype(typeof(self_12), BinarySearchTree())
+  requires issubtype(typeof(key_5), int())
+  requires self_12 != null
+  requires acc(bst(self_12), write)
+  requires [true, perm(MustTerminate(_cthread_169)) == none && ((forperm _r_25: Ref [MustInvokeBounded(_r_25)] :: false) && ((forperm _r_25: Ref [MustInvokeUnbounded(_r_25)] :: false) && ((forperm _r_25: Ref [_r_25.MustReleaseBounded] :: false) && (forperm _r_25: Ref [_r_25.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_23: Ref [_r_23.MustReleaseBounded] :: Level(_r_23) <= _current_wait_level_169) && ((forperm _r_23: Ref [_r_23.MustReleaseUnbounded] :: Level(_r_23) <= _current_wait_level_169) && _residue_169 <= _current_wait_level_169), true]
+  ensures _res == null || issubtype(typeof(_res), str())
+  ensures acc(bst(self_12), write)
+  ensures [true, (forperm _r_24: Ref [MustInvokeBounded(_r_24)] :: false) && ((forperm _r_24: Ref [MustInvokeUnbounded(_r_24)] :: false) && ((forperm _r_24: Ref [_r_24.MustReleaseBounded] :: false) && (forperm _r_24: Ref [_r_24.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var self_20: Ref
+  var key_11: Ref
+  var get_res: Ref
+  var _cwl_169: Perm
+  var _method_measures_169: Seq[Measure$]
+  _method_measures_169 := Seq[Measure$]()
+  inhale typeof(self_12) == BinarySearchTree()
+  _res := null
+  _err := null
+  self_20 := self_12
+  key_11 := key_5
+  _cwl_169, get_res := BinarySearchTree_get(_cthread_169, _method_measures_169, _residue_169, self_20, key_11)
+  _res := get_res
+  goto __end
+  goto __end
+  label __end
+}
+
+method main(_cthread_175: Ref, _caller_measures_175: Seq[Measure$], _residue_175: Perm) returns (_current_wait_level_175: Perm)
+  requires _cthread_175 != null
+  requires issubtype(typeof(_cthread_175), Thread_0())
+  requires [true, perm(MustTerminate(_cthread_175)) == none && ((forperm _r_28: Ref [MustInvokeBounded(_r_28)] :: false) && ((forperm _r_28: Ref [MustInvokeUnbounded(_r_28)] :: false) && ((forperm _r_28: Ref [_r_28.MustReleaseBounded] :: false) && (forperm _r_28: Ref [_r_28.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_26: Ref [_r_26.MustReleaseBounded] :: Level(_r_26) <= _current_wait_level_175) && ((forperm _r_26: Ref [_r_26.MustReleaseUnbounded] :: Level(_r_26) <= _current_wait_level_175) && _residue_175 <= _current_wait_level_175), true]
+  ensures [true, (forperm _r_27: Ref [MustInvokeBounded(_r_27)] :: false) && ((forperm _r_27: Ref [MustInvokeUnbounded(_r_27)] :: false) && ((forperm _r_27: Ref [_r_27.MustReleaseBounded] :: false) && (forperm _r_27: Ref [_r_27.MustReleaseUnbounded] :: false)))]
+{
+  var BinarySearchTree_res: Ref
+  var target: Ref
+  var target_0: Ref
+  var target_1: Ref
+  var target_2: Ref
+  var target_3: Ref
+  var target_4: Ref
+  var module_defined_0: Bool
+  var module_names_0: Set[_Name]
+  var _cwl_175: Perm
+  var _method_measures_175: Seq[Measure$]
+  _method_measures_175 := Seq[Measure$]()
+  module_defined_0 := true
+  module_names_0 := Set[_Name]()
+  module_names_0 := (module_names_0 union Set(_single(6872323072689856351)))
+  inhale acc(__file__()._val, 99 / 100) && issubtype(typeof(__file__()._val), str()) && issubtype(typeof(__file__()._val), str())
+  module_names_0 := (module_names_0 union Set(_single(6872323076851130207)))
+  inhale acc(__name__()._val, 99 / 100) && issubtype(typeof(__name__()._val), str()) && issubtype(typeof(__name__()._val), str()) && str___eq__(str___create__(8, 6872332955275845471), __name__()._val)
+  module_names_0 := (module_names_0 union Set(_single(7809644653626814543)))
+  module_names_0 := (module_names_0 union Set(_single(6872339552563453791)))
+  module_names_0 := (module_names_0 union Set(_single(31079562742455594284987146600)))
+  module_names_0 := (module_names_0 union Set(_single(7956368062068632702229687787880)))
+  module_names_0 := (module_names_0 union Set(_single(128021957866345)))
+  module_names_0 := (module_names_0 union Set(_single(112568497369961)))
+  module_names_0 := (module_names_0 union Set(_single(2239102503511286040791676697665896)))
+  module_names_0 := (module_names_0 union Set(_single(573210240898889226437890953815744872)))
+  module_names_0 := (module_names_0 union Set(_single(7306086878001066580)))
+  assert true && (_single(7306086878001066580) in module_names_0)
+  module_names_0 := (module_names_0 union Set(_single(1701147252)))
+  assert true && (_single(7306086878001066580) in module_names_0)
+  module_names_0 := (module_names_0 union Set(_single(110386908131187)))
+  assert true && (_single(7306086878001066580) in module_names_0)
+  module_names_0 := (module_names_0 union Set(_single(2147777202629415036263)))
+  assert true && (_single(7306086878001066580) in module_names_0) && (_single(7306086878001066580) in module_names_0)
+  module_names_0 := (module_names_0 union Set(_single(6872339552563453791)))
+  module_names_0 := (module_names_0 union Set(_single(7632240)))
+  module_names_0 := (module_names_0 union Set(_single(1953853535)))
+  module_names_0 := (module_names_0 union Set(_single(115298595684950466001854303)))
+  module_names_0 := (module_names_0 union Set(_single(7628135)))
+  module_names_0 := (module_names_0 union Set(_single(1952802655)))
+  module_names_0 := (module_names_0 union Set(_single(115298595684950466001067871)))
+  module_names_0 := (module_names_0 union Set(_single(134778768439155653066375051740024039746)))
+  assert true && (_single(134778768439155653066375051740024039746) in module_names_0)
+  module_names_0 := (module_names_0 union Set(_single(7631714)))
+  module_names_0 := (module_names_0 union Set(_single(500068610672)))
+  assert true && (_single(134778768439155653066375051740024039746) in module_names_0)
+  BinarySearchTree_res := new()
+  inhale typeof(BinarySearchTree_res) == BinarySearchTree()
+  inhale acc(_MaySet(BinarySearchTree_res, 170170373251925421444582457427464176135250765572418), write)
+  inhale acc(_MaySet(BinarySearchTree_res, 148310513873082034654315146951689972238776244529474), write)
+  _cwl_175 := BinarySearchTree___init__(_cthread_175, _method_measures_175, _residue_175, BinarySearchTree_res)
+  inhale mytree() == BinarySearchTree_res
+  module_names_0 := (module_names_0 union Set(_single(111486386338157)))
+  _cwl_175 := BinarySearchTree___setitem__(_cthread_175, _method_measures_175, _residue_175, _asserting(_asserting(mytree(), true), true && (_single(111486386338157) in module_names_0)), __prim__int___box__(3), str___create__(3, 6579570))
+  _cwl_175 := BinarySearchTree___setitem__(_cthread_175, _method_measures_175, _residue_175, _asserting(_asserting(mytree(), true), true && (_single(111486386338157) in module_names_0)), __prim__int___box__(4), str___create__(4, 1702194274))
+  _cwl_175 := BinarySearchTree___setitem__(_cthread_175, _method_measures_175, _residue_175, _asserting(_asserting(mytree(), true), true && (_single(111486386338157) in module_names_0)), __prim__int___box__(6), str___create__(6, 131320444118393))
+  _cwl_175 := BinarySearchTree___setitem__(_cthread_175, _method_measures_175, _residue_175, _asserting(_asserting(mytree(), true), true && (_single(111486386338157) in module_names_0)), __prim__int___box__(2), str___create__(2, 29793))
+  _cwl_175, target_3 := BinarySearchTree___getitem__(_cthread_175, _method_measures_175, _residue_175, _asserting(_asserting(mytree(), true), true && (_single(111486386338157) in module_names_0)), __prim__int___box__(6))
+  assert true && (_single(500068610672) in module_names_0)
+  _cwl_175 := print_0(_cthread_175, _method_measures_175, _residue_175, target_3)
+  _cwl_175, target_4 := BinarySearchTree___getitem__(_cthread_175, _method_measures_175, _residue_175, _asserting(_asserting(mytree(), true), true && (_single(111486386338157) in module_names_0)), __prim__int___box__(2))
+  assert true && (_single(500068610672) in module_names_0)
+  _cwl_175 := print_0(_cthread_175, _method_measures_175, _residue_175, target_4)
+  goto __end
+  label __end
+}

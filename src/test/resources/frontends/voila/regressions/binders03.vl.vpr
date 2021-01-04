@@ -1,0 +1,634 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Tuple2_state_T(r: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Tuple2_interferenceReference_df($p0: Int, r: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Tuple2_interferenceSet_df($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function Tuple2_atomicity_context_df(r: Ref, lvl: Int, x: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $tuple2_$f1: Int
+
+field $tuple2_$f2: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function Tuple2_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(Tuple2_atomicity_context_fp(r, lvl, x), write)
+  ensures [Tuple2_atomicity_context_df(r, lvl, x), true]
+
+
+function Tuple2_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(Tuple2_interferenceContext_fp(r, lvl, x), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in Tuple2_interferenceSet_df($p0, r, lvl, x))), true]
+
+
+function Tuple2_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
+  requires acc(Tuple2_interferenceContext_fp(r, lvl, x), write)
+  ensures [Tuple2_interferenceReference_df($p0, r, lvl, x), true]
+
+
+function Tuple2_out0(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(Tuple2(r, lvl, x), write)
+{
+  (unfolding acc(Tuple2(r, lvl, x), write) in x.$tuple2_$f1)
+}
+
+function Tuple2_out1(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(Tuple2(r, lvl, x), write)
+{
+  (unfolding acc(Tuple2(r, lvl, x), write) in x.$tuple2_$f2)
+}
+
+function Tuple2_state(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(Tuple2(r, lvl, x), write)
+  ensures [Tuple2_state_T(r, lvl, x), true]
+{
+  (unfolding acc(Tuple2(r, lvl, x), write) in x.$tuple2_$f1 + x.$tuple2_$f2)
+}
+
+predicate Tuple2_G($r: Ref) 
+
+predicate Tuple2_atomicity_context_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate Tuple2_interferenceContext_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate Tuple2_sk_fp() 
+
+predicate Tuple2(r: Ref, lvl: Int, x: Ref) {
+  acc(x.$tuple2_$f1, write) && true && (acc(x.$tuple2_$f2, write) && true)
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method ___silicon_hack407_havoc_all_Tuple2()
+
+
+method ___silicon_hack407_havoc_all_Tuple2_interferenceContext_fp()
+
+
+method makeTuple2() returns (r: Ref, lvl: Int, x: Ref)
+  ensures acc(Tuple2(r, lvl, x), write) && (lvl >= 0 && true)
+{
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale acc(Tuple2_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Tuple2_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // Inferring interference all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2_interferenceContext_fp()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Tuple2_interferenceSet_df(1, $r, $lvl, $x)) } none < old[pre_infer0](perm(Tuple2($r, $lvl, $x))) ==> ($$_m in Tuple2_interferenceSet_hf(1, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Tuple2_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer0](Tuple2_state($r, $lvl, $x)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_infer0](perm(Tuple2($r, $lvl, $x))) ==> Tuple2_interferenceReference_hf(1, $r, $lvl, $x) == old[pre_infer0](Tuple2_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) END 
+  
+  
+  inhale false
+}
+
+method test01()
+{
+  var r: Ref
+  var lvl: Int
+  var x: Ref
+  var v1: Int
+  var w1: Int
+  var abs1: Int
+  var $_levelVar_1: Int
+  inhale $_levelVar_1 >= 0
+  assert $_levelVar_1 >= 0
+  inhale acc(Tuple2_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Tuple2_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // Inferring interference all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2_interferenceContext_fp()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Tuple2_interferenceSet_df(2, $r, $lvl, $x)) } none < old[pre_infer](perm(Tuple2($r, $lvl, $x))) ==> ($$_m in Tuple2_interferenceSet_hf(2, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Tuple2_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer](Tuple2_state($r, $lvl, $x)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_infer](perm(Tuple2($r, $lvl, $x))) ==> Tuple2_interferenceReference_hf(2, $r, $lvl, $x) == old[pre_infer](Tuple2_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- call:makeTuple2 BEGIN ---
+  
+  
+  assert true
+  label pre_call0
+  assert $_levelVar_1 >= 0
+  assert true
+  exhale true
+  
+  // ------- Stabilising regions Tuple2 (before call:makeTuple2@15.3) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_stabilize0](perm(Tuple2($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> (Tuple2_state($r, $lvl, $x) in Tuple2_atomicity_context_hf($r, $lvl, $x))) && (Tuple2_state($r, $lvl, $x) == old[pre_stabilize0](Tuple2_state($r, $lvl, $x)) || false))
+  
+  // ------- Stabilising regions Tuple2 (before call:makeTuple2@15.3) END 
+  
+  
+  r := havoc_Ref()
+  lvl := havoc_Int()
+  x := havoc_Ref()
+  inhale acc(Tuple2(r, lvl, x), write) && (lvl >= 0 && true)
+  
+  // ------- call:makeTuple2 END -----
+  
+  
+  
+  // ------- Stabilising regions Tuple2 (after call:makeTuple2@15.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2_interferenceContext_fp()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Tuple2_interferenceSet_df(3, $r, $lvl, $x)) } none < old[pre_stabilize](perm(Tuple2($r, $lvl, $x))) ==> ($$_m in Tuple2_interferenceSet_hf(3, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Tuple2_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize](Tuple2_state($r, $lvl, $x)) || false))))
+  ___silicon_hack407_havoc_all_Tuple2()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_stabilize](perm(Tuple2($r, $lvl, $x))) ==> (Tuple2_state($r, $lvl, $x) in Tuple2_interferenceSet_hf(3, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_stabilize](perm(Tuple2($r, $lvl, $x))) ==> Tuple2_interferenceReference_hf(3, $r, $lvl, $x) == old[pre_stabilize](Tuple2_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Tuple2 (after call:makeTuple2@15.3) END 
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(Tuple2(r, lvl, x), write) && (lvl >= 0 && true)
+  v1 := Tuple2_out0(r, lvl, x)
+  w1 := Tuple2_out1(r, lvl, x)
+  abs1 := Tuple2_state(r, lvl, x)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- havoc BEGIN -------------
+  
+  
+  x := havoc_Ref()
+  
+  // ------- havoc END ---------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert abs1 == v1 + w1
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- Stabilising regions Tuple2 (after seq-comp@15.3) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2_interferenceContext_fp()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Tuple2_interferenceSet_df(4, $r, $lvl, $x)) } none < old[pre_stabilize2](perm(Tuple2($r, $lvl, $x))) ==> ($$_m in Tuple2_interferenceSet_hf(4, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Tuple2_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize2](Tuple2_state($r, $lvl, $x)) || false))))
+  ___silicon_hack407_havoc_all_Tuple2()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_stabilize2](perm(Tuple2($r, $lvl, $x))) ==> (Tuple2_state($r, $lvl, $x) in Tuple2_interferenceSet_hf(4, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_stabilize2](perm(Tuple2($r, $lvl, $x))) ==> Tuple2_interferenceReference_hf(4, $r, $lvl, $x) == old[pre_stabilize2](Tuple2_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Tuple2 (after seq-comp@15.3) END 
+  
+  
+}
+
+method test02(r: Ref, lvl: Int, x: Ref)
+{
+  var v1: Int
+  var w1: Int
+  var abs1: Int
+  var v2: Int
+  var w2: Int
+  var abs2: Int
+  var $_levelVar_2: Int
+  inhale $_levelVar_2 >= 0
+  assert $_levelVar_2 >= 0
+  inhale acc(Tuple2_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Tuple2_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer2
+  
+  // Inferring interference all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2_interferenceContext_fp()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Tuple2_interferenceSet_df(5, $r, $lvl, $x)) } none < old[pre_infer2](perm(Tuple2($r, $lvl, $x))) ==> ($$_m in Tuple2_interferenceSet_hf(5, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Tuple2_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer2](Tuple2_state($r, $lvl, $x)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_infer2](perm(Tuple2($r, $lvl, $x))) ==> Tuple2_interferenceReference_hf(5, $r, $lvl, $x) == old[pre_infer2](Tuple2_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Tuple2(r, lvl, x), write) && (lvl >= 0 && true) && Tuple2_out0(r, lvl, x) < Tuple2_out1(r, lvl, x)
+  v1 := Tuple2_out0(r, lvl, x)
+  w1 := Tuple2_out1(r, lvl, x)
+  abs1 := Tuple2_state(r, lvl, x)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert abs1 < 2 * w1
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  v2 := Tuple2_out0(r, lvl, x)
+  w2 := Tuple2_out1(r, lvl, x)
+  abs2 := Tuple2_state(r, lvl, x)
+  exhale acc(Tuple2(r, lvl, x), write) && (lvl >= 0 && true) && Tuple2_out0(r, lvl, x) < Tuple2_out1(r, lvl, x)
+  
+  // ------- exhale END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert v1 == v2 && w1 == w2 && abs1 == abs2
+  
+  // ------- assert END --------------
+  
+  
+}
+
+method $_Tuple2_interpretation_stability_check(r: Ref, lvl: Int, x: Ref)
+{
+  inhale acc(Tuple2_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Tuple2_interferenceContext_fp($r, $lvl, $x), write))
+  inhale acc(x.$tuple2_$f1, write) && true && (acc(x.$tuple2_$f2, write) && true)
+  
+  // ------- Stabilising regions Tuple2 (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_stabilize3](perm(Tuple2($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> (Tuple2_state($r, $lvl, $x) in Tuple2_atomicity_context_hf($r, $lvl, $x))) && (Tuple2_state($r, $lvl, $x) == old[pre_stabilize3](Tuple2_state($r, $lvl, $x)) || false))
+  
+  // ------- Stabilising regions Tuple2 (check stability of region interpretation) END 
+  
+  
+  assert acc(x.$tuple2_$f1, write) && true && (acc(x.$tuple2_$f2, write) && true)
+}
+
+method $_Tuple2_action_transitivity_check()
+{
+  var G: Bool
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState
+  inhale bState == cState
+  assert aState == cState
+}
+
+method $_makeTuple2_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
+{
+  var $_levelVar_3: Int
+  inhale $_levelVar_3 >= 0
+  inhale acc(Tuple2_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Tuple2_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer3
+  
+  // Inferring interference all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2_interferenceContext_fp()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Tuple2_interferenceSet_df(6, $r, $lvl, $x)) } none < old[pre_infer3](perm(Tuple2($r, $lvl, $x))) ==> ($$_m in Tuple2_interferenceSet_hf(6, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Tuple2_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer3](Tuple2_state($r, $lvl, $x)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_infer3](perm(Tuple2($r, $lvl, $x))) ==> Tuple2_interferenceReference_hf(6, $r, $lvl, $x) == old[pre_infer3](Tuple2_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Tuple2 (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // Stabilising all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_stabilize4](perm(Tuple2($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> (Tuple2_state($r, $lvl, $x) in Tuple2_atomicity_context_hf($r, $lvl, $x))) && (Tuple2_state($r, $lvl, $x) == old[pre_stabilize4](Tuple2_state($r, $lvl, $x)) || false))
+  
+  // ------- Stabilising regions Tuple2 (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test01_condition_stability_precondition_check()
+{
+  var $_levelVar_4: Int
+  var r: Ref
+  var lvl: Int
+  var x: Ref
+  inhale $_levelVar_4 >= 0
+  inhale acc(Tuple2_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Tuple2_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer4
+  
+  // Inferring interference all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2_interferenceContext_fp()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Tuple2_interferenceSet_df(7, $r, $lvl, $x)) } none < old[pre_infer4](perm(Tuple2($r, $lvl, $x))) ==> ($$_m in Tuple2_interferenceSet_hf(7, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Tuple2_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer4](Tuple2_state($r, $lvl, $x)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_infer4](perm(Tuple2($r, $lvl, $x))) ==> Tuple2_interferenceReference_hf(7, $r, $lvl, $x) == old[pre_infer4](Tuple2_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Tuple2 (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // Stabilising all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_stabilize5](perm(Tuple2($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> (Tuple2_state($r, $lvl, $x) in Tuple2_atomicity_context_hf($r, $lvl, $x))) && (Tuple2_state($r, $lvl, $x) == old[pre_stabilize5](Tuple2_state($r, $lvl, $x)) || false))
+  
+  // ------- Stabilising regions Tuple2 (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test02_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
+{
+  var $_levelVar_5: Int
+  inhale $_levelVar_5 >= 0
+  inhale acc(Tuple2_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Tuple2_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer5
+  
+  // Inferring interference all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2_interferenceContext_fp()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Tuple2_interferenceSet_df(8, $r, $lvl, $x)) } none < old[pre_infer5](perm(Tuple2($r, $lvl, $x))) ==> ($$_m in Tuple2_interferenceSet_hf(8, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Tuple2_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer5](Tuple2_state($r, $lvl, $x)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_infer5](perm(Tuple2($r, $lvl, $x))) ==> Tuple2_interferenceReference_hf(8, $r, $lvl, $x) == old[pre_infer5](Tuple2_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Tuple2 (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Tuple2 (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize6
+  
+  // Stabilising all instances of region Tuple2
+  
+  ___silicon_hack407_havoc_all_Tuple2()
+  exhale acc(Tuple2_sk_fp(), write)
+  inhale acc(Tuple2_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Tuple2($r, $lvl, $x)] :: none < old[pre_stabilize6](perm(Tuple2($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Tuple2_atomicity_context_fp($r, $lvl, $x)) ==> (Tuple2_state($r, $lvl, $x) in Tuple2_atomicity_context_hf($r, $lvl, $x))) && (Tuple2_state($r, $lvl, $x) == old[pre_stabilize6](Tuple2_state($r, $lvl, $x)) || false))
+  
+  // ------- Stabilising regions Tuple2 (check stability of method condition) END 
+  
+  
+  assert true
+}

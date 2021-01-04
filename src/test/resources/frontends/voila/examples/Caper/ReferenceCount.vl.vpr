@@ -1,0 +1,949 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function ARCounter_ARC_T($r: Ref, n: Int): Bool
+  
+  function ARCounter_state_T(r: Ref, lvl: Int, c: Ref): Bool
+  
+  axiom ARCounter_ARC_T_bottom {
+    (forall $r: Ref, n: Int :: { ARCounter_ARC_T($r, n) } ARCounter_ARC_T($r, n))
+  }
+}
+
+domain interferenceReference_Domain {
+  
+  function ARCounter_interferenceReference_df($p0: Int, r: Ref, lvl: Int, c: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function ARCounter_interferenceSet_df($p0: Int, r: Ref, lvl: Int, c: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function ARCounter_atomicity_context_df(r: Ref, lvl: Int, c: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $ARCounter_$_absstate: Int
+
+field $arcell_$value: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function ARCounter_atomicity_context_hf(r: Ref, lvl: Int, c: Ref): Set[Int]
+  requires acc(ARCounter_atomicity_context_fp(r, lvl, c), write)
+  ensures [ARCounter_atomicity_context_df(r, lvl, c), true]
+
+
+function ARCounter_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, c: Ref): Set[Int]
+  requires acc(ARCounter_interferenceContext_fp(r, lvl, c), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in ARCounter_interferenceSet_df($p0, r, lvl, c))), true]
+
+
+function ARCounter_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, c: Ref): Int
+  requires acc(ARCounter_interferenceContext_fp(r, lvl, c), write)
+  ensures [ARCounter_interferenceReference_df($p0, r, lvl, c), true]
+
+
+function ARCounter_sk_$_action_n(r: Ref, lvl: Int, c: Ref): Int
+  requires acc(ARCounter_sk_fp(), write)
+
+
+function ARCounter_sk_$_action_m(r: Ref, lvl: Int, c: Ref): Int
+  requires acc(ARCounter_sk_fp(), write)
+
+
+function ARCounter_state(r: Ref, lvl: Int, c: Ref): Int
+  requires acc(ARCounter(r, lvl, c), write)
+  ensures [ARCounter_state_T(r, lvl, c), true]
+{
+  (unfolding acc(ARCounter(r, lvl, c), write) in r.$ARCounter_$_absstate)
+}
+
+predicate ARCounter_ARC($r: Ref, n: Int) 
+
+predicate ARCounter_Z($r: Ref) 
+
+predicate ARCounter_atomicity_context_fp(r: Ref, lvl: Int, c: Ref) 
+
+predicate ARCounter_interferenceContext_fp(r: Ref, lvl: Int, c: Ref) 
+
+predicate ARCounter_sk_fp() 
+
+predicate ARCounter(r: Ref, lvl: Int, c: Ref) {
+  acc(r.$ARCounter_$_absstate, write) && true && 0 <= r.$ARCounter_$_absstate && (r.$ARCounter_$_absstate > 0 ? acc(object(), write) && (ARCounter_ARC_T(r, 0 - 1 - r.$ARCounter_$_absstate) && acc(ARCounter_ARC(r, 0 - 1 - r.$ARCounter_$_absstate), write)) && (acc(c.$arcell_$value, write) && c.$arcell_$value == r.$ARCounter_$_absstate) : ARCounter_ARC_T(r, 0 - 1) && acc(ARCounter_ARC(r, 0 - 1), write))
+}
+
+predicate object() 
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method ___silicon_hack407_havoc_all_ARCounter()
+
+
+method ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+
+
+method create()
+  requires true
+  ensures acc(object(), write)
+{
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(1, $r, $lvl, $c)) } none < old[pre_infer0](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(1, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer0](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer0](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer0](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(1, $r, $lvl, $c) == old[pre_infer0](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  inhale false
+}
+
+method destroy()
+  requires acc(object(), write)
+  ensures true
+{
+  var $_levelVar_1: Int
+  inhale $_levelVar_1 >= 0
+  assert $_levelVar_1 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(2, $r, $lvl, $c)) } none < old[pre_infer](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(2, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(2, $r, $lvl, $c) == old[pre_infer](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  inhale false
+}
+
+method ARC_split(r: Ref, n: Int, m: Int)
+  requires ARCounter_ARC_T(r, n + m) && acc(ARCounter_ARC(r, n + m), write)
+  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 || m < 0 && 0 <= n && n + m < 0
+  ensures ARCounter_ARC_T(r, n) && acc(ARCounter_ARC(r, n), write) && (ARCounter_ARC_T(r, m) && acc(ARCounter_ARC(r, m), write))
+{
+  var $_levelVar_2: Int
+  inhale $_levelVar_2 >= 0
+  assert $_levelVar_2 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer2
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(3, $r, $lvl, $c)) } none < old[pre_infer2](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(3, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer2](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer2](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer2](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(3, $r, $lvl, $c) == old[pre_infer2](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  inhale false
+}
+
+method ARC_join(r: Ref, n: Int, m: Int)
+  requires ARCounter_ARC_T(r, n) && acc(ARCounter_ARC(r, n), write) && (ARCounter_ARC_T(r, m) && acc(ARCounter_ARC(r, m), write))
+  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 || m < 0 && 0 <= n && n + m < 0
+  ensures ARCounter_ARC_T(r, n + m) && acc(ARCounter_ARC(r, n + m), write)
+{
+  var $_levelVar_3: Int
+  inhale $_levelVar_3 >= 0
+  assert $_levelVar_3 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer3
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(4, $r, $lvl, $c)) } none < old[pre_infer3](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(4, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer3](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer3](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer3](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(4, $r, $lvl, $c) == old[pre_infer3](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  inhale false
+}
+
+method ARC_false1(r: Ref, n: Int)
+  requires ARCounter_ARC_T(r, 0 - 1) && acc(ARCounter_ARC(r, 0 - 1), write) && (ARCounter_ARC_T(r, n) && acc(ARCounter_ARC(r, n), write)) && 0 < n
+  ensures false
+{
+  var $_levelVar_4: Int
+  inhale $_levelVar_4 >= 0
+  assert $_levelVar_4 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer4
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(5, $r, $lvl, $c)) } none < old[pre_infer4](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(5, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer4](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer4](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer4](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(5, $r, $lvl, $c) == old[pre_infer4](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  inhale false
+}
+
+method init(lvl: Int) returns (r: Ref, c: Ref)
+  requires lvl >= 0
+  ensures acc(ARCounter(r, lvl, c), write) && (lvl >= 0 && true) && (ARCounter_ARC_T(r, 1) && acc(ARCounter_ARC(r, 1), write))
+{
+  var $_levelVar_5: Int
+  inhale $_levelVar_5 >= 0
+  assert $_levelVar_5 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer5
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(6, $r, $lvl, $c)) } none < old[pre_infer5](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(6, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer5](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer5](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer5](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(6, $r, $lvl, $c) == old[pre_infer5](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- call:create BEGIN -------
+  
+  
+  assert true
+  label pre_call0
+  assert $_levelVar_5 >= 0
+  assert true
+  exhale true
+  
+  // ------- Stabilising regions ARCounter (before call:create@74.3) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize0](perm(ARCounter($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> (ARCounter_state($r, $lvl, $c) in ARCounter_atomicity_context_hf($r, $lvl, $c))) && (ARCounter_state($r, $lvl, $c) == old[pre_stabilize0](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize0](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == ARCounter_state($r, $lvl, $c) && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))
+  
+  // ------- Stabilising regions ARCounter (before call:create@74.3) END 
+  
+  
+  inhale acc(object(), write)
+  
+  // ------- call:create END ---------
+  
+  
+  
+  // ------- Stabilising regions ARCounter (after call:create@74.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(7, $r, $lvl, $c)) } none < old[pre_stabilize](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(7, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_stabilize](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  ___silicon_hack407_havoc_all_ARCounter()
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize](perm(ARCounter($r, $lvl, $c))) ==> (ARCounter_state($r, $lvl, $c) in ARCounter_interferenceSet_hf(7, $r, $lvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(7, $r, $lvl, $c) == old[pre_stabilize](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Stabilising regions ARCounter (after call:create@74.3) END 
+  
+  
+  
+  // ------- new:arcell BEGIN --------
+  
+  
+  c := new($arcell_$value)
+  c.$arcell_$value := 1
+  
+  // ------- new:arcell END ----------
+  
+  
+  
+  // ------- Stabilising regions ARCounter (after new:arcell@78.3) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(8, $r, $lvl, $c)) } none < old[pre_stabilize2](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(8, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_stabilize2](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize2](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  ___silicon_hack407_havoc_all_ARCounter()
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize2](perm(ARCounter($r, $lvl, $c))) ==> (ARCounter_state($r, $lvl, $c) in ARCounter_interferenceSet_hf(8, $r, $lvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize2](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(8, $r, $lvl, $c) == old[pre_stabilize2](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Stabilising regions ARCounter (after new:arcell@78.3) END 
+  
+  
+  
+  // ------- new:ARCounter BEGIN -----
+  
+  
+  r := new($ARCounter_$_absstate)
+  inhale acc(ARCounter_ARC(r, 0 - 1), write)
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  r.$ARCounter_$_absstate := 0
+  
+  // ------- heap-write END ----------
+  
+  
+  fold acc(ARCounter(r, lvl, c), write)
+  
+  // ------- new:ARCounter END -------
+  
+  
+  
+  // ------- unfold BEGIN ------------
+  
+  
+  assert lvl >= 0 && true
+  unfold acc(ARCounter(r, lvl, c), write)
+  
+  // ------- Inferring interference context ARCounter (recompute interference context after unfold) BEGIN 
+  
+  
+  label pre_infer6
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(9, $r, $lvl, $c)) } none < old[pre_infer6](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(9, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer6](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer6](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer6](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(9, $r, $lvl, $c) == old[pre_infer6](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (recompute interference context after unfold) END 
+  
+  
+  
+  // ------- unfold END --------------
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  r.$ARCounter_$_absstate := 1
+  
+  // ------- heap-write END ----------
+  
+  
+  
+  // ------- apply BEGIN -------------
+  
+  
+  ARC_split(r, 0 - 2, 1)
+  
+  // ------- apply END ---------------
+  
+  
+  
+  // ------- fold BEGIN --------------
+  
+  
+  fold acc(ARCounter(r, lvl, c), write)
+  assert lvl >= 0 && true
+  
+  // ------- fold END ----------------
+  
+  
+  
+  // ------- Stabilising regions ARCounter (after seq-comp@78.3) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(10, $r, $lvl, $c)) } none < old[pre_stabilize3](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(10, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_stabilize3](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize3](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  ___silicon_hack407_havoc_all_ARCounter()
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize3](perm(ARCounter($r, $lvl, $c))) ==> (ARCounter_state($r, $lvl, $c) in ARCounter_interferenceSet_hf(10, $r, $lvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize3](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(10, $r, $lvl, $c) == old[pre_stabilize3](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Stabilising regions ARCounter (after seq-comp@78.3) END 
+  
+  
+}
+
+method CAS(x: Ref, now: Int, thn: Int) returns (ret: Bool)
+  requires acc(x.$arcell_$value, write) && true
+  ensures (old(x.$arcell_$value) == now ? ret && (acc(x.$arcell_$value, write) && x.$arcell_$value == thn) : !ret && (acc(x.$arcell_$value, write) && x.$arcell_$value == old(x.$arcell_$value)))
+
+
+method $_ARCounter_interpretation_stability_check(r: Ref, lvl: Int, c: Ref)
+{
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  inhale acc(r.$ARCounter_$_absstate, write) && true && 0 <= r.$ARCounter_$_absstate && (r.$ARCounter_$_absstate > 0 ? acc(object(), write) && (ARCounter_ARC_T(r, 0 - 1 - r.$ARCounter_$_absstate) && acc(ARCounter_ARC(r, 0 - 1 - r.$ARCounter_$_absstate), write)) && (acc(c.$arcell_$value, write) && c.$arcell_$value == r.$ARCounter_$_absstate) : ARCounter_ARC_T(r, 0 - 1) && acc(ARCounter_ARC(r, 0 - 1), write))
+  
+  // ------- Stabilising regions ARCounter (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // Stabilising all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize4](perm(ARCounter($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> (ARCounter_state($r, $lvl, $c) in ARCounter_atomicity_context_hf($r, $lvl, $c))) && (ARCounter_state($r, $lvl, $c) == old[pre_stabilize4](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize4](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == ARCounter_state($r, $lvl, $c) && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))
+  
+  // ------- Stabilising regions ARCounter (check stability of region interpretation) END 
+  
+  
+  assert acc(r.$ARCounter_$_absstate, write) && true && 0 <= r.$ARCounter_$_absstate && (r.$ARCounter_$_absstate > 0 ? acc(object(), write) && (ARCounter_ARC_T(r, 0 - 1 - r.$ARCounter_$_absstate) && acc(ARCounter_ARC(r, 0 - 1 - r.$ARCounter_$_absstate), write)) && (acc(c.$arcell_$value, write) && c.$arcell_$value == r.$ARCounter_$_absstate) : ARCounter_ARC_T(r, 0 - 1) && acc(ARCounter_ARC(r, 0 - 1), write))
+}
+
+method $_ARCounter_action_transitivity_check()
+{
+  var ARC: Set[Int]
+  var Z: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && (0 < $_action_n_0_x && 0 <= $_action_m_0_x) && Z
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && (0 < $_action_n_0_y && 0 <= $_action_m_0_y) && Z
+  assert aState == cState || aState == aState && cState == cState && (0 < aState && 0 <= cState) && Z
+}
+
+method $_create_condition_stability_precondition_check()
+  requires true
+{
+  var $_levelVar_7: Int
+  inhale $_levelVar_7 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer8
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(12, $r, $lvl, $c)) } none < old[pre_infer8](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(12, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer8](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer8](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer8](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(12, $r, $lvl, $c) == old[pre_infer8](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // Stabilising all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize5](perm(ARCounter($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> (ARCounter_state($r, $lvl, $c) in ARCounter_atomicity_context_hf($r, $lvl, $c))) && (ARCounter_state($r, $lvl, $c) == old[pre_stabilize5](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize5](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == ARCounter_state($r, $lvl, $c) && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_destroy_condition_stability_precondition_check()
+  requires acc(object(), write)
+{
+  var $_levelVar_8: Int
+  inhale $_levelVar_8 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer9
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(13, $r, $lvl, $c)) } none < old[pre_infer9](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(13, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer9](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer9](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer9](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(13, $r, $lvl, $c) == old[pre_infer9](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize6
+  
+  // Stabilising all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize6](perm(ARCounter($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> (ARCounter_state($r, $lvl, $c) in ARCounter_atomicity_context_hf($r, $lvl, $c))) && (ARCounter_state($r, $lvl, $c) == old[pre_stabilize6](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize6](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == ARCounter_state($r, $lvl, $c) && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) END 
+  
+  
+  assert acc(object(), write)
+}
+
+method $_ARC_split_condition_stability_precondition_check(r: Ref, n: Int, m: Int)
+  requires ARCounter_ARC_T(r, n + m) && acc(ARCounter_ARC(r, n + m), write)
+  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 || m < 0 && 0 <= n && n + m < 0
+{
+  var $_levelVar_9: Int
+  inhale $_levelVar_9 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer10
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(14, $r, $lvl, $c)) } none < old[pre_infer10](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(14, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer10](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer10](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer10](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(14, $r, $lvl, $c) == old[pre_infer10](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize7
+  
+  // Stabilising all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize7](perm(ARCounter($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> (ARCounter_state($r, $lvl, $c) in ARCounter_atomicity_context_hf($r, $lvl, $c))) && (ARCounter_state($r, $lvl, $c) == old[pre_stabilize7](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize7](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == ARCounter_state($r, $lvl, $c) && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) END 
+  
+  
+  assert ARCounter_ARC_T(r, n + m) && acc(ARCounter_ARC(r, n + m), write) && (0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 || m < 0 && 0 <= n && n + m < 0)
+}
+
+method $_ARC_join_condition_stability_precondition_check(r: Ref, n: Int, m: Int)
+  requires ARCounter_ARC_T(r, n) && acc(ARCounter_ARC(r, n), write) && (ARCounter_ARC_T(r, m) && acc(ARCounter_ARC(r, m), write))
+  requires 0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 || m < 0 && 0 <= n && n + m < 0
+{
+  var $_levelVar_10: Int
+  inhale $_levelVar_10 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer11
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(15, $r, $lvl, $c)) } none < old[pre_infer11](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(15, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer11](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer11](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer11](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(15, $r, $lvl, $c) == old[pre_infer11](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize8
+  
+  // Stabilising all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize8](perm(ARCounter($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> (ARCounter_state($r, $lvl, $c) in ARCounter_atomicity_context_hf($r, $lvl, $c))) && (ARCounter_state($r, $lvl, $c) == old[pre_stabilize8](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize8](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == ARCounter_state($r, $lvl, $c) && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) END 
+  
+  
+  assert ARCounter_ARC_T(r, n) && acc(ARCounter_ARC(r, n), write) && (ARCounter_ARC_T(r, m) && acc(ARCounter_ARC(r, m), write)) && (0 <= n && 0 <= m || n < 0 && 0 <= m && n + m < 0 || m < 0 && 0 <= n && n + m < 0)
+}
+
+method $_ARC_false1_condition_stability_precondition_check(r: Ref, n: Int)
+  requires ARCounter_ARC_T(r, 0 - 1) && acc(ARCounter_ARC(r, 0 - 1), write) && (ARCounter_ARC_T(r, n) && acc(ARCounter_ARC(r, n), write)) && 0 < n
+{
+  var $_levelVar_11: Int
+  inhale $_levelVar_11 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer12
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(16, $r, $lvl, $c)) } none < old[pre_infer12](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(16, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer12](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer12](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer12](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(16, $r, $lvl, $c) == old[pre_infer12](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize9
+  
+  // Stabilising all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize9](perm(ARCounter($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> (ARCounter_state($r, $lvl, $c) in ARCounter_atomicity_context_hf($r, $lvl, $c))) && (ARCounter_state($r, $lvl, $c) == old[pre_stabilize9](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize9](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == ARCounter_state($r, $lvl, $c) && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) END 
+  
+  
+  assert ARCounter_ARC_T(r, 0 - 1) && acc(ARCounter_ARC(r, 0 - 1), write) && (ARCounter_ARC_T(r, n) && acc(ARCounter_ARC(r, n), write)) && 0 < n
+}
+
+method $_init_condition_stability_precondition_check(lvl: Int, r: Ref, c: Ref)
+  requires lvl >= 0
+{
+  var $_levelVar_12: Int
+  inhale $_levelVar_12 >= 0
+  inhale acc(ARCounter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(ARCounter_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer13
+  
+  // Inferring interference all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter_interferenceContext_fp()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in ARCounter_interferenceSet_df(17, $r, $lvl, $c)) } none < old[pre_infer13](perm(ARCounter($r, $lvl, $c))) ==> ($$_m in ARCounter_interferenceSet_hf(17, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in ARCounter_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer13](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_infer13](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == $$_m && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_infer13](perm(ARCounter($r, $lvl, $c))) ==> ARCounter_interferenceReference_hf(17, $r, $lvl, $c) == old[pre_infer13](ARCounter_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context ARCounter (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize10
+  
+  // Stabilising all instances of region ARCounter
+  
+  ___silicon_hack407_havoc_all_ARCounter()
+  exhale acc(ARCounter_sk_fp(), write)
+  inhale acc(ARCounter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [ARCounter($r, $lvl, $c)] :: none < old[pre_stabilize10](perm(ARCounter($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(ARCounter_atomicity_context_fp($r, $lvl, $c)) ==> (ARCounter_state($r, $lvl, $c) in ARCounter_atomicity_context_hf($r, $lvl, $c))) && (ARCounter_state($r, $lvl, $c) == old[pre_stabilize10](ARCounter_state($r, $lvl, $c)) || ARCounter_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize10](ARCounter_state($r, $lvl, $c)) && ARCounter_sk_$_action_m($r, $lvl, $c) == ARCounter_state($r, $lvl, $c) && (0 < ARCounter_sk_$_action_n($r, $lvl, $c) && 0 <= ARCounter_sk_$_action_m($r, $lvl, $c)) && true))
+  
+  // ------- Stabilising regions ARCounter (check stability of method condition) END 
+  
+  
+  assert lvl >= 0
+}

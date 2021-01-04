@@ -1,0 +1,198 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Node_state_T(r: Ref, lvl: Int, n: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Node_interferenceReference_df($p0: Int, r: Ref, lvl: Int, n: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Node_interferenceSet_df($p0: Int, r: Ref, lvl: Int, n: Ref): Set[Ref]
+}
+
+domain atomicity_context_Domain {
+  
+  function Node_atomicity_context_df(r: Ref, lvl: Int, n: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_node: Ref
+
+field $stepTo_node: Ref
+
+field $Node_$_val: Int
+
+field $Node_$_next_id: Ref
+
+field $Node_$_next_val: Int
+
+field $node_$val: Int
+
+field $node_$next: Ref
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function Node_atomicity_context_hf(r: Ref, lvl: Int, n: Ref): Set[Ref]
+  requires acc(Node_atomicity_context_fp(r, lvl, n), write)
+  ensures [Node_atomicity_context_df(r, lvl, n), true]
+
+
+function Node_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, n: Ref): Set[Ref]
+  requires acc(Node_interferenceContext_fp(r, lvl, n), write)
+  ensures [(forall $_m: Ref :: { ($_m in result) } ($_m in result) ==> ($_m in Node_interferenceSet_df($p0, r, lvl, n))), true]
+
+
+function Node_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, n: Ref): Ref
+  requires acc(Node_interferenceContext_fp(r, lvl, n), write)
+  ensures [Node_interferenceReference_df($p0, r, lvl, n), true]
+
+
+function Node_sk_$_action_x(r: Ref, lvl: Int, n: Ref): Ref
+  requires acc(Node_sk_fp(), write)
+
+
+function Node_out0(r: Ref, lvl: Int, n: Ref): Int
+  requires acc(Node(r, lvl, n), write)
+{
+  (unfolding acc(Node(r, lvl, n), write) in n.$node_$val)
+}
+
+function Node_out1(r: Ref, lvl: Int, n: Ref): Int
+  requires acc(Node(r, lvl, n), write)
+{
+  (unfolding acc(Node(r, lvl, n), write) in r.$Node_$_val)
+}
+
+function Node_state(r: Ref, lvl: Int, n: Ref): Ref
+  requires acc(Node(r, lvl, n), write)
+  ensures [Node_state_T(r, lvl, n), true]
+{
+  (unfolding acc(Node(r, lvl, n), write) in n.$node_$next)
+}
+
+predicate Node_Z($r: Ref) 
+
+predicate Node_atomicity_context_fp(r: Ref, lvl: Int, n: Ref) 
+
+predicate Node_interferenceContext_fp(r: Ref, lvl: Int, n: Ref) 
+
+predicate Node_sk_fp() 
+
+predicate Node(r: Ref, lvl: Int, n: Ref) {
+  acc(n.$node_$val, write) && true && (acc(r.$Node_$_val, write) && true) && (acc(n.$node_$next, write) && true) && 0 < lvl && (!(n.$node_$next == null) ? acc(r.$Node_$_next_id, write) && true && (acc(r.$Node_$_next_val, write) && true) && (acc(Node(r.$Node_$_next_id, lvl - 1, n.$node_$next), write) && (lvl - 1 >= 0 && (Node_out0(r.$Node_$_next_id, lvl - 1, n.$node_$next) == r.$Node_$_next_val && Node_out1(r.$Node_$_next_id, lvl - 1, n.$node_$next) == r.$Node_$_next_val))) : true)
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method ___silicon_hack407_havoc_all_Node()
+
+
+method ___silicon_hack407_havoc_all_Node_interferenceContext_fp()
+
+
+method $_Node_action_transitivity_check()
+{
+  var Z: Bool
+  var $_action_x_0_x: Ref
+  var $_action_x_0_y: Ref
+  var aState: Ref
+  var bState: Ref
+  var cState: Ref
+  inhale aState == bState || null == aState && $_action_x_0_x == bState && true && Z
+  inhale bState == cState || null == bState && $_action_x_0_y == cState && true && Z
+  assert aState == cState || null == aState && cState == cState && true && Z
+}

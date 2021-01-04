@@ -1,0 +1,45 @@
+method test1_pkg_F()
+  requires (forall m_pkg_V0: Int :: true)
+{
+  
+  // decl 
+  
+  
+  // decl 
+  
+  
+  label returnLabel
+}
+
+method test2_pkg_F()
+  requires (forall x_pkg_V1: Int, y_pkg_V1: Int :: x_pkg_V1 < y_pkg_V1)
+  requires (forall x_pkg_V2: Int, y_pkg_V2: Int :: { x_pkg_V2,y_pkg_V2 } x_pkg_V2 < y_pkg_V2)
+{
+  
+  // decl 
+  
+  
+  // decl 
+  
+  
+  label returnLabel
+}
+
+method test3_pkg_F()
+{
+  
+  // decl 
+  
+  
+  // decl 
+  
+  
+  // assert forall n_pkg_V3: int :: {  } true
+  
+  assert (forall n_pkg_V3: Int :: true)
+  
+  // assert forall n_pkg_V4: int :: { n_pkg_V4 } true
+  
+  assert (forall n_pkg_V4: Int :: { n_pkg_V4 } true)
+  label returnLabel
+}

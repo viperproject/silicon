@@ -1,0 +1,21 @@
+function foo_pkg_F(n_pkg_V0: Int): Bool
+  requires true
+
+
+function bar_pkg_F(n_pkg_V1: Int): Bool
+  requires true
+
+
+method example_pkg_F()
+  requires (forall i_pkg_V2: Int :: { foo_pkg_F(i_pkg_V2) } { bar_pkg_F(i_pkg_V2) } 0 < i_pkg_V2 ==> 0 <= i_pkg_V2)
+  requires (exists i_pkg_V3: Int :: { foo_pkg_F(i_pkg_V3) } { bar_pkg_F(i_pkg_V3) } (0 < i_pkg_V3 ? 0 <= i_pkg_V3 : true))
+{
+  
+  // decl 
+  
+  
+  // decl 
+  
+  
+  label returnLabel
+}

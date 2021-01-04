@@ -1,0 +1,3083 @@
+domain $SnapshotMirrors$ {
+  
+  
+}
+
+domain Snap$__TYPARAM__$S$__ {
+  
+  function cons$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_arg: Ref): Snap$__TYPARAM__$S$__
+  
+  axiom Snap$__TYPARAM__$S$__$injectivity {
+    (forall _arg_1: Ref, _arg_2: Ref :: { cons$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_arg_1),cons$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_arg_2) } cons$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_arg_1) == cons$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_arg_2) ==> _arg_1 == _arg_2)
+  }
+}
+
+field f$x: Ref
+
+field f$y: Ref
+
+field f$z: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function equals$__$TY$____TYPARAM__$S$__$__TYPARAM__$S$__$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(__TYPARAM__$S$__(_left), read$())
+  requires acc(__TYPARAM__$S$__(_right), read$())
+{
+  snap$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_left) == snap$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_right)
+}
+
+function equals$__$TY$__ref$__TYPARAM__$S$__$ref$__TYPARAM__$S$__$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(_left.val_ref, read$())
+  requires acc(__TYPARAM__$S$__(_left.val_ref), read$())
+  requires acc(_right.val_ref, read$())
+  requires acc(__TYPARAM__$S$__(_right.val_ref), read$())
+{
+  snap$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_left.val_ref) == snap$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_right.val_ref)
+}
+
+function isize$$memory_eq$$__$TY$__isize$isize$$bool$(self: Ref, other: Ref): Bool
+  requires acc(isize(self), read$())
+  requires acc(isize(other), read$())
+{
+  (unfolding acc(isize(self), read$()) in (unfolding acc(isize(other), read$()) in self.val_int == other.val_int))
+}
+
+function m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_$$memory_eq$$__$TY$__m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_$m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_$$bool$(self: Ref, other: Ref): Bool
+  requires acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(self), read$())
+  requires acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(other), read$())
+{
+  (unfolding acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(self), read$()) in (unfolding acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(other), read$()) in isize$$memory_eq$$__$TY$__isize$isize$$bool$(self.f$x, other.f$x) && (isize$$memory_eq$$__$TY$__isize$isize$$bool$(self.f$y, other.f$y) && isize$$memory_eq$$__$TY$__isize$isize$$bool$(self.f$z, other.f$z))))
+}
+
+function not_equals$__$TY$____TYPARAM__$S$__$__TYPARAM__$S$__$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(__TYPARAM__$S$__(_left), read$())
+  requires acc(__TYPARAM__$S$__(_right), read$())
+{
+  snap$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_left) != snap$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_right)
+}
+
+function not_equals$__$TY$__ref$__TYPARAM__$S$__$ref$__TYPARAM__$S$__$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(_left.val_ref, read$())
+  requires acc(__TYPARAM__$S$__(_left.val_ref), read$())
+  requires acc(_right.val_ref, read$())
+  requires acc(__TYPARAM__$S$__(_right.val_ref), read$())
+{
+  snap$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_left.val_ref) != snap$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_right.val_ref)
+}
+
+function snap$__$TY$____TYPARAM__$S$__$Snap$__TYPARAM__$S$__(_arg: Ref): Snap$__TYPARAM__$S$__
+
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate __TYPARAM__$S$__(self: Ref) 
+
+predicate __TYPARAM__$__HS$__(self: Ref) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate isize(self: Ref) {
+  acc(self.val_int, write) && (-9223372036854775808 <= self.val_int && self.val_int <= 9223372036854775807)
+}
+
+predicate m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(self: Ref) {
+  acc(self.f$x, write) && (acc(__TYPARAM__$S$__(self.f$x), write) && (acc(self.f$y, write) && (acc(__TYPARAM__$S$__(self.f$y), write) && (acc(self.f$z, write) && acc(__TYPARAM__$S$__(self.f$z), write)))))
+}
+
+predicate m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(self: Ref) {
+  acc(self.f$x, write) && (acc(isize(self.f$x), write) && (acc(self.f$y, write) && (acc(isize(self.f$y), write) && (acc(self.f$z, write) && acc(isize(self.f$z), write)))))
+}
+
+predicate m_348_cgmath_point$$Vector1$opensqu$0$closesqu$$_beg_$u64$_end_(self: Ref) {
+  acc(self.f$x, write) && acc(u64(self.f$x), write)
+}
+
+predicate ref$__TYPARAM__$S$__(self: Ref) {
+  acc(self.val_ref, write) && acc(__TYPARAM__$S$__(self.val_ref), write)
+}
+
+predicate ref$__TYPARAM__$__HS$__(self: Ref) {
+  acc(self.val_ref, write) && acc(__TYPARAM__$__HS$__(self.val_ref), write)
+}
+
+predicate ref$m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(self.val_ref), write)
+}
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$isize$m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(self: Ref) {
+  acc(self.tuple_0, write) && (acc(isize(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(self.tuple_1), write)))
+}
+
+predicate tuple2$u64$m_348_cgmath_point$$Vector1$opensqu$0$closesqu$$_beg_$u64$_end_(self: Ref) {
+  acc(self.tuple_0, write) && (acc(u64(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(m_348_cgmath_point$$Vector1$opensqu$0$closesqu$$_beg_$u64$_end_(self.tuple_1), write)))
+}
+
+predicate u64(self: Ref) {
+  acc(self.val_int, write) && (0 <= self.val_int && self.val_int <= 18446744073709551615)
+}
+
+method m_348_cgmath_point$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  label start
+  // ========== start ==========
+  
+  // Name: "348_cgmath_point::main"
+  
+  // Def path: "348_cgmath_point::main[0]"
+  
+  // Span: tests/verify_overflow/fail/crates/348_cgmath_point.rs:61:1: 61:13
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_348_cgmath_point$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$7$closesqu$$$assert_receiver_is_total_eq$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "<Point3<S> as std::cmp::Eq>::assert_receiver_is_total_eq"
+  
+  // Def path: "348_cgmath_point::{{impl}}[7]::assert_receiver_is_total_eq[0]"
+  
+  // Span: tests/verify_overflow/fail/crates/348_cgmath_point.rs:7:21: 7:23
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_old$pre$0), read$())
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_348_cgmath_point$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$div$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var _1: Ref
+  var _2: Ref
+  var _3: Int
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Int
+  var _10: Int
+  var _11: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "348_cgmath_point::<impl std::ops::Div<Vector1<u64>> for u64>::div"
+  
+  // Def path: "348_cgmath_point::{{impl}}[3]::div[0]"
+  
+  // Span: tests/verify_overflow/fail/crates/348_cgmath_point.rs:53:5: 58:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  // Preconditions:
+  
+  inhale acc(u64(_1), write) && acc(m_348_cgmath_point$$Vector1$opensqu$0$closesqu$$_beg_$u64$_end_(_2), write)
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_5)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = _1
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_int, write)
+  unfold acc(u64(_1), write)
+  _6.val_int := _1.val_int
+  label l0
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = move _2
+  
+  _7 := _2
+  label l1
+  // [mir] _5 = (move _6, move _7)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(tuple2$u64$m_348_cgmath_point$$Vector1$opensqu$0$closesqu$$_beg_$u64$_end_(_5), write)
+  unfold acc(tuple2$u64$m_348_cgmath_point$$Vector1$opensqu$0$closesqu$$_beg_$u64$_end_(_5), write)
+  _5.tuple_0 := _6
+  label l2
+  _5.tuple_1 := _7
+  label l3
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = (_5.0: u64)
+  
+  _3 := builtin$havoc_int()
+  inhale true
+  _3 := _5.tuple_0.val_int
+  label l4
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = move (_5.1: Vector1<u64>)
+  
+  _4 := _5.tuple_1
+  label l5
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageLive(_8)
+  
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = _3
+  
+  _9 := builtin$havoc_int()
+  inhale true
+  _9 := _3
+  label l6
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = (_4.0: u64)
+  
+  _10 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_348_cgmath_point$$Vector1$opensqu$0$closesqu$$_beg_$u64$_end_(_4), write)
+  unfold acc(u64(_4.f$x), write)
+  _10 := _4.f$x.val_int
+  label l7
+  // [mir] _11 = Eq(_10, const 0u64)
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_bool, write)
+  _11.val_bool := _10 == 0
+  // [mir] assert(!move _11, "attempt to divide by zero") -> [success: bb2, unwind: bb1]
+  
+  __t3 := _11.val_bool
+  // Rust assertion: attempt to divide by zero
+  
+  assert !__t3
+  goto bb2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] _8 = Div(move _9, move _10)
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_int, write)
+  _8.val_int := _9 / _10
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] _0 = const <Vector1<S>>::new(move _8) -> [return: bb3, unwind: bb1]
+  
+  label l8
+  fold acc(u64(_8), write)
+  assert true
+  exhale acc(u64(_8), write)
+  _0 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_348_cgmath_point$$Vector1$opensqu$0$closesqu$$_beg_$u64$_end_(_0), write)
+  inhale true
+  inhale true
+  label l9
+  goto bb3
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(m_348_cgmath_point$$Vector1$opensqu$0$closesqu$$_beg_$u64$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_348_cgmath_point$$Vector1$opensqu$0$closesqu$$_beg_$u64$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_348_cgmath_point$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$8$closesqu$$$eq$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var _old$pre$0: Ref
+  var _old$pre$1: Ref
+  var _1: Ref
+  var _2: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "<Point3<S> as std::cmp::PartialEq>::eq"
+  
+  // Def path: "348_cgmath_point::{{impl}}[8]::eq[0]"
+  
+  // Span: tests/verify_overflow/fail/crates/348_cgmath_point.rs:7:10: 7:19
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$()) && (acc(_2.val_ref, write) && acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_2.val_ref), read$())))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _3 = discriminant((*_2))
+  
+  // [mir] _4 = &'<empty> (*_2)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  _4.val_ref := _2.val_ref
+  inhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_4.val_ref), read$())
+  label l0
+  // [mir] ReadForMatch(_4)
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_4.val_ref), read$())
+  }
+  // [mir] falseEdges -> [real: bb3, imaginary: bb2]
+  
+  goto bb3
+  label bb10
+  // ========== bb10 ==========
+  
+  __t6 := true
+  // [mir] _13 = const true
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_bool, write)
+  _13.val_bool := true
+  // [mir] goto -> bb13
+  
+  goto l29
+  label bb11
+  // ========== bb11 ==========
+  
+  __t7 := true
+  // [mir] _13 = const false
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_bool, write)
+  _13.val_bool := false
+  // [mir] goto -> bb13
+  
+  goto bb13
+  label bb12
+  // ========== bb12 ==========
+  
+  __t4 := true
+  // [mir] StorageLive(_17)
+  
+  // [mir] StorageLive(_18)
+  
+  // [mir] _18 = &'28s (*_11)
+  
+  _18 := builtin$havoc_ref()
+  inhale acc(_18.val_ref, write)
+  _18.val_ref := _11.val_ref
+  inhale acc(__TYPARAM__$S$__(_18.val_ref), read$())
+  label l14
+  // [mir] StorageLive(_19)
+  
+  // [mir] _19 = &'28s (*_6)
+  
+  _19 := builtin$havoc_ref()
+  inhale acc(_19.val_ref, write)
+  _19.val_ref := _6.val_ref
+  inhale acc(__TYPARAM__$S$__(_19.val_ref), read$())
+  label l15
+  // [mir] _17 = const std::cmp::PartialEq::eq(move _18, move _19) -> [return: bb15, unwind: bb1]
+  
+  label l16
+  _17 := builtin$havoc_ref()
+  inhale acc(bool(_17), write)
+  unfold acc(bool(_17), write)
+  inhale _17.val_bool == equals$__$TY$____TYPARAM__$S$__$__TYPARAM__$S$__$$bool$(_18.val_ref, _19.val_ref)
+  // transfer perm _18.val_ref --> old[l16](_18.val_ref) // unchecked: false
+  
+  // transfer perm _19.val_ref --> old[l16](_19.val_ref) // unchecked: false
+  
+  goto l17
+  label bb13
+  // ========== bb13 ==========
+  
+  __t8 := true
+  // [mir] StorageDead(_17)
+  
+  // [mir] StorageDead(_14)
+  
+  // [mir] switchInt(move _13) -> [false: bb7, otherwise: bb8]
+  
+  __t16 := _13.val_bool
+  if (!__t16) {
+    goto l21
+  }
+  goto l20
+  label bb14
+  // ========== bb14 ==========
+  
+  __t3 := true
+  // [mir] EndRegion('23s)
+  
+  // [mir] StorageDead(_16)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] switchInt(move _14) -> [false: bb11, otherwise: bb12]
+  
+  __t14 := _14.val_bool
+  if (!__t14) {
+    goto l13
+  }
+  goto l12
+  label bb15
+  // ========== bb15 ==========
+  
+  __t5 := true
+  // [mir] EndRegion('28s)
+  
+  // [mir] StorageDead(_19)
+  
+  // [mir] StorageDead(_18)
+  
+  // [mir] switchInt(move _17) -> [false: bb11, otherwise: bb10]
+  
+  __t15 := _17.val_bool
+  if (!__t15) {
+    goto l19
+  }
+  goto l18
+  label bb16
+  // ========== bb16 ==========
+  
+  __t10 := true
+  // [mir] EndRegion('34s)
+  
+  // [mir] StorageDead(_22)
+  
+  // [mir] StorageDead(_21)
+  
+  // [mir] switchInt(move _20) -> [false: bb7, otherwise: bb6]
+  
+  __t17 := _20.val_bool
+  if (!__t17) {
+    goto l27
+  }
+  goto l26
+  label bb3
+  // ========== bb3 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = &'37s ((*_2).0: S)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  unfold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_2.val_ref), read$())
+  _5.val_ref := _2.val_ref.f$x
+  inhale acc(__TYPARAM__$S$__(_5.val_ref), read$())
+  label l1
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = &'37s ((*_2).1: S)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_ref, write)
+  _6.val_ref := _2.val_ref.f$y
+  inhale acc(__TYPARAM__$S$__(_6.val_ref), read$())
+  label l2
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = &'37s ((*_2).2: S)
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _2.val_ref.f$z
+  inhale acc(__TYPARAM__$S$__(_7.val_ref), read$())
+  label l3
+  // [mir] _8 = discriminant((*_1))
+  
+  // [mir] _9 = &'<empty> (*_1)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _1.val_ref
+  inhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_9.val_ref), read$())
+  label l4
+  // [mir] ReadForMatch(_9)
+  
+  // expire_borrows ReborrowingDAG(L4,)
+
+  
+  if (__t1) {
+    // expire loan L4
+    
+    exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_9.val_ref), read$())
+  }
+  // [mir] falseEdges -> [real: bb5, imaginary: bb4]
+  
+  goto bb5
+  label bb5
+  // ========== bb5 ==========
+  
+  __t2 := true
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = &'36s ((*_1).0: S)
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_ref, write)
+  unfold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$())
+  _10.val_ref := _1.val_ref.f$x
+  inhale acc(__TYPARAM__$S$__(_10.val_ref), read$())
+  label l5
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = &'36s ((*_1).1: S)
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_ref, write)
+  _11.val_ref := _1.val_ref.f$y
+  inhale acc(__TYPARAM__$S$__(_11.val_ref), read$())
+  label l6
+  // [mir] StorageLive(_12)
+  
+  // [mir] _12 = &'36s ((*_1).2: S)
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_ref, write)
+  _12.val_ref := _1.val_ref.f$z
+  inhale acc(__TYPARAM__$S$__(_12.val_ref), read$())
+  label l7
+  // [mir] StorageLive(_13)
+  
+  // [mir] StorageLive(_14)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = &'23s (*_10)
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  _15.val_ref := _10.val_ref
+  inhale acc(__TYPARAM__$S$__(_15.val_ref), read$())
+  label l8
+  // [mir] StorageLive(_16)
+  
+  // [mir] _16 = &'23s (*_5)
+  
+  _16 := builtin$havoc_ref()
+  inhale acc(_16.val_ref, write)
+  _16.val_ref := _5.val_ref
+  inhale acc(__TYPARAM__$S$__(_16.val_ref), read$())
+  label l9
+  // [mir] _14 = const std::cmp::PartialEq::eq(move _15, move _16) -> [return: bb14, unwind: bb1]
+  
+  label l10
+  _14 := builtin$havoc_ref()
+  inhale acc(bool(_14), write)
+  unfold acc(bool(_14), write)
+  inhale _14.val_bool == equals$__$TY$____TYPARAM__$S$__$__TYPARAM__$S$__$$bool$(_15.val_ref, _16.val_ref)
+  // transfer perm _15.val_ref --> old[l10](_15.val_ref) // unchecked: false
+  
+  // transfer perm _16.val_ref --> old[l10](_16.val_ref) // unchecked: false
+  
+  goto l11
+  label bb6
+  // ========== bb6 ==========
+  
+  __t11 := true
+  // [mir] _0 = const true
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_bool, write)
+  _0.val_bool := true
+  // [mir] goto -> bb9
+  
+  goto l31
+  label bb7
+  // ========== bb7 ==========
+  
+  __t12 := true
+  // [mir] _0 = const false
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_bool, write)
+  _0.val_bool := false
+  // [mir] goto -> bb9
+  
+  goto bb9
+  label bb8
+  // ========== bb8 ==========
+  
+  __t9 := true
+  // [mir] StorageLive(_20)
+  
+  // [mir] StorageLive(_21)
+  
+  // [mir] _21 = &'34s (*_12)
+  
+  _21 := builtin$havoc_ref()
+  inhale acc(_21.val_ref, write)
+  _21.val_ref := _12.val_ref
+  inhale acc(__TYPARAM__$S$__(_21.val_ref), read$())
+  label l22
+  // [mir] StorageLive(_22)
+  
+  // [mir] _22 = &'34s (*_7)
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_ref, write)
+  _22.val_ref := _7.val_ref
+  inhale acc(__TYPARAM__$S$__(_22.val_ref), read$())
+  label l23
+  // [mir] _20 = const std::cmp::PartialEq::eq(move _21, move _22) -> [return: bb16, unwind: bb1]
+  
+  label l24
+  _20 := builtin$havoc_ref()
+  inhale acc(bool(_20), write)
+  unfold acc(bool(_20), write)
+  inhale _20.val_bool == equals$__$TY$____TYPARAM__$S$__$__TYPARAM__$S$__$$bool$(_21.val_ref, _22.val_ref)
+  // transfer perm _21.val_ref --> old[l24](_21.val_ref) // unchecked: false
+  
+  // transfer perm _22.val_ref --> old[l24](_22.val_ref) // unchecked: false
+  
+  goto l25
+  label bb9
+  // ========== bb9 ==========
+  
+  __t13 := true
+  // [mir] StorageDead(_20)
+  
+  // [mir] StorageDead(_13)
+  
+  // [mir] EndRegion('36s)
+  
+  // [mir] StorageDead(_12)
+  
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] EndRegion('37s)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] return
+  
+  goto return
+  label l11
+  // ========== l11 ==========
+  
+  // MIR edge bb5 --> bb14
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L17,L16,L9,L8,L5,L1,)
+
+  
+  if (__t2 && __t2) {
+    // expire loan L9
+    
+    // transfer perm old[l10](_16.val_ref) --> old[l9](_16.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l9](_16.val_ref)), read$())
+  }
+  if (__t2 && __t2) {
+    // expire loan L8
+    
+    // transfer perm old[l10](_15.val_ref) --> old[l8](_15.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l8](_15.val_ref)), read$())
+  }
+  if (__t2 && (__t2 && __t2)) {
+    // expire loan L5
+    
+    exhale acc(__TYPARAM__$S$__(_10.val_ref), read$())
+    // drop Acc(old[l8](_15.val_ref), write) (Acc(old[l8](_15.val_ref), write))
+    
+    // drop Acc(old[l10](_16.val_ref), write) (Acc(old[l10](_16.val_ref), write))
+    
+    // drop Pred(_5.val_ref, read) (Pred(_5.val_ref, read))
+    
+    // drop Pred(old[l10](_16.val_ref), read) (Pred(old[l10](_16.val_ref), read))
+    
+  }
+  if (__t1 && (__t2 && __t2)) {
+    // expire loan L1
+    
+    exhale acc(__TYPARAM__$S$__(_5.val_ref), read$())
+    // drop Acc(old[l9](_16.val_ref), write) (Acc(old[l9](_16.val_ref), write))
+    
+    // drop Acc(old[l10](_15.val_ref), write) (Acc(old[l10](_15.val_ref), write))
+    
+    // drop Pred(old[l10](_15.val_ref), read) (Pred(old[l10](_15.val_ref), read))
+    
+    // drop Pred(_10.val_ref, read) (Pred(_10.val_ref, read))
+    
+  }
+  goto bb14
+  label l12
+  // ========== l12 ==========
+  
+  // MIR edge bb14 --> bb12
+  
+  goto bb12
+  label l13
+  // ========== l13 ==========
+  
+  // MIR edge bb14 --> bb11
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L6,L2,)
+
+  
+  if (__t2) {
+    // expire loan L6
+    
+    exhale acc(__TYPARAM__$S$__(_11.val_ref), read$())
+    // drop Pred(_6.val_ref, read) (Pred(_6.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L2
+    
+    exhale acc(__TYPARAM__$S$__(_6.val_ref), read$())
+    // drop Pred(_11.val_ref, read) (Pred(_11.val_ref, read))
+    
+  }
+  goto bb11
+  label l17
+  // ========== l17 ==========
+  
+  // MIR edge bb12 --> bb15
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L15,L14,L11,L10,L6,L2,)
+
+  
+  if (__t4 && __t4) {
+    // expire loan L11
+    
+    // transfer perm old[l16](_19.val_ref) --> old[l15](_19.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l15](_19.val_ref)), read$())
+  }
+  if (__t4 && __t4) {
+    // expire loan L10
+    
+    // transfer perm old[l16](_18.val_ref) --> old[l14](_18.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l14](_18.val_ref)), read$())
+  }
+  if (__t2 && (__t4 && __t4)) {
+    // expire loan L6
+    
+    exhale acc(__TYPARAM__$S$__(_11.val_ref), read$())
+    // drop Acc(old[l16](_19.val_ref), write) (Acc(old[l16](_19.val_ref), write))
+    
+    // drop Acc(old[l14](_18.val_ref), write) (Acc(old[l14](_18.val_ref), write))
+    
+    // drop Pred(_6.val_ref, read) (Pred(_6.val_ref, read))
+    
+    // drop Pred(old[l16](_19.val_ref), read) (Pred(old[l16](_19.val_ref), read))
+    
+  }
+  if (__t1 && (__t4 && __t4)) {
+    // expire loan L2
+    
+    exhale acc(__TYPARAM__$S$__(_6.val_ref), read$())
+    // drop Acc(old[l16](_18.val_ref), write) (Acc(old[l16](_18.val_ref), write))
+    
+    // drop Acc(old[l15](_19.val_ref), write) (Acc(old[l15](_19.val_ref), write))
+    
+    // drop Pred(old[l16](_18.val_ref), read) (Pred(old[l16](_18.val_ref), read))
+    
+    // drop Pred(_11.val_ref, read) (Pred(_11.val_ref, read))
+    
+  }
+  goto bb15
+  label l18
+  // ========== l18 ==========
+  
+  // MIR edge bb15 --> bb10
+  
+  goto bb10
+  label l19
+  // ========== l19 ==========
+  
+  // MIR edge bb15 --> bb11
+  
+  goto l28
+  label l20
+  // ========== l20 ==========
+  
+  // MIR edge bb13 --> bb8
+  
+  goto bb8
+  label l21
+  // ========== l21 ==========
+  
+  // MIR edge bb13 --> bb7
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L7,L3,)
+
+  
+  if (__t2) {
+    // expire loan L7
+    
+    exhale acc(__TYPARAM__$S$__(_12.val_ref), read$())
+    // drop Pred(_7.val_ref, read) (Pred(_7.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L3
+    
+    exhale acc(__TYPARAM__$S$__(_7.val_ref), read$())
+    // drop Pred(_12.val_ref, read) (Pred(_12.val_ref, read))
+    
+  }
+  goto bb7
+  label l25
+  // ========== l25 ==========
+  
+  // MIR edge bb8 --> bb16
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L19,L18,L13,L12,L7,L3,)
+
+  
+  if (__t9 && __t9) {
+    // expire loan L13
+    
+    // transfer perm old[l24](_22.val_ref) --> old[l23](_22.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l23](_22.val_ref)), read$())
+  }
+  if (__t9 && __t9) {
+    // expire loan L12
+    
+    // transfer perm old[l24](_21.val_ref) --> old[l22](_21.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l22](_21.val_ref)), read$())
+  }
+  if (__t2 && (__t9 && __t9)) {
+    // expire loan L7
+    
+    exhale acc(__TYPARAM__$S$__(_12.val_ref), read$())
+    // drop Acc(old[l24](_22.val_ref), write) (Acc(old[l24](_22.val_ref), write))
+    
+    // drop Acc(old[l22](_21.val_ref), write) (Acc(old[l22](_21.val_ref), write))
+    
+    // drop Pred(_7.val_ref, read) (Pred(_7.val_ref, read))
+    
+    // drop Pred(old[l24](_22.val_ref), read) (Pred(old[l24](_22.val_ref), read))
+    
+  }
+  if (__t1 && (__t9 && __t9)) {
+    // expire loan L3
+    
+    exhale acc(__TYPARAM__$S$__(_7.val_ref), read$())
+    // drop Acc(old[l24](_21.val_ref), write) (Acc(old[l24](_21.val_ref), write))
+    
+    // drop Acc(old[l23](_22.val_ref), write) (Acc(old[l23](_22.val_ref), write))
+    
+    // drop Pred(_12.val_ref, read) (Pred(_12.val_ref, read))
+    
+    // drop Pred(old[l24](_21.val_ref), read) (Pred(old[l24](_21.val_ref), read))
+    
+  }
+  goto bb16
+  label l26
+  // ========== l26 ==========
+  
+  // MIR edge bb16 --> bb6
+  
+  goto bb6
+  label l27
+  // ========== l27 ==========
+  
+  // MIR edge bb16 --> bb7
+  
+  goto l30
+  label l28
+  // ========== l28 ==========
+  
+  // drop Acc(_17.val_bool, write) (Acc(_17.val_bool, write))
+  
+  // drop Acc(_19.val_ref, write) (Acc(_19.val_ref, write))
+  
+  // drop Acc(_18.val_ref, write) (Acc(_18.val_ref, write))
+  
+  goto bb11
+  label l29
+  // ========== l29 ==========
+  
+  // drop Acc(_17.val_bool, write) (Acc(_17.val_bool, write))
+  
+  // drop Acc(_18.val_ref, write) (Acc(_18.val_ref, write))
+  
+  // drop Acc(_19.val_ref, write) (Acc(_19.val_ref, write))
+  
+  goto bb13
+  label l30
+  // ========== l30 ==========
+  
+  // drop Acc(_20.val_bool, write) (Acc(_20.val_bool, write))
+  
+  // drop Acc(_22.val_ref, write) (Acc(_22.val_ref, write))
+  
+  // drop Acc(_21.val_ref, write) (Acc(_21.val_ref, write))
+  
+  goto bb7
+  label l31
+  // ========== l31 ==========
+  
+  // drop Acc(_22.val_ref, write) (Acc(_22.val_ref, write))
+  
+  // drop Acc(_21.val_ref, write) (Acc(_21.val_ref, write))
+  
+  // drop Acc(_20.val_bool, write) (Acc(_20.val_bool, write))
+  
+  goto bb9
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$())
+  // obtain acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  fold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_2.val_ref), read$())
+  // obtain acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_2.val_ref), write)
+  
+  _old$pre$1 := _2.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0), write)
+  // obtain acc(bool(_0), write)
+  
+  assert true
+  exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_old$pre$0), read$()) && acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_old$pre$1), read$())
+  exhale acc(bool(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_348_cgmath_point$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$clone$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "<Point3<S> as std::clone::Clone>::clone"
+  
+  // Def path: "348_cgmath_point::{{impl}}[5]::clone[0]"
+  
+  // Span: tests/verify_overflow/fail/crates/348_cgmath_point.rs:7:31: 7:36
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _2 = discriminant((*_1))
+  
+  // [mir] _3 = &'<empty> (*_1)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_ref, write)
+  _3.val_ref := _1.val_ref
+  inhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_3.val_ref), read$())
+  label l0
+  // [mir] ReadForMatch(_3)
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_3.val_ref), read$())
+  }
+  // [mir] falseEdges -> [real: bb3, imaginary: bb2]
+  
+  goto bb3
+  label bb12
+  // ========== bb12 ==========
+  
+  __t5 := true
+  // [mir] StorageDead(_13)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] drop(_10) -> [return: bb13, unwind: bb7]
+  
+  goto bb13
+  label bb13
+  // ========== bb13 ==========
+  
+  __t6 := true
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageDead(_12)
+  
+  // [mir] drop(_7) -> [return: bb14, unwind: bb1]
+  
+  goto bb14
+  label bb14
+  // ========== bb14 ==========
+  
+  __t7 := true
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] EndRegion('29s)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] return
+  
+  goto return
+  label bb3
+  // ========== bb3 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = &'29s ((*_1).0: S)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  unfold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$())
+  _4.val_ref := _1.val_ref.f$x
+  inhale acc(__TYPARAM__$S$__(_4.val_ref), read$())
+  label l1
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = &'29s ((*_1).1: S)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  _5.val_ref := _1.val_ref.f$y
+  inhale acc(__TYPARAM__$S$__(_5.val_ref), read$())
+  label l2
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = &'29s ((*_1).2: S)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_ref, write)
+  _6.val_ref := _1.val_ref.f$z
+  inhale acc(__TYPARAM__$S$__(_6.val_ref), read$())
+  label l3
+  // [mir] StorageLive(_7)
+  
+  // [mir] StorageLive(_8)
+  
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = &'15s (*_4)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _4.val_ref
+  inhale acc(__TYPARAM__$S$__(_9.val_ref), read$())
+  label l4
+  // [mir] _8 = &'15s (*_9)
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_ref, write)
+  _8.val_ref := _9.val_ref
+  inhale acc(__TYPARAM__$S$__(_8.val_ref), read$())
+  label l5
+  // [mir] _7 = const std::clone::Clone::clone(move _8) -> [return: bb4, unwind: bb1]
+  
+  label l6
+  assert true
+  exhale acc(_8.val_ref, write)
+  _7 := builtin$havoc_ref()
+  inhale true
+  inhale acc(__TYPARAM__$S$__(_7), write)
+  // transfer perm _8.val_ref --> old[l6](_8.val_ref) // unchecked: true
+  
+  inhale true
+  inhale true
+  label l7
+  goto l8
+  label bb4
+  // ========== bb4 ==========
+  
+  __t2 := true
+  // [mir] EndRegion('15s)
+  
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageLive(_10)
+  
+  // [mir] StorageLive(_11)
+  
+  // [mir] StorageLive(_12)
+  
+  // [mir] _12 = &'21s (*_5)
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_ref, write)
+  _12.val_ref := _5.val_ref
+  inhale acc(__TYPARAM__$S$__(_12.val_ref), read$())
+  label l9
+  // [mir] _11 = &'21s (*_12)
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_ref, write)
+  _11.val_ref := _12.val_ref
+  inhale acc(__TYPARAM__$S$__(_11.val_ref), read$())
+  label l10
+  // [mir] _10 = const std::clone::Clone::clone(move _11) -> [return: bb5, unwind: bb8]
+  
+  label l11
+  assert true
+  exhale acc(_11.val_ref, write)
+  _10 := builtin$havoc_ref()
+  inhale true
+  inhale acc(__TYPARAM__$S$__(_10), write)
+  // transfer perm _11.val_ref --> old[l11](_11.val_ref) // unchecked: true
+  
+  inhale true
+  inhale true
+  label l12
+  goto l13
+  label bb5
+  // ========== bb5 ==========
+  
+  __t3 := true
+  // [mir] EndRegion('21s)
+  
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageLive(_13)
+  
+  // [mir] StorageLive(_14)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = &'27s (*_6)
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  _15.val_ref := _6.val_ref
+  inhale acc(__TYPARAM__$S$__(_15.val_ref), read$())
+  label l14
+  // [mir] _14 = &'27s (*_15)
+  
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.val_ref, write)
+  _14.val_ref := _15.val_ref
+  inhale acc(__TYPARAM__$S$__(_14.val_ref), read$())
+  label l15
+  // [mir] _13 = const std::clone::Clone::clone(move _14) -> [return: bb9, unwind: bb11]
+  
+  label l16
+  assert true
+  exhale acc(_14.val_ref, write)
+  _13 := builtin$havoc_ref()
+  inhale true
+  inhale acc(__TYPARAM__$S$__(_13), write)
+  // transfer perm _14.val_ref --> old[l16](_14.val_ref) // unchecked: true
+  
+  inhale true
+  inhale true
+  label l17
+  goto l18
+  label bb9
+  // ========== bb9 ==========
+  
+  __t4 := true
+  // [mir] EndRegion('27s)
+  
+  // [mir] StorageDead(_14)
+  
+  // [mir] _0 = Point3<S> { x: move _7, y: move _10, z: move _13 }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_0), write)
+  unfold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_0), write)
+  _0.f$x := _7
+  label l19
+  _0.f$y := _10
+  label l20
+  _0.f$z := _13
+  label l21
+  // [mir] drop(_13) -> [return: bb12, unwind: bb10]
+  
+  goto bb12
+  label l13
+  // ========== l13 ==========
+  
+  // MIR edge bb4 --> bb5
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L12,L7,L6,L2,)
+
+  
+  if (__t2 && __t2) {
+    // expire loan L7
+    
+    // transfer perm old[l11](_11.val_ref) --> old[l10](_11.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l10](_11.val_ref)), read$())
+  }
+  if (__t2 && (__t2 && __t2)) {
+    // expire loan L6
+    
+    exhale acc(__TYPARAM__$S$__(_12.val_ref), read$())
+  }
+  if (__t1 && (__t2 && (__t2 && __t2))) {
+    // expire loan L2
+    
+    exhale acc(__TYPARAM__$S$__(_5.val_ref), read$())
+  }
+  goto bb5
+  label l18
+  // ========== l18 ==========
+  
+  // MIR edge bb5 --> bb9
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L11,L9,L8,L3,)
+
+  
+  if (__t3 && __t3) {
+    // expire loan L9
+    
+    // transfer perm old[l16](_14.val_ref) --> old[l15](_14.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l15](_14.val_ref)), read$())
+  }
+  if (__t3 && (__t3 && __t3)) {
+    // expire loan L8
+    
+    exhale acc(__TYPARAM__$S$__(_15.val_ref), read$())
+  }
+  if (__t1 && (__t3 && (__t3 && __t3))) {
+    // expire loan L3
+    
+    exhale acc(__TYPARAM__$S$__(_6.val_ref), read$())
+  }
+  goto bb9
+  label l8
+  // ========== l8 ==========
+  
+  // MIR edge bb3 --> bb4
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L10,L5,L4,L1,)
+
+  
+  if (__t1 && __t1) {
+    // expire loan L5
+    
+    // transfer perm old[l6](_8.val_ref) --> old[l5](_8.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l5](_8.val_ref)), read$())
+  }
+  if (__t1 && (__t1 && __t1)) {
+    // expire loan L4
+    
+    exhale acc(__TYPARAM__$S$__(_9.val_ref), read$())
+  }
+  if (__t1 && (__t1 && (__t1 && __t1))) {
+    // expire loan L1
+    
+    exhale acc(__TYPARAM__$S$__(_4.val_ref), read$())
+  }
+  goto bb4
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$())
+  // obtain acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_0), write)
+  // obtain acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_old$pre$0), read$())
+  exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_348_cgmath_point$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$8$closesqu$$$ne$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var _old$pre$0: Ref
+  var _old$pre$1: Ref
+  var _1: Ref
+  var _2: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "<Point3<S> as std::cmp::PartialEq>::ne"
+  
+  // Def path: "348_cgmath_point::{{impl}}[8]::ne[0]"
+  
+  // Span: tests/verify_overflow/fail/crates/348_cgmath_point.rs:7:10: 7:19
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$()) && (acc(_2.val_ref, write) && acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_2.val_ref), read$())))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _3 = discriminant((*_2))
+  
+  // [mir] _4 = &'<empty> (*_2)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  _4.val_ref := _2.val_ref
+  inhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_4.val_ref), read$())
+  label l0
+  // [mir] ReadForMatch(_4)
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_4.val_ref), read$())
+  }
+  // [mir] falseEdges -> [real: bb3, imaginary: bb2]
+  
+  goto bb3
+  label bb10
+  // ========== bb10 ==========
+  
+  __t6 := true
+  // [mir] _13 = const true
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_bool, write)
+  _13.val_bool := true
+  // [mir] goto -> bb13
+  
+  goto bb13
+  label bb11
+  // ========== bb11 ==========
+  
+  __t7 := true
+  // [mir] _13 = const false
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_bool, write)
+  _13.val_bool := false
+  // [mir] goto -> bb13
+  
+  goto l29
+  label bb12
+  // ========== bb12 ==========
+  
+  __t4 := true
+  // [mir] StorageLive(_17)
+  
+  // [mir] StorageLive(_18)
+  
+  // [mir] _18 = &'28s (*_11)
+  
+  _18 := builtin$havoc_ref()
+  inhale acc(_18.val_ref, write)
+  _18.val_ref := _11.val_ref
+  inhale acc(__TYPARAM__$S$__(_18.val_ref), read$())
+  label l14
+  // [mir] StorageLive(_19)
+  
+  // [mir] _19 = &'28s (*_6)
+  
+  _19 := builtin$havoc_ref()
+  inhale acc(_19.val_ref, write)
+  _19.val_ref := _6.val_ref
+  inhale acc(__TYPARAM__$S$__(_19.val_ref), read$())
+  label l15
+  // [mir] _17 = const std::cmp::PartialEq::ne(move _18, move _19) -> [return: bb15, unwind: bb1]
+  
+  label l16
+  _17 := builtin$havoc_ref()
+  inhale acc(bool(_17), write)
+  unfold acc(bool(_17), write)
+  inhale _17.val_bool == not_equals$__$TY$____TYPARAM__$S$__$__TYPARAM__$S$__$$bool$(_18.val_ref, _19.val_ref)
+  // transfer perm _18.val_ref --> old[l16](_18.val_ref) // unchecked: false
+  
+  // transfer perm _19.val_ref --> old[l16](_19.val_ref) // unchecked: false
+  
+  goto l17
+  label bb13
+  // ========== bb13 ==========
+  
+  __t8 := true
+  // [mir] StorageDead(_17)
+  
+  // [mir] StorageDead(_14)
+  
+  // [mir] switchInt(move _13) -> [false: bb8, otherwise: bb6]
+  
+  __t16 := _13.val_bool
+  if (!__t16) {
+    goto l21
+  }
+  goto l20
+  label bb14
+  // ========== bb14 ==========
+  
+  __t3 := true
+  // [mir] EndRegion('23s)
+  
+  // [mir] StorageDead(_16)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] switchInt(move _14) -> [false: bb12, otherwise: bb10]
+  
+  __t14 := _14.val_bool
+  if (!__t14) {
+    goto l13
+  }
+  goto l12
+  label bb15
+  // ========== bb15 ==========
+  
+  __t5 := true
+  // [mir] EndRegion('28s)
+  
+  // [mir] StorageDead(_19)
+  
+  // [mir] StorageDead(_18)
+  
+  // [mir] switchInt(move _17) -> [false: bb11, otherwise: bb10]
+  
+  __t15 := _17.val_bool
+  if (!__t15) {
+    goto l19
+  }
+  goto l18
+  label bb16
+  // ========== bb16 ==========
+  
+  __t10 := true
+  // [mir] EndRegion('34s)
+  
+  // [mir] StorageDead(_22)
+  
+  // [mir] StorageDead(_21)
+  
+  // [mir] switchInt(move _20) -> [false: bb7, otherwise: bb6]
+  
+  __t17 := _20.val_bool
+  if (!__t17) {
+    goto l27
+  }
+  goto l26
+  label bb3
+  // ========== bb3 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = &'37s ((*_2).0: S)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  unfold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_2.val_ref), read$())
+  _5.val_ref := _2.val_ref.f$x
+  inhale acc(__TYPARAM__$S$__(_5.val_ref), read$())
+  label l1
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = &'37s ((*_2).1: S)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_ref, write)
+  _6.val_ref := _2.val_ref.f$y
+  inhale acc(__TYPARAM__$S$__(_6.val_ref), read$())
+  label l2
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = &'37s ((*_2).2: S)
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _2.val_ref.f$z
+  inhale acc(__TYPARAM__$S$__(_7.val_ref), read$())
+  label l3
+  // [mir] _8 = discriminant((*_1))
+  
+  // [mir] _9 = &'<empty> (*_1)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _1.val_ref
+  inhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_9.val_ref), read$())
+  label l4
+  // [mir] ReadForMatch(_9)
+  
+  // expire_borrows ReborrowingDAG(L4,)
+
+  
+  if (__t1) {
+    // expire loan L4
+    
+    exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_9.val_ref), read$())
+  }
+  // [mir] falseEdges -> [real: bb5, imaginary: bb4]
+  
+  goto bb5
+  label bb5
+  // ========== bb5 ==========
+  
+  __t2 := true
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = &'36s ((*_1).0: S)
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_ref, write)
+  unfold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$())
+  _10.val_ref := _1.val_ref.f$x
+  inhale acc(__TYPARAM__$S$__(_10.val_ref), read$())
+  label l5
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = &'36s ((*_1).1: S)
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_ref, write)
+  _11.val_ref := _1.val_ref.f$y
+  inhale acc(__TYPARAM__$S$__(_11.val_ref), read$())
+  label l6
+  // [mir] StorageLive(_12)
+  
+  // [mir] _12 = &'36s ((*_1).2: S)
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_ref, write)
+  _12.val_ref := _1.val_ref.f$z
+  inhale acc(__TYPARAM__$S$__(_12.val_ref), read$())
+  label l7
+  // [mir] StorageLive(_13)
+  
+  // [mir] StorageLive(_14)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = &'23s (*_10)
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  _15.val_ref := _10.val_ref
+  inhale acc(__TYPARAM__$S$__(_15.val_ref), read$())
+  label l8
+  // [mir] StorageLive(_16)
+  
+  // [mir] _16 = &'23s (*_5)
+  
+  _16 := builtin$havoc_ref()
+  inhale acc(_16.val_ref, write)
+  _16.val_ref := _5.val_ref
+  inhale acc(__TYPARAM__$S$__(_16.val_ref), read$())
+  label l9
+  // [mir] _14 = const std::cmp::PartialEq::ne(move _15, move _16) -> [return: bb14, unwind: bb1]
+  
+  label l10
+  _14 := builtin$havoc_ref()
+  inhale acc(bool(_14), write)
+  unfold acc(bool(_14), write)
+  inhale _14.val_bool == not_equals$__$TY$____TYPARAM__$S$__$__TYPARAM__$S$__$$bool$(_15.val_ref, _16.val_ref)
+  // transfer perm _15.val_ref --> old[l10](_15.val_ref) // unchecked: false
+  
+  // transfer perm _16.val_ref --> old[l10](_16.val_ref) // unchecked: false
+  
+  goto l11
+  label bb6
+  // ========== bb6 ==========
+  
+  __t11 := true
+  // [mir] _0 = const true
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_bool, write)
+  _0.val_bool := true
+  // [mir] goto -> bb9
+  
+  goto bb9
+  label bb7
+  // ========== bb7 ==========
+  
+  __t12 := true
+  // [mir] _0 = const false
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_bool, write)
+  _0.val_bool := false
+  // [mir] goto -> bb9
+  
+  goto l31
+  label bb8
+  // ========== bb8 ==========
+  
+  __t9 := true
+  // [mir] StorageLive(_20)
+  
+  // [mir] StorageLive(_21)
+  
+  // [mir] _21 = &'34s (*_12)
+  
+  _21 := builtin$havoc_ref()
+  inhale acc(_21.val_ref, write)
+  _21.val_ref := _12.val_ref
+  inhale acc(__TYPARAM__$S$__(_21.val_ref), read$())
+  label l22
+  // [mir] StorageLive(_22)
+  
+  // [mir] _22 = &'34s (*_7)
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_ref, write)
+  _22.val_ref := _7.val_ref
+  inhale acc(__TYPARAM__$S$__(_22.val_ref), read$())
+  label l23
+  // [mir] _20 = const std::cmp::PartialEq::ne(move _21, move _22) -> [return: bb16, unwind: bb1]
+  
+  label l24
+  _20 := builtin$havoc_ref()
+  inhale acc(bool(_20), write)
+  unfold acc(bool(_20), write)
+  inhale _20.val_bool == not_equals$__$TY$____TYPARAM__$S$__$__TYPARAM__$S$__$$bool$(_21.val_ref, _22.val_ref)
+  // transfer perm _21.val_ref --> old[l24](_21.val_ref) // unchecked: false
+  
+  // transfer perm _22.val_ref --> old[l24](_22.val_ref) // unchecked: false
+  
+  goto l25
+  label bb9
+  // ========== bb9 ==========
+  
+  __t13 := true
+  // [mir] StorageDead(_20)
+  
+  // [mir] StorageDead(_13)
+  
+  // [mir] EndRegion('36s)
+  
+  // [mir] StorageDead(_12)
+  
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] EndRegion('37s)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] return
+  
+  goto return
+  label l11
+  // ========== l11 ==========
+  
+  // MIR edge bb5 --> bb14
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L19,L18,L9,L8,L5,L1,)
+
+  
+  if (__t2 && __t2) {
+    // expire loan L9
+    
+    // transfer perm old[l10](_16.val_ref) --> old[l9](_16.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l9](_16.val_ref)), read$())
+  }
+  if (__t2 && __t2) {
+    // expire loan L8
+    
+    // transfer perm old[l10](_15.val_ref) --> old[l8](_15.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l8](_15.val_ref)), read$())
+  }
+  if (__t2 && (__t2 && __t2)) {
+    // expire loan L5
+    
+    exhale acc(__TYPARAM__$S$__(_10.val_ref), read$())
+    // drop Acc(old[l8](_15.val_ref), write) (Acc(old[l8](_15.val_ref), write))
+    
+    // drop Acc(old[l10](_16.val_ref), write) (Acc(old[l10](_16.val_ref), write))
+    
+    // drop Pred(old[l10](_16.val_ref), read) (Pred(old[l10](_16.val_ref), read))
+    
+    // drop Pred(_5.val_ref, read) (Pred(_5.val_ref, read))
+    
+  }
+  if (__t1 && (__t2 && __t2)) {
+    // expire loan L1
+    
+    exhale acc(__TYPARAM__$S$__(_5.val_ref), read$())
+    // drop Acc(old[l9](_16.val_ref), write) (Acc(old[l9](_16.val_ref), write))
+    
+    // drop Acc(old[l10](_15.val_ref), write) (Acc(old[l10](_15.val_ref), write))
+    
+    // drop Pred(old[l10](_15.val_ref), read) (Pred(old[l10](_15.val_ref), read))
+    
+    // drop Pred(_10.val_ref, read) (Pred(_10.val_ref, read))
+    
+  }
+  goto bb14
+  label l12
+  // ========== l12 ==========
+  
+  // MIR edge bb14 --> bb10
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L6,L2,)
+
+  
+  if (__t2) {
+    // expire loan L6
+    
+    exhale acc(__TYPARAM__$S$__(_11.val_ref), read$())
+    // drop Pred(_6.val_ref, read) (Pred(_6.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L2
+    
+    exhale acc(__TYPARAM__$S$__(_6.val_ref), read$())
+    // drop Pred(_11.val_ref, read) (Pred(_11.val_ref, read))
+    
+  }
+  goto bb10
+  label l13
+  // ========== l13 ==========
+  
+  // MIR edge bb14 --> bb12
+  
+  goto bb12
+  label l17
+  // ========== l17 ==========
+  
+  // MIR edge bb12 --> bb15
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L15,L14,L13,L12,L6,L2,)
+
+  
+  if (__t4 && __t4) {
+    // expire loan L13
+    
+    // transfer perm old[l16](_19.val_ref) --> old[l15](_19.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l15](_19.val_ref)), read$())
+  }
+  if (__t4 && __t4) {
+    // expire loan L12
+    
+    // transfer perm old[l16](_18.val_ref) --> old[l14](_18.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l14](_18.val_ref)), read$())
+  }
+  if (__t2 && (__t4 && __t4)) {
+    // expire loan L6
+    
+    exhale acc(__TYPARAM__$S$__(_11.val_ref), read$())
+    // drop Acc(old[l16](_19.val_ref), write) (Acc(old[l16](_19.val_ref), write))
+    
+    // drop Acc(old[l14](_18.val_ref), write) (Acc(old[l14](_18.val_ref), write))
+    
+    // drop Pred(old[l16](_19.val_ref), read) (Pred(old[l16](_19.val_ref), read))
+    
+    // drop Pred(_6.val_ref, read) (Pred(_6.val_ref, read))
+    
+  }
+  if (__t1 && (__t4 && __t4)) {
+    // expire loan L2
+    
+    exhale acc(__TYPARAM__$S$__(_6.val_ref), read$())
+    // drop Acc(old[l15](_19.val_ref), write) (Acc(old[l15](_19.val_ref), write))
+    
+    // drop Acc(old[l16](_18.val_ref), write) (Acc(old[l16](_18.val_ref), write))
+    
+    // drop Pred(_11.val_ref, read) (Pred(_11.val_ref, read))
+    
+    // drop Pred(old[l16](_18.val_ref), read) (Pred(old[l16](_18.val_ref), read))
+    
+  }
+  goto bb15
+  label l18
+  // ========== l18 ==========
+  
+  // MIR edge bb15 --> bb10
+  
+  goto l28
+  label l19
+  // ========== l19 ==========
+  
+  // MIR edge bb15 --> bb11
+  
+  goto bb11
+  label l20
+  // ========== l20 ==========
+  
+  // MIR edge bb13 --> bb6
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L7,L3,)
+
+  
+  if (__t2) {
+    // expire loan L7
+    
+    exhale acc(__TYPARAM__$S$__(_12.val_ref), read$())
+    // drop Pred(_7.val_ref, read) (Pred(_7.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L3
+    
+    exhale acc(__TYPARAM__$S$__(_7.val_ref), read$())
+    // drop Pred(_12.val_ref, read) (Pred(_12.val_ref, read))
+    
+  }
+  goto bb6
+  label l21
+  // ========== l21 ==========
+  
+  // MIR edge bb13 --> bb8
+  
+  goto bb8
+  label l25
+  // ========== l25 ==========
+  
+  // MIR edge bb8 --> bb16
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L17,L16,L11,L10,L7,L3,)
+
+  
+  if (__t9 && __t9) {
+    // expire loan L11
+    
+    // transfer perm old[l24](_22.val_ref) --> old[l23](_22.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l23](_22.val_ref)), read$())
+  }
+  if (__t9 && __t9) {
+    // expire loan L10
+    
+    // transfer perm old[l24](_21.val_ref) --> old[l22](_21.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l22](_21.val_ref)), read$())
+  }
+  if (__t2 && (__t9 && __t9)) {
+    // expire loan L7
+    
+    exhale acc(__TYPARAM__$S$__(_12.val_ref), read$())
+    // drop Acc(old[l22](_21.val_ref), write) (Acc(old[l22](_21.val_ref), write))
+    
+    // drop Acc(old[l24](_22.val_ref), write) (Acc(old[l24](_22.val_ref), write))
+    
+    // drop Pred(old[l24](_22.val_ref), read) (Pred(old[l24](_22.val_ref), read))
+    
+    // drop Pred(_7.val_ref, read) (Pred(_7.val_ref, read))
+    
+  }
+  if (__t1 && (__t9 && __t9)) {
+    // expire loan L3
+    
+    exhale acc(__TYPARAM__$S$__(_7.val_ref), read$())
+    // drop Acc(old[l23](_22.val_ref), write) (Acc(old[l23](_22.val_ref), write))
+    
+    // drop Acc(old[l24](_21.val_ref), write) (Acc(old[l24](_21.val_ref), write))
+    
+    // drop Pred(_12.val_ref, read) (Pred(_12.val_ref, read))
+    
+    // drop Pred(old[l24](_21.val_ref), read) (Pred(old[l24](_21.val_ref), read))
+    
+  }
+  goto bb16
+  label l26
+  // ========== l26 ==========
+  
+  // MIR edge bb16 --> bb6
+  
+  goto l30
+  label l27
+  // ========== l27 ==========
+  
+  // MIR edge bb16 --> bb7
+  
+  goto bb7
+  label l28
+  // ========== l28 ==========
+  
+  // drop Acc(_18.val_ref, write) (Acc(_18.val_ref, write))
+  
+  // drop Acc(_19.val_ref, write) (Acc(_19.val_ref, write))
+  
+  // drop Acc(_17.val_bool, write) (Acc(_17.val_bool, write))
+  
+  goto bb10
+  label l29
+  // ========== l29 ==========
+  
+  // drop Acc(_18.val_ref, write) (Acc(_18.val_ref, write))
+  
+  // drop Acc(_19.val_ref, write) (Acc(_19.val_ref, write))
+  
+  // drop Acc(_17.val_bool, write) (Acc(_17.val_bool, write))
+  
+  goto bb13
+  label l30
+  // ========== l30 ==========
+  
+  // drop Acc(_21.val_ref, write) (Acc(_21.val_ref, write))
+  
+  // drop Acc(_22.val_ref, write) (Acc(_22.val_ref, write))
+  
+  // drop Acc(_20.val_bool, write) (Acc(_20.val_bool, write))
+  
+  goto bb6
+  label l31
+  // ========== l31 ==========
+  
+  // drop Acc(_20.val_bool, write) (Acc(_20.val_bool, write))
+  
+  // drop Acc(_22.val_ref, write) (Acc(_22.val_ref, write))
+  
+  // drop Acc(_21.val_ref, write) (Acc(_21.val_ref, write))
+  
+  goto bb9
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$())
+  // obtain acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  fold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_2.val_ref), read$())
+  // obtain acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_2.val_ref), write)
+  
+  _old$pre$1 := _2.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0), write)
+  // obtain acc(bool(_0), write)
+  
+  assert true
+  exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_old$pre$0), read$()) && acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_old$pre$1), read$())
+  exhale acc(bool(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_348_cgmath_point$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$div$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var _1: Ref
+  var _2: Ref
+  var _3: Int
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Int
+  var _10: Int
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Int
+  var _17: Int
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  var _23: Int
+  var _24: Int
+  var _25: Ref
+  var _26: Ref
+  var _27: Ref
+  var _28: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "348_cgmath_point::<impl std::ops::Div<Point3<isize>> for isize>::div"
+  
+  // Def path: "348_cgmath_point::{{impl}}[1]::div[0]"
+  
+  // Span: tests/verify_overflow/fail/crates/348_cgmath_point.rs:28:5: 33:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  // Preconditions:
+  
+  inhale acc(isize(_1), write) && acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(_2), write)
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_5)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = _1
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_int, write)
+  unfold acc(isize(_1), write)
+  _6.val_int := _1.val_int
+  label l0
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _2
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(_7), write)
+  inhale m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_$$memory_eq$$__$TY$__m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_$m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_$$bool$(_2, _7)
+  label l1
+  // [mir] _5 = (move _6, move _7)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(tuple2$isize$m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(_5), write)
+  unfold acc(tuple2$isize$m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(_5), write)
+  _5.tuple_0 := _6
+  label l2
+  _5.tuple_1 := _7
+  label l3
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = (_5.0: isize)
+  
+  _3 := builtin$havoc_int()
+  inhale true
+  _3 := _5.tuple_0.val_int
+  label l4
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = (_5.1: Point3<isize>)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(_4), write)
+  inhale m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_$$memory_eq$$__$TY$__m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_$m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_$$bool$(_5.tuple_1, _4)
+  label l5
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageLive(_8)
+  
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = _3
+  
+  _9 := builtin$havoc_int()
+  inhale true
+  _9 := _3
+  label l6
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = (_4.0: isize)
+  
+  _10 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(_4), write)
+  unfold acc(isize(_4.f$x), write)
+  _10 := _4.f$x.val_int
+  label l7
+  // [mir] _11 = Eq(_10, const 0isize)
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_bool, write)
+  _11.val_bool := _10 == 0
+  // [mir] assert(!move _11, "attempt to divide by zero") -> [success: bb2, unwind: bb1]
+  
+  __t8 := _11.val_bool
+  // Rust assertion: attempt to divide by zero
+  
+  assert !__t8
+  goto bb2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] _12 = Eq(_10, const -1isize)
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_bool, write)
+  _12.val_bool := _10 == -1
+  // [mir] _13 = Eq(_9, const -9223372036854775808isize)
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_bool, write)
+  _13.val_bool := _9 == -9223372036854775808
+  // [mir] _14 = BitAnd(move _12, move _13)
+  
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.val_bool, write)
+  _14.val_bool := _12.val_bool && _13.val_bool
+  // [mir] assert(!move _14, "attempt to divide with overflow") -> [success: bb3, unwind: bb1]
+  
+  __t9 := _14.val_bool
+  // Rust assertion: attempt to divide with overflow
+  
+  assert !__t9
+  goto bb3
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] _8 = Div(move _9, move _10)
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_int, write)
+  _8.val_int := _9 / _10
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] StorageLive(_16)
+  
+  // [mir] _16 = _3
+  
+  _16 := builtin$havoc_int()
+  inhale true
+  _16 := _3
+  label l8
+  // [mir] StorageLive(_17)
+  
+  // [mir] _17 = (_4.1: isize)
+  
+  _17 := builtin$havoc_int()
+  inhale true
+  unfold acc(isize(_4.f$y), write)
+  _17 := _4.f$y.val_int
+  label l9
+  // [mir] _18 = Eq(_17, const 0isize)
+  
+  _18 := builtin$havoc_ref()
+  inhale acc(_18.val_bool, write)
+  _18.val_bool := _17 == 0
+  // [mir] assert(!move _18, "attempt to divide by zero") -> [success: bb4, unwind: bb1]
+  
+  __t10 := _18.val_bool
+  // Rust assertion: attempt to divide by zero
+  
+  assert !__t10
+  goto bb4
+  label bb4
+  // ========== bb4 ==========
+  
+  __t3 := true
+  // [mir] _19 = Eq(_17, const -1isize)
+  
+  _19 := builtin$havoc_ref()
+  inhale acc(_19.val_bool, write)
+  _19.val_bool := _17 == -1
+  // [mir] _20 = Eq(_16, const -9223372036854775808isize)
+  
+  _20 := builtin$havoc_ref()
+  inhale acc(_20.val_bool, write)
+  _20.val_bool := _16 == -9223372036854775808
+  // [mir] _21 = BitAnd(move _19, move _20)
+  
+  _21 := builtin$havoc_ref()
+  inhale acc(_21.val_bool, write)
+  _21.val_bool := _19.val_bool && _20.val_bool
+  // [mir] assert(!move _21, "attempt to divide with overflow") -> [success: bb5, unwind: bb1]
+  
+  __t11 := _21.val_bool
+  // Rust assertion: attempt to divide with overflow
+  
+  assert !__t11
+  goto bb5
+  label bb5
+  // ========== bb5 ==========
+  
+  __t4 := true
+  // [mir] _15 = Div(move _16, move _17)
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_int, write)
+  _15.val_int := _16 / _17
+  // [mir] StorageDead(_17)
+  
+  // [mir] StorageDead(_16)
+  
+  // [mir] StorageLive(_22)
+  
+  // [mir] StorageLive(_23)
+  
+  // [mir] _23 = _3
+  
+  _23 := builtin$havoc_int()
+  inhale true
+  _23 := _3
+  label l10
+  // [mir] StorageLive(_24)
+  
+  // [mir] _24 = (_4.2: isize)
+  
+  _24 := builtin$havoc_int()
+  inhale true
+  unfold acc(isize(_4.f$z), write)
+  _24 := _4.f$z.val_int
+  label l11
+  // [mir] _25 = Eq(_24, const 0isize)
+  
+  _25 := builtin$havoc_ref()
+  inhale acc(_25.val_bool, write)
+  _25.val_bool := _24 == 0
+  // [mir] assert(!move _25, "attempt to divide by zero") -> [success: bb6, unwind: bb1]
+  
+  __t12 := _25.val_bool
+  // Rust assertion: attempt to divide by zero
+  
+  assert !__t12
+  goto bb6
+  label bb6
+  // ========== bb6 ==========
+  
+  __t5 := true
+  // [mir] _26 = Eq(_24, const -1isize)
+  
+  _26 := builtin$havoc_ref()
+  inhale acc(_26.val_bool, write)
+  _26.val_bool := _24 == -1
+  // [mir] _27 = Eq(_23, const -9223372036854775808isize)
+  
+  _27 := builtin$havoc_ref()
+  inhale acc(_27.val_bool, write)
+  _27.val_bool := _23 == -9223372036854775808
+  // [mir] _28 = BitAnd(move _26, move _27)
+  
+  _28 := builtin$havoc_ref()
+  inhale acc(_28.val_bool, write)
+  _28.val_bool := _26.val_bool && _27.val_bool
+  // [mir] assert(!move _28, "attempt to divide with overflow") -> [success: bb7, unwind: bb1]
+  
+  __t13 := _28.val_bool
+  // Rust assertion: attempt to divide with overflow
+  
+  assert !__t13
+  goto bb7
+  label bb7
+  // ========== bb7 ==========
+  
+  __t6 := true
+  // [mir] _22 = Div(move _23, move _24)
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_int, write)
+  _22.val_int := _23 / _24
+  // [mir] StorageDead(_24)
+  
+  // [mir] StorageDead(_23)
+  
+  // [mir] _0 = const <Point3<S>>::new(move _8, move _15, move _22) -> [return: bb8, unwind: bb1]
+  
+  label l12
+  fold acc(isize(_8), write)
+  fold acc(isize(_22), write)
+  fold acc(isize(_15), write)
+  assert true
+  exhale acc(isize(_8), write) && (acc(isize(_15), write) && acc(isize(_22), write))
+  _0 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(_0), write)
+  inhale true
+  inhale true
+  label l13
+  goto bb8
+  label bb8
+  // ========== bb8 ==========
+  
+  __t7 := true
+  // [mir] StorageDead(_22)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$isize$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_348_cgmath_point$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$4$closesqu$$$hash$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var _old$pre$0: Ref
+  var _old$pre$1: Ref
+  var _1: Ref
+  var _2: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "<Point3<S> as std::hash::Hash>::hash"
+  
+  // Def path: "348_cgmath_point::{{impl}}[4]::hash[0]"
+  
+  // Span: tests/verify_overflow/fail/crates/348_cgmath_point.rs:7:38: 7:42
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$()) && (acc(_2.val_ref, write) && acc(__TYPARAM__$__HS$__(_2.val_ref), write)))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _3 = discriminant((*_1))
+  
+  // [mir] _4 = &'<empty> (*_1)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  _4.val_ref := _1.val_ref
+  inhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_4.val_ref), read$())
+  label l0
+  // [mir] ReadForMatch(_4)
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_4.val_ref), read$())
+  }
+  // [mir] falseEdges -> [real: bb3, imaginary: bb2]
+  
+  goto bb3
+  label bb3
+  // ========== bb3 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = &'32s ((*_1).0: S)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  unfold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$())
+  _5.val_ref := _1.val_ref.f$x
+  inhale acc(__TYPARAM__$S$__(_5.val_ref), read$())
+  label l1
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = &'32s ((*_1).1: S)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_ref, write)
+  _6.val_ref := _1.val_ref.f$y
+  inhale acc(__TYPARAM__$S$__(_6.val_ref), read$())
+  label l2
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = &'32s ((*_1).2: S)
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _1.val_ref.f$z
+  inhale acc(__TYPARAM__$S$__(_7.val_ref), read$())
+  label l3
+  // [mir] StorageLive(_9)
+  
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = &'15s (*_5)
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_ref, write)
+  _10.val_ref := _5.val_ref
+  inhale acc(__TYPARAM__$S$__(_10.val_ref), read$())
+  label l4
+  // [mir] _9 = &'15s (*_10)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _10.val_ref
+  inhale acc(__TYPARAM__$S$__(_9.val_ref), read$())
+  label l5
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = &'15s mut (*_2)
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_ref, write)
+  _11.val_ref := _2.val_ref
+  label l6
+  // [mir] _8 = const std::hash::Hash::hash(move _9, move _11) -> [return: bb4, unwind: bb1]
+  
+  label l7
+  assert true
+  exhale acc(_9.val_ref, write) && (acc(_11.val_ref, write) && acc(__TYPARAM__$__HS$__(_11.val_ref), write))
+  _8 := builtin$havoc_ref()
+  inhale acc(__TYPARAM__$__HS$__(old[l7](_11.val_ref)), write)
+  inhale acc(tuple0$(_8), write)
+  // transfer perm _9.val_ref --> old[l7](_9.val_ref) // unchecked: true
+  
+  inhale true
+  inhale true
+  label l8
+  goto l9
+  label bb4
+  // ========== bb4 ==========
+  
+  __t2 := true
+  // [mir] EndRegion('15s)
+  
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageLive(_13)
+  
+  // [mir] StorageLive(_14)
+  
+  // [mir] _14 = &'22s (*_6)
+  
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.val_ref, write)
+  _14.val_ref := _6.val_ref
+  inhale acc(__TYPARAM__$S$__(_14.val_ref), read$())
+  label l10
+  // [mir] _13 = &'22s (*_14)
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_ref, write)
+  _13.val_ref := _14.val_ref
+  inhale acc(__TYPARAM__$S$__(_13.val_ref), read$())
+  label l11
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = &'22s mut (*_2)
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  _15.val_ref := _2.val_ref
+  label l12
+  // [mir] _12 = const std::hash::Hash::hash(move _13, move _15) -> [return: bb5, unwind: bb1]
+  
+  label l13
+  assert true
+  exhale acc(_13.val_ref, write) && (acc(_15.val_ref, write) && acc(__TYPARAM__$__HS$__(_15.val_ref), write))
+  _12 := builtin$havoc_ref()
+  inhale acc(__TYPARAM__$__HS$__(old[l13](_15.val_ref)), write)
+  inhale acc(tuple0$(_12), write)
+  // transfer perm _13.val_ref --> old[l13](_13.val_ref) // unchecked: true
+  
+  inhale true
+  inhale true
+  label l14
+  goto l15
+  label bb5
+  // ========== bb5 ==========
+  
+  __t3 := true
+  // [mir] EndRegion('22s)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] StorageDead(_13)
+  
+  // [mir] StorageDead(_14)
+  
+  // [mir] StorageLive(_16)
+  
+  // [mir] StorageLive(_17)
+  
+  // [mir] _17 = &'29s (*_7)
+  
+  _17 := builtin$havoc_ref()
+  inhale acc(_17.val_ref, write)
+  _17.val_ref := _7.val_ref
+  inhale acc(__TYPARAM__$S$__(_17.val_ref), read$())
+  label l16
+  // [mir] _16 = &'29s (*_17)
+  
+  _16 := builtin$havoc_ref()
+  inhale acc(_16.val_ref, write)
+  _16.val_ref := _17.val_ref
+  inhale acc(__TYPARAM__$S$__(_16.val_ref), read$())
+  label l17
+  // [mir] StorageLive(_18)
+  
+  // [mir] _18 = &'29s mut (*_2)
+  
+  _18 := builtin$havoc_ref()
+  inhale acc(_18.val_ref, write)
+  _18.val_ref := _2.val_ref
+  label l18
+  // [mir] _0 = const std::hash::Hash::hash(move _16, move _18) -> [return: bb6, unwind: bb1]
+  
+  label l19
+  assert true
+  exhale acc(_16.val_ref, write) && (acc(_18.val_ref, write) && acc(__TYPARAM__$__HS$__(_18.val_ref), write))
+  _0 := builtin$havoc_ref()
+  inhale acc(__TYPARAM__$__HS$__(old[l19](_18.val_ref)), write)
+  inhale acc(tuple0$(_0), write)
+  // transfer perm _16.val_ref --> old[l19](_16.val_ref) // unchecked: true
+  
+  inhale true
+  inhale true
+  label l20
+  goto l21
+  label bb6
+  // ========== bb6 ==========
+  
+  __t4 := true
+  // [mir] EndRegion('29s)
+  
+  // [mir] StorageDead(_18)
+  
+  // [mir] StorageDead(_16)
+  
+  // [mir] StorageDead(_17)
+  
+  // [mir] EndRegion('32s)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] return
+  
+  goto return
+  label l15
+  // ========== l15 ==========
+  
+  // MIR edge bb4 --> bb5
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L16,L15,L9,L8,L7,L2,)
+
+  
+  if (__t2 && __t2) {
+    // expire loan L8
+    
+    // transfer perm old[l13](_13.val_ref) --> old[l11](_13.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l11](_13.val_ref)), read$())
+  }
+  if (__t2 && (__t2 && __t2)) {
+    // expire loan L7
+    
+    exhale acc(__TYPARAM__$S$__(_14.val_ref), read$())
+  }
+  if (__t1 && (__t2 && (__t2 && __t2))) {
+    // expire loan L2
+    
+    exhale acc(__TYPARAM__$S$__(_6.val_ref), read$())
+    // drop Pred(old[l13](_15.val_ref), write) (Pred(old[l13](_15.val_ref), write))
+    
+  }
+  goto bb5
+  label l21
+  // ========== l21 ==========
+  
+  // MIR edge bb5 --> bb6
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L18,L17,L12,L11,L10,L3,)
+
+  
+  if (__t3 && __t3) {
+    // expire loan L11
+    
+    // transfer perm old[l19](_16.val_ref) --> old[l17](_16.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l17](_16.val_ref)), read$())
+  }
+  if (__t3 && (__t3 && __t3)) {
+    // expire loan L10
+    
+    exhale acc(__TYPARAM__$S$__(_17.val_ref), read$())
+  }
+  if (__t1 && (__t3 && (__t3 && __t3))) {
+    // expire loan L3
+    
+    exhale acc(__TYPARAM__$S$__(_7.val_ref), read$())
+    // drop Pred(old[l19](_18.val_ref), write) (Pred(old[l19](_18.val_ref), write))
+    
+  }
+  goto bb6
+  label l9
+  // ========== l9 ==========
+  
+  // MIR edge bb3 --> bb4
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L14,L13,L6,L5,L4,L1,)
+
+  
+  if (__t1 && __t1) {
+    // expire loan L5
+    
+    // transfer perm old[l7](_9.val_ref) --> old[l5](_9.val_ref) // unchecked: false
+    
+    exhale acc(__TYPARAM__$S$__(old[l5](_9.val_ref)), read$())
+  }
+  if (__t1 && (__t1 && __t1)) {
+    // expire loan L4
+    
+    exhale acc(__TYPARAM__$S$__(_10.val_ref), read$())
+  }
+  if (__t1 && (__t1 && (__t1 && __t1))) {
+    // expire loan L1
+    
+    exhale acc(__TYPARAM__$S$__(_5.val_ref), read$())
+    // drop Pred(old[l7](_11.val_ref), write) (Pred(old[l7](_11.val_ref), write))
+    
+  }
+  goto bb4
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), read$())
+  // obtain acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // obtain acc(__TYPARAM__$__HS$__(_2.val_ref), write)
+  
+  _old$pre$1 := _2.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(m_348_cgmath_point$$Point3$opensqu$0$closesqu$$_beg_$__TYPARAM__$S$__$_end_(_old$pre$0), read$()) && acc(__TYPARAM__$__HS$__(_old$pre$1), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)
+
+
+method builtin$havoc_bool() returns (ret: Bool)

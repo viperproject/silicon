@@ -1,0 +1,398 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Node_state_T(r: Ref, lvl: Int, n: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Node_interferenceReference_df($p0: Int, r: Ref, lvl: Int, n: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Node_interferenceSet_df($p0: Int, r: Ref, lvl: Int, n: Ref): Set[Ref]
+}
+
+domain atomicity_context_Domain {
+  
+  function Node_atomicity_context_df(r: Ref, lvl: Int, n: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_node: Ref
+
+field $stepTo_node: Ref
+
+field $Node_$_next_id: Ref
+
+field $node_$next: Ref
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function Node_atomicity_context_hf(r: Ref, lvl: Int, n: Ref): Set[Ref]
+  requires acc(Node_atomicity_context_fp(r, lvl, n), write)
+  ensures [Node_atomicity_context_df(r, lvl, n), true]
+
+
+function Node_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, n: Ref): Set[Ref]
+  requires acc(Node_interferenceContext_fp(r, lvl, n), write)
+  ensures [(forall $_m: Ref :: { ($_m in result) } ($_m in result) ==> ($_m in Node_interferenceSet_df($p0, r, lvl, n))), true]
+
+
+function Node_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, n: Ref): Ref
+  requires acc(Node_interferenceContext_fp(r, lvl, n), write)
+  ensures [Node_interferenceReference_df($p0, r, lvl, n), true]
+
+
+function Node_sk_$_action_m(r: Ref, lvl: Int, n: Ref): Ref
+  requires acc(Node_sk_fp(), write)
+
+
+function Node_state(r: Ref, lvl: Int, n: Ref): Ref
+  requires acc(Node(r, lvl, n), write)
+  ensures [Node_state_T(r, lvl, n), true]
+{
+  (unfolding acc(Node(r, lvl, n), write) in n.$node_$next)
+}
+
+predicate Node_Z($r: Ref) 
+
+predicate Node_atomicity_context_fp(r: Ref, lvl: Int, n: Ref) 
+
+predicate Node_interferenceContext_fp(r: Ref, lvl: Int, n: Ref) 
+
+predicate Node_sk_fp() 
+
+predicate Node(r: Ref, lvl: Int, n: Ref) {
+  acc(n.$node_$next, write) && true && 10 < lvl && (!(n.$node_$next == null) ? acc(r.$Node_$_next_id, write) && true && (acc(Node(r.$Node_$_next_id, lvl - 1, null), write) && (lvl - 1 >= 0 && true)) : acc(r.$Node_$_next_id, write) && true && (acc(Node(r.$Node_$_next_id, lvl - 4, null), write) && (lvl - 4 >= 0 && true))) && (123 < lvl ? acc(r.$Node_$_next_id, write) && true && (acc(Node(r.$Node_$_next_id, lvl - 2, n.$node_$next), write) && (lvl - 2 >= 0 && true)) && (456 < lvl && lvl < 789 ? acc(Node(r.$Node_$_next_id, lvl - 3, n.$node_$next), write) && (lvl - 3 >= 0 && true) : true) : true)
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method ___silicon_hack407_havoc_all_Node()
+
+
+method ___silicon_hack407_havoc_all_Node_interferenceContext_fp()
+
+
+method test01(rr: Ref, nn: Ref)
+  requires acc(Node(rr, 2000, nn), write) && (2000 >= 0 && true)
+{
+  var n0: Ref
+  var r0: Ref
+  var lvl0: Int
+  var $_levelVar_0: Int
+  var $_levelVar_1: Int
+  var $_levelVar_2: Int
+  inhale $_levelVar_0 >= 0 && $_levelVar_0 > 2000
+  assert $_levelVar_0 >= 0
+  inhale acc(Node_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $n: Ref :: acc(Node_interferenceContext_fp($r, $lvl, $n), write))
+  
+  // ------- Inferring interference context Node (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // Inferring interference all instances of region Node
+  
+  ___silicon_hack407_havoc_all_Node_interferenceContext_fp()
+  exhale acc(Node_sk_fp(), write)
+  inhale acc(Node_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $n: Ref [Node($r, $lvl, $n)] :: (forall $$_m: Ref :: { ($$_m in Node_interferenceSet_df(1, $r, $lvl, $n)) } none < old[pre_infer0](perm(Node($r, $lvl, $n))) ==> ($$_m in Node_interferenceSet_hf(1, $r, $lvl, $n)) == ((none < perm($r.$diamond) && none < perm(Node_atomicity_context_fp($r, $lvl, $n)) ==> ($$_m in Node_atomicity_context_hf($r, $lvl, $n))) && ($$_m == old[pre_infer0](Node_state($r, $lvl, $n)) || null == old[pre_infer0](Node_state($r, $lvl, $n)) && Node_sk_$_action_m($r, $lvl, $n) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $n: Ref [Node($r, $lvl, $n)] :: none < old[pre_infer0](perm(Node($r, $lvl, $n))) ==> Node_interferenceReference_hf(1, $r, $lvl, $n) == old[pre_infer0](Node_state($r, $lvl, $n)))
+  
+  // ------- Inferring interference context Node (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- assume BEGIN ------------
+  
+  
+  inhale 30 < lvl0 && lvl0 < 1000
+  
+  // ------- assume END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Node(r0, lvl0, n0), write) && (lvl0 >= 0 && true) && acc(Node_Z(r0), write)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic0
+  assert perm(Node_atomicity_context_fp(r0, lvl0, n0)) == none
+  assert $_levelVar_0 > lvl0
+  $_levelVar_1 := lvl0
+  exhale acc(Node_Z(r0), write)
+  
+  // ------- Stabilising regions  (before use-atomic@35.3) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // ------- Stabilising regions  (before use-atomic@35.3) END 
+  
+  
+  unfold acc(Node(r0, lvl0, n0), write)
+  label transitionPre0
+  ___silicon_hack407_havoc_all_Node_interferenceContext_fp()
+  
+  // no additional linking required
+  
+  
+  
+  // havoc performed by other front resource
+  
+  
+  inhale !(n0.$node_$next == null) ==> Node_interferenceReference_hf(1, r0.$Node_$_next_id, lvl0 - 1, null) == old[transitionPre0](Node_state(r0.$Node_$_next_id, lvl0 - 1, null))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale !!(n0.$node_$next == null) ==> Node_interferenceReference_hf(1, r0.$Node_$_next_id, lvl0 - 4, null) == old[transitionPre0](Node_state(r0.$Node_$_next_id, lvl0 - 4, null))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale 123 < lvl0 ==> Node_interferenceReference_hf(1, r0.$Node_$_next_id, lvl0 - 2, n0.$node_$next) == old[transitionPre0](Node_state(r0.$Node_$_next_id, lvl0 - 2, n0.$node_$next))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale 123 < lvl0 && (456 < lvl0 && lvl0 < 789) ==> Node_interferenceReference_hf(1, r0.$Node_$_next_id, lvl0 - 3, n0.$node_$next) == old[transitionPre0](Node_state(r0.$Node_$_next_id, lvl0 - 3, n0.$node_$next))
+  
+  // ------- Stabilising regions Node (before use-atomic@35.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region Node
+  
+  ___silicon_hack407_havoc_all_Node()
+  exhale acc(Node_sk_fp(), write)
+  inhale acc(Node_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $n: Ref [Node($r, $lvl, $n)] :: none < old[pre_stabilize](perm(Node($r, $lvl, $n))) ==> (none < perm($r.$diamond) && none < perm(Node_atomicity_context_fp($r, $lvl, $n)) ==> (Node_state($r, $lvl, $n) in Node_atomicity_context_hf($r, $lvl, $n))) && (Node_state($r, $lvl, $n) == old[pre_stabilize](Node_state($r, $lvl, $n)) || null == old[pre_stabilize](Node_state($r, $lvl, $n)) && Node_sk_$_action_m($r, $lvl, $n) == Node_state($r, $lvl, $n) && true && true))
+  
+  // ------- Stabilising regions Node (before use-atomic@35.3) END 
+  
+  
+  inhale acc(Node_Z(r0), write)
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert true
+  
+  // ------- assert END --------------
+  
+  
+  fold acc(Node(r0, lvl0, n0), write)
+  assert old[pre_use_atomic0](Node_state(r0, lvl0, n0)) == Node_state(r0, lvl0, n0) || null == old[pre_use_atomic0](Node_state(r0, lvl0, n0))
+  $_levelVar_2 := $_levelVar_0
+  
+  // ------- use-atomic END ----------
+  
+  
+}
+
+method $_Node_interpretation_stability_check(r: Ref, lvl: Int, n: Ref)
+{
+  inhale acc(Node_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $n: Ref :: acc(Node_interferenceContext_fp($r, $lvl, $n), write))
+  inhale acc(n.$node_$next, write) && true && 10 < lvl && (!(n.$node_$next == null) ? acc(r.$Node_$_next_id, write) && true && (acc(Node(r.$Node_$_next_id, lvl - 1, null), write) && (lvl - 1 >= 0 && true)) : acc(r.$Node_$_next_id, write) && true && (acc(Node(r.$Node_$_next_id, lvl - 4, null), write) && (lvl - 4 >= 0 && true))) && (123 < lvl ? acc(r.$Node_$_next_id, write) && true && (acc(Node(r.$Node_$_next_id, lvl - 2, n.$node_$next), write) && (lvl - 2 >= 0 && true)) && (456 < lvl && lvl < 789 ? acc(Node(r.$Node_$_next_id, lvl - 3, n.$node_$next), write) && (lvl - 3 >= 0 && true) : true) : true)
+  
+  // ------- Stabilising regions Node (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region Node
+  
+  ___silicon_hack407_havoc_all_Node()
+  exhale acc(Node_sk_fp(), write)
+  inhale acc(Node_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $n: Ref [Node($r, $lvl, $n)] :: none < old[pre_stabilize2](perm(Node($r, $lvl, $n))) ==> (none < perm($r.$diamond) && none < perm(Node_atomicity_context_fp($r, $lvl, $n)) ==> (Node_state($r, $lvl, $n) in Node_atomicity_context_hf($r, $lvl, $n))) && (Node_state($r, $lvl, $n) == old[pre_stabilize2](Node_state($r, $lvl, $n)) || null == old[pre_stabilize2](Node_state($r, $lvl, $n)) && Node_sk_$_action_m($r, $lvl, $n) == Node_state($r, $lvl, $n) && true && true))
+  
+  // ------- Stabilising regions Node (check stability of region interpretation) END 
+  
+  
+  assert acc(n.$node_$next, write) && true && 10 < lvl && (!(n.$node_$next == null) ? acc(r.$Node_$_next_id, write) && true && (acc(Node(r.$Node_$_next_id, lvl - 1, null), write) && (lvl - 1 >= 0 && true)) : acc(r.$Node_$_next_id, write) && true && (acc(Node(r.$Node_$_next_id, lvl - 4, null), write) && (lvl - 4 >= 0 && true))) && (123 < lvl ? acc(r.$Node_$_next_id, write) && true && (acc(Node(r.$Node_$_next_id, lvl - 2, n.$node_$next), write) && (lvl - 2 >= 0 && true)) && (456 < lvl && lvl < 789 ? acc(Node(r.$Node_$_next_id, lvl - 3, n.$node_$next), write) && (lvl - 3 >= 0 && true) : true) : true)
+}
+
+method $_Node_action_transitivity_check()
+{
+  var Z: Bool
+  var $_action_m_0_x: Ref
+  var $_action_m_0_y: Ref
+  var aState: Ref
+  var bState: Ref
+  var cState: Ref
+  inhale aState == bState || null == aState && $_action_m_0_x == bState && true && Z
+  inhale bState == cState || null == bState && $_action_m_0_y == cState && true && Z
+  assert aState == cState || null == aState && cState == cState && true && Z
+}
+
+method $_test01_condition_stability_precondition_check(rr: Ref, nn: Ref)
+  requires acc(Node(rr, 2000, nn), write) && (2000 >= 0 && true)
+{
+  var $_levelVar_3: Int
+  var n0: Ref
+  var r0: Ref
+  var lvl0: Int
+  inhale $_levelVar_3 >= 0 && $_levelVar_3 > 2000
+  inhale acc(Node_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $n: Ref :: acc(Node_interferenceContext_fp($r, $lvl, $n), write))
+  
+  // ------- Inferring interference context Node (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // Inferring interference all instances of region Node
+  
+  ___silicon_hack407_havoc_all_Node_interferenceContext_fp()
+  exhale acc(Node_sk_fp(), write)
+  inhale acc(Node_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $n: Ref [Node($r, $lvl, $n)] :: (forall $$_m: Ref :: { ($$_m in Node_interferenceSet_df(2, $r, $lvl, $n)) } none < old[pre_infer](perm(Node($r, $lvl, $n))) ==> ($$_m in Node_interferenceSet_hf(2, $r, $lvl, $n)) == ((none < perm($r.$diamond) && none < perm(Node_atomicity_context_fp($r, $lvl, $n)) ==> ($$_m in Node_atomicity_context_hf($r, $lvl, $n))) && ($$_m == old[pre_infer](Node_state($r, $lvl, $n)) || null == old[pre_infer](Node_state($r, $lvl, $n)) && Node_sk_$_action_m($r, $lvl, $n) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $n: Ref [Node($r, $lvl, $n)] :: none < old[pre_infer](perm(Node($r, $lvl, $n))) ==> Node_interferenceReference_hf(2, $r, $lvl, $n) == old[pre_infer](Node_state($r, $lvl, $n)))
+  
+  // ------- Inferring interference context Node (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Node (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region Node
+  
+  ___silicon_hack407_havoc_all_Node()
+  exhale acc(Node_sk_fp(), write)
+  inhale acc(Node_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $n: Ref [Node($r, $lvl, $n)] :: none < old[pre_stabilize3](perm(Node($r, $lvl, $n))) ==> (none < perm($r.$diamond) && none < perm(Node_atomicity_context_fp($r, $lvl, $n)) ==> (Node_state($r, $lvl, $n) in Node_atomicity_context_hf($r, $lvl, $n))) && (Node_state($r, $lvl, $n) == old[pre_stabilize3](Node_state($r, $lvl, $n)) || null == old[pre_stabilize3](Node_state($r, $lvl, $n)) && Node_sk_$_action_m($r, $lvl, $n) == Node_state($r, $lvl, $n) && true && true))
+  
+  // ------- Stabilising regions Node (check stability of method condition) END 
+  
+  
+  assert acc(Node(rr, 2000, nn), write) && (2000 >= 0 && true)
+}

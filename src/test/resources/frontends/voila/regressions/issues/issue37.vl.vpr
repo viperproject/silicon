@@ -1,0 +1,245 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  
+}
+
+domain interferenceReference_Domain {
+  
+  
+}
+
+domain interferenceSet_Domain {
+  
+  
+}
+
+domain atomicity_context_Domain {
+  
+  
+}
+
+field $diamond: Int
+
+field $cell_$val: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method test01(c1: Ref, c2: Ref)
+  requires acc(c1.$cell_$val, write) && true && (acc(c2.$cell_$val, write) && c2.$cell_$val == c1.$cell_$val) && true
+{
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  c1.$cell_$val := 0
+  
+  // ------- heap-write END ----------
+  
+  
+  
+  // ------- Stabilising regions  (after heap-write@8.3) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // ------- Stabilising regions  (after heap-write@8.3) END 
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  c2.$cell_$val := 0
+  
+  // ------- heap-write END ----------
+  
+  
+  
+  // ------- Stabilising regions  (after heap-write@9.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // ------- Stabilising regions  (after heap-write@9.3) END 
+  
+  
+}
+
+method test02(c1: Ref)
+  requires acc(c1.$cell_$val, write) && c1.$cell_$val == 1 + 2 && !(c1 == null)
+  ensures acc(c1.$cell_$val, write) && c1.$cell_$val == 3
+{
+  var $_levelVar_1: Int
+  inhale $_levelVar_1 >= 0
+  assert $_levelVar_1 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  inhale false
+}
+
+method $_test01_condition_stability_precondition_check(c1: Ref, c2: Ref)
+  requires acc(c1.$cell_$val, write) && true && (acc(c2.$cell_$val, write) && c2.$cell_$val == c1.$cell_$val) && true
+{
+  var $_levelVar_2: Int
+  inhale $_levelVar_2 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer2
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert acc(c1.$cell_$val, write) && true && (acc(c2.$cell_$val, write) && c2.$cell_$val == c1.$cell_$val) && true
+}
+
+method $_test02_condition_stability_precondition_check(c1: Ref)
+  requires acc(c1.$cell_$val, write) && c1.$cell_$val == 1 + 2 && !(c1 == null)
+{
+  var $_levelVar_3: Int
+  inhale $_levelVar_3 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer3
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert acc(c1.$cell_$val, write) && c1.$cell_$val == 1 + 2 && !(c1 == null)
+}

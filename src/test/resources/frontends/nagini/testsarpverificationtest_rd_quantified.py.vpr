@@ -1,0 +1,1111 @@
+domain PyType {
+  
+  function extends_(sub: PyType, super: PyType): Bool
+  
+  function issubtype(sub: PyType, super: PyType): Bool
+  
+  function isnotsubtype(sub: PyType, super: PyType): Bool
+  
+  function tuple_args(t: PyType): Seq[PyType]
+  
+  function typeof(obj: Ref): PyType
+  
+  function get_basic(t: PyType): PyType
+  
+  function union_type_1(arg_1: PyType): PyType
+  
+  function union_type_2(arg_1: PyType, arg_2: PyType): PyType
+  
+  function union_type_3(arg_1: PyType, arg_2: PyType, arg_3: PyType): PyType
+  
+  function union_type_4(arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType): PyType
+  
+  unique function Place(): PyType
+  
+  unique function object(): PyType
+  
+  unique function list_basic(): PyType
+  
+  function list(arg0: PyType): PyType
+  
+  function list_arg(typ: PyType, index: Int): PyType
+  
+  unique function set_basic(): PyType
+  
+  function set(arg0: PyType): PyType
+  
+  function set_arg(typ: PyType, index: Int): PyType
+  
+  unique function dict_basic(): PyType
+  
+  function dict(arg0: PyType, arg1: PyType): PyType
+  
+  function dict_arg(typ: PyType, index: Int): PyType
+  
+  unique function int(): PyType
+  
+  unique function float(): PyType
+  
+  unique function bool(): PyType
+  
+  unique function NoneType(): PyType
+  
+  unique function Exception(): PyType
+  
+  unique function traceback(): PyType
+  
+  unique function str(): PyType
+  
+  unique function bytes(): PyType
+  
+  unique function tuple_basic(): PyType
+  
+  function tuple(args: Seq[PyType]): PyType
+  
+  function tuple_arg(typ: PyType, index: Int): PyType
+  
+  unique function PSeq_basic(): PyType
+  
+  function PSeq(arg0: PyType): PyType
+  
+  function PSeq_arg(typ: PyType, index: Int): PyType
+  
+  unique function PSet_basic(): PyType
+  
+  function PSet(arg0: PyType): PyType
+  
+  function PSet_arg(typ: PyType, index: Int): PyType
+  
+  unique function PMultiset_basic(): PyType
+  
+  function PMultiset(arg0: PyType): PyType
+  
+  function PMultiset_arg(typ: PyType, index: Int): PyType
+  
+  unique function slice(): PyType
+  
+  unique function range(): PyType
+  
+  unique function Iterator_basic(): PyType
+  
+  function Iterator(arg0: PyType): PyType
+  
+  function Iterator_arg(typ: PyType, index: Int): PyType
+  
+  unique function Thread_0(): PyType
+  
+  unique function LevelType(): PyType
+  
+  unique function type(): PyType
+  
+  unique function __prim__Seq_type(): PyType
+  
+  unique function Clazz(): PyType
+  
+  axiom issubtype_transitivity {
+    (forall sub: PyType, middle: PyType, super: PyType :: { issubtype(sub, middle),issubtype(middle, super) } issubtype(sub, middle) && issubtype(middle, super) ==> issubtype(sub, super))
+  }
+  
+  axiom issubtype_reflexivity {
+    (forall type_: PyType :: { issubtype(type_, type_) } issubtype(type_, type_))
+  }
+  
+  axiom extends_implies_subtype {
+    (forall sub: PyType, sub2: PyType :: { extends_(sub, sub2) } extends_(sub, sub2) ==> issubtype(sub, sub2))
+  }
+  
+  axiom null_nonetype {
+    (forall r: Ref :: { typeof(r) } issubtype(typeof(r), NoneType()) == (r == null))
+  }
+  
+  axiom issubtype_object {
+    (forall type_: PyType :: { issubtype(type_, object()) } issubtype(type_, object()))
+  }
+  
+  axiom issubtype_exclusion {
+    (forall sub: PyType, sub2: PyType, super: PyType :: { extends_(sub, super),extends_(sub2, super) } extends_(sub, super) && extends_(sub2, super) && sub != sub2 ==> isnotsubtype(sub, sub2) && isnotsubtype(sub2, sub))
+  }
+  
+  axiom issubtype_exclusion_2 {
+    (forall sub: PyType, super: PyType :: { issubtype(sub, super) } { issubtype(super, sub) } issubtype(sub, super) && sub != super ==> !issubtype(super, sub))
+  }
+  
+  axiom issubtype_exclusion_propagation {
+    (forall sub: PyType, middle: PyType, super: PyType :: { issubtype(sub, middle),isnotsubtype(middle, super) } issubtype(sub, middle) && isnotsubtype(middle, super) ==> !issubtype(sub, super))
+  }
+  
+  axiom tuple_arg_def {
+    (forall seq: Seq[PyType], i: Int, Z: PyType :: { tuple(seq),tuple_arg(Z, i) } issubtype(Z, tuple(seq)) ==> issubtype(tuple_arg(Z, i), seq[i]))
+  }
+  
+  axiom tuple_args_def {
+    (forall seq: Seq[PyType], Z: PyType :: { issubtype(Z, tuple(seq)) } issubtype(Z, tuple(seq)) ==> |tuple_args(Z)| == |seq|)
+  }
+  
+  axiom tuple_self_subtype {
+    (forall seq1: Seq[PyType], seq2: Seq[PyType] :: seq1 != seq2 && |seq1| == |seq2| && (forall i: Int :: i >= 0 && i < |seq1| ==> issubtype(seq1[i], seq2[i])) ==> issubtype(tuple(seq1), tuple(seq2)))
+  }
+  
+  axiom union_subtype_1 {
+    (forall arg_1: PyType, X: PyType :: { issubtype(X, union_type_1(arg_1)) } issubtype(X, union_type_1(arg_1)) == (false || issubtype(X, arg_1)))
+  }
+  
+  axiom union_subtype_2 {
+    (forall arg_1: PyType, arg_2: PyType, X: PyType :: { issubtype(X, union_type_2(arg_1, arg_2)) } issubtype(X, union_type_2(arg_1, arg_2)) == (false || issubtype(X, arg_1) || issubtype(X, arg_2)))
+  }
+  
+  axiom union_subtype_3 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, X: PyType :: { issubtype(X, union_type_3(arg_1, arg_2, arg_3)) } issubtype(X, union_type_3(arg_1, arg_2, arg_3)) == (false || issubtype(X, arg_1) || issubtype(X, arg_2) || issubtype(X, arg_3)))
+  }
+  
+  axiom union_subtype_4 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType, X: PyType :: { issubtype(X, union_type_4(arg_1, arg_2, arg_3, arg_4)) } issubtype(X, union_type_4(arg_1, arg_2, arg_3, arg_4)) == (false || issubtype(X, arg_1) || issubtype(X, arg_2) || issubtype(X, arg_3) || issubtype(X, arg_4)))
+  }
+  
+  axiom subtype_union_1 {
+    (forall arg_1: PyType, X: PyType :: { issubtype(union_type_1(arg_1), X) } issubtype(union_type_1(arg_1), X) == (true && issubtype(arg_1, X)))
+  }
+  
+  axiom subtype_union_2 {
+    (forall arg_1: PyType, arg_2: PyType, X: PyType :: { issubtype(union_type_2(arg_1, arg_2), X) } issubtype(union_type_2(arg_1, arg_2), X) == (true && issubtype(arg_1, X) && issubtype(arg_2, X)))
+  }
+  
+  axiom subtype_union_3 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, X: PyType :: { issubtype(union_type_3(arg_1, arg_2, arg_3), X) } issubtype(union_type_3(arg_1, arg_2, arg_3), X) == (true && issubtype(arg_1, X) && issubtype(arg_2, X) && issubtype(arg_3, X)))
+  }
+  
+  axiom subtype_union_4 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType, X: PyType :: { issubtype(union_type_4(arg_1, arg_2, arg_3, arg_4), X) } issubtype(union_type_4(arg_1, arg_2, arg_3, arg_4), X) == (true && issubtype(arg_1, X) && issubtype(arg_2, X) && issubtype(arg_3, X) && issubtype(arg_4, X)))
+  }
+  
+  axiom subtype_Place {
+    extends_(Place(), object()) && get_basic(Place()) == Place()
+  }
+  
+  axiom subtype_list {
+    (forall var0: PyType :: { list(var0) } extends_(list(var0), object()) && get_basic(list(var0)) == list_basic())
+  }
+  
+  axiom list_args0 {
+    (forall Z: PyType, arg0: PyType :: issubtype(Z, list(arg0)) ==> list_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_set {
+    (forall var0: PyType :: { set(var0) } extends_(set(var0), object()) && get_basic(set(var0)) == set_basic())
+  }
+  
+  axiom set_args0 {
+    (forall Z: PyType, arg0: PyType :: issubtype(Z, set(arg0)) ==> set_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_dict {
+    (forall var0: PyType, var1: PyType :: { dict(var0, var1) } extends_(dict(var0, var1), object()) && get_basic(dict(var0, var1)) == dict_basic())
+  }
+  
+  axiom dict_args0 {
+    (forall Z: PyType, arg0: PyType, arg1: PyType :: issubtype(Z, dict(arg0, arg1)) ==> dict_arg(Z, 0) == arg0)
+  }
+  
+  axiom dict_args1 {
+    (forall Z: PyType, arg0: PyType, arg1: PyType :: issubtype(Z, dict(arg0, arg1)) ==> dict_arg(Z, 1) == arg1)
+  }
+  
+  axiom subtype_int {
+    extends_(int(), float()) && get_basic(int()) == int()
+  }
+  
+  axiom subtype_float {
+    extends_(float(), object()) && get_basic(float()) == float()
+  }
+  
+  axiom subtype_bool {
+    extends_(bool(), int()) && get_basic(bool()) == bool()
+  }
+  
+  axiom subtype_NoneType {
+    extends_(NoneType(), object()) && get_basic(NoneType()) == NoneType()
+  }
+  
+  axiom subtype_Exception {
+    extends_(Exception(), object()) && get_basic(Exception()) == Exception()
+  }
+  
+  axiom subtype_traceback {
+    extends_(traceback(), object()) && get_basic(traceback()) == traceback()
+  }
+  
+  axiom subtype_str {
+    extends_(str(), object()) && get_basic(str()) == str()
+  }
+  
+  axiom subtype_bytes {
+    extends_(bytes(), object()) && get_basic(bytes()) == bytes()
+  }
+  
+  axiom subtype_tuple {
+    (forall args: Seq[PyType] :: { tuple(args) } ((forall e: PyType :: (e in args) ==> e == object()) ==> extends_(tuple(args), object())) && get_basic(tuple(args)) == tuple_basic())
+  }
+  
+  axiom subtype_PSeq {
+    (forall var0: PyType :: { PSeq(var0) } extends_(PSeq(var0), object()) && get_basic(PSeq(var0)) == PSeq_basic())
+  }
+  
+  axiom PSeq_args0 {
+    (forall Z: PyType, arg0: PyType :: issubtype(Z, PSeq(arg0)) ==> PSeq_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_PSet {
+    (forall var0: PyType :: { PSet(var0) } extends_(PSet(var0), object()) && get_basic(PSet(var0)) == PSet_basic())
+  }
+  
+  axiom PSet_args0 {
+    (forall Z: PyType, arg0: PyType :: issubtype(Z, PSet(arg0)) ==> PSet_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_PMultiset {
+    (forall var0: PyType :: { PMultiset(var0) } extends_(PMultiset(var0), object()) && get_basic(PMultiset(var0)) == PMultiset_basic())
+  }
+  
+  axiom PMultiset_args0 {
+    (forall Z: PyType, arg0: PyType :: issubtype(Z, PMultiset(arg0)) ==> PMultiset_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_slice {
+    extends_(slice(), object()) && get_basic(slice()) == slice()
+  }
+  
+  axiom subtype_range {
+    extends_(range(), object()) && get_basic(range()) == range()
+  }
+  
+  axiom subtype_Iterator {
+    (forall var0: PyType :: { Iterator(var0) } extends_(Iterator(var0), object()) && get_basic(Iterator(var0)) == Iterator_basic())
+  }
+  
+  axiom Iterator_args0 {
+    (forall Z: PyType, arg0: PyType :: issubtype(Z, Iterator(arg0)) ==> Iterator_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_Thread_0 {
+    extends_(Thread_0(), object()) && get_basic(Thread_0()) == Thread_0()
+  }
+  
+  axiom subtype_type {
+    extends_(type(), object()) && get_basic(type()) == type()
+  }
+  
+  axiom subtype___prim__Seq_type {
+    extends_(__prim__Seq_type(), object()) && get_basic(__prim__Seq_type()) == __prim__Seq_type()
+  }
+  
+  axiom subtype_Clazz {
+    extends_(Clazz(), object()) && get_basic(Clazz()) == Clazz()
+  }
+}
+
+domain Thread {
+  
+  function getMethod(t: Ref): ThreadingID
+  
+  function getArg(t: Ref, i: Int): Ref
+  
+  function getOld(t: Ref, i: Int): Ref
+}
+
+domain Function {
+  
+  
+}
+
+domain ThreadingID {
+  
+  unique function __init___threading(): ThreadingID
+  
+  unique function append_threading(): ThreadingID
+  
+  unique function extend_threading(): ThreadingID
+  
+  unique function reverse_threading(): ThreadingID
+  
+  unique function __setitem___threading(): ThreadingID
+  
+  unique function __iter___threading(): ThreadingID
+  
+  unique function __getitem_slice___threading(): ThreadingID
+  
+  unique function __add___threading(): ThreadingID
+  
+  unique function __mul___threading(): ThreadingID
+  
+  unique function __init___threading_0(): ThreadingID
+  
+  unique function add_threading(): ThreadingID
+  
+  unique function remove_threading(): ThreadingID
+  
+  unique function clear_threading(): ThreadingID
+  
+  unique function __iter___threading_0(): ThreadingID
+  
+  unique function __init___threading_1(): ThreadingID
+  
+  unique function keys_threading(): ThreadingID
+  
+  unique function __setitem___threading_0(): ThreadingID
+  
+  unique function __iter___threading_1(): ThreadingID
+  
+  unique function values_threading(): ThreadingID
+  
+  unique function split_threading(): ThreadingID
+  
+  unique function __iter___threading_2(): ThreadingID
+  
+  unique function __next___threading(): ThreadingID
+  
+  unique function __del___threading(): ThreadingID
+  
+  unique function __init___threading_2(): ThreadingID
+  
+  unique function m1_threading(): ThreadingID
+  
+  unique function m1_1_threading(): ThreadingID
+  
+  unique function m2_threading(): ThreadingID
+  
+  unique function m2_1_threading(): ThreadingID
+}
+
+domain SIFDomain[T] {
+  
+  function Low(x: T): Bool
+  
+  axiom low_true {
+    (forall x: T :: { Low(x) } Low(x))
+  }
+}
+
+domain Measure$ {
+  
+  function Measure$create(guard: Bool, key: Ref, value: Int): Measure$
+  
+  function Measure$guard(m: Measure$): Bool
+  
+  function Measure$key(m: Measure$): Ref
+  
+  function Measure$value(m: Measure$): Int
+  
+  axiom Measure$A0 {
+    (forall g: Bool, k: Ref, v: Int :: { Measure$guard(Measure$create(g, k, v)) } Measure$guard(Measure$create(g, k, v)) == g)
+  }
+  
+  axiom Measure$A1 {
+    (forall g: Bool, k: Ref, v: Int :: { Measure$key(Measure$create(g, k, v)) } Measure$key(Measure$create(g, k, v)) == k)
+  }
+  
+  axiom Measure$A2 {
+    (forall g: Bool, k: Ref, v: Int :: { Measure$value(Measure$create(g, k, v)) } Measure$value(Measure$create(g, k, v)) == v)
+  }
+}
+
+domain _Name {
+  
+  function _combine(n1: _Name, n2: _Name): _Name
+  
+  function _single(n: Int): _Name
+  
+  function _get_combined_prefix(n: _Name): _Name
+  
+  function _get_combined_name(n: _Name): _Name
+  
+  function _get_value(n: _Name): Int
+  
+  function _is_single(n: _Name): Bool
+  
+  axiom all_single_or_combined {
+    (forall n: _Name :: n == _single(_get_value(n)) || n == _combine(_get_combined_prefix(n), _get_combined_name(n)))
+  }
+  
+  axiom single_is_single {
+    (forall i: Int :: { _single(i) } _is_single(_single(i)))
+  }
+  
+  axiom combined_is_not_single {
+    (forall n1: _Name, n2: _Name :: { _combine(n1, n2) } !_is_single(_combine(n1, n2)))
+  }
+  
+  axiom decompose_single {
+    (forall i: Int :: { _single(i) } _get_value(_single(i)) == i)
+  }
+  
+  axiom decompose_combined_prefix {
+    (forall n1: _Name, n2: _Name :: { _combine(n1, n2) } _get_combined_prefix(_combine(n1, n2)) == n1)
+  }
+  
+  axiom decompose_combined_name {
+    (forall n1: _Name, n2: _Name :: { _combine(n1, n2) } _get_combined_name(_combine(n1, n2)) == n2)
+  }
+}
+
+domain ARPLog {
+  
+  function ARPLog_Nil(): ARPLog
+  
+  function ARPLog_Cons(arp_quant_ref: Ref, arp_quant_fieldId: Int, permission: Perm, arp_quant_level: Int, arp_quant_log: ARPLog): ARPLog
+  
+  function ARPLog_head_ref_Cons(arp_quant_log: ARPLog): Ref
+  
+  function ARPLog_head_fieldId_Cons(arp_quant_log: ARPLog): Int
+  
+  function ARPLog_head_permission_Cons(arp_quant_log: ARPLog): Perm
+  
+  function ARPLog_head_level_Cons(arp_quant_log: ARPLog): Int
+  
+  function ARPLog_tail_Cons(arp_quant_log: ARPLog): ARPLog
+  
+  function ARPLog_type(arp_quant_log: ARPLog): Int
+  
+  unique function ARPLog_type_Nil(): Int
+  
+  unique function ARPLog_type_Cons(): Int
+  
+  function ARPLog_is_Nil(arp_quant_log: ARPLog): Bool
+  
+  function ARPLog_is_Cons(arp_quant_log: ARPLog): Bool
+  
+  function ARPLog_max_level(arp_quant_log: ARPLog): Int
+  
+  function ARPLog_sum_gt(arp_quant_ref: Ref, arp_quant_fieldId: Int, arp_quant_level: Int, arp_quant_log: ARPLog): Perm
+  
+  function ARPLog_sum(arp_quant_ref: Ref, arp_quant_fieldId: Int, arp_quant_level: Int, arp_quant_log: ARPLog): Perm
+  
+  axiom ARPLog_destruct_over_construct_Cons {
+    (forall arp_quant_head_ref: Ref, arp_quant_head_fieldId: Int, arp_quant_head_permission: Perm, arp_quant_head_level: Int, arp_quant_tail: ARPLog :: { ARPLog_Cons(arp_quant_head_ref, arp_quant_head_fieldId, arp_quant_head_permission, arp_quant_head_level, arp_quant_tail) } ARPLog_head_ref_Cons(ARPLog_Cons(arp_quant_head_ref, arp_quant_head_fieldId, arp_quant_head_permission, arp_quant_head_level, arp_quant_tail)) == arp_quant_head_ref && (ARPLog_head_fieldId_Cons(ARPLog_Cons(arp_quant_head_ref, arp_quant_head_fieldId, arp_quant_head_permission, arp_quant_head_level, arp_quant_tail)) == arp_quant_head_fieldId && (ARPLog_head_permission_Cons(ARPLog_Cons(arp_quant_head_ref, arp_quant_head_fieldId, arp_quant_head_permission, arp_quant_head_level, arp_quant_tail)) == arp_quant_head_permission && (ARPLog_head_level_Cons(ARPLog_Cons(arp_quant_head_ref, arp_quant_head_fieldId, arp_quant_head_permission, arp_quant_head_level, arp_quant_tail)) == arp_quant_head_level && ARPLog_tail_Cons(ARPLog_Cons(arp_quant_head_ref, arp_quant_head_fieldId, arp_quant_head_permission, arp_quant_head_level, arp_quant_tail)) == arp_quant_tail))))
+  }
+  
+  axiom ARPLog_construct_over_destruct_Cons {
+    (forall arp_quant_log: ARPLog :: { ARPLog_head_ref_Cons(arp_quant_log) } { ARPLog_head_fieldId_Cons(arp_quant_log) } { ARPLog_head_permission_Cons(arp_quant_log) } { ARPLog_head_level_Cons(arp_quant_log) } { ARPLog_tail_Cons(arp_quant_log) } ARPLog_is_Cons(arp_quant_log) ==> arp_quant_log == ARPLog_Cons(ARPLog_head_ref_Cons(arp_quant_log), ARPLog_head_fieldId_Cons(arp_quant_log), ARPLog_head_permission_Cons(arp_quant_log), ARPLog_head_level_Cons(arp_quant_log), ARPLog_tail_Cons(arp_quant_log)))
+  }
+  
+  axiom ARPLog_type_of_Nil {
+    ARPLog_type(ARPLog_Nil()) == ARPLog_type_Nil()
+  }
+  
+  axiom ARPLog_type_of_Cons {
+    (forall arp_quant_head_ref: Ref, arp_quant_head_fieldId: Int, arp_quant_head_permission: Perm, arp_quant_head_level: Int, arp_quant_tail: ARPLog :: ARPLog_type(ARPLog_Cons(arp_quant_head_ref, arp_quant_head_fieldId, arp_quant_head_permission, arp_quant_head_level, arp_quant_tail)) == ARPLog_type_Cons())
+  }
+  
+  axiom ARPLog_type_existence {
+    (forall arp_quant_log: ARPLog :: { ARPLog_is_Nil(arp_quant_log) } { ARPLog_is_Cons(arp_quant_log) } { ARPLog_type(arp_quant_log) } ARPLog_type(arp_quant_log) == ARPLog_type_Nil() || ARPLog_type(arp_quant_log) == ARPLog_type_Cons())
+  }
+  
+  axiom ARPLog_type_is_Nil {
+    (forall arp_quant_log: ARPLog :: { ARPLog_is_Nil(arp_quant_log) } { ARPLog_type(arp_quant_log) } (ARPLog_type(arp_quant_log) == ARPLog_type_Nil()) == ARPLog_is_Nil(arp_quant_log))
+  }
+  
+  axiom ARPLog_type_is_Cons {
+    (forall arp_quant_log: ARPLog :: { ARPLog_is_Cons(arp_quant_log) } { ARPLog_type(arp_quant_log) } (ARPLog_type(arp_quant_log) == ARPLog_type_Cons()) == ARPLog_is_Cons(arp_quant_log))
+  }
+  
+  axiom ARPLog_log_max_level {
+    (forall arp_quant_log: ARPLog :: { ARPLog_max_level(arp_quant_log) } ARPLog_max_level(arp_quant_log) == 6)
+  }
+  
+  axiom ARPLog_sum_gt_of_log {
+    (forall arp_quant_ref: Ref, arp_quant_fieldId: Int, arp_quant_level: Int, arp_quant_log: ARPLog :: { ARPLog_sum_gt(arp_quant_ref, arp_quant_fieldId, arp_quant_level, arp_quant_log) } (arp_quant_level >= ARPLog_max_level(arp_quant_log) ==> ARPLog_sum_gt(arp_quant_ref, arp_quant_fieldId, arp_quant_level, arp_quant_log) == none) && (arp_quant_level < ARPLog_max_level(arp_quant_log) ==> ARPLog_sum_gt(arp_quant_ref, arp_quant_fieldId, arp_quant_level, arp_quant_log) == ARPLog_sum_gt(arp_quant_ref, arp_quant_fieldId, arp_quant_level + 1, arp_quant_log) + ARPLog_sum(arp_quant_ref, arp_quant_fieldId, arp_quant_level + 1, arp_quant_log)))
+  }
+  
+  axiom ARPLog_sum_of_log {
+    (forall arp_quant_ref: Ref, arp_quant_fieldId: Int, arp_quant_level: Int, arp_quant_log: ARPLog :: { ARPLog_sum(arp_quant_ref, arp_quant_fieldId, arp_quant_level, arp_quant_log) } (ARPLog_is_Nil(arp_quant_log) ==> ARPLog_sum(arp_quant_ref, arp_quant_fieldId, arp_quant_level, arp_quant_log) == none) && (ARPLog_is_Cons(arp_quant_log) ==> ARPLog_sum(arp_quant_ref, arp_quant_fieldId, arp_quant_level, arp_quant_log) == ARPLog_sum(arp_quant_ref, arp_quant_fieldId, arp_quant_level, ARPLog_tail_Cons(arp_quant_log)) + (ARPLog_head_ref_Cons(arp_quant_log) == arp_quant_ref && (ARPLog_head_fieldId_Cons(arp_quant_log) == arp_quant_fieldId && ARPLog_head_level_Cons(arp_quant_log) == arp_quant_level) ? ARPLog_head_permission_Cons(arp_quant_log) : none)))
+  }
+}
+
+domain ARP_field_functions {
+  
+  unique function field__val(): Int
+  
+  unique function field___container(): Int
+  
+  unique function field___iter_index(): Int
+  
+  unique function field___previous(): Int
+  
+  unique function field_list_acc(): Int
+  
+  unique function field_set_acc(): Int
+  
+  unique function field_dict_acc(): Int
+  
+  unique function field_dict_acc2(): Int
+  
+  unique function field_Measure$acc(): Int
+  
+  unique function field_Clazz_x(): Int
+  
+  unique function field_Clazz_y(): Int
+  
+  unique function field_Clazz_seq(): Int
+  
+  function predicate__thread_start(t: Ref): Int
+  
+  function predicate__thread_post(t: Ref): Int
+  
+  function predicate__MaySet(rec: Ref, id: Int): Int
+  
+  axiom ARP__thread_start__val {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field__val())
+  }
+  
+  axiom ARP__thread_start___container {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field___container())
+  }
+  
+  axiom ARP__thread_start___iter_index {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field___iter_index())
+  }
+  
+  axiom ARP__thread_start___previous {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field___previous())
+  }
+  
+  axiom ARP__thread_start_list_acc {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field_list_acc())
+  }
+  
+  axiom ARP__thread_start_set_acc {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field_set_acc())
+  }
+  
+  axiom ARP__thread_start_dict_acc {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field_dict_acc())
+  }
+  
+  axiom ARP__thread_start_dict_acc2 {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field_dict_acc2())
+  }
+  
+  axiom ARP__thread_start_Measure$acc {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field_Measure$acc())
+  }
+  
+  axiom ARP__thread_start_Clazz_x {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field_Clazz_x())
+  }
+  
+  axiom ARP__thread_start_Clazz_y {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field_Clazz_y())
+  }
+  
+  axiom ARP__thread_start_Clazz_seq {
+    (forall t: Ref :: { predicate__thread_start(t) } predicate__thread_start(t) != field_Clazz_seq())
+  }
+  
+  axiom ARP__thread_start__thread_post {
+    (forall t: Ref, t_1: Ref :: { predicate__thread_start(t),predicate__thread_post(t_1) } predicate__thread_start(t) != predicate__thread_post(t_1))
+  }
+  
+  axiom ARP__thread_start__MaySet {
+    (forall t: Ref, rec_0: Ref, id_0: Int :: { predicate__thread_start(t),predicate__MaySet(rec_0, id_0) } predicate__thread_start(t) != predicate__MaySet(rec_0, id_0))
+  }
+  
+  axiom ARP__thread_start {
+    (forall t: Ref, t_0: Ref :: { predicate__thread_start(t),predicate__thread_start(t_0) } predicate__thread_start(t) == predicate__thread_start(t_0) ==> t == t_0)
+  }
+  
+  axiom ARP__thread_post__val {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field__val())
+  }
+  
+  axiom ARP__thread_post___container {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field___container())
+  }
+  
+  axiom ARP__thread_post___iter_index {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field___iter_index())
+  }
+  
+  axiom ARP__thread_post___previous {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field___previous())
+  }
+  
+  axiom ARP__thread_post_list_acc {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field_list_acc())
+  }
+  
+  axiom ARP__thread_post_set_acc {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field_set_acc())
+  }
+  
+  axiom ARP__thread_post_dict_acc {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field_dict_acc())
+  }
+  
+  axiom ARP__thread_post_dict_acc2 {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field_dict_acc2())
+  }
+  
+  axiom ARP__thread_post_Measure$acc {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field_Measure$acc())
+  }
+  
+  axiom ARP__thread_post_Clazz_x {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field_Clazz_x())
+  }
+  
+  axiom ARP__thread_post_Clazz_y {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field_Clazz_y())
+  }
+  
+  axiom ARP__thread_post_Clazz_seq {
+    (forall t: Ref :: { predicate__thread_post(t) } predicate__thread_post(t) != field_Clazz_seq())
+  }
+  
+  axiom ARP__thread_post__thread_start {
+    (forall t: Ref, t_3: Ref :: { predicate__thread_post(t),predicate__thread_start(t_3) } predicate__thread_post(t) != predicate__thread_start(t_3))
+  }
+  
+  axiom ARP__thread_post__MaySet {
+    (forall t: Ref, rec_1: Ref, id_1: Int :: { predicate__thread_post(t),predicate__MaySet(rec_1, id_1) } predicate__thread_post(t) != predicate__MaySet(rec_1, id_1))
+  }
+  
+  axiom ARP__thread_post {
+    (forall t: Ref, t_2: Ref :: { predicate__thread_post(t),predicate__thread_post(t_2) } predicate__thread_post(t) == predicate__thread_post(t_2) ==> t == t_2)
+  }
+  
+  axiom ARP__MaySet__val {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field__val())
+  }
+  
+  axiom ARP__MaySet___container {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field___container())
+  }
+  
+  axiom ARP__MaySet___iter_index {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field___iter_index())
+  }
+  
+  axiom ARP__MaySet___previous {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field___previous())
+  }
+  
+  axiom ARP__MaySet_list_acc {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field_list_acc())
+  }
+  
+  axiom ARP__MaySet_set_acc {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field_set_acc())
+  }
+  
+  axiom ARP__MaySet_dict_acc {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field_dict_acc())
+  }
+  
+  axiom ARP__MaySet_dict_acc2 {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field_dict_acc2())
+  }
+  
+  axiom ARP__MaySet_Measure$acc {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field_Measure$acc())
+  }
+  
+  axiom ARP__MaySet_Clazz_x {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field_Clazz_x())
+  }
+  
+  axiom ARP__MaySet_Clazz_y {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field_Clazz_y())
+  }
+  
+  axiom ARP__MaySet_Clazz_seq {
+    (forall rec: Ref, id: Int :: { predicate__MaySet(rec, id) } predicate__MaySet(rec, id) != field_Clazz_seq())
+  }
+  
+  axiom ARP__MaySet__thread_start {
+    (forall rec: Ref, id: Int, t_4: Ref :: { predicate__MaySet(rec, id),predicate__thread_start(t_4) } predicate__MaySet(rec, id) != predicate__thread_start(t_4))
+  }
+  
+  axiom ARP__MaySet__thread_post {
+    (forall rec: Ref, id: Int, t_5: Ref :: { predicate__MaySet(rec, id),predicate__thread_post(t_5) } predicate__MaySet(rec, id) != predicate__thread_post(t_5))
+  }
+  
+  axiom ARP__MaySet {
+    (forall rec: Ref, id: Int, rec_2: Ref, id_2: Int :: { predicate__MaySet(rec, id),predicate__MaySet(rec_2, id_2) } predicate__MaySet(rec, id) == predicate__MaySet(rec_2, id_2) ==> rec == rec_2 && id == id_2)
+  }
+}
+
+field _val: Ref
+
+field __container: Ref
+
+field __iter_index: Int
+
+field __previous: Seq[Ref]
+
+field list_acc: Seq[Ref]
+
+field set_acc: Set[Ref]
+
+field dict_acc: Set[Ref]
+
+field dict_acc2: Ref
+
+field Measure$acc: Seq[Ref]
+
+field MustReleaseBounded: Int
+
+field MustReleaseUnbounded: Int
+
+field Clazz_x: Ref
+
+field Clazz_y: Ref
+
+field Clazz_seq: Ref
+
+function _joinable(t: Ref): Bool
+
+
+function _isDefined(id: Int): Bool
+
+
+function _checkDefined(val: Ref, id: Int): Ref
+  requires _isDefined(id)
+{
+  val
+}
+
+function _asserting(val: Ref, ass: Bool): Ref
+  requires ass
+{
+  val
+}
+
+function _int_to_bool(i: Int): Bool
+
+
+function __file__(): Ref
+
+
+function __name__(): Ref
+
+
+function __prim__int___box__(prim: Int): Ref
+  ensures typeof(result) == int()
+  ensures int___unbox__(result) == prim
+
+
+function int___unbox__(box: Ref): Int
+  requires issubtype(typeof(box), int())
+  ensures !issubtype(typeof(box), bool()) ==> __prim__int___box__(result) == box
+  ensures issubtype(typeof(box), bool()) ==> __prim__bool___box__(result != 0) == box
+
+
+function __prim__bool___box__(prim: Bool): Ref
+  ensures typeof(result) == bool()
+  ensures bool___unbox__(result) == prim
+  ensures int___unbox__(result) == (prim ? 1 : 0)
+
+
+function bool___unbox__(box: Ref): Bool
+  requires issubtype(typeof(box), bool())
+  ensures __prim__bool___box__(result) == box
+
+
+function object___eq__(self: Ref, other: Ref): Bool
+  ensures self == other ==> result
+  ensures (self == null) != (other == null) ==> !result
+
+
+function Level(r: Ref): Perm
+
+
+function PSeq___create__(prim: Seq[Ref], cont_type: PyType): Ref
+  ensures typeof(result) == PSeq(cont_type)
+  ensures PSeq___sil_seq__(result) == prim
+
+
+function PSeq___sil_seq__(box: Ref): Seq[Ref]
+  requires issubtype(typeof(box), PSeq(PSeq_arg(typeof(box), 0)))
+
+
+function str___len__(self: Ref): Int
+  ensures result >= 0
+
+
+function str___val__(self: Ref): Int
+
+
+function str___create__(len: Int, value: Int): Ref
+  ensures str___len__(result) == len
+  ensures str___val__(result) == value
+  ensures typeof(result) == str()
+
+
+function str___eq__(self: Ref, other: Ref): Bool
+  requires issubtype(typeof(self), str())
+  ensures (str___val__(self) == str___val__(other)) == result
+  ensures result ==> str___len__(self) == str___len__(other)
+
+
+function rd(): Perm
+  requires false
+
+
+function rdc(count: Int): Perm
+  requires false
+
+
+function rdw(): Perm
+  requires false
+
+
+function rd_token(tk: Ref): Perm
+  ensures none < result && result < write
+
+
+function globalRd(): Perm
+  ensures none < result && result < write
+
+
+function epsilonRd(): Perm
+  ensures none < result && result < write
+
+
+predicate MustTerminate(r: Ref) 
+
+predicate MustInvokeBounded(r: Ref) 
+
+predicate MustInvokeUnbounded(r: Ref) 
+
+predicate MustInvokeCredit(r: Ref) 
+
+predicate _thread_start(t: Ref) 
+
+predicate _thread_post(t: Ref) 
+
+predicate _MaySet(rec: Ref, id: Int) 
+
+method Clazz___init__(_cthread_155: Ref, _caller_measures_155: Seq[Measure$], _residue_155: Perm, self: Ref, Clazz___init___rd: Perm) returns (_current_wait_level_155: Perm)
+  requires none < Clazz___init___rd && Clazz___init___rd < write
+  requires _cthread_155 != null
+  requires issubtype(typeof(_cthread_155), Thread_0())
+  requires self != null
+  requires acc(_MaySet(self, 4443106262936097725), write)
+  requires acc(_MaySet(self, 4443387737912808381), write)
+  requires acc(_MaySet(self, 5360430194665457863784229955), write)
+  requires issubtype(typeof(self), Clazz())
+  requires self != null
+  requires [true, perm(MustTerminate(_cthread_155)) == none && ((forperm _r_1: Ref [MustInvokeBounded(_r_1)] :: false) && ((forperm _r_1: Ref [MustInvokeUnbounded(_r_1)] :: false) && ((forperm _r_1: Ref [_r_1.MustReleaseBounded] :: false) && (forperm _r_1: Ref [_r_1.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _current_wait_level_155) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _current_wait_level_155) && _residue_155 <= _current_wait_level_155), true]
+  ensures acc(self.Clazz_x, write) && issubtype(typeof(self.Clazz_x), int())
+  ensures acc(self.Clazz_y, write) && issubtype(typeof(self.Clazz_y), int())
+  ensures [true, (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var self_4: Ref
+  var _cwl_155: Perm
+  var _method_measures_155: Seq[Measure$]
+  _method_measures_155 := Seq[Measure$]()
+  inhale typeof(self) == Clazz()
+  _err := null
+  self_4 := self
+  if (perm(_MaySet(self_4, 4443106262936097725)) > none) {
+    exhale acc(_MaySet(self_4, 4443106262936097725), write)
+    inhale acc(self_4.Clazz_x, write)
+  }
+  self_4.Clazz_x := __prim__int___box__(5)
+  if (perm(_MaySet(self_4, 4443387737912808381)) > none) {
+    exhale acc(_MaySet(self_4, 4443387737912808381), write)
+    inhale acc(self_4.Clazz_y, write)
+  }
+  self_4.Clazz_y := __prim__int___box__(3)
+  if (perm(_MaySet(self_4, 5360430194665457863784229955)) > none) {
+    exhale acc(_MaySet(self_4, 5360430194665457863784229955), write)
+    inhale acc(self_4.Clazz_seq, write)
+  }
+  self_4.Clazz_seq := PSeq___create__(Seq(self_4), Clazz())
+  goto __end
+  label __end
+}
+
+method Clazz_m1(_cthread_156: Ref, _caller_measures_156: Seq[Measure$], _residue_156: Perm, self_0: Ref, b: Ref, Clazz_m1_rd: Perm) returns (_current_wait_level_156: Perm)
+  requires none < Clazz_m1_rd && Clazz_m1_rd < write
+  requires _cthread_156 != null
+  requires issubtype(typeof(_cthread_156), Thread_0())
+  requires issubtype(typeof(self_0), Clazz())
+  requires issubtype(typeof(b), bool())
+  requires self_0 != null
+  requires !object___eq__(self_0, null)
+  requires acc(self_0.Clazz_seq, Clazz_m1_rd) && issubtype(typeof(self_0.Clazz_seq), PSeq(Clazz())) && (true && (forall lambda18_51$r: Ref :: { (lambda18_51$r in PSeq___sil_seq__(self_0.Clazz_seq)) } issubtype(typeof(lambda18_51$r), Clazz()) && (lambda18_51$r in PSeq___sil_seq__(self_0.Clazz_seq)) ==> acc(lambda18_51$r.Clazz_x, Clazz_m1_rd)) && (forall lambda18_51$r: Ref :: { (lambda18_51$r in PSeq___sil_seq__(self_0.Clazz_seq)) } issubtype(typeof(lambda18_51$r), Clazz()) && (lambda18_51$r in PSeq___sil_seq__(self_0.Clazz_seq)) ==> issubtype(typeof(lambda18_51$r.Clazz_x), int())))
+  requires [true, perm(MustTerminate(_cthread_156)) == none && ((forperm _r_4: Ref [MustInvokeBounded(_r_4)] :: false) && ((forperm _r_4: Ref [MustInvokeUnbounded(_r_4)] :: false) && ((forperm _r_4: Ref [_r_4.MustReleaseBounded] :: false) && (forperm _r_4: Ref [_r_4.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_2: Ref [_r_2.MustReleaseBounded] :: Level(_r_2) <= _current_wait_level_156) && ((forperm _r_2: Ref [_r_2.MustReleaseUnbounded] :: Level(_r_2) <= _current_wait_level_156) && _residue_156 <= _current_wait_level_156), true]
+  ensures acc(self_0.Clazz_seq, Clazz_m1_rd) && issubtype(typeof(self_0.Clazz_seq), PSeq(Clazz())) && (true && (forall lambda19_50$r: Ref :: { (lambda19_50$r in PSeq___sil_seq__(self_0.Clazz_seq)) } issubtype(typeof(lambda19_50$r), Clazz()) && (lambda19_50$r in PSeq___sil_seq__(self_0.Clazz_seq)) ==> acc(lambda19_50$r.Clazz_x, Clazz_m1_rd)) && (forall lambda19_50$r: Ref :: { (lambda19_50$r in PSeq___sil_seq__(self_0.Clazz_seq)) } issubtype(typeof(lambda19_50$r), Clazz()) && (lambda19_50$r in PSeq___sil_seq__(self_0.Clazz_seq)) ==> issubtype(typeof(lambda19_50$r.Clazz_x), int())))
+  ensures [true, (forperm _r_3: Ref [MustInvokeBounded(_r_3)] :: false) && ((forperm _r_3: Ref [MustInvokeUnbounded(_r_3)] :: false) && ((forperm _r_3: Ref [_r_3.MustReleaseBounded] :: false) && (forperm _r_3: Ref [_r_3.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var self_5: Ref
+  var b_3: Ref
+  var _cwl_156: Perm
+  var _method_measures_156: Seq[Measure$]
+  _method_measures_156 := Seq[Measure$]()
+  inhale typeof(self_0) == Clazz()
+  _err := null
+  self_5 := self_0
+  b_3 := b
+  if (bool___unbox__(b_3)) {
+    var Clazz_m1_call_rd: Perm
+    inhale none < Clazz_m1_call_rd && Clazz_m1_call_rd < write
+    inhale none < perm(self_5.Clazz_seq) ==> Clazz_m1_call_rd < perm(self_5.Clazz_seq)
+    inhale (forall lambda18_51$r: Ref :: { (lambda18_51$r in PSeq___sil_seq__(self_5.Clazz_seq)) } issubtype(typeof(lambda18_51$r), Clazz()) && (lambda18_51$r in PSeq___sil_seq__(self_5.Clazz_seq)) ==> none < perm(lambda18_51$r.Clazz_x) ==> Clazz_m1_call_rd < perm(lambda18_51$r.Clazz_x))
+    _cwl_156 := Clazz_m1(_cthread_156, _method_measures_156, _residue_156, self_5, b_3, Clazz_m1_call_rd)
+  }
+  goto __end
+  label __end
+}
+
+method Clazz_m1_1(_cthread_157: Ref, _caller_measures_157: Seq[Measure$], _residue_157: Perm, self_1: Ref, b_0: Ref, Clazz_m1_1_rd: Perm) returns (_current_wait_level_157: Perm)
+  requires none < Clazz_m1_1_rd && Clazz_m1_1_rd < write
+  requires _cthread_157 != null
+  requires issubtype(typeof(_cthread_157), Thread_0())
+  requires issubtype(typeof(self_1), Clazz())
+  requires issubtype(typeof(b_0), bool())
+  requires self_1 != null
+  requires !object___eq__(self_1, null)
+  requires acc(self_1.Clazz_seq, Clazz_m1_1_rd) && issubtype(typeof(self_1.Clazz_seq), PSeq(Clazz())) && (true && (forall lambda25_51$r: Ref :: { (lambda25_51$r in PSeq___sil_seq__(self_1.Clazz_seq)) } issubtype(typeof(lambda25_51$r), Clazz()) && (lambda25_51$r in PSeq___sil_seq__(self_1.Clazz_seq)) ==> acc(lambda25_51$r.Clazz_x, Clazz_m1_1_rd)) && (forall lambda25_51$r: Ref :: { (lambda25_51$r in PSeq___sil_seq__(self_1.Clazz_seq)) } issubtype(typeof(lambda25_51$r), Clazz()) && (lambda25_51$r in PSeq___sil_seq__(self_1.Clazz_seq)) ==> issubtype(typeof(lambda25_51$r.Clazz_x), int())))
+  requires [true, perm(MustTerminate(_cthread_157)) == none && ((forperm _r_7: Ref [MustInvokeBounded(_r_7)] :: false) && ((forperm _r_7: Ref [MustInvokeUnbounded(_r_7)] :: false) && ((forperm _r_7: Ref [_r_7.MustReleaseBounded] :: false) && (forperm _r_7: Ref [_r_7.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_5: Ref [_r_5.MustReleaseBounded] :: Level(_r_5) <= _current_wait_level_157) && ((forperm _r_5: Ref [_r_5.MustReleaseUnbounded] :: Level(_r_5) <= _current_wait_level_157) && _residue_157 <= _current_wait_level_157), true]
+  ensures acc(self_1.Clazz_seq, Clazz_m1_1_rd) && issubtype(typeof(self_1.Clazz_seq), PSeq(Clazz())) && (true && (forall lambda26_50$r: Ref :: { (lambda26_50$r in PSeq___sil_seq__(self_1.Clazz_seq)) } issubtype(typeof(lambda26_50$r), Clazz()) && (lambda26_50$r in PSeq___sil_seq__(self_1.Clazz_seq)) ==> acc(lambda26_50$r.Clazz_x, Clazz_m1_1_rd)) && (forall lambda26_50$r: Ref :: { (lambda26_50$r in PSeq___sil_seq__(self_1.Clazz_seq)) } issubtype(typeof(lambda26_50$r), Clazz()) && (lambda26_50$r in PSeq___sil_seq__(self_1.Clazz_seq)) ==> issubtype(typeof(lambda26_50$r.Clazz_x), int())))
+  ensures false
+  ensures [true, (forperm _r_6: Ref [MustInvokeBounded(_r_6)] :: false) && ((forperm _r_6: Ref [MustInvokeUnbounded(_r_6)] :: false) && ((forperm _r_6: Ref [_r_6.MustReleaseBounded] :: false) && (forperm _r_6: Ref [_r_6.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var self_6: Ref
+  var b_4: Ref
+  var _cwl_157: Perm
+  var _method_measures_157: Seq[Measure$]
+  _method_measures_157 := Seq[Measure$]()
+  inhale typeof(self_1) == Clazz()
+  _err := null
+  self_6 := self_1
+  b_4 := b_0
+  if (bool___unbox__(b_4)) {
+    var Clazz_m1_0_call_rd: Perm
+    inhale none < Clazz_m1_0_call_rd && Clazz_m1_0_call_rd < write
+    inhale none < perm(self_6.Clazz_seq) ==> Clazz_m1_0_call_rd < perm(self_6.Clazz_seq)
+    inhale (forall lambda18_51$r: Ref :: { (lambda18_51$r in PSeq___sil_seq__(self_6.Clazz_seq)) } issubtype(typeof(lambda18_51$r), Clazz()) && (lambda18_51$r in PSeq___sil_seq__(self_6.Clazz_seq)) ==> none < perm(lambda18_51$r.Clazz_x) ==> Clazz_m1_0_call_rd < perm(lambda18_51$r.Clazz_x))
+    _cwl_157 := Clazz_m1(_cthread_157, _method_measures_157, _residue_157, self_6, b_4, Clazz_m1_0_call_rd)
+  }
+  goto __end
+  label __end
+}
+
+method Clazz_m2(_cthread_158: Ref, _caller_measures_158: Seq[Measure$], _residue_158: Perm, self_2: Ref, b_1: Ref, Clazz_m2_rd: Perm) returns (_current_wait_level_158: Perm)
+  requires none < Clazz_m2_rd && Clazz_m2_rd < write
+  requires _cthread_158 != null
+  requires issubtype(typeof(_cthread_158), Thread_0())
+  requires issubtype(typeof(self_2), Clazz())
+  requires issubtype(typeof(b_1), bool())
+  requires self_2 != null
+  requires !object___eq__(self_2, null)
+  requires acc(self_2.Clazz_seq, Clazz_m2_rd) && issubtype(typeof(self_2.Clazz_seq), PSeq(Clazz())) && (true && (forall lambda34_51$r: Ref :: { (lambda34_51$r in PSeq___sil_seq__(self_2.Clazz_seq)) } issubtype(typeof(lambda34_51$r), Clazz()) && (lambda34_51$r in PSeq___sil_seq__(self_2.Clazz_seq)) ==> acc(lambda34_51$r.Clazz_x, write)) && (forall lambda34_51$r: Ref :: { (lambda34_51$r in PSeq___sil_seq__(self_2.Clazz_seq)) } issubtype(typeof(lambda34_51$r), Clazz()) && (lambda34_51$r in PSeq___sil_seq__(self_2.Clazz_seq)) ==> issubtype(typeof(lambda34_51$r.Clazz_x), int())))
+  requires acc(self_2.Clazz_seq, Clazz_m2_rd) && issubtype(typeof(self_2.Clazz_seq), PSeq(Clazz())) && (true && (forall lambda35_51$r: Ref :: { (lambda35_51$r in PSeq___sil_seq__(self_2.Clazz_seq)) } issubtype(typeof(lambda35_51$r), Clazz()) && (lambda35_51$r in PSeq___sil_seq__(self_2.Clazz_seq)) ==> acc(lambda35_51$r.Clazz_x, write)) && (forall lambda35_51$r: Ref :: { (lambda35_51$r in PSeq___sil_seq__(self_2.Clazz_seq)) } issubtype(typeof(lambda35_51$r), Clazz()) && (lambda35_51$r in PSeq___sil_seq__(self_2.Clazz_seq)) ==> issubtype(typeof(lambda35_51$r.Clazz_x), int())))
+  requires [true, perm(MustTerminate(_cthread_158)) == none && ((forperm _r_10: Ref [MustInvokeBounded(_r_10)] :: false) && ((forperm _r_10: Ref [MustInvokeUnbounded(_r_10)] :: false) && ((forperm _r_10: Ref [_r_10.MustReleaseBounded] :: false) && (forperm _r_10: Ref [_r_10.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_8: Ref [_r_8.MustReleaseBounded] :: Level(_r_8) <= _current_wait_level_158) && ((forperm _r_8: Ref [_r_8.MustReleaseUnbounded] :: Level(_r_8) <= _current_wait_level_158) && _residue_158 <= _current_wait_level_158), true]
+  ensures [true, (forperm _r_9: Ref [MustInvokeBounded(_r_9)] :: false) && ((forperm _r_9: Ref [MustInvokeUnbounded(_r_9)] :: false) && ((forperm _r_9: Ref [_r_9.MustReleaseBounded] :: false) && (forperm _r_9: Ref [_r_9.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var self_7: Ref
+  var b_5: Ref
+  var _cwl_158: Perm
+  var _method_measures_158: Seq[Measure$]
+  _method_measures_158 := Seq[Measure$]()
+  inhale typeof(self_2) == Clazz()
+  _err := null
+  self_7 := self_2
+  b_5 := b_1
+  if (bool___unbox__(b_5)) {
+    var Clazz_m1_1_call_rd: Perm
+    inhale none < Clazz_m1_1_call_rd && Clazz_m1_1_call_rd < write
+    inhale none < perm(self_7.Clazz_seq) ==> Clazz_m1_1_call_rd < perm(self_7.Clazz_seq)
+    inhale (forall lambda18_51$r: Ref :: { (lambda18_51$r in PSeq___sil_seq__(self_7.Clazz_seq)) } issubtype(typeof(lambda18_51$r), Clazz()) && (lambda18_51$r in PSeq___sil_seq__(self_7.Clazz_seq)) ==> none < perm(lambda18_51$r.Clazz_x) ==> Clazz_m1_1_call_rd < perm(lambda18_51$r.Clazz_x))
+    _cwl_158 := Clazz_m1(_cthread_158, _method_measures_158, _residue_158, self_7, b_5, Clazz_m1_1_call_rd)
+  }
+  goto __end
+  label __end
+}
+
+method Clazz_m2_1(_cthread_159: Ref, _caller_measures_159: Seq[Measure$], _residue_159: Perm, self_3: Ref, b_2: Ref, Clazz_m2_1_rd: Perm) returns (_current_wait_level_159: Perm)
+  requires none < Clazz_m2_1_rd && Clazz_m2_1_rd < write
+  requires _cthread_159 != null
+  requires issubtype(typeof(_cthread_159), Thread_0())
+  requires issubtype(typeof(self_3), Clazz())
+  requires issubtype(typeof(b_2), bool())
+  requires self_3 != null
+  requires !object___eq__(self_3, null)
+  requires acc(self_3.Clazz_seq, Clazz_m2_1_rd) && issubtype(typeof(self_3.Clazz_seq), PSeq(Clazz())) && (true && (forall lambda41_51$r: Ref :: { (lambda41_51$r in PSeq___sil_seq__(self_3.Clazz_seq)) } issubtype(typeof(lambda41_51$r), Clazz()) && (lambda41_51$r in PSeq___sil_seq__(self_3.Clazz_seq)) ==> acc(lambda41_51$r.Clazz_x, write)) && (forall lambda41_51$r: Ref :: { (lambda41_51$r in PSeq___sil_seq__(self_3.Clazz_seq)) } issubtype(typeof(lambda41_51$r), Clazz()) && (lambda41_51$r in PSeq___sil_seq__(self_3.Clazz_seq)) ==> issubtype(typeof(lambda41_51$r.Clazz_x), int())))
+  requires acc(self_3.Clazz_seq, Clazz_m2_1_rd) && issubtype(typeof(self_3.Clazz_seq), PSeq(Clazz())) && (true && (forall lambda42_51$r: Ref :: { (lambda42_51$r in PSeq___sil_seq__(self_3.Clazz_seq)) } issubtype(typeof(lambda42_51$r), Clazz()) && (lambda42_51$r in PSeq___sil_seq__(self_3.Clazz_seq)) ==> acc(lambda42_51$r.Clazz_x, write)) && (forall lambda42_51$r: Ref :: { (lambda42_51$r in PSeq___sil_seq__(self_3.Clazz_seq)) } issubtype(typeof(lambda42_51$r), Clazz()) && (lambda42_51$r in PSeq___sil_seq__(self_3.Clazz_seq)) ==> issubtype(typeof(lambda42_51$r.Clazz_x), int())))
+  requires [true, perm(MustTerminate(_cthread_159)) == none && ((forperm _r_13: Ref [MustInvokeBounded(_r_13)] :: false) && ((forperm _r_13: Ref [MustInvokeUnbounded(_r_13)] :: false) && ((forperm _r_13: Ref [_r_13.MustReleaseBounded] :: false) && (forperm _r_13: Ref [_r_13.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_11: Ref [_r_11.MustReleaseBounded] :: Level(_r_11) <= _current_wait_level_159) && ((forperm _r_11: Ref [_r_11.MustReleaseUnbounded] :: Level(_r_11) <= _current_wait_level_159) && _residue_159 <= _current_wait_level_159), true]
+  ensures false
+  ensures [true, (forperm _r_12: Ref [MustInvokeBounded(_r_12)] :: false) && ((forperm _r_12: Ref [MustInvokeUnbounded(_r_12)] :: false) && ((forperm _r_12: Ref [_r_12.MustReleaseBounded] :: false) && (forperm _r_12: Ref [_r_12.MustReleaseUnbounded] :: false)))]
+{
+  var _err: Ref
+  var self_8: Ref
+  var b_6: Ref
+  var _cwl_159: Perm
+  var _method_measures_159: Seq[Measure$]
+  _method_measures_159 := Seq[Measure$]()
+  inhale typeof(self_3) == Clazz()
+  _err := null
+  self_8 := self_3
+  b_6 := b_2
+  if (bool___unbox__(b_6)) {
+    var Clazz_m1_2_call_rd: Perm
+    inhale none < Clazz_m1_2_call_rd && Clazz_m1_2_call_rd < write
+    inhale none < perm(self_8.Clazz_seq) ==> Clazz_m1_2_call_rd < perm(self_8.Clazz_seq)
+    inhale (forall lambda18_51$r: Ref :: { (lambda18_51$r in PSeq___sil_seq__(self_8.Clazz_seq)) } issubtype(typeof(lambda18_51$r), Clazz()) && (lambda18_51$r in PSeq___sil_seq__(self_8.Clazz_seq)) ==> none < perm(lambda18_51$r.Clazz_x) ==> Clazz_m1_2_call_rd < perm(lambda18_51$r.Clazz_x))
+    _cwl_159 := Clazz_m1(_cthread_159, _method_measures_159, _residue_159, self_8, b_6, Clazz_m1_2_call_rd)
+  }
+  goto __end
+  label __end
+}
+
+method main(_cthread_160: Ref, _caller_measures_160: Seq[Measure$], _residue_160: Perm, main_rd: Perm) returns (_current_wait_level_160: Perm)
+  requires none < main_rd && main_rd < write
+  requires _cthread_160 != null
+  requires issubtype(typeof(_cthread_160), Thread_0())
+  requires [true, perm(MustTerminate(_cthread_160)) == none && ((forperm _r_16: Ref [MustInvokeBounded(_r_16)] :: false) && ((forperm _r_16: Ref [MustInvokeUnbounded(_r_16)] :: false) && ((forperm _r_16: Ref [_r_16.MustReleaseBounded] :: false) && (forperm _r_16: Ref [_r_16.MustReleaseUnbounded] :: false))))]
+  ensures [(forperm _r_14: Ref [_r_14.MustReleaseBounded] :: Level(_r_14) <= _current_wait_level_160) && ((forperm _r_14: Ref [_r_14.MustReleaseUnbounded] :: Level(_r_14) <= _current_wait_level_160) && _residue_160 <= _current_wait_level_160), true]
+  ensures [true, (forperm _r_15: Ref [MustInvokeBounded(_r_15)] :: false) && ((forperm _r_15: Ref [MustInvokeUnbounded(_r_15)] :: false) && ((forperm _r_15: Ref [_r_15.MustReleaseBounded] :: false) && (forperm _r_15: Ref [_r_15.MustReleaseUnbounded] :: false)))]
+{
+  var module_defined_0: Bool
+  var module_names_0: Set[_Name]
+  var _cwl_160: Perm
+  var _method_measures_160: Seq[Measure$]
+  _method_measures_160 := Seq[Measure$]()
+  module_defined_0 := true
+  module_names_0 := Set[_Name]()
+  module_names_0 := (module_names_0 union Set(_single(3106082509126931487350218591)))
+  inhale acc(__file__()._val, 99 / 100) && issubtype(typeof(__file__()._val), str()) && issubtype(typeof(__file__()._val), str())
+  module_names_0 := (module_names_0 union Set(_single(2489530350921051593165922143)))
+  inhale acc(__name__()._val, 99 / 100) && issubtype(typeof(__name__()._val), str()) && issubtype(typeof(__name__()._val), str()) && str___eq__(str___create__(8, 2489249333222104298408468319), __name__()._val)
+  assert true
+  module_names_0 := (module_names_0 union Set(_single(3493880855485680332086796127)))
+  module_names_0 := (module_names_0 union Set(_single(12653)))
+  module_names_0 := (module_names_0 union Set(_single(828322157)))
+  module_names_0 := (module_names_0 union Set(_single(12909)))
+  module_names_0 := (module_names_0 union Set(_single(828322413)))
+  module_names_0 := (module_names_0 union Set(_single(4409224812126180285)))
+  goto __end
+  label __end
+}
+
+method HavocPerm() returns (returnval: Perm)
+
+
+method HavocInt() returns (returnval_0: Int)
+
+
+method HavocBool() returns (returnval_1: Bool)
+
+
+method HavocRef() returns (returnval_2: Ref)

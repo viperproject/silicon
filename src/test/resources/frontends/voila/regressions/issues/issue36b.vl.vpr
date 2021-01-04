@@ -1,0 +1,457 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Qu_state_T(s: Ref, lvl: Int, h: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Qu_interferenceReference_df($p0: Int, s: Ref, lvl: Int, h: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Qu_interferenceSet_df($p0: Int, s: Ref, lvl: Int, h: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function Qu_atomicity_context_df(s: Ref, lvl: Int, h: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $hd_$ptr: Ref
+
+field $node_$val: Int
+
+field $node_$next: Ref
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function Qu_atomicity_context_hf(s: Ref, lvl: Int, h: Ref): Set[Int]
+  requires acc(Qu_atomicity_context_fp(s, lvl, h), write)
+  ensures [Qu_atomicity_context_df(s, lvl, h), true]
+
+
+function Qu_interferenceSet_hf($p0: Int, s: Ref, lvl: Int, h: Ref): Set[Int]
+  requires acc(Qu_interferenceContext_fp(s, lvl, h), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in Qu_interferenceSet_df($p0, s, lvl, h))), true]
+
+
+function Qu_interferenceReference_hf($p0: Int, s: Ref, lvl: Int, h: Ref): Int
+  requires acc(Qu_interferenceContext_fp(s, lvl, h), write)
+  ensures [Qu_interferenceReference_df($p0, s, lvl, h), true]
+
+
+function Qu_state(s: Ref, lvl: Int, h: Ref): Int
+  requires acc(Qu(s, lvl, h), write)
+  ensures [Qu_state_T(s, lvl, h), true]
+{
+  (unfolding acc(Qu(s, lvl, h), write) in 0)
+}
+
+predicate Qu_G($r: Ref) 
+
+predicate Qu_atomicity_context_fp(s: Ref, lvl: Int, h: Ref) 
+
+predicate Qu_interferenceContext_fp(s: Ref, lvl: Int, h: Ref) 
+
+predicate Qu_sk_fp() 
+
+predicate Qu(s: Ref, lvl: Int, h: Ref) {
+  acc(h.$hd_$ptr, write) && true
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method ___silicon_hack407_havoc_all_Qu()
+
+
+method ___silicon_hack407_havoc_all_Qu_interferenceContext_fp()
+
+
+method makeQueue(r: Ref, lvl: Int) returns (ret: Ref)
+  requires lvl >= 0
+  ensures acc(Qu(r, lvl, ret), write) && (lvl >= 0 && true)
+{
+  var y: Ref
+  var x: Ref
+  var v: Int
+  var n: Ref
+  var p: Ref
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale acc(Qu_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $s: Ref, $lvl: Int, $h: Ref :: acc(Qu_interferenceContext_fp($s, $lvl, $h), write))
+  
+  // ------- Inferring interference context Qu (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // Inferring interference all instances of region Qu
+  
+  ___silicon_hack407_havoc_all_Qu_interferenceContext_fp()
+  exhale acc(Qu_sk_fp(), write)
+  inhale acc(Qu_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: (forall $$_m: Int :: { ($$_m in Qu_interferenceSet_df(1, $s, $lvl, $h)) } none < old[pre_infer0](perm(Qu($s, $lvl, $h))) ==> ($$_m in Qu_interferenceSet_hf(1, $s, $lvl, $h)) == ((none < perm($s.$diamond) && none < perm(Qu_atomicity_context_fp($s, $lvl, $h)) ==> ($$_m in Qu_atomicity_context_hf($s, $lvl, $h))) && ($$_m == old[pre_infer0](Qu_state($s, $lvl, $h)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_infer0](perm(Qu($s, $lvl, $h))) ==> Qu_interferenceReference_hf(1, $s, $lvl, $h) == old[pre_infer0](Qu_state($s, $lvl, $h)))
+  
+  // ------- Inferring interference context Qu (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(y.$node_$val, write) && true
+  v := y.$node_$val
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(y.$node_$next, write) && true
+  n := y.$node_$next
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  y.$node_$next := null
+  
+  // ------- heap-write END ----------
+  
+  
+  
+  // ------- Stabilising regions Qu (after heap-write@33.3) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region Qu
+  
+  ___silicon_hack407_havoc_all_Qu_interferenceContext_fp()
+  exhale acc(Qu_sk_fp(), write)
+  inhale acc(Qu_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: (forall $$_m: Int :: { ($$_m in Qu_interferenceSet_df(2, $s, $lvl, $h)) } none < old[pre_stabilize0](perm(Qu($s, $lvl, $h))) ==> ($$_m in Qu_interferenceSet_hf(2, $s, $lvl, $h)) == ((none < perm($s.$diamond) && none < perm(Qu_atomicity_context_fp($s, $lvl, $h)) ==> ($$_m in Qu_atomicity_context_hf($s, $lvl, $h))) && ($$_m == old[pre_stabilize0](Qu_state($s, $lvl, $h)) || false))))
+  ___silicon_hack407_havoc_all_Qu()
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_stabilize0](perm(Qu($s, $lvl, $h))) ==> (Qu_state($s, $lvl, $h) in Qu_interferenceSet_hf(2, $s, $lvl, $h)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_stabilize0](perm(Qu($s, $lvl, $h))) ==> Qu_interferenceReference_hf(2, $s, $lvl, $h) == old[pre_stabilize0](Qu_state($s, $lvl, $h)))
+  
+  // ------- Stabilising regions Qu (after heap-write@33.3) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$hd_$ptr, write) && true
+  p := x.$hd_$ptr
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  x.$hd_$ptr := y
+  
+  // ------- heap-write END ----------
+  
+  
+  
+  // ------- Stabilising regions Qu (after heap-write@37.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region Qu
+  
+  ___silicon_hack407_havoc_all_Qu_interferenceContext_fp()
+  exhale acc(Qu_sk_fp(), write)
+  inhale acc(Qu_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: (forall $$_m: Int :: { ($$_m in Qu_interferenceSet_df(3, $s, $lvl, $h)) } none < old[pre_stabilize](perm(Qu($s, $lvl, $h))) ==> ($$_m in Qu_interferenceSet_hf(3, $s, $lvl, $h)) == ((none < perm($s.$diamond) && none < perm(Qu_atomicity_context_fp($s, $lvl, $h)) ==> ($$_m in Qu_atomicity_context_hf($s, $lvl, $h))) && ($$_m == old[pre_stabilize](Qu_state($s, $lvl, $h)) || false))))
+  ___silicon_hack407_havoc_all_Qu()
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_stabilize](perm(Qu($s, $lvl, $h))) ==> (Qu_state($s, $lvl, $h) in Qu_interferenceSet_hf(3, $s, $lvl, $h)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_stabilize](perm(Qu($s, $lvl, $h))) ==> Qu_interferenceReference_hf(3, $s, $lvl, $h) == old[pre_stabilize](Qu_state($s, $lvl, $h)))
+  
+  // ------- Stabilising regions Qu (after heap-write@37.3) END 
+  
+  
+  
+  // ------- assign BEGIN ------------
+  
+  
+  ret := x
+  
+  // ------- assign END --------------
+  
+  
+  
+  // ------- Stabilising regions Qu (after assign@39.3) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region Qu
+  
+  ___silicon_hack407_havoc_all_Qu_interferenceContext_fp()
+  exhale acc(Qu_sk_fp(), write)
+  inhale acc(Qu_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: (forall $$_m: Int :: { ($$_m in Qu_interferenceSet_df(4, $s, $lvl, $h)) } none < old[pre_stabilize2](perm(Qu($s, $lvl, $h))) ==> ($$_m in Qu_interferenceSet_hf(4, $s, $lvl, $h)) == ((none < perm($s.$diamond) && none < perm(Qu_atomicity_context_fp($s, $lvl, $h)) ==> ($$_m in Qu_atomicity_context_hf($s, $lvl, $h))) && ($$_m == old[pre_stabilize2](Qu_state($s, $lvl, $h)) || false))))
+  ___silicon_hack407_havoc_all_Qu()
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_stabilize2](perm(Qu($s, $lvl, $h))) ==> (Qu_state($s, $lvl, $h) in Qu_interferenceSet_hf(4, $s, $lvl, $h)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_stabilize2](perm(Qu($s, $lvl, $h))) ==> Qu_interferenceReference_hf(4, $s, $lvl, $h) == old[pre_stabilize2](Qu_state($s, $lvl, $h)))
+  
+  // ------- Stabilising regions Qu (after assign@39.3) END 
+  
+  
+  
+  // ------- fold BEGIN --------------
+  
+  
+  fold acc(Qu(r, lvl, ret), write)
+  assert lvl >= 0 && true
+  
+  // ------- fold END ----------------
+  
+  
+  
+  // ------- Stabilising regions Qu (after seq-comp@39.3) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region Qu
+  
+  ___silicon_hack407_havoc_all_Qu_interferenceContext_fp()
+  exhale acc(Qu_sk_fp(), write)
+  inhale acc(Qu_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: (forall $$_m: Int :: { ($$_m in Qu_interferenceSet_df(5, $s, $lvl, $h)) } none < old[pre_stabilize3](perm(Qu($s, $lvl, $h))) ==> ($$_m in Qu_interferenceSet_hf(5, $s, $lvl, $h)) == ((none < perm($s.$diamond) && none < perm(Qu_atomicity_context_fp($s, $lvl, $h)) ==> ($$_m in Qu_atomicity_context_hf($s, $lvl, $h))) && ($$_m == old[pre_stabilize3](Qu_state($s, $lvl, $h)) || false))))
+  ___silicon_hack407_havoc_all_Qu()
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_stabilize3](perm(Qu($s, $lvl, $h))) ==> (Qu_state($s, $lvl, $h) in Qu_interferenceSet_hf(5, $s, $lvl, $h)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_stabilize3](perm(Qu($s, $lvl, $h))) ==> Qu_interferenceReference_hf(5, $s, $lvl, $h) == old[pre_stabilize3](Qu_state($s, $lvl, $h)))
+  
+  // ------- Stabilising regions Qu (after seq-comp@39.3) END 
+  
+  
+}
+
+method $_Qu_interpretation_stability_check(s: Ref, lvl: Int, h: Ref)
+{
+  inhale acc(Qu_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $s: Ref, $lvl: Int, $h: Ref :: acc(Qu_interferenceContext_fp($s, $lvl, $h), write))
+  inhale acc(h.$hd_$ptr, write) && true
+  
+  // ------- Stabilising regions Qu (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // Stabilising all instances of region Qu
+  
+  ___silicon_hack407_havoc_all_Qu()
+  exhale acc(Qu_sk_fp(), write)
+  inhale acc(Qu_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_stabilize4](perm(Qu($s, $lvl, $h))) ==> (none < perm($s.$diamond) && none < perm(Qu_atomicity_context_fp($s, $lvl, $h)) ==> (Qu_state($s, $lvl, $h) in Qu_atomicity_context_hf($s, $lvl, $h))) && (Qu_state($s, $lvl, $h) == old[pre_stabilize4](Qu_state($s, $lvl, $h)) || false))
+  
+  // ------- Stabilising regions Qu (check stability of region interpretation) END 
+  
+  
+  assert acc(h.$hd_$ptr, write) && true
+}
+
+method $_Qu_action_transitivity_check()
+{
+  var G: Bool
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState
+  inhale bState == cState
+  assert aState == cState
+}
+
+method $_makeQueue_condition_stability_precondition_check(r: Ref, lvl: Int, ret: Ref)
+  requires lvl >= 0
+{
+  var $_levelVar_1: Int
+  var y: Ref
+  var x: Ref
+  inhale $_levelVar_1 >= 0
+  inhale acc(Qu_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $s: Ref, $lvl: Int, $h: Ref :: acc(Qu_interferenceContext_fp($s, $lvl, $h), write))
+  
+  // ------- Inferring interference context Qu (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // Inferring interference all instances of region Qu
+  
+  ___silicon_hack407_havoc_all_Qu_interferenceContext_fp()
+  exhale acc(Qu_sk_fp(), write)
+  inhale acc(Qu_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: (forall $$_m: Int :: { ($$_m in Qu_interferenceSet_df(6, $s, $lvl, $h)) } none < old[pre_infer](perm(Qu($s, $lvl, $h))) ==> ($$_m in Qu_interferenceSet_hf(6, $s, $lvl, $h)) == ((none < perm($s.$diamond) && none < perm(Qu_atomicity_context_fp($s, $lvl, $h)) ==> ($$_m in Qu_atomicity_context_hf($s, $lvl, $h))) && ($$_m == old[pre_infer](Qu_state($s, $lvl, $h)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_infer](perm(Qu($s, $lvl, $h))) ==> Qu_interferenceReference_hf(6, $s, $lvl, $h) == old[pre_infer](Qu_state($s, $lvl, $h)))
+  
+  // ------- Inferring interference context Qu (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Qu (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // Stabilising all instances of region Qu
+  
+  ___silicon_hack407_havoc_all_Qu()
+  exhale acc(Qu_sk_fp(), write)
+  inhale acc(Qu_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $h: Ref [Qu($s, $lvl, $h)] :: none < old[pre_stabilize5](perm(Qu($s, $lvl, $h))) ==> (none < perm($s.$diamond) && none < perm(Qu_atomicity_context_fp($s, $lvl, $h)) ==> (Qu_state($s, $lvl, $h) in Qu_atomicity_context_hf($s, $lvl, $h))) && (Qu_state($s, $lvl, $h) == old[pre_stabilize5](Qu_state($s, $lvl, $h)) || false))
+  
+  // ------- Stabilising regions Qu (check stability of method condition) END 
+  
+  
+  assert lvl >= 0
+}

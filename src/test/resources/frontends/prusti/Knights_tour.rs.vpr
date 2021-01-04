@@ -1,0 +1,6242 @@
+domain $SnapshotMirrors$ {
+  
+  
+}
+
+field closure_0: Ref
+
+field closure_1: Ref
+
+field closure_2: Ref
+
+field closure_3: Ref
+
+field discriminant: Int
+
+field enum_None: Ref
+
+field enum_Some: Ref
+
+field f$0: Ref
+
+field f$a: Ref
+
+field f$buf: Ref
+
+field f$cap: Ref
+
+field f$field: Ref
+
+field f$len: Ref
+
+field f$ptr: Ref
+
+field f$v: Ref
+
+field f$x: Ref
+
+field f$y: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$undef_bool__$TY$__$bool$(): Bool
+
+
+function builtin$unreach_bool__$TY$__$bool$(): Bool
+  requires false
+
+
+function m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures result >= 0
+  ensures 0 <= result
+
+
+function m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures result >= 0
+  ensures 0 <= result
+
+
+function m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$$$int$(_pure_1: Ref, _pure_2: Int, _pure_3: Int): Int
+  requires acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires 0 <= _pure_2 && _pure_2 < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= _pure_3 && _pure_3 < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())
+  ensures true
+
+
+function m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$(): Int
+  requires true
+  requires true
+  ensures result == 8
+
+
+function m_Knights_tour$$valid$opensqu$0$closesqu$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$bool$(_pure_1: Ref): Bool
+  requires acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_pure_1), read$())
+  requires true
+  ensures true
+{
+  (unfolding acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_pure_1), read$()) in !(_pure_1.discriminant == 0) ==> (unfolding acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_Some(_pure_1.enum_Some), read$()) in (unfolding acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_pure_1.enum_Some.f$0), read$()) in (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_pure_1.enum_Some.f$0.tuple_1), read$()) in (unfolding acc(i32(_pure_1.enum_Some.f$0.tuple_1.f$y), read$()) in (unfolding acc(i32(_pure_1.enum_Some.f$0.tuple_1.f$x), read$()) in (!(0 <= _pure_1.enum_Some.f$0.tuple_1.f$x.val_int) ==> false) && (0 <= _pure_1.enum_Some.f$0.tuple_1.f$x.val_int ==> (!(_pure_1.enum_Some.f$0.tuple_1.f$x.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()) ==> false) && (_pure_1.enum_Some.f$0.tuple_1.f$x.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() ==> (!(0 <= _pure_1.enum_Some.f$0.tuple_1.f$y.val_int) ==> false) && (0 <= _pure_1.enum_Some.f$0.tuple_1.f$y.val_int ==> _pure_1.enum_Some.f$0.tuple_1.f$y.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())))))))))
+}
+
+function m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_$$int$(self: Ref): Int
+  requires acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(self), read$())
+  ensures 0 <= result && result <= 1
+{
+  (unfolding acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(self), read$()) in self.discriminant)
+}
+
+function m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$int$(self: Ref): Int
+  requires acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(self), read$())
+  ensures 0 <= result && result <= 1
+{
+  (unfolding acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(self), read$()) in self.discriminant)
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_11$3$16836186685558598718(self: Ref) 
+
+predicate closure$0_1_12$3$16836186685558598718(self: Ref) 
+
+predicate closure$0_1_13$4$1589009702788246713(self: Ref) 
+
+predicate closure$0_1_15$3$856908841841235720(self: Ref) 
+
+predicate closure$0_1_16$3$16836186685558598718(self: Ref) 
+
+predicate closure$0_1_17$3$16123126176350911560(self: Ref) 
+
+predicate closure$0_1_18$3$936109105845141873(self: Ref) 
+
+predicate closure$0_1_19$3$17660061404446368440(self: Ref) 
+
+predicate closure$0_1_20$3$1747452362277107208(self: Ref) 
+
+predicate closure$0_1_21$3$1886885960320301046(self: Ref) 
+
+predicate closure$0_1_22$3$16836186685558598718(self: Ref) 
+
+predicate closure$0_1_23$4$1860419104383651931(self: Ref) 
+
+predicate closure$0_1_24$3$9005329699453506105(self: Ref) 
+
+predicate closure$0_1_25$3$8233369117391950042(self: Ref) 
+
+predicate closure$0_1_26$3$6831129558716023658(self: Ref) 
+
+predicate closure$0_1_27$3$8084697069950319799(self: Ref) 
+
+predicate closure$0_1_29$3$11933678243532117102(self: Ref) 
+
+predicate closure$0_1_30$3$4920139583706826500(self: Ref) 
+
+predicate closure$0_1_31$3$13448283034829184517(self: Ref) 
+
+predicate closure$0_1_32$3$15809515461060994565(self: Ref) 
+
+predicate closure$0_1_33$3$11933678243532117102(self: Ref) 
+
+predicate closure$0_1_34$3$4920139583706826500(self: Ref) 
+
+predicate closure$0_1_35$3$13448283034829184517(self: Ref) 
+
+predicate closure$0_1_36$3$15809515461060994565(self: Ref) 
+
+predicate closure$0_1_37$6$9382093347497428436(self: Ref) 
+
+predicate closure$0_1_38$5$16262156183622235759(self: Ref) 
+
+predicate closure$0_1_39$6$2570231456930421564(self: Ref) 
+
+predicate closure$0_1_40$5$8151149684055769446(self: Ref) 
+
+predicate closure$0_1_41$3$11933678243532117102(self: Ref) 
+
+predicate closure$0_1_44$3$11957180999391598925(self: Ref) 
+
+predicate closure$0_1_45$3$18068549781639004461(self: Ref) 
+
+predicate closure$0_1_46$4$2316023683921474614(self: Ref) 
+
+predicate closure$0_1_47$4$7438738628820119904(self: Ref) 
+
+predicate closure$0_1_48$3$5169942411020240745(self: Ref) 
+
+predicate closure$0_1_49$3$13177526864632184778(self: Ref) 
+
+predicate closure$0_1_51$3$11921783312157906974(self: Ref) 
+
+predicate closure$0_1_52$3$15203628194863643940(self: Ref) 
+
+predicate closure$0_1_53$2$4061298814955297750(self: Ref) 
+
+predicate closure$0_1_54$3$3845551369651406509(self: Ref) 
+
+predicate closure$0_1_55$4$12478973570546726808(self: Ref) 
+
+predicate closure$0_1_56$2$4061298814955297750(self: Ref) 
+
+predicate closure$0_1_57$3$3155449875120012984(self: Ref) 
+
+predicate closure$0_1_58$3$7682442910302967967(self: Ref) 
+
+predicate closure$0_1_59$3$2360874258797543443(self: Ref) 
+
+predicate closure$0_1_60$3$18314004443372132536(self: Ref) 
+
+predicate closure$0_1_61$2$4061298814955297750(self: Ref) 
+
+predicate closure$0_1_62$3$8554745105452251562(self: Ref) 
+
+predicate closure$0_1_63$4$11738836714435574072(self: Ref) 
+
+predicate closure$0_1_64$3$6302789819304097144(self: Ref) 
+
+predicate closure$0_1_65$3$11937539310563724083(self: Ref) 
+
+predicate closure$0_1_66$3$13333293174589074011(self: Ref) 
+
+predicate closure$0_1_67$3$2467019396475800186(self: Ref) 
+
+predicate closure$0_1_68$2$4061298814955297750(self: Ref) 
+
+predicate closure$0_1_69$3$15436921638386154731(self: Ref) 
+
+predicate closure$0_1_70$4$13742673918391663087(self: Ref) 
+
+predicate closure$0_1_71$3$13802932288664565916(self: Ref) 
+
+predicate closure$0_1_72$3$11933678243532117102(self: Ref) 
+
+predicate closure$0_1_73$3$4920139583706826500(self: Ref) 
+
+predicate closure$0_1_74$3$13448283034829184517(self: Ref) 
+
+predicate closure$0_1_75$3$15809515461060994565(self: Ref) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate isize(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$field, write) && acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self.f$field), write)
+}
+
+predicate m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$x, write) && (acc(i32(self.f$x), write) && (acc(self.f$y, write) && acc(i32(self.f$y), write)))
+}
+
+predicate m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$v, write) && acc(m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$v), write)
+}
+
+predicate m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$v, write) && acc(m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_$_end_(self.f$v), write)
+}
+
+predicate m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$v, write) && acc(m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$tuple2$i32$i32$_end_(self.f$v), write)
+}
+
+predicate m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  true
+}
+
+predicate m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.f$ptr, write) && (acc(m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$i32$_end_(self.f$ptr), write) && (acc(self.f$cap, write) && (acc(usize(self.f$cap), write) && (acc(self.f$a, write) && acc(m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self.f$a), write)))))
+}
+
+predicate m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.f$ptr, write) && (acc(m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_$_end_(self.f$ptr), write) && (acc(self.f$cap, write) && (acc(usize(self.f$cap), write) && (acc(self.f$a, write) && acc(m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self.f$a), write)))))
+}
+
+predicate m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$tuple2$i32$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.f$ptr, write) && (acc(m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$tuple2$i32$i32$_end_(self.f$ptr), write) && (acc(self.f$cap, write) && (acc(usize(self.f$cap), write) && (acc(self.f$a, write) && acc(m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self.f$a), write)))))
+}
+
+predicate m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.f$ptr, write) && (acc(m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$ptr), write) && (acc(self.f$cap, write) && (acc(usize(self.f$cap), write) && (acc(self.f$a, write) && acc(m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self.f$a), write)))))
+}
+
+predicate m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) {
+  acc(self.f$buf, write) && (acc(m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$buf), write) && (acc(self.f$len, write) && acc(usize(self.f$len), write)))
+}
+
+predicate m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_$_end_(self: Ref) {
+  acc(self.f$buf, write) && (acc(m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$buf), write) && (acc(self.f$len, write) && acc(usize(self.f$len), write)))
+}
+
+predicate m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$tuple2$i32$i32$_end_(self: Ref) {
+  acc(self.f$buf, write) && (acc(m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$tuple2$i32$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$buf), write) && (acc(self.f$len, write) && acc(usize(self.f$len), write)))
+}
+
+predicate m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.f$buf, write) && (acc(m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$buf), write) && (acc(self.f$len, write) && acc(usize(self.f$len), write)))
+}
+
+predicate m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.discriminant, write) && (0 <= self.discriminant && self.discriminant <= 1 && (acc(self.enum_Some, write) && (self.discriminant == 1 ==> acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_Some(self.enum_Some), write))))
+}
+
+predicate m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_Some(self: Ref) {
+  acc(self.f$0, write) && acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(self.f$0), write)
+}
+
+predicate m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.discriminant, write) && (0 <= self.discriminant && self.discriminant <= 1 && (acc(self.enum_Some, write) && (self.discriminant == 1 ==> acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_Some(self.enum_Some), write))))
+}
+
+predicate m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_Some(self: Ref) {
+  acc(self.f$0, write) && acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(self.f$0), write)
+}
+
+predicate m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) 
+
+predicate m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_$_end_(self: Ref) 
+
+predicate m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$tuple2$i32$i32$_end_(self: Ref) 
+
+predicate m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) 
+
+predicate never(self: Ref) 
+
+predicate ref$bool(self: Ref) {
+  acc(self.val_ref, write) && acc(bool(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_11$3$16836186685558598718(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_11$3$16836186685558598718(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_12$3$16836186685558598718(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_12$3$16836186685558598718(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_13$4$1589009702788246713(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_13$4$1589009702788246713(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_15$3$856908841841235720(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_15$3$856908841841235720(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_16$3$16836186685558598718(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_16$3$16836186685558598718(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_17$3$16123126176350911560(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_17$3$16123126176350911560(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_18$3$936109105845141873(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_18$3$936109105845141873(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_19$3$17660061404446368440(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_19$3$17660061404446368440(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_20$3$1747452362277107208(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_20$3$1747452362277107208(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_21$3$1886885960320301046(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_21$3$1886885960320301046(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_22$3$16836186685558598718(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_22$3$16836186685558598718(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_23$4$1860419104383651931(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_23$4$1860419104383651931(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_24$3$9005329699453506105(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_24$3$9005329699453506105(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_25$3$8233369117391950042(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_25$3$8233369117391950042(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_26$3$6831129558716023658(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_26$3$6831129558716023658(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_27$3$8084697069950319799(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_27$3$8084697069950319799(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_29$3$11933678243532117102(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_29$3$11933678243532117102(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_30$3$4920139583706826500(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_30$3$4920139583706826500(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_31$3$13448283034829184517(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_31$3$13448283034829184517(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_32$3$15809515461060994565(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_32$3$15809515461060994565(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_33$3$11933678243532117102(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_33$3$11933678243532117102(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_34$3$4920139583706826500(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_34$3$4920139583706826500(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_35$3$13448283034829184517(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_35$3$13448283034829184517(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_36$3$15809515461060994565(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_36$3$15809515461060994565(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_37$6$9382093347497428436(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_37$6$9382093347497428436(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_38$5$16262156183622235759(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_38$5$16262156183622235759(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_39$6$2570231456930421564(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_39$6$2570231456930421564(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_40$5$8151149684055769446(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_40$5$8151149684055769446(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_41$3$11933678243532117102(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_41$3$11933678243532117102(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_44$3$11957180999391598925(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_44$3$11957180999391598925(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_45$3$18068549781639004461(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_45$3$18068549781639004461(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_46$4$2316023683921474614(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_46$4$2316023683921474614(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_47$4$7438738628820119904(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_47$4$7438738628820119904(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_48$3$5169942411020240745(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_48$3$5169942411020240745(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_49$3$13177526864632184778(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_49$3$13177526864632184778(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_51$3$11921783312157906974(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_51$3$11921783312157906974(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_52$3$15203628194863643940(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_52$3$15203628194863643940(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_54$3$3845551369651406509(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_54$3$3845551369651406509(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_55$4$12478973570546726808(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_55$4$12478973570546726808(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_57$3$3155449875120012984(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_57$3$3155449875120012984(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_58$3$7682442910302967967(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_58$3$7682442910302967967(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_59$3$2360874258797543443(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_59$3$2360874258797543443(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_60$3$18314004443372132536(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_60$3$18314004443372132536(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_62$3$8554745105452251562(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_62$3$8554745105452251562(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_63$4$11738836714435574072(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_63$4$11738836714435574072(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_64$3$6302789819304097144(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_64$3$6302789819304097144(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_65$3$11937539310563724083(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_65$3$11937539310563724083(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_66$3$13333293174589074011(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_66$3$13333293174589074011(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_67$3$2467019396475800186(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_67$3$2467019396475800186(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_69$3$15436921638386154731(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_69$3$15436921638386154731(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_70$4$13742673918391663087(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_70$4$13742673918391663087(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_71$3$13802932288664565916(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_71$3$13802932288664565916(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_72$3$11933678243532117102(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_72$3$11933678243532117102(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_73$3$4920139583706826500(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_73$3$4920139583706826500(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_74$3$13448283034829184517(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_74$3$13448283034829184517(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_75$3$15809515461060994565(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_75$3$15809515461060994565(self.val_ref), write)
+}
+
+predicate ref$i32(self: Ref) {
+  acc(self.val_ref, write) && acc(i32(self.val_ref), write)
+}
+
+predicate ref$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(self.val_ref), write)
+}
+
+predicate ref$tuple2$i32$i32(self: Ref) {
+  acc(self.val_ref, write) && acc(tuple2$i32$i32(self.val_ref), write)
+}
+
+predicate ref$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$usize(self: Ref) {
+  acc(self.val_ref, write) && acc(usize(self.val_ref), write)
+}
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$i32$bool(self: Ref) {
+  acc(self.tuple_0, write) && (acc(i32(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(bool(self.tuple_1), write)))
+}
+
+predicate tuple2$i32$i32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(i32(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(i32(self.tuple_1), write)))
+}
+
+predicate tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.tuple_0, write) && (acc(i32(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(self.tuple_1), write)))
+}
+
+predicate tuple2$usize$bool(self: Ref) {
+  acc(self.tuple_0, write) && (acc(usize(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(bool(self.tuple_1), write)))
+}
+
+predicate u8(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+predicate usize(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+method m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$9$closesqu$$$new$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var _2: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Knights_tour::Board::new"
+  
+  // Def path: "Knights_tour::{{impl}}[9]::new[0]"
+  
+  // Span: tests/verify/pass/rosetta/Knights_tour.rs:173:5: 177:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_2)
+  
+  // [mir] _2 = const VecVecWrapperI32::new() -> [return: bb2, unwind: bb1]
+  
+  label l0
+  _2 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  inhale true
+  inhale true
+  label l1
+  goto bb2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] _0 = Board { field: move _2 }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  unfold acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$field := _2
+  label l2
+  // [mir] drop(_2) -> [return: bb3, unwind: bb1]
+  
+  goto bb3
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] StorageDead(_2)
+  
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  fold acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Knights_tour$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var _aux_havoc_i32: Ref
+  var __t14: Int
+  var _1: Int
+  var _2: Int
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Int
+  var _12: Ref
+  var _13: Ref
+  var _14: Int
+  var _15: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Knights_tour::main"
+  
+  // Def path: "Knights_tour::main[0]"
+  
+  // Span: tests/verify/pass/rosetta/Knights_tour.rs:310:1: 320:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = (const 3i32, const 1i32)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(tuple2$i32$i32(_3), write)
+  _aux_havoc_i32 := builtin$havoc_ref()
+  unfold acc(tuple2$i32$i32(_3), write)
+  _3.tuple_0 := _aux_havoc_i32
+  inhale acc(_3.tuple_0.val_int, write)
+  _3.tuple_0.val_int := 3
+  _aux_havoc_i32 := builtin$havoc_ref()
+  _3.tuple_1 := _aux_havoc_i32
+  inhale acc(_3.tuple_1.val_int, write)
+  _3.tuple_1.val_int := 1
+  // [mir] StorageLive(_1)
+  
+  // [mir] _1 = (_3.0: i32)
+  
+  _1 := builtin$havoc_int()
+  inhale true
+  _1 := _3.tuple_0.val_int
+  label l0
+  // [mir] StorageLive(_2)
+  
+  // [mir] _2 = (_3.1: i32)
+  
+  _2 := builtin$havoc_int()
+  inhale true
+  _2 := _3.tuple_1.val_int
+  label l1
+  // [mir] StorageDead(_3)
+  
+  // [mir] _4 = const print_board_size() -> [return: bb2, unwind: bb1]
+  
+  label l2
+  _4 := builtin$havoc_ref()
+  inhale true
+  inhale acc(tuple0$(_4), write)
+  inhale true
+  inhale true
+  label l3
+  goto bb2
+  label bb10
+  // ========== bb10 ==========
+  
+  __t6 := true
+  // [mir] StorageLive(_13)
+  
+  // [mir] _13 = move ((_8 as Some).0: Board)
+  
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_8), write)
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_Some(_8.enum_Some), write)
+  _13 := _8.enum_Some.f$0
+  label l16
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = move _13
+  
+  _15 := _13
+  label l17
+  // [mir] _0 = const print_board(move _15) -> [return: bb12, unwind: bb15]
+  
+  label l18
+  assert true
+  exhale acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_15), write)
+  _0 := builtin$havoc_ref()
+  inhale true
+  inhale acc(tuple0$(_0), write)
+  inhale true
+  inhale true
+  label l19
+  goto bb12
+  label bb11
+  // ========== bb11 ==========
+  
+  __t11 := true
+  // [mir] drop(_13) -> [return: bb17, unwind: bb13]
+  
+  goto bb17
+  label bb12
+  // ========== bb12 ==========
+  
+  __t7 := true
+  // [mir] drop(_15) -> [return: bb16, unwind: bb14]
+  
+  goto bb16
+  label bb16
+  // ========== bb16 ==========
+  
+  __t8 := true
+  // [mir] StorageDead(_15)
+  
+  // [mir] goto -> bb11
+  
+  goto l22
+  label bb17
+  // ========== bb17 ==========
+  
+  __t12 := true
+  // [mir] StorageDead(_13)
+  
+  // [mir] StorageDead(_2)
+  
+  // [mir] StorageDead(_1)
+  
+  // [mir] drop(_8) -> [return: bb18, unwind: bb1]
+  
+  goto bb18
+  label bb18
+  // ========== bb18 ==========
+  
+  __t13 := true
+  // [mir] StorageDead(_8)
+  
+  // [mir] return
+  
+  goto return
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = _1
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_int, write)
+  _6.val_int := _1
+  label l4
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _2
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_int, write)
+  _7.val_int := _2
+  label l5
+  // [mir] _5 = const print_starting_position(move _6, move _7) -> [return: bb3, unwind: bb1]
+  
+  label l6
+  fold acc(i32(_6), write)
+  fold acc(i32(_7), write)
+  assert true
+  exhale acc(i32(_6), write) && acc(i32(_7), write)
+  _5 := builtin$havoc_ref()
+  inhale true
+  inhale acc(tuple0$(_5), write)
+  inhale true
+  inhale true
+  label l7
+  goto bb3
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageLive(_8)
+  
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = _1
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_int, write)
+  _9.val_int := _1
+  label l8
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = _2
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_int, write)
+  _10.val_int := _2
+  label l9
+  // [mir] _8 = const knights_tour(move _9, move _10) -> [return: bb4, unwind: bb1]
+  
+  label l10
+  assert 0 <= _9.val_int && (_9.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= _10.val_int && _10.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()))
+  fold acc(i32(_10), write)
+  fold acc(i32(_9), write)
+  assert true
+  exhale acc(i32(_9), write) && acc(i32(_10), write)
+  _8 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_8), write)
+  inhale true
+  inhale true
+  label l11
+  goto bb4
+  label bb4
+  // ========== bb4 ==========
+  
+  __t3 := true
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] _11 = discriminant(_8)
+  
+  _11 := builtin$havoc_int()
+  inhale true
+  _11 := m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_$$int$(_8)
+  // [mir] _12 = &'<empty> _8
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_ref, write)
+  _12.val_ref := _8
+  exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_8), write - read$())
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_12.val_ref), read$())
+  label l12
+  // [mir] _14 = discriminant(_8)
+  
+  _14 := builtin$havoc_int()
+  inhale true
+  _14 := m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_$$int$(_12.val_ref)
+  // [mir] switchInt(move _14) -> [0isize: bb7, 1isize: bb6, otherwise: bb9]
+  
+  __t14 := _14
+  // Ignore default target bb9, as the compiler marked it as unreachable.
+  
+  if (__t14 == 0) {
+    goto l14
+  }
+  goto l13
+  label bb5
+  // ========== bb5 ==========
+  
+  __t10 := true
+  // [mir] _0 = const print_fail() -> [return: bb11, unwind: bb14]
+  
+  label l20
+  _0 := builtin$havoc_ref()
+  inhale true
+  inhale acc(tuple0$(_0), write)
+  inhale true
+  inhale true
+  label l21
+  goto l23
+  label bb6
+  // ========== bb6 ==========
+  
+  __t5 := true
+  // [mir] ReadForMatch(_12)
+  
+  // [mir] falseEdges -> [real: bb10, imaginary: bb7]
+  
+  goto l15
+  label bb7
+  // ========== bb7 ==========
+  
+  __t9 := true
+  // [mir] ReadForMatch(_12)
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t3) {
+    // expire loan L0
+    
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_12.val_ref), read$())
+    inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_8), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb5, imaginary: bb8]
+  
+  goto bb5
+  label bb9
+  // ========== bb9 ==========
+  
+  __t4 := true
+  // [mir] unreachable
+  
+  goto end_of_method
+  label l13
+  // ========== l13 ==========
+  
+  // MIR edge bb4 --> bb6
+  
+  goto bb6
+  label l14
+  // ========== l14 ==========
+  
+  // MIR edge bb4 --> bb7
+  
+  goto bb7
+  label l15
+  // ========== l15 ==========
+  
+  // MIR edge bb6 --> bb10
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t3) {
+    // expire loan L0
+    
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_12.val_ref), read$())
+    inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_8), write - read$())
+  }
+  goto bb10
+  label l22
+  // ========== l22 ==========
+  
+  // drop Acc(_8[enum_Some].f$0, write) (Pred(_8[enum_Some].f$0, write))
+  
+  // drop Acc(_8.discriminant, write) (Pred(_8[enum_Some].f$0, write))
+  
+  // drop Acc(_8[enum_Some], write) (Pred(_8[enum_Some].f$0, write))
+  
+  goto bb11
+  label l23
+  // ========== l23 ==========
+  
+  // drop Pred(_8, write) (Pred(_8[enum_Some].f$0, write))
+  
+  goto bb11
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$7$closesqu$$$clone$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Knights_tour::Point::clone"
+  
+  // Def path: "Knights_tour::{{impl}}[7]::clone[0]"
+  
+  // Span: tests/verify/pass/rosetta/Knights_tour.rs:151:5: 156:6
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_2)
+  
+  // [mir] _2 = ((*_1).0: i32)
+  
+  _2 := builtin$havoc_ref()
+  inhale acc(_2.val_int, write)
+  unfold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  unfold acc(i32(_1.val_ref.f$x), write)
+  _2.val_int := _1.val_ref.f$x.val_int
+  label l0
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = ((*_1).1: i32)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_int, write)
+  unfold acc(i32(_1.val_ref.f$y), write)
+  _3.val_int := _1.val_ref.f$y.val_int
+  label l1
+  // [mir] _0 = Point { x: move _2, y: move _3 }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  unfold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$x := _2
+  label l2
+  _0.f$y := _3
+  label l3
+  // [mir] StorageDead(_3)
+  
+  // [mir] StorageDead(_2)
+  
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(i32(_1.val_ref.f$x), write)
+  fold acc(i32(_1.val_ref.f$y), write)
+  fold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  // obtain acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(i32(_0.f$x), write)
+  fold acc(i32(_0.f$y), write)
+  fold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write) in (unfolding acc(i32(_0.f$x), write) in _0.f$x.val_int)) == old[pre]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in (unfolding acc(i32(_1.val_ref.f$x), write) in _1.val_ref.f$x.val_int))) && ((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write) in (unfolding acc(i32(_0.f$y), write) in _0.f$y.val_int)) == old[pre]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in (unfolding acc(i32(_1.val_ref.f$y), write) in _1.val_ref.f$y.val_int))) && ((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write) in (unfolding acc(i32(_old$pre$0.f$x), write) in _old$pre$0.f$x.val_int)) == old[pre]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in (unfolding acc(i32(_1.val_ref.f$x), write) in _1.val_ref.f$x.val_int))) && (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write) in (unfolding acc(i32(_old$pre$0.f$y), write) in _old$pre$0.f$y.val_int)) == old[pre]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in (unfolding acc(i32(_1.val_ref.f$y), write) in _1.val_ref.f$y.val_int)))))
+  assert true
+  exhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$7$closesqu$$$mov$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var _old$pre$0: Ref
+  var _old$pre$1: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Int
+  var _4: Int
+  var _5: Ref
+  var _6: Int
+  var _7: Int
+  var _8: Ref
+  var _9: Ref
+  var _10: Int
+  var _11: Int
+  var _12: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Knights_tour::Point::mov"
+  
+  // Def path: "Knights_tour::{{impl}}[7]::mov[0]"
+  
+  // Span: tests/verify/pass/rosetta/Knights_tour.rs:141:5: 146:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && (acc(_2.val_ref, write) && acc(tuple2$i32$i32(_2.val_ref), write)))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = ((*_2).0: i32)
+  
+  _3 := builtin$havoc_int()
+  inhale true
+  unfold acc(tuple2$i32$i32(_2.val_ref), write)
+  unfold acc(i32(_2.val_ref.tuple_0), write)
+  _3 := _2.val_ref.tuple_0.val_int
+  label l0
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = ((*_2).1: i32)
+  
+  _4 := builtin$havoc_int()
+  inhale true
+  unfold acc(i32(_2.val_ref.tuple_1), write)
+  _4 := _2.val_ref.tuple_1.val_int
+  label l1
+  // [mir] StorageLive(_5)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = ((*_1).0: i32)
+  
+  _6 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  unfold acc(i32(_1.val_ref.f$x), write)
+  _6 := _1.val_ref.f$x.val_int
+  label l2
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _3
+  
+  _7 := builtin$havoc_int()
+  inhale true
+  _7 := _3
+  label l3
+  // [mir] _8 = CheckedAdd(move _6, move _7)
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.tuple_0, write)
+  inhale acc(_8.tuple_0.val_int, write)
+  inhale acc(_8.tuple_1, write)
+  inhale acc(_8.tuple_1.val_bool, write)
+  _8.tuple_0.val_int := _6 + _7
+  _8.tuple_1.val_bool := false
+  // [mir] assert(!move (_8.1: bool), "attempt to add with overflow") -> [success: bb2, unwind: bb1]
+  
+  __t3 := _8.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t3
+  goto bb2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] _5 = move (_8.0: i32)
+  
+  _5 := _8.tuple_0
+  label l4
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageLive(_9)
+  
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = ((*_1).1: i32)
+  
+  _10 := builtin$havoc_int()
+  inhale true
+  unfold acc(i32(_1.val_ref.f$y), write)
+  _10 := _1.val_ref.f$y.val_int
+  label l5
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = _4
+  
+  _11 := builtin$havoc_int()
+  inhale true
+  _11 := _4
+  label l6
+  // [mir] _12 = CheckedAdd(move _10, move _11)
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.tuple_0, write)
+  inhale acc(_12.tuple_0.val_int, write)
+  inhale acc(_12.tuple_1, write)
+  inhale acc(_12.tuple_1.val_bool, write)
+  _12.tuple_0.val_int := _10 + _11
+  _12.tuple_1.val_bool := false
+  // [mir] assert(!move (_12.1: bool), "attempt to add with overflow") -> [success: bb3, unwind: bb1]
+  
+  __t4 := _12.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t4
+  goto bb3
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] _9 = move (_12.0: i32)
+  
+  _9 := _12.tuple_0
+  label l7
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] _0 = Point { x: move _5, y: move _9 }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  unfold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$x := _5
+  label l8
+  _0.f$y := _9
+  label l9
+  // [mir] StorageDead(_9)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(i32(_1.val_ref.f$y), write)
+  fold acc(i32(_1.val_ref.f$x), write)
+  fold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  // obtain acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  fold acc(i32(_2.val_ref.tuple_0), write)
+  fold acc(i32(_2.val_ref.tuple_1), write)
+  fold acc(tuple2$i32$i32(_2.val_ref), write)
+  // obtain acc(tuple2$i32$i32(_2.val_ref), write)
+  
+  _old$pre$1 := _2.val_ref
+  // Fold the result
+  
+  fold acc(i32(_0.f$x), write)
+  fold acc(i32(_0.f$y), write)
+  fold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write) in (unfolding acc(i32(_old$pre$0.f$x), write) in _old$pre$0.f$x.val_int)) == old[pre]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in (unfolding acc(i32(_1.val_ref.f$x), write) in _1.val_ref.f$x.val_int))) && (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write) in (unfolding acc(i32(_old$pre$0.f$y), write) in _old$pre$0.f$y.val_int)) == old[pre]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in (unfolding acc(i32(_1.val_ref.f$y), write) in _1.val_ref.f$y.val_int)))
+  assert true
+  exhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write) && acc(tuple2$i32$i32(_old$pre$1), write)
+  exhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Knights_tour$$knights_tour$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var __t28: Bool
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var __t32: Bool
+  var __t33: Bool
+  var __t34: Bool
+  var __t35: Bool
+  var __t36: Bool
+  var __t37: Bool
+  var __t38: Bool
+  var __t39: Bool
+  var __t40: Bool
+  var __t41: Bool
+  var __t42: Bool
+  var __t43: Bool
+  var __t44: Bool
+  var __t45: Bool
+  var __t46: Bool
+  var __t47: Bool
+  var __t48: Bool
+  var __t49: Bool
+  var __t50: Bool
+  var __t51: Bool
+  var __t52: Bool
+  var __t53: Bool
+  var __t54: Bool
+  var __t55: Bool
+  var __t56: Bool
+  var __t57: Bool
+  var __t58: Bool
+  var __t59: Bool
+  var __t60: Bool
+  var __t61: Bool
+  var __t62: Bool
+  var __t63: Bool
+  var __t64: Bool
+  var __t65: Bool
+  var __t66: Bool
+  var __t67: Bool
+  var __t68: Bool
+  var __t69: Bool
+  var __t70: Bool
+  var __t71: Bool
+  var __t72: Bool
+  var __t73: Bool
+  var __t74: Bool
+  var __t75: Bool
+  var __t76: Bool
+  var __t77: Bool
+  var __t78: Bool
+  var __t79: Bool
+  var __t80: Bool
+  var __t81: Bool
+  var __t82: Bool
+  var __t83: Bool
+  var __t84: Bool
+  var __t85: Bool
+  var __t86: Bool
+  var __t87: Int
+  var __t88: Bool
+  var __t89: Bool
+  var __t90: Bool
+  var __t91: Bool
+  var __t92: Bool
+  var __t93: Bool
+  var __t94: Bool
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Int
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  var _23: Ref
+  var _24: Ref
+  var _34: Ref
+  var _35: Ref
+  var _36: Ref
+  var _37: Ref
+  var _38: Int
+  var _39: Int
+  var _40: Ref
+  var _41: Ref
+  var _42: Ref
+  var _43: Ref
+  var _58: Ref
+  var _59: Ref
+  var _60: Int
+  var _61: Ref
+  var _62: Ref
+  var _63: Ref
+  var _64: Ref
+  var _65: Ref
+  var _66: Ref
+  var _67: Ref
+  var _68: Ref
+  var _69: Ref
+  var _70: Ref
+  var _71: Ref
+  var _72: Ref
+  var _73: Ref
+  var _74: Ref
+  var _75: Ref
+  var _76: Ref
+  var _77: Ref
+  var _78: Ref
+  var _79: Ref
+  var _80: Int
+  var _81: Int
+  var _82: Ref
+  var _83: Ref
+  var _84: Ref
+  var _85: Int
+  var _86: Int
+  var _87: Ref
+  var _88: Ref
+  var _89: Ref
+  var _90: Ref
+  var _91: Ref
+  var _92: Ref
+  var _93: Ref
+  var _94: Ref
+  var _95: Ref
+  var _104: Int
+  var _105: Ref
+  var _106: Ref
+  var _107: Ref
+  var _108: Int
+  var _109: Ref
+  var _110: Ref
+  var _111: Int
+  var _112: Int
+  var _113: Ref
+  var _114: Ref
+  var _115: Ref
+  var _116: Ref
+  var _117: Ref
+  var _118: Int
+  var _119: Int
+  var _120: Ref
+  var _121: Ref
+  var _122: Int
+  var _123: Ref
+  var _124: Ref
+  var _125: Int
+  var _126: Ref
+  var _127: Ref
+  var _128: Ref
+  var _129: Ref
+  var _130: Ref
+  var _131: Ref
+  var _132: Ref
+  var _133: Ref
+  var _134: Ref
+  var _135: Int
+  var _136: Ref
+  var _137: Ref
+  var _138: Ref
+  var _139: Ref
+  var _140: Ref
+  var _141: Ref
+  var _142: Ref
+  var _144: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Knights_tour::knights_tour"
+  
+  // Def path: "Knights_tour::knights_tour[0]"
+  
+  // Span: tests/verify/pass/rosetta/Knights_tour.rs:223:1: 288:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  __t24 := false
+  __t25 := false
+  __t26 := false
+  __t27 := false
+  __t28 := false
+  __t29 := false
+  __t30 := false
+  __t31 := false
+  __t32 := false
+  __t33 := false
+  __t34 := false
+  __t35 := false
+  __t36 := false
+  __t37 := false
+  __t38 := false
+  __t39 := false
+  __t40 := false
+  __t41 := false
+  __t42 := false
+  __t43 := false
+  __t44 := false
+  __t45 := false
+  __t46 := false
+  __t47 := false
+  __t48 := false
+  __t49 := false
+  __t50 := false
+  __t51 := false
+  __t52 := false
+  __t53 := false
+  __t54 := false
+  __t55 := false
+  __t56 := false
+  __t57 := false
+  __t58 := false
+  __t59 := false
+  __t60 := false
+  __t61 := false
+  __t62 := false
+  __t63 := false
+  __t64 := false
+  __t65 := false
+  __t66 := false
+  __t67 := false
+  __t68 := false
+  __t69 := false
+  // Preconditions:
+  
+  inhale acc(i32(_1), write) && acc(i32(_2), write)
+  inhale true
+  inhale true
+  inhale (unfolding acc(i32(_2), write) in (unfolding acc(i32(_1), write) in 0 <= _1.val_int && (_1.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= _2.val_int && _2.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()))))
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = const Board::new() -> [return: bb2, unwind: bb1]
+  
+  label l0
+  _3 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write)
+  inhale true
+  inhale true
+  label l1
+  goto bb2
+  label bb11
+  // ========== bb11 ==========
+  
+  __t63 := true
+  // [mir] _21 = ()
+  
+  _21 := builtin$havoc_ref()
+  inhale acc(tuple0$(_21), write)
+  // [mir] StorageDead(_22)
+  
+  // [mir] StorageLive(_142)
+  
+  // [mir] _142 = _8
+  
+  _142 := builtin$havoc_ref()
+  inhale acc(_142.val_bool, write)
+  _142.val_bool := _8.val_bool
+  label l141
+  // [mir] switchInt(move _142) -> [false: bb87, otherwise: bb86]
+  
+  __t94 := _142.val_bool
+  if (!__t94) {
+    goto l143
+  }
+  goto l142
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_4)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = _1
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_int, write)
+  unfold acc(i32(_1), write)
+  _5.val_int := _1.val_int
+  label l2
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = _2
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_int, write)
+  unfold acc(i32(_2), write)
+  _6.val_int := _2.val_int
+  label l3
+  // [mir] _4 = Point { x: move _5, y: move _6 }
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write)
+  unfold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write)
+  _4.f$x := _5
+  label l4
+  _4.f$y := _6
+  label l5
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = const 1i32
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_int, write)
+  _7.val_int := 1
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = const false
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_bool, write)
+  _8.val_bool := false
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = &'30s mut (_3.0: VecVecWrapperI32)
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_ref, write)
+  unfold acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write)
+  _10.val_ref := _3.f$field
+  label l6
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = (_4.0: i32)
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_int, write)
+  _11.val_int := _4.f$x.val_int
+  label l7
+  // [mir] StorageLive(_12)
+  
+  // [mir] _12 = (_4.1: i32)
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_int, write)
+  _12.val_int := _4.f$y.val_int
+  label l8
+  // [mir] StorageLive(_13)
+  
+  // [mir] _13 = _7
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_int, write)
+  _13.val_int := _7.val_int
+  label l9
+  // [mir] _9 = const VecVecWrapperI32::store(move _10, move _11, move _12, move _13) -> [return: bb3, unwind: bb5]
+  
+  label l10
+  assert 0 <= _11.val_int && _11.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= _12.val_int && _12.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())
+  fold acc(i32(_12), write)
+  fold acc(i32(_11), write)
+  fold acc(i32(_13), write)
+  assert true
+  exhale acc(_10.val_ref, write) && (acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_10.val_ref), write) && (acc(i32(_11), write) && (acc(i32(_12), write) && acc(i32(_13), write))))
+  _9 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l10](_10.val_ref)), write)
+  inhale acc(tuple0$(_9), write)
+  inhale true
+  inhale m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$$$int$(old[l10](_10.val_ref), old[l10](_11.val_int), old[l10](_12.val_int)) == old[l10](_13.val_int) && (forall px: Int, py: Int :: 0 <= px && (px < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (!(px == old[l10](_11.val_int)) && (0 <= py && (py < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && !(py == old[l10](_12.val_int)))))) ==> m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$$$int$(old[l10](_10.val_ref), px, py) == old[l10](m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$$$int$(_10.val_ref, px, py)))
+  label l11
+  goto l12
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] EndRegion('30s)
+  
+  // [mir] StorageDead(_13)
+  
+  // [mir] StorageDead(_12)
+  
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] _14 = CheckedAdd(_7, const 1i32)
+  
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.tuple_0, write)
+  inhale acc(_14.tuple_0.val_int, write)
+  inhale acc(_14.tuple_1, write)
+  inhale acc(_14.tuple_1.val_bool, write)
+  _14.tuple_0.val_int := _7.val_int + 1
+  _14.tuple_1.val_bool := false
+  // [mir] assert(!move (_14.1: bool), "attempt to add with overflow") -> [success: bb6, unwind: bb4]
+  
+  __t70 := _14.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t70
+  goto bb6
+  label bb6
+  // ========== bb6 ==========
+  
+  __t3 := true
+  // [mir] _7 = move (_14.0: i32)
+  
+  _7 := _14.tuple_0
+  label l13
+  // [mir] StorageLive(_15)
+  
+  // [mir] StorageLive(_16)
+  
+  // [mir] _16 = _7
+  
+  _16 := builtin$havoc_int()
+  inhale true
+  _16 := _7.val_int
+  label l14
+  // [mir] StorageLive(_17)
+  
+  // [mir] StorageLive(_18)
+  
+  // [mir] _18 = const size() -> [return: bb7, unwind: bb4]
+  
+  label l15
+  _18 := builtin$havoc_ref()
+  inhale acc(i32(_18), write)
+  unfold acc(i32(_18), write)
+  inhale _18.val_int == m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()
+  goto bb7
+  label bb7
+  // ========== bb7 ==========
+  
+  __t4 := true
+  // [mir] StorageLive(_19)
+  
+  // [mir] _19 = const size() -> [return: bb8, unwind: bb4]
+  
+  label l16
+  _19 := builtin$havoc_ref()
+  inhale acc(i32(_19), write)
+  unfold acc(i32(_19), write)
+  inhale _19.val_int == m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()
+  goto bb8
+  label bb71
+  // ========== bb71 ==========
+  
+  __t62 := true
+  // [mir] unreachable
+  
+  goto end_of_method
+  label bb8
+  // ========== bb8 ==========
+  
+  __t5 := true
+  // [mir] _20 = CheckedMul(move _18, move _19)
+  
+  _20 := builtin$havoc_ref()
+  inhale acc(_20.tuple_0, write)
+  inhale acc(_20.tuple_0.val_int, write)
+  inhale acc(_20.tuple_1, write)
+  inhale acc(_20.tuple_1.val_bool, write)
+  _20.tuple_0.val_int := _18.val_int * _19.val_int
+  _20.tuple_1.val_bool := false
+  // [mir] assert(!move (_20.1: bool), "attempt to multiply with overflow") -> [success: bb9, unwind: bb4]
+  
+  __t71 := _20.tuple_1.val_bool
+  // Rust assertion: attempt to multiply with overflow
+  
+  assert !__t71
+  goto bb9
+  label bb86
+  // ========== bb86 ==========
+  
+  __t64 := true
+  // [mir] _0 = std::option::Option<Board>::None
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_0), write)
+  inhale m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_$$int$(_0) == 0
+  // [mir] StorageDead(_142)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] drop(_3) -> [return: bb91, unwind: bb1]
+  
+  goto bb91
+  label bb87
+  // ========== bb87 ==========
+  
+  __t66 := true
+  // [mir] StorageLive(_144)
+  
+  // [mir] _144 = move _3
+  
+  _144 := _3
+  label l144
+  // [mir] _0 = std::option::Option<Board>::Some(move _144,)
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_0), write)
+  inhale m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_$$int$(_0) == 1
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_0), write)
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_Some(_0.enum_Some), write)
+  _0.enum_Some.f$0 := _144
+  label l145
+  // [mir] drop(_144) -> [return: bb88, unwind: bb4]
+  
+  goto bb88
+  label bb88
+  // ========== bb88 ==========
+  
+  __t67 := true
+  // [mir] StorageDead(_144)
+  
+  // [mir] StorageDead(_142)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] drop(_3) -> [return: bb90, unwind: bb1]
+  
+  goto bb90
+  label bb89
+  // ========== bb89 ==========
+  
+  __t69 := true
+  // [mir] return
+  
+  goto return
+  label bb9
+  // ========== bb9 ==========
+  
+  __t6 := true
+  // [mir] _17 = move (_20.0: i32)
+  
+  _17 := _20.tuple_0
+  label l17
+  // [mir] StorageDead(_19)
+  
+  // [mir] StorageDead(_18)
+  
+  // [mir] _15 = Le(move _16, move _17)
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_bool, write)
+  _15.val_bool := _16 <= _17.val_int
+  // [mir] StorageDead(_17)
+  
+  // [mir] StorageDead(_16)
+  
+  // [mir] goto -> bb10
+  
+  goto loop10_start
+  label bb90
+  // ========== bb90 ==========
+  
+  __t68 := true
+  // [mir] StorageDead(_3)
+  
+  // [mir] goto -> bb89
+  
+  goto l158
+  label bb91
+  // ========== bb91 ==========
+  
+  __t65 := true
+  // [mir] StorageDead(_3)
+  
+  // [mir] goto -> bb89
+  
+  goto l157
+  label l109
+  // ========== l109 ==========
+  
+  // MIR edge bb64 --> bb65
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L53,L29,)
+
+  
+  if (__t43 && __t43) {
+    // expire loan L29
+    
+    // transfer perm old[l108](_120.val_ref) --> old[l107](_120.val_ref) // unchecked: false
+    
+    exhale acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(old[l107](_120.val_ref)), read$())
+    inhale acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write - read$())
+  }
+  goto loop10_group3_loop53_group3_bb65
+  label l111
+  // ========== l111 ==========
+  
+  // MIR edge bb53 --> bb54
+  
+  goto l151
+  label l112
+  // ========== l112 ==========
+  
+  // MIR edge bb53 --> bb55
+  
+  goto loop10_group3_loop53_group5_bb55
+  label l114
+  // ========== l114 ==========
+  
+  // MIR edge bb54 --> bb68
+  
+  goto loop10_group3_bb68
+  label l115
+  // ========== l115 ==========
+  
+  // MIR edge bb54 --> bb69
+  
+  goto loop10_group3_bb69
+  label l116
+  // ========== l116 ==========
+  
+  // MIR edge bb68 --> bb72
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L30,)
+
+  
+  if (__t45) {
+    // expire loan L30
+    
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_123.val_ref), read$())
+    inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write - read$())
+  }
+  goto loop10_group3_bb72
+  label l12
+  // ========== l12 ==========
+  
+  // MIR edge bb2 --> bb3
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L54,L0,)
+
+  
+  goto bb3
+  label l126
+  // ========== l126 ==========
+  
+  // MIR edge bb73 --> bb74
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L42,L31,)
+
+  
+  goto loop10_group3_bb74
+  label l132
+  // ========== l132 ==========
+  
+  // MIR edge bb83 --> bb79
+  
+  goto loop10_group3_bb79
+  label l133
+  // ========== l133 ==========
+  
+  // MIR edge bb83 --> bb78
+  
+  goto loop10_group3_bb78
+  label l135
+  // ========== l135 ==========
+  
+  // MIR edge bb79 --> bb77
+  
+  goto loop10_group3_bb77
+  label l136
+  // ========== l136 ==========
+  
+  // MIR edge bb79 --> bb78
+  
+  goto l154
+  label l139
+  // ========== l139 ==========
+  
+  // MIR edge bb10 --> bb11
+  
+  goto l156
+  label l140
+  // ========== l140 ==========
+  
+  // MIR edge bb10 --> bb12
+  
+  goto loop10_group5_bb12
+  label l142
+  // ========== l142 ==========
+  
+  // MIR edge bb11 --> bb86
+  
+  goto bb86
+  label l143
+  // ========== l143 ==========
+  
+  // MIR edge bb11 --> bb87
+  
+  goto bb87
+  label l146
+  // ========== l146 ==========
+  
+  // drop Acc(_70.val_int, write) (Acc(_70.val_int, write))
+  
+  // drop Pred(_74, write) (Pred(_74, write))
+  
+  goto loop10_group3_loop22_group3_bb44
+  label l147
+  // ========== l147 ==========
+  
+  // drop Pred(_61, write) (Pred(_61, write))
+  
+  goto loop10_group3_loop22_group3_bb44
+  label l148
+  // ========== l148 ==========
+  
+  // drop Acc(_79.tuple_1.val_bool, write) (Acc(_79.tuple_1.val_bool, write))
+  
+  // drop Acc(_64.val_ref, write) (Acc(_64.val_ref, write))
+  
+  // drop Acc(_81.val_int, write) (Acc(_81.val_int, write))
+  
+  // drop Acc(_79.tuple_0, write) (Acc(_79.tuple_0, write))
+  
+  // drop Acc(old[l71](_82.val_ref), write) (Acc(old[l71](_82.val_ref), write))
+  
+  // drop Acc(_80.val_int, write) (Acc(_80.val_int, write))
+  
+  // drop Acc(_66.val_bool, write) (Acc(_66.val_bool, write))
+  
+  // drop Acc(_82.val_ref, write) (Acc(_82.val_ref, write))
+  
+  // drop Pred(_65, write) (Pred(_65, write))
+  
+  // drop Pred(_23, write) (Pred(_23, write))
+  
+  // drop Pred(_43, write) (Pred(_43, write))
+  
+  // drop Pred(_58, write) (Pred(_58, write))
+  
+  // drop Acc(_79.tuple_1, write) (Acc(_79.tuple_1, write))
+  
+  goto loop10_group3_bb23
+  label l149
+  // ========== l149 ==========
+  
+  fold acc(i32(_88.enum_Some.f$0.tuple_0), write)
+  fold acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_88.enum_Some.f$0), write)
+  fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_Some(_88.enum_Some), write)
+  fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write)
+  goto loop10_group3_loop53_group3_bb63
+  label l150
+  // ========== l150 ==========
+  
+  // drop Pred(_105, write) (Pred(_105, write))
+  
+  goto loop10_group3_loop53_group3_bb63
+  label l151
+  // ========== l151 ==========
+  
+  // drop Acc(_106.tuple_0.val_int, write) (Acc(_106.tuple_0.val_int, write))
+  
+  // drop Acc(_117.tuple_1.val_bool, write) (Acc(_117.tuple_1.val_bool, write))
+  
+  // drop Acc(_110.val_bool, write) (Acc(_110.val_bool, write))
+  
+  // drop Acc(old[l107](_120.val_ref), write) (Acc(old[l107](_120.val_ref), write))
+  
+  // drop Acc(_117.tuple_0, write) (Acc(_117.tuple_0, write))
+  
+  // drop Acc(_112.val_int, write) (Acc(_112.val_int, write))
+  
+  // drop Acc(_118.val_int, write) (Acc(_118.val_int, write))
+  
+  // drop Acc(_120.val_ref, write) (Acc(_120.val_ref, write))
+  
+  // drop Acc(_111.val_int, write) (Acc(_111.val_int, write))
+  
+  // drop Acc(_119.val_int, write) (Acc(_119.val_int, write))
+  
+  // drop Acc(_106.tuple_1, write) (Acc(_106.tuple_1, write))
+  
+  // drop Acc(_104.val_int, write) (Acc(_104.val_int, write))
+  
+  // drop Pred(_23, write) (Pred(_23, write))
+  
+  // drop Pred(_95, write) (Pred(_95, write))
+  
+  // drop Pred(_109, write) (Pred(_109, write))
+  
+  // drop Acc(_106.tuple_0, write) (Acc(_106.tuple_0, write))
+  
+  // drop Acc(_117.tuple_1, write) (Acc(_117.tuple_1, write))
+  
+  goto loop10_group3_bb54
+  label l152
+  // ========== l152 ==========
+  
+  // drop Acc(_88[enum_Some].f$0.tuple_1, write) (Pred(_88[enum_Some].f$0.tuple_1, write))
+  
+  // drop Acc(_88[enum_Some], write) (Pred(_88[enum_Some].f$0.tuple_1, write))
+  
+  // drop Acc(_88[enum_Some].f$0, write) (Pred(_88[enum_Some].f$0.tuple_1, write))
+  
+  // drop Acc(_88[enum_Some].f$0.tuple_0, write) (Pred(_88[enum_Some].f$0.tuple_1, write))
+  
+  // drop Acc(_88.discriminant, write) (Pred(_88[enum_Some].f$0.tuple_1, write))
+  
+  // drop Pred(_88[enum_Some].f$0.tuple_0, write) (Pred(_88[enum_Some].f$0.tuple_1, write))
+  
+  unfold acc(bool(_8), write)
+  goto loop10_group3_bb73
+  label l153
+  // ========== l153 ==========
+  
+  // drop Pred(_88, write) (Pred(_88[enum_Some].f$0.tuple_1, write))
+  
+  goto loop10_group3_bb73
+  label l154
+  // ========== l154 ==========
+  
+  // drop Acc(_140.val_bool, write) (Acc(_140.val_bool, write))
+  
+  // drop Acc(_141.val_bool, write) (Acc(_141.val_bool, write))
+  
+  goto loop10_group3_bb78
+  label l155
+  // ========== l155 ==========
+  
+  // drop Acc(_141.val_bool, write) (Acc(_141.val_bool, write))
+  
+  // drop Acc(_140.val_bool, write) (Acc(_140.val_bool, write))
+  
+  goto loop10_group3_bb80
+  label l156
+  // ========== l156 ==========
+  
+  // drop Acc(_132.tuple_0, write) (Acc(_132.tuple_0, write))
+  
+  // drop Acc(_42.val_bool, write) (Acc(_42.val_bool, write))
+  
+  // drop Acc(_132.tuple_1.val_bool, write) (Acc(_132.tuple_1.val_bool, write))
+  
+  // drop Acc(_125.val_int, write) (Acc(_125.val_int, write))
+  
+  // drop Acc(_135.val_int, write) (Acc(_135.val_int, write))
+  
+  // drop Acc(_94.val_bool, write) (Acc(_94.val_bool, write))
+  
+  // drop Acc(_122.val_int, write) (Acc(_122.val_int, write))
+  
+  // drop Acc(_89.val_int, write) (Acc(_89.val_int, write))
+  
+  // drop Acc(old[l78](_87.val_ref), write) (Acc(old[l78](_87.val_ref), write))
+  
+  // drop Acc(_90.val_int, write) (Acc(_90.val_int, write))
+  
+  // drop Acc(_91.val_int, write) (Acc(_91.val_int, write))
+  
+  // drop Acc(_83.val_int, write) (Acc(_83.val_int, write))
+  
+  // drop Acc(_39.val_int, write) (Acc(_39.val_int, write))
+  
+  // drop Acc(_92.tuple_1.val_bool, write) (Acc(_92.tuple_1.val_bool, write))
+  
+  // drop Acc(_36.val_int, write) (Acc(_36.val_int, write))
+  
+  // drop Acc(_138.val_int, write) (Acc(_138.val_int, write))
+  
+  // drop Acc(_86.val_int, write) (Acc(_86.val_int, write))
+  
+  // drop Acc(_87.val_ref, write) (Acc(_87.val_ref, write))
+  
+  // drop Acc(_84.val_bool, write) (Acc(_84.val_bool, write))
+  
+  // drop Acc(_123.val_ref, write) (Acc(_123.val_ref, write))
+  
+  // drop Acc(old[l26](_40.val_ref), write) (Acc(old[l26](_40.val_ref), write))
+  
+  // drop Acc(_85.val_int, write) (Acc(_85.val_int, write))
+  
+  // drop Acc(_139.tuple_0, write) (Acc(_139.tuple_0, write))
+  
+  // drop Acc(_38.val_int, write) (Acc(_38.val_int, write))
+  
+  // drop Acc(_37.val_bool, write) (Acc(_37.val_bool, write))
+  
+  // drop Acc(_137.val_int, write) (Acc(_137.val_int, write))
+  
+  // drop Acc(_134.val_bool, write) (Acc(_134.val_bool, write))
+  
+  // drop Acc(_139.tuple_1.val_bool, write) (Acc(_139.tuple_1.val_bool, write))
+  
+  // drop Acc(_92.tuple_0, write) (Acc(_92.tuple_0, write))
+  
+  // drop Acc(_40.val_ref, write) (Acc(_40.val_ref, write))
+  
+  // drop Acc(_136.val_int, write) (Acc(_136.val_int, write))
+  
+  // drop Pred(_121, write) (Pred(_121, write))
+  
+  // drop Pred(_34, write) (Pred(_34, write))
+  
+  // drop Pred(_41, write) (Pred(_41, write))
+  
+  // drop Pred(_23, write) (Pred(_23, write))
+  
+  // drop Pred(_127, write) (Pred(_127, write))
+  
+  // drop Pred(_24, write) (Pred(_24, write))
+  
+  // drop Pred(_93, write) (Pred(_93, write))
+  
+  // drop Pred(_35, write) (Pred(_35, write))
+  
+  // drop Acc(_92.tuple_1, write) (Acc(_92.tuple_1, write))
+  
+  // drop Acc(_139.tuple_1, write) (Acc(_139.tuple_1, write))
+  
+  // drop Acc(_132.tuple_1, write) (Acc(_132.tuple_1, write))
+  
+  goto bb11
+  label l157
+  // ========== l157 ==========
+  
+  // drop Pred(_3.f$field, write) (Pred(_3.f$field, write))
+  
+  // drop Acc(_3.f$field, write) (Acc(_3.f$field, write))
+  
+  goto bb89
+  label l158
+  // ========== l158 ==========
+  
+  fold acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_0.enum_Some.f$0), write)
+  fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_Some(_0.enum_Some), write)
+  fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_0), write)
+  goto bb89
+  label l19
+  // ========== l19 ==========
+  
+  // MIR edge bb10 --> bb11
+  
+  goto bb11
+  label l20
+  // ========== l20 ==========
+  
+  // MIR edge bb10 --> bb12
+  
+  goto loop10_group2_bb12
+  label l28
+  // ========== l28 ==========
+  
+  // MIR edge bb17 --> bb19
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L33,L5,)
+
+  
+  if (__t12 && __t12) {
+    // expire loan L5
+    
+    // transfer perm old[l27](_40.val_ref) --> old[l26](_40.val_ref) // unchecked: false
+    
+    exhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(old[l26](_40.val_ref)), read$())
+    inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_35), write - read$())
+  }
+  goto loop10_group3_bb19
+  label l30
+  // ========== l30 ==========
+  
+  // MIR edge bb22 --> bb23
+  
+  goto loop10_group3_bb23
+  label l31
+  // ========== l31 ==========
+  
+  // MIR edge bb22 --> bb24
+  
+  goto loop10_group3_loop22_group2_bb24
+  label l36
+  // ========== l36 ==========
+  
+  // MIR edge bb27 --> bb28
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L39,L13,)
+
+  
+  goto loop10_group3_loop22_group3_bb28
+  label l42
+  // ========== l42 ==========
+  
+  // MIR edge bb28 --> bb30
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L51,L50,L16,L15,L14,)
+
+  
+  goto loop10_group3_loop22_group3_bb30
+  label l47
+  // ========== l47 ==========
+  
+  // MIR edge bb30 --> bb32
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L43,L18,)
+
+  
+  goto loop10_group3_loop22_group3_bb32
+  label l50
+  // ========== l50 ==========
+  
+  // MIR edge bb32 --> bb35
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L41,L17,)
+
+  
+  goto loop10_group3_loop22_group3_bb35
+  label l51
+  // ========== l51 ==========
+  
+  // MIR edge bb35 --> bb36
+  
+  goto loop10_group3_loop22_group3_bb36
+  label l52
+  // ========== l52 ==========
+  
+  // MIR edge bb35 --> bb37
+  
+  goto loop10_group3_loop22_group3_bb37
+  label l57
+  // ========== l57 ==========
+  
+  // MIR edge bb36 --> bb38
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L55,L20,)
+
+  
+  goto loop10_group3_loop22_group3_bb38
+  label l60
+  // ========== l60 ==========
+  
+  // MIR edge bb38 --> bb41
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L38,L19,)
+
+  
+  goto loop10_group3_loop22_group3_bb41
+  label l68
+  // ========== l68 ==========
+  
+  // MIR edge bb41 --> bb42
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L47,L21,)
+
+  
+  goto loop10_group3_loop22_group3_bb42
+  label l73
+  // ========== l73 ==========
+  
+  // MIR edge bb45 --> bb46
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L49,L22,)
+
+  
+  if (__t28 && __t28) {
+    // expire loan L22
+    
+    // transfer perm old[l72](_82.val_ref) --> old[l71](_82.val_ref) // unchecked: false
+    
+    exhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(old[l71](_82.val_ref)), read$())
+    inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_35), write - read$())
+  }
+  goto loop10_group3_loop22_group3_bb46
+  label l75
+  // ========== l75 ==========
+  
+  // MIR edge bb22 --> bb23
+  
+  goto l148
+  label l76
+  // ========== l76 ==========
+  
+  // MIR edge bb22 --> bb24
+  
+  goto loop10_group3_loop22_group5_bb24
+  label l80
+  // ========== l80 ==========
+  
+  // MIR edge bb23 --> bb48
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L44,L23,)
+
+  
+  if (__t30 && __t30) {
+    // expire loan L23
+    
+    // transfer perm old[l79](_87.val_ref) --> old[l78](_87.val_ref) // unchecked: false
+    
+    exhale acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(old[l78](_87.val_ref)), read$())
+    inhale acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write - read$())
+  }
+  goto loop10_group3_bb48
+  label l85
+  // ========== l85 ==========
+  
+  // MIR edge bb53 --> bb54
+  
+  goto loop10_group3_bb54
+  label l86
+  // ========== l86 ==========
+  
+  // MIR edge bb53 --> bb55
+  
+  goto loop10_group3_loop53_group2_bb55
+  label l91
+  // ========== l91 ==========
+  
+  // MIR edge bb58 --> bb59
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L58,L28,)
+
+  
+  goto loop10_group3_loop53_group3_bb59
+  label l96
+  // ========== l96 ==========
+  
+  // MIR edge bb59 --> bb61
+  
+  goto loop10_group3_loop53_group3_bb61
+  label l97
+  // ========== l97 ==========
+  
+  // MIR edge bb59 --> bb62
+  
+  goto loop10_group3_loop53_group3_bb62
+  label loop10_end_body
+  // ========== loop10_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb10
+  
+  fold acc(bool(_8), write)
+  // obtain acc(bool(_8), write)
+  
+  fold acc(i32(_4.f$y), write)
+  fold acc(i32(_4.f$x), write)
+  fold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write)
+  // obtain acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write)
+  
+  fold acc(i32(_7), write)
+  // obtain acc(i32(_7), write)
+  
+  fold acc(bool(_15), write)
+  // obtain acc(bool(_15), write)
+  
+  fold acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write)
+  // obtain acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write)
+  
+  assert 0 <= (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) && (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) && (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())
+  exhale acc(bool(_8), write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) && (acc(i32(_7), write) && (acc(bool(_15), write) && acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write))))
+  inhale false
+  goto end_of_method
+  label loop10_group1_bb10
+  // ========== loop10_group1_bb10 ==========
+  
+  // This is a loop head
+  
+  __t7 := true
+  // [mir] StorageLive(_22)
+  
+  // [mir] _22 = _15
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_bool, write)
+  _22.val_bool := _15.val_bool
+  label l18
+  // [mir] switchInt(move _22) -> [false: bb11, otherwise: bb12]
+  
+  __t72 := _22.val_bool
+  if (__t72) {
+    goto l20
+  }
+  goto l19
+  label loop10_group2_bb12
+  // ========== loop10_group2_bb12 ==========
+  
+  __t8 := true
+  // [mir] switchInt(const false) -> [false: bb14, otherwise: bb13]
+  
+  __t73 := false
+  // Ignore default target bb13, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop10_inv_pre
+  label loop10_group3_bb14
+  // ========== loop10_group3_bb14 ==========
+  
+  __t9 := true
+  // [mir] _24 = ()
+  
+  _24 := builtin$havoc_ref()
+  inhale acc(tuple0$(_24), write)
+  // [mir] goto -> bb15
+  
+  goto loop10_group3_bb15
+  label loop10_group3_bb15
+  // ========== loop10_group3_bb15 ==========
+  
+  __t10 := true
+  // [mir] StorageLive(_34)
+  
+  // [mir] _34 = const VecCandidates::new() -> [return: bb16, unwind: bb4]
+  
+  label l21
+  _34 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write)
+  inhale true
+  inhale m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_$$int$(_34) == 0
+  label l22
+  goto loop10_group3_bb16
+  label loop10_group3_bb16
+  // ========== loop10_group3_bb16 ==========
+  
+  __t11 := true
+  // [mir] StorageLive(_35)
+  
+  // [mir] _35 = const moves() -> [return: bb17, unwind: bb18]
+  
+  label l23
+  _35 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_35), write)
+  inhale true
+  inhale true
+  label l24
+  goto loop10_group3_bb17
+  label loop10_group3_bb17
+  // ========== loop10_group3_bb17 ==========
+  
+  __t12 := true
+  // [mir] StorageLive(_36)
+  
+  // [mir] _36 = const 0usize
+  
+  _36 := builtin$havoc_ref()
+  inhale acc(_36.val_int, write)
+  _36.val_int := 0
+  // [mir] StorageLive(_37)
+  
+  // [mir] StorageLive(_38)
+  
+  // [mir] _38 = _36
+  
+  _38 := builtin$havoc_int()
+  inhale true
+  _38 := _36.val_int
+  label l25
+  // [mir] StorageLive(_39)
+  
+  // [mir] StorageLive(_40)
+  
+  // [mir] _40 = &'116s _35
+  
+  _40 := builtin$havoc_ref()
+  inhale acc(_40.val_ref, write)
+  _40.val_ref := _35
+  exhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_35), write - read$())
+  inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_40.val_ref), read$())
+  label l26
+  // [mir] _39 = const VecWrapperI32I32::len(move _40) -> [return: bb19, unwind: bb21]
+  
+  label l27
+  _39 := builtin$havoc_int()
+  inhale _39 >= 0
+  inhale _39 >= 0
+  inhale _39 == m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_40.val_ref)
+  // transfer perm _40.val_ref --> old[l27](_40.val_ref) // unchecked: false
+  
+  goto l28
+  label loop10_group3_bb19
+  // ========== loop10_group3_bb19 ==========
+  
+  __t13 := true
+  // [mir] EndRegion('116s)
+  
+  // [mir] StorageDead(_40)
+  
+  // [mir] _37 = Lt(move _38, move _39)
+  
+  _37 := builtin$havoc_ref()
+  inhale acc(_37.val_bool, write)
+  _37.val_bool := _38 < _39
+  // [mir] StorageDead(_39)
+  
+  // [mir] StorageDead(_38)
+  
+  // [mir] goto -> bb22
+  
+  goto loop10_group3_loop22_start
+  label loop10_group3_bb23
+  // ========== loop10_group3_bb23 ==========
+  
+  __t30 := true
+  // [mir] _41 = ()
+  
+  _41 := builtin$havoc_ref()
+  inhale acc(tuple0$(_41), write)
+  // [mir] StorageDead(_42)
+  
+  // [mir] StorageLive(_83)
+  
+  // [mir] _83 = const 0usize
+  
+  _83 := builtin$havoc_ref()
+  inhale acc(_83.val_int, write)
+  _83.val_int := 0
+  // [mir] StorageLive(_84)
+  
+  // [mir] StorageLive(_85)
+  
+  // [mir] _85 = _83
+  
+  _85 := builtin$havoc_int()
+  inhale true
+  _85 := _83.val_int
+  label l77
+  // [mir] StorageLive(_86)
+  
+  // [mir] StorageLive(_87)
+  
+  // [mir] _87 = &'243s _34
+  
+  _87 := builtin$havoc_ref()
+  inhale acc(_87.val_ref, write)
+  _87.val_ref := _34
+  exhale acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write - read$())
+  inhale acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_87.val_ref), read$())
+  label l78
+  // [mir] _86 = const VecCandidates::len(move _87) -> [return: bb48, unwind: bb49]
+  
+  label l79
+  _86 := builtin$havoc_int()
+  inhale _86 >= 0
+  inhale _86 >= 0
+  inhale _86 == m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_$$int$(_87.val_ref)
+  // transfer perm _87.val_ref --> old[l79](_87.val_ref) // unchecked: false
+  
+  goto l80
+  label loop10_group3_bb48
+  // ========== loop10_group3_bb48 ==========
+  
+  __t31 := true
+  // [mir] EndRegion('243s)
+  
+  // [mir] StorageDead(_87)
+  
+  // [mir] _84 = Lt(move _85, move _86)
+  
+  _84 := builtin$havoc_ref()
+  inhale acc(_84.val_bool, write)
+  _84.val_bool := _85 < _86
+  // [mir] StorageDead(_86)
+  
+  // [mir] StorageDead(_85)
+  
+  // [mir] StorageLive(_88)
+  
+  // [mir] _88 = std::option::Option<(i32, Point)>::None
+  
+  _88 := builtin$havoc_ref()
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write)
+  inhale m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$int$(_88) == 0
+  // [mir] StorageLive(_89)
+  
+  // [mir] StorageLive(_90)
+  
+  // [mir] _90 = const size() -> [return: bb50, unwind: bb20]
+  
+  label l81
+  _90 := builtin$havoc_ref()
+  inhale acc(i32(_90), write)
+  unfold acc(i32(_90), write)
+  inhale _90.val_int == m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()
+  goto loop10_group3_bb50
+  label loop10_group3_bb50
+  // ========== loop10_group3_bb50 ==========
+  
+  __t32 := true
+  // [mir] StorageLive(_91)
+  
+  // [mir] _91 = const size() -> [return: bb51, unwind: bb20]
+  
+  label l82
+  _91 := builtin$havoc_ref()
+  inhale acc(i32(_91), write)
+  unfold acc(i32(_91), write)
+  inhale _91.val_int == m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()
+  goto loop10_group3_bb51
+  label loop10_group3_bb51
+  // ========== loop10_group3_bb51 ==========
+  
+  __t33 := true
+  // [mir] _92 = CheckedMul(move _90, move _91)
+  
+  _92 := builtin$havoc_ref()
+  inhale acc(_92.tuple_0, write)
+  inhale acc(_92.tuple_0.val_int, write)
+  inhale acc(_92.tuple_1, write)
+  inhale acc(_92.tuple_1.val_bool, write)
+  _92.tuple_0.val_int := _90.val_int * _91.val_int
+  _92.tuple_1.val_bool := false
+  // [mir] assert(!move (_92.1: bool), "attempt to multiply with overflow") -> [success: bb52, unwind: bb20]
+  
+  __t80 := _92.tuple_1.val_bool
+  // Rust assertion: attempt to multiply with overflow
+  
+  assert !__t80
+  goto loop10_group3_bb52
+  label loop10_group3_bb52
+  // ========== loop10_group3_bb52 ==========
+  
+  __t34 := true
+  // [mir] _89 = move (_92.0: i32)
+  
+  _89 := _92.tuple_0
+  label l83
+  // [mir] StorageDead(_91)
+  
+  // [mir] StorageDead(_90)
+  
+  // [mir] goto -> bb53
+  
+  goto loop10_group3_loop53_start
+  label loop10_group3_bb54
+  // ========== loop10_group3_bb54 ==========
+  
+  __t45 := true
+  // [mir] _93 = ()
+  
+  _93 := builtin$havoc_ref()
+  inhale acc(tuple0$(_93), write)
+  // [mir] StorageDead(_94)
+  
+  // [mir] _122 = discriminant(_88)
+  
+  _122 := builtin$havoc_int()
+  inhale true
+  _122 := m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$int$(_88)
+  // [mir] _123 = &'<empty> _88
+  
+  _123 := builtin$havoc_ref()
+  inhale acc(_123.val_ref, write)
+  _123.val_ref := _88
+  exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write - read$())
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_123.val_ref), read$())
+  label l113
+  // [mir] _125 = discriminant(_88)
+  
+  _125 := builtin$havoc_int()
+  inhale true
+  _125 := m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$int$(_123.val_ref)
+  // [mir] switchInt(move _125) -> [0isize: bb69, 1isize: bb68, otherwise: bb71]
+  
+  __t87 := _125
+  // Ignore default target bb71, as the compiler marked it as unreachable.
+  
+  if (__t87 == 0) {
+    goto l115
+  }
+  goto l114
+  label loop10_group3_bb67
+  // ========== loop10_group3_bb67 ==========
+  
+  __t49 := true
+  // [mir] _8 = const true
+  
+  unfold acc(bool(_8), write)
+  _8.val_bool := true
+  // [mir] _121 = ()
+  
+  _121 := builtin$havoc_ref()
+  inhale acc(tuple0$(_121), write)
+  // [mir] goto -> bb73
+  
+  goto l153
+  label loop10_group3_bb68
+  // ========== loop10_group3_bb68 ==========
+  
+  __t46 := true
+  // [mir] ReadForMatch(_123)
+  
+  // [mir] falseEdges -> [real: bb72, imaginary: bb69]
+  
+  goto l116
+  label loop10_group3_bb69
+  // ========== loop10_group3_bb69 ==========
+  
+  __t48 := true
+  // [mir] ReadForMatch(_123)
+  
+  // expire_borrows ReborrowingDAG(L30,)
+
+  
+  if (__t45) {
+    // expire loan L30
+    
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_123.val_ref), read$())
+    inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb67, imaginary: bb70]
+  
+  goto loop10_group3_bb67
+  label loop10_group3_bb72
+  // ========== loop10_group3_bb72 ==========
+  
+  __t47 := true
+  // [mir] StorageLive(_124)
+  
+  // [mir] _124 = move (((_88 as Some).0: (i32, Point)).1: Point)
+  
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write)
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_Some(_88.enum_Some), write)
+  unfold acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_88.enum_Some.f$0), write)
+  _124 := _88.enum_Some.f$0.tuple_1
+  label l117
+  // [mir] StorageLive(_126)
+  
+  // [mir] _126 = move _124
+  
+  _126 := _124
+  label l118
+  // [mir] _4 = move _126
+  
+  _4 := _126
+  label l119
+  // [mir] StorageDead(_126)
+  
+  // [mir] _121 = ()
+  
+  _121 := builtin$havoc_ref()
+  inhale acc(tuple0$(_121), write)
+  // [mir] goto -> bb73
+  
+  goto l152
+  label loop10_group3_bb73
+  // ========== loop10_group3_bb73 ==========
+  
+  __t50 := true
+  // [mir] StorageDead(_124)
+  
+  // [mir] StorageLive(_128)
+  
+  // [mir] _128 = &'362s mut (_3.0: VecVecWrapperI32)
+  
+  _128 := builtin$havoc_ref()
+  inhale acc(_128.val_ref, write)
+  unfold acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write)
+  _128.val_ref := _3.f$field
+  label l120
+  // [mir] StorageLive(_129)
+  
+  // [mir] _129 = (_4.0: i32)
+  
+  _129 := builtin$havoc_ref()
+  inhale acc(_129.val_int, write)
+  unfold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write)
+  unfold acc(i32(_4.f$x), write)
+  _129.val_int := _4.f$x.val_int
+  label l121
+  // [mir] StorageLive(_130)
+  
+  // [mir] _130 = (_4.1: i32)
+  
+  _130 := builtin$havoc_ref()
+  inhale acc(_130.val_int, write)
+  unfold acc(i32(_4.f$y), write)
+  _130.val_int := _4.f$y.val_int
+  label l122
+  // [mir] StorageLive(_131)
+  
+  // [mir] _131 = _7
+  
+  _131 := builtin$havoc_ref()
+  inhale acc(_131.val_int, write)
+  unfold acc(i32(_7), write)
+  _131.val_int := _7.val_int
+  label l123
+  // [mir] _127 = const VecVecWrapperI32::store(move _128, move _129, move _130, move _131) -> [return: bb74, unwind: bb75]
+  
+  label l124
+  assert 0 <= _129.val_int && _129.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= _130.val_int && _130.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())
+  fold acc(i32(_130), write)
+  fold acc(i32(_129), write)
+  fold acc(i32(_131), write)
+  assert true
+  exhale acc(_128.val_ref, write) && (acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_128.val_ref), write) && (acc(i32(_129), write) && (acc(i32(_130), write) && acc(i32(_131), write))))
+  _127 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l124](_128.val_ref)), write)
+  inhale acc(tuple0$(_127), write)
+  inhale true
+  inhale m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$$$int$(old[l124](_128.val_ref), old[l124](_129.val_int), old[l124](_130.val_int)) == old[l124](_131.val_int) && (forall px: Int, py: Int :: 0 <= px && (px < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (!(px == old[l124](_129.val_int)) && (0 <= py && (py < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && !(py == old[l124](_130.val_int)))))) ==> m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$$$int$(old[l124](_128.val_ref), px, py) == old[l124](m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$$$int$(_128.val_ref, px, py)))
+  label l125
+  goto l126
+  label loop10_group3_bb74
+  // ========== loop10_group3_bb74 ==========
+  
+  __t51 := true
+  // [mir] EndRegion('362s)
+  
+  // [mir] StorageDead(_131)
+  
+  // [mir] StorageDead(_130)
+  
+  // [mir] StorageDead(_129)
+  
+  // [mir] StorageDead(_128)
+  
+  // [mir] _132 = CheckedAdd(_7, const 1i32)
+  
+  _132 := builtin$havoc_ref()
+  inhale acc(_132.tuple_0, write)
+  inhale acc(_132.tuple_0.val_int, write)
+  inhale acc(_132.tuple_1, write)
+  inhale acc(_132.tuple_1.val_bool, write)
+  _132.tuple_0.val_int := _7.val_int + 1
+  _132.tuple_1.val_bool := false
+  // [mir] assert(!move (_132.1: bool), "attempt to add with overflow") -> [success: bb76, unwind: bb20]
+  
+  __t88 := _132.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t88
+  goto loop10_group3_bb76
+  label loop10_group3_bb76
+  // ========== loop10_group3_bb76 ==========
+  
+  __t52 := true
+  // [mir] _7 = move (_132.0: i32)
+  
+  _7 := _132.tuple_0
+  label l127
+  // [mir] StorageLive(_133)
+  
+  // [mir] StorageLive(_134)
+  
+  // [mir] StorageLive(_135)
+  
+  // [mir] _135 = _7
+  
+  _135 := builtin$havoc_int()
+  inhale true
+  _135 := _7.val_int
+  label l128
+  // [mir] StorageLive(_136)
+  
+  // [mir] StorageLive(_137)
+  
+  // [mir] _137 = const size() -> [return: bb81, unwind: bb20]
+  
+  label l129
+  _137 := builtin$havoc_ref()
+  inhale acc(i32(_137), write)
+  unfold acc(i32(_137), write)
+  inhale _137.val_int == m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()
+  goto loop10_group3_bb81
+  label loop10_group3_bb77
+  // ========== loop10_group3_bb77 ==========
+  
+  __t57 := true
+  // [mir] _133 = const true
+  
+  _133 := builtin$havoc_ref()
+  inhale acc(_133.val_bool, write)
+  _133.val_bool := true
+  // [mir] goto -> bb80
+  
+  goto l155
+  label loop10_group3_bb78
+  // ========== loop10_group3_bb78 ==========
+  
+  __t58 := true
+  // [mir] _133 = const false
+  
+  _133 := builtin$havoc_ref()
+  inhale acc(_133.val_bool, write)
+  _133.val_bool := false
+  // [mir] goto -> bb80
+  
+  goto loop10_group3_bb80
+  label loop10_group3_bb79
+  // ========== loop10_group3_bb79 ==========
+  
+  __t56 := true
+  // [mir] StorageLive(_140)
+  
+  // [mir] StorageLive(_141)
+  
+  // [mir] _141 = _8
+  
+  _141 := builtin$havoc_ref()
+  inhale acc(_141.val_bool, write)
+  _141.val_bool := _8.val_bool
+  label l134
+  // [mir] _140 = Not(move _141)
+  
+  _140 := builtin$havoc_ref()
+  inhale acc(_140.val_bool, write)
+  _140.val_bool := !_141.val_bool
+  // [mir] StorageDead(_141)
+  
+  // [mir] switchInt(move _140) -> [false: bb78, otherwise: bb77]
+  
+  __t91 := _140.val_bool
+  if (!__t91) {
+    goto l136
+  }
+  goto l135
+  label loop10_group3_bb80
+  // ========== loop10_group3_bb80 ==========
+  
+  __t59 := true
+  // [mir] StorageDead(_140)
+  
+  // [mir] StorageDead(_134)
+  
+  // [mir] _15 = move _133
+  
+  _15 := _133
+  label l137
+  // [mir] StorageDead(_133)
+  
+  // [mir] _23 = ()
+  
+  _23 := builtin$havoc_ref()
+  inhale acc(tuple0$(_23), write)
+  // [mir] StorageDead(_89)
+  
+  // [mir] StorageDead(_88)
+  
+  // [mir] StorageDead(_84)
+  
+  // [mir] StorageDead(_83)
+  
+  // [mir] StorageDead(_37)
+  
+  // [mir] StorageDead(_36)
+  
+  // [mir] drop(_35) -> [return: bb84, unwind: bb18]
+  
+  goto loop10_group3_bb84
+  label loop10_group3_bb81
+  // ========== loop10_group3_bb81 ==========
+  
+  __t53 := true
+  // [mir] StorageLive(_138)
+  
+  // [mir] _138 = const size() -> [return: bb82, unwind: bb20]
+  
+  label l130
+  _138 := builtin$havoc_ref()
+  inhale acc(i32(_138), write)
+  unfold acc(i32(_138), write)
+  inhale _138.val_int == m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()
+  goto loop10_group3_bb82
+  label loop10_group3_bb82
+  // ========== loop10_group3_bb82 ==========
+  
+  __t54 := true
+  // [mir] _139 = CheckedMul(move _137, move _138)
+  
+  _139 := builtin$havoc_ref()
+  inhale acc(_139.tuple_0, write)
+  inhale acc(_139.tuple_0.val_int, write)
+  inhale acc(_139.tuple_1, write)
+  inhale acc(_139.tuple_1.val_bool, write)
+  _139.tuple_0.val_int := _137.val_int * _138.val_int
+  _139.tuple_1.val_bool := false
+  // [mir] assert(!move (_139.1: bool), "attempt to multiply with overflow") -> [success: bb83, unwind: bb20]
+  
+  __t89 := _139.tuple_1.val_bool
+  // Rust assertion: attempt to multiply with overflow
+  
+  assert !__t89
+  goto loop10_group3_bb83
+  label loop10_group3_bb83
+  // ========== loop10_group3_bb83 ==========
+  
+  __t55 := true
+  // [mir] _136 = move (_139.0: i32)
+  
+  _136 := _139.tuple_0
+  label l131
+  // [mir] StorageDead(_138)
+  
+  // [mir] StorageDead(_137)
+  
+  // [mir] _134 = Le(move _135, move _136)
+  
+  _134 := builtin$havoc_ref()
+  inhale acc(_134.val_bool, write)
+  _134.val_bool := _135 <= _136.val_int
+  // [mir] StorageDead(_136)
+  
+  // [mir] StorageDead(_135)
+  
+  // [mir] switchInt(move _134) -> [false: bb78, otherwise: bb79]
+  
+  __t90 := _134.val_bool
+  if (!__t90) {
+    goto l133
+  }
+  goto l132
+  label loop10_group3_bb84
+  // ========== loop10_group3_bb84 ==========
+  
+  __t60 := true
+  // [mir] StorageDead(_35)
+  
+  // [mir] drop(_34) -> [return: bb85, unwind: bb4]
+  
+  goto loop10_group3_bb85
+  label loop10_group3_bb85
+  // ========== loop10_group3_bb85 ==========
+  
+  __t61 := true
+  // [mir] StorageDead(_34)
+  
+  // [mir] goto -> bb10
+  
+  goto loop10_group4_bb10
+  label loop10_group3_loop22_end_body
+  // ========== loop10_group3_loop22_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb22
+  
+  fold acc(usize(_36), write)
+  // obtain acc(usize(_36), write)
+  
+  fold acc(bool(_37), write)
+  // obtain acc(bool(_37), write)
+  
+  // obtain acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_35), write)
+  
+  // obtain acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write)
+  
+  // obtain acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write)
+  
+  // obtain acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write)
+  
+  assert 0 <= (unfolding acc(usize(_36), write) in _36.val_int) && ((unfolding acc(usize(_36), write) in _36.val_int) < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_35) && (0 <= (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) && (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) && (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())))
+  exhale acc(usize(_36), write) && (acc(bool(_37), write) && (acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_35), write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) && (acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write) && acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write)))))
+  inhale false
+  goto end_of_method
+  label loop10_group3_loop22_group1_bb22
+  // ========== loop10_group3_loop22_group1_bb22 ==========
+  
+  // This is a loop head
+  
+  __t14 := true
+  // [mir] StorageLive(_42)
+  
+  // [mir] _42 = _37
+  
+  _42 := builtin$havoc_ref()
+  inhale acc(_42.val_bool, write)
+  _42.val_bool := _37.val_bool
+  label l29
+  // [mir] switchInt(move _42) -> [false: bb23, otherwise: bb24]
+  
+  __t74 := _42.val_bool
+  if (__t74) {
+    goto l31
+  }
+  goto l30
+  label loop10_group3_loop22_group2_bb24
+  // ========== loop10_group3_loop22_group2_bb24 ==========
+  
+  __t15 := true
+  // [mir] switchInt(const false) -> [false: bb26, otherwise: bb25]
+  
+  __t75 := false
+  // Ignore default target bb25, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop10_group3_loop22_inv_pre
+  label loop10_group3_loop22_group3_bb26
+  // ========== loop10_group3_loop22_group3_bb26 ==========
+  
+  __t16 := true
+  // [mir] _43 = ()
+  
+  _43 := builtin$havoc_ref()
+  inhale acc(tuple0$(_43), write)
+  // [mir] goto -> bb27
+  
+  goto loop10_group3_loop22_group3_bb27
+  label loop10_group3_loop22_group3_bb27
+  // ========== loop10_group3_loop22_group3_bb27 ==========
+  
+  __t17 := true
+  // [mir] StorageLive(_58)
+  
+  // [mir] StorageLive(_59)
+  
+  // [mir] _59 = &'191s mut _35
+  
+  _59 := builtin$havoc_ref()
+  inhale acc(_59.val_ref, write)
+  _59.val_ref := _35
+  label l32
+  // [mir] StorageLive(_60)
+  
+  // [mir] _60 = _36
+  
+  _60 := builtin$havoc_int()
+  inhale true
+  unfold acc(usize(_36), write)
+  _60 := _36.val_int
+  label l33
+  // [mir] _58 = const VecWrapperI32I32::lookup(move _59, move _60) -> [return: bb28, unwind: bb29]
+  
+  label l34
+  assert 0 <= _60 && _60 < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_59.val_ref)
+  assert _60 >= 0
+  assert true
+  exhale acc(_59.val_ref, write) && (acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_59.val_ref), write) && _60 >= 0)
+  _58 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(old[l34](_59.val_ref)), write)
+  inhale acc(tuple2$i32$i32(_58), write)
+  inhale true
+  inhale true
+  label l35
+  goto l36
+  label loop10_group3_loop22_group3_bb28
+  // ========== loop10_group3_loop22_group3_bb28 ==========
+  
+  __t18 := true
+  // [mir] EndRegion('191s)
+  
+  // [mir] StorageDead(_60)
+  
+  // [mir] StorageDead(_59)
+  
+  // [mir] StorageLive(_61)
+  
+  // [mir] StorageLive(_62)
+  
+  // [mir] _62 = &'198s mut _4
+  
+  _62 := builtin$havoc_ref()
+  inhale acc(_62.val_ref, write)
+  _62.val_ref := _4
+  label l37
+  // [mir] StorageLive(_63)
+  
+  // [mir] StorageLive(_64)
+  
+  // [mir] _64 = &'198s mut _58
+  
+  _64 := builtin$havoc_ref()
+  inhale acc(_64.val_ref, write)
+  _64.val_ref := _58
+  label l38
+  // [mir] _63 = &'198s mut (*_64)
+  
+  _63 := builtin$havoc_ref()
+  inhale acc(_63.val_ref, write)
+  _63.val_ref := _64.val_ref
+  label l39
+  // [mir] _61 = const Point::mov(move _62, move _63) -> [return: bb30, unwind: bb31]
+  
+  label l40
+  assert true
+  exhale acc(_62.val_ref, write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_62.val_ref), write) && (acc(_63.val_ref, write) && acc(tuple2$i32$i32(_63.val_ref), write)))
+  _61 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(old[l40](_62.val_ref)), write) && acc(tuple2$i32$i32(old[l40](_63.val_ref)), write)
+  inhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_61), write)
+  inhale true
+  inhale (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(old[l40](_62.val_ref)), write) in (unfolding acc(i32(old[l40](_62.val_ref).f$y), write) in (unfolding acc(i32(old[l40](_62.val_ref).f$x), write) in old[l40](_62.val_ref).f$x.val_int == old[l40]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_62.val_ref), write) in (unfolding acc(i32(_62.val_ref.f$x), write) in _62.val_ref.f$x.val_int))) && old[l40](_62.val_ref).f$y.val_int == old[l40]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_62.val_ref), write) in (unfolding acc(i32(_62.val_ref.f$y), write) in _62.val_ref.f$y.val_int))))))
+  label l41
+  goto l42
+  label loop10_group3_loop22_group3_bb30
+  // ========== loop10_group3_loop22_group3_bb30 ==========
+  
+  __t19 := true
+  // [mir] EndRegion('198s)
+  
+  // [mir] StorageDead(_63)
+  
+  // [mir] StorageDead(_62)
+  
+  // [mir] StorageDead(_64)
+  
+  // [mir] StorageLive(_66)
+  
+  // [mir] StorageLive(_67)
+  
+  // [mir] _67 = &'218s mut _3
+  
+  _67 := builtin$havoc_ref()
+  inhale acc(_67.val_ref, write)
+  _67.val_ref := _3
+  label l43
+  // [mir] StorageLive(_68)
+  
+  // [mir] StorageLive(_69)
+  
+  // [mir] _69 = &'217s mut _61
+  
+  _69 := builtin$havoc_ref()
+  inhale acc(_69.val_ref, write)
+  _69.val_ref := _61
+  label l44
+  // [mir] _68 = const Point::clone(move _69) -> [return: bb32, unwind: bb34]
+  
+  label l45
+  assert true
+  exhale acc(_69.val_ref, write) && acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_69.val_ref), write)
+  _68 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(old[l45](_69.val_ref)), write)
+  inhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_68), write)
+  inhale true
+  inhale (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(old[l45](_69.val_ref)), write) in (unfolding acc(i32(old[l45](_69.val_ref).f$y), write) in (unfolding acc(i32(old[l45](_69.val_ref).f$x), write) in (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_68), write) in (unfolding acc(i32(_68.f$y), write) in (unfolding acc(i32(_68.f$x), write) in _68.f$x.val_int == old[l45]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_69.val_ref), write) in (unfolding acc(i32(_69.val_ref.f$x), write) in _69.val_ref.f$x.val_int))) && (_68.f$y.val_int == old[l45]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_69.val_ref), write) in (unfolding acc(i32(_69.val_ref.f$y), write) in _69.val_ref.f$y.val_int))) && (old[l45](_69.val_ref).f$x.val_int == old[l45]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_69.val_ref), write) in (unfolding acc(i32(_69.val_ref.f$x), write) in _69.val_ref.f$x.val_int))) && old[l45](_69.val_ref).f$y.val_int == old[l45]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_69.val_ref), write) in (unfolding acc(i32(_69.val_ref.f$y), write) in _69.val_ref.f$y.val_int)))))))))))
+  label l46
+  goto l47
+  label loop10_group3_loop22_group3_bb32
+  // ========== loop10_group3_loop22_group3_bb32 ==========
+  
+  __t20 := true
+  // [mir] EndRegion('217s)
+  
+  // [mir] StorageDead(_69)
+  
+  // [mir] _66 = const Board::available(move _67, move _68) -> [return: bb35, unwind: bb33]
+  
+  label l48
+  assert true
+  exhale acc(_67.val_ref, write) && (acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_67.val_ref), write) && acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_68), write))
+  _66 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(old[l48](_67.val_ref)), write)
+  inhale acc(bool(_66), write)
+  inhale true
+  inhale (unfolding acc(bool(_66), write) in _66.val_bool ==> 0 <= old[l48]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_68), write) in (unfolding acc(i32(_68.f$x), write) in _68.f$x.val_int))) && (old[l48]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_68), write) in (unfolding acc(i32(_68.f$x), write) in _68.f$x.val_int))) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= old[l48]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_68), write) in (unfolding acc(i32(_68.f$y), write) in _68.f$y.val_int))) && old[l48]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_68), write) in (unfolding acc(i32(_68.f$y), write) in _68.f$y.val_int))) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())))
+  label l49
+  goto l50
+  label loop10_group3_loop22_group3_bb35
+  // ========== loop10_group3_loop22_group3_bb35 ==========
+  
+  __t21 := true
+  // [mir] EndRegion('218s)
+  
+  // [mir] StorageDead(_68)
+  
+  // [mir] StorageDead(_67)
+  
+  // [mir] switchInt(move _66) -> [false: bb37, otherwise: bb36]
+  
+  unfold acc(bool(_66), write)
+  __t76 := _66.val_bool
+  if (!__t76) {
+    goto l52
+  }
+  goto l51
+  label loop10_group3_loop22_group3_bb36
+  // ========== loop10_group3_loop22_group3_bb36 ==========
+  
+  __t22 := true
+  // [mir] StorageLive(_70)
+  
+  // [mir] StorageLive(_71)
+  
+  // [mir] _71 = &'205s mut _3
+  
+  _71 := builtin$havoc_ref()
+  inhale acc(_71.val_ref, write)
+  _71.val_ref := _3
+  label l53
+  // [mir] StorageLive(_72)
+  
+  // [mir] StorageLive(_73)
+  
+  // [mir] _73 = &'204s mut _61
+  
+  _73 := builtin$havoc_ref()
+  inhale acc(_73.val_ref, write)
+  _73.val_ref := _61
+  label l54
+  // [mir] _72 = const Point::clone(move _73) -> [return: bb38, unwind: bb40]
+  
+  label l55
+  assert true
+  exhale acc(_73.val_ref, write) && acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_73.val_ref), write)
+  _72 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(old[l55](_73.val_ref)), write)
+  inhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_72), write)
+  inhale true
+  inhale (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(old[l55](_73.val_ref)), write) in (unfolding acc(i32(old[l55](_73.val_ref).f$y), write) in (unfolding acc(i32(old[l55](_73.val_ref).f$x), write) in (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_72), write) in (unfolding acc(i32(_72.f$y), write) in (unfolding acc(i32(_72.f$x), write) in _72.f$x.val_int == old[l55]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_73.val_ref), write) in (unfolding acc(i32(_73.val_ref.f$x), write) in _73.val_ref.f$x.val_int))) && (_72.f$y.val_int == old[l55]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_73.val_ref), write) in (unfolding acc(i32(_73.val_ref.f$y), write) in _73.val_ref.f$y.val_int))) && (old[l55](_73.val_ref).f$x.val_int == old[l55]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_73.val_ref), write) in (unfolding acc(i32(_73.val_ref.f$x), write) in _73.val_ref.f$x.val_int))) && old[l55](_73.val_ref).f$y.val_int == old[l55]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_73.val_ref), write) in (unfolding acc(i32(_73.val_ref.f$y), write) in _73.val_ref.f$y.val_int)))))))))))
+  label l56
+  goto l57
+  label loop10_group3_loop22_group3_bb37
+  // ========== loop10_group3_loop22_group3_bb37 ==========
+  
+  __t26 := true
+  // [mir] _65 = ()
+  
+  _65 := builtin$havoc_ref()
+  inhale acc(tuple0$(_65), write)
+  // [mir] goto -> bb44
+  
+  goto l147
+  label loop10_group3_loop22_group3_bb38
+  // ========== loop10_group3_loop22_group3_bb38 ==========
+  
+  __t23 := true
+  // [mir] EndRegion('204s)
+  
+  // [mir] StorageDead(_73)
+  
+  // [mir] _70 = const Board::count_degree(move _71, move _72) -> [return: bb41, unwind: bb39]
+  
+  label l58
+  assert true
+  exhale acc(_71.val_ref, write) && (acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_71.val_ref), write) && acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_72), write))
+  _70 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(old[l58](_71.val_ref)), write)
+  inhale acc(i32(_70), write)
+  inhale true
+  inhale true
+  label l59
+  goto l60
+  label loop10_group3_loop22_group3_bb41
+  // ========== loop10_group3_loop22_group3_bb41 ==========
+  
+  __t24 := true
+  // [mir] EndRegion('205s)
+  
+  // [mir] StorageDead(_72)
+  
+  // [mir] StorageDead(_71)
+  
+  // [mir] StorageLive(_75)
+  
+  // [mir] _75 = &'211s mut _34
+  
+  _75 := builtin$havoc_ref()
+  inhale acc(_75.val_ref, write)
+  _75.val_ref := _34
+  label l61
+  // [mir] StorageLive(_76)
+  
+  // [mir] StorageLive(_77)
+  
+  // [mir] _77 = _70
+  
+  _77 := builtin$havoc_ref()
+  inhale acc(_77.val_int, write)
+  unfold acc(i32(_70), write)
+  _77.val_int := _70.val_int
+  label l62
+  // [mir] StorageLive(_78)
+  
+  // [mir] _78 = move _61
+  
+  _78 := _61
+  label l63
+  // [mir] _76 = (move _77, move _78)
+  
+  _76 := builtin$havoc_ref()
+  inhale acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_76), write)
+  unfold acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_76), write)
+  _76.tuple_0 := _77
+  label l64
+  _76.tuple_1 := _78
+  label l65
+  // [mir] StorageDead(_78)
+  
+  // [mir] StorageDead(_77)
+  
+  // [mir] _74 = const VecCandidates::push(move _75, move _76) -> [return: bb42, unwind: bb43]
+  
+  label l66
+  unfold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_76.tuple_1), write)
+  unfold acc(i32(_76.tuple_1.f$x), write)
+  unfold acc(i32(_76.tuple_1.f$y), write)
+  assert 0 <= _76.tuple_1.f$x.val_int && _76.tuple_1.f$x.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= _76.tuple_1.f$y.val_int && _76.tuple_1.f$y.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())
+  fold acc(i32(_76.tuple_0), write)
+  fold acc(i32(_76.tuple_1.f$x), write)
+  fold acc(i32(_76.tuple_1.f$y), write)
+  fold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_76.tuple_1), write)
+  fold acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_76), write)
+  assert true
+  exhale acc(_75.val_ref, write) && (acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_75.val_ref), write) && acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_76), write))
+  _74 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(old[l66](_75.val_ref)), write)
+  inhale acc(tuple0$(_74), write)
+  inhale true
+  inhale m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l66](_75.val_ref)) == old[l66](m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_$$int$(_75.val_ref)) + 1
+  label l67
+  goto l68
+  label loop10_group3_loop22_group3_bb42
+  // ========== loop10_group3_loop22_group3_bb42 ==========
+  
+  __t25 := true
+  // [mir] EndRegion('211s)
+  
+  // [mir] StorageDead(_76)
+  
+  // [mir] StorageDead(_75)
+  
+  // [mir] _65 = ()
+  
+  _65 := builtin$havoc_ref()
+  inhale acc(tuple0$(_65), write)
+  // [mir] StorageDead(_70)
+  
+  // [mir] goto -> bb44
+  
+  goto l146
+  label loop10_group3_loop22_group3_bb44
+  // ========== loop10_group3_loop22_group3_bb44 ==========
+  
+  __t27 := true
+  // [mir] StorageDead(_66)
+  
+  // [mir] _79 = CheckedAdd(_36, const 1usize)
+  
+  _79 := builtin$havoc_ref()
+  inhale acc(_79.tuple_0, write)
+  inhale acc(_79.tuple_0.val_int, write)
+  inhale acc(_79.tuple_1, write)
+  inhale acc(_79.tuple_1.val_bool, write)
+  _79.tuple_0.val_int := _36.val_int + 1
+  _79.tuple_1.val_bool := false
+  // [mir] assert(!move (_79.1: bool), "attempt to add with overflow") -> [success: bb45, unwind: bb20]
+  
+  __t77 := _79.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t77
+  goto loop10_group3_loop22_group3_bb45
+  label loop10_group3_loop22_group3_bb45
+  // ========== loop10_group3_loop22_group3_bb45 ==========
+  
+  __t28 := true
+  // [mir] _36 = move (_79.0: usize)
+  
+  _36 := _79.tuple_0
+  label l69
+  // [mir] StorageLive(_80)
+  
+  // [mir] _80 = _36
+  
+  _80 := builtin$havoc_int()
+  inhale true
+  _80 := _36.val_int
+  label l70
+  // [mir] StorageLive(_81)
+  
+  // [mir] StorageLive(_82)
+  
+  // [mir] _82 = &'228s _35
+  
+  _82 := builtin$havoc_ref()
+  inhale acc(_82.val_ref, write)
+  _82.val_ref := _35
+  exhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_35), write - read$())
+  inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_82.val_ref), read$())
+  label l71
+  // [mir] _81 = const VecWrapperI32I32::len(move _82) -> [return: bb46, unwind: bb47]
+  
+  label l72
+  _81 := builtin$havoc_int()
+  inhale _81 >= 0
+  inhale _81 >= 0
+  inhale _81 == m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_82.val_ref)
+  // transfer perm _82.val_ref --> old[l72](_82.val_ref) // unchecked: false
+  
+  goto l73
+  label loop10_group3_loop22_group3_bb46
+  // ========== loop10_group3_loop22_group3_bb46 ==========
+  
+  __t29 := true
+  // [mir] EndRegion('228s)
+  
+  // [mir] StorageDead(_82)
+  
+  // [mir] _37 = Lt(move _80, move _81)
+  
+  unfold acc(bool(_37), write)
+  _37.val_bool := _80 < _81
+  // [mir] StorageDead(_81)
+  
+  // [mir] StorageDead(_80)
+  
+  // [mir] _23 = ()
+  
+  _23 := builtin$havoc_ref()
+  inhale acc(tuple0$(_23), write)
+  // [mir] StorageDead(_61)
+  
+  // [mir] StorageDead(_58)
+  
+  // [mir] goto -> bb22
+  
+  goto loop10_group3_loop22_group4_bb22
+  label loop10_group3_loop22_group4_bb22
+  // ========== loop10_group3_loop22_group4_bb22 ==========
+  
+  // This is a loop head
+  
+  __t14 := true
+  // [mir] StorageLive(_42)
+  
+  // [mir] _42 = _37
+  
+  _42 := builtin$havoc_ref()
+  inhale acc(_42.val_bool, write)
+  _42.val_bool := _37.val_bool
+  label l74
+  // [mir] switchInt(move _42) -> [false: bb23, otherwise: bb24]
+  
+  __t78 := _42.val_bool
+  if (__t78) {
+    goto l76
+  }
+  goto l75
+  label loop10_group3_loop22_group5_bb24
+  // ========== loop10_group3_loop22_group5_bb24 ==========
+  
+  __t15 := true
+  // [mir] switchInt(const false) -> [false: bb26, otherwise: bb25]
+  
+  __t79 := false
+  // Ignore default target bb25, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop10_group3_loop22_end_body
+  label loop10_group3_loop22_inv_post
+  // ========== loop10_group3_loop22_inv_post ==========
+  
+  // Inhale the loop invariant of block bb22
+  
+  inhale acc(usize(_36), write) && (acc(bool(_37), write) && (acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_35), write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) && (acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write) && acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write)))))
+  inhale true
+  inhale (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$y), write) in (unfolding acc(i32(_4.f$x), write) in (unfolding acc(usize(_36), write) in 0 <= _36.val_int && (_36.val_int < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_35) && (0 <= _4.f$x.val_int && _4.f$x.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= _4.f$y.val_int && _4.f$y.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())))))))
+  goto loop10_group3_loop22_group3_bb26
+  label loop10_group3_loop22_inv_pre
+  // ========== loop10_group3_loop22_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb22
+  
+  fold acc(usize(_36), write)
+  // obtain acc(usize(_36), write)
+  
+  fold acc(bool(_37), write)
+  // obtain acc(bool(_37), write)
+  
+  // obtain acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_35), write)
+  
+  // obtain acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write)
+  
+  // obtain acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write)
+  
+  // obtain acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write)
+  
+  assert 0 <= (unfolding acc(usize(_36), write) in _36.val_int) && ((unfolding acc(usize(_36), write) in _36.val_int) < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_35) && (0 <= (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) && (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) && (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())))
+  exhale acc(usize(_36), write) && (acc(bool(_37), write) && (acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_35), write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) && (acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write) && acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write)))))
+  _62 := builtin$havoc_ref()
+  _67 := builtin$havoc_ref()
+  _73 := builtin$havoc_ref()
+  __t20 := builtin$havoc_bool()
+  __t21 := builtin$havoc_bool()
+  __t27 := builtin$havoc_bool()
+  __t22 := builtin$havoc_bool()
+  __t23 := builtin$havoc_bool()
+  _82 := builtin$havoc_ref()
+  __t19 := builtin$havoc_bool()
+  _61 := builtin$havoc_ref()
+  _78 := builtin$havoc_ref()
+  _60 := builtin$havoc_int()
+  _76 := builtin$havoc_ref()
+  _80 := builtin$havoc_int()
+  __t16 := builtin$havoc_bool()
+  __t76 := builtin$havoc_bool()
+  _63 := builtin$havoc_ref()
+  _43 := builtin$havoc_ref()
+  _71 := builtin$havoc_ref()
+  __t26 := builtin$havoc_bool()
+  __t15 := builtin$havoc_bool()
+  __t29 := builtin$havoc_bool()
+  __t79 := builtin$havoc_bool()
+  _74 := builtin$havoc_ref()
+  _58 := builtin$havoc_ref()
+  _66 := builtin$havoc_ref()
+  _68 := builtin$havoc_ref()
+  __t28 := builtin$havoc_bool()
+  __t77 := builtin$havoc_bool()
+  _23 := builtin$havoc_ref()
+  __t17 := builtin$havoc_bool()
+  _69 := builtin$havoc_ref()
+  _36 := builtin$havoc_ref()
+  __t78 := builtin$havoc_bool()
+  _77 := builtin$havoc_ref()
+  _81 := builtin$havoc_int()
+  _70 := builtin$havoc_ref()
+  _42 := builtin$havoc_ref()
+  __t24 := builtin$havoc_bool()
+  _59 := builtin$havoc_ref()
+  _64 := builtin$havoc_ref()
+  __t25 := builtin$havoc_bool()
+  _75 := builtin$havoc_ref()
+  _65 := builtin$havoc_ref()
+  _79 := builtin$havoc_ref()
+  _72 := builtin$havoc_ref()
+  __t18 := builtin$havoc_bool()
+  __t14 := builtin$havoc_bool()
+  goto loop10_group3_loop22_inv_post
+  label loop10_group3_loop22_start
+  // ========== loop10_group3_loop22_start ==========
+  
+  goto loop10_group3_loop22_group1_bb22
+  label loop10_group3_loop53_end_body
+  // ========== loop10_group3_loop53_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb53
+  
+  fold acc(i32(_89), write)
+  // obtain acc(i32(_89), write)
+  
+  // obtain acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write)
+  
+  fold acc(usize(_83), write)
+  // obtain acc(usize(_83), write)
+  
+  fold acc(bool(_84), write)
+  // obtain acc(bool(_84), write)
+  
+  // obtain acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write)
+  
+  assert 0 <= (unfolding acc(usize(_83), write) in _83.val_int) && ((unfolding acc(usize(_83), write) in _83.val_int) < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_$$int$(_34) && m_Knights_tour$$valid$opensqu$0$closesqu$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$bool$(_88))
+  exhale acc(i32(_89), write) && (acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write) && (acc(usize(_83), write) && (acc(bool(_84), write) && acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write))))
+  inhale false
+  goto end_of_method
+  label loop10_group3_loop53_group1_bb53
+  // ========== loop10_group3_loop53_group1_bb53 ==========
+  
+  // This is a loop head
+  
+  __t35 := true
+  // [mir] StorageLive(_94)
+  
+  // [mir] _94 = _84
+  
+  _94 := builtin$havoc_ref()
+  inhale acc(_94.val_bool, write)
+  _94.val_bool := _84.val_bool
+  label l84
+  // [mir] switchInt(move _94) -> [false: bb54, otherwise: bb55]
+  
+  __t81 := _94.val_bool
+  if (__t81) {
+    goto l86
+  }
+  goto l85
+  label loop10_group3_loop53_group2_bb55
+  // ========== loop10_group3_loop53_group2_bb55 ==========
+  
+  __t36 := true
+  // [mir] switchInt(const false) -> [false: bb57, otherwise: bb56]
+  
+  __t82 := false
+  // Ignore default target bb56, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop10_group3_loop53_inv_pre
+  label loop10_group3_loop53_group3_bb57
+  // ========== loop10_group3_loop53_group3_bb57 ==========
+  
+  __t37 := true
+  // [mir] _95 = ()
+  
+  _95 := builtin$havoc_ref()
+  inhale acc(tuple0$(_95), write)
+  // [mir] goto -> bb58
+  
+  goto loop10_group3_loop53_group3_bb58
+  label loop10_group3_loop53_group3_bb58
+  // ========== loop10_group3_loop53_group3_bb58 ==========
+  
+  __t38 := true
+  // [mir] StorageLive(_106)
+  
+  // [mir] StorageLive(_107)
+  
+  // [mir] _107 = &'303s mut _34
+  
+  _107 := builtin$havoc_ref()
+  inhale acc(_107.val_ref, write)
+  _107.val_ref := _34
+  label l87
+  // [mir] StorageLive(_108)
+  
+  // [mir] _108 = _83
+  
+  _108 := builtin$havoc_int()
+  inhale true
+  unfold acc(usize(_83), write)
+  _108 := _83.val_int
+  label l88
+  // [mir] _106 = const VecCandidates::lookup(move _107, move _108) -> [return: bb59, unwind: bb60]
+  
+  label l89
+  assert 0 <= _108 && _108 < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_$$int$(_107.val_ref)
+  assert _108 >= 0
+  assert true
+  exhale acc(_107.val_ref, write) && (acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_107.val_ref), write) && _108 >= 0)
+  _106 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(old[l89](_107.val_ref)), write)
+  inhale acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_106), write)
+  inhale true
+  inhale (unfolding acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_106), write) in (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_106.tuple_1), write) in (unfolding acc(i32(_106.tuple_1.f$y), write) in (unfolding acc(i32(_106.tuple_1.f$x), write) in 0 <= _106.tuple_1.f$x.val_int && _106.tuple_1.f$x.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= _106.tuple_1.f$y.val_int && _106.tuple_1.f$y.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())))))
+  label l90
+  goto l91
+  label loop10_group3_loop53_group3_bb59
+  // ========== loop10_group3_loop53_group3_bb59 ==========
+  
+  __t39 := true
+  // [mir] EndRegion('303s)
+  
+  // [mir] StorageDead(_108)
+  
+  // [mir] StorageDead(_107)
+  
+  // [mir] StorageLive(_104)
+  
+  // [mir] _104 = (_106.0: i32)
+  
+  _104 := builtin$havoc_int()
+  inhale true
+  unfold acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_106), write)
+  unfold acc(i32(_106.tuple_0), write)
+  _104 := _106.tuple_0.val_int
+  label l92
+  // [mir] StorageLive(_105)
+  
+  // [mir] _105 = move (_106.1: Point)
+  
+  _105 := _106.tuple_1
+  label l93
+  // [mir] StorageDead(_106)
+  
+  // [mir] StorageLive(_110)
+  
+  // [mir] StorageLive(_111)
+  
+  // [mir] _111 = _89
+  
+  _111 := builtin$havoc_int()
+  inhale true
+  unfold acc(i32(_89), write)
+  _111 := _89.val_int
+  label l94
+  // [mir] StorageLive(_112)
+  
+  // [mir] _112 = _104
+  
+  _112 := builtin$havoc_int()
+  inhale true
+  _112 := _104
+  label l95
+  // [mir] _110 = Gt(move _111, move _112)
+  
+  _110 := builtin$havoc_ref()
+  inhale acc(_110.val_bool, write)
+  _110.val_bool := _111 > _112
+  // [mir] StorageDead(_112)
+  
+  // [mir] StorageDead(_111)
+  
+  // [mir] switchInt(move _110) -> [false: bb62, otherwise: bb61]
+  
+  __t83 := _110.val_bool
+  if (!__t83) {
+    goto l97
+  }
+  goto l96
+  label loop10_group3_loop53_group3_bb61
+  // ========== loop10_group3_loop53_group3_bb61 ==========
+  
+  __t40 := true
+  // [mir] StorageLive(_113)
+  
+  // [mir] _113 = _104
+  
+  _113 := builtin$havoc_ref()
+  inhale acc(_113.val_int, write)
+  _113.val_int := _104
+  label l98
+  // [mir] _89 = move _113
+  
+  _89 := _113
+  label l99
+  // [mir] StorageDead(_113)
+  
+  // [mir] StorageLive(_114)
+  
+  // [mir] StorageLive(_115)
+  
+  // [mir] _115 = _104
+  
+  _115 := builtin$havoc_ref()
+  inhale acc(_115.val_int, write)
+  _115.val_int := _104
+  label l100
+  // [mir] StorageLive(_116)
+  
+  // [mir] _116 = move _105
+  
+  _116 := _105
+  label l101
+  // [mir] _114 = (move _115, move _116)
+  
+  _114 := builtin$havoc_ref()
+  inhale acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_114), write)
+  unfold acc(tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_114), write)
+  _114.tuple_0 := _115
+  label l102
+  _114.tuple_1 := _116
+  label l103
+  // [mir] StorageDead(_116)
+  
+  // [mir] StorageDead(_115)
+  
+  // [mir] _88 = std::option::Option<(i32, Point)>::Some(move _114,)
+  
+  _88 := builtin$havoc_ref()
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write)
+  inhale m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$int$(_88) == 1
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write)
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_Some(_88.enum_Some), write)
+  _88.enum_Some.f$0 := _114
+  label l104
+  // [mir] StorageDead(_114)
+  
+  // [mir] _109 = ()
+  
+  _109 := builtin$havoc_ref()
+  inhale acc(tuple0$(_109), write)
+  // [mir] goto -> bb63
+  
+  goto l149
+  label loop10_group3_loop53_group3_bb62
+  // ========== loop10_group3_loop53_group3_bb62 ==========
+  
+  __t41 := true
+  // [mir] _109 = ()
+  
+  _109 := builtin$havoc_ref()
+  inhale acc(tuple0$(_109), write)
+  // [mir] goto -> bb63
+  
+  goto l150
+  label loop10_group3_loop53_group3_bb63
+  // ========== loop10_group3_loop53_group3_bb63 ==========
+  
+  __t42 := true
+  // [mir] StorageDead(_110)
+  
+  // [mir] _117 = CheckedAdd(_83, const 1usize)
+  
+  _117 := builtin$havoc_ref()
+  inhale acc(_117.tuple_0, write)
+  inhale acc(_117.tuple_0.val_int, write)
+  inhale acc(_117.tuple_1, write)
+  inhale acc(_117.tuple_1.val_bool, write)
+  _117.tuple_0.val_int := _83.val_int + 1
+  _117.tuple_1.val_bool := false
+  // [mir] assert(!move (_117.1: bool), "attempt to add with overflow") -> [success: bb64, unwind: bb20]
+  
+  __t84 := _117.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t84
+  goto loop10_group3_loop53_group3_bb64
+  label loop10_group3_loop53_group3_bb64
+  // ========== loop10_group3_loop53_group3_bb64 ==========
+  
+  __t43 := true
+  // [mir] _83 = move (_117.0: usize)
+  
+  _83 := _117.tuple_0
+  label l105
+  // [mir] StorageLive(_118)
+  
+  // [mir] _118 = _83
+  
+  _118 := builtin$havoc_int()
+  inhale true
+  _118 := _83.val_int
+  label l106
+  // [mir] StorageLive(_119)
+  
+  // [mir] StorageLive(_120)
+  
+  // [mir] _120 = &'331s _34
+  
+  _120 := builtin$havoc_ref()
+  inhale acc(_120.val_ref, write)
+  _120.val_ref := _34
+  exhale acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write - read$())
+  inhale acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_120.val_ref), read$())
+  label l107
+  // [mir] _119 = const VecCandidates::len(move _120) -> [return: bb65, unwind: bb66]
+  
+  label l108
+  _119 := builtin$havoc_int()
+  inhale _119 >= 0
+  inhale _119 >= 0
+  inhale _119 == m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_$$int$(_120.val_ref)
+  // transfer perm _120.val_ref --> old[l108](_120.val_ref) // unchecked: false
+  
+  goto l109
+  label loop10_group3_loop53_group3_bb65
+  // ========== loop10_group3_loop53_group3_bb65 ==========
+  
+  __t44 := true
+  // [mir] EndRegion('331s)
+  
+  // [mir] StorageDead(_120)
+  
+  // [mir] _84 = Lt(move _118, move _119)
+  
+  unfold acc(bool(_84), write)
+  _84.val_bool := _118 < _119
+  // [mir] StorageDead(_119)
+  
+  // [mir] StorageDead(_118)
+  
+  // [mir] _23 = ()
+  
+  _23 := builtin$havoc_ref()
+  inhale acc(tuple0$(_23), write)
+  // [mir] StorageDead(_105)
+  
+  // [mir] StorageDead(_104)
+  
+  // [mir] goto -> bb53
+  
+  goto loop10_group3_loop53_group4_bb53
+  label loop10_group3_loop53_group4_bb53
+  // ========== loop10_group3_loop53_group4_bb53 ==========
+  
+  // This is a loop head
+  
+  __t35 := true
+  // [mir] StorageLive(_94)
+  
+  // [mir] _94 = _84
+  
+  _94 := builtin$havoc_ref()
+  inhale acc(_94.val_bool, write)
+  _94.val_bool := _84.val_bool
+  label l110
+  // [mir] switchInt(move _94) -> [false: bb54, otherwise: bb55]
+  
+  __t85 := _94.val_bool
+  if (__t85) {
+    goto l112
+  }
+  goto l111
+  label loop10_group3_loop53_group5_bb55
+  // ========== loop10_group3_loop53_group5_bb55 ==========
+  
+  __t36 := true
+  // [mir] switchInt(const false) -> [false: bb57, otherwise: bb56]
+  
+  __t86 := false
+  // Ignore default target bb56, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop10_group3_loop53_end_body
+  label loop10_group3_loop53_inv_post
+  // ========== loop10_group3_loop53_inv_post ==========
+  
+  // Inhale the loop invariant of block bb53
+  
+  inhale acc(i32(_89), write) && (acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write) && (acc(usize(_83), write) && (acc(bool(_84), write) && acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write))))
+  inhale true
+  inhale (unfolding acc(usize(_83), write) in 0 <= _83.val_int && (_83.val_int < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_$$int$(_34) && m_Knights_tour$$valid$opensqu$0$closesqu$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$bool$(_88)))
+  goto loop10_group3_loop53_group3_bb57
+  label loop10_group3_loop53_inv_pre
+  // ========== loop10_group3_loop53_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb53
+  
+  fold acc(i32(_89), write)
+  // obtain acc(i32(_89), write)
+  
+  // obtain acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write)
+  
+  fold acc(usize(_83), write)
+  // obtain acc(usize(_83), write)
+  
+  fold acc(bool(_84), write)
+  // obtain acc(bool(_84), write)
+  
+  // obtain acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write)
+  
+  assert 0 <= (unfolding acc(usize(_83), write) in _83.val_int) && ((unfolding acc(usize(_83), write) in _83.val_int) < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_$$int$(_34) && m_Knights_tour$$valid$opensqu$0$closesqu$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_$$bool$(_88))
+  exhale acc(i32(_89), write) && (acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$tuple2$i32$m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_$_end_(_88), write) && (acc(usize(_83), write) && (acc(bool(_84), write) && acc(m_Knights_tour$$VecCandidates$opensqu$0$closesqu$$_beg_$_end_(_34), write))))
+  _119 := builtin$havoc_int()
+  _23 := builtin$havoc_ref()
+  _108 := builtin$havoc_int()
+  __t85 := builtin$havoc_bool()
+  _89 := builtin$havoc_ref()
+  _105 := builtin$havoc_ref()
+  _120 := builtin$havoc_ref()
+  __t35 := builtin$havoc_bool()
+  __t84 := builtin$havoc_bool()
+  __t37 := builtin$havoc_bool()
+  _116 := builtin$havoc_ref()
+  __t42 := builtin$havoc_bool()
+  _88 := builtin$havoc_ref()
+  __t86 := builtin$havoc_bool()
+  _117 := builtin$havoc_ref()
+  __t41 := builtin$havoc_bool()
+  _111 := builtin$havoc_int()
+  _95 := builtin$havoc_ref()
+  _109 := builtin$havoc_ref()
+  _83 := builtin$havoc_ref()
+  _104 := builtin$havoc_int()
+  _106 := builtin$havoc_ref()
+  _113 := builtin$havoc_ref()
+  __t36 := builtin$havoc_bool()
+  _110 := builtin$havoc_ref()
+  __t43 := builtin$havoc_bool()
+  _94 := builtin$havoc_ref()
+  __t38 := builtin$havoc_bool()
+  _115 := builtin$havoc_ref()
+  _118 := builtin$havoc_int()
+  _107 := builtin$havoc_ref()
+  __t44 := builtin$havoc_bool()
+  _112 := builtin$havoc_int()
+  __t40 := builtin$havoc_bool()
+  __t83 := builtin$havoc_bool()
+  __t39 := builtin$havoc_bool()
+  _114 := builtin$havoc_ref()
+  goto loop10_group3_loop53_inv_post
+  label loop10_group3_loop53_start
+  // ========== loop10_group3_loop53_start ==========
+  
+  goto loop10_group3_loop53_group1_bb53
+  label loop10_group4_bb10
+  // ========== loop10_group4_bb10 ==========
+  
+  // This is a loop head
+  
+  __t7 := true
+  // [mir] StorageLive(_22)
+  
+  // [mir] _22 = _15
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_bool, write)
+  _22.val_bool := _15.val_bool
+  label l138
+  // [mir] switchInt(move _22) -> [false: bb11, otherwise: bb12]
+  
+  __t92 := _22.val_bool
+  if (__t92) {
+    goto l140
+  }
+  goto l139
+  label loop10_group5_bb12
+  // ========== loop10_group5_bb12 ==========
+  
+  __t8 := true
+  // [mir] switchInt(const false) -> [false: bb14, otherwise: bb13]
+  
+  __t93 := false
+  // Ignore default target bb13, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop10_end_body
+  label loop10_inv_post
+  // ========== loop10_inv_post ==========
+  
+  // Inhale the loop invariant of block bb10
+  
+  inhale acc(bool(_8), write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) && (acc(i32(_7), write) && (acc(bool(_15), write) && acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write))))
+  inhale true
+  inhale (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$y), write) in (unfolding acc(i32(_4.f$x), write) in 0 <= _4.f$x.val_int && _4.f$x.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= _4.f$y.val_int && _4.f$y.val_int < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()))))
+  goto loop10_group3_bb14
+  label loop10_inv_pre
+  // ========== loop10_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb10
+  
+  fold acc(bool(_8), write)
+  // obtain acc(bool(_8), write)
+  
+  fold acc(i32(_4.f$y), write)
+  fold acc(i32(_4.f$x), write)
+  fold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write)
+  // obtain acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write)
+  
+  fold acc(i32(_7), write)
+  // obtain acc(i32(_7), write)
+  
+  fold acc(bool(_15), write)
+  // obtain acc(bool(_15), write)
+  
+  fold acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write)
+  // obtain acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write)
+  
+  assert 0 <= (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) && (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$x), write) in _4.f$x.val_int)) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) && (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) in (unfolding acc(i32(_4.f$y), write) in _4.f$y.val_int)) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())
+  exhale acc(bool(_8), write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) && (acc(i32(_7), write) && (acc(bool(_15), write) && acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_3), write))))
+  _107 := builtin$havoc_ref()
+  __t45 := builtin$havoc_bool()
+  __t85 := builtin$havoc_bool()
+  _138 := builtin$havoc_ref()
+  _133 := builtin$havoc_ref()
+  __t80 := builtin$havoc_bool()
+  __t92 := builtin$havoc_bool()
+  _4 := builtin$havoc_ref()
+  __t91 := builtin$havoc_bool()
+  _95 := builtin$havoc_ref()
+  _115 := builtin$havoc_ref()
+  __t35 := builtin$havoc_bool()
+  _36 := builtin$havoc_ref()
+  __t16 := builtin$havoc_bool()
+  _113 := builtin$havoc_ref()
+  __t33 := builtin$havoc_bool()
+  _84 := builtin$havoc_ref()
+  _81 := builtin$havoc_int()
+  __t87 := builtin$havoc_int()
+  __t54 := builtin$havoc_bool()
+  __t56 := builtin$havoc_bool()
+  _67 := builtin$havoc_ref()
+  __t53 := builtin$havoc_bool()
+  __t75 := builtin$havoc_bool()
+  _117 := builtin$havoc_ref()
+  __t20 := builtin$havoc_bool()
+  __t44 := builtin$havoc_bool()
+  __t23 := builtin$havoc_bool()
+  _135 := builtin$havoc_int()
+  __t82 := builtin$havoc_bool()
+  __t78 := builtin$havoc_bool()
+  _41 := builtin$havoc_ref()
+  __t17 := builtin$havoc_bool()
+  __t59 := builtin$havoc_bool()
+  _40 := builtin$havoc_ref()
+  __t84 := builtin$havoc_bool()
+  _43 := builtin$havoc_ref()
+  __t30 := builtin$havoc_bool()
+  _123 := builtin$havoc_ref()
+  _38 := builtin$havoc_int()
+  _75 := builtin$havoc_ref()
+  __t93 := builtin$havoc_bool()
+  __t48 := builtin$havoc_bool()
+  _134 := builtin$havoc_ref()
+  __t10 := builtin$havoc_bool()
+  _80 := builtin$havoc_int()
+  _132 := builtin$havoc_ref()
+  _42 := builtin$havoc_ref()
+  _64 := builtin$havoc_ref()
+  _79 := builtin$havoc_ref()
+  __t77 := builtin$havoc_bool()
+  _139 := builtin$havoc_ref()
+  __t55 := builtin$havoc_bool()
+  _92 := builtin$havoc_ref()
+  _68 := builtin$havoc_ref()
+  _71 := builtin$havoc_ref()
+  _15 := builtin$havoc_ref()
+  _119 := builtin$havoc_int()
+  __t13 := builtin$havoc_bool()
+  _127 := builtin$havoc_ref()
+  _88 := builtin$havoc_ref()
+  __t26 := builtin$havoc_bool()
+  _121 := builtin$havoc_ref()
+  _91 := builtin$havoc_ref()
+  __t43 := builtin$havoc_bool()
+  __t58 := builtin$havoc_bool()
+  __t19 := builtin$havoc_bool()
+  _37 := builtin$havoc_ref()
+  _73 := builtin$havoc_ref()
+  _63 := builtin$havoc_ref()
+  __t79 := builtin$havoc_bool()
+  _124 := builtin$havoc_ref()
+  _82 := builtin$havoc_ref()
+  _77 := builtin$havoc_ref()
+  __t24 := builtin$havoc_bool()
+  _136 := builtin$havoc_ref()
+  __t18 := builtin$havoc_bool()
+  __t15 := builtin$havoc_bool()
+  _72 := builtin$havoc_ref()
+  __t9 := builtin$havoc_bool()
+  _112 := builtin$havoc_int()
+  __t51 := builtin$havoc_bool()
+  _118 := builtin$havoc_int()
+  __t22 := builtin$havoc_bool()
+  __t38 := builtin$havoc_bool()
+  _116 := builtin$havoc_ref()
+  _131 := builtin$havoc_ref()
+  _89 := builtin$havoc_ref()
+  _39 := builtin$havoc_int()
+  __t34 := builtin$havoc_bool()
+  _93 := builtin$havoc_ref()
+  _120 := builtin$havoc_ref()
+  __t31 := builtin$havoc_bool()
+  _94 := builtin$havoc_ref()
+  __t8 := builtin$havoc_bool()
+  __t28 := builtin$havoc_bool()
+  _76 := builtin$havoc_ref()
+  __t7 := builtin$havoc_bool()
+  _104 := builtin$havoc_int()
+  __t57 := builtin$havoc_bool()
+  _74 := builtin$havoc_ref()
+  __t42 := builtin$havoc_bool()
+  _70 := builtin$havoc_ref()
+  _128 := builtin$havoc_ref()
+  __t39 := builtin$havoc_bool()
+  _34 := builtin$havoc_ref()
+  _108 := builtin$havoc_int()
+  __t36 := builtin$havoc_bool()
+  _111 := builtin$havoc_int()
+  __t49 := builtin$havoc_bool()
+  _61 := builtin$havoc_ref()
+  __t14 := builtin$havoc_bool()
+  __t52 := builtin$havoc_bool()
+  __t60 := builtin$havoc_bool()
+  __t83 := builtin$havoc_bool()
+  _22 := builtin$havoc_ref()
+  __t50 := builtin$havoc_bool()
+  _129 := builtin$havoc_ref()
+  __t76 := builtin$havoc_bool()
+  __t61 := builtin$havoc_bool()
+  _59 := builtin$havoc_ref()
+  _114 := builtin$havoc_ref()
+  __t37 := builtin$havoc_bool()
+  _69 := builtin$havoc_ref()
+  __t41 := builtin$havoc_bool()
+  _90 := builtin$havoc_ref()
+  __t46 := builtin$havoc_bool()
+  __t90 := builtin$havoc_bool()
+  __t32 := builtin$havoc_bool()
+  __t21 := builtin$havoc_bool()
+  _62 := builtin$havoc_ref()
+  _83 := builtin$havoc_ref()
+  _58 := builtin$havoc_ref()
+  __t88 := builtin$havoc_bool()
+  __t27 := builtin$havoc_bool()
+  __t74 := builtin$havoc_bool()
+  _122 := builtin$havoc_int()
+  _86 := builtin$havoc_int()
+  _66 := builtin$havoc_ref()
+  _23 := builtin$havoc_ref()
+  _137 := builtin$havoc_ref()
+  _24 := builtin$havoc_ref()
+  __t29 := builtin$havoc_bool()
+  _105 := builtin$havoc_ref()
+  _87 := builtin$havoc_ref()
+  _85 := builtin$havoc_int()
+  _106 := builtin$havoc_ref()
+  __t86 := builtin$havoc_bool()
+  _141 := builtin$havoc_ref()
+  __t81 := builtin$havoc_bool()
+  _65 := builtin$havoc_ref()
+  __t25 := builtin$havoc_bool()
+  __t11 := builtin$havoc_bool()
+  _7 := builtin$havoc_ref()
+  __t40 := builtin$havoc_bool()
+  __t12 := builtin$havoc_bool()
+  _109 := builtin$havoc_ref()
+  _110 := builtin$havoc_ref()
+  _78 := builtin$havoc_ref()
+  _130 := builtin$havoc_ref()
+  _140 := builtin$havoc_ref()
+  _35 := builtin$havoc_ref()
+  _60 := builtin$havoc_int()
+  _126 := builtin$havoc_ref()
+  __t89 := builtin$havoc_bool()
+  _125 := builtin$havoc_int()
+  __t47 := builtin$havoc_bool()
+  goto loop10_inv_post
+  label loop10_start
+  // ========== loop10_start ==========
+  
+  goto loop10_group1_bb10
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$9$closesqu$$$count_degree$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var _preserve$0: Ref
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Int
+  var _11: Int
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  var _23: Ref
+  var _24: Ref
+  var _25: Int
+  var _26: Ref
+  var _27: Ref
+  var _28: Ref
+  var _29: Ref
+  var _30: Ref
+  var _31: Ref
+  var _32: Ref
+  var _33: Ref
+  var _34: Ref
+  var _35: Ref
+  var _36: Int
+  var _37: Int
+  var _38: Ref
+  var _39: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Knights_tour::Board::count_degree"
+  
+  // Def path: "Knights_tour::{{impl}}[9]::count_degree[0]"
+  
+  // Span: tests/verify/pass/rosetta/Knights_tour.rs:187:5: 205:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_2), write))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_4)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = move _2
+  
+  _5 := _2
+  label l0
+  // [mir] _4 = move _5
+  
+  _4 := _5
+  label l1
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = const 0i32
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_int, write)
+  _6.val_int := 0
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = const moves() -> [return: bb2, unwind: bb1]
+  
+  label l2
+  _7 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_7), write)
+  inhale true
+  inhale true
+  label l3
+  goto bb2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = const 0usize
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_int, write)
+  _8.val_int := 0
+  // [mir] StorageLive(_9)
+  
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = _8
+  
+  _10 := builtin$havoc_int()
+  inhale true
+  _10 := _8.val_int
+  label l4
+  // [mir] StorageLive(_11)
+  
+  // [mir] StorageLive(_12)
+  
+  // [mir] _12 = &'22s _7
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_ref, write)
+  _12.val_ref := _7
+  exhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_7), write - read$())
+  inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_12.val_ref), read$())
+  label l5
+  // [mir] _11 = const VecWrapperI32I32::len(move _12) -> [return: bb3, unwind: bb5]
+  
+  label l6
+  _11 := builtin$havoc_int()
+  inhale _11 >= 0
+  inhale _11 >= 0
+  inhale _11 == m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_12.val_ref)
+  // transfer perm _12.val_ref --> old[l6](_12.val_ref) // unchecked: false
+  
+  goto l7
+  label bb25
+  // ========== bb25 ==========
+  
+  __t17 := true
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] return
+  
+  goto return
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] EndRegion('22s)
+  
+  // [mir] StorageDead(_12)
+  
+  // [mir] _9 = Lt(move _10, move _11)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_bool, write)
+  _9.val_bool := _10 < _11
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] goto -> bb6
+  
+  goto loop6_start
+  label bb7
+  // ========== bb7 ==========
+  
+  __t16 := true
+  // [mir] _13 = ()
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(tuple0$(_13), write)
+  // [mir] StorageDead(_14)
+  
+  // [mir] StorageLive(_39)
+  
+  // [mir] _39 = _6
+  
+  _39 := builtin$havoc_ref()
+  inhale acc(_39.val_int, write)
+  _39.val_int := _6.val_int
+  label l38
+  // [mir] _0 = move _39
+  
+  _0 := _39
+  label l39
+  // [mir] StorageDead(_39)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] StorageDead(_8)
+  
+  // [mir] drop(_7) -> [return: bb25, unwind: bb1]
+  
+  goto bb25
+  label l10
+  // ========== l10 ==========
+  
+  // MIR edge bb6 --> bb8
+  
+  goto loop6_group2_bb8
+  label l15
+  // ========== l15 ==========
+  
+  // MIR edge bb11 --> bb12
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L10,L4,)
+
+  
+  goto loop6_group3_bb12
+  label l21
+  // ========== l21 ==========
+  
+  // MIR edge bb12 --> bb14
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L16,L15,L7,L6,L5,)
+
+  
+  goto loop6_group3_bb14
+  label l26
+  // ========== l26 ==========
+  
+  // MIR edge bb14 --> bb16
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L11,L8,)
+
+  
+  goto loop6_group3_bb16
+  label l27
+  // ========== l27 ==========
+  
+  // MIR edge bb16 --> bb18
+  
+  goto loop6_group3_bb18
+  label l28
+  // ========== l28 ==========
+  
+  // MIR edge bb16 --> bb19
+  
+  goto loop6_group3_bb19
+  label l34
+  // ========== l34 ==========
+  
+  // MIR edge bb22 --> bb23
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L17,L9,)
+
+  
+  if (__t14 && __t14) {
+    // expire loan L9
+    
+    // transfer perm old[l33](_38.val_ref) --> old[l32](_38.val_ref) // unchecked: false
+    
+    exhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(old[l32](_38.val_ref)), read$())
+    inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_7), write - read$())
+  }
+  goto loop6_group3_bb23
+  label l36
+  // ========== l36 ==========
+  
+  // MIR edge bb6 --> bb7
+  
+  goto l42
+  label l37
+  // ========== l37 ==========
+  
+  // MIR edge bb6 --> bb8
+  
+  goto loop6_group5_bb8
+  label l40
+  // ========== l40 ==========
+  
+  // drop Acc(_34.tuple_0, write) (Acc(_34.tuple_0, write))
+  
+  // drop Acc(_34.tuple_1.val_bool, write) (Acc(_34.tuple_1.val_bool, write))
+  
+  // drop Acc(_34.tuple_1, write) (Acc(_34.tuple_1, write))
+  
+  goto loop6_group3_bb21
+  label l41
+  // ========== l41 ==========
+  
+  unfold acc(i32(_6), write)
+  goto loop6_group3_bb21
+  label l42
+  // ========== l42 ==========
+  
+  // drop Acc(_35.tuple_1.val_bool, write) (Acc(_35.tuple_1.val_bool, write))
+  
+  // drop Acc(old[l32](_38.val_ref), write) (Acc(old[l32](_38.val_ref), write))
+  
+  // drop Acc(_35.tuple_0, write) (Acc(_35.tuple_0, write))
+  
+  // drop Acc(_29.val_ref, write) (Acc(_29.val_ref, write))
+  
+  // drop Acc(_38.val_ref, write) (Acc(_38.val_ref, write))
+  
+  // drop Acc(_37.val_int, write) (Acc(_37.val_int, write))
+  
+  // drop Acc(_36.val_int, write) (Acc(_36.val_int, write))
+  
+  // drop Acc(_31.val_bool, write) (Acc(_31.val_bool, write))
+  
+  // drop Pred(_15, write) (Pred(_15, write))
+  
+  // drop Pred(_16, write) (Pred(_16, write))
+  
+  // drop Pred(_23, write) (Pred(_23, write))
+  
+  // drop Pred(_30, write) (Pred(_30, write))
+  
+  // drop Acc(_35.tuple_1, write) (Acc(_35.tuple_1, write))
+  
+  goto bb7
+  label l7
+  // ========== l7 ==========
+  
+  // MIR edge bb2 --> bb3
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L14,L0,)
+
+  
+  if (__t1 && __t1) {
+    // expire loan L0
+    
+    // transfer perm old[l6](_12.val_ref) --> old[l5](_12.val_ref) // unchecked: false
+    
+    exhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(old[l5](_12.val_ref)), read$())
+    inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_7), write - read$())
+  }
+  goto bb3
+  label l9
+  // ========== l9 ==========
+  
+  // MIR edge bb6 --> bb7
+  
+  goto bb7
+  label loop6_end_body
+  // ========== loop6_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb6
+  
+  fold acc(i32(_6), write)
+  // obtain acc(i32(_6), write)
+  
+  fold acc(usize(_8), write)
+  // obtain acc(usize(_8), write)
+  
+  fold acc(bool(_9), write)
+  // obtain acc(bool(_9), write)
+  
+  // obtain acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_7), write)
+  
+  // obtain acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  assert 0 <= (unfolding acc(usize(_8), write) in _8.val_int) && (unfolding acc(usize(_8), write) in _8.val_int) < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7)
+  assert _preserve$0 == _1.val_ref
+  exhale acc(i32(_6), write) && (acc(usize(_8), write) && (acc(bool(_9), write) && (acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_7), write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) && (acc(_1.val_ref, read$()) && acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write))))))
+  inhale false
+  goto end_of_method
+  label loop6_group1_bb6
+  // ========== loop6_group1_bb6 ==========
+  
+  // This is a loop head
+  
+  __t3 := true
+  // [mir] StorageLive(_14)
+  
+  // [mir] _14 = _9
+  
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.val_bool, write)
+  _14.val_bool := _9.val_bool
+  label l8
+  // [mir] switchInt(move _14) -> [false: bb7, otherwise: bb8]
+  
+  __t18 := _14.val_bool
+  if (__t18) {
+    goto l10
+  }
+  goto l9
+  label loop6_group2_bb8
+  // ========== loop6_group2_bb8 ==========
+  
+  __t4 := true
+  // [mir] switchInt(const false) -> [false: bb10, otherwise: bb9]
+  
+  __t19 := false
+  // Ignore default target bb9, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop6_inv_pre
+  label loop6_group3_bb10
+  // ========== loop6_group3_bb10 ==========
+  
+  __t5 := true
+  // [mir] _16 = ()
+  
+  _16 := builtin$havoc_ref()
+  inhale acc(tuple0$(_16), write)
+  // [mir] goto -> bb11
+  
+  goto loop6_group3_bb11
+  label loop6_group3_bb11
+  // ========== loop6_group3_bb11 ==========
+  
+  __t6 := true
+  // [mir] StorageLive(_23)
+  
+  // [mir] StorageLive(_24)
+  
+  // [mir] _24 = &'59s mut _7
+  
+  _24 := builtin$havoc_ref()
+  inhale acc(_24.val_ref, write)
+  _24.val_ref := _7
+  label l11
+  // [mir] StorageLive(_25)
+  
+  // [mir] _25 = _8
+  
+  _25 := builtin$havoc_int()
+  inhale true
+  unfold acc(usize(_8), write)
+  _25 := _8.val_int
+  label l12
+  // [mir] _23 = const VecWrapperI32I32::lookup(move _24, move _25) -> [return: bb12, unwind: bb13]
+  
+  label l13
+  assert 0 <= _25 && _25 < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_24.val_ref)
+  assert _25 >= 0
+  assert true
+  exhale acc(_24.val_ref, write) && (acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_24.val_ref), write) && _25 >= 0)
+  _23 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(old[l13](_24.val_ref)), write)
+  inhale acc(tuple2$i32$i32(_23), write)
+  inhale true
+  inhale true
+  label l14
+  goto l15
+  label loop6_group3_bb12
+  // ========== loop6_group3_bb12 ==========
+  
+  __t7 := true
+  // [mir] EndRegion('59s)
+  
+  // [mir] StorageDead(_25)
+  
+  // [mir] StorageDead(_24)
+  
+  // [mir] StorageLive(_26)
+  
+  // [mir] StorageLive(_27)
+  
+  // [mir] _27 = &'66s mut _4
+  
+  _27 := builtin$havoc_ref()
+  inhale acc(_27.val_ref, write)
+  _27.val_ref := _4
+  label l16
+  // [mir] StorageLive(_28)
+  
+  // [mir] StorageLive(_29)
+  
+  // [mir] _29 = &'66s mut _23
+  
+  _29 := builtin$havoc_ref()
+  inhale acc(_29.val_ref, write)
+  _29.val_ref := _23
+  label l17
+  // [mir] _28 = &'66s mut (*_29)
+  
+  _28 := builtin$havoc_ref()
+  inhale acc(_28.val_ref, write)
+  _28.val_ref := _29.val_ref
+  label l18
+  // [mir] _26 = const Point::mov(move _27, move _28) -> [return: bb14, unwind: bb15]
+  
+  label l19
+  assert true
+  exhale acc(_27.val_ref, write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_27.val_ref), write) && (acc(_28.val_ref, write) && acc(tuple2$i32$i32(_28.val_ref), write)))
+  _26 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(old[l19](_27.val_ref)), write) && acc(tuple2$i32$i32(old[l19](_28.val_ref)), write)
+  inhale acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_26), write)
+  inhale true
+  inhale (unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(old[l19](_27.val_ref)), write) in (unfolding acc(i32(old[l19](_27.val_ref).f$y), write) in (unfolding acc(i32(old[l19](_27.val_ref).f$x), write) in old[l19](_27.val_ref).f$x.val_int == old[l19]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_27.val_ref), write) in (unfolding acc(i32(_27.val_ref.f$x), write) in _27.val_ref.f$x.val_int))) && old[l19](_27.val_ref).f$y.val_int == old[l19]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_27.val_ref), write) in (unfolding acc(i32(_27.val_ref.f$y), write) in _27.val_ref.f$y.val_int))))))
+  label l20
+  goto l21
+  label loop6_group3_bb14
+  // ========== loop6_group3_bb14 ==========
+  
+  __t8 := true
+  // [mir] EndRegion('66s)
+  
+  // [mir] StorageDead(_28)
+  
+  // [mir] StorageDead(_27)
+  
+  // [mir] StorageDead(_29)
+  
+  // [mir] StorageLive(_31)
+  
+  // [mir] StorageLive(_32)
+  
+  // [mir] _32 = &'76s mut (*_1)
+  
+  _32 := builtin$havoc_ref()
+  inhale acc(_32.val_ref, write)
+  _32.val_ref := _1.val_ref
+  label l22
+  // [mir] StorageLive(_33)
+  
+  // [mir] _33 = move _26
+  
+  _33 := _26
+  label l23
+  // [mir] _31 = const Board::available(move _32, move _33) -> [return: bb16, unwind: bb17]
+  
+  label l24
+  assert true
+  exhale acc(_32.val_ref, write) && (acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_32.val_ref), write) && acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_33), write))
+  _31 := builtin$havoc_ref()
+  inhale acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(old[l24](_32.val_ref)), write)
+  inhale acc(bool(_31), write)
+  inhale true
+  inhale (unfolding acc(bool(_31), write) in _31.val_bool ==> 0 <= old[l24]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_33), write) in (unfolding acc(i32(_33.f$x), write) in _33.f$x.val_int))) && (old[l24]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_33), write) in (unfolding acc(i32(_33.f$x), write) in _33.f$x.val_int))) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= old[l24]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_33), write) in (unfolding acc(i32(_33.f$y), write) in _33.f$y.val_int))) && old[l24]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_33), write) in (unfolding acc(i32(_33.f$y), write) in _33.f$y.val_int))) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$())))
+  label l25
+  goto l26
+  label loop6_group3_bb16
+  // ========== loop6_group3_bb16 ==========
+  
+  __t9 := true
+  // [mir] EndRegion('76s)
+  
+  // [mir] StorageDead(_33)
+  
+  // [mir] StorageDead(_32)
+  
+  // [mir] switchInt(move _31) -> [false: bb19, otherwise: bb18]
+  
+  unfold acc(bool(_31), write)
+  __t20 := _31.val_bool
+  if (!__t20) {
+    goto l28
+  }
+  goto l27
+  label loop6_group3_bb18
+  // ========== loop6_group3_bb18 ==========
+  
+  __t10 := true
+  // [mir] _34 = CheckedAdd(_6, const 1i32)
+  
+  _34 := builtin$havoc_ref()
+  inhale acc(_34.tuple_0, write)
+  inhale acc(_34.tuple_0.val_int, write)
+  inhale acc(_34.tuple_1, write)
+  inhale acc(_34.tuple_1.val_bool, write)
+  unfold acc(i32(_6), write)
+  _34.tuple_0.val_int := _6.val_int + 1
+  _34.tuple_1.val_bool := false
+  // [mir] assert(!move (_34.1: bool), "attempt to add with overflow") -> [success: bb20, unwind: bb4]
+  
+  __t21 := _34.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t21
+  goto loop6_group3_bb20
+  label loop6_group3_bb19
+  // ========== loop6_group3_bb19 ==========
+  
+  __t12 := true
+  // [mir] _30 = ()
+  
+  _30 := builtin$havoc_ref()
+  inhale acc(tuple0$(_30), write)
+  // [mir] goto -> bb21
+  
+  goto l41
+  label loop6_group3_bb20
+  // ========== loop6_group3_bb20 ==========
+  
+  __t11 := true
+  // [mir] _6 = move (_34.0: i32)
+  
+  _6 := _34.tuple_0
+  label l29
+  // [mir] _30 = ()
+  
+  _30 := builtin$havoc_ref()
+  inhale acc(tuple0$(_30), write)
+  // [mir] goto -> bb21
+  
+  goto l40
+  label loop6_group3_bb21
+  // ========== loop6_group3_bb21 ==========
+  
+  __t13 := true
+  // [mir] StorageDead(_31)
+  
+  // [mir] _35 = CheckedAdd(_8, const 1usize)
+  
+  _35 := builtin$havoc_ref()
+  inhale acc(_35.tuple_0, write)
+  inhale acc(_35.tuple_0.val_int, write)
+  inhale acc(_35.tuple_1, write)
+  inhale acc(_35.tuple_1.val_bool, write)
+  _35.tuple_0.val_int := _8.val_int + 1
+  _35.tuple_1.val_bool := false
+  // [mir] assert(!move (_35.1: bool), "attempt to add with overflow") -> [success: bb22, unwind: bb4]
+  
+  __t22 := _35.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t22
+  goto loop6_group3_bb22
+  label loop6_group3_bb22
+  // ========== loop6_group3_bb22 ==========
+  
+  __t14 := true
+  // [mir] _8 = move (_35.0: usize)
+  
+  _8 := _35.tuple_0
+  label l30
+  // [mir] StorageLive(_36)
+  
+  // [mir] _36 = _8
+  
+  _36 := builtin$havoc_int()
+  inhale true
+  _36 := _8.val_int
+  label l31
+  // [mir] StorageLive(_37)
+  
+  // [mir] StorageLive(_38)
+  
+  // [mir] _38 = &'86s _7
+  
+  _38 := builtin$havoc_ref()
+  inhale acc(_38.val_ref, write)
+  _38.val_ref := _7
+  exhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_7), write - read$())
+  inhale acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_38.val_ref), read$())
+  label l32
+  // [mir] _37 = const VecWrapperI32I32::len(move _38) -> [return: bb23, unwind: bb24]
+  
+  label l33
+  _37 := builtin$havoc_int()
+  inhale _37 >= 0
+  inhale _37 >= 0
+  inhale _37 == m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_38.val_ref)
+  // transfer perm _38.val_ref --> old[l33](_38.val_ref) // unchecked: false
+  
+  goto l34
+  label loop6_group3_bb23
+  // ========== loop6_group3_bb23 ==========
+  
+  __t15 := true
+  // [mir] EndRegion('86s)
+  
+  // [mir] StorageDead(_38)
+  
+  // [mir] _9 = Lt(move _36, move _37)
+  
+  unfold acc(bool(_9), write)
+  _9.val_bool := _36 < _37
+  // [mir] StorageDead(_37)
+  
+  // [mir] StorageDead(_36)
+  
+  // [mir] _15 = ()
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(tuple0$(_15), write)
+  // [mir] StorageDead(_26)
+  
+  // [mir] StorageDead(_23)
+  
+  // [mir] goto -> bb6
+  
+  goto loop6_group4_bb6
+  label loop6_group4_bb6
+  // ========== loop6_group4_bb6 ==========
+  
+  // This is a loop head
+  
+  __t3 := true
+  // [mir] StorageLive(_14)
+  
+  // [mir] _14 = _9
+  
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.val_bool, write)
+  _14.val_bool := _9.val_bool
+  label l35
+  // [mir] switchInt(move _14) -> [false: bb7, otherwise: bb8]
+  
+  __t23 := _14.val_bool
+  if (__t23) {
+    goto l37
+  }
+  goto l36
+  label loop6_group5_bb8
+  // ========== loop6_group5_bb8 ==========
+  
+  __t4 := true
+  // [mir] switchInt(const false) -> [false: bb10, otherwise: bb9]
+  
+  __t24 := false
+  // Ignore default target bb9, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop6_end_body
+  label loop6_inv_post
+  // ========== loop6_inv_post ==========
+  
+  // Inhale the loop invariant of block bb6
+  
+  inhale acc(i32(_6), write) && (acc(usize(_8), write) && (acc(bool(_9), write) && (acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_7), write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) && (acc(_1.val_ref, read$()) && acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write))))))
+  inhale _preserve$0 == _1.val_ref
+  inhale (unfolding acc(usize(_8), write) in 0 <= _8.val_int && _8.val_int < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7))
+  goto loop6_group3_bb10
+  label loop6_inv_pre
+  // ========== loop6_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb6
+  
+  _preserve$0 := _1.val_ref
+  fold acc(i32(_6), write)
+  // obtain acc(i32(_6), write)
+  
+  fold acc(usize(_8), write)
+  // obtain acc(usize(_8), write)
+  
+  fold acc(bool(_9), write)
+  // obtain acc(bool(_9), write)
+  
+  // obtain acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_7), write)
+  
+  // obtain acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  assert 0 <= (unfolding acc(usize(_8), write) in _8.val_int) && (unfolding acc(usize(_8), write) in _8.val_int) < m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7)
+  assert _preserve$0 == _1.val_ref
+  exhale acc(i32(_6), write) && (acc(usize(_8), write) && (acc(bool(_9), write) && (acc(m_Knights_tour$$VecWrapperI32I32$opensqu$0$closesqu$$_beg_$_end_(_7), write) && (acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_4), write) && (acc(_1.val_ref, read$()) && acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write))))))
+  __t12 := builtin$havoc_bool()
+  __t9 := builtin$havoc_bool()
+  __t3 := builtin$havoc_bool()
+  _16 := builtin$havoc_ref()
+  _14 := builtin$havoc_ref()
+  _33 := builtin$havoc_ref()
+  _36 := builtin$havoc_int()
+  __t7 := builtin$havoc_bool()
+  __t5 := builtin$havoc_bool()
+  _6 := builtin$havoc_ref()
+  __t13 := builtin$havoc_bool()
+  __t4 := builtin$havoc_bool()
+  _23 := builtin$havoc_ref()
+  __t22 := builtin$havoc_bool()
+  _27 := builtin$havoc_ref()
+  __t6 := builtin$havoc_bool()
+  _29 := builtin$havoc_ref()
+  __t21 := builtin$havoc_bool()
+  _25 := builtin$havoc_int()
+  _26 := builtin$havoc_ref()
+  _31 := builtin$havoc_ref()
+  _24 := builtin$havoc_ref()
+  __t11 := builtin$havoc_bool()
+  _15 := builtin$havoc_ref()
+  _34 := builtin$havoc_ref()
+  _28 := builtin$havoc_ref()
+  _8 := builtin$havoc_ref()
+  __t14 := builtin$havoc_bool()
+  _35 := builtin$havoc_ref()
+  _30 := builtin$havoc_ref()
+  __t20 := builtin$havoc_bool()
+  __t15 := builtin$havoc_bool()
+  _32 := builtin$havoc_ref()
+  __t8 := builtin$havoc_bool()
+  _37 := builtin$havoc_int()
+  __t10 := builtin$havoc_bool()
+  __t23 := builtin$havoc_bool()
+  __t24 := builtin$havoc_bool()
+  _38 := builtin$havoc_ref()
+  goto loop6_inv_post
+  label loop6_start
+  // ========== loop6_start ==========
+  
+  goto loop6_group1_bb6
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(i32(_0), write)
+  // obtain acc(i32(_0), write)
+  
+  assert true
+  exhale acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(i32(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$9$closesqu$$$available$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Int
+  var _9: Ref
+  var _10: Int
+  var _11: Ref
+  var _12: Ref
+  var _13: Int
+  var _14: Ref
+  var _15: Int
+  var _16: Ref
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Int
+  var _22: Int
+  label start
+  // ========== start ==========
+  
+  // Name: "Knights_tour::Board::available"
+  
+  // Def path: "Knights_tour::{{impl}}[9]::available[0]"
+  
+  // Span: tests/verify/pass/rosetta/Knights_tour.rs:180:5: 184:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_2), write))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_4)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] StorageLive(_7)
+  
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = (_2.0: i32)
+  
+  _8 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  unfold acc(i32(_2.f$x), write)
+  _8 := _2.f$x.val_int
+  label l0
+  // [mir] _7 = Le(const 0i32, move _8)
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_bool, write)
+  _7.val_bool := 0 <= _8
+  // [mir] StorageDead(_8)
+  
+  // [mir] switchInt(move _7) -> [false: bb10, otherwise: bb11]
+  
+  __t20 := _7.val_bool
+  if (!__t20) {
+    goto l2
+  }
+  goto l1
+  label bb1
+  // ========== bb1 ==========
+  
+  __t12 := true
+  // [mir] _4 = const true
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_bool, write)
+  _4.val_bool := true
+  // [mir] goto -> bb4
+  
+  goto l34
+  label bb10
+  // ========== bb10 ==========
+  
+  __t4 := true
+  // [mir] _6 = const false
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_bool, write)
+  _6.val_bool := false
+  // [mir] goto -> bb12
+  
+  goto bb12
+  label bb11
+  // ========== bb11 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_9)
+  
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = (_2.0: i32)
+  
+  _10 := builtin$havoc_int()
+  inhale true
+  _10 := _2.f$x.val_int
+  label l3
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = const size() -> [return: bb14, unwind: bb13]
+  
+  label l4
+  _11 := builtin$havoc_ref()
+  inhale acc(i32(_11), write)
+  unfold acc(i32(_11), write)
+  inhale _11.val_int == m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()
+  goto bb14
+  label bb12
+  // ========== bb12 ==========
+  
+  __t5 := true
+  // [mir] StorageDead(_9)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] switchInt(move _6) -> [false: bb6, otherwise: bb7]
+  
+  __t22 := _6.val_bool
+  if (!__t22) {
+    goto l8
+  }
+  goto l7
+  label bb14
+  // ========== bb14 ==========
+  
+  __t2 := true
+  // [mir] _9 = Lt(move _10, move _11)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_bool, write)
+  _9.val_bool := _10 < _11.val_int
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] switchInt(move _9) -> [false: bb10, otherwise: bb9]
+  
+  __t21 := _9.val_bool
+  if (!__t21) {
+    goto l6
+  }
+  goto l5
+  label bb15
+  // ========== bb15 ==========
+  
+  __t11 := true
+  // [mir] _14 = Lt(move _15, move _16)
+  
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.val_bool, write)
+  _14.val_bool := _15 < _16.val_int
+  // [mir] StorageDead(_16)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] switchInt(move _14) -> [false: bb2, otherwise: bb1]
+  
+  __t25 := _14.val_bool
+  if (!__t25) {
+    goto l17
+  }
+  goto l16
+  label bb16
+  // ========== bb16 ==========
+  
+  __t17 := true
+  // [mir] _0 = const true
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_bool, write)
+  _0.val_bool := true
+  // [mir] goto -> bb19
+  
+  goto l37
+  label bb17
+  // ========== bb17 ==========
+  
+  __t18 := true
+  // [mir] _0 = const false
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_bool, write)
+  _0.val_bool := false
+  // [mir] goto -> bb19
+  
+  goto bb19
+  label bb18
+  // ========== bb18 ==========
+  
+  __t15 := true
+  // [mir] StorageLive(_18)
+  
+  // [mir] StorageLive(_19)
+  
+  // [mir] StorageLive(_20)
+  
+  // [mir] _20 = &'32s ((*_1).0: VecVecWrapperI32)
+  
+  _20 := builtin$havoc_ref()
+  inhale acc(_20.val_ref, write)
+  unfold acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  _20.val_ref := _1.val_ref.f$field
+  exhale acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref.f$field), write - read$())
+  inhale acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_20.val_ref), read$())
+  label l21
+  // [mir] StorageLive(_21)
+  
+  // [mir] _21 = (_2.0: i32)
+  
+  _21 := builtin$havoc_int()
+  inhale true
+  _21 := _2.f$x.val_int
+  label l22
+  // [mir] StorageLive(_22)
+  
+  // [mir] _22 = (_2.1: i32)
+  
+  _22 := builtin$havoc_int()
+  inhale true
+  _22 := _2.f$y.val_int
+  label l23
+  // [mir] _19 = const VecVecWrapperI32::lookup(move _20, move _21, move _22) -> [return: bb20, unwind: bb13]
+  
+  label l24
+  _19 := builtin$havoc_ref()
+  inhale acc(i32(_19), write)
+  unfold acc(i32(_19), write)
+  inhale _19.val_int == m_Knights_tour$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$5$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$$$int$(_20.val_ref, _21, _22)
+  // transfer perm _20.val_ref --> old[l24](_20.val_ref) // unchecked: false
+  
+  goto l25
+  label bb19
+  // ========== bb19 ==========
+  
+  __t19 := true
+  // [mir] StorageDead(_18)
+  
+  // [mir] StorageDead(_17)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] return
+  
+  goto return
+  label bb2
+  // ========== bb2 ==========
+  
+  __t13 := true
+  // [mir] _4 = const false
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_bool, write)
+  _4.val_bool := false
+  // [mir] goto -> bb4
+  
+  goto bb4
+  label bb20
+  // ========== bb20 ==========
+  
+  __t16 := true
+  // [mir] EndRegion('32s)
+  
+  // [mir] StorageDead(_22)
+  
+  // [mir] StorageDead(_21)
+  
+  // [mir] StorageDead(_20)
+  
+  // [mir] _18 = Eq(move _19, const 0i32)
+  
+  _18 := builtin$havoc_ref()
+  inhale acc(_18.val_bool, write)
+  _18.val_bool := _19.val_int == 0
+  // [mir] StorageDead(_19)
+  
+  // [mir] switchInt(move _18) -> [false: bb17, otherwise: bb16]
+  
+  __t27 := _18.val_bool
+  if (!__t27) {
+    goto l27
+  }
+  goto l26
+  label bb3
+  // ========== bb3 ==========
+  
+  __t10 := true
+  // [mir] StorageLive(_14)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = (_2.1: i32)
+  
+  _15 := builtin$havoc_int()
+  inhale true
+  _15 := _2.f$y.val_int
+  label l14
+  // [mir] StorageLive(_16)
+  
+  // [mir] _16 = const size() -> [return: bb15, unwind: bb13]
+  
+  label l15
+  _16 := builtin$havoc_ref()
+  inhale acc(i32(_16), write)
+  unfold acc(i32(_16), write)
+  inhale _16.val_int == m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()
+  goto bb15
+  label bb4
+  // ========== bb4 ==========
+  
+  __t14 := true
+  // [mir] StorageDead(_14)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageLive(_17)
+  
+  // [mir] _17 = _4
+  
+  _17 := builtin$havoc_ref()
+  inhale acc(_17.val_bool, write)
+  _17.val_bool := _4.val_bool
+  label l18
+  // [mir] switchInt(move _17) -> [false: bb17, otherwise: bb18]
+  
+  __t26 := _17.val_bool
+  if (!__t26) {
+    goto l20
+  }
+  goto l19
+  label bb5
+  // ========== bb5 ==========
+  
+  __t7 := true
+  // [mir] _5 = const true
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_bool, write)
+  _5.val_bool := true
+  // [mir] goto -> bb8
+  
+  goto l32
+  label bb6
+  // ========== bb6 ==========
+  
+  __t8 := true
+  // [mir] _5 = const false
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_bool, write)
+  _5.val_bool := false
+  // [mir] goto -> bb8
+  
+  goto bb8
+  label bb7
+  // ========== bb7 ==========
+  
+  __t6 := true
+  // [mir] StorageLive(_12)
+  
+  // [mir] StorageLive(_13)
+  
+  // [mir] _13 = (_2.1: i32)
+  
+  _13 := builtin$havoc_int()
+  inhale true
+  unfold acc(i32(_2.f$y), write)
+  _13 := _2.f$y.val_int
+  label l9
+  // [mir] _12 = Le(const 0i32, move _13)
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_bool, write)
+  _12.val_bool := 0 <= _13
+  // [mir] StorageDead(_13)
+  
+  // [mir] switchInt(move _12) -> [false: bb6, otherwise: bb5]
+  
+  __t23 := _12.val_bool
+  if (!__t23) {
+    goto l11
+  }
+  goto l10
+  label bb8
+  // ========== bb8 ==========
+  
+  __t9 := true
+  // [mir] StorageDead(_12)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] switchInt(move _5) -> [false: bb2, otherwise: bb3]
+  
+  __t24 := _5.val_bool
+  if (!__t24) {
+    goto l13
+  }
+  goto l12
+  label bb9
+  // ========== bb9 ==========
+  
+  __t3 := true
+  // [mir] _6 = const true
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_bool, write)
+  _6.val_bool := true
+  // [mir] goto -> bb12
+  
+  goto l29
+  label l1
+  // ========== l1 ==========
+  
+  // MIR edge bb0 --> bb11
+  
+  goto bb11
+  label l10
+  // ========== l10 ==========
+  
+  // MIR edge bb7 --> bb5
+  
+  goto bb5
+  label l11
+  // ========== l11 ==========
+  
+  // MIR edge bb7 --> bb6
+  
+  goto l31
+  label l12
+  // ========== l12 ==========
+  
+  // MIR edge bb8 --> bb3
+  
+  goto bb3
+  label l13
+  // ========== l13 ==========
+  
+  // MIR edge bb8 --> bb2
+  
+  goto bb2
+  label l16
+  // ========== l16 ==========
+  
+  // MIR edge bb15 --> bb1
+  
+  goto bb1
+  label l17
+  // ========== l17 ==========
+  
+  // MIR edge bb15 --> bb2
+  
+  goto l33
+  label l19
+  // ========== l19 ==========
+  
+  // MIR edge bb4 --> bb18
+  
+  goto bb18
+  label l2
+  // ========== l2 ==========
+  
+  // MIR edge bb0 --> bb10
+  
+  goto bb10
+  label l20
+  // ========== l20 ==========
+  
+  // MIR edge bb4 --> bb17
+  
+  goto l35
+  label l25
+  // ========== l25 ==========
+  
+  // MIR edge bb18 --> bb20
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L1,L0,)
+
+  
+  if (__t15 && __t15) {
+    // expire loan L0
+    
+    // transfer perm old[l24](_20.val_ref) --> old[l21](_20.val_ref) // unchecked: false
+    
+    exhale acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l21](_20.val_ref)), read$())
+    inhale acc(m_Knights_tour$$VecVecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref.f$field), write - read$())
+  }
+  goto bb20
+  label l26
+  // ========== l26 ==========
+  
+  // MIR edge bb20 --> bb16
+  
+  goto bb16
+  label l27
+  // ========== l27 ==========
+  
+  // MIR edge bb20 --> bb17
+  
+  goto l36
+  label l28
+  // ========== l28 ==========
+  
+  // drop Acc(_11.val_int, write) (Acc(_11.val_int, write))
+  
+  // drop Acc(_9.val_bool, write) (Acc(_9.val_bool, write))
+  
+  // drop Acc(_10.val_int, write) (Acc(_10.val_int, write))
+  
+  goto bb10
+  label l29
+  // ========== l29 ==========
+  
+  // drop Acc(_9.val_bool, write) (Acc(_9.val_bool, write))
+  
+  // drop Acc(_10.val_int, write) (Acc(_10.val_int, write))
+  
+  // drop Acc(_11.val_int, write) (Acc(_11.val_int, write))
+  
+  goto bb12
+  label l30
+  // ========== l30 ==========
+  
+  unfold acc(i32(_2.f$y), write)
+  goto bb6
+  label l31
+  // ========== l31 ==========
+  
+  // drop Acc(_13.val_int, write) (Acc(_13.val_int, write))
+  
+  // drop Acc(_12.val_bool, write) (Acc(_12.val_bool, write))
+  
+  goto bb6
+  label l32
+  // ========== l32 ==========
+  
+  // drop Acc(_13.val_int, write) (Acc(_13.val_int, write))
+  
+  // drop Acc(_12.val_bool, write) (Acc(_12.val_bool, write))
+  
+  goto bb8
+  label l33
+  // ========== l33 ==========
+  
+  // drop Acc(_15.val_int, write) (Acc(_15.val_int, write))
+  
+  // drop Acc(_14.val_bool, write) (Acc(_14.val_bool, write))
+  
+  // drop Acc(_16.val_int, write) (Acc(_16.val_int, write))
+  
+  goto bb2
+  label l34
+  // ========== l34 ==========
+  
+  // drop Acc(_14.val_bool, write) (Acc(_14.val_bool, write))
+  
+  // drop Acc(_16.val_int, write) (Acc(_16.val_int, write))
+  
+  // drop Acc(_15.val_int, write) (Acc(_15.val_int, write))
+  
+  goto bb4
+  label l35
+  // ========== l35 ==========
+  
+  unfold acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  goto bb17
+  label l36
+  // ========== l36 ==========
+  
+  // drop Acc(old[l21](_20.val_ref), write) (Acc(old[l21](_20.val_ref), write))
+  
+  // drop Acc(_21.val_int, write) (Acc(_21.val_int, write))
+  
+  // drop Acc(_19.val_int, write) (Acc(_19.val_int, write))
+  
+  // drop Acc(_20.val_ref, write) (Acc(_20.val_ref, write))
+  
+  // drop Acc(_18.val_bool, write) (Acc(_18.val_bool, write))
+  
+  // drop Acc(_22.val_int, write) (Acc(_22.val_int, write))
+  
+  goto bb17
+  label l37
+  // ========== l37 ==========
+  
+  // drop Acc(_20.val_ref, write) (Acc(_20.val_ref, write))
+  
+  // drop Acc(_19.val_int, write) (Acc(_19.val_int, write))
+  
+  // drop Acc(_18.val_bool, write) (Acc(_18.val_bool, write))
+  
+  // drop Acc(_22.val_int, write) (Acc(_22.val_int, write))
+  
+  // drop Acc(_21.val_int, write) (Acc(_21.val_int, write))
+  
+  // drop Acc(old[l21](_20.val_ref), write) (Acc(old[l21](_20.val_ref), write))
+  
+  goto bb19
+  label l5
+  // ========== l5 ==========
+  
+  // MIR edge bb14 --> bb9
+  
+  goto bb9
+  label l6
+  // ========== l6 ==========
+  
+  // MIR edge bb14 --> bb10
+  
+  goto l28
+  label l7
+  // ========== l7 ==========
+  
+  // MIR edge bb12 --> bb7
+  
+  goto bb7
+  label l8
+  // ========== l8 ==========
+  
+  // MIR edge bb12 --> bb6
+  
+  goto l30
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  // obtain acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0), write)
+  // obtain acc(bool(_0), write)
+  
+  assert (unfolding acc(bool(_0), write) in _0.val_bool) ==> 0 <= old[pre]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_2), write) in (unfolding acc(i32(_2.f$x), write) in _2.f$x.val_int))) && (old[pre]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_2), write) in (unfolding acc(i32(_2.f$x), write) in _2.f$x.val_int))) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$() && (0 <= old[pre]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_2), write) in (unfolding acc(i32(_2.f$y), write) in _2.f$y.val_int))) && old[pre]((unfolding acc(m_Knights_tour$$Point$opensqu$0$closesqu$$_beg_$_end_(_2), write) in (unfolding acc(i32(_2.f$y), write) in _2.f$y.val_int))) < m_Knights_tour$$size$opensqu$0$closesqu$__$TY$__$int$()))
+  assert true
+  exhale acc(m_Knights_tour$$Board$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(bool(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_ref() returns (ret: Ref)
+
+
+method builtin$havoc_int() returns (ret: Int)

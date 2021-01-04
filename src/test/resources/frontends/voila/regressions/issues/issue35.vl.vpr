@@ -1,0 +1,304 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Dummy_state_T(a: Ref, lvl: Int): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Dummy_interferenceReference_df($p0: Int, a: Ref, lvl: Int): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Dummy_interferenceSet_df($p0: Int, a: Ref, lvl: Int): Set[Bool]
+}
+
+domain atomicity_context_Domain {
+  
+  function Dummy_atomicity_context_df(a: Ref, lvl: Int): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_bool: Bool
+
+field $stepTo_bool: Bool
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function Dummy_atomicity_context_hf(a: Ref, lvl: Int): Set[Bool]
+  requires acc(Dummy_atomicity_context_fp(a, lvl), write)
+  ensures [Dummy_atomicity_context_df(a, lvl), true]
+
+
+function Dummy_interferenceSet_hf($p0: Int, a: Ref, lvl: Int): Set[Bool]
+  requires acc(Dummy_interferenceContext_fp(a, lvl), write)
+  ensures [(forall $_m: Bool :: { ($_m in result) } ($_m in result) ==> ($_m in Dummy_interferenceSet_df($p0, a, lvl))), true]
+
+
+function Dummy_interferenceReference_hf($p0: Int, a: Ref, lvl: Int): Bool
+  requires acc(Dummy_interferenceContext_fp(a, lvl), write)
+  ensures [Dummy_interferenceReference_df($p0, a, lvl), true]
+
+
+function Dummy_state(a: Ref, lvl: Int): Bool
+  requires acc(Dummy(a, lvl), write)
+  ensures [Dummy_state_T(a, lvl), true]
+{
+  (unfolding acc(Dummy(a, lvl), write) in true)
+}
+
+predicate Dummy_G($r: Ref) 
+
+predicate Dummy_atomicity_context_fp(a: Ref, lvl: Int) 
+
+predicate Dummy_interferenceContext_fp(a: Ref, lvl: Int) 
+
+predicate Dummy_sk_fp() 
+
+predicate Dummy(a: Ref, lvl: Int) {
+  true
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method ___silicon_hack407_havoc_all_Dummy()
+
+
+method ___silicon_hack407_havoc_all_Dummy_interferenceContext_fp()
+
+
+method test(a: Ref, lvl: Int)
+  requires lvl >= 0
+  ensures true
+{
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale acc(Dummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $lvl: Int :: acc(Dummy_interferenceContext_fp($a, $lvl), write))
+  
+  // ------- Inferring interference context Dummy (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // Inferring interference all instances of region Dummy
+  
+  ___silicon_hack407_havoc_all_Dummy_interferenceContext_fp()
+  exhale acc(Dummy_sk_fp(), write)
+  inhale acc(Dummy_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int [Dummy($a, $lvl)] :: (forall $$_m: Bool :: { ($$_m in Dummy_interferenceSet_df(1, $a, $lvl)) } none < old[pre_infer0](perm(Dummy($a, $lvl))) ==> ($$_m in Dummy_interferenceSet_hf(1, $a, $lvl)) == ((none < perm($a.$diamond) && none < perm(Dummy_atomicity_context_fp($a, $lvl)) ==> ($$_m in Dummy_atomicity_context_hf($a, $lvl))) && ($$_m == old[pre_infer0](Dummy_state($a, $lvl)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $a: Ref, $lvl: Int [Dummy($a, $lvl)] :: none < old[pre_infer0](perm(Dummy($a, $lvl))) ==> Dummy_interferenceReference_hf(1, $a, $lvl) == old[pre_infer0](Dummy_state($a, $lvl)))
+  
+  // ------- Inferring interference context Dummy (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- fold BEGIN --------------
+  
+  
+  fold acc(Dummy(a, lvl), write)
+  assert lvl >= 0 && Dummy_state(a, lvl) == true
+  
+  // ------- fold END ----------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Dummy_G(a), write)
+  
+  // ------- inhale END --------------
+  
+  
+}
+
+method $_Dummy_interpretation_stability_check(a: Ref, lvl: Int)
+{
+  inhale acc(Dummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $lvl: Int :: acc(Dummy_interferenceContext_fp($a, $lvl), write))
+  inhale true
+  
+  // ------- Stabilising regions Dummy (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region Dummy
+  
+  ___silicon_hack407_havoc_all_Dummy()
+  exhale acc(Dummy_sk_fp(), write)
+  inhale acc(Dummy_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int [Dummy($a, $lvl)] :: none < old[pre_stabilize0](perm(Dummy($a, $lvl))) ==> (none < perm($a.$diamond) && none < perm(Dummy_atomicity_context_fp($a, $lvl)) ==> (Dummy_state($a, $lvl) in Dummy_atomicity_context_hf($a, $lvl))) && (Dummy_state($a, $lvl) == old[pre_stabilize0](Dummy_state($a, $lvl)) || false))
+  
+  // ------- Stabilising regions Dummy (check stability of region interpretation) END 
+  
+  
+  assert true
+}
+
+method $_Dummy_action_transitivity_check()
+{
+  var G: Bool
+  var aState: Bool
+  var bState: Bool
+  var cState: Bool
+  inhale aState == bState
+  inhale bState == cState
+  assert aState == cState
+}
+
+method $_test_condition_stability_precondition_check(a: Ref, lvl: Int)
+  requires lvl >= 0
+{
+  var $_levelVar_1: Int
+  inhale $_levelVar_1 >= 0
+  inhale acc(Dummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $lvl: Int :: acc(Dummy_interferenceContext_fp($a, $lvl), write))
+  
+  // ------- Inferring interference context Dummy (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // Inferring interference all instances of region Dummy
+  
+  ___silicon_hack407_havoc_all_Dummy_interferenceContext_fp()
+  exhale acc(Dummy_sk_fp(), write)
+  inhale acc(Dummy_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int [Dummy($a, $lvl)] :: (forall $$_m: Bool :: { ($$_m in Dummy_interferenceSet_df(2, $a, $lvl)) } none < old[pre_infer](perm(Dummy($a, $lvl))) ==> ($$_m in Dummy_interferenceSet_hf(2, $a, $lvl)) == ((none < perm($a.$diamond) && none < perm(Dummy_atomicity_context_fp($a, $lvl)) ==> ($$_m in Dummy_atomicity_context_hf($a, $lvl))) && ($$_m == old[pre_infer](Dummy_state($a, $lvl)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $a: Ref, $lvl: Int [Dummy($a, $lvl)] :: none < old[pre_infer](perm(Dummy($a, $lvl))) ==> Dummy_interferenceReference_hf(2, $a, $lvl) == old[pre_infer](Dummy_state($a, $lvl)))
+  
+  // ------- Inferring interference context Dummy (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Dummy (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region Dummy
+  
+  ___silicon_hack407_havoc_all_Dummy()
+  exhale acc(Dummy_sk_fp(), write)
+  inhale acc(Dummy_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int [Dummy($a, $lvl)] :: none < old[pre_stabilize](perm(Dummy($a, $lvl))) ==> (none < perm($a.$diamond) && none < perm(Dummy_atomicity_context_fp($a, $lvl)) ==> (Dummy_state($a, $lvl) in Dummy_atomicity_context_hf($a, $lvl))) && (Dummy_state($a, $lvl) == old[pre_stabilize](Dummy_state($a, $lvl)) || false))
+  
+  // ------- Stabilising regions Dummy (check stability of method condition) END 
+  
+  
+  assert lvl >= 0
+}
