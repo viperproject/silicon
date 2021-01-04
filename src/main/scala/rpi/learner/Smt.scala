@@ -6,7 +6,7 @@ import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamW
 import java.nio.file.Paths
 import rpi.Main
 import viper.silver.{ast => sil}
-import viper.silver.verifier.{ModelParser, SingleEntry}
+import viper.silver.verifier.{ModelParser, ConstantEntry}
 
 class Smt {
   /**
@@ -111,8 +111,8 @@ class Smt {
           .entries
           .view
           .mapValues {
-            case SingleEntry("true") => true
-            case SingleEntry("false") => false
+            case ConstantEntry("true") => true
+            case ConstantEntry("false") => false
           }
           .toMap
     }

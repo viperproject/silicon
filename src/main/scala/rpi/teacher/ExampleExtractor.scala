@@ -6,7 +6,7 @@ import rpi.util.{Collections, UnionFind}
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
-import viper.silver.verifier.{Model, SingleEntry, VerificationError}
+import viper.silver.verifier._
 import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silver.{ast => sil}
 
@@ -41,7 +41,6 @@ class ExampleExtractor(teacher: Teacher) {
     println(error)
     // extract counter example and offending location
     val (counter, offending, Some(info)) = extractInformation[FramingInfo](error)
-
 
     val state = {
       val siliconState = counter.state
@@ -385,21 +384,46 @@ class ExampleExtractor(teacher: Teacher) {
       * @return The reference value.
       */
     def evaluateReference(term: Term): String =
+      evaluate(term) match {
+        case ConstantEntry(value) =>
+          println(value)
+          value
+      }
+
+    /**
+      * Evaluates the given term to a value entry.
+      *
+      * @param term The term to evaluate.
+      * @return The value entry.
+      */
+    private def evaluate(term: Term): ValueEntry =
       term match {
-        case terms.Var(identifier, _) => readModel(identifier.name)
-        case terms.Null() => readModel(key = "$Ref.null")
+        case terms.Var(identifier, _) =>
+          readModel(identifier.name)
+        case terms.Null() =>
+          readModel(key = "$Ref.null")
+        case terms.SortWrapper(wrapped, _) =>
+          evaluate(wrapped)
+        case terms.First(pair) =>
+          evaluate(pair) match {
+            case ApplicationEntry(_, Seq(first, _)) => first
+          }
+        case terms.Second(pair) =>
+          evaluate(pair) match {
+            case ApplicationEntry(_, Seq(_, second)) => second
+          }
         case _ => ???
       }
 
     /**
-      * Reads the value with the given key from the model.
+      * Reads the value entry with the given key from the model.
       *
       * @param key The key of the value.
       * @return The value.
       */
-    private def readModel(key: String): String =
+    private def readModel(key: String): ValueEntry =
       model.entries(key) match {
-        case SingleEntry(value) => value
+        case value: ValueEntry => value
       }
   }
 
