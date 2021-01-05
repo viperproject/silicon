@@ -4,6 +4,10 @@ package rpi
   * The global configurations.
   */
 object Settings {
+  /**
+    * The number of rounds after which the learner gets exhausted and gives up.
+    */
+  val maxRounds = 10
 
   /**
     * The maximal length of access paths allowed to appear in specifications.
@@ -14,11 +18,6 @@ object Settings {
     * The maximal number of clauses that may be used for a guard.
     */
   val maxClauses = 1
-
-  /**
-    * The number of rounds after which the learner gets exhausted and gives up.
-    */
-  val maxRounds = 10
 
   /**
     * The flag indicating whether the inference should exploit silicon's framing.
@@ -46,15 +45,15 @@ object Settings {
   val useAnnotations = true
 
   /**
-    * Since Silicon is a iso-recursive verifier, we force folds in positions where a predicate needs to be
-    * established, such that we only have to rely on unfold heuristics (as failing fold heuristics may yield incorrect
-    * examples). This parameter regulates up to which depth we statically fold predicates.
+    * Since Silicon is a iso-recursive verifier, we force folds in positions where a predicate needs to be established,
+    * such that we only have to rely on unfold heuristics (as failing fold heuristics may yield incorrect  examples).
+    * This parameter regulates up to which depth we statically fold predicates.
     */
   val foldDepth = 1
 
   val inline = true
 
-  val batch = true
+  val batch = false
 
   /**
     * The flag indicating whether silicons branching should be used to concretize values of atomic predicates.
@@ -64,7 +63,7 @@ object Settings {
   /**
     * The flag indicating whether parameters of inferred predicates should be renamed (mostly to test stuff).
     */
-  val renameParameters = true
+  val renameParameters = false
 
   val debugPrintProgram = true
   val debugPrintTemplates = true

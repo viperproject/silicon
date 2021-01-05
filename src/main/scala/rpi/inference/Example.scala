@@ -10,37 +10,36 @@ trait Example
 
 /**
   * A positive example.
-  *
-  * @param record The data point to include.
+  * @param records The records.
   */
-case class Positive(record: Seq[Record]) extends Example
+case class PositiveExample(records: Seq[Record]) extends Example
 
 /**
   * A negative example.
   *
-  * @param record The data point to exclude.
+  * @param record The records.
   */
-case class Negative(record: Seq[Record]) extends Example
+case class NegativeExample(record: Record) extends Example
 
 /**
-  * An implication.
+  * An implication example.
   *
   * @param left  The left-hand side of the implication.
   * @param right The right-hand side of the implication.
   */
-case class Implication(left: Seq[Record], right: Seq[Record]) extends Example
+case class ImplicationExample(left: Record, right: Seq[Record]) extends Example
+
+case class Record(specification: Specification, state: Abstraction, locations: Set[sil.LocationAccess])
 
 /**
   * A data point.
-  *
-  * TODO: Add pointer to hole?
   *
   * @param specification The specification.
   * @param state         The abstract state.
   * @param locations     The (under-approximate) set of location accesses that can be used to represent the resource for
   *                      which some permissions are required.
   */
-case class Record(specification: Specification, state: Abstraction, locations: Set[sil.LocationAccess]) {
+case class Rec(specification: Specification, state: Abstraction, locations: Set[sil.LocationAccess]) {
   override def toString: String =
     s"${specification.name}: $state -> ${locations.map { location => s"$location" }.mkString("{", ", ", "}")}"
 }

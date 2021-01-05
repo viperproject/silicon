@@ -73,7 +73,7 @@ class ExampleExtractor(teacher: Teacher) {
     // create and return example
     val left = Record(specification, abstraction, Set(info.location))
     val right = Record(specification, abstraction, Set(offending))
-    Implication(Seq(left), Seq(right))
+    ImplicationExample(left, Seq(right))
   }
 
   /**
@@ -90,76 +90,121 @@ class ExampleExtractor(teacher: Teacher) {
     val (counter, offending, info) = extractInformation[BasicInfo](error)
     val label = info.map(_.label)
 
-    // extract states
-    val (currentState, inhaledStates) = extractStates(counter, label, context)
-
+    // get current location
     val currentLocation = info match {
       case Some(BasicInfo(_, instance)) =>
         if (Settings.inline && !Names.isPredicate(instance.name)) offending
         else instance.toActual(offending)
-      case _ =>
-        offending
+      case _ => offending
     }
 
-    val inhaled = inhaledStates
-      .map { state =>
-        val instance = context.getInhaled(state.label)
-        val abstraction = abstractState(state, instance)
-        (state, instance, abstraction)
+    // build current and other states
+    val (currentState, otherStates) = {
+      // get silicon state, get model, and build partitions
+      val siliconState = counter.state
+      val model = counter.model
+      val partitions = buildPartitions(counter)
+
+      // build store
+      val store = {
+        val siliconStore = siliconState.g
+        buildStore(siliconStore, partitions)
       }
 
-    val exhaled = label
-      .toSeq
-      .map { name =>
-        val instance = context.getExhaled(name)
+      // build all encountered states
+      val encountered = {
+        val heapMap = siliconState.oldHeaps
+        context
+          .allLabels
+          .flatMap { label =>
+            heapMap
+              .get(label)
+              .map { siliconHeap =>
+                val heap = buildHeap(siliconHeap, partitions)
+                State(label, store, heap, model)
+              }
+          }
+      }
+
+      // build current state if necessary and return states
+      label match {
+        case Some(value) =>
+          // the last encountered state is the current state
+          val current = encountered.last
+          val others = encountered.init
+          (current, others)
+        case None =>
+          // build current state in case it has not been encountered
+          val siliconHeap = siliconState.h
+          val heap = buildHeap(siliconHeap, partitions)
+          val current = State("current", store, heap, model)
+          (current, encountered)
+      }
+    }
+
+    val currentTriples = label
+      .map { label =>
+        val instance = context.getExhaled(label)
         val abstraction = abstractState(currentState, instance)
         (currentState, instance, abstraction)
       }
 
-    lazy val inhaledRecords = inhaled
-      .map {
-        case (inhaledState, inhaledInstance, inhaledAbstraction) =>
-          // create adaptor
-          val adaptor = Adaptor(currentState, inhaledState, inhaledInstance)
-          // combine information from pre and post state
-          val abstraction = exhaled.foldLeft(inhaledAbstraction) {
-            case (combinedAbstraction, (_, exhaledInstance, exhaledAbstraction)) =>
-              val actual = exhaledInstance.toActual(exhaledAbstraction)
-              val adapted = adaptor.adaptState(actual)
-              combinedAbstraction.meet(adapted)
-          }
-          // TODO: It could be beneficial to have a set of all equivalent locations.
-          val specification = inhaledInstance.specification
-          val locations = adaptor.adaptLocation(currentLocation)
-          Record(specification, abstraction, locations)
+    val otherTriples = otherStates
+      .map { state =>
+        val instance = context.getInstance(state.label)
+        val abstraction = abstractState(state, instance)
+        (state, instance, abstraction)
       }
 
-    lazy val exhaledRecords = exhaled
-      .map {
-        case (exhaledState, exhaledInstance, exhaledAbstraction) =>
-          val abstraction = inhaled.foldLeft(exhaledAbstraction) {
-            case (combinedAbstraction, (inhaledState, inhaledInstance, inhaledAbstraction)) =>
-              val adaptor = Adaptor(inhaledState, exhaledState, exhaledInstance)
-              val actual = inhaledInstance.toActual(inhaledAbstraction)
-              val adapted = adaptor.adaptState(actual)
-              combinedAbstraction.meet(adapted)
-          }
-          // create record
-          val specification = exhaledInstance.specification
-          val locations = Set(exhaledInstance.toFormal(currentLocation))
-          Record(specification, abstraction, locations)
+    lazy val currentRecords = currentTriples
+      .map { case (currentState, currentInstance, currentAbstraction) =>
+        // refine abstraction with information from other states
+        val abstraction = otherTriples.foldLeft(currentAbstraction) {
+          case (combined, (otherState, otherInstance, otherAbstraction)) =>
+            val adaptor = Adaptor(otherState, currentState, currentInstance)
+            val actual = otherInstance.toActual(otherAbstraction)
+            val adapted = adaptor.adaptState(actual)
+            combined.meet(adapted)
+        }
+        // create record
+        val specification = currentInstance.specification
+        val locations = Set(currentInstance.toFormal(currentLocation))
+        Record(specification, abstraction, locations)
+      }
+
+    lazy val otherRecords = otherTriples
+      .map { case (otherState, otherInstance, otherAbstraction) =>
+        // create adaptor
+        val adaptor = Adaptor(currentState, otherState, otherInstance)
+        // refine abstraction with information from current state
+        val abstraction = currentTriples.foldLeft(otherAbstraction) {
+          case (combined, (_, currentInstance, currentAbstraction)) =>
+            val actual = currentInstance.toActual(currentAbstraction)
+            val adapted = adaptor.adaptState(actual)
+            combined.meet(adapted)
+        }
+        // create record
+        val specification = otherInstance.specification
+        val locations = adaptor.adaptLocation(currentLocation)
+        Record(specification, abstraction, locations)
       }
 
     // create example
-    if (label.isDefined) {
-      // evaluate permission amount
-      val name = context.getName(label.get, currentLocation)
-      val term = currentState.store(name)
-      val permission = currentState.evaluatePermission(term)
-      // create implication or negative example depending on permission amount
-      if (permission == 0) Implication(exhaledRecords, inhaledRecords)
-      else Negative(exhaledRecords)
-    } else Positive(inhaledRecords)
+    val example = currentRecords match {
+      case Some(currentRecord) =>
+        // evaluate permission amount
+        val name = context.getName(label.get, currentLocation)
+        val term = currentState.store(name)
+        val permission = currentState.evaluatePermission(term)
+        // we want to require the missing permission from an upstream specification,
+        // unless we previously already held some permissions for the location
+        if (permission == 0) ImplicationExample(currentRecord, otherRecords)
+        else NegativeExample(currentRecord)
+      case None => PositiveExample(otherRecords)
+    }
+
+    println(example)
+    example
   }
 
   /**
@@ -192,6 +237,7 @@ class ExampleExtractor(teacher: Teacher) {
 
   /**
     * Extracts states from the given counter example.
+    * TODO: Remove.
     *
     * @param counter The counter example.
     * @param context The context provided by the check builder.
@@ -425,6 +471,8 @@ class ExampleExtractor(teacher: Teacher) {
       model.entries(key) match {
         case value: ValueEntry => value
       }
+
+    override def toString: String = s"State($label, ...)"
   }
 
   private case class Adaptor(current: State, target: State, instance: Instance) {

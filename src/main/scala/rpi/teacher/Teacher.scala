@@ -89,6 +89,11 @@ class Teacher(val inference: Inference) {
   */
 class Context {
   /**
+    * The labels of the inhaled and exhaled states.
+    */
+  private var labels: Seq[String] = Seq.empty
+
+  /**
     * A map holding the instances corresponding to the inhaled states.
     */
   private var inhaled: Map[String, Instance] = Map.empty
@@ -113,13 +118,34 @@ class Context {
     inhaled.contains(label)
 
   /**
+    * Returns whether the given label corresponds to an exhaled state or not.
+    *
+    * @param label The label of the state.
+    * @return True if the given label corresponds to an exhaled state.
+    */
+  def isExhaled(label: String): Boolean =
+    exhaled.contains(label)
+
+  /**
+    * Returns the labels of all inhaled and exhaled states. Since the labels were added in topological order with
+    * respect to the control flow, the labels are guaranteed to appear in that order in any actual execution, if they
+    * are encountered (note: there are no loops as they are handled modularly).
+    *
+    * @return The labels of all inhaled and exhale states.
+    */
+  def allLabels: Seq[String] =
+    labels
+
+  /**
     * Adds the given instance as an instance corresponding to an inhaled state.
     *
     * @param label    The label of the state.
     * @param instance The instance.
     */
-  def addInhaled(label: String, instance: Instance): Unit =
+  def addInhaled(label: String, instance: Instance): Unit = {
+    labels = labels :+ label
     inhaled = inhaled.updated(label, instance)
+  }
 
   /**
     * Adds the given instance as an instance corresponding to an exhaled state.
@@ -127,8 +153,10 @@ class Context {
     * @param label    The label of the state.
     * @param instance The instance.
     */
-  def addExhaled(label: String, instance: Instance): Unit =
+  def addExhaled(label: String, instance: Instance): Unit = {
+    labels = labels :+ label
     exhaled = exhaled.updated(label, instance)
+  }
 
   /**
     * Associates the given location access with the given variable name in the state with the given label.
@@ -143,6 +171,9 @@ class Context {
       .updated(access, name)
     names = names.updated(label, updated)
   }
+
+  def getInstance(label: String): Instance =
+    inhaled.getOrElse(label, exhaled(label))
 
   /**
     * Returns the instance corresponding to the inhaled state with the given label.
@@ -193,6 +224,7 @@ case class BasicInfo(label: String, instance: Instance) extends ContextInfo {
   */
 object Checks {
   // import utility methods
+
   import rpi.util.Expressions._
   import rpi.util.Statements._
 

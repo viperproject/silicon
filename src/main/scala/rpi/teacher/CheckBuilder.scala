@@ -131,9 +131,9 @@ class CheckBuilder(teacher: Teacher) {
   def basicCheck(checks: Seq[sil.Seqn], hypothesis: Hypothesis): (sil.Program, Context) = {
     import Names._
 
-    // holds the last specification that was inhaled
+    // remember the last inhaled specification (to be handled by future unfold annotations)
+    // and the last fold annotation (to be handled by future exhaled specifications)
     var inhaled: Option[sil.Exp] = None
-    // holds the last fold annotation that needs to be handled
     var annotation: Option[sil.MethodCall] = None
 
     /**

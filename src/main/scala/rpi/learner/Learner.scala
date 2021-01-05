@@ -87,9 +87,9 @@ class Learner(inference: Inference) {
     val resources = {
       // collect records from examples
       val records = examples.flatMap {
-        case Positive(records) => records
-        case Negative(records) => records
-        case Implication(left, right) => left ++ right
+        case PositiveExample(records) => records
+        case NegativeExample(record) => Seq(record)
+        case ImplicationExample(left, right) => left +: right
       }
       // build resource map
       val empty = Map.empty[String, Set[sil.LocationAccess]]

@@ -9,6 +9,7 @@ import viper.silver.{ast => sil}
 
 class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
   // import utility methods
+
   import Expressions._
 
   /**
@@ -69,14 +70,14 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     */
   def encodeExample(example: Example): Seq[sil.Exp] =
     example match {
-      case Positive(records) =>
+      case PositiveExample(records) =>
         val (encoding, constraints) = encodeRecords(records, default = false)
         constraints :+ encoding
-      case Negative(records) =>
-        val (encoding, constraints) = encodeRecords(records, default = false)
+      case NegativeExample(record) =>
+        val (encoding, constraints) = encodeRecords(Seq(record), default = false)
         constraints :+ not(encoding)
-      case Implication(leftRecords, rightRecords) =>
-        val (leftEncoding, leftConstraints) = encodeRecords(leftRecords, default = true)
+      case ImplicationExample(leftRecord, rightRecords) =>
+        val (leftEncoding, leftConstraints) = encodeRecords(Seq(leftRecord), default = true)
         val (rightEncoding, rightConstraints) = encodeRecords(rightRecords, default = false)
         leftConstraints ++ rightConstraints :+ implies(leftEncoding, rightEncoding)
     }
@@ -89,17 +90,22 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @return A tuple holding the encoding and a sequence of global constraints.
     */
   private def encodeRecords(records: Seq[Record], default: Boolean): (sil.Exp, Seq[sil.Exp]) = {
-    // method used to introduce auxiliary variables.
-    def auxiliary(expressions: Iterable[sil.Exp]): (Seq[sil.Exp], Seq[sil.Exp]) = {
-      val empty = Seq.empty[sil.Exp]
-      expressions.foldLeft((empty, empty)) {
-        case ((varibles, equalities), expression) =>
-          val name = s"t_${unique.getAndIncrement}"
-          val variable = sil.LocalVar(name, sil.Bool)()
-          val equality = sil.EqCmp(variable, expression)()
-          (varibles :+ variable, equalities :+ equality)
-      }
+    // method used to introduce auxiliary variables
+    def auxiliary(expression: sil.Exp): (sil.LocalVar, sil.Exp) = {
+      val name = s"t_${unique.getAndIncrement}"
+      val variable = sil.LocalVar(name, sil.Bool)()
+      val equality = sil.EqCmp(variable, expression)()
+      (variable, equality)
     }
+
+    // method used to introduce auxiliary variables.
+    def auxiliaries(expressions: Iterable[sil.Exp]): (Seq[sil.LocalVar], Seq[sil.Exp]) =
+      expressions
+        .foldLeft((Seq.empty[sil.LocalVar], Seq.empty[sil.Exp])) {
+          case ((variables, equalities), expression) =>
+            val (variable, equality) = auxiliary(expression)
+            (variables :+ variable, equalities :+ equality)
+        }
 
     // method used to encode that at most one choice should be picked.
     def atMost(expressions: Seq[sil.Exp]): sil.Exp = {
@@ -115,7 +121,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     val (variables, constraints) = {
       val empty = Seq.empty[sil.Exp]
       records.foldLeft((empty, empty)) {
-        case ((currentVariables, currentConstraints), record) =>
+        case ((variables, constraints), record) =>
           // get guards
           val name = record.specification.name
           val localGuards = guards.getOrElse(name, Map.empty)
@@ -136,15 +142,28 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
               }
             }
 
-          // update encodings and constraints
-          val (variables, equalities) = auxiliary(encodings)
-          val constraints = equalities :+ atMost(variables)
-          (currentVariables ++ variables, currentConstraints ++ constraints)
+          val (encodingVariables, equalities) = auxiliaries(encodings)
+          val (variable, lower) = auxiliary(bigOr(encodingVariables))
+          val upper = atMost(encodingVariables)
+          (variables :+ variable, constraints ++ equalities :+ lower :+ upper)
       }
     }
 
-    // return encoding
-    val encoding = bigOr(variables)
+    // TODO: Rename.
+    def f(expressions: Seq[sil.Exp]): (sil.Exp, sil.Exp) =
+      expressions match {
+        case inhaled +: exhaled +: rest =>
+          val (innerEncoding, innerCondition) = f(rest)
+          val condition = sil.And(sil.Not(exhaled)(), innerCondition)()
+          val encoding = sil.Or(sil.And(inhaled, condition)(), innerEncoding)()
+          (encoding, condition)
+        case Seq(inhaled) => (inhaled, sil.TrueLit()())
+      }
+
+    val encoding =
+      if (variables.isEmpty) sil.FalseLit()()
+      else f(variables)._1
+
     (encoding, constraints)
   }
 
