@@ -149,11 +149,19 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
       }
     }
 
-    // TODO: Rename.
-    def f(expressions: Seq[sil.Exp]): (sil.Exp, sil.Exp) =
-      expressions match {
+    /**
+      * The given encodings is assumed ot correspond to a sequence of records, where the records alternate between
+      * inhaled records and exhaled records (starting and ending with inhaled records). The encoding produced by this
+      * method captures that the permissions from an inhaled record only survive if it is not exhaled by any of the
+      * subsequent exhaled records.
+      *
+      * @param encodings The encodings corresponding to the records.
+      * @return The resulting encoding.
+      */
+    def ensureFraming(encodings: Seq[sil.Exp]): (sil.Exp, sil.Exp) =
+      encodings match {
         case inhaled +: exhaled +: rest =>
-          val (innerEncoding, innerCondition) = f(rest)
+          val (innerEncoding, innerCondition) = ensureFraming(rest)
           val condition = sil.And(sil.Not(exhaled)(), innerCondition)()
           val encoding = sil.Or(sil.And(inhaled, condition)(), innerEncoding)()
           (encoding, condition)
@@ -161,8 +169,8 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
       }
 
     val encoding =
-      if (variables.isEmpty) sil.FalseLit()()
-      else f(variables)._1
+      if (variables.isEmpty) ??? // was: true
+      else ensureFraming(variables)._1
 
     (encoding, constraints)
   }

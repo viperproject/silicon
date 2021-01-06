@@ -29,7 +29,9 @@ case class NegativeExample(record: Record) extends Example
   */
 case class ImplicationExample(left: Record, right: Seq[Record]) extends Example
 
-case class Record(specification: Specification, state: Abstraction, locations: Set[sil.LocationAccess])
+case class Record(specification: Specification, state: Abstraction, locations: Set[sil.LocationAccess]) {
+  override def toString: String = s"${specification.name}: $state -> {${locations.mkString(", ")}}"
+}
 
 /**
   * A data point.

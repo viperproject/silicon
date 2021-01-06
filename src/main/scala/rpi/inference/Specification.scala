@@ -1,8 +1,7 @@
 package rpi.inference
 
 import rpi.util.Expressions
-
-import viper.silver.{ast => sil}
+import viper.silver.ast
 
 /**
   * Represents a specification that needs to be inferred.
@@ -11,7 +10,7 @@ import viper.silver.{ast => sil}
   * @param parameters The parameters for the specification.
   * @param atoms      The atomic predicates that may be used for the specification.
   */
-case class Specification(name: String, parameters: Seq[sil.LocalVarDecl], atoms: Seq[sil.Exp])
+case class Specification(name: String, parameters: Seq[ast.LocalVarDecl], atoms: Seq[ast.Exp])
 
 /**
   * An instance of a specification that needs to be inferred.
@@ -21,20 +20,11 @@ case class Specification(name: String, parameters: Seq[sil.LocalVarDecl], atoms:
   * @param specification The specification that needs to be inferred.
   * @param arguments     The arguments with which the parameters are instantiated.
   */
-case class Instance(specification: Specification, arguments: Seq[sil.Exp]) {
-  /**
-    * The substitution map for the actual-to-formal translation.
-    */
-  private lazy val toFormalMap: Map[String, sil.Exp] = {
-    val names = arguments.map { case sil.LocalVar(name, _) => name }
-    val variables = specification.parameters.map { parameter => parameter.localVar }
-    names.zip(variables).toMap
-  }
-
+case class Instance(specification: Specification, arguments: Seq[ast.Exp]) {
   /**
     * The substitution map for the formal-to-actual translation.
     */
-  private lazy val toActualMap: Map[String, sil.Exp] =
+  private lazy val toActualMap: Map[String, ast.Exp] =
     Expressions.computeMap(specification.parameters, arguments)
 
   /**
@@ -45,11 +35,21 @@ case class Instance(specification: Specification, arguments: Seq[sil.Exp]) {
   def name: String = specification.name
 
   /**
+    * Returns the parameters of the specification.
+    *
+    * @return THe parameters of the specification.
+    */
+  def parameters: Seq[ast.LocalVar] =
+    specification
+      .parameters
+      .map { parameter => parameter.localVar }
+
+  /**
     * Returns the atomic predicates in terms of the formal arguments.
     *
     * @return The formal atoms.
     */
-  def formalAtoms: Seq[sil.Exp] =
+  def formalAtoms: Seq[ast.Exp] =
     specification.atoms
 
   /**
@@ -57,32 +57,8 @@ case class Instance(specification: Specification, arguments: Seq[sil.Exp]) {
     *
     * @return The actual atoms.
     */
-  def actualAtoms: Seq[sil.Exp] =
+  def actualAtoms: Seq[ast.Exp] =
     specification.atoms.map { atom => toActual(atom) }
-
-  /**
-    * Replaces the actual arguments of the given expression with their corresponding formal counterparts.
-    *
-    * @param expression The expression to translate.
-    * @return The expression in terms of the formal arguments.
-    */
-  def toFormal(expression: sil.Exp): sil.Exp =
-    Expressions.substitute(expression, toFormalMap)
-
-  /**
-    * Replaces the actual arguments of the given location access with their corresponding formal counterparts.
-    *
-    * @param access The location access to translate.
-    * @return The location access in terms of the formal arguments.
-    */
-  def toFormal(access: sil.LocationAccess): sil.LocationAccess =
-    access match {
-      case sil.FieldAccess(receiver, field) =>
-        sil.FieldAccess(toFormal(receiver), field)()
-      case sil.PredicateAccess(arguments, name) =>
-        val updated = arguments.map { argument => toFormal(argument) }
-        sil.PredicateAccess(updated, name)()
-    }
 
   /**
     * Replaces the formal arguments of the given expression with their corresponding actual counterparts.
@@ -90,7 +66,7 @@ case class Instance(specification: Specification, arguments: Seq[sil.Exp]) {
     * @param expression The expression to translate.
     * @return The expression in therms of the actual arguments.
     */
-  def toActual(expression: sil.Exp): sil.Exp =
+  def toActual(expression: ast.Exp): ast.Exp =
     Expressions.substitute(expression, toActualMap)
 
   /**
@@ -99,13 +75,13 @@ case class Instance(specification: Specification, arguments: Seq[sil.Exp]) {
     * @param access The location access to translate.
     * @return The location access in terms of the actual arguments.
     */
-  def toActual(access: sil.LocationAccess): sil.LocationAccess =
+  def toActual(access: ast.LocationAccess): ast.LocationAccess =
     access match {
-      case sil.FieldAccess(receiver, field) =>
-        sil.FieldAccess(toActual(receiver), field)()
-      case sil.PredicateAccess(arguments, name) =>
+      case ast.FieldAccess(receiver, field) =>
+        ast.FieldAccess(toActual(receiver), field)()
+      case ast.PredicateAccess(arguments, name) =>
         val updated = arguments.map { argument => toActual(argument) }
-        sil.PredicateAccess(updated, name)()
+        ast.PredicateAccess(updated, name)()
     }
 
   /**

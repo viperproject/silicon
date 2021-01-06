@@ -158,24 +158,33 @@ class ExampleExtractor(teacher: Teacher) {
 
     lazy val currentRecords = currentTriples
       .map { case (currentState, currentInstance, currentAbstraction) =>
+        // reachability
+        val currentReachability = Reachability(currentState, currentInstance)
         // refine abstraction with information from other states
         val abstraction = otherTriples.foldLeft(currentAbstraction) {
           case (combined, (otherState, otherInstance, otherAbstraction)) =>
-            val adaptor = Adaptor(otherState, currentState, currentInstance)
+            val adaptor = Adaptor(otherState, currentReachability)
             val actual = otherInstance.toActual(otherAbstraction)
             val adapted = adaptor.adaptState(actual)
             combined.meet(adapted)
         }
         // create record
         val specification = currentInstance.specification
-        val locations = Set(currentInstance.toFormal(currentLocation))
+        val locations = {
+          // Slight abuse of adaptor to compute reachability in current state
+          val adaptor = Adaptor(currentState, currentReachability)
+          adaptor.adaptLocation(currentLocation)
+        }
         Record(specification, abstraction, locations)
       }
 
     lazy val otherRecords = otherTriples
       .map { case (otherState, otherInstance, otherAbstraction) =>
         // create adaptor
-        val adaptor = Adaptor(currentState, otherState, otherInstance)
+        val adaptor = {
+          val otherReachability = Reachability(otherState, otherInstance)
+          Adaptor(currentState, otherReachability)
+        }
         // refine abstraction with information from current state
         val abstraction = currentTriples.foldLeft(otherAbstraction) {
           case (combined, (_, currentInstance, currentAbstraction)) =>
@@ -190,7 +199,7 @@ class ExampleExtractor(teacher: Teacher) {
       }
 
     // create example
-    val example = currentRecords match {
+    currentRecords match {
       case Some(currentRecord) =>
         // evaluate permission amount
         val name = context.getName(label.get, currentLocation)
@@ -202,9 +211,6 @@ class ExampleExtractor(teacher: Teacher) {
         else NegativeExample(currentRecord)
       case None => PositiveExample(otherRecords)
     }
-
-    println(example)
-    example
   }
 
   /**
@@ -475,15 +481,7 @@ class ExampleExtractor(teacher: Teacher) {
     override def toString: String = s"State($label, ...)"
   }
 
-  private case class Adaptor(current: State, target: State, instance: Instance) {
-    /**
-      * The reachability map that associates terms with with a set of expressions that are guaranteed to evaluate to
-      * that term in the target state.
-      *
-      * TODO: Number of steps.
-      */
-    private val reachability = recurse(initial, steps = 3)
-
+  private case class Adaptor(current: State, reachability: Reachability) {
     def adapt(expression: sil.Exp): Set[sil.Exp] =
       expression match {
         case _: sil.LocalVar | _: sil.FieldAccess => adaptPath(expression)
@@ -519,29 +517,44 @@ class ExampleExtractor(teacher: Teacher) {
       */
     private def adaptPath(path: sil.Exp): Set[sil.Exp] = {
       val term = current.toTerm(path)
-      reachability
-        .getOrElse(term, Set.empty)
-        .map { adapted => instance.toFormal(adapted) }
+      reachability.get(term)
     }
+  }
+
+  /**
+    * Computes reachability information that can be used to determine a set of expressions that evaluate to a given
+    * term or expression.
+    *
+    * @param state    The state with respect to which the reachability information is computed.
+    * @param instance The instance used to perform the actual-to-formal adaption.
+    */
+  private case class Reachability(state: State, instance: Instance) {
+    /**
+      * The reachability map that associates terms with with a set of expressions that are guaranteed to evaluate to
+      * that term in the target state.
+      *
+      * TODO: Number of steps.
+      */
+    private val map = recurse(initial, steps = 3)
+
+    def get(term: Term): Set[sil.Exp] =
+      map.getOrElse(term, Set.empty)
 
     /**
       * Returns the reachability map of everything that is directly reachable from the store of the state.
       *
       * @return The initial reachability map.
       */
-    private def initial: Map[Term, Set[sil.Exp]] = {
-      val empty = Map.empty[Term, Set[sil.Exp]]
-      target
-        .store
-        .view
-        .filterKeys { name => name.startsWith(target.label) }
-        .foldLeft(empty) {
-          case (result, (name, value)) =>
-            val variable = sil.LocalVar(name.drop(target.label.length + 1), sil.Ref)()
-            val set = result.getOrElse(value, Set.empty) + variable
-            result.updated(value, set)
+    private def initial: Map[Term, Set[sil.Exp]] =
+      instance
+        .arguments
+        .zip(instance.parameters)
+        .foldLeft(Map.empty[Term, Set[sil.Exp]]) {
+          case (result, (argument, parameter)) =>
+            val value = state.toTerm(argument)
+            val existing = result.getOrElse(value, Set.empty)
+            result.updated(value, existing + parameter)
         }
-    }
 
     /**
       * Updates the current reachability map by recursing the given number of steps.
@@ -557,7 +570,7 @@ class ExampleExtractor(teacher: Teacher) {
         val empty = Map.empty[Term, Set[sil.Exp]]
         val next = map.foldLeft(empty) {
           case (map1, (term, paths)) =>
-            target.heap.getOrElse(term, Map.empty).foldLeft(map1) {
+            state.heap.getOrElse(term, Map.empty).foldLeft(map1) {
               case (map2, (name, value)) =>
                 val field = sil.Field(name, sil.Ref)()
                 val extended = paths.map { path => sil.FieldAccess(path, field)() }
