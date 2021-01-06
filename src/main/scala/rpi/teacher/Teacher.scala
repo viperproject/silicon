@@ -2,8 +2,8 @@ package rpi.teacher
 
 import rpi.{Settings, Names}
 import rpi.inference._
+import viper.silver.ast
 import viper.silver.verifier.{Failure, Success, VerificationError}
-import viper.silver.{ast => sil}
 
 /**
   * The teacher providing the examples.
@@ -24,7 +24,7 @@ class Teacher(val inference: Inference) {
   /**
     * The list of all checks.
     */
-  private val checks: Seq[Seq[sil.Seqn]] = {
+  private val checks: Seq[Seq[ast.Seqn]] = {
     val collected = Checks.collect(inference.labeled)
     if (Settings.batch) Seq(collected)
     else collected.map { check => Seq(check) }
@@ -73,7 +73,7 @@ class Teacher(val inference: Inference) {
     * @param extract The method extracting examples from verification errors.
     * @return The extracted examples.
     */
-  private def execute(program: sil.Program, extract: VerificationError => Example): Seq[Example] =
+  private def execute(program: ast.Program, extract: VerificationError => Example): Seq[Example] =
     inference.verify(program) match {
       case Success => Seq.empty
       case Failure(errors) => errors
@@ -106,7 +106,7 @@ class Context {
   /**
     * A map holding variable names for all states.
     */
-  private var names: Map[String, Map[sil.LocationAccess, String]] = Map.empty
+  private var names: Map[String, Map[ast.LocationAccess, String]] = Map.empty
 
   /**
     * Returns whether the given label corresponds to an inhaled state or not.
@@ -165,7 +165,7 @@ class Context {
     * @param access The location access.
     * @param name   The variable name.
     */
-  def addName(label: String, access: sil.LocationAccess, name: String): Unit = {
+  def addName(label: String, access: ast.LocationAccess, name: String): Unit = {
     val updated = names
       .getOrElse(label, Map.empty)
       .updated(access, name)
@@ -200,16 +200,16 @@ class Context {
     * @param access The location access.
     * @return The variable name.
     */
-  def getName(label: String, access: sil.LocationAccess): String = {
+  def getName(label: String, access: ast.LocationAccess): String = {
     names(label)(access)
   }
 }
 
-trait ContextInfo extends sil.Info {
+trait ContextInfo extends ast.Info {
   override def isCached: Boolean = false
 }
 
-case class FramingInfo(location: sil.LocationAccess) extends ContextInfo {
+case class FramingInfo(location: ast.LocationAccess) extends ContextInfo {
   override def comment: Seq[String] =
     Seq.empty
 }
@@ -234,9 +234,9 @@ object Checks {
     * @param program The program.
     * @return The collected checks.
     */
-  def collect(program: sil.Program): Seq[sil.Seqn] = {
+  def collect(program: ast.Program): Seq[ast.Seqn] = {
     // build map used to look up methods
-    implicit val methods: Map[String, sil.Method] = program
+    implicit val methods: Map[String, ast.Method] = program
       .methods
       .map { method => method.name -> method }
       .toMap
@@ -245,9 +245,9 @@ object Checks {
     program
       .methods
       .flatMap {
-        case sil.Method(_, _, _, preconditions, postconditions, Some(body)) =>
-          val inhales = preconditions.map { expression => sil.Inhale(expression)() }
-          val exhales = postconditions.map { expression => sil.Exhale(expression)() }
+        case ast.Method(_, _, _, preconditions, postconditions, Some(body)) =>
+          val inhales = preconditions.map { expression => ast.Inhale(expression)() }
+          val exhales = postconditions.map { expression => ast.Exhale(expression)() }
           // collect checks
           if (Settings.useFraming) {
             val (updated, collected) = collectFramed(inhales, body)
@@ -263,12 +263,12 @@ object Checks {
       }
   }
 
-  private def collectFramed(prefix: Seq[sil.Stmt], statement: sil.Stmt)
-                           (implicit methods: Map[String, sil.Method]): (Seq[sil.Stmt], Seq[sil.Seqn]) =
+  private def collectFramed(prefix: Seq[ast.Stmt], statement: ast.Stmt)
+                           (implicit methods: Map[String, ast.Method]): (Seq[ast.Stmt], Seq[ast.Seqn]) =
     statement match {
       // process sequence
-      case sil.Seqn(statements, _) =>
-        val empty = Seq.empty[sil.Seqn]
+      case ast.Seqn(statements, _) =>
+        val empty = Seq.empty[ast.Seqn]
         statements.foldLeft((prefix, empty)) {
           case ((currentPrefix, currentCollected), inner) =>
             // process inner statement
@@ -278,24 +278,24 @@ object Checks {
             (updated, combined)
         }
       // process conditional
-      case sil.If(condition, thenBody, elseBody) =>
+      case ast.If(condition, thenBody, elseBody) =>
         // process branches
         val (thenUpdated, thenCollected) = collectFramed(Seq.empty, thenBody)
         val (elseUpdated, elseCollected) = collectFramed(Seq.empty, elseBody)
         // updated conditional
-        val conditional = sil.If(condition, asSequence(elseUpdated), asSequence(thenUpdated))()
+        val conditional = ast.If(condition, asSequence(elseUpdated), asSequence(thenUpdated))()
         // return combined results
         val updated = prefix :+ conditional
         val combined = thenCollected ++ elseCollected
         (updated, combined)
       // process loop
-      case sil.While(condition, invariants, body) =>
+      case ast.While(condition, invariants, body) =>
         // get inhales and exhales specifying loop
-        val inhales = invariants.map { expression => sil.Inhale(expression)() }
-        val exhales = invariants.map { expression => sil.Exhale(expression)() }
+        val inhales = invariants.map { expression => ast.Inhale(expression)() }
+        val exhales = invariants.map { expression => ast.Exhale(expression)() }
         // process loop body
         val collected = {
-          val loopPrefix = inhales :+ sil.Inhale(condition)()
+          val loopPrefix = inhales :+ ast.Inhale(condition)()
           val (loopUpdated, loopCollected) = collectFramed(loopPrefix, body)
           val check = asSequence(loopUpdated ++ exhales)
           loopCollected :+ check
@@ -304,20 +304,20 @@ object Checks {
         val havocLoop = {
           val assignments = body
             .writtenVars
-            .map { variable => sil.LocalVarAssign(variable, variable)() }
-          sil.While(sil.FalseLit()(), Seq.empty, asSequence(assignments))()
+            .map { variable => ast.LocalVarAssign(variable, variable)() }
+          ast.While(ast.FalseLit()(), Seq.empty, asSequence(assignments))()
         }
         // update prefix
-        val updated = prefix ++ exhales ++ Seq(havocLoop) ++ inhales ++ Seq(sil.Inhale(not(condition))())
+        val updated = prefix ++ exhales ++ Seq(havocLoop) ++ inhales ++ Seq(ast.Inhale(not(condition))())
         // return result
         (updated, collected)
       // process method call
-      case sil.MethodCall(name, arguments, _) if !Names.isAnnotation(name) =>
+      case ast.MethodCall(name, arguments, _) if !Names.isAnnotation(name) =>
         // get inhales and exhales specifying method
         val method = methods(name)
         val map = computeMap(method.formalArgs, arguments)
-        val exhales = method.pres.map { expression => sil.Exhale(substitute(expression, map))() }
-        val inhales = method.posts.map { expression => sil.Inhale(substitute(expression, map))() }
+        val exhales = method.pres.map { expression => ast.Exhale(substitute(expression, map))() }
+        val inhales = method.posts.map { expression => ast.Inhale(substitute(expression, map))() }
         // return result
         val updated = prefix ++ exhales ++ inhales
         (updated, Seq.empty)
@@ -327,12 +327,12 @@ object Checks {
         (updated, Seq.empty)
     }
 
-  private def collectUnframed(prefixes: Seq[Seq[sil.Stmt]], statement: sil.Stmt)
-                             (implicit methods: Map[String, sil.Method]): (Seq[Seq[sil.Stmt]], Seq[sil.Seqn]) = {
+  private def collectUnframed(prefixes: Seq[Seq[ast.Stmt]], statement: ast.Stmt)
+                             (implicit methods: Map[String, ast.Method]): (Seq[Seq[ast.Stmt]], Seq[ast.Seqn]) = {
     // check whether the statement is complex, i.e., contains a loop or method call
     val isComplex = statement.exists {
-      case _: sil.While => true
-      case _: sil.MethodCall => true
+      case _: ast.While => true
+      case _: ast.MethodCall => true
       case _ => false
     }
     // process statement
@@ -343,12 +343,12 @@ object Checks {
     }
   }
 
-  private def collectComplex(prefixes: Seq[Seq[sil.Stmt]], statement: sil.Stmt)
-                            (implicit methods: Map[String, sil.Method]): (Seq[Seq[sil.Stmt]], Seq[sil.Seqn]) =
+  private def collectComplex(prefixes: Seq[Seq[ast.Stmt]], statement: ast.Stmt)
+                            (implicit methods: Map[String, ast.Method]): (Seq[Seq[ast.Stmt]], Seq[ast.Seqn]) =
     statement match {
       // process sequence
-      case sil.Seqn(statements, _) =>
-        val empty = Seq.empty[sil.Seqn]
+      case ast.Seqn(statements, _) =>
+        val empty = Seq.empty[ast.Seqn]
         statements.foldLeft((prefixes, empty)) {
           case ((currentPrefixes, checks), inner) =>
             // process inner statement
@@ -358,10 +358,10 @@ object Checks {
             (updated, combined)
         }
       // process conditional
-      case sil.If(condition, thenBody, elseBody) =>
+      case ast.If(condition, thenBody, elseBody) =>
         // process branches
-        val thenPrefixes = prefixes.map { prefix => prefix :+ sil.Inhale(condition)() }
-        val elsePrefixes = prefixes.map { prefix => prefix :+ sil.Inhale(not(condition))() }
+        val thenPrefixes = prefixes.map { prefix => prefix :+ ast.Inhale(condition)() }
+        val elsePrefixes = prefixes.map { prefix => prefix :+ ast.Inhale(not(condition))() }
         val (thenUpdated, thenCollected) = collectUnframed(thenPrefixes, thenBody)
         val (elseUpdated, elseCollected) = collectUnframed(elsePrefixes, elseBody)
         // return combined results
@@ -369,12 +369,12 @@ object Checks {
         val combined = thenCollected ++ elseCollected
         (updated, combined)
       // process loop
-      case sil.While(condition, invariants, body) =>
+      case ast.While(condition, invariants, body) =>
         // prepare prefixes (inside loop and after loop)
-        val inhales = invariants.map { expression => sil.Inhale(expression)() }
-        val exhales = invariants.map { expression => sil.Exhale(expression)() }
-        val inner = Seq(inhales :+ sil.Inhale(condition)())
-        val after = Seq(inhales :+ sil.Inhale(not(condition))())
+        val inhales = invariants.map { expression => ast.Inhale(expression)() }
+        val exhales = invariants.map { expression => ast.Exhale(expression)() }
+        val inner = Seq(inhales :+ ast.Inhale(condition)())
+        val after = Seq(inhales :+ ast.Inhale(not(condition))())
         // process loop body
         val (updated, collected) = collectUnframed(inner, body)
         // create checks (before loop and last inside loop)
@@ -384,12 +384,12 @@ object Checks {
         val combined = before ++ collected ++ last
         (after, combined)
       // process method call
-      case sil.MethodCall(name, arguments, _) if !Names.isAnnotation(name) =>
+      case ast.MethodCall(name, arguments, _) if !Names.isAnnotation(name) =>
         // get inhales and exhales specifying method
         val method = methods(name)
         val map = computeMap(method.formalArgs, arguments)
-        val exhales = method.pres.map { expression => sil.Exhale(substitute(expression, map))() }
-        val inhales = method.posts.map { expression => sil.Inhale(substitute(expression, map))() }
+        val exhales = method.pres.map { expression => ast.Exhale(substitute(expression, map))() }
+        val inhales = method.posts.map { expression => ast.Inhale(substitute(expression, map))() }
         // checks before and prefixes after
         val before = prefixes.map { prefix => asSequence(prefix ++ exhales) }
         val after = Seq(inhales)

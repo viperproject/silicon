@@ -5,9 +5,9 @@ import rpi.learner.Learner
 import rpi.teacher.Teacher
 import rpi.util.{Collections, Expressions, Namespace}
 import viper.silicon.Silicon
+import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.verifier.{VerificationResult, Verifier}
-import viper.silver.{ast => sil}
 
 import scala.annotation.tailrec
 
@@ -16,11 +16,11 @@ import scala.annotation.tailrec
   *
   * @param program The program for which to infer the specifications.
   */
-class Inference(program: sil.Program) {
+class Inference(program: ast.Program) {
   /**
     * The magic fields that enables fold / unfold heuristics
     */
-  val magic: sil.Field = sil.Field("__CONFIG_HEURISTICS", sil.Bool)()
+  val magic: ast.Field = ast.Field("__CONFIG_HEURISTICS", ast.Bool)()
 
   /**
     * The instance of the silicon verifier used to generate the examples.
@@ -48,10 +48,10 @@ class Inference(program: sil.Program) {
     */
   private val templates = {
     // TODO: Implement properly.
-    val x0 = sil.LocalVarDecl("x0", sil.Ref)()
-    val x1 = sil.LocalVarDecl("x1", sil.Ref)()
-    val t0 = sil.Predicate("t0", Seq(x0), Some(sil.NeCmp(x0.localVar, sil.NullLit()())()))()
-    val t1 = sil.Predicate("t1", Seq(x0, x1), Some(sil.NeCmp(x0.localVar, x1.localVar)()))()
+    val x0 = ast.LocalVarDecl("x0", ast.Ref)()
+    val x1 = ast.LocalVarDecl("x1", ast.Ref)()
+    val t0 = ast.Predicate("t0", Seq(x0), Some(ast.NeCmp(x0.localVar, ast.NullLit()())()))()
+    val t1 = ast.Predicate("t1", Seq(x0, x1), Some(ast.NeCmp(x0.localVar, x1.localVar)()))()
     Seq(t0, t1)
   }
 
@@ -61,7 +61,7 @@ class Inference(program: sil.Program) {
     * @param arguments The arguments.
     * @return The instantiated atomic predicates.
     */
-  def instantiateAtoms(arguments: Seq[sil.Exp]): Seq[sil.Exp] =
+  def instantiateAtoms(arguments: Seq[ast.Exp]): Seq[ast.Exp] =
     templates.flatMap { template =>
       template.formalArgs.length match {
         case 1 => arguments
@@ -84,41 +84,41 @@ class Inference(program: sil.Program) {
     var specifications: Map[String, Specification] = Map.empty
 
     // helper method to create predicate accessing a specification
-    def create(prefix: String, parameters: Seq[sil.LocalVarDecl]): sil.PredicateAccessPredicate = {
+    def create(prefix: String, parameters: Seq[ast.LocalVarDecl]): ast.PredicateAccessPredicate = {
       // rename parameters
       val renamed =
         if (Settings.renameParameters) parameters
           .zipWithIndex
-          .map { case (parameter, index) => sil.LocalVarDecl(s"x_$index", parameter.typ)() }
+          .map { case (parameter, index) => ast.LocalVarDecl(s"x_$index", parameter.typ)() }
         else parameters
       // create specification
       val name = namespace.uniqueIdentifier(prefix, Some(0))
       val references = renamed
-        .filter { parameter => parameter.typ == sil.Ref }
+        .filter { parameter => parameter.typ == ast.Ref }
         .map { parameter => parameter.localVar }
       val atoms = instantiateAtoms(references)
       val specification = Specification(name, renamed, atoms)
       specifications = specifications.updated(name, specification)
       // predicate access
       val arguments = parameters.map { parameter => parameter.localVar }
-      val access = sil.PredicateAccess(arguments, name)()
-      sil.PredicateAccessPredicate(access, sil.FullPerm()())()
+      val access = ast.PredicateAccess(arguments, name)()
+      ast.PredicateAccessPredicate(access, ast.FullPerm()())()
     }
 
     // labels all positions of the program for which specifications need to be inferred
-    val labeled = program.transformWithContext[Seq[sil.LocalVarDecl]]({
-      case (method: sil.Method, _) =>
+    val labeled = program.transformWithContext[Seq[ast.LocalVarDecl]]({
+      case (method: ast.Method, _) =>
         val variables = method.formalArgs
         val preconditions = create(Names.precondition, variables) +: method.pres
         val postconditions = create(Names.postcondition, variables) +: method.posts
         val transformed = method.copy(pres = preconditions, posts = postconditions)(method.pos, method.info, method.errT)
         (transformed, variables)
-      case (loop: sil.While, variables) =>
+      case (loop: ast.While, variables) =>
         val invariants = create(Names.invariant, variables) +: loop.invs
         val transformed = loop.copy(invs = invariants)(loop.pos, loop.info, loop.errT)
         (transformed, variables)
-      case (sequence: sil.Seqn, variables) =>
-        val declarations = sequence.scopedDecls.collect { case variable: sil.LocalVarDecl => variable }
+      case (sequence: ast.Seqn, variables) =>
+        val declarations = sequence.scopedDecls.collect { case variable: ast.LocalVarDecl => variable }
         (sequence, variables ++ declarations)
     }, Seq.empty, Traverse.TopDown)
 
@@ -153,16 +153,16 @@ class Inference(program: sil.Program) {
     learner.stop()
   }
 
-  def labeled: sil.Program = _labeled
+  def labeled: ast.Program = _labeled
 
-  def predicates(hypothesis: Hypothesis): Seq[sil.Predicate] =
+  def predicates(hypothesis: Hypothesis): Seq[ast.Predicate] =
     allSpecifications
       .filter { specification => Names.isPredicate(specification.name) || !Settings.inline }
       .map { specification =>
         val name = specification.name
         val arguments = specification.parameters
         val body = Some(hypothesis.get(name))
-        sil.Predicate(name, arguments, body)()
+        ast.Predicate(name, arguments, body)()
       }
 
   /**
@@ -189,7 +189,7 @@ class Inference(program: sil.Program) {
     * @param arguments The arguments with which the specifications should be instantiated.
     * @return The instance.
     */
-  def getInstance(name: String, arguments: Seq[sil.Exp]): Instance = {
+  def getInstance(name: String, arguments: Seq[ast.Exp]): Instance = {
     val specification = getSpecification(name)
     Instance(specification, arguments)
   }
@@ -199,7 +199,7 @@ class Inference(program: sil.Program) {
     *
     * @return The annotated program.
     */
-  def annotated(): sil.Program = {
+  def annotated(): ast.Program = {
     val hypothesis = infer(Settings.maxRounds)
     annotateProgram(labeled, hypothesis)
   }
@@ -210,7 +210,7 @@ class Inference(program: sil.Program) {
     * @param program The program to verify.
     * @return The verification result.
     */
-  def verify(program: sil.Program): VerificationResult =
+  def verify(program: ast.Program): VerificationResult =
     verifier.verify(program)
 
   /**
@@ -244,11 +244,11 @@ class Inference(program: sil.Program) {
     * @param hypothesis The hypothesis providing the specifications.
     * @return The annotated program.
     */
-  private def annotateProgram(program: sil.Program, hypothesis: Hypothesis): sil.Program = {
+  private def annotateProgram(program: ast.Program, hypothesis: Hypothesis): ast.Program = {
     // helper method that replaces predicates with the inferred specification
-    def substitute(expression: sil.Exp): sil.Exp =
+    def substitute(expression: ast.Exp): ast.Exp =
       expression match {
-        case sil.PredicateAccessPredicate(predicate, _) =>
+        case ast.PredicateAccessPredicate(predicate, _) =>
           val instance = {
             val name = predicate.predicateName
             val arguments = predicate.args
@@ -277,18 +277,18 @@ class Inference(program: sil.Program) {
         val postconditions = method.posts.map { postcondition => substitute(postcondition) }
         val body = method.body.map { sequence =>
           sequence.transform({
-            case sil.While(condition, invariants, body) =>
+            case ast.While(condition, invariants, body) =>
               val substituted = invariants.map { invariant => substitute(invariant) }
-              sil.While(condition, substituted, body)()
-            case sil.MethodCall(name, _, _) if Names.isAnnotation(name) =>
+              ast.While(condition, substituted, body)()
+            case ast.MethodCall(name, _, _) if Names.isAnnotation(name) =>
               // TODO: Handle annotations.
-              sil.Seqn(Seq.empty, Seq.empty)()
+              ast.Seqn(Seq.empty, Seq.empty)()
           }, Traverse.BottomUp)
         }
         // create annotated method
-        sil.Method(method.name, method.formalArgs, method.formalReturns, preconditions, postconditions, body)()
+        ast.Method(method.name, method.formalArgs, method.formalReturns, preconditions, postconditions, body)()
       }
     // return annotated program
-    sil.Program(program.domains, fields, program.functions, predicates, methods, program.extensions)()
+    ast.Program(program.domains, fields, program.functions, predicates, methods, program.extensions)()
   }
 }

@@ -1,7 +1,7 @@
 package rpi.inference
 
 import rpi.util.Expressions
-import viper.silver.{ast => sil}
+import viper.silver.ast
 
 /**
   * The super trait for all examples.
@@ -29,7 +29,7 @@ case class NegativeExample(record: Record) extends Example
   */
 case class ImplicationExample(left: Record, right: Seq[Record]) extends Example
 
-case class Record(specification: Specification, state: Abstraction, locations: Set[sil.LocationAccess]) {
+case class Record(specification: Specification, state: Abstraction, locations: Set[ast.LocationAccess]) {
   override def toString: String = s"${specification.name}: $state -> {${locations.mkString(", ")}}"
 }
 
@@ -41,7 +41,7 @@ case class Record(specification: Specification, state: Abstraction, locations: S
   * @param locations     The (under-approximate) set of location accesses that can be used to represent the resource for
   *                      which some permissions are required.
   */
-case class Rec(specification: Specification, state: Abstraction, locations: Set[sil.LocationAccess]) {
+case class Rec(specification: Specification, state: Abstraction, locations: Set[ast.LocationAccess]) {
   override def toString: String =
     s"${specification.name}: $state -> ${locations.map { location => s"$location" }.mkString("{", ", ", "}")}"
 }
@@ -52,7 +52,7 @@ case class Rec(specification: Specification, state: Abstraction, locations: Set[
   *
   * TODO: A canonical form for atoms could allow us to recognize equivalent expressions.
   */
-case class Abstraction(values: Map[sil.Exp, Boolean]) {
+case class Abstraction(values: Map[ast.Exp, Boolean]) {
   /**
     * Computes the meet of this and the other abstract state.
     *
@@ -76,7 +76,7 @@ case class Abstraction(values: Map[sil.Exp, Boolean]) {
     * @param atoms The atoms.
     * @return The values of the atoms.
     */
-  def getValues(atoms: Seq[sil.Exp]): Seq[Option[Boolean]] =
+  def getValues(atoms: Seq[ast.Exp]): Seq[Option[Boolean]] =
     atoms.map { atom => values.get(atom) }
 
   override def toString: String =

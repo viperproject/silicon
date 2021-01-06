@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import rpi.{Names, Settings}
 import rpi.inference._
 import rpi.util.{Collections, Expressions}
-import viper.silver.{ast => sil}
+import viper.silver.ast
 
 /**
   * The learner synthesizing the hypotheses.
@@ -73,7 +73,7 @@ class Learner(inference: Inference) {
         .map { case (name, template) =>
           val parameters = template.parameters
           val body = solver.buildBody(template)
-          name -> sil.Predicate(name, parameters, Some(body))()
+          name -> ast.Predicate(name, parameters, Some(body))()
         }
 
       predicates.foreach { predicate => println(predicate) }
@@ -92,7 +92,7 @@ class Learner(inference: Inference) {
         case ImplicationExample(left, right) => left +: right
       }
       // build resource map
-      val empty = Map.empty[String, Set[sil.LocationAccess]]
+      val empty = Map.empty[String, Set[ast.LocationAccess]]
       records.foldLeft(empty) {
         case (map, record) =>
           val name = record.specification.name
@@ -108,7 +108,7 @@ class Learner(inference: Inference) {
         case ((map, global), (name, locations)) =>
           // compute local structure
           val (instances, local) = {
-            val accesses = locations.collect { case access: sil.FieldAccess => access }
+            val accesses = locations.collect { case access: ast.FieldAccess => access }
             Structure.compute(accesses)
           }
           // compute template
@@ -127,7 +127,7 @@ class Learner(inference: Inference) {
     val recursive = {
       // create specification
       val specification = {
-        val parameters = Seq(sil.LocalVarDecl("x", sil.Ref)())
+        val parameters = Seq(ast.LocalVarDecl("x", ast.Ref)())
         val variables = parameters.map { parameter => parameter.localVar }
         val atoms = inference.instantiateAtoms(variables)
         Specification(Names.recursive, parameters, atoms)
@@ -147,33 +147,33 @@ class Learner(inference: Inference) {
     result
   }
 
-  def filterAndSort(accesses: Set[sil.LocationAccess]): Seq[sil.LocationAccess] = {
+  def filterAndSort(accesses: Set[ast.LocationAccess]): Seq[ast.LocationAccess] = {
     val sequence = accesses.toSeq
     // get all field accesses, then filter and sort
     val fields = sequence
-      .collect { case field: sil.FieldAccess => (Expressions.length(field), field) }
+      .collect { case field: ast.FieldAccess => (Expressions.length(field), field) }
       .filter { case (length, _) => length <= Settings.maxLength }
       .sortWith { case ((first, _), (second, _)) => first < second }
       .map { case (_, field) => field }
     // get all predicate accesses
     val predicates = sequence
-      .collect { case predicate: sil.PredicateAccess => predicate }
+      .collect { case predicate: ast.PredicateAccess => predicate }
     // return filtered and ordered accesses
     fields ++ predicates
   }
 }
 
 object Structure {
-  def compute(accesses: Set[sil.FieldAccess]): (Set[sil.PredicateAccess], Structure) = {
-    val empty = Set.empty[sil.PredicateAccess]
+  def compute(accesses: Set[ast.FieldAccess]): (Set[ast.PredicateAccess], Structure) = {
+    val empty = Set.empty[ast.PredicateAccess]
     if (Settings.useRecursion)
       accesses
         .groupBy { access => access.field }
         .flatMap { case (field, group) =>
           // the resource to add to the structure in case there is a recursion
           lazy val resource = {
-            val variable = sil.LocalVar("x", sil.Ref)()
-            sil.FieldAccess(variable, field)()
+            val variable = ast.LocalVar("x", ast.Ref)()
+            ast.FieldAccess(variable, field)()
           }
           // iterate over all pairs of receivers in order to detect potential recursions
           val receivers = group.map { access => toPath(access.rcv) }
@@ -209,23 +209,23 @@ object Structure {
     */
   def bottom: Structure = Structure(Set.empty, Set.empty)
 
-  private def createInstance(path: Seq[String]): sil.PredicateAccess = {
+  private def createInstance(path: Seq[String]): ast.PredicateAccess = {
     val arguments = Seq(fromPath(path))
-    sil.PredicateAccess(arguments, "R")()
+    ast.PredicateAccess(arguments, "R")()
   }
 
-  private def toPath(expression: sil.Exp): Seq[String] =
+  private def toPath(expression: ast.Exp): Seq[String] =
     expression match {
-      case sil.LocalVar(name, _) => Seq(name)
-      case sil.FieldAccess(receiver, sil.Field(name, _)) => toPath(receiver) :+ name
+      case ast.LocalVar(name, _) => Seq(name)
+      case ast.FieldAccess(receiver, ast.Field(name, _)) => toPath(receiver) :+ name
     }
 
-  private def fromPath(path: Seq[String]): sil.Exp = {
-    val variable: sil.Exp = sil.LocalVar(path.head, sil.Ref)()
+  private def fromPath(path: Seq[String]): ast.Exp = {
+    val variable: ast.Exp = ast.LocalVar(path.head, ast.Ref)()
     path.tail.foldLeft(variable) {
       case (result, name) =>
-        val field = sil.Field(name, sil.Ref)()
-        sil.FieldAccess(result, field)()
+        val field = ast.Field(name, ast.Ref)()
+        ast.FieldAccess(result, field)()
     }
   }
 
@@ -238,7 +238,7 @@ object Structure {
     }
 }
 
-case class Structure(resources: Set[sil.FieldAccess], recursions: Set[sil.PredicateAccess]) {
+case class Structure(resources: Set[ast.FieldAccess], recursions: Set[ast.PredicateAccess]) {
   def join(other: Structure): Structure = {
     val combinedResources = resources ++ other.resources
     val combinedRecursions = recursions ++ other.recursions
@@ -246,7 +246,7 @@ case class Structure(resources: Set[sil.FieldAccess], recursions: Set[sil.Predic
   }
 }
 
-case class Guarded(id: Int, access: sil.LocationAccess)
+case class Guarded(id: Int, access: ast.LocationAccess)
 
 /**
   * A template for a specification that needs to be inferred.
@@ -267,14 +267,14 @@ case class Template(specification: Specification, accesses: Seq[Guarded]) {
     *
     * @return The parameters.
     */
-  def parameters: Seq[sil.LocalVarDecl] = specification.parameters
+  def parameters: Seq[ast.LocalVarDecl] = specification.parameters
 
   /**
     * Returns the atomic predicates that may be used for the specification.
     *
     * @return The atomic predicates.
     */
-  def atoms: Seq[sil.Exp] = specification.atoms
+  def atoms: Seq[ast.Exp] = specification.atoms
 
   override def toString: String = {
     val list = parameters

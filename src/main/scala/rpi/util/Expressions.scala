@@ -1,7 +1,7 @@
 package rpi.util
 
+import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.{ast => sil}
 
 /**
   * Some utility methods for silver expressions.
@@ -13,10 +13,10 @@ object Expressions {
     * @param access The access path.
     * @return The length of the access path.
     */
-  def length(access: sil.FieldAccess): Int =
+  def length(access: ast.FieldAccess): Int =
     access.rcv match {
-      case _: sil.LocalVar => 2
-      case receiver: sil.FieldAccess => length(receiver) + 1
+      case _: ast.LocalVar => 2
+      case receiver: ast.FieldAccess => length(receiver) + 1
       case _ => ??? // should not occur
     }
 
@@ -27,7 +27,7 @@ object Expressions {
     * @param arguments The arguments.
     * @return The instantiated predicate.
     */
-  def instantiate(predicate: sil.Predicate, arguments: Seq[sil.Exp]): sil.Exp =
+  def instantiate(predicate: ast.Predicate, arguments: Seq[ast.Exp]): ast.Exp =
     predicate.body match {
       case Some(body) =>
         val map = computeMap(predicate.formalArgs, arguments)
@@ -35,15 +35,15 @@ object Expressions {
       case _ => ???
     }
 
-  def computeMap(parameters: Seq[sil.LocalVarDecl], arguments: Seq[sil.Exp]): Map[String, sil.Exp] =
+  def computeMap(parameters: Seq[ast.LocalVarDecl], arguments: Seq[ast.Exp]): Map[String, ast.Exp] =
     parameters
       .map { parameter => parameter.name }
       .zip(arguments)
       .toMap
 
-  def substitute(expression: sil.Exp, map: Map[String, sil.Exp]): sil.Exp =
+  def substitute(expression: ast.Exp, map: Map[String, ast.Exp]): ast.Exp =
     expression.transform {
-      case sil.LocalVar(name, _) => map(name)
+      case ast.LocalVar(name, _) => map(name)
     }
 
   /**
@@ -52,10 +52,10 @@ object Expressions {
     * @param expressions The expressions.
     * @return The conjunction.
     */
-  def bigAnd(expressions: Iterable[sil.Exp]): sil.Exp =
+  def bigAnd(expressions: Iterable[ast.Exp]): ast.Exp =
     expressions
-      .reduceOption(sil.And(_, _)())
-      .getOrElse(sil.TrueLit()())
+      .reduceOption(ast.And(_, _)())
+      .getOrElse(ast.TrueLit()())
 
   /**
     * Returns the disjunction of the given expressions.
@@ -63,10 +63,10 @@ object Expressions {
     * @param expressions The expressions.
     * @return The disjunction.
     */
-  def bigOr(expressions: Iterable[sil.Exp]): sil.Exp =
+  def bigOr(expressions: Iterable[ast.Exp]): ast.Exp =
     expressions
-      .reduceOption(sil.Or(_, _)())
-      .getOrElse(sil.FalseLit()())
+      .reduceOption(ast.Or(_, _)())
+      .getOrElse(ast.FalseLit()())
 
   /**
     * Negates the given expression.
@@ -74,19 +74,19 @@ object Expressions {
     * @param expression The expression to negate.
     * @return The negated expression.
     */
-  def not(expression: sil.Exp): sil.Exp =
+  def not(expression: ast.Exp): ast.Exp =
     expression match {
-      case sil.Not(argument) => argument
-      case sil.EqCmp(left, right) => sil.NeCmp(left, right)()
-      case sil.NeCmp(left, right) => sil.EqCmp(left, right)()
-      case _ => sil.Not(expression)()
+      case ast.Not(argument) => argument
+      case ast.EqCmp(left, right) => ast.NeCmp(left, right)()
+      case ast.NeCmp(left, right) => ast.EqCmp(left, right)()
+      case _ => ast.Not(expression)()
     }
 
-  def and(left: sil.Exp, right: sil.Exp): sil.Exp =
-    sil.And(left, right)()
+  def and(left: ast.Exp, right: ast.Exp): ast.Exp =
+    ast.And(left, right)()
 
-  def implies(left: sil.Exp, right: sil.Exp): sil.Exp =
-    sil.Implies(left, right)()
+  def implies(left: ast.Exp, right: ast.Exp): ast.Exp =
+    ast.Implies(left, right)()
 
   /**
     * Simplifies the given expression.
@@ -94,7 +94,7 @@ object Expressions {
     * @param expression The expression to simplify.
     * @return The simplified expression.
     */
-  def simplify(expression: sil.Exp): sil.Exp =
+  def simplify(expression: ast.Exp): ast.Exp =
     expression.transform({ case node => simplification(node) }, Traverse.BottomUp)
 
   /**
@@ -103,28 +103,28 @@ object Expressions {
     * @param expression The expression to simplify.
     * @return The simplified expression.
     */
-  def simplification(expression: sil.Node): sil.Node =
+  def simplification(expression: ast.Node): ast.Node =
     expression match {
       // simplify conjunction
-      case sil.And(left, right) => (left, right) match {
-        case (sil.TrueLit(), _) => right
-        case (_, sil.TrueLit()) => left
-        case (sil.FalseLit(), _) => sil.FalseLit()()
-        case (_, sil.FalseLit()) => sil.FalseLit()()
+      case ast.And(left, right) => (left, right) match {
+        case (ast.TrueLit(), _) => right
+        case (_, ast.TrueLit()) => left
+        case (ast.FalseLit(), _) => ast.FalseLit()()
+        case (_, ast.FalseLit()) => ast.FalseLit()()
         case _ => expression
       }
       // simplify disjunction
-      case sil.Or(left, right) => (left, right) match {
-        case (sil.TrueLit(), _) => sil.TrueLit()()
-        case (_, sil.TrueLit()) => sil.TrueLit()()
-        case (sil.FalseLit(), _) => right
-        case (_, sil.FalseLit()) => left
+      case ast.Or(left, right) => (left, right) match {
+        case (ast.TrueLit(), _) => ast.TrueLit()()
+        case (_, ast.TrueLit()) => ast.TrueLit()()
+        case (ast.FalseLit(), _) => right
+        case (_, ast.FalseLit()) => left
         case _ => expression
       }
       // simplify implication
-      case sil.Implies(left, right) => (left, right) match {
-        case (sil.TrueLit(), _) => right
-        case (sil.FalseLit(), _) => sil.TrueLit()()
+      case ast.Implies(left, right) => (left, right) match {
+        case (ast.TrueLit(), _) => right
+        case (ast.FalseLit(), _) => ast.TrueLit()()
         case _ => expression
       }
       // do nothing by default

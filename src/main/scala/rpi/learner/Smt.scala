@@ -5,7 +5,7 @@ import fastparse.Parsed
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.Paths
 import rpi.Main
-import viper.silver.{ast => sil}
+import viper.silver.ast
 import viper.silver.verifier.{ModelParser, ConstantEntry}
 
 class Smt {
@@ -118,7 +118,7 @@ class Smt {
     }
   }
 
-  def solve(constraints: Seq[sil.Exp]): Map[String, Boolean] = {
+  def solve(constraints: Seq[ast.Exp]): Map[String, Boolean] = {
     emitCheck(constraints)
     readResponse() match {
       case "sat" => readModel()
@@ -128,13 +128,13 @@ class Smt {
     }
   }
 
-  def emitCheck(constraints: Seq[sil.Exp]): Unit = {
+  def emitCheck(constraints: Seq[ast.Exp]): Unit = {
     // enter new scope
     writeLine("(push)")
     // declare variables
     constraints
       .flatMap { constraint =>
-        constraint.collect { case variable: sil.LocalVar => variable.name }
+        constraint.collect { case variable: ast.LocalVar => variable.name }
       }
       .distinct
       .foreach { name: String => writeLine(s"(declare-const $name Bool)") }
@@ -149,15 +149,15 @@ class Smt {
     writeLine("(pop)")
   }
 
-  def convert(exp: sil.Exp): String = exp match {
-    case sil.TrueLit() => "true"
-    case sil.FalseLit() => "false"
-    case sil.LocalVar(name, _) => name
-    case sil.Not(arg) => s"(not ${convert(arg)})"
-    case sil.And(left, right) => s"(and ${convert(left)} ${convert(right)})"
-    case sil.Or(left, right) => s"(or ${convert(left)} ${convert(right)})"
-    case sil.Implies(left, right) => s"(=> ${convert(left)} ${convert(right)})"
-    case sil.EqCmp(left, right) => s"(= ${convert(left)} ${convert(right)})"
+  def convert(exp: ast.Exp): String = exp match {
+    case ast.TrueLit() => "true"
+    case ast.FalseLit() => "false"
+    case ast.LocalVar(name, _) => name
+    case ast.Not(arg) => s"(not ${convert(arg)})"
+    case ast.And(left, right) => s"(and ${convert(left)} ${convert(right)})"
+    case ast.Or(left, right) => s"(or ${convert(left)} ${convert(right)})"
+    case ast.Implies(left, right) => s"(=> ${convert(left)} ${convert(right)})"
+    case ast.EqCmp(left, right) => s"(= ${convert(left)} ${convert(right)})"
     case _ => ???
   }
 }

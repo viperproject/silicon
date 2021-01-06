@@ -53,7 +53,7 @@ object Settings {
 
   val inline = true
 
-  val batch = false
+  val batch = true
 
   /**
     * The flag indicating whether silicons branching should be used to concretize values of atomic predicates.

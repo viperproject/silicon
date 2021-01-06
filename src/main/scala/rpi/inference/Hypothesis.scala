@@ -1,18 +1,18 @@
 package rpi.inference
 
-import viper.silver.{ast => sil}
+import viper.silver.ast
 
 /**
   * A hypothesis.
   */
-case class Hypothesis(predicates: Map[String, sil.Predicate]) {
-  def get(name: String): sil.Exp =
+case class Hypothesis(predicates: Map[String, ast.Predicate]) {
+  def get(name: String): ast.Exp =
     predicates
       .get(name)
       .flatMap { predicate => predicate.body }
-      .getOrElse(sil.TrueLit()())
+      .getOrElse(ast.TrueLit()())
 
-  def get(instance: Instance): sil.Exp = {
+  def get(instance: Instance): ast.Exp = {
     val body = get(instance.name)
     instance.toActual(body)
   }

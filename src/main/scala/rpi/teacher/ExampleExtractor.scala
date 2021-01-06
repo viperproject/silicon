@@ -6,9 +6,9 @@ import rpi.util.{Collections, UnionFind}
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silicon.state._
 import viper.silicon.state.terms.Term
+import viper.silver.ast
 import viper.silver.verifier._
 import viper.silver.verifier.reasons.InsufficientPermission
-import viper.silver.{ast => sil}
 
 import scala.reflect.ClassTag
 
@@ -221,7 +221,7 @@ class ExampleExtractor(teacher: Teacher) {
     * @tparam T The type of the context information.
     * @return The extracted information.
     */
-  private def extractInformation[T <: ContextInfo : ClassTag](error: VerificationError): (Counter, sil.LocationAccess, Option[T]) = {
+  private def extractInformation[T <: ContextInfo : ClassTag](error: VerificationError): (Counter, ast.LocationAccess, Option[T]) = {
     // extract counter example
     val counter = error.counterexample match {
       case Some(value: Counter) => value
@@ -234,7 +234,7 @@ class ExampleExtractor(teacher: Teacher) {
     }
     // extract context info
     val info = error.offendingNode match {
-      case node: sil.Infoed => node.info.getUniqueInfo[T]
+      case node: ast.Infoed => node.info.getUniqueInfo[T]
       case _ => None
     }
     // return information
@@ -386,13 +386,13 @@ class ExampleExtractor(teacher: Teacher) {
       * @param expression The expression to evaluate.
       * @return The resulting term.
       */
-    def toTerm(expression: sil.Exp): Term =
+    def toTerm(expression: ast.Exp): Term =
       expression match {
-        case sil.LocalVar(variable, _) =>
+        case ast.LocalVar(variable, _) =>
           // look up the version of the variable corresponding to this state
           val name = if (label == "current") variable else s"${label}_$variable"
           store(name)
-        case sil.FieldAccess(receiver, field) =>
+        case ast.FieldAccess(receiver, field) =>
           heap(toTerm(receiver))(field.name)
       }
 
@@ -484,22 +484,22 @@ class ExampleExtractor(teacher: Teacher) {
   }
 
   private case class Adaptor(current: State, reachability: Reachability) {
-    def adapt(expression: sil.Exp): Set[sil.Exp] =
+    def adapt(expression: ast.Exp): Set[ast.Exp] =
       expression match {
-        case _: sil.LocalVar | _: sil.FieldAccess => adaptPath(expression)
-        case _: sil.NullLit => Set(expression)
-        case sil.EqCmp(left, right) => for (l <- adapt(left); r <- adapt(right)) yield sil.EqCmp(l, r)()
-        case sil.NeCmp(left, right) => for (l <- adapt(left); r <- adapt(right)) yield sil.NeCmp(l, r)()
+        case _: ast.LocalVar | _: ast.FieldAccess => adaptPath(expression)
+        case _: ast.NullLit => Set(expression)
+        case ast.EqCmp(left, right) => for (l <- adapt(left); r <- adapt(right)) yield ast.EqCmp(l, r)()
+        case ast.NeCmp(left, right) => for (l <- adapt(left); r <- adapt(right)) yield ast.NeCmp(l, r)()
       }
 
-    def adaptLocation(location: sil.LocationAccess): Set[sil.LocationAccess] =
+    def adaptLocation(location: ast.LocationAccess): Set[ast.LocationAccess] =
       location match {
-        case sil.FieldAccess(receiver, field) =>
-          adapt(receiver).map { adapted => sil.FieldAccess(adapted, field)() }
-        case sil.PredicateAccess(arguments, name) =>
+        case ast.FieldAccess(receiver, field) =>
+          adapt(receiver).map { adapted => ast.FieldAccess(adapted, field)() }
+        case ast.PredicateAccess(arguments, name) =>
           Collections
             .product(arguments.map { argument => adapt(argument) })
-            .map { combination => sil.PredicateAccess(combination, name)() }
+            .map { combination => ast.PredicateAccess(combination, name)() }
       }
 
     def adaptState(state: Abstraction): Abstraction = {
@@ -517,7 +517,7 @@ class ExampleExtractor(teacher: Teacher) {
       * @param path The path to adapt.
       * @return The set of expressions describing the given path in the target state.
       */
-    private def adaptPath(path: sil.Exp): Set[sil.Exp] = {
+    private def adaptPath(path: ast.Exp): Set[ast.Exp] = {
       val term = current.toTerm(path)
       reachability.get(term)
     }
@@ -539,7 +539,7 @@ class ExampleExtractor(teacher: Teacher) {
       */
     private val map = recurse(initial, steps = 3)
 
-    def get(term: Term): Set[sil.Exp] =
+    def get(term: Term): Set[ast.Exp] =
       map.getOrElse(term, Set.empty)
 
     /**
@@ -547,11 +547,11 @@ class ExampleExtractor(teacher: Teacher) {
       *
       * @return The initial reachability map.
       */
-    private def initial: Map[Term, Set[sil.Exp]] =
+    private def initial: Map[Term, Set[ast.Exp]] =
       instance
         .arguments
         .zip(instance.parameters)
-        .foldLeft(Map.empty[Term, Set[sil.Exp]]) {
+        .foldLeft(Map.empty[Term, Set[ast.Exp]]) {
           case (result, (argument, parameter)) =>
             val value = state.toTerm(argument)
             val existing = result.getOrElse(value, Set.empty)
@@ -565,23 +565,23 @@ class ExampleExtractor(teacher: Teacher) {
       * @param steps The number of steps.
       * @return The reachability map.
       */
-    private def recurse(map: Map[Term, Set[sil.Exp]], steps: Int): Map[Term, Set[sil.Exp]] =
+    private def recurse(map: Map[Term, Set[ast.Exp]], steps: Int): Map[Term, Set[ast.Exp]] =
       if (steps == 0) map
       else {
         // compute next step of the reachability map
-        val empty = Map.empty[Term, Set[sil.Exp]]
+        val empty = Map.empty[Term, Set[ast.Exp]]
         val next = map.foldLeft(empty) {
           case (map1, (term, paths)) =>
             state.heap.getOrElse(term, Map.empty).foldLeft(map1) {
               case (map2, (name, value)) =>
-                val field = sil.Field(name, sil.Ref)()
-                val extended = paths.map { path => sil.FieldAccess(path, field)() }
+                val field = ast.Field(name, ast.Ref)()
+                val extended = paths.map { path => ast.FieldAccess(path, field)() }
                 val set = map2.getOrElse(value, Set.empty) ++ extended
                 map2.updated(value, set)
             }
         }
         // recurse and combine results
-        Collections.combine[Term, Set[sil.Exp]](map, recurse(next, steps - 1), _ ++ _)
+        Collections.combine[Term, Set[ast.Exp]](map, recurse(next, steps - 1), _ ++ _)
       }
   }
 

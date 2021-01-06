@@ -1,0 +1,42 @@
+field n: Ref
+
+method foo(a: Ref, b1: Bool, b2: Bool)
+{
+    if (b1) {
+        bar(a)
+    } else {
+        bar(a)
+    }
+    if (b2) {
+        quo(a, a)
+    } else {
+        bar(a)
+    }
+    exhale acc(a.n)
+}
+
+method bar(a: Ref)
+{
+    a.n := null
+}
+
+method quo(a: Ref, b: Ref)
+{
+}
+
+/* method main(a: Ref)
+{
+    var c: Ref
+    c := a
+    while (c != null)
+    {
+        __unfoldDown__(c)
+        c := c.n
+    }
+    c := a
+    while (c != null)
+    {
+        __unfoldDown__(c)
+        c := c.n
+    }
+}*/

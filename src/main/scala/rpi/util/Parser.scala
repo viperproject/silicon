@@ -4,8 +4,8 @@ import fastparse.Parsed
 
 import java.nio.file.{Files, Paths}
 import rpi.Names
+import viper.silver.ast
 import viper.silver.parser._
-import viper.silver.{ast => sil}
 
 import scala.io.Source
 
@@ -19,7 +19,7 @@ object Parser {
     * @param file The file to parse.
     * @return The parsed program.
     */
-  def parse(file: String): sil.Program =
+  def parse(file: String): ast.Program =
     parseOption(file).get
 
   /**
@@ -28,7 +28,7 @@ object Parser {
     * @param file The file to parse.
     * @return The parsed program.
     */
-  def parseOption(file: String): Option[sil.Program] = {
+  def parseOption(file: String): Option[ast.Program] = {
     // read input
     val path = Paths.get(file)
     val stream = Files.newInputStream(path)
@@ -63,8 +63,8 @@ object Parser {
     input.copy(methods = methods)(input.pos)
   }
 
-  private def afterTranslating(input: sil.Program): sil.Program = {
+  private def afterTranslating(input: ast.Program): ast.Program = {
     val methods = input.methods.filter { method => !Names.isAnnotation(method.name) }
-    sil.Program(input.domains, input.fields, input.functions, input.predicates, methods, input.extensions)()
+    ast.Program(input.domains, input.fields, input.functions, input.predicates, methods, input.extensions)()
   }
 }

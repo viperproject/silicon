@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import rpi.Settings
 import rpi.inference._
 import rpi.util.{Collections, Expressions}
-import viper.silver.{ast => sil}
+import viper.silver.ast
 
 class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
   // import utility methods
@@ -19,9 +19,9 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * of guards. The guards are represented by their id and which atomic predicates of the context correspond to the
     * atomic predicates of the guard.
     */
-  private type Guard = Seq[Seq[(Int, Seq[sil.Exp])]]
+  private type Guard = Seq[Seq[(Int, Seq[ast.Exp])]]
 
-  private val guards: Map[String, Map[sil.LocationAccess, Guard]] = {
+  private val guards: Map[String, Map[ast.LocationAccess, Guard]] = {
     // compute effective guards.
     val result = templates
       .map { case (name, template) =>
@@ -59,7 +59,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @param examples The examples to encode.
     * @return The constraints representing the encodings of the examples.
     */
-  def encodeExamples(examples: Seq[Example]): Seq[sil.Exp] =
+  def encodeExamples(examples: Seq[Example]): Seq[ast.Exp] =
     examples.flatMap { example => encodeExample(example) }
 
   /**
@@ -68,7 +68,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @param example The example to encode.
     * @return The constraints representing the encoding of the example.
     */
-  def encodeExample(example: Example): Seq[sil.Exp] =
+  def encodeExample(example: Example): Seq[ast.Exp] =
     example match {
       case PositiveExample(records) =>
         val (encoding, constraints) = encodeRecords(records, default = false)
@@ -89,37 +89,37 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @param default The default value to assume for unknown atoms (approximation).
     * @return A tuple holding the encoding and a sequence of global constraints.
     */
-  private def encodeRecords(records: Seq[Record], default: Boolean): (sil.Exp, Seq[sil.Exp]) = {
+  private def encodeRecords(records: Seq[Record], default: Boolean): (ast.Exp, Seq[ast.Exp]) = {
     // method used to introduce auxiliary variables
-    def auxiliary(expression: sil.Exp): (sil.LocalVar, sil.Exp) = {
+    def auxiliary(expression: ast.Exp): (ast.LocalVar, ast.Exp) = {
       val name = s"t_${unique.getAndIncrement}"
-      val variable = sil.LocalVar(name, sil.Bool)()
-      val equality = sil.EqCmp(variable, expression)()
+      val variable = ast.LocalVar(name, ast.Bool)()
+      val equality = ast.EqCmp(variable, expression)()
       (variable, equality)
     }
 
     // method used to introduce auxiliary variables.
-    def auxiliaries(expressions: Iterable[sil.Exp]): (Seq[sil.LocalVar], Seq[sil.Exp]) =
+    def auxiliaries(expressions: Iterable[ast.Exp]): (Seq[ast.LocalVar], Seq[ast.Exp]) =
       expressions
-        .foldLeft((Seq.empty[sil.LocalVar], Seq.empty[sil.Exp])) {
+        .foldLeft((Seq.empty[ast.LocalVar], Seq.empty[ast.Exp])) {
           case ((variables, equalities), expression) =>
             val (variable, equality) = auxiliary(expression)
             (variables :+ variable, equalities :+ equality)
         }
 
     // method used to encode that at most one choice should be picked.
-    def atMost(expressions: Seq[sil.Exp]): sil.Exp = {
+    def atMost(expressions: Seq[ast.Exp]): ast.Exp = {
       val constraints = Collections
         .pairs(expressions)
         .map { case (first, second) =>
-          sil.Not(sil.And(first, second)())()
+          ast.Not(ast.And(first, second)())()
         }
       bigAnd(constraints)
     }
 
     // collect encodings and constraints
     val (variables, constraints) = {
-      val empty = Seq.empty[sil.Exp]
+      val empty = Seq.empty[ast.Exp]
       records.foldLeft((empty, empty)) {
         case ((variables, constraints), record) =>
           // get guards
@@ -158,14 +158,14 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
       * @param encodings The encodings corresponding to the records.
       * @return The resulting encoding.
       */
-    def ensureFraming(encodings: Seq[sil.Exp]): (sil.Exp, sil.Exp) =
+    def ensureFraming(encodings: Seq[ast.Exp]): (ast.Exp, ast.Exp) =
       encodings match {
         case inhaled +: exhaled +: rest =>
           val (innerEncoding, innerCondition) = ensureFraming(rest)
-          val condition = sil.And(sil.Not(exhaled)(), innerCondition)()
-          val encoding = sil.Or(sil.And(inhaled, condition)(), innerEncoding)()
+          val condition = ast.And(ast.Not(exhaled)(), innerCondition)()
+          val encoding = ast.Or(ast.And(inhaled, condition)(), innerEncoding)()
           (encoding, condition)
-        case Seq(inhaled) => (inhaled, sil.TrueLit()())
+        case Seq(inhaled) => (inhaled, ast.TrueLit()())
       }
 
     val encoding =
@@ -183,29 +183,29 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @param default The default value to assume for unknown atoms (approximation).
     * @return The encoding.
     */
-  private def encodeState(id: Int, values: Seq[Option[Boolean]], default: Boolean): sil.Exp = {
+  private def encodeState(id: Int, values: Seq[Option[Boolean]], default: Boolean): ast.Exp = {
     // encode clauses
     val clauses = for (j <- 0 until Settings.maxClauses) yield {
-      val clauseActivation = sil.LocalVar(s"x_${id}_$j", sil.Bool)()
+      val clauseActivation = ast.LocalVar(s"x_${id}_$j", ast.Bool)()
       val clauseEncoding = {
         // encode literals
         val literals = values
           .zipWithIndex
           .map { case (value, i) =>
-            val literalActivation = sil.LocalVar(s"y_${id}_${i}_$j", sil.Bool)()
+            val literalActivation = ast.LocalVar(s"y_${id}_${i}_$j", ast.Bool)()
             val literalEncoding = value match {
               case Some(sign) =>
-                val variable = sil.LocalVar(s"s_${id}_${i}_$j", sil.Bool)()
-                if (sign) variable else sil.Not(variable)()
+                val variable = ast.LocalVar(s"s_${id}_${i}_$j", ast.Bool)()
+                if (sign) variable else ast.Not(variable)()
               case None =>
-                if (default) sil.TrueLit()() else sil.FalseLit()()
+                if (default) ast.TrueLit()() else ast.FalseLit()()
             }
-            sil.Implies(literalActivation, literalEncoding)()
+            ast.Implies(literalActivation, literalEncoding)()
           }
         // conjoin all literals
         Expressions.bigAnd(literals)
       }
-      sil.And(clauseActivation, clauseEncoding)()
+      ast.And(clauseActivation, clauseEncoding)()
     }
     // return disjunction of clauses
     Expressions.bigOr(clauses)
@@ -219,8 +219,8 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @param depth    The depth.
     * @return The collected effective guards.
     */
-  private def collectGuards(template: Template, view: View, depth: Int): Map[sil.LocationAccess, Guard] = {
-    val empty = Map.empty[sil.LocationAccess, Guard]
+  private def collectGuards(template: Template, view: View, depth: Int): Map[ast.LocationAccess, Guard] = {
+    val empty = Map.empty[ast.LocationAccess, Guard]
     if (depth == 0) empty
     else {
       // get and adapt atoms
@@ -232,15 +232,15 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
         .accesses
         .foldLeft(empty) {
           case (result, Guarded(id, access)) => access match {
-            case sil.FieldAccess(receiver, field) =>
+            case ast.FieldAccess(receiver, field) =>
               // update guard of field access
-              val adapted = sil.FieldAccess(view.adapt(receiver), field)()
+              val adapted = ast.FieldAccess(view.adapt(receiver), field)()
               val guard = result.getOrElse(adapted, Seq.empty) :+ Seq((id, atoms))
               result.updated(adapted, guard)
-            case sil.PredicateAccess(arguments, name) =>
+            case ast.PredicateAccess(arguments, name) =>
               // update guard of predicate access
               val adaptedArguments = arguments.map { argument => view.adapt(argument) }
-              val adapted = sil.PredicateAccess(adaptedArguments, name)()
+              val adapted = ast.PredicateAccess(adaptedArguments, name)()
               val guard = result.getOrElse(adapted, Seq.empty) :+ Seq((id, atoms))
               val updated = result.updated(adapted, guard)
               // process nested accesses
@@ -261,7 +261,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     def empty: View =
       View(Map.empty)
 
-    def create(template: Template, arguments: Seq[sil.Exp]): View = {
+    def create(template: Template, arguments: Seq[ast.Exp]): View = {
       val names = template
         .specification
         .parameters
@@ -270,13 +270,13 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     }
   }
 
-  case class View(map: Map[String, sil.Exp]) {
+  case class View(map: Map[String, ast.Exp]) {
     def isEmpty: Boolean = map.isEmpty
 
-    def adapt(expression: sil.Exp): sil.Exp =
+    def adapt(expression: ast.Exp): ast.Exp =
       if (isEmpty) expression
       else expression.transform {
-        case sil.LocalVar(name, _) => map(name)
+        case ast.LocalVar(name, _) => map(name)
       }
   }
 
