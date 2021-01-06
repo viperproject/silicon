@@ -123,8 +123,17 @@ object Templates {
       }
       learner.addSpecification(specification)
       // create template
-      // TODO: Make sure recursions appear as fields as well!
-      val accesses: Set[ast.LocationAccess] = structure.fields ++ structure.recursions
+      val accesses: Set[ast.LocationAccess] = {
+        // get fields and recursions
+        val fields = structure.fields
+        val recursions = structure.recursions
+        // make sure there is a way to frame arguments of recursions
+        val framed = recursions
+          .flatMap { recursion =>
+            recursion.args.collect { case field: ast.FieldAccess => field }
+          }
+        fields ++ framed ++ recursions
+      }
       createTemplate(specification, accesses)
     }
 
