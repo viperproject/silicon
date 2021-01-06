@@ -8,8 +8,8 @@ package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.interfaces.Converter
-import viper.silicon.state.{Store, Heap, State}
-import viper.silver.verifier.{Counterexample, Model, VerificationError, SingleEntry}
+import viper.silicon.state.{Store, State}
+import viper.silver.verifier.{Counterexample, Model, VerificationError}
 import viper.silicon.state.terms.Term
 
 /*
@@ -114,18 +114,19 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
   }
 }
 
-case class SiliconMappedCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps, nativemodel: Model) extends SiliconCounterexample {
-  val converter = Converter(nativemodel, internalStore, heap, oldHeaps)
+case class SiliconMappedCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps, nativeModel: Model) extends SiliconCounterexample {
+  
+  val converter = Converter(nativeModel, internalStore, heap, oldHeaps)
+  
+  val model : Model = nativeModel
   
   override def toString = {
-    var buf : String = ""
-    buf += converter.modelAtLabel.map(x => "model at label: " + x._1 + "\n" + x._2.toString).mkString("\n")
-    buf += "\nfinally: \n" + converter.extractedModel.toString
-    buf
+    val buf = converter.modelAtLabel.map(x => s"model at label: ${x._1}\n${x._2.toString}").mkString("\n")
+    s"$buf\non return: \n${converter.extractedModel.toString}"
   }
-  val model : Model = nativemodel
-  override def withStore(s: Store) : SiliconCounterexample = {
-    SiliconMappedCounterexample(s, heap, oldHeaps, nativemodel)
+  
+  override def withStore(s: Store): SiliconCounterexample = {
+    SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel)
   }
 }
 
