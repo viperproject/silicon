@@ -423,6 +423,8 @@ class ExampleExtractor(teacher: Teacher) {
       term match {
         case terms.NoPerm() => 0.0
         case terms.FullPerm() => 1.0
+        case terms.PermPlus(left, right) =>
+          evaluatePermission(left) + evaluatePermission(right)
         case terms.Ite(condition, left, right) =>
           if (evaluateBoolean(condition)) evaluatePermission(left)
           else evaluatePermission(right)
