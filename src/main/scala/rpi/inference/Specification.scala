@@ -10,7 +10,10 @@ import viper.silver.ast
   * @param parameters The parameters for the specification.
   * @param atoms      The atomic predicates that may be used for the specification.
   */
-case class Specification(name: String, parameters: Seq[ast.LocalVarDecl], atoms: Seq[ast.Exp])
+case class Specification(name: String, parameters: Seq[ast.LocalVarDecl], atoms: Seq[ast.Exp]) {
+  override def toString: String =
+    s"$name(${parameters.map(_.name).mkString(", ")})"
+}
 
 /**
   * An instance of a specification that needs to be inferred.

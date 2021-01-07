@@ -19,9 +19,9 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * of guards. The guards are represented by their id and which atomic predicates of the context correspond to the
     * atomic predicates of the guard.
     */
-  private type Guard = Seq[Seq[(Int, Seq[ast.Exp])]]
+  private type Effective = Seq[Seq[(Int, Seq[ast.Exp])]]
 
-  private val guards: Map[String, Map[ast.LocationAccess, Guard]] = {
+  private val guards: Map[String, Map[ast.LocationAccess, Effective]] = {
     // compute effective guards.
     val result = templates
       .map { case (name, template) =>
@@ -219,8 +219,8 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @param depth    The depth.
     * @return The collected effective guards.
     */
-  private def collectGuards(template: Template, view: View, depth: Int): Map[ast.LocationAccess, Guard] = {
-    val empty = Map.empty[ast.LocationAccess, Guard]
+  private def collectGuards(template: Template, view: View, depth: Int): Map[ast.LocationAccess, Effective] = {
+    val empty = Map.empty[ast.LocationAccess, Effective]
     if (depth == 0) empty
     else {
       // get and adapt atoms
@@ -229,30 +229,32 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
         .map { atom => view.adapt(atom) }
       // process accesses
       template
-        .accesses
+        .body
         .foldLeft(empty) {
-          case (result, Guarded(id, access)) => access match {
-            case ast.FieldAccess(receiver, field) =>
-              // update guard of field access
-              val adapted = ast.FieldAccess(view.adapt(receiver), field)()
-              val guard = result.getOrElse(adapted, Seq.empty) :+ Seq((id, atoms))
-              result.updated(adapted, guard)
-            case ast.PredicateAccess(arguments, name) =>
-              // update guard of predicate access
-              val adaptedArguments = arguments.map { argument => view.adapt(argument) }
-              val adapted = ast.PredicateAccess(adaptedArguments, name)()
-              val guard = result.getOrElse(adapted, Seq.empty) :+ Seq((id, atoms))
-              val updated = result.updated(adapted, guard)
-              // process nested accesses
-              val innerTemplate = templates(name)
-              val innerView = View.create(innerTemplate, adaptedArguments)
-              collectGuards(innerTemplate, innerView, depth - 1).foldLeft(updated) {
-                case (innerResult, (innerAccess, innerGuard)) =>
-                  val mappedGuard = innerGuard.map { choice => choice :+ (id, atoms) }
-                  val updatedGuard = innerResult.getOrElse(innerAccess, Seq.empty) ++ mappedGuard
-                  innerResult.updated(innerAccess, updatedGuard)
-              }
-          }
+          case (result, resource) =>
+            val guardId = resource.guardId
+            resource.access match {
+              case ast.FieldAccess(receiver, field) =>
+                // update guard of field access
+                val adapted = ast.FieldAccess(view.adapt(receiver), field)()
+                val guard = result.getOrElse(adapted, Seq.empty) :+ Seq((guardId, atoms))
+                result.updated(adapted, guard)
+              case ast.PredicateAccess(arguments, name) =>
+                // update guard of predicate access
+                val adaptedArguments = arguments.map { argument => view.adapt(argument) }
+                val adapted = ast.PredicateAccess(adaptedArguments, name)()
+                val guard = result.getOrElse(adapted, Seq.empty) :+ Seq((guardId, atoms))
+                val updated = result.updated(adapted, guard)
+                // process nested accesses
+                val innerTemplate = templates(name)
+                val innerView = View.create(innerTemplate, adaptedArguments)
+                collectGuards(innerTemplate, innerView, depth - 1).foldLeft(updated) {
+                  case (innerResult, (innerAccess, innerGuard)) =>
+                    val mappedGuard = innerGuard.map { choice => choice :+ (guardId, atoms) }
+                    val updatedGuard = innerResult.getOrElse(innerAccess, Seq.empty) ++ mappedGuard
+                    innerResult.updated(innerAccess, updatedGuard)
+                }
+            }
         }
     }
   }

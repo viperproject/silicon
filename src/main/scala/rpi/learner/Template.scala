@@ -11,9 +11,9 @@ import java.util.concurrent.atomic.AtomicInteger
   * A template for a specification that needs to be inferred.
   *
   * @param specification The specification for which this is the template.
-  * @param accesses      The guarded accesses that may appear in the specification.
+  * @param body          The resources allowed by this template.
   */
-case class Template(specification: Specification, accesses: Seq[Guarded]) {
+case class Template(specification: Specification, body: Seq[Resource]) {
   /**
     * Returns the name identifying the specification.
     *
@@ -35,29 +35,57 @@ case class Template(specification: Specification, accesses: Seq[Guarded]) {
     */
   def atoms: Seq[ast.Exp] = specification.atoms
 
-  override def toString: String = {
-    val list = parameters
-      .map { parameter => parameter.name }
-      .mkString(", ")
-    val body = accesses
-      .map { case Guarded(id, access) =>
-        s"phi_$id => $access"
-      }
-      .mkString(" && ")
-    s"$name($list) = $body"
-  }
+  override def toString: String =
+    s"$specification = ${body.mkString(" * ")}"
 }
 
-case class Guarded(id: Int, access: ast.LocationAccess)
+/**
+  * A resource appearing in a template.
+  */
+sealed trait Resource {
+  /**
+    * The id of the resource's guard.
+    */
+  val guardId: Int
 
+  val access: ast.LocationAccess
+}
+
+/**
+  * A field access appearing in a template.
+  *
+  * @param guardId The id of the field access' guard.
+  * @param access  The field access.
+  */
+case class FieldResource(guardId: Int, access: ast.FieldAccess) extends Resource
+
+/**
+  * A predicate access appearing in a template.
+  *
+  * @param guardId  The id of the predicate access' guard.
+  * @param choiceId The id of the truncation argument's choice.
+  * @param access  The predicate access.
+  */
+case class PredicateResource(guardId: Int, choiceId: Int, access: ast.PredicateAccess) extends Resource
+
+/**
+  * A helper object used to compute templates.
+  */
 object Templates {
+  /**
+    * Computes templates for the given examples.
+    *
+    * @param learner The pointer to the learner.
+    * @param examples The examples.
+    * @return The templates.
+    */
   def compute(learner: Learner, examples: Seq[Example]): Map[String, Template] = {
     // used to generate unique ids for guards
     val id = new AtomicInteger
 
-    def createTemplate(specification: Specification, accesses: Set[ast.LocationAccess]): Template = {
-      val sequence = accesses.toSeq
-      // get all fields, then filter and sort them
+    def createTemplate(specification: Specification, resources: Set[ast.LocationAccess]): Template = {
+      val sequence = resources.toSeq
+      // get all field accesses, then filter and sort them
       val fields = sequence
         .collect { case field: ast.FieldAccess =>
           val length = Expressions.length(field)
@@ -65,14 +93,19 @@ object Templates {
         }
         .filter { case (length, _) => length <= Settings.maxLength }
         .sortWith { case ((first, _), (second, _)) => first < second }
-        .map { case (_, field) => field }
+        .map { case (_, field) =>
+          val guardId = id.getAndIncrement()
+          FieldResource(guardId, field)
+        }
       // get all predicate accesses
       val predicates = sequence
-        .collect { case predicate: ast.PredicateAccess => predicate }
-      // guard accesses and create template
-      val sorted = fields ++ predicates
-      val guarded = sorted.map { access => Guarded(id.getAndIncrement(), access) }
-      Template(specification, guarded)
+        .collect { case predicate: ast.PredicateAccess =>
+          val guardId = id.getAndIncrement()
+          val choiceId = id.getAndIncrement()
+          PredicateResource(guardId, choiceId, predicate)
+        }
+      // create template
+      Template(specification, fields ++ predicates)
     }
 
     // get pointer to the inference
