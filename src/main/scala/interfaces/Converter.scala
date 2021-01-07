@@ -8,7 +8,6 @@ import viper.silver.verifier.{
   ModelParser
 }
 import viper.silver.ast
-import com.typesafe.scalalogging.Logger
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.{Store, State, BasicChunk}
@@ -104,8 +103,6 @@ case class ExtractedHeap(entries: Map[HeapEntry, String]) {
 /* basically a 1 to 1 copy of nagini code */
 object Converter {
   type ExtractedHeap = Map[HeapEntry, String]
-  
-  def logger : Logger
 
   def snapToOneLine(s: String): String =
     s.filter(_ >= ' ').split(" +").mkString(" ")
