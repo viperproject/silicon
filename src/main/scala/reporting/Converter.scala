@@ -1,4 +1,4 @@
-package viper.silicon.interfaces
+package viper.silicon.reporting
 
 import viper.silver.verifier.{
   Model,
