@@ -7,8 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.interfaces.{Failure, SiliconNativeCounterexample, SiliconRawCounterexample, SiliconVariableCounterexample, SiliconMappedCounterexample}
-import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.{State, Heap}
+import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
 import viper.silver.verifier.{Counterexample, CounterexampleTransformer, Model, VerificationError}
@@ -31,8 +30,7 @@ trait SymbolicExecutionRules {
         val nativeModel = Model(model)
         var ce: Counterexample = Verifier.config.counterexample.toOption match {
           case Some("native") =>
-            val optOldHeap: Option[Heap] = s.oldHeaps.get(Verifier.PRE_STATE_LABEL)
-            val oldHeap: Option[Iterable[Chunk]] = optOldHeap.fold(Option.empty[Iterable[Chunk]])(x => Some(x.values))
+            val oldHeap = s.oldHeaps.get(Verifier.PRE_STATE_LABEL).map(_.values)
             SiliconNativeCounterexample(s.g, s.h.values, oldHeap, nativeModel)
           case Some("raw") =>
             val pcs = v.decider.pcs
