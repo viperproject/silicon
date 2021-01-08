@@ -57,42 +57,30 @@ class CheckBuilder(teacher: Teacher) {
     */
   def framingCheck(hypothesis: Hypothesis): (ast.Program, Context) = {
     /**
-      * Helper method that inhales the conjuncts of the given expression.
+      * Helper method that inhales the given expression conjunct-wise. The expression is implicitly rewritten to have
+      * its conjuncts at the top level by pushing implications inside ().
       *
       * @param expression The expression to inhale.
+      * @param guards     The guards guarding the current expression.
       */
-    def addInhales(expression: ast.Exp): Unit =
+    def addInhales(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty): Unit =
       expression match {
         case ast.And(left, right) =>
-          addInhales(left)
-          addInhales(right)
+          addInhales(left, guards)
+          addInhales(right, guards)
+        case ast.Implies(guard, guarded) =>
+          addInhales(guarded, guards :+ guard)
         case conjunct =>
-          // create context information
-          val info = getLocation(conjunct)
-            .map { location => FramingInfo(location) }
-            .getOrElse(ast.NoInfo)
-          // inhale conjunct
-          val inhale = ast.Inhale(conjunct)(info = info)
+          // compute info used to extract framing sample
+          val info = conjunct match {
+            case ast.FieldAccessPredicate(location, _) => FramingInfo(location)
+            case ast.PredicateAccessPredicate(location, _) => FramingInfo(location)
+            case _ => ast.NoInfo
+          }
+          // inhale part
+          val condition = ast.Implies(bigAnd(guards), conjunct)()
+          val inhale = ast.Inhale(condition)(info = info)
           addStatement(inhale)
-      }
-
-    /**
-      * Helper method that extracts the location from the given expression.
-      *
-      * This method assumes that there is at most one location access that is potentially guarded by some conditions.
-      *
-      * @param expression The expression.
-      * @return The extracted location access.
-      */
-    @tailrec
-    def getLocation(expression: ast.Exp): Option[ast.LocationAccess] =
-      expression match {
-        case ast.TrueLit() => None
-        case ast.FalseLit() => None
-        case ast.FieldAccessPredicate(location, _) => Some(location)
-        case ast.PredicateAccessPredicate(location, _) => Some(location)
-        case ast.Implies(_, guarded) => getLocation(guarded)
-        case _ => ???
       }
 
     // create a check for each specification predicate
