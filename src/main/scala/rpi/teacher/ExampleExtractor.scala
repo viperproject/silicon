@@ -127,18 +127,17 @@ class ExampleExtractor(teacher: Teacher) {
       }
 
       // build current state if necessary and return states
-      label match {
-        case Some(value) =>
-          // the last encountered state is the current state
-          val current = encountered.last
-          val others = encountered.init
-          (current, others)
-        case None =>
-          // build current state in case it has not been encountered
-          val siliconHeap = siliconState.h
-          val heap = buildHeap(siliconHeap, partitions)
-          val current = State("current", store, heap, model)
-          (current, encountered)
+      if (label.isDefined) {
+        // the last encountered state is the current state
+        val current = encountered.last
+        val others = encountered.init
+        (current, others)
+      } else {
+        // build current state in case it has not been encountered
+        val siliconHeap = siliconState.h
+        val heap = buildHeap(siliconHeap, partitions)
+        val current = State("current", store, heap, model)
+        (current, encountered)
       }
     }
 
@@ -239,52 +238,6 @@ class ExampleExtractor(teacher: Teacher) {
     }
     // return information
     (counter, offending, info)
-  }
-
-  /**
-    * Extracts states from the given counter example.
-    * TODO: Remove.
-    *
-    * @param counter The counter example.
-    * @param context The context provided by the check builder.
-    * @return A tuple holding the current state and a sequence of states that precede the current state where some
-    *         specifications were inhaled.
-    */
-  private def extractStates(counter: Counter, label: Option[String], context: Context): (State, Seq[State]) = {
-    // get silicon state, partitions, and model
-    val siliconState = counter.state
-    val partitions = buildPartitions(counter)
-    val model = counter.model
-
-    // build store
-    val store = {
-      val siliconStore = siliconState.g
-      buildStore(siliconStore, partitions)
-    }
-
-    // build current state
-    val state = {
-      val (name, siliconHeap) = label match {
-        case Some(existing) => (existing, siliconState.oldHeaps(existing))
-        case None => ("current", siliconState.h)
-      }
-      val heap = buildHeap(siliconHeap, partitions)
-      State(name, store, heap, model)
-    }
-
-    // build inhaled states
-    val inhaled = siliconState
-      .oldHeaps
-      .flatMap {
-        case (name, siliconHeap) if context.isInhaled(name) =>
-          val heap = buildHeap(siliconHeap, partitions)
-          Some(State(name, store, heap, model))
-        case _ => None
-      }
-      .toSeq
-
-    // return states
-    (state, inhaled)
   }
 
   /**
@@ -439,9 +392,7 @@ class ExampleExtractor(teacher: Teacher) {
       */
     def evaluateReference(term: Term): String =
       evaluate(term) match {
-        case ConstantEntry(value) =>
-          println(value)
-          value
+        case ConstantEntry(value) => value
       }
 
     /**
