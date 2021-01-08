@@ -10,16 +10,24 @@ import viper.silver.ast
   */
 class Learner(val inference: Inference) {
   /**
+    * The sequence of examples.
+    */
+  private var examples: Seq[Example] = Seq.empty
+
+  /**
+    * The specifications introduced by the learner.
+    */
+  private var specifications: Map[String, Specification] = Map.empty
+
+  /**
     * The SMT solver.
     */
   val solver = new Smt
 
   /**
-    * The sequence of examples.
+    * The template generator.
     */
-  private var examples: Seq[Example] = Seq.empty
-
-  private var specifications: Map[String, Specification] = Map.empty
+  val templateGenerator = new TemplateGenerator(learner = this)
 
   /**
     * Starts the learner and all of its subcomponents.
@@ -41,11 +49,11 @@ class Learner(val inference: Inference) {
   def addExample(example: Example): Unit =
     examples = examples :+ example
 
-  def addSpecification(specification: Specification): Unit =
-    specifications = specifications.updated(specification.name, specification)
-
   def allSpecifications: Seq[Specification] =
     specifications.values.toSeq
+
+  def addSpecification(specification: Specification): Unit =
+    specifications = specifications.updated(specification.name, specification)
 
   def getSpecification(name: String): Specification =
     specifications(name)
@@ -60,7 +68,7 @@ class Learner(val inference: Inference) {
     else {
       examples.foreach { example => println(example) }
       // compute templates
-      val templates = Templates.compute(this, examples)
+      val templates = templateGenerator.generate(examples)
 
       // encode examples
       val encoder = new GuardEncoder(learner = this, templates)

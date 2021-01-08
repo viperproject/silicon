@@ -35,6 +35,8 @@ object Settings {
     */
   val useSegments = true
 
+  val useChoices = true
+
   /**
     * The flag indicating whether the black box verifier used by the inference should use annotations or heuristics for
     * unfolds, folds, and related lemmas.

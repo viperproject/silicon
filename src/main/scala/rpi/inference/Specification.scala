@@ -11,6 +11,13 @@ import viper.silver.ast
   * @param atoms      The atomic predicates that may be used for the specification.
   */
 case class Specification(name: String, parameters: Seq[ast.LocalVarDecl], atoms: Seq[ast.Exp]) {
+  /**
+    * Returns the variables corresponding to the parameters.
+    * @return The variables.
+    */
+  def variables =
+    parameters.map { parameter => parameter.localVar }
+
   override def toString: String =
     s"$name(${parameters.map(_.name).mkString(", ")})"
 }

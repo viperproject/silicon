@@ -168,6 +168,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
         case Seq(inhaled) => (inhaled, ast.TrueLit()())
       }
 
+    // TODO: Remove conditional if list is never empty.
     val encoding =
       if (variables.isEmpty) ??? // was: true
       else ensureFraming(variables)._1
@@ -178,24 +179,24 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
   /**
     * Computes the encoding of an abstract state defined by the given values for the guard with the given id.
     *
-    * @param id      The id of the guard.
+    * @param guardId The id of the guard.
     * @param values  The values defining the state.
     * @param default The default value to assume for unknown atoms (approximation).
     * @return The encoding.
     */
-  private def encodeState(id: Int, values: Seq[Option[Boolean]], default: Boolean): ast.Exp = {
+  private def encodeState(guardId: Int, values: Seq[Option[Boolean]], default: Boolean): ast.Exp = {
     // encode clauses
     val clauses = for (j <- 0 until Settings.maxClauses) yield {
-      val clauseActivation = ast.LocalVar(s"x_${id}_$j", ast.Bool)()
+      val clauseActivation = ast.LocalVar(s"x_${guardId}_$j", ast.Bool)()
       val clauseEncoding = {
         // encode literals
         val literals = values
           .zipWithIndex
           .map { case (value, i) =>
-            val literalActivation = ast.LocalVar(s"y_${id}_${i}_$j", ast.Bool)()
+            val literalActivation = ast.LocalVar(s"y_${guardId}_${i}_$j", ast.Bool)()
             val literalEncoding = value match {
               case Some(sign) =>
-                val variable = ast.LocalVar(s"s_${id}_${i}_$j", ast.Bool)()
+                val variable = ast.LocalVar(s"s_${guardId}_${i}_$j", ast.Bool)()
                 if (sign) variable else ast.Not(variable)()
               case None =>
                 if (default) ast.TrueLit()() else ast.FalseLit()()
@@ -232,14 +233,13 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
         .body
         .foldLeft(empty) {
           case (result, resource) =>
-            val guardId = resource.guardId
-            resource.access match {
-              case ast.FieldAccess(receiver, field) =>
+            resource match {
+              case FieldResource(guardId, ast.FieldAccess(receiver, field)) =>
                 // update guard of field access
                 val adapted = ast.FieldAccess(view.adapt(receiver), field)()
                 val guard = result.getOrElse(adapted, Seq.empty) :+ Seq((guardId, atoms))
                 result.updated(adapted, guard)
-              case ast.PredicateAccess(arguments, name) =>
+              case PredicateResource(guardId, choiceId, ast.PredicateAccess(arguments, name)) =>
                 // update guard of predicate access
                 val adaptedArguments = arguments.map { argument => view.adapt(argument) }
                 val adapted = ast.PredicateAccess(adaptedArguments, name)()

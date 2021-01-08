@@ -1,6 +1,6 @@
 package rpi.learner
 
-import rpi.Settings
+import rpi.{Names, Settings}
 import rpi.util.Expressions
 import viper.silver.ast
 
@@ -22,7 +22,13 @@ class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
   def buildBody(template: Template): ast.Exp = {
     val atoms = template.atoms
     val conjuncts = template.body.map { resource => buildResource(resource, atoms) }
-    simplify(bigAnd(conjuncts))
+    val body = simplify(bigAnd(conjuncts))
+    // TODO: Incorporate truncation guard into template.
+    if (template.name == Names.recursive && Settings.useSegments) {
+      val Seq(first, second) = template.parameters.map { parameter => parameter.localVar }
+      val truncationGuard = ast.NeCmp(first, second)()
+      ast.Implies(truncationGuard, body)()
+    } else body
   }
 
   /**

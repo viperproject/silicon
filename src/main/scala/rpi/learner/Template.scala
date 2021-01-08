@@ -69,47 +69,40 @@ case class FieldResource(guardId: Int, access: ast.FieldAccess) extends Resource
 case class PredicateResource(guardId: Int, choiceId: Int, access: ast.PredicateAccess) extends Resource
 
 /**
-  * A helper object used to compute templates.
+  * A helper class used to compute templates.
+  *
+  * @param learner The pointer to the learner.
   */
-object Templates {
+class TemplateGenerator(learner: Learner) {
+  /**
+    * The pointer to the inference.
+    */
+  private val inference = learner.inference
+
+  private val recursiveSpecification =
+    if (Settings.useRecursion) {
+      // TODO: Potentially exclude second parameter from atoms.
+      val specification = {
+        val names = if (Settings.useSegments) Seq("x", "y") else Seq("x")
+        val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
+        val variables = parameters.take(1).map { parameter => parameter.localVar }
+        val atoms = inference.instantiateAtoms(variables)
+        Specification(Names.recursive, parameters, atoms)
+      }
+
+      learner.addSpecification(specification)
+      Some(specification)
+    } else None
+
   /**
     * Computes templates for the given examples.
     *
-    * @param learner The pointer to the learner.
     * @param examples The examples.
     * @return The templates.
     */
-  def compute(learner: Learner, examples: Seq[Example]): Map[String, Template] = {
+  def generate(examples: Seq[Example]): Map[String, Template] = {
     // used to generate unique ids for guards
-    val id = new AtomicInteger
-
-    def createTemplate(specification: Specification, resources: Set[ast.LocationAccess]): Template = {
-      val sequence = resources.toSeq
-      // get all field accesses, then filter and sort them
-      val fields = sequence
-        .collect { case field: ast.FieldAccess =>
-          val length = Expressions.length(field)
-          (length, field)
-        }
-        .filter { case (length, _) => length <= Settings.maxLength }
-        .sortWith { case ((first, _), (second, _)) => first < second }
-        .map { case (_, field) =>
-          val guardId = id.getAndIncrement()
-          FieldResource(guardId, field)
-        }
-      // get all predicate accesses
-      val predicates = sequence
-        .collect { case predicate: ast.PredicateAccess =>
-          val guardId = id.getAndIncrement()
-          val choiceId = id.getAndIncrement()
-          PredicateResource(guardId, choiceId, predicate)
-        }
-      // create template
-      Template(specification, fields ++ predicates)
-    }
-
-    // get pointer to the inference
-    val inference = learner.inference
+    implicit val id: AtomicInteger = new AtomicInteger
 
     // map from specifications to accesses
     val map = {
@@ -146,32 +139,60 @@ object Templates {
     }
 
     // compute template for recursive predicate
-    val recursive = {
-      // create specification
-      val specification = {
-        val parameters = Seq(ast.LocalVarDecl("x", ast.Ref)())
-        val variables = parameters.map { parameter => parameter.localVar }
-        val atoms = inference.instantiateAtoms(variables)
-        Specification(Names.recursive, parameters, atoms)
-      }
-      learner.addSpecification(specification)
-      // create template
-      val accesses: Set[ast.LocationAccess] = {
-        // get fields and recursions
-        val fields = structure.fields
-        val recursions = structure.recursions
-        // make sure there is a way to frame arguments of recursions
-        val framed = recursions
-          .flatMap { recursion =>
+    val recursive = recursiveSpecification
+      .map { specification =>
+        // collect accesses
+        val accesses: Set[ast.LocationAccess] = {
+          // get fields and recursions
+          val fields = structure.fields
+          val recursions = structure.recursions
+          // make sure there is a way to frame arguments of recursions
+          val framed = recursions.flatMap { recursion =>
             recursion.args.collect { case field: ast.FieldAccess => field }
           }
-        fields ++ framed ++ recursions
+          fields ++ framed ++ recursions
+        }
+        // create template
+        createTemplate(specification, accesses)
       }
-      createTemplate(specification, accesses)
-    }
 
     // return templates
-    templates.updated(Names.recursive, recursive)
+    recursive.fold(templates) { template =>
+      templates.updated(template.name, template)
+    }
+  }
+
+  /**
+    * Creates a template corresponding to the given specification with the given resources.
+    *
+    * @param specification The specification.
+    * @param resources     The resources.
+    * @param id            The atomic integer used to generate unique ids.
+    * @return The template.
+    */
+  def createTemplate(specification: Specification, resources: Set[ast.LocationAccess])(implicit id: AtomicInteger): Template = {
+    val sequence = resources.toSeq
+    // get all field accesses, then filter and sort them
+    val fields = sequence
+      .collect { case field: ast.FieldAccess =>
+        val length = Expressions.length(field)
+        (length, field)
+      }
+      .filter { case (length, _) => length <= Settings.maxLength }
+      .sortWith { case ((first, _), (second, _)) => first < second }
+      .map { case (_, field) =>
+        val guardId = id.getAndIncrement()
+        FieldResource(guardId, field)
+      }
+    // get all predicate accesses
+    val predicates = sequence
+      .collect { case predicate: ast.PredicateAccess =>
+        val guardId = id.getAndIncrement()
+        val choiceId = id.getAndIncrement()
+        PredicateResource(guardId, choiceId, predicate)
+      }
+    // create template
+    Template(specification, fields ++ predicates)
   }
 
   /**
@@ -197,14 +218,9 @@ object Templates {
             .pairs(receivers)
             .flatMap { case (path1, path2) =>
               commonPrefix(path1, path2) match {
-                case (prefix, suffix1, suffix2) if suffix2.isEmpty =>
+                case (prefix, suffix1, suffix2) if suffix1.isEmpty || suffix2.isEmpty =>
                   val instance = createInstance(prefix)
-                  val recursion = createInstance("x" +: suffix1)
-                  val structure = Structure(Set(resource), Set(recursion))
-                  Some(instance, structure)
-                case (prefix, suffix1, suffix2) if suffix1.isEmpty =>
-                  val instance = createInstance(prefix)
-                  val recursion = createInstance("x" +: suffix2)
+                  val recursion = createRecursion(suffix1 ++ suffix2)
                   val structure = Structure(Set(resource), Set(recursion))
                   Some(instance, structure)
                 case _ => None
@@ -218,10 +234,23 @@ object Templates {
     else (Set.empty, bottom)
   }
 
+  /**
+    * Creates an instance of the recursive predicate starting at the given access path.
+    *
+    * @param path The access path.
+    * @return The instance.
+    */
   private def createInstance(path: Seq[String]): ast.PredicateAccess = {
-    val name = Names.recursive
-    val arguments = Seq(fromSeq(path))
-    ast.PredicateAccess(arguments, name)()
+    val arguments =
+      if (Settings.useSegments) Seq(fromSeq(path), ast.NullLit()())
+      else Seq(fromSeq(path))
+    ast.PredicateAccess(arguments, Names.recursive)()
+  }
+
+  private def createRecursion(path: Seq[String]): ast.PredicateAccess = {
+    val variable +: others = recursiveSpecification.get.variables
+    val first = fromSeq(variable.name +: path)
+    ast.PredicateAccess(first +: others, Names.recursive)()
   }
 
   private def toSeq(path: ast.Exp): Seq[String] =
@@ -239,6 +268,13 @@ object Templates {
     }
   }
 
+  /**
+    * Fins the common prefix of the two given paths.
+    *
+    * @param path1 The first path.
+    * @param path2 The second path.
+    * @return The common prefix and the left over suffixes.
+    */
   private def commonPrefix(path1: Seq[String], path2: Seq[String]): (Seq[String], Seq[String], Seq[String]) =
     (path1, path2) match {
       case (head1 +: tail1, head2 +: tail2) if head1 == head2 =>
