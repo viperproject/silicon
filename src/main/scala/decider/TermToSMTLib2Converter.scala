@@ -276,7 +276,8 @@ class TermToSMTLib2Converter
       val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to(collection.immutable.Seq), space)
       parens(text("let") <+> parens(docBindings) <+> render(body))
 
-    case _: MagicWandChunkTerm =>
+    case _: MagicWandChunkTerm
+       | _: Quantification =>
       sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
   }
 

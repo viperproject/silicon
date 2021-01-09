@@ -1,0 +1,429 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function R_state_T(r: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function R_interferenceReference_df($p0: Int, r: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function R_interferenceSet_df($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function R_atomicity_context_df(r: Ref, lvl: Int, x: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $memcell_$val: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function comprehension_17_220(): Set[Int]
+  ensures (forall $k: Int :: ($k in result) == $k < 42)
+
+
+function R_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(R_atomicity_context_fp(r, lvl, x), write)
+  ensures [R_atomicity_context_df(r, lvl, x), true]
+
+
+function R_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(R_interferenceContext_fp(r, lvl, x), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in R_interferenceSet_df($p0, r, lvl, x))), true]
+
+
+function R_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
+  requires acc(R_interferenceContext_fp(r, lvl, x), write)
+  ensures [R_interferenceReference_df($p0, r, lvl, x), true]
+
+
+function R_sk_$_action_n(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(R_sk_fp(), write)
+
+
+function R_sk_$_action_m(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(R_sk_fp(), write)
+
+
+function R_state(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(R(r, lvl, x), write)
+  ensures [R_state_T(r, lvl, x), true]
+{
+  (unfolding acc(R(r, lvl, x), write) in x.$memcell_$val)
+}
+
+predicate R_G($r: Ref) 
+
+predicate R_Q($r: Ref) 
+
+predicate R_atomicity_context_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate R_interferenceContext_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate R_sk_fp() 
+
+predicate R(r: Ref, lvl: Int, x: Ref) {
+  acc(x.$memcell_$val, write) && true
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method ___silicon_hack407_havoc_all_R()
+
+
+method ___silicon_hack407_havoc_all_R_interferenceContext_fp()
+
+
+method test1(r: Ref, lvl: Int, x: Ref)
+  requires acc(R(r, lvl, x), write) && (lvl >= 0 && R_state(r, lvl, x) == R_state(r, lvl, x)) && acc(R_G(r), write) && acc(R_Q(r), write)
+  requires (R_state(r, lvl, x) in comprehension_17_220())
+{
+  var nz: Int
+  var nf: Int
+  var $_levelVar_0: Int
+  var $_levelVar_1: Int
+  inhale $_levelVar_0 >= 0 && $_levelVar_0 > lvl
+  assert $_levelVar_0 >= 0
+  inhale acc(R_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(R_interferenceContext_fp($r, $lvl, $x), write))
+  inhale R_interferenceSet_hf(0, r, lvl, x) == comprehension_17_220()
+  inhale R_interferenceReference_hf(0, r, lvl, x) == old(R_state(r, lvl, x))
+  
+  // ------- make-atomic BEGIN -------
+  
+  
+  label guard_arg_eval0
+  exhale acc(R_G(r), write)
+  exhale acc(R(r, lvl, x), write)
+  label preFrame0
+  
+  // ------- Stabilising regions R (stabelizing the frame) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region R
+  
+  ___silicon_hack407_havoc_all_R()
+  exhale acc(R_sk_fp(), write)
+  inhale acc(R_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [R($r, $lvl, $x)] :: none < old[pre_stabilize0](perm(R($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(R_atomicity_context_fp($r, $lvl, $x)) ==> (R_state($r, $lvl, $x) in R_atomicity_context_hf($r, $lvl, $x))) && (R_state($r, $lvl, $x) == old[pre_stabilize0](R_state($r, $lvl, $x)) || (R_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize0](R_state($r, $lvl, $x)) && R_sk_$_action_m($r, $lvl, $x) == R_state($r, $lvl, $x) && R_sk_$_action_n($r, $lvl, $x) < R_sk_$_action_m($r, $lvl, $x) && perm(R_G($r)) == none || R_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize0](R_state($r, $lvl, $x)) && R_sk_$_action_m($r, $lvl, $x) == R_state($r, $lvl, $x) && R_sk_$_action_m($r, $lvl, $x) < R_sk_$_action_n($r, $lvl, $x) && perm(R_Q($r)) == none)))
+  
+  // ------- Stabilising regions R (stabelizing the frame) END 
+  
+  
+  exhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(R($r, $lvl, $x), old[preFrame0](perm(R($r, $lvl, $x)))))
+  exhale (forall $$r: Ref :: acc(R_G($$r), old[preFrame0](perm(R_G($$r)))))
+  exhale (forall $$r: Ref :: acc(R_Q($$r), old[preFrame0](perm(R_Q($$r)))))
+  exhale (forall $$_r: Ref :: acc($$_r.$memcell_$val, old[preFrame0](perm($$_r.$memcell_$val))))
+  inhale acc(R(r, lvl, x), write)
+  inhale acc(r.$diamond, write)
+  $_levelVar_1 := lvl
+  assert perm(R_atomicity_context_fp(r, lvl, x)) == none
+  inhale acc(R_atomicity_context_fp(r, lvl, x), write)
+  inhale R_atomicity_context_hf(r, lvl, x) == R_interferenceSet_hf(0, r, lvl, x)
+  
+  // ------- Stabilising regions R (before atomic) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising single instance of region R
+  
+  ___silicon_hack407_havoc_all_R_interferenceContext_fp()
+  exhale acc(R_sk_fp(), write)
+  inhale acc(R_sk_fp(), write)
+  inhale (forall $$_m: Int :: { ($$_m in R_interferenceSet_df(1, r, lvl, x)) } ($$_m in R_interferenceSet_hf(1, r, lvl, x)) == ((none < perm(r.$diamond) && none < perm(R_atomicity_context_fp(r, lvl, x)) ==> ($$_m in R_atomicity_context_hf(r, lvl, x))) && ($$_m == old[pre_stabilize](R_state(r, lvl, x)) || (R_sk_$_action_n(r, lvl, x) == old[pre_stabilize](R_state(r, lvl, x)) && R_sk_$_action_m(r, lvl, x) == $$_m && R_sk_$_action_n(r, lvl, x) < R_sk_$_action_m(r, lvl, x) && perm(R_G(r)) == none || R_sk_$_action_n(r, lvl, x) == old[pre_stabilize](R_state(r, lvl, x)) && R_sk_$_action_m(r, lvl, x) == $$_m && R_sk_$_action_m(r, lvl, x) < R_sk_$_action_n(r, lvl, x) && perm(R_Q(r)) == none))))
+  ___silicon_hack407_havoc_all_R()
+  inhale (R_state(r, lvl, x) in R_interferenceSet_hf(1, r, lvl, x))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale R_interferenceReference_hf(1, r, lvl, x) == old[pre_stabilize](R_state(r, lvl, x))
+  
+  // ------- Stabilising regions R (before atomic) END 
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(R(r, lvl, x), write) && (lvl >= 0 && true)
+  nz := R_state(r, lvl, x)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // skip;
+  
+  
+  
+  // ------- Stabilising regions R (after skip@23.5) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region R
+  
+  ___silicon_hack407_havoc_all_R_interferenceContext_fp()
+  exhale acc(R_sk_fp(), write)
+  inhale acc(R_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [R($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in R_interferenceSet_df(2, $r, $lvl, $x)) } none < old[pre_stabilize3](perm(R($r, $lvl, $x))) ==> ($$_m in R_interferenceSet_hf(2, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(R_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in R_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize3](R_state($r, $lvl, $x)) || (R_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize3](R_state($r, $lvl, $x)) && R_sk_$_action_m($r, $lvl, $x) == $$_m && R_sk_$_action_n($r, $lvl, $x) < R_sk_$_action_m($r, $lvl, $x) && perm(R_G($r)) == none || R_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize3](R_state($r, $lvl, $x)) && R_sk_$_action_m($r, $lvl, $x) == $$_m && R_sk_$_action_m($r, $lvl, $x) < R_sk_$_action_n($r, $lvl, $x) && perm(R_Q($r)) == none)))))
+  ___silicon_hack407_havoc_all_R()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [R($r, $lvl, $x)] :: none < old[pre_stabilize3](perm(R($r, $lvl, $x))) ==> (R_state($r, $lvl, $x) in R_interferenceSet_hf(2, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [R($r, $lvl, $x)] :: none < old[pre_stabilize3](perm(R($r, $lvl, $x))) ==> R_interferenceReference_hf(2, $r, $lvl, $x) == old[pre_stabilize3](R_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions R (after skip@23.5) END 
+  
+  
+  
+  // skip;
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(R(r, lvl, x), write) && (lvl >= 0 && true) && nz <= R_state(r, lvl, x)
+  nf := R_state(r, lvl, x)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(r.$stepFrom_int, write) && r.$stepFrom_int == old(R_state(r, lvl, x)) && (acc(r.$stepTo_int, write) && r.$stepTo_int == old(R_state(r, lvl, x)))
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- Stabilising regions R (after seq-comp@24.5) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // Stabilising all instances of region R
+  
+  ___silicon_hack407_havoc_all_R_interferenceContext_fp()
+  exhale acc(R_sk_fp(), write)
+  inhale acc(R_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [R($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in R_interferenceSet_df(3, $r, $lvl, $x)) } none < old[pre_stabilize4](perm(R($r, $lvl, $x))) ==> ($$_m in R_interferenceSet_hf(3, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(R_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in R_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize4](R_state($r, $lvl, $x)) || (R_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize4](R_state($r, $lvl, $x)) && R_sk_$_action_m($r, $lvl, $x) == $$_m && R_sk_$_action_n($r, $lvl, $x) < R_sk_$_action_m($r, $lvl, $x) && perm(R_G($r)) == none || R_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize4](R_state($r, $lvl, $x)) && R_sk_$_action_m($r, $lvl, $x) == $$_m && R_sk_$_action_m($r, $lvl, $x) < R_sk_$_action_n($r, $lvl, $x) && perm(R_Q($r)) == none)))))
+  ___silicon_hack407_havoc_all_R()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [R($r, $lvl, $x)] :: none < old[pre_stabilize4](perm(R($r, $lvl, $x))) ==> (R_state($r, $lvl, $x) in R_interferenceSet_hf(3, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [R($r, $lvl, $x)] :: none < old[pre_stabilize4](perm(R($r, $lvl, $x))) ==> R_interferenceReference_hf(3, $r, $lvl, $x) == old[pre_stabilize4](R_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions R (after seq-comp@24.5) END 
+  
+  
+  assert (r.$stepFrom_int in R_atomicity_context_hf(r, lvl, x))
+  assert r.$stepFrom_int == r.$stepTo_int || r.$stepFrom_int < r.$stepTo_int
+  
+  // ------- Stabilising regions R (after atomic) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising single instance of region R
+  
+  ___silicon_hack407_havoc_all_R()
+  exhale acc(R_sk_fp(), write)
+  inhale acc(R_sk_fp(), write)
+  inhale (none < perm(r.$diamond) && none < perm(R_atomicity_context_fp(r, lvl, x)) ==> (R_state(r, lvl, x) in R_atomicity_context_hf(r, lvl, x))) && (R_state(r, lvl, x) == old[pre_stabilize2](R_state(r, lvl, x)) || (R_sk_$_action_n(r, lvl, x) == old[pre_stabilize2](R_state(r, lvl, x)) && R_sk_$_action_m(r, lvl, x) == R_state(r, lvl, x) && R_sk_$_action_n(r, lvl, x) < R_sk_$_action_m(r, lvl, x) && perm(R_G(r)) == none || R_sk_$_action_n(r, lvl, x) == old[pre_stabilize2](R_state(r, lvl, x)) && R_sk_$_action_m(r, lvl, x) == R_state(r, lvl, x) && R_sk_$_action_m(r, lvl, x) < R_sk_$_action_n(r, lvl, x) && perm(R_Q(r)) == none))
+  
+  // ------- Stabilising regions R (after atomic) END 
+  
+  
+  
+  inhale R_state(r, lvl, x) == r.$stepTo_int
+  inhale old(R_state(r, lvl, x)) == r.$stepFrom_int
+  inhale acc(R_G(r), write)
+  exhale acc(r.$stepFrom_int, write) && acc(r.$stepTo_int, write)
+  exhale acc(R_atomicity_context_fp(r, lvl, x), write)
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(R($r, $lvl, $x), old[preFrame0](perm(R($r, $lvl, $x)))))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: { R_state_T($r, $lvl, $x) } none < old[preFrame0](perm(R($r, $lvl, $x))) ==> R_state($r, $lvl, $x) == old[preFrame0](R_state($r, $lvl, $x)))
+  inhale (forall $$r: Ref :: acc(R_G($$r), old[preFrame0](perm(R_G($$r)))))
+  inhale (forall $$r: Ref :: acc(R_Q($$r), old[preFrame0](perm(R_Q($$r)))))
+  inhale (forall $$_r: Ref :: acc($$_r.$memcell_$val, old[preFrame0](perm($$_r.$memcell_$val))))
+  inhale (forall $$_r: Ref :: { $$_r.$memcell_$val } none < old[preFrame0](perm($$_r.$memcell_$val)) ==> $$_r.$memcell_$val == old[preFrame0]($$_r.$memcell_$val))
+  
+  // ------- make-atomic END ---------
+  
+  
+}
+
+method $_R_interpretation_stability_check(r: Ref, lvl: Int, x: Ref)
+{
+  inhale acc(R_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(R_interferenceContext_fp($r, $lvl, $x), write))
+  inhale acc(x.$memcell_$val, write) && true
+  
+  // ------- Stabilising regions R (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // Stabilising all instances of region R
+  
+  ___silicon_hack407_havoc_all_R()
+  exhale acc(R_sk_fp(), write)
+  inhale acc(R_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [R($r, $lvl, $x)] :: none < old[pre_stabilize5](perm(R($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(R_atomicity_context_fp($r, $lvl, $x)) ==> (R_state($r, $lvl, $x) in R_atomicity_context_hf($r, $lvl, $x))) && (R_state($r, $lvl, $x) == old[pre_stabilize5](R_state($r, $lvl, $x)) || (R_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize5](R_state($r, $lvl, $x)) && R_sk_$_action_m($r, $lvl, $x) == R_state($r, $lvl, $x) && R_sk_$_action_n($r, $lvl, $x) < R_sk_$_action_m($r, $lvl, $x) && perm(R_G($r)) == none || R_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize5](R_state($r, $lvl, $x)) && R_sk_$_action_m($r, $lvl, $x) == R_state($r, $lvl, $x) && R_sk_$_action_m($r, $lvl, $x) < R_sk_$_action_n($r, $lvl, $x) && perm(R_Q($r)) == none)))
+  
+  // ------- Stabilising regions R (check stability of region interpretation) END 
+  
+  
+  assert acc(x.$memcell_$val, write) && true
+}
+
+method $_test1_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
+  requires acc(R(r, lvl, x), write) && (lvl >= 0 && R_state(r, lvl, x) == R_state(r, lvl, x)) && acc(R_G(r), write) && acc(R_Q(r), write)
+{
+  var $_levelVar_2: Int
+  inhale $_levelVar_2 >= 0 && $_levelVar_2 > lvl
+  inhale acc(R_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(R_interferenceContext_fp($r, $lvl, $x), write))
+  inhale R_interferenceSet_hf(3, r, lvl, x) == comprehension_17_220()
+  inhale R_interferenceReference_hf(3, r, lvl, x) == old(R_state(r, lvl, x))
+  
+  // ------- Stabilising regions R (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize6
+  
+  // Stabilising all instances of region R
+  
+  ___silicon_hack407_havoc_all_R()
+  exhale acc(R_sk_fp(), write)
+  inhale acc(R_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [R($r, $lvl, $x)] :: none < old[pre_stabilize6](perm(R($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(R_atomicity_context_fp($r, $lvl, $x)) ==> (R_state($r, $lvl, $x) in R_atomicity_context_hf($r, $lvl, $x))) && (R_state($r, $lvl, $x) == old[pre_stabilize6](R_state($r, $lvl, $x)) || (R_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize6](R_state($r, $lvl, $x)) && R_sk_$_action_m($r, $lvl, $x) == R_state($r, $lvl, $x) && R_sk_$_action_n($r, $lvl, $x) < R_sk_$_action_m($r, $lvl, $x) && perm(R_G($r)) == none || R_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize6](R_state($r, $lvl, $x)) && R_sk_$_action_m($r, $lvl, $x) == R_state($r, $lvl, $x) && R_sk_$_action_m($r, $lvl, $x) < R_sk_$_action_n($r, $lvl, $x) && perm(R_Q($r)) == none)))
+  
+  // ------- Stabilising regions R (check stability of method condition) END 
+  
+  
+  assert acc(R(r, lvl, x), write) && (lvl >= 0 && R_state(r, lvl, x) == R_state(r, lvl, x)) && acc(R_G(r), write) && acc(R_Q(r), write)
+}

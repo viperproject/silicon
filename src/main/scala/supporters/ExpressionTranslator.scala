@@ -29,7 +29,7 @@ trait ExpressionTranslator {
     def translateAnySetUnExp(exp: ast.AnySetUnExp,
                              setTerm: Term => Term,
                              multisetTerm: Term => Term,
-                             anysetTypedExp: ast.Exp = exp) =
+                             anysetTypedExp: ast.Exp) =
 
       anysetTypedExp.typ match {
         case _: ast.SetType => setTerm(f(exp.exp))

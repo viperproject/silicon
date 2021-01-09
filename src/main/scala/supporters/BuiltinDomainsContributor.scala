@@ -8,7 +8,7 @@ package viper.silicon.supporters
 
 import java.io.File
 import java.net.URL
-
+import scala.annotation.unused
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -98,7 +98,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
 
   protected def transformSourceDomain(sourceDomain: ast.Domain): ast.Domain = sourceDomain
 
-  protected def transformSourceDomainInstance(sourceDomain: ast.Domain, typ: ast.DomainType): ast.Domain = sourceDomain
+  protected def transformSourceDomainInstance(sourceDomain: ast.Domain, @unused typ: ast.DomainType): ast.Domain = sourceDomain
 
   protected def collectSorts(domainTypes: Iterable[ast.DomainType]): Unit = {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")
@@ -116,10 +116,9 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   }
 
   protected def collectAxioms(domains: Set[(ast.DomainType, ast.Domain)]): Unit = {
-    domains foreach ({d =>
+    domains foreach (d =>
       d._2.axioms foreach (ax =>
-        collectedAxioms += translateAxiom(ax, d._1))
-        })
+        collectedAxioms += translateAxiom(ax, d._1)))
   }
 
   protected def translateAxiom(ax: ast.DomainAxiom, d: ast.DomainType): Term = {
@@ -129,9 +128,8 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
      */
     val domainName = f"${d.domainName}[${d.typVarsMap.values.map(t => symbolConverter.toSort(t)).mkString(",")}]"
     domainTranslator.translateAxiom(ax, symbolConverter.toSort).transform {
-      case q@Quantification(_,_,_,_,name,_) if name != "" => {
+      case q@Quantification(_,_,_,_,name,_) if name != "" =>
         q.copy(name = f"${domainName}_${name}")
-      }
       case Equals(t1, t2) => BuiltinEquals(t1, t2)
     }(recursive = _ => true)
   }
@@ -205,7 +203,9 @@ private object utils {
 
       case fastparse.Parsed.Failure(msg, index, _) =>
         val (line, col) = ast.LineCol(index)
-        sys.error(s"Failure: $msg, at ${viper.silver.parser.FilePosition(fromPath, line, col)}")
+        sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, line, col)}")
+        //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
+        //? sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, pos(0), pos(1))}")
     }
   }
 }

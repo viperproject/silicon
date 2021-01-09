@@ -6,6 +6,7 @@
 
 package viper.silicon.state.terms
 
+import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -14,7 +15,7 @@ import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, Sor
 import viper.silicon.verifier.Verifier
 
 sealed trait Node {
-  override def toString: String
+  def toString: String
 }
 
 sealed trait Symbol extends Node {
@@ -126,7 +127,7 @@ sealed trait Application[A <: Applicable] extends Term {
 sealed trait Function extends Applicable
 
 object Function {
-  def unapply(fun: Function): Option[(Identifier, Seq[Sort], Sort)] =
+  def unapply(fun: Function): Some[(Identifier, Seq[Sort], Sort)] =
     Some((fun.id, fun.argSorts, fun.resultSort))
 }
 
@@ -151,7 +152,7 @@ trait GenericFunctionCompanion[F <: Function] {
   def apply(id: Identifier, argSort: Sort, resultSort: Sort): F =
     apply(id, Seq(argSort), resultSort)
 
-  def unapply(fun: F): Option[(Identifier, Seq[Sort], Sort)] =
+  def unapply(fun: F): Some[(Identifier, Seq[Sort], Sort)] =
     Some((fun.id, fun.argSorts, fun.resultSort))
 }
 
@@ -485,7 +486,7 @@ case object Forall extends Quantifier {
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String, isGlobal: Boolean) =
     Quantification(Forall, qvars, tBody, triggers, name, isGlobal)
 
-  def unapply(q: Quantification): Option[(Seq[Var], Term, Seq[Trigger], String, Boolean)] =
+  def unapply(q: Quantification): Some[(Seq[Var], Term, Seq[Trigger], String, Boolean)] =
     Some(q.vars, q.body, q.triggers, q.name, q.isGlobal)
 
   override lazy val toString = "QA"
@@ -577,7 +578,7 @@ object Quantification
   }
 
   def unapply(q: Quantification)
-             : Option[(Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean)] = {
+             : Some[(Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean)] = {
 
     Some((q.q, q.vars, q.body, q.triggers, q.name, q.isGlobal))
   }
@@ -769,6 +770,7 @@ class Implies(val p0: Term, val p1: Term) extends BooleanTerm
 }
 
 object Implies extends ((Term, Term) => Term) {
+  @tailrec
   def apply(e0: Term, e1: Term): Term = (e0, e1) match {
     case (True(), _) => e1
     case (False(), _) => True()

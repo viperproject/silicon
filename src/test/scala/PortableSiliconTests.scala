@@ -76,10 +76,11 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
   override val csvFilePropertyName = "SILICONTESTS_CSV"
   override val inclusionFilePropertyName = "SILICONTESTS_INCL_FILE"
   val randomizePropertyName = "SILICONTESTS_RANDOMIZE_Z3"
+  val timeoutPropertyName = "SILICONTESTS_TIMEOUT"
 
   val commandLineArguments: Seq[String] = Seq(
     "--disableCatchingExceptions",
-    "--timeout", "180" /* seconds */
+    "--timeout", System.getProperty(timeoutPropertyName, "180") /* timeout in seconds */
   ) ++ (if (System.getProperty(randomizePropertyName, "false").toBoolean) Seq("--z3RandomizeSeeds") else Seq.empty)
 
   lazy val verifier: Silicon = {

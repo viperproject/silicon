@@ -1,0 +1,1275 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Counter_state_T(r: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Counter_interferenceReference_df($p0: Int, r: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Counter_interferenceSet_df($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function Counter_atomicity_context_df(r: Ref, lvl: Int, x: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $memcell_$f: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function Counter_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(Counter_atomicity_context_fp(r, lvl, x), write)
+  ensures [Counter_atomicity_context_df(r, lvl, x), true]
+
+
+function Counter_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(Counter_interferenceContext_fp(r, lvl, x), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in Counter_interferenceSet_df($p0, r, lvl, x))), true]
+
+
+function Counter_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
+  requires acc(Counter_interferenceContext_fp(r, lvl, x), write)
+  ensures [Counter_interferenceReference_df($p0, r, lvl, x), true]
+
+
+function Counter_sk_$_action_n(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(Counter_sk_fp(), write)
+
+
+function Counter_sk_$_action_m(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(Counter_sk_fp(), write)
+
+
+function Counter_state(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(Counter(r, lvl, x), write)
+  ensures [Counter_state_T(r, lvl, x), true]
+{
+  (unfolding acc(Counter(r, lvl, x), write) in x.$memcell_$f)
+}
+
+predicate Counter_INCREMENT($r: Ref) 
+
+predicate Counter_atomicity_context_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate Counter_interferenceContext_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate Counter_sk_fp() 
+
+predicate Counter(r: Ref, lvl: Int, x: Ref) {
+  acc(x.$memcell_$f, write) && true
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method ___silicon_hack407_havoc_all_Counter()
+
+
+method ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+
+
+method makeCounter(r: Ref, lvl: Int) returns (ret: Ref)
+  requires lvl >= 0
+  ensures acc(Counter(r, lvl, ret), write) && (lvl >= 0 && true) && acc(Counter_INCREMENT(r), write)
+{
+  var v: Ref
+  var w: Int
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Counter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // Inferring interference all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(1, $r, $lvl, $x)) } none < old[pre_infer0](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(1, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer0](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_infer0](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_infer0](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(1, $r, $lvl, $x) == old[pre_infer0](Counter_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Counter (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(v.$memcell_$f, write) && true
+  w := v.$memcell_$f
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  v.$memcell_$f := 0
+  
+  // ------- heap-write END ----------
+  
+  
+  
+  // ------- Stabilising regions Counter (after heap-write@22.3) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(2, $r, $lvl, $x)) } none < old[pre_stabilize0](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(2, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize0](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize0](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize0](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(2, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize0](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(2, $r, $lvl, $x) == old[pre_stabilize0](Counter_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Counter (after heap-write@22.3) END 
+  
+  
+  
+  // ------- assign BEGIN ------------
+  
+  
+  ret := v
+  
+  // ------- assign END --------------
+  
+  
+  
+  // ------- Stabilising regions Counter (after assign@24.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(3, $r, $lvl, $x)) } none < old[pre_stabilize](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(3, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(3, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(3, $r, $lvl, $x) == old[pre_stabilize](Counter_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Counter (after assign@24.3) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Counter_INCREMENT(r), write)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- fold BEGIN --------------
+  
+  
+  fold acc(Counter(r, lvl, ret), write)
+  assert lvl >= 0 && Counter_state(r, lvl, ret) == 0
+  
+  // ------- fold END ----------------
+  
+  
+  
+  // ------- Stabilising regions Counter (after seq-comp@24.3) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(4, $r, $lvl, $x)) } none < old[pre_stabilize2](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(4, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize2](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize2](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize2](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(4, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize2](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(4, $r, $lvl, $x) == old[pre_stabilize2](Counter_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Counter (after seq-comp@24.3) END 
+  
+  
+}
+
+method incr(c: Ref, lvl: Int, x: Ref) returns (ret: Int)
+  requires acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_INCREMENT(c), write)
+  requires (Counter_state(c, lvl, x) in IntSet())
+  ensures acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == old(Counter_state(c, lvl, x)) + 1) && acc(Counter_INCREMENT(c), write)
+  ensures ret == old(Counter_state(c, lvl, x))
+{
+  var r: Int
+  var b: Bool
+  var $_levelVar_1: Int
+  var $_levelVar_2: Int
+  var $_levelVar_3: Int
+  var $_levelVar_4: Int
+  var $_levelVar_5: Int
+  var $_levelVar_6: Int
+  var $_levelVar_7: Int
+  var $_levelVar_8: Int
+  var $_levelVar_9: Int
+  var $_levelVar_10: Int
+  inhale $_levelVar_1 >= 0 && $_levelVar_1 > lvl
+  assert $_levelVar_1 >= 0
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($r, $lvl, $x), write))
+  label guard_arg_eval0
+  exhale acc(Counter_INCREMENT(c), write)
+  inhale acc(c.$diamond, write)
+  inhale acc(Counter_atomicity_context_fp(c, lvl, x), write)
+  inhale Counter_atomicity_context_hf(c, lvl, x) == IntSet()
+  
+  // ------- Stabilising regions Counter (before atomic) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising single instance of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(5, c, lvl, x)) } ($$_m in Counter_interferenceSet_hf(5, c, lvl, x)) == ((none < perm(c.$diamond) && none < perm(Counter_atomicity_context_fp(c, lvl, x)) ==> ($$_m in Counter_atomicity_context_hf(c, lvl, x))) && ($$_m == old[pre_stabilize3](Counter_state(c, lvl, x)) || Counter_sk_$_action_n(c, lvl, x) == old[pre_stabilize3](Counter_state(c, lvl, x)) && Counter_sk_$_action_m(c, lvl, x) == $$_m && Counter_sk_$_action_n(c, lvl, x) < Counter_sk_$_action_m(c, lvl, x) && true)))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (Counter_state(c, lvl, x) in Counter_interferenceSet_hf(5, c, lvl, x))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale Counter_interferenceReference_hf(5, c, lvl, x) == old[pre_stabilize3](Counter_state(c, lvl, x))
+  
+  // ------- Stabilising regions Counter (before atomic) END 
+  
+  
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region0
+  assert $_levelVar_1 > lvl
+  $_levelVar_2 := lvl
+  unfold acc(Counter(c, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  r := x.$memcell_$f
+  
+  // ------- heap-read END -----------
+  
+  
+  fold acc(Counter(c, lvl, x), write)
+  assert Counter_state(c, lvl, x) == old[pre_open_region0](Counter_state(c, lvl, x))
+  $_levelVar_3 := $_levelVar_1
+  
+  // ------- open-region END ---------
+  
+  
+  
+  // ------- Stabilising regions Counter (after open-region@46.5) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(6, $r, $lvl, $x)) } none < old[pre_stabilize5](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(6, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize5](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize5](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize5](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(6, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize5](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(6, $r, $lvl, $x) == old[pre_stabilize5](Counter_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Counter (after open-region@46.5) END 
+  
+  
+  
+  // ------- update-region BEGIN -----
+  
+  
+  exhale acc(c.$diamond, write)
+  label pre_region_update0
+  assert $_levelVar_3 > lvl
+  $_levelVar_4 := lvl
+  exhale acc(Counter_atomicity_context_fp(c, lvl, x), write)
+  unfold acc(Counter(c, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- Havocking regions Counter (before update-region@49.5) BEGIN 
+  
+  
+  label pre_havoc0
+  
+  // Havocking single instance of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  
+  // ------- Havocking regions Counter (before update-region@49.5) END 
+  
+  
+  
+  // ------- call:CAS BEGIN ----------
+  
+  
+  assert true
+  label pre_call0
+  assert $_levelVar_4 >= 0
+  assert true
+  exhale acc(x.$memcell_$f, write) && true
+  
+  // ------- Stabilising regions Counter (before call:CAS@50.7) BEGIN 
+  
+  
+  label pre_stabilize6
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize6](perm(Counter($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> (Counter_state($r, $lvl, $x) in Counter_atomicity_context_hf($r, $lvl, $x))) && (Counter_state($r, $lvl, $x) == old[pre_stabilize6](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize6](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == Counter_state($r, $lvl, $x) && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))
+  
+  // ------- Stabilising regions Counter (before call:CAS@50.7) END 
+  
+  
+  b := havoc_Bool()
+  inhale (old[pre_call0](x.$memcell_$f) == r ? b && (acc(x.$memcell_$f, write) && x.$memcell_$f == r + 1) : !b && (acc(x.$memcell_$f, write) && x.$memcell_$f == old[pre_call0](x.$memcell_$f)))
+  
+  // ------- call:CAS END ------------
+  
+  
+  fold acc(Counter(c, lvl, x), write)
+  if (Counter_state(c, lvl, x) != old[pre_region_update0](Counter_state(c, lvl, x))) {
+    inhale acc(c.$stepFrom_int, write) && acc(c.$stepTo_int, write)
+    c.$stepFrom_int := old[pre_region_update0](Counter_state(c, lvl, x))
+    c.$stepTo_int := Counter_state(c, lvl, x)
+  } else {
+    inhale acc(c.$diamond, write)
+  }
+  inhale acc(Counter_atomicity_context_fp(c, lvl, x), write)
+  inhale Counter_atomicity_context_hf(c, lvl, x) == old[pre_region_update0](Counter_atomicity_context_hf(c, lvl, x))
+  $_levelVar_5 := $_levelVar_3
+  
+  // ------- update-region END -------
+  
+  
+  
+  // ------- Stabilising regions Counter (after update-region@49.5) BEGIN 
+  
+  
+  label pre_stabilize7
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(7, $r, $lvl, $x)) } none < old[pre_stabilize7](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(7, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize7](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize7](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize7](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(7, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize7](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(7, $r, $lvl, $x) == old[pre_stabilize7](Counter_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Counter (after update-region@49.5) END 
+  
+  
+  
+  // ------- while BEGIN -------------
+  
+  
+  label preWhile0
+  while (!b)
+    invariant acc(Counter(c, lvl, x), write) && (lvl >= 0 && true)
+    invariant (b ? acc(c.$diamond, write) : true)
+    invariant (!b ? acc(c.$stepFrom_int, write) && c.$stepFrom_int == r && (acc(c.$stepTo_int, write) && c.$stepTo_int == r + 1) : true) 
+  {
+    inhale acc(Counter_sk_fp(), write)
+    
+    // no init required
+    
+    
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($r, $lvl, $x), write))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Counter_atomicity_context_fp($r, $lvl, $x), old[preWhile0](perm(Counter_atomicity_context_fp($r, $lvl, $x)))))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: { Counter_atomicity_context_df($r, $lvl, $x) } none < old[preWhile0](perm(Counter_atomicity_context_fp($r, $lvl, $x))) ==> Counter_atomicity_context_hf($r, $lvl, $x) == old[preWhile0](Counter_atomicity_context_hf($r, $lvl, $x)))
+    
+    // ------- Inferring interference context Counter (infer context inside while) BEGIN 
+    
+    
+    label pre_infer
+    
+    // Inferring interference all instances of region Counter
+    
+    ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+    exhale acc(Counter_sk_fp(), write)
+    inhale acc(Counter_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(8, $r, $lvl, $x)) } none < old[pre_infer](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(8, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_infer](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_infer](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(8, $r, $lvl, $x) == old[pre_infer](Counter_state($r, $lvl, $x)))
+    
+    // ------- Inferring interference context Counter (infer context inside while) END 
+    
+    
+    
+    // ------- open-region BEGIN -------
+    
+    
+    label pre_open_region
+    assert $_levelVar_5 > lvl
+    $_levelVar_6 := lvl
+    unfold acc(Counter(c, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    
+    
+    // ------- heap-read BEGIN ---------
+    
+    
+    r := x.$memcell_$f
+    
+    // ------- heap-read END -----------
+    
+    
+    fold acc(Counter(c, lvl, x), write)
+    assert Counter_state(c, lvl, x) == old[pre_open_region](Counter_state(c, lvl, x))
+    $_levelVar_7 := $_levelVar_5
+    
+    // ------- open-region END ---------
+    
+    
+    
+    // ------- Stabilising regions Counter (after open-region@46.5) BEGIN 
+    
+    
+    label pre_stabilize8
+    
+    // Stabilising all instances of region Counter
+    
+    ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+    exhale acc(Counter_sk_fp(), write)
+    inhale acc(Counter_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(9, $r, $lvl, $x)) } none < old[pre_stabilize8](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(9, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize8](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize8](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+    ___silicon_hack407_havoc_all_Counter()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize8](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(9, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize8](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(9, $r, $lvl, $x) == old[pre_stabilize8](Counter_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions Counter (after open-region@46.5) END 
+    
+    
+    
+    // ------- update-region BEGIN -----
+    
+    
+    exhale acc(c.$diamond, write)
+    label pre_region_update
+    assert $_levelVar_7 > lvl
+    $_levelVar_8 := lvl
+    exhale acc(Counter_atomicity_context_fp(c, lvl, x), write)
+    unfold acc(Counter(c, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    
+    
+    // ------- Havocking regions Counter (before update-region@49.5) BEGIN 
+    
+    
+    label pre_havoc
+    
+    // Havocking single instance of region Counter
+    
+    ___silicon_hack407_havoc_all_Counter()
+    
+    // ------- Havocking regions Counter (before update-region@49.5) END 
+    
+    
+    
+    // ------- call:CAS BEGIN ----------
+    
+    
+    assert true
+    label pre_call
+    assert $_levelVar_8 >= 0
+    assert true
+    exhale acc(x.$memcell_$f, write) && true
+    
+    // ------- Stabilising regions Counter (before call:CAS@50.7) BEGIN 
+    
+    
+    label pre_stabilize9
+    
+    // Stabilising all instances of region Counter
+    
+    ___silicon_hack407_havoc_all_Counter()
+    exhale acc(Counter_sk_fp(), write)
+    inhale acc(Counter_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize9](perm(Counter($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> (Counter_state($r, $lvl, $x) in Counter_atomicity_context_hf($r, $lvl, $x))) && (Counter_state($r, $lvl, $x) == old[pre_stabilize9](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize9](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == Counter_state($r, $lvl, $x) && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))
+    
+    // ------- Stabilising regions Counter (before call:CAS@50.7) END 
+    
+    
+    b := havoc_Bool()
+    inhale (old[pre_call](x.$memcell_$f) == r ? b && (acc(x.$memcell_$f, write) && x.$memcell_$f == r + 1) : !b && (acc(x.$memcell_$f, write) && x.$memcell_$f == old[pre_call](x.$memcell_$f)))
+    
+    // ------- call:CAS END ------------
+    
+    
+    fold acc(Counter(c, lvl, x), write)
+    if (Counter_state(c, lvl, x) != old[pre_region_update](Counter_state(c, lvl, x))) {
+      inhale acc(c.$stepFrom_int, write) && acc(c.$stepTo_int, write)
+      c.$stepFrom_int := old[pre_region_update](Counter_state(c, lvl, x))
+      c.$stepTo_int := Counter_state(c, lvl, x)
+    } else {
+      inhale acc(c.$diamond, write)
+    }
+    inhale acc(Counter_atomicity_context_fp(c, lvl, x), write)
+    inhale Counter_atomicity_context_hf(c, lvl, x) == old[pre_region_update](Counter_atomicity_context_hf(c, lvl, x))
+    $_levelVar_9 := $_levelVar_7
+    
+    // ------- update-region END -------
+    
+    
+    
+    // ------- Stabilising regions Counter (after update-region@49.5) BEGIN 
+    
+    
+    label pre_stabilize10
+    
+    // Stabilising all instances of region Counter
+    
+    ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+    exhale acc(Counter_sk_fp(), write)
+    inhale acc(Counter_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(10, $r, $lvl, $x)) } none < old[pre_stabilize10](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(10, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize10](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize10](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+    ___silicon_hack407_havoc_all_Counter()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize10](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(10, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize10](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(10, $r, $lvl, $x) == old[pre_stabilize10](Counter_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions Counter (after update-region@49.5) END 
+    
+    
+    assert $_levelVar_9 == $_levelVar_5
+  }
+  $_levelVar_10 := $_levelVar_5
+  
+  // ------- while END ---------------
+  
+  
+  
+  // ------- Stabilising regions Counter (after while@40.3) BEGIN 
+  
+  
+  label pre_stabilize11
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(11, $r, $lvl, $x)) } none < old[pre_stabilize11](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(11, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize11](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize11](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize11](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(11, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize11](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(11, $r, $lvl, $x) == old[pre_stabilize11](Counter_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Counter (after while@40.3) END 
+  
+  
+  
+  // ------- assign BEGIN ------------
+  
+  
+  ret := r
+  
+  // ------- assign END --------------
+  
+  
+  
+  // ------- Stabilising regions Counter (after assign@54.3) BEGIN 
+  
+  
+  label pre_stabilize12
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(12, $r, $lvl, $x)) } none < old[pre_stabilize12](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(12, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize12](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize12](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize12](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(12, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize12](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(12, $r, $lvl, $x) == old[pre_stabilize12](Counter_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Counter (after assign@54.3) END 
+  
+  
+  assert (c.$stepFrom_int in Counter_atomicity_context_hf(c, lvl, x))
+  assert c.$stepFrom_int == c.$stepTo_int || c.$stepFrom_int < c.$stepTo_int
+  
+  // ------- Stabilising regions Counter (after atomic) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // Stabilising single instance of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (none < perm(c.$diamond) && none < perm(Counter_atomicity_context_fp(c, lvl, x)) ==> (Counter_state(c, lvl, x) in Counter_atomicity_context_hf(c, lvl, x))) && (Counter_state(c, lvl, x) == old[pre_stabilize4](Counter_state(c, lvl, x)) || Counter_sk_$_action_n(c, lvl, x) == old[pre_stabilize4](Counter_state(c, lvl, x)) && Counter_sk_$_action_m(c, lvl, x) == Counter_state(c, lvl, x) && Counter_sk_$_action_n(c, lvl, x) < Counter_sk_$_action_m(c, lvl, x) && true)
+  
+  // ------- Stabilising regions Counter (after atomic) END 
+  
+  
+  
+  inhale Counter_state(c, lvl, x) == c.$stepTo_int
+  inhale old(Counter_state(c, lvl, x)) == c.$stepFrom_int
+  inhale acc(Counter_INCREMENT(c), write)
+  exhale acc(c.$stepFrom_int, write) && acc(c.$stepTo_int, write)
+}
+
+method read(c: Ref, lvl: Int, x: Ref) returns (ret: Int)
+  requires acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_INCREMENT(c), write)
+  requires (Counter_state(c, lvl, x) in IntSet())
+  ensures acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == old(Counter_state(c, lvl, x))) && acc(Counter_INCREMENT(c), write)
+  ensures ret == old(Counter_state(c, lvl, x))
+{
+  var $_levelVar_11: Int
+  var $_levelVar_12: Int
+  var $_levelVar_13: Int
+  inhale $_levelVar_11 >= 0 && $_levelVar_11 > lvl
+  assert $_levelVar_11 >= 0
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($r, $lvl, $x), write))
+  inhale Counter_interferenceSet_hf(12, c, lvl, x) == IntSet()
+  inhale Counter_interferenceReference_hf(12, c, lvl, x) == old(Counter_state(c, lvl, x))
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region2
+  assert $_levelVar_11 > lvl
+  $_levelVar_12 := lvl
+  unfold acc(Counter(c, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  ret := x.$memcell_$f
+  
+  // ------- heap-read END -----------
+  
+  
+  fold acc(Counter(c, lvl, x), write)
+  assert Counter_state(c, lvl, x) == old[pre_open_region2](Counter_state(c, lvl, x))
+  $_levelVar_13 := $_levelVar_11
+  
+  // ------- open-region END ---------
+  
+  
+}
+
+method wkincr(c: Ref, lvl: Int, x: Ref) returns (ret: Int)
+  requires acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_INCREMENT(c), write)
+  requires (Counter_state(c, lvl, x) in Set(Counter_state(c, lvl, x)))
+  ensures acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == old(Counter_state(c, lvl, x)) + 1) && acc(Counter_INCREMENT(c), write)
+  ensures ret == old(Counter_state(c, lvl, x))
+{
+  var r: Int
+  var $_levelVar_14: Int
+  var $_levelVar_15: Int
+  var $_levelVar_16: Int
+  var $_levelVar_17: Int
+  var $_levelVar_18: Int
+  inhale $_levelVar_14 >= 0 && $_levelVar_14 > lvl
+  assert $_levelVar_14 >= 0
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($r, $lvl, $x), write))
+  label guard_arg_eval
+  exhale acc(Counter_INCREMENT(c), write)
+  inhale acc(c.$diamond, write)
+  inhale acc(Counter_atomicity_context_fp(c, lvl, x), write)
+  inhale Counter_atomicity_context_hf(c, lvl, x) == Set(Counter_state(c, lvl, x))
+  
+  // ------- Stabilising regions Counter (before atomic) BEGIN 
+  
+  
+  label pre_stabilize13
+  
+  // Stabilising single instance of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(13, c, lvl, x)) } ($$_m in Counter_interferenceSet_hf(13, c, lvl, x)) == ((none < perm(c.$diamond) && none < perm(Counter_atomicity_context_fp(c, lvl, x)) ==> ($$_m in Counter_atomicity_context_hf(c, lvl, x))) && ($$_m == old[pre_stabilize13](Counter_state(c, lvl, x)) || Counter_sk_$_action_n(c, lvl, x) == old[pre_stabilize13](Counter_state(c, lvl, x)) && Counter_sk_$_action_m(c, lvl, x) == $$_m && Counter_sk_$_action_n(c, lvl, x) < Counter_sk_$_action_m(c, lvl, x) && true)))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (Counter_state(c, lvl, x) in Counter_interferenceSet_hf(13, c, lvl, x))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale Counter_interferenceReference_hf(13, c, lvl, x) == old[pre_stabilize13](Counter_state(c, lvl, x))
+  
+  // ------- Stabilising regions Counter (before atomic) END 
+  
+  
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region3
+  assert $_levelVar_14 > lvl
+  $_levelVar_15 := lvl
+  unfold acc(Counter(c, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  r := x.$memcell_$f
+  
+  // ------- heap-read END -----------
+  
+  
+  fold acc(Counter(c, lvl, x), write)
+  assert Counter_state(c, lvl, x) == old[pre_open_region3](Counter_state(c, lvl, x))
+  $_levelVar_16 := $_levelVar_14
+  
+  // ------- open-region END ---------
+  
+  
+  
+  // ------- Stabilising regions Counter (after open-region@76.3) BEGIN 
+  
+  
+  label pre_stabilize15
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(14, $r, $lvl, $x)) } none < old[pre_stabilize15](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(14, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize15](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize15](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize15](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(14, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize15](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(14, $r, $lvl, $x) == old[pre_stabilize15](Counter_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Counter (after open-region@76.3) END 
+  
+  
+  
+  // ------- update-region BEGIN -----
+  
+  
+  exhale acc(c.$diamond, write)
+  label pre_region_update2
+  assert $_levelVar_16 > lvl
+  $_levelVar_17 := lvl
+  exhale acc(Counter_atomicity_context_fp(c, lvl, x), write)
+  unfold acc(Counter(c, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- Havocking regions Counter (before update-region@80.3) BEGIN 
+  
+  
+  label pre_havoc2
+  
+  // Havocking single instance of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  
+  // ------- Havocking regions Counter (before update-region@80.3) END 
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  x.$memcell_$f := r + 1
+  
+  // ------- heap-write END ----------
+  
+  
+  fold acc(Counter(c, lvl, x), write)
+  if (Counter_state(c, lvl, x) != old[pre_region_update2](Counter_state(c, lvl, x))) {
+    inhale acc(c.$stepFrom_int, write) && acc(c.$stepTo_int, write)
+    c.$stepFrom_int := old[pre_region_update2](Counter_state(c, lvl, x))
+    c.$stepTo_int := Counter_state(c, lvl, x)
+  } else {
+    inhale acc(c.$diamond, write)
+  }
+  inhale acc(Counter_atomicity_context_fp(c, lvl, x), write)
+  inhale Counter_atomicity_context_hf(c, lvl, x) == old[pre_region_update2](Counter_atomicity_context_hf(c, lvl, x))
+  $_levelVar_18 := $_levelVar_16
+  
+  // ------- update-region END -------
+  
+  
+  
+  // ------- Stabilising regions Counter (after update-region@80.3) BEGIN 
+  
+  
+  label pre_stabilize16
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(15, $r, $lvl, $x)) } none < old[pre_stabilize16](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(15, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize16](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize16](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize16](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(15, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize16](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(15, $r, $lvl, $x) == old[pre_stabilize16](Counter_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Counter (after update-region@80.3) END 
+  
+  
+  
+  // ------- assign BEGIN ------------
+  
+  
+  ret := r
+  
+  // ------- assign END --------------
+  
+  
+  
+  // ------- Stabilising regions Counter (after assign@84.3) BEGIN 
+  
+  
+  label pre_stabilize17
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(16, $r, $lvl, $x)) } none < old[pre_stabilize17](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(16, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize17](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize17](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  ___silicon_hack407_havoc_all_Counter()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize17](perm(Counter($r, $lvl, $x))) ==> (Counter_state($r, $lvl, $x) in Counter_interferenceSet_hf(16, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize17](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(16, $r, $lvl, $x) == old[pre_stabilize17](Counter_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions Counter (after assign@84.3) END 
+  
+  
+  assert (c.$stepFrom_int in Counter_atomicity_context_hf(c, lvl, x))
+  assert c.$stepFrom_int == c.$stepTo_int || c.$stepFrom_int < c.$stepTo_int
+  
+  // ------- Stabilising regions Counter (after atomic) BEGIN 
+  
+  
+  label pre_stabilize14
+  
+  // Stabilising single instance of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (none < perm(c.$diamond) && none < perm(Counter_atomicity_context_fp(c, lvl, x)) ==> (Counter_state(c, lvl, x) in Counter_atomicity_context_hf(c, lvl, x))) && (Counter_state(c, lvl, x) == old[pre_stabilize14](Counter_state(c, lvl, x)) || Counter_sk_$_action_n(c, lvl, x) == old[pre_stabilize14](Counter_state(c, lvl, x)) && Counter_sk_$_action_m(c, lvl, x) == Counter_state(c, lvl, x) && Counter_sk_$_action_n(c, lvl, x) < Counter_sk_$_action_m(c, lvl, x) && true)
+  
+  // ------- Stabilising regions Counter (after atomic) END 
+  
+  
+  
+  inhale Counter_state(c, lvl, x) == c.$stepTo_int
+  inhale old(Counter_state(c, lvl, x)) == c.$stepFrom_int
+  inhale acc(Counter_INCREMENT(c), write)
+  exhale acc(c.$stepFrom_int, write) && acc(c.$stepTo_int, write)
+}
+
+method CAS(x: Ref, now: Int, thn: Int) returns (ret: Bool)
+  requires acc(x.$memcell_$f, write) && true
+  ensures (old(x.$memcell_$f) == now ? ret && (acc(x.$memcell_$f, write) && x.$memcell_$f == thn) : !ret && (acc(x.$memcell_$f, write) && x.$memcell_$f == old(x.$memcell_$f)))
+
+
+method $_Counter_interpretation_stability_check(r: Ref, lvl: Int, x: Ref)
+{
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($r, $lvl, $x), write))
+  inhale acc(x.$memcell_$f, write) && true
+  
+  // ------- Stabilising regions Counter (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize18
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize18](perm(Counter($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> (Counter_state($r, $lvl, $x) in Counter_atomicity_context_hf($r, $lvl, $x))) && (Counter_state($r, $lvl, $x) == old[pre_stabilize18](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize18](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == Counter_state($r, $lvl, $x) && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))
+  
+  // ------- Stabilising regions Counter (check stability of region interpretation) END 
+  
+  
+  assert acc(x.$memcell_$f, write) && true
+}
+
+method $_Counter_action_transitivity_check()
+{
+  var INCREMENT: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && $_action_n_0_x < $_action_m_0_x && INCREMENT
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && $_action_n_0_y < $_action_m_0_y && INCREMENT
+  assert aState == cState || aState == aState && cState == cState && aState < cState && INCREMENT
+}
+
+method $_makeCounter_condition_stability_precondition_check(r: Ref, lvl: Int, ret: Ref)
+  requires lvl >= 0
+{
+  var $_levelVar_20: Int
+  var v: Ref
+  inhale $_levelVar_20 >= 0
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context Counter (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer3
+  
+  // Inferring interference all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Counter_interferenceSet_df(18, $r, $lvl, $x)) } none < old[pre_infer3](perm(Counter($r, $lvl, $x))) ==> ($$_m in Counter_interferenceSet_hf(18, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Counter_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer3](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_infer3](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == $$_m && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_infer3](perm(Counter($r, $lvl, $x))) ==> Counter_interferenceReference_hf(18, $r, $lvl, $x) == old[pre_infer3](Counter_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context Counter (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Counter (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize19
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize19](perm(Counter($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> (Counter_state($r, $lvl, $x) in Counter_atomicity_context_hf($r, $lvl, $x))) && (Counter_state($r, $lvl, $x) == old[pre_stabilize19](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize19](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == Counter_state($r, $lvl, $x) && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))
+  
+  // ------- Stabilising regions Counter (check stability of method condition) END 
+  
+  
+  assert lvl >= 0
+}
+
+method $_incr_condition_stability_precondition_check(c: Ref, lvl: Int, x: Ref, ret: Int)
+  requires acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_INCREMENT(c), write)
+{
+  var $_levelVar_21: Int
+  var r: Int
+  var b: Bool
+  inhale $_levelVar_21 >= 0 && $_levelVar_21 > lvl
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($r, $lvl, $x), write))
+  inhale Counter_interferenceSet_hf(18, c, lvl, x) == IntSet()
+  inhale Counter_interferenceReference_hf(18, c, lvl, x) == old(Counter_state(c, lvl, x))
+  
+  // ------- Stabilising regions Counter (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize20
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize20](perm(Counter($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> (Counter_state($r, $lvl, $x) in Counter_atomicity_context_hf($r, $lvl, $x))) && (Counter_state($r, $lvl, $x) == old[pre_stabilize20](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize20](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == Counter_state($r, $lvl, $x) && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))
+  
+  // ------- Stabilising regions Counter (check stability of method condition) END 
+  
+  
+  assert acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_INCREMENT(c), write)
+}
+
+method $_read_condition_stability_precondition_check(c: Ref, lvl: Int, x: Ref, ret: Int)
+  requires acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_INCREMENT(c), write)
+{
+  var $_levelVar_22: Int
+  inhale $_levelVar_22 >= 0 && $_levelVar_22 > lvl
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($r, $lvl, $x), write))
+  inhale Counter_interferenceSet_hf(18, c, lvl, x) == IntSet()
+  inhale Counter_interferenceReference_hf(18, c, lvl, x) == old(Counter_state(c, lvl, x))
+  
+  // ------- Stabilising regions Counter (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize21
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize21](perm(Counter($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> (Counter_state($r, $lvl, $x) in Counter_atomicity_context_hf($r, $lvl, $x))) && (Counter_state($r, $lvl, $x) == old[pre_stabilize21](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize21](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == Counter_state($r, $lvl, $x) && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))
+  
+  // ------- Stabilising regions Counter (check stability of method condition) END 
+  
+  
+  assert acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_INCREMENT(c), write)
+}
+
+method $_wkincr_condition_stability_precondition_check(c: Ref, lvl: Int, x: Ref, ret: Int)
+  requires acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_INCREMENT(c), write)
+{
+  var $_levelVar_23: Int
+  var r: Int
+  inhale $_levelVar_23 >= 0 && $_levelVar_23 > lvl
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($r, $lvl, $x), write))
+  inhale Counter_interferenceSet_hf(18, c, lvl, x) == Set(Counter_state(c, lvl, x))
+  inhale Counter_interferenceReference_hf(18, c, lvl, x) == old(Counter_state(c, lvl, x))
+  
+  // ------- Stabilising regions Counter (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize22
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Counter($r, $lvl, $x)] :: none < old[pre_stabilize22](perm(Counter($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Counter_atomicity_context_fp($r, $lvl, $x)) ==> (Counter_state($r, $lvl, $x) in Counter_atomicity_context_hf($r, $lvl, $x))) && (Counter_state($r, $lvl, $x) == old[pre_stabilize22](Counter_state($r, $lvl, $x)) || Counter_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize22](Counter_state($r, $lvl, $x)) && Counter_sk_$_action_m($r, $lvl, $x) == Counter_state($r, $lvl, $x) && Counter_sk_$_action_n($r, $lvl, $x) < Counter_sk_$_action_m($r, $lvl, $x) && true))
+  
+  // ------- Stabilising regions Counter (check stability of method condition) END 
+  
+  
+  assert acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_INCREMENT(c), write)
+}

@@ -1,0 +1,204 @@
+domain $SnapshotMirrors$ {
+  
+  function mirror$m_complex_fn$$test2$opensqu$0$closesqu$__$TY$__$int$__$TY$__$int$(): Int
+  
+  function mirror$m_complex_fn$$negative$opensqu$0$closesqu$__$TY$__$int$$$int$__$TY$__$int$$$int$(_pure_1: Int): Int
+  
+  function mirror$m_complex_fn$$test1$opensqu$0$closesqu$__$TY$__$int$__$TY$__$int$(): Int
+}
+
+field closure_0: Ref
+
+field f$0: Ref
+
+field f$a: Ref
+
+field f$f: Ref
+
+field f$g: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$unreach_bool__$TY$__$bool$(): Bool
+  requires false
+
+
+function builtin$unreach_int__$TY$__$int$(): Int
+  requires false
+
+
+function m_complex_fn$$negative$opensqu$0$closesqu$__$TY$__$int$$$int$(_pure_1: Int): Int
+  requires true
+  requires -1000 < _pure_1 && _pure_1 < 1000
+  ensures true
+  ensures [result == mirror$m_complex_fn$$negative$opensqu$0$closesqu$__$TY$__$int$$$int$__$TY$__$int$$$int$(_pure_1), true]
+{
+  (_pure_1 != -2147483648 ? -_pure_1 : builtin$unreach_int__$TY$__$int$())
+}
+
+function m_complex_fn$$test1$opensqu$0$closesqu$__$TY$__$int$(): Int
+  requires true
+  requires true
+  ensures true
+  ensures [result == mirror$m_complex_fn$$test1$opensqu$0$closesqu$__$TY$__$int$__$TY$__$int$(), true]
+{
+  1
+}
+
+function m_complex_fn$$test2$opensqu$0$closesqu$__$TY$__$int$(): Int
+  requires true
+  requires true
+  ensures true
+  ensures [result == mirror$m_complex_fn$$test2$opensqu$0$closesqu$__$TY$__$int$__$TY$__$int$(), true]
+{
+  1
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_14$3$3014725614321868276(self: Ref) 
+
+predicate closure$0_1_15$3$1203968611043826091(self: Ref) 
+
+predicate closure$0_1_16$2$1603612527555206389(self: Ref) 
+
+predicate closure$0_1_17$3$9286995642513804898(self: Ref) 
+
+predicate closure$0_1_18$3$1355352744258041118(self: Ref) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate m_complex_fn$$A$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$0, write) && acc(i32(self.f$0), write)
+}
+
+predicate m_complex_fn$$T$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$a, write) && (acc(tuple2$m_complex_fn$$A$opensqu$0$closesqu$$_beg_$_end_$u32(self.f$a), write) && (acc(self.f$f, write) && (acc(bool(self.f$f), write) && (acc(self.f$g, write) && acc(tuple2$u32$u32(self.f$g), write)))))
+}
+
+predicate ref$closure$0_1_14$3$3014725614321868276(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_14$3$3014725614321868276(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_15$3$1203968611043826091(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_15$3$1203968611043826091(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_16$2$1603612527555206389(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_16$2$1603612527555206389(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_17$3$9286995642513804898(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_17$3$9286995642513804898(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_18$3$1355352744258041118(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_18$3$1355352744258041118(self.val_ref), write)
+}
+
+predicate ref$i32(self: Ref) {
+  acc(self.val_ref, write) && acc(i32(self.val_ref), write)
+}
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$i32$i32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(i32(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(i32(self.tuple_1), write)))
+}
+
+predicate tuple2$m_complex_fn$$A$opensqu$0$closesqu$$_beg_$_end_$i32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(m_complex_fn$$A$opensqu$0$closesqu$$_beg_$_end_(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(i32(self.tuple_1), write)))
+}
+
+predicate tuple2$m_complex_fn$$A$opensqu$0$closesqu$$_beg_$_end_$u32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(m_complex_fn$$A$opensqu$0$closesqu$$_beg_$_end_(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(u32(self.tuple_1), write)))
+}
+
+predicate tuple2$u32$u32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(u32(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(u32(self.tuple_1), write)))
+}
+
+predicate u32(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+method m_complex_fn$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  label start
+  // ========== start ==========
+  
+  // Name: "complex_fn::main"
+  
+  // Def path: "complex_fn::main[0]"
+  
+  // Span: tests/verify/pass/pure-fn/complex-fn.rs:41:1: 41:13
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert (forall i: Int :: -1000 < i && i < 1000 ==> !(i == -2147483648) && m_complex_fn$$negative$opensqu$0$closesqu$__$TY$__$int$$$int$(i) == -i)
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_ref() returns (ret: Ref)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_bool() returns (ret: Bool)

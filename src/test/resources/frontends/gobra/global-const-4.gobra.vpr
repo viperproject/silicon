@@ -1,0 +1,86 @@
+domain ConstantSimpleUntypedBoolConst_pkg_G {
+  
+  function constant_SimpleUntypedBoolConst_pkg_G(): Bool
+  
+  axiom get_constantSimpleUntypedBoolConst_pkg_G {
+    constant_SimpleUntypedBoolConst_pkg_G() == true
+  }
+}
+
+domain ConstantSimpleTypedBoolConst_pkg_G {
+  
+  function constant_SimpleTypedBoolConst_pkg_G(): Bool
+  
+  axiom get_constantSimpleTypedBoolConst_pkg_G {
+    constant_SimpleTypedBoolConst_pkg_G() == true
+  }
+}
+
+domain ConstantBoolExprConst_pkg_G {
+  
+  function constant_BoolExprConst_pkg_G(): Bool
+  
+  axiom get_constantBoolExprConst_pkg_G {
+    constant_BoolExprConst_pkg_G() == true
+  }
+}
+
+domain ConstantDoesDeclOrderMatter_pkg_G {
+  
+  function constant_DoesDeclOrderMatter_pkg_G(): Bool
+  
+  axiom get_constantDoesDeclOrderMatter_pkg_G {
+    constant_DoesDeclOrderMatter_pkg_G() == true
+  }
+}
+
+domain ConstantTypedIntConst_pkg_G {
+  
+  function constant_TypedIntConst_pkg_G(): Int
+  
+  axiom get_constantTypedIntConst_pkg_G {
+    constant_TypedIntConst_pkg_G() == 42
+  }
+}
+
+domain ConstantmultiConst1_pkg_G {
+  
+  function constant_multiConst1_pkg_G(): Int
+  
+  axiom get_constantmultiConst1_pkg_G {
+    constant_multiConst1_pkg_G() == 1
+  }
+}
+
+domain ConstantmultiConst2_pkg_G {
+  
+  function constant_multiConst2_pkg_G(): Bool
+  
+  axiom get_constantmultiConst2_pkg_G {
+    constant_multiConst2_pkg_G() == false
+  }
+}
+
+domain ConstantmultiConst3_pkg_G {
+  
+  function constant_multiConst3_pkg_G(): Int
+  
+  axiom get_constantmultiConst3_pkg_G {
+    constant_multiConst3_pkg_G() == 3
+  }
+}
+
+method client_pkg_F()
+{
+  
+  // decl 
+  
+  
+  // decl 
+  
+  
+  // assert DoesDeclOrderMatter_pkg_G && BoolExprConst_pkg_G
+  
+  assert constant_DoesDeclOrderMatter_pkg_G() && constant_BoolExprConst_pkg_G()
+  label returnLabel
+}

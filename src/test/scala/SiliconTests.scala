@@ -7,7 +7,6 @@
 package viper.silicon.tests
 
 import java.nio.file.Path
-
 import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
 import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
 import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}

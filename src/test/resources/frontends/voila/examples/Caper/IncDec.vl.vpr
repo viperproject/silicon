@@ -1,0 +1,1562 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function IncDec_state_T(r: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function IncDec_interferenceReference_df($p0: Int, r: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function IncDec_interferenceSet_df($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function IncDec_atomicity_context_df(r: Ref, lvl: Int, x: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $memcell_$val: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function IncDec_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(IncDec_atomicity_context_fp(r, lvl, x), write)
+  ensures [IncDec_atomicity_context_df(r, lvl, x), true]
+
+
+function IncDec_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(IncDec_interferenceContext_fp(r, lvl, x), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in IncDec_interferenceSet_df($p0, r, lvl, x))), true]
+
+
+function IncDec_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
+  requires acc(IncDec_interferenceContext_fp(r, lvl, x), write)
+  ensures [IncDec_interferenceReference_df($p0, r, lvl, x), true]
+
+
+function IncDec_sk_$_action_n(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(IncDec_sk_fp(), write)
+
+
+function IncDec_sk_$_action_m(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(IncDec_sk_fp(), write)
+
+
+function IncDec_state(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(IncDec(r, lvl, x), write)
+  ensures [IncDec_state_T(r, lvl, x), true]
+{
+  (unfolding acc(IncDec(r, lvl, x), write) in x.$memcell_$val)
+}
+
+predicate IncDec_INC($r: Ref) 
+
+predicate IncDec_DEC($r: Ref) 
+
+predicate IncDec_atomicity_context_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate IncDec_interferenceContext_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate IncDec_sk_fp() 
+
+predicate IncDec(r: Ref, lvl: Int, x: Ref) {
+  acc(x.$memcell_$val, write) && true
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method ___silicon_hack407_havoc_all_IncDec()
+
+
+method ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+
+
+method makeCounter(lvl: Int) returns (r: Ref, ret: Ref)
+  requires lvl >= 0
+  ensures acc(IncDec(r, lvl, ret), write) && (lvl >= 0 && IncDec_state(r, lvl, ret) == 0) && acc(IncDec_INC(r), write) && acc(IncDec_DEC(r), write)
+{
+  var v: Ref
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // Inferring interference all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(1, $r, $lvl, $x)) } none < old[pre_infer0](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(1, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer0](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer0](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer0](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer0](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_infer0](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(1, $r, $lvl, $x) == old[pre_infer0](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- new:memcell BEGIN -------
+  
+  
+  v := new($memcell_$val)
+  v.$memcell_$val := 0
+  
+  // ------- new:memcell END ---------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after new:memcell@33.3) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(2, $r, $lvl, $x)) } none < old[pre_stabilize0](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(2, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize0](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize0](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize0](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize0](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize0](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(2, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize0](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(2, $r, $lvl, $x) == old[pre_stabilize0](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after new:memcell@33.3) END 
+  
+  
+  
+  // ------- assign BEGIN ------------
+  
+  
+  ret := v
+  
+  // ------- assign END --------------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after assign@36.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(3, $r, $lvl, $x)) } none < old[pre_stabilize](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(3, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(3, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(3, $r, $lvl, $x) == old[pre_stabilize](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after assign@36.3) END 
+  
+  
+  
+  // ------- new:IncDec BEGIN --------
+  
+  
+  r := new()
+  inhale acc(IncDec_INC(r), write) && acc(IncDec_DEC(r), write)
+  fold acc(IncDec(r, lvl, ret), write)
+  
+  // ------- new:IncDec END ----------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after seq-comp@36.3) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(4, $r, $lvl, $x)) } none < old[pre_stabilize2](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(4, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize2](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize2](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize2](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize2](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize2](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(4, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize2](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(4, $r, $lvl, $x) == old[pre_stabilize2](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after seq-comp@36.3) END 
+  
+  
+}
+
+method increment(r: Ref, lvl: Int, x: Ref, k: Int) returns (ret: Int)
+  requires acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) && acc(IncDec_INC(r), write) && k > 0
+  ensures acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) && acc(IncDec_INC(r), write) && IncDec_state(r, lvl, x) <= old(IncDec_state(r, lvl, x)) + k
+{
+  var b: Bool
+  var v: Int
+  var $_levelVar_1: Int
+  var $_levelVar_2: Int
+  var $_levelVar_3: Int
+  var $_levelVar_4: Int
+  var $_levelVar_5: Int
+  var $_levelVar_6: Int
+  var $_levelVar_7: Int
+  var $_levelVar_8: Int
+  var $_levelVar_9: Int
+  var $_levelVar_10: Int
+  inhale $_levelVar_1 >= 0 && $_levelVar_1 > lvl
+  assert $_levelVar_1 >= 0
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // Inferring interference all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(5, $r, $lvl, $x)) } none < old[pre_infer](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(5, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_infer](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(5, $r, $lvl, $x) == old[pre_infer](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region0
+  assert $_levelVar_1 > lvl
+  $_levelVar_2 := lvl
+  unfold acc(IncDec(r, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  v := x.$memcell_$val
+  
+  // ------- heap-read END -----------
+  
+  
+  fold acc(IncDec(r, lvl, x), write)
+  assert IncDec_state(r, lvl, x) == old[pre_open_region0](IncDec_state(r, lvl, x))
+  $_levelVar_3 := $_levelVar_1
+  
+  // ------- open-region END ---------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after open-region@52.5) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(6, $r, $lvl, $x)) } none < old[pre_stabilize3](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(6, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize3](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize3](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize3](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize3](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize3](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(6, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize3](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(6, $r, $lvl, $x) == old[pre_stabilize3](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after open-region@52.5) END 
+  
+  
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic0
+  assert perm(IncDec_atomicity_context_fp(r, lvl, x)) == none
+  assert $_levelVar_3 > lvl
+  $_levelVar_4 := lvl
+  exhale acc(IncDec_INC(r), write)
+  
+  // ------- Stabilising regions  (before use-atomic@59.5) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // ------- Stabilising regions  (before use-atomic@59.5) END 
+  
+  
+  unfold acc(IncDec(r, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- Stabilising regions IncDec (before use-atomic@59.5) BEGIN 
+  
+  
+  label pre_stabilize6
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize6](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize6](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize6](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize6](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize6](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+  
+  // ------- Stabilising regions IncDec (before use-atomic@59.5) END 
+  
+  
+  inhale acc(IncDec_INC(r), write)
+  
+  // ------- call:CAS BEGIN ----------
+  
+  
+  assert true
+  label pre_call0
+  assert $_levelVar_4 >= 0
+  assert true
+  exhale acc(x.$memcell_$val, write) && true
+  
+  // ------- Stabilising regions IncDec (before call:CAS@62.7) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize4](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize4](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize4](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize4](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize4](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+  
+  // ------- Stabilising regions IncDec (before call:CAS@62.7) END 
+  
+  
+  b := havoc_Bool()
+  inhale (old[pre_call0](x.$memcell_$val) == v ? b && (acc(x.$memcell_$val, write) && x.$memcell_$val == v + k) : !b && (acc(x.$memcell_$val, write) && x.$memcell_$val == old[pre_call0](x.$memcell_$val)))
+  
+  // ------- call:CAS END ------------
+  
+  
+  fold acc(IncDec(r, lvl, x), write)
+  assert old[pre_use_atomic0](IncDec_state(r, lvl, x)) == IncDec_state(r, lvl, x) || old[pre_use_atomic0](IncDec_state(r, lvl, x)) < IncDec_state(r, lvl, x)
+  $_levelVar_5 := $_levelVar_3
+  
+  // ------- use-atomic END ----------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after use-atomic@59.5) BEGIN 
+  
+  
+  label pre_stabilize7
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(7, $r, $lvl, $x)) } none < old[pre_stabilize7](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(7, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize7](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize7](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize7](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize7](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize7](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(7, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize7](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(7, $r, $lvl, $x) == old[pre_stabilize7](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after use-atomic@59.5) END 
+  
+  
+  
+  // ------- while BEGIN -------------
+  
+  
+  label preWhile0
+  while (!b)
+    invariant acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) && acc(IncDec_INC(r), write) && k > 0 && (!b ? IncDec_state(r, lvl, x) <= old(IncDec_state(r, lvl, x)) : IncDec_state(r, lvl, x) <= old(IncDec_state(r, lvl, x)) + k) 
+  {
+    inhale acc(IncDec_sk_fp(), write)
+    
+    // no init required
+    
+    
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_interferenceContext_fp($r, $lvl, $x), write))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_atomicity_context_fp($r, $lvl, $x), old[preWhile0](perm(IncDec_atomicity_context_fp($r, $lvl, $x)))))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: { IncDec_atomicity_context_df($r, $lvl, $x) } none < old[preWhile0](perm(IncDec_atomicity_context_fp($r, $lvl, $x))) ==> IncDec_atomicity_context_hf($r, $lvl, $x) == old[preWhile0](IncDec_atomicity_context_hf($r, $lvl, $x)))
+    
+    // ------- Inferring interference context IncDec (infer context inside while) BEGIN 
+    
+    
+    label pre_infer2
+    
+    // Inferring interference all instances of region IncDec
+    
+    ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(8, $r, $lvl, $x)) } none < old[pre_infer2](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(8, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer2](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer2](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer2](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer2](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_infer2](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(8, $r, $lvl, $x) == old[pre_infer2](IncDec_state($r, $lvl, $x)))
+    
+    // ------- Inferring interference context IncDec (infer context inside while) END 
+    
+    
+    
+    // ------- open-region BEGIN -------
+    
+    
+    label pre_open_region
+    assert $_levelVar_5 > lvl
+    $_levelVar_6 := lvl
+    unfold acc(IncDec(r, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    
+    
+    // ------- heap-read BEGIN ---------
+    
+    
+    v := x.$memcell_$val
+    
+    // ------- heap-read END -----------
+    
+    
+    fold acc(IncDec(r, lvl, x), write)
+    assert IncDec_state(r, lvl, x) == old[pre_open_region](IncDec_state(r, lvl, x))
+    $_levelVar_7 := $_levelVar_5
+    
+    // ------- open-region END ---------
+    
+    
+    
+    // ------- Stabilising regions IncDec (after open-region@52.5) BEGIN 
+    
+    
+    label pre_stabilize8
+    
+    // Stabilising all instances of region IncDec
+    
+    ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(9, $r, $lvl, $x)) } none < old[pre_stabilize8](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(9, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize8](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize8](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize8](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize8](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+    ___silicon_hack407_havoc_all_IncDec()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize8](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(9, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize8](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(9, $r, $lvl, $x) == old[pre_stabilize8](IncDec_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions IncDec (after open-region@52.5) END 
+    
+    
+    
+    // ------- use-atomic BEGIN --------
+    
+    
+    label pre_use_atomic
+    assert perm(IncDec_atomicity_context_fp(r, lvl, x)) == none
+    assert $_levelVar_7 > lvl
+    $_levelVar_8 := lvl
+    exhale acc(IncDec_INC(r), write)
+    
+    // ------- Stabilising regions  (before use-atomic@59.5) BEGIN 
+    
+    
+    label pre_stabilize10
+    
+    // ------- Stabilising regions  (before use-atomic@59.5) END 
+    
+    
+    unfold acc(IncDec(r, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    
+    
+    // ------- Stabilising regions IncDec (before use-atomic@59.5) BEGIN 
+    
+    
+    label pre_stabilize11
+    
+    // Stabilising all instances of region IncDec
+    
+    ___silicon_hack407_havoc_all_IncDec()
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize11](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize11](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize11](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize11](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize11](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+    
+    // ------- Stabilising regions IncDec (before use-atomic@59.5) END 
+    
+    
+    inhale acc(IncDec_INC(r), write)
+    
+    // ------- call:CAS BEGIN ----------
+    
+    
+    assert true
+    label pre_call
+    assert $_levelVar_8 >= 0
+    assert true
+    exhale acc(x.$memcell_$val, write) && true
+    
+    // ------- Stabilising regions IncDec (before call:CAS@62.7) BEGIN 
+    
+    
+    label pre_stabilize9
+    
+    // Stabilising all instances of region IncDec
+    
+    ___silicon_hack407_havoc_all_IncDec()
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize9](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize9](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize9](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize9](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize9](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+    
+    // ------- Stabilising regions IncDec (before call:CAS@62.7) END 
+    
+    
+    b := havoc_Bool()
+    inhale (old[pre_call](x.$memcell_$val) == v ? b && (acc(x.$memcell_$val, write) && x.$memcell_$val == v + k) : !b && (acc(x.$memcell_$val, write) && x.$memcell_$val == old[pre_call](x.$memcell_$val)))
+    
+    // ------- call:CAS END ------------
+    
+    
+    fold acc(IncDec(r, lvl, x), write)
+    assert old[pre_use_atomic](IncDec_state(r, lvl, x)) == IncDec_state(r, lvl, x) || old[pre_use_atomic](IncDec_state(r, lvl, x)) < IncDec_state(r, lvl, x)
+    $_levelVar_9 := $_levelVar_7
+    
+    // ------- use-atomic END ----------
+    
+    
+    
+    // ------- Stabilising regions IncDec (after use-atomic@59.5) BEGIN 
+    
+    
+    label pre_stabilize12
+    
+    // Stabilising all instances of region IncDec
+    
+    ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(10, $r, $lvl, $x)) } none < old[pre_stabilize12](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(10, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize12](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize12](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize12](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize12](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+    ___silicon_hack407_havoc_all_IncDec()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize12](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(10, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize12](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(10, $r, $lvl, $x) == old[pre_stabilize12](IncDec_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions IncDec (after use-atomic@59.5) END 
+    
+    
+    assert $_levelVar_9 == $_levelVar_5
+  }
+  $_levelVar_10 := $_levelVar_5
+  
+  // ------- while END ---------------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after while@48.3) BEGIN 
+  
+  
+  label pre_stabilize13
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(11, $r, $lvl, $x)) } none < old[pre_stabilize13](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(11, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize13](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize13](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize13](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize13](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize13](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(11, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize13](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(11, $r, $lvl, $x) == old[pre_stabilize13](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after while@48.3) END 
+  
+  
+  
+  // ------- assign BEGIN ------------
+  
+  
+  ret := v
+  
+  // ------- assign END --------------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after assign@67.3) BEGIN 
+  
+  
+  label pre_stabilize14
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(12, $r, $lvl, $x)) } none < old[pre_stabilize14](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(12, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize14](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize14](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize14](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize14](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize14](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(12, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize14](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(12, $r, $lvl, $x) == old[pre_stabilize14](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after assign@67.3) END 
+  
+  
+}
+
+method decrement(r: Ref, lvl: Int, x: Ref, k: Int) returns (ret: Int)
+  requires acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) && acc(IncDec_DEC(r), write) && k > 0
+  ensures acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) && acc(IncDec_DEC(r), write) && IncDec_state(r, lvl, x) >= old(IncDec_state(r, lvl, x)) - k
+{
+  var b: Bool
+  var v: Int
+  var $_levelVar_11: Int
+  var $_levelVar_12: Int
+  var $_levelVar_13: Int
+  var $_levelVar_14: Int
+  var $_levelVar_15: Int
+  var $_levelVar_16: Int
+  var $_levelVar_17: Int
+  var $_levelVar_18: Int
+  var $_levelVar_19: Int
+  var $_levelVar_20: Int
+  inhale $_levelVar_11 >= 0 && $_levelVar_11 > lvl
+  assert $_levelVar_11 >= 0
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer3
+  
+  // Inferring interference all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(13, $r, $lvl, $x)) } none < old[pre_infer3](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(13, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer3](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer3](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer3](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer3](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_infer3](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(13, $r, $lvl, $x) == old[pre_infer3](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region2
+  assert $_levelVar_11 > lvl
+  $_levelVar_12 := lvl
+  unfold acc(IncDec(r, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  v := x.$memcell_$val
+  
+  // ------- heap-read END -----------
+  
+  
+  fold acc(IncDec(r, lvl, x), write)
+  assert IncDec_state(r, lvl, x) == old[pre_open_region2](IncDec_state(r, lvl, x))
+  $_levelVar_13 := $_levelVar_11
+  
+  // ------- open-region END ---------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after open-region@81.5) BEGIN 
+  
+  
+  label pre_stabilize15
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(14, $r, $lvl, $x)) } none < old[pre_stabilize15](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(14, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize15](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize15](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize15](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize15](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize15](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(14, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize15](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(14, $r, $lvl, $x) == old[pre_stabilize15](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after open-region@81.5) END 
+  
+  
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic2
+  assert perm(IncDec_atomicity_context_fp(r, lvl, x)) == none
+  assert $_levelVar_13 > lvl
+  $_levelVar_14 := lvl
+  exhale acc(IncDec_DEC(r), write)
+  
+  // ------- Stabilising regions  (before use-atomic@88.5) BEGIN 
+  
+  
+  label pre_stabilize17
+  
+  // ------- Stabilising regions  (before use-atomic@88.5) END 
+  
+  
+  unfold acc(IncDec(r, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- Stabilising regions IncDec (before use-atomic@88.5) BEGIN 
+  
+  
+  label pre_stabilize18
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize18](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize18](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize18](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize18](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize18](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+  
+  // ------- Stabilising regions IncDec (before use-atomic@88.5) END 
+  
+  
+  inhale acc(IncDec_DEC(r), write)
+  
+  // ------- call:CAS BEGIN ----------
+  
+  
+  assert true
+  label pre_call2
+  assert $_levelVar_14 >= 0
+  assert true
+  exhale acc(x.$memcell_$val, write) && true
+  
+  // ------- Stabilising regions IncDec (before call:CAS@91.7) BEGIN 
+  
+  
+  label pre_stabilize16
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize16](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize16](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize16](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize16](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize16](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+  
+  // ------- Stabilising regions IncDec (before call:CAS@91.7) END 
+  
+  
+  b := havoc_Bool()
+  inhale (old[pre_call2](x.$memcell_$val) == v ? b && (acc(x.$memcell_$val, write) && x.$memcell_$val == v - k) : !b && (acc(x.$memcell_$val, write) && x.$memcell_$val == old[pre_call2](x.$memcell_$val)))
+  
+  // ------- call:CAS END ------------
+  
+  
+  fold acc(IncDec(r, lvl, x), write)
+  assert old[pre_use_atomic2](IncDec_state(r, lvl, x)) == IncDec_state(r, lvl, x) || IncDec_state(r, lvl, x) < old[pre_use_atomic2](IncDec_state(r, lvl, x))
+  $_levelVar_15 := $_levelVar_13
+  
+  // ------- use-atomic END ----------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after use-atomic@88.5) BEGIN 
+  
+  
+  label pre_stabilize19
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(15, $r, $lvl, $x)) } none < old[pre_stabilize19](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(15, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize19](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize19](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize19](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize19](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize19](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(15, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize19](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(15, $r, $lvl, $x) == old[pre_stabilize19](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after use-atomic@88.5) END 
+  
+  
+  
+  // ------- while BEGIN -------------
+  
+  
+  label preWhile
+  while (!b)
+    invariant acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) && acc(IncDec_DEC(r), write) && k > 0 && (!b ? IncDec_state(r, lvl, x) >= old(IncDec_state(r, lvl, x)) : IncDec_state(r, lvl, x) >= old(IncDec_state(r, lvl, x)) - k) 
+  {
+    inhale acc(IncDec_sk_fp(), write)
+    
+    // no init required
+    
+    
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_interferenceContext_fp($r, $lvl, $x), write))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_atomicity_context_fp($r, $lvl, $x), old[preWhile](perm(IncDec_atomicity_context_fp($r, $lvl, $x)))))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: { IncDec_atomicity_context_df($r, $lvl, $x) } none < old[preWhile](perm(IncDec_atomicity_context_fp($r, $lvl, $x))) ==> IncDec_atomicity_context_hf($r, $lvl, $x) == old[preWhile](IncDec_atomicity_context_hf($r, $lvl, $x)))
+    
+    // ------- Inferring interference context IncDec (infer context inside while) BEGIN 
+    
+    
+    label pre_infer4
+    
+    // Inferring interference all instances of region IncDec
+    
+    ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(16, $r, $lvl, $x)) } none < old[pre_infer4](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(16, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer4](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer4](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer4](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer4](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_infer4](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(16, $r, $lvl, $x) == old[pre_infer4](IncDec_state($r, $lvl, $x)))
+    
+    // ------- Inferring interference context IncDec (infer context inside while) END 
+    
+    
+    
+    // ------- open-region BEGIN -------
+    
+    
+    label pre_open_region3
+    assert $_levelVar_15 > lvl
+    $_levelVar_16 := lvl
+    unfold acc(IncDec(r, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    
+    
+    // ------- heap-read BEGIN ---------
+    
+    
+    v := x.$memcell_$val
+    
+    // ------- heap-read END -----------
+    
+    
+    fold acc(IncDec(r, lvl, x), write)
+    assert IncDec_state(r, lvl, x) == old[pre_open_region3](IncDec_state(r, lvl, x))
+    $_levelVar_17 := $_levelVar_15
+    
+    // ------- open-region END ---------
+    
+    
+    
+    // ------- Stabilising regions IncDec (after open-region@81.5) BEGIN 
+    
+    
+    label pre_stabilize20
+    
+    // Stabilising all instances of region IncDec
+    
+    ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(17, $r, $lvl, $x)) } none < old[pre_stabilize20](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(17, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize20](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize20](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize20](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize20](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+    ___silicon_hack407_havoc_all_IncDec()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize20](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(17, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize20](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(17, $r, $lvl, $x) == old[pre_stabilize20](IncDec_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions IncDec (after open-region@81.5) END 
+    
+    
+    
+    // ------- use-atomic BEGIN --------
+    
+    
+    label pre_use_atomic3
+    assert perm(IncDec_atomicity_context_fp(r, lvl, x)) == none
+    assert $_levelVar_17 > lvl
+    $_levelVar_18 := lvl
+    exhale acc(IncDec_DEC(r), write)
+    
+    // ------- Stabilising regions  (before use-atomic@88.5) BEGIN 
+    
+    
+    label pre_stabilize22
+    
+    // ------- Stabilising regions  (before use-atomic@88.5) END 
+    
+    
+    unfold acc(IncDec(r, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    
+    
+    // ------- Stabilising regions IncDec (before use-atomic@88.5) BEGIN 
+    
+    
+    label pre_stabilize23
+    
+    // Stabilising all instances of region IncDec
+    
+    ___silicon_hack407_havoc_all_IncDec()
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize23](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize23](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize23](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize23](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize23](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+    
+    // ------- Stabilising regions IncDec (before use-atomic@88.5) END 
+    
+    
+    inhale acc(IncDec_DEC(r), write)
+    
+    // ------- call:CAS BEGIN ----------
+    
+    
+    assert true
+    label pre_call3
+    assert $_levelVar_18 >= 0
+    assert true
+    exhale acc(x.$memcell_$val, write) && true
+    
+    // ------- Stabilising regions IncDec (before call:CAS@91.7) BEGIN 
+    
+    
+    label pre_stabilize21
+    
+    // Stabilising all instances of region IncDec
+    
+    ___silicon_hack407_havoc_all_IncDec()
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize21](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize21](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize21](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize21](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize21](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+    
+    // ------- Stabilising regions IncDec (before call:CAS@91.7) END 
+    
+    
+    b := havoc_Bool()
+    inhale (old[pre_call3](x.$memcell_$val) == v ? b && (acc(x.$memcell_$val, write) && x.$memcell_$val == v - k) : !b && (acc(x.$memcell_$val, write) && x.$memcell_$val == old[pre_call3](x.$memcell_$val)))
+    
+    // ------- call:CAS END ------------
+    
+    
+    fold acc(IncDec(r, lvl, x), write)
+    assert old[pre_use_atomic3](IncDec_state(r, lvl, x)) == IncDec_state(r, lvl, x) || IncDec_state(r, lvl, x) < old[pre_use_atomic3](IncDec_state(r, lvl, x))
+    $_levelVar_19 := $_levelVar_17
+    
+    // ------- use-atomic END ----------
+    
+    
+    
+    // ------- Stabilising regions IncDec (after use-atomic@88.5) BEGIN 
+    
+    
+    label pre_stabilize24
+    
+    // Stabilising all instances of region IncDec
+    
+    ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+    exhale acc(IncDec_sk_fp(), write)
+    inhale acc(IncDec_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(18, $r, $lvl, $x)) } none < old[pre_stabilize24](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(18, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize24](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize24](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize24](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize24](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+    ___silicon_hack407_havoc_all_IncDec()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize24](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(18, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize24](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(18, $r, $lvl, $x) == old[pre_stabilize24](IncDec_state($r, $lvl, $x)))
+    
+    // ------- Stabilising regions IncDec (after use-atomic@88.5) END 
+    
+    
+    assert $_levelVar_19 == $_levelVar_15
+  }
+  $_levelVar_20 := $_levelVar_15
+  
+  // ------- while END ---------------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after while@77.3) BEGIN 
+  
+  
+  label pre_stabilize25
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(19, $r, $lvl, $x)) } none < old[pre_stabilize25](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(19, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize25](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize25](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize25](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize25](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize25](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(19, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize25](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(19, $r, $lvl, $x) == old[pre_stabilize25](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after while@77.3) END 
+  
+  
+  
+  // ------- assign BEGIN ------------
+  
+  
+  ret := v
+  
+  // ------- assign END --------------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after assign@96.3) BEGIN 
+  
+  
+  label pre_stabilize26
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(20, $r, $lvl, $x)) } none < old[pre_stabilize26](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(20, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize26](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize26](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize26](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize26](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize26](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(20, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize26](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(20, $r, $lvl, $x) == old[pre_stabilize26](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after assign@96.3) END 
+  
+  
+}
+
+method read(r: Ref, lvl: Int, x: Ref) returns (ret: Int)
+  requires acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true)
+  ensures acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true)
+{
+  var $_levelVar_21: Int
+  var $_levelVar_22: Int
+  var $_levelVar_23: Int
+  inhale $_levelVar_21 >= 0 && $_levelVar_21 > lvl
+  assert $_levelVar_21 >= 0
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer5
+  
+  // Inferring interference all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(21, $r, $lvl, $x)) } none < old[pre_infer5](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(21, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer5](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer5](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer5](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer5](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_infer5](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(21, $r, $lvl, $x) == old[pre_infer5](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region4
+  assert $_levelVar_21 > lvl
+  $_levelVar_22 := lvl
+  unfold acc(IncDec(r, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  ret := x.$memcell_$val
+  
+  // ------- heap-read END -----------
+  
+  
+  fold acc(IncDec(r, lvl, x), write)
+  assert IncDec_state(r, lvl, x) == old[pre_open_region4](IncDec_state(r, lvl, x))
+  $_levelVar_23 := $_levelVar_21
+  
+  // ------- open-region END ---------
+  
+  
+  
+  // ------- Stabilising regions IncDec (after open-region@103.3) BEGIN 
+  
+  
+  label pre_stabilize27
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(22, $r, $lvl, $x)) } none < old[pre_stabilize27](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(22, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize27](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize27](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize27](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize27](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  ___silicon_hack407_havoc_all_IncDec()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize27](perm(IncDec($r, $lvl, $x))) ==> (IncDec_state($r, $lvl, $x) in IncDec_interferenceSet_hf(22, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize27](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(22, $r, $lvl, $x) == old[pre_stabilize27](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Stabilising regions IncDec (after open-region@103.3) END 
+  
+  
+}
+
+method CAS(x: Ref, now: Int, thn: Int) returns (ret: Bool)
+  requires acc(x.$memcell_$val, write) && true
+  ensures (old(x.$memcell_$val) == now ? ret && (acc(x.$memcell_$val, write) && x.$memcell_$val == thn) : !ret && (acc(x.$memcell_$val, write) && x.$memcell_$val == old(x.$memcell_$val)))
+
+
+method $_IncDec_interpretation_stability_check(r: Ref, lvl: Int, x: Ref)
+{
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_interferenceContext_fp($r, $lvl, $x), write))
+  inhale acc(x.$memcell_$val, write) && true
+  
+  // ------- Stabilising regions IncDec (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize28
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize28](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize28](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize28](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize28](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize28](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+  
+  // ------- Stabilising regions IncDec (check stability of region interpretation) END 
+  
+  
+  assert acc(x.$memcell_$val, write) && true
+}
+
+method $_IncDec_action_transitivity_check()
+{
+  var INC: Bool
+  var DEC: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_1_x: Int
+  var $_action_m_1_x: Int
+  var $_action_n_2_x: Int
+  var $_action_m_2_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var $_action_n_1_y: Int
+  var $_action_m_1_y: Int
+  var $_action_n_2_y: Int
+  var $_action_m_2_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && $_action_n_0_x < $_action_m_0_x && INC || $_action_n_1_x == aState && $_action_m_1_x == bState && $_action_m_1_x < $_action_n_1_x && DEC || $_action_n_2_x == aState && $_action_m_2_x == bState && true && (INC && DEC)
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && $_action_n_0_y < $_action_m_0_y && INC || $_action_n_1_y == bState && $_action_m_1_y == cState && $_action_m_1_y < $_action_n_1_y && DEC || $_action_n_2_y == bState && $_action_m_2_y == cState && true && (INC && DEC)
+  assert aState == cState || aState == aState && cState == cState && aState < cState && INC || aState == aState && cState == cState && cState < aState && DEC || aState == aState && cState == cState && true && (INC && DEC)
+}
+
+method $_makeCounter_condition_stability_precondition_check(lvl: Int, r: Ref, ret: Ref)
+  requires lvl >= 0
+{
+  var $_levelVar_25: Int
+  var v: Ref
+  inhale $_levelVar_25 >= 0
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer7
+  
+  // Inferring interference all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(24, $r, $lvl, $x)) } none < old[pre_infer7](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(24, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer7](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer7](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer7](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer7](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_infer7](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(24, $r, $lvl, $x) == old[pre_infer7](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize29
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize29](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize29](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize29](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize29](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize29](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) END 
+  
+  
+  assert lvl >= 0
+}
+
+method $_increment_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref, k: Int, ret: Int)
+  requires acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) && acc(IncDec_INC(r), write) && k > 0
+{
+  var $_levelVar_26: Int
+  var b: Bool
+  var v: Int
+  inhale $_levelVar_26 >= 0 && $_levelVar_26 > lvl
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer8
+  
+  // Inferring interference all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(25, $r, $lvl, $x)) } none < old[pre_infer8](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(25, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer8](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer8](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer8](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer8](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_infer8](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(25, $r, $lvl, $x) == old[pre_infer8](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize30
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize30](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize30](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize30](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize30](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize30](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) END 
+  
+  
+  assert acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) && acc(IncDec_INC(r), write) && k > 0
+}
+
+method $_decrement_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref, k: Int, ret: Int)
+  requires acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) && acc(IncDec_DEC(r), write) && k > 0
+{
+  var $_levelVar_27: Int
+  var b: Bool
+  var v: Int
+  inhale $_levelVar_27 >= 0 && $_levelVar_27 > lvl
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer9
+  
+  // Inferring interference all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(26, $r, $lvl, $x)) } none < old[pre_infer9](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(26, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer9](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer9](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer9](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer9](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_infer9](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(26, $r, $lvl, $x) == old[pre_infer9](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize31
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize31](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize31](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize31](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize31](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize31](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) END 
+  
+  
+  assert acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true) && acc(IncDec_DEC(r), write) && k > 0
+}
+
+method $_read_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref, ret: Int)
+  requires acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true)
+{
+  var $_levelVar_28: Int
+  inhale $_levelVar_28 >= 0 && $_levelVar_28 > lvl
+  inhale acc(IncDec_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(IncDec_interferenceContext_fp($r, $lvl, $x), write))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer10
+  
+  // Inferring interference all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec_interferenceContext_fp()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in IncDec_interferenceSet_df(27, $r, $lvl, $x)) } none < old[pre_infer10](perm(IncDec($r, $lvl, $x))) ==> ($$_m in IncDec_interferenceSet_hf(27, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in IncDec_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer10](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer10](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer10](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_infer10](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == $$_m && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_infer10](perm(IncDec($r, $lvl, $x))) ==> IncDec_interferenceReference_hf(27, $r, $lvl, $x) == old[pre_infer10](IncDec_state($r, $lvl, $x)))
+  
+  // ------- Inferring interference context IncDec (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize32
+  
+  // Stabilising all instances of region IncDec
+  
+  ___silicon_hack407_havoc_all_IncDec()
+  exhale acc(IncDec_sk_fp(), write)
+  inhale acc(IncDec_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [IncDec($r, $lvl, $x)] :: none < old[pre_stabilize32](perm(IncDec($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(IncDec_atomicity_context_fp($r, $lvl, $x)) ==> (IncDec_state($r, $lvl, $x) in IncDec_atomicity_context_hf($r, $lvl, $x))) && (IncDec_state($r, $lvl, $x) == old[pre_stabilize32](IncDec_state($r, $lvl, $x)) || (IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize32](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_n($r, $lvl, $x) < IncDec_sk_$_action_m($r, $lvl, $x) && perm(IncDec_INC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize32](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && IncDec_sk_$_action_m($r, $lvl, $x) < IncDec_sk_$_action_n($r, $lvl, $x) && perm(IncDec_DEC($r)) == none || IncDec_sk_$_action_n($r, $lvl, $x) == old[pre_stabilize32](IncDec_state($r, $lvl, $x)) && IncDec_sk_$_action_m($r, $lvl, $x) == IncDec_state($r, $lvl, $x) && true && (perm(IncDec_INC($r)) == none && perm(IncDec_DEC($r)) == none))))
+  
+  // ------- Stabilising regions IncDec (check stability of method condition) END 
+  
+  
+  assert acc(IncDec(r, lvl, x), write) && (lvl >= 0 && true)
+}

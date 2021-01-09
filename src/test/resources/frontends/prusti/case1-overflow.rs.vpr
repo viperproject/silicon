@@ -1,0 +1,2801 @@
+domain $SnapshotMirrors$ {
+  
+  
+}
+
+field closure_0: Ref
+
+field closure_1: Ref
+
+field closure_2: Ref
+
+field f$a: Ref
+
+field f$buf: Ref
+
+field f$cap: Ref
+
+field f$len: Ref
+
+field f$ptr: Ref
+
+field f$v: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field tuple_2: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$unreach_bool__$TY$__$bool$(): Bool
+  requires false
+
+
+function m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures result >= 0
+  ensures 0 <= result
+  ensures result <= 18446744073709551615
+
+
+function m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_pure_1: Ref, _pure_2: Int): Int
+  requires acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires 0 <= _pure_2 && _pure_2 < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1)
+  requires 0 <= _pure_2
+  requires _pure_2 <= 18446744073709551615
+  ensures true
+  ensures -2147483648 <= result
+  ensures result <= 2147483647
+
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_10$3$7711331199245535947(self: Ref) 
+
+predicate closure$0_1_11$3$5137825467090953765(self: Ref) 
+
+predicate closure$0_1_12$3$7711331199245535947(self: Ref) 
+
+predicate closure$0_1_13$4$11644730439503502661(self: Ref) 
+
+predicate closure$0_1_14$3$7711331199245535947(self: Ref) 
+
+predicate closure$0_1_15$4$18386815147318901014(self: Ref) 
+
+predicate closure$0_1_16$3$12822519522425246489(self: Ref) 
+
+predicate closure$0_1_17$5$5999180984521990656(self: Ref) 
+
+predicate closure$0_1_18$4$14417842802724694541(self: Ref) 
+
+predicate closure$0_1_19$5$7356128494664279390(self: Ref) 
+
+predicate closure$0_1_20$4$10569430833185528377(self: Ref) 
+
+predicate closure$0_1_21$3$17716779073151259027(self: Ref) 
+
+predicate closure$0_1_22$4$6959919921013906303(self: Ref) 
+
+predicate closure$0_1_23$3$2749950704260165101(self: Ref) 
+
+predicate closure$0_1_24$4$8776322376023778844(self: Ref) 
+
+predicate closure$0_1_25$4$13930546447192206038(self: Ref) 
+
+predicate closure$0_1_26$2$2442745199739292071(self: Ref) 
+
+predicate closure$0_1_27$4$9601174033270273652(self: Ref) 
+
+predicate closure$0_1_28$3$2676394293484528775(self: Ref) 
+
+predicate closure$0_1_29$3$4702266691936132571(self: Ref) 
+
+predicate closure$0_1_30$4$1900672158907834163(self: Ref) 
+
+predicate closure$0_1_31$3$10206445668956766725(self: Ref) 
+
+predicate closure$0_1_32$4$1120402195590746533(self: Ref) 
+
+predicate closure$0_1_33$3$962033126259572045(self: Ref) 
+
+predicate closure$0_1_34$4$5241382062443896817(self: Ref) 
+
+predicate closure$0_1_35$4$8468797872175521945(self: Ref) 
+
+predicate closure$0_1_36$4$3423180618341393584(self: Ref) 
+
+predicate closure$0_1_37$4$7294527292737118534(self: Ref) 
+
+predicate closure$0_1_38$4$16004927782998790755(self: Ref) 
+
+predicate closure$0_1_39$5$17751826209814435614(self: Ref) 
+
+predicate closure$0_1_40$4$4834427145658621534(self: Ref) 
+
+predicate closure$0_1_41$4$14080283279505037481(self: Ref) 
+
+predicate closure$0_1_42$5$16123710995274909701(self: Ref) 
+
+predicate closure$0_1_43$4$6144995061334283617(self: Ref) 
+
+predicate closure$0_1_44$4$1116589283829892220(self: Ref) 
+
+predicate closure$0_1_45$5$17784521906536127797(self: Ref) 
+
+predicate closure$0_1_46$4$2128067440152738162(self: Ref) 
+
+predicate closure$0_1_47$3$10493024678032883219(self: Ref) 
+
+predicate closure$0_1_48$3$611486150515690454(self: Ref) 
+
+predicate closure$0_1_49$4$10714207809409461665(self: Ref) 
+
+predicate closure$0_1_50$4$6044042793315164657(self: Ref) 
+
+predicate closure$0_1_51$3$15722217098559904860(self: Ref) 
+
+predicate closure$0_1_52$4$11784940552923272838(self: Ref) 
+
+predicate closure$0_1_53$4$4068763234351375656(self: Ref) 
+
+predicate closure$0_1_54$3$10466807134434299394(self: Ref) 
+
+predicate closure$0_1_55$4$2993859573578303247(self: Ref) 
+
+predicate closure$0_1_56$4$9613954654305614871(self: Ref) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write) && (-2147483648 <= self.val_int && self.val_int <= 2147483647)
+}
+
+predicate m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  true
+}
+
+predicate m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.f$ptr, write) && (acc(m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$i32$_end_(self.f$ptr), write) && (acc(self.f$cap, write) && (acc(usize(self.f$cap), write) && (acc(self.f$a, write) && acc(m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self.f$a), write)))))
+}
+
+predicate m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) {
+  acc(self.f$buf, write) && (acc(m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$buf), write) && (acc(self.f$len, write) && acc(usize(self.f$len), write)))
+}
+
+predicate m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$v, write) && acc(m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_(self.f$v), write)
+}
+
+predicate m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) 
+
+predicate never(self: Ref) 
+
+predicate ref$bool(self: Ref) {
+  acc(self.val_ref, write) && acc(bool(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_10$3$7711331199245535947(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_10$3$7711331199245535947(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_11$3$5137825467090953765(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_11$3$5137825467090953765(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_12$3$7711331199245535947(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_12$3$7711331199245535947(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_13$4$11644730439503502661(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_13$4$11644730439503502661(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_14$3$7711331199245535947(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_14$3$7711331199245535947(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_15$4$18386815147318901014(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_15$4$18386815147318901014(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_16$3$12822519522425246489(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_16$3$12822519522425246489(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_17$5$5999180984521990656(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_17$5$5999180984521990656(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_18$4$14417842802724694541(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_18$4$14417842802724694541(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_19$5$7356128494664279390(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_19$5$7356128494664279390(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_20$4$10569430833185528377(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_20$4$10569430833185528377(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_21$3$17716779073151259027(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_21$3$17716779073151259027(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_22$4$6959919921013906303(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_22$4$6959919921013906303(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_23$3$2749950704260165101(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_23$3$2749950704260165101(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_24$4$8776322376023778844(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_24$4$8776322376023778844(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_25$4$13930546447192206038(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_25$4$13930546447192206038(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_27$4$9601174033270273652(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_27$4$9601174033270273652(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_28$3$2676394293484528775(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_28$3$2676394293484528775(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_29$3$4702266691936132571(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_29$3$4702266691936132571(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_30$4$1900672158907834163(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_30$4$1900672158907834163(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_31$3$10206445668956766725(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_31$3$10206445668956766725(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_32$4$1120402195590746533(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_32$4$1120402195590746533(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_33$3$962033126259572045(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_33$3$962033126259572045(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_34$4$5241382062443896817(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_34$4$5241382062443896817(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_35$4$8468797872175521945(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_35$4$8468797872175521945(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_36$4$3423180618341393584(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_36$4$3423180618341393584(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_37$4$7294527292737118534(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_37$4$7294527292737118534(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_38$4$16004927782998790755(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_38$4$16004927782998790755(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_39$5$17751826209814435614(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_39$5$17751826209814435614(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_40$4$4834427145658621534(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_40$4$4834427145658621534(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_41$4$14080283279505037481(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_41$4$14080283279505037481(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_42$5$16123710995274909701(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_42$5$16123710995274909701(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_43$4$6144995061334283617(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_43$4$6144995061334283617(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_44$4$1116589283829892220(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_44$4$1116589283829892220(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_45$5$17784521906536127797(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_45$5$17784521906536127797(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_46$4$2128067440152738162(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_46$4$2128067440152738162(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_47$3$10493024678032883219(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_47$3$10493024678032883219(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_48$3$611486150515690454(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_48$3$611486150515690454(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_49$4$10714207809409461665(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_49$4$10714207809409461665(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_50$4$6044042793315164657(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_50$4$6044042793315164657(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_51$3$15722217098559904860(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_51$3$15722217098559904860(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_52$4$11784940552923272838(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_52$4$11784940552923272838(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_53$4$4068763234351375656(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_53$4$4068763234351375656(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_54$3$10466807134434299394(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_54$3$10466807134434299394(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_55$4$2993859573578303247(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_55$4$2993859573578303247(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_56$4$9613954654305614871(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_56$4$9613954654305614871(self.val_ref), write)
+}
+
+predicate ref$i32(self: Ref) {
+  acc(self.val_ref, write) && acc(i32(self.val_ref), write)
+}
+
+predicate ref$m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$str(self: Ref) {
+  acc(self.val_ref, write) && acc(str(self.val_ref), write)
+}
+
+predicate ref$tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.val_ref, write) && acc(tuple3$ref$str$u32$u32(self.val_ref), write)
+}
+
+predicate ref$usize(self: Ref) {
+  acc(self.val_ref, write) && acc(usize(self.val_ref), write)
+}
+
+predicate str(self: Ref) 
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$usize$bool(self: Ref) {
+  acc(self.tuple_0, write) && (acc(usize(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(bool(self.tuple_1), write)))
+}
+
+predicate tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(ref$str(self.tuple_0), write) && (acc(self.tuple_1, write) && (acc(u32(self.tuple_1), write) && (acc(self.tuple_2, write) && acc(u32(self.tuple_2), write)))))
+}
+
+predicate u32(self: Ref) {
+  acc(self.val_int, write) && (0 <= self.val_int && self.val_int <= 4294967295)
+}
+
+predicate usize(self: Ref) {
+  acc(self.val_int, write) && (0 <= self.val_int && self.val_int <= 18446744073709551615)
+}
+
+method m_case1_overflow$$bar$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var __t28: Bool
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var __t32: Bool
+  var __t33: Bool
+  var __t34: Bool
+  var __t35: Bool
+  var __t36: Bool
+  var __t37: Bool
+  var __t38: Bool
+  var __t39: Bool
+  var __t40: Bool
+  var __t41: Bool
+  var __t42: Bool
+  var __t43: Bool
+  var __t44: Bool
+  var __t45: Bool
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  var _23: Ref
+  var _24: Ref
+  var _29: Ref
+  var _30: Ref
+  var _31: Ref
+  var _32: Ref
+  var _33: Ref
+  var _38: Ref
+  var _39: Ref
+  var _40: Ref
+  var _41: Ref
+  var _42: Ref
+  var _43: Ref
+  var _44: Ref
+  var _45: Ref
+  var _46: Ref
+  var _47: Ref
+  var _48: Ref
+  var _53: Ref
+  var _54: Ref
+  var _55: Ref
+  var _56: Ref
+  var _57: Ref
+  var _62: Ref
+  var _63: Ref
+  var _64: Ref
+  var _65: Ref
+  var _66: Ref
+  var _71: Ref
+  var _72: Ref
+  var _73: Ref
+  var _74: Ref
+  var _75: Ref
+  var _80: Ref
+  var _81: Ref
+  var _82: Ref
+  var _83: Ref
+  var _84: Ref
+  var _89: Ref
+  var _90: Ref
+  var _91: Ref
+  var _92: Ref
+  var _93: Ref
+  var _t109: Ref
+  var _t112: Ref
+  var _t115: Ref
+  var _t120: Ref
+  var _t123: Ref
+  var _t126: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "case1_overflow::bar"
+  
+  // Def path: "case1_overflow::bar[0]"
+  
+  // Span: tests/verify_overflow/pass/nll-rfc/case1-overflow.rs:93:1: 115:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  __t24 := false
+  __t25 := false
+  __t26 := false
+  __t27 := false
+  __t28 := false
+  __t29 := false
+  __t30 := false
+  __t31 := false
+  __t32 := false
+  __t33 := false
+  __t34 := false
+  __t35 := false
+  __t36 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_1)
+  
+  // [mir] _1 = const VecWrapperI32::new() -> [return: bb2, unwind: bb1]
+  
+  label l0
+  _1 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write)
+  inhale true
+  inhale m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1) == 0
+  label l1
+  goto bb2
+  label bb10
+  // ========== bb10 ==========
+  
+  __t5 := true
+  // [mir] EndRegion('27s)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageLive(_12)
+  
+  // [mir] StorageLive(_13)
+  
+  // [mir] StorageLive(_14)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = &'43s _1
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  _15.val_ref := _1
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_15.val_ref), read$())
+  label l19
+  // [mir] _14 = const VecWrapperI32::lookup(move _15, const 0usize) -> [return: bb13, unwind: bb14]
+  
+  label l20
+  _14 := builtin$havoc_ref()
+  inhale acc(i32(_14), write)
+  unfold acc(i32(_14), write)
+  inhale _14.val_int == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_15.val_ref, 0)
+  // transfer perm _15.val_ref --> old[l20](_15.val_ref) // unchecked: false
+  
+  goto l21
+  label bb13
+  // ========== bb13 ==========
+  
+  __t6 := true
+  // [mir] EndRegion('43s)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] _13 = Eq(move _14, const -1i32)
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_bool, write)
+  _13.val_bool := _14.val_int == -1
+  // [mir] StorageDead(_14)
+  
+  // [mir] _12 = Not(move _13)
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_bool, write)
+  _12.val_bool := !_13.val_bool
+  // [mir] StorageDead(_13)
+  
+  // [mir] switchInt(move _12) -> [false: bb16, otherwise: bb15]
+  
+  __t37 := _12.val_bool
+  if (!__t37) {
+    goto l23
+  }
+  goto l22
+  label bb15
+  // ========== bb15 ==========
+  
+  __t7 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: data.lookup(0) == -1", move _17) -> bb17
+  
+  // Rust panic - const "assertion failed: data.lookup(0) == -1"
+  
+  assert false
+  goto end_of_method
+  label bb16
+  // ========== bb16 ==========
+  
+  __t8 := true
+  // [mir] _11 = ()
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(tuple0$(_11), write)
+  // [mir] StorageDead(_12)
+  
+  // [mir] StorageLive(_21)
+  
+  // [mir] StorageLive(_22)
+  
+  // [mir] StorageLive(_23)
+  
+  // [mir] StorageLive(_24)
+  
+  // [mir] _24 = &'64s _1
+  
+  _24 := builtin$havoc_ref()
+  inhale acc(_24.val_ref, write)
+  _24.val_ref := _1
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_24.val_ref), read$())
+  label l24
+  // [mir] _23 = const VecWrapperI32::lookup(move _24, const 1usize) -> [return: bb18, unwind: bb19]
+  
+  label l25
+  _23 := builtin$havoc_ref()
+  inhale acc(i32(_23), write)
+  unfold acc(i32(_23), write)
+  inhale _23.val_int == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_24.val_ref, 1)
+  // transfer perm _24.val_ref --> old[l25](_24.val_ref) // unchecked: false
+  
+  goto l26
+  label bb18
+  // ========== bb18 ==========
+  
+  __t9 := true
+  // [mir] EndRegion('64s)
+  
+  // [mir] StorageDead(_24)
+  
+  // [mir] _22 = Eq(move _23, const -2i32)
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_bool, write)
+  _22.val_bool := _23.val_int == -2
+  // [mir] StorageDead(_23)
+  
+  // [mir] _21 = Not(move _22)
+  
+  _21 := builtin$havoc_ref()
+  inhale acc(_21.val_bool, write)
+  _21.val_bool := !_22.val_bool
+  // [mir] StorageDead(_22)
+  
+  // [mir] switchInt(move _21) -> [false: bb21, otherwise: bb20]
+  
+  __t38 := _21.val_bool
+  if (!__t38) {
+    goto l28
+  }
+  goto l27
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = &'9s mut _1
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_ref, write)
+  _3.val_ref := _1
+  label l2
+  // [mir] _2 = const VecWrapperI32::push(move _3, const 1i32) -> [return: bb3, unwind: bb5]
+  
+  label l3
+  _t109 := builtin$havoc_ref()
+  inhale acc(i32(_t109), write)
+  assert true
+  exhale acc(_3.val_ref, write) && (acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_3.val_ref), write) && acc(i32(_t109), write))
+  _2 := builtin$havoc_ref()
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l3](_3.val_ref)), write)
+  inhale acc(tuple0$(_2), write)
+  inhale true
+  inhale !(old[l3](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref)) + 1 < 0 || old[l3](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref)) + 1 > 18446744073709551615) && m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l3](_3.val_ref)) == old[l3](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref)) + 1 && (m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l3](_3.val_ref), old[l3](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref))) == old[l3](1) && (forall i: Int :: 0 <= i && i < old[l3](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref)) ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l3](_3.val_ref), i) == old[l3](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_3.val_ref, i))))
+  label l4
+  goto l5
+  label bb20
+  // ========== bb20 ==========
+  
+  __t10 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: data.lookup(1) == -2", move _26) -> bb22
+  
+  // Rust panic - const "assertion failed: data.lookup(1) == -2"
+  
+  assert false
+  goto end_of_method
+  label bb21
+  // ========== bb21 ==========
+  
+  __t11 := true
+  // [mir] _20 = ()
+  
+  _20 := builtin$havoc_ref()
+  inhale acc(tuple0$(_20), write)
+  // [mir] StorageDead(_21)
+  
+  // [mir] StorageLive(_30)
+  
+  // [mir] StorageLive(_31)
+  
+  // [mir] StorageLive(_32)
+  
+  // [mir] StorageLive(_33)
+  
+  // [mir] _33 = &'85s _1
+  
+  _33 := builtin$havoc_ref()
+  inhale acc(_33.val_ref, write)
+  _33.val_ref := _1
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_33.val_ref), read$())
+  label l29
+  // [mir] _32 = const VecWrapperI32::lookup(move _33, const 2usize) -> [return: bb23, unwind: bb24]
+  
+  label l30
+  _32 := builtin$havoc_ref()
+  inhale acc(i32(_32), write)
+  unfold acc(i32(_32), write)
+  inhale _32.val_int == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_33.val_ref, 2)
+  // transfer perm _33.val_ref --> old[l30](_33.val_ref) // unchecked: false
+  
+  goto l31
+  label bb23
+  // ========== bb23 ==========
+  
+  __t12 := true
+  // [mir] EndRegion('85s)
+  
+  // [mir] StorageDead(_33)
+  
+  // [mir] _31 = Eq(move _32, const -3i32)
+  
+  _31 := builtin$havoc_ref()
+  inhale acc(_31.val_bool, write)
+  _31.val_bool := _32.val_int == -3
+  // [mir] StorageDead(_32)
+  
+  // [mir] _30 = Not(move _31)
+  
+  _30 := builtin$havoc_ref()
+  inhale acc(_30.val_bool, write)
+  _30.val_bool := !_31.val_bool
+  // [mir] StorageDead(_31)
+  
+  // [mir] switchInt(move _30) -> [false: bb26, otherwise: bb25]
+  
+  __t39 := _30.val_bool
+  if (!__t39) {
+    goto l33
+  }
+  goto l32
+  label bb25
+  // ========== bb25 ==========
+  
+  __t13 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: data.lookup(2) == -3", move _35) -> bb27
+  
+  // Rust panic - const "assertion failed: data.lookup(2) == -3"
+  
+  assert false
+  goto end_of_method
+  label bb26
+  // ========== bb26 ==========
+  
+  __t14 := true
+  // [mir] _29 = ()
+  
+  _29 := builtin$havoc_ref()
+  inhale acc(tuple0$(_29), write)
+  // [mir] StorageDead(_30)
+  
+  // [mir] StorageLive(_39)
+  
+  // [mir] _39 = &'94s mut _1
+  
+  _39 := builtin$havoc_ref()
+  inhale acc(_39.val_ref, write)
+  _39.val_ref := _1
+  label l34
+  // [mir] _38 = const VecWrapperI32::push(move _39, const 4i32) -> [return: bb28, unwind: bb29]
+  
+  label l35
+  _t120 := builtin$havoc_ref()
+  inhale acc(i32(_t120), write)
+  assert true
+  exhale acc(_39.val_ref, write) && (acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_39.val_ref), write) && acc(i32(_t120), write))
+  _38 := builtin$havoc_ref()
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l35](_39.val_ref)), write)
+  inhale acc(tuple0$(_38), write)
+  inhale true
+  inhale !(old[l35](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_39.val_ref)) + 1 < 0 || old[l35](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_39.val_ref)) + 1 > 18446744073709551615) && m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l35](_39.val_ref)) == old[l35](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_39.val_ref)) + 1 && (m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l35](_39.val_ref), old[l35](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_39.val_ref))) == old[l35](4) && (forall i: Int :: 0 <= i && i < old[l35](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_39.val_ref)) ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l35](_39.val_ref), i) == old[l35](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_39.val_ref, i))))
+  label l36
+  goto l37
+  label bb28
+  // ========== bb28 ==========
+  
+  __t15 := true
+  // [mir] EndRegion('94s)
+  
+  // [mir] StorageDead(_39)
+  
+  // [mir] StorageLive(_41)
+  
+  // [mir] _41 = &'99s mut _1
+  
+  _41 := builtin$havoc_ref()
+  inhale acc(_41.val_ref, write)
+  _41.val_ref := _1
+  label l38
+  // [mir] _40 = const VecWrapperI32::push(move _41, const -5i32) -> [return: bb30, unwind: bb31]
+  
+  label l39
+  _t123 := builtin$havoc_ref()
+  inhale acc(i32(_t123), write)
+  assert true
+  exhale acc(_41.val_ref, write) && (acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_41.val_ref), write) && acc(i32(_t123), write))
+  _40 := builtin$havoc_ref()
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l39](_41.val_ref)), write)
+  inhale acc(tuple0$(_40), write)
+  inhale true
+  inhale !(old[l39](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_41.val_ref)) + 1 < 0 || old[l39](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_41.val_ref)) + 1 > 18446744073709551615) && m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l39](_41.val_ref)) == old[l39](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_41.val_ref)) + 1 && (m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l39](_41.val_ref), old[l39](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_41.val_ref))) == old[l39](-5) && (forall i: Int :: 0 <= i && i < old[l39](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_41.val_ref)) ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l39](_41.val_ref), i) == old[l39](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_41.val_ref, i))))
+  label l40
+  goto l41
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] EndRegion('9s)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = &'14s mut _1
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  _5.val_ref := _1
+  label l6
+  // [mir] _4 = const VecWrapperI32::push(move _5, const -2i32) -> [return: bb6, unwind: bb7]
+  
+  label l7
+  _t112 := builtin$havoc_ref()
+  inhale acc(i32(_t112), write)
+  assert true
+  exhale acc(_5.val_ref, write) && (acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_5.val_ref), write) && acc(i32(_t112), write))
+  _4 := builtin$havoc_ref()
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l7](_5.val_ref)), write)
+  inhale acc(tuple0$(_4), write)
+  inhale true
+  inhale !(old[l7](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_5.val_ref)) + 1 < 0 || old[l7](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_5.val_ref)) + 1 > 18446744073709551615) && m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l7](_5.val_ref)) == old[l7](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_5.val_ref)) + 1 && (m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l7](_5.val_ref), old[l7](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_5.val_ref))) == old[l7](-2) && (forall i: Int :: 0 <= i && i < old[l7](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_5.val_ref)) ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l7](_5.val_ref), i) == old[l7](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_5.val_ref, i))))
+  label l8
+  goto l9
+  label bb30
+  // ========== bb30 ==========
+  
+  __t16 := true
+  // [mir] EndRegion('99s)
+  
+  // [mir] StorageDead(_41)
+  
+  // [mir] StorageLive(_43)
+  
+  // [mir] _43 = &'103s mut _1
+  
+  _43 := builtin$havoc_ref()
+  inhale acc(_43.val_ref, write)
+  _43.val_ref := _1
+  label l42
+  // [mir] _42 = const VecWrapperI32::push(move _43, const 6i32) -> [return: bb32, unwind: bb33]
+  
+  label l43
+  _t126 := builtin$havoc_ref()
+  inhale acc(i32(_t126), write)
+  assert true
+  exhale acc(_43.val_ref, write) && (acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_43.val_ref), write) && acc(i32(_t126), write))
+  _42 := builtin$havoc_ref()
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l43](_43.val_ref)), write)
+  inhale acc(tuple0$(_42), write)
+  inhale true
+  inhale !(old[l43](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_43.val_ref)) + 1 < 0 || old[l43](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_43.val_ref)) + 1 > 18446744073709551615) && m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l43](_43.val_ref)) == old[l43](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_43.val_ref)) + 1 && (m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l43](_43.val_ref), old[l43](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_43.val_ref))) == old[l43](6) && (forall i: Int :: 0 <= i && i < old[l43](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_43.val_ref)) ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l43](_43.val_ref), i) == old[l43](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_43.val_ref, i))))
+  label l44
+  goto l45
+  label bb32
+  // ========== bb32 ==========
+  
+  __t17 := true
+  // [mir] EndRegion('103s)
+  
+  // [mir] StorageDead(_43)
+  
+  // [mir] StorageLive(_45)
+  
+  // [mir] StorageLive(_46)
+  
+  // [mir] StorageLive(_47)
+  
+  // [mir] StorageLive(_48)
+  
+  // [mir] _48 = &'119s _1
+  
+  _48 := builtin$havoc_ref()
+  inhale acc(_48.val_ref, write)
+  _48.val_ref := _1
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_48.val_ref), read$())
+  label l46
+  // [mir] _47 = const VecWrapperI32::lookup(move _48, const 0usize) -> [return: bb34, unwind: bb35]
+  
+  label l47
+  _47 := builtin$havoc_ref()
+  inhale acc(i32(_47), write)
+  unfold acc(i32(_47), write)
+  inhale _47.val_int == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_48.val_ref, 0)
+  // transfer perm _48.val_ref --> old[l47](_48.val_ref) // unchecked: false
+  
+  goto l48
+  label bb34
+  // ========== bb34 ==========
+  
+  __t18 := true
+  // [mir] EndRegion('119s)
+  
+  // [mir] StorageDead(_48)
+  
+  // [mir] _46 = Eq(move _47, const -1i32)
+  
+  _46 := builtin$havoc_ref()
+  inhale acc(_46.val_bool, write)
+  _46.val_bool := _47.val_int == -1
+  // [mir] StorageDead(_47)
+  
+  // [mir] _45 = Not(move _46)
+  
+  _45 := builtin$havoc_ref()
+  inhale acc(_45.val_bool, write)
+  _45.val_bool := !_46.val_bool
+  // [mir] StorageDead(_46)
+  
+  // [mir] switchInt(move _45) -> [false: bb37, otherwise: bb36]
+  
+  __t40 := _45.val_bool
+  if (!__t40) {
+    goto l50
+  }
+  goto l49
+  label bb36
+  // ========== bb36 ==========
+  
+  __t19 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: data.lookup(0) == -1", move _50) -> bb38
+  
+  // Rust panic - const "assertion failed: data.lookup(0) == -1"
+  
+  assert false
+  goto end_of_method
+  label bb37
+  // ========== bb37 ==========
+  
+  __t20 := true
+  // [mir] _44 = ()
+  
+  _44 := builtin$havoc_ref()
+  inhale acc(tuple0$(_44), write)
+  // [mir] StorageDead(_45)
+  
+  // [mir] StorageLive(_54)
+  
+  // [mir] StorageLive(_55)
+  
+  // [mir] StorageLive(_56)
+  
+  // [mir] StorageLive(_57)
+  
+  // [mir] _57 = &'140s _1
+  
+  _57 := builtin$havoc_ref()
+  inhale acc(_57.val_ref, write)
+  _57.val_ref := _1
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_57.val_ref), read$())
+  label l51
+  // [mir] _56 = const VecWrapperI32::lookup(move _57, const 1usize) -> [return: bb39, unwind: bb40]
+  
+  label l52
+  _56 := builtin$havoc_ref()
+  inhale acc(i32(_56), write)
+  unfold acc(i32(_56), write)
+  inhale _56.val_int == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_57.val_ref, 1)
+  // transfer perm _57.val_ref --> old[l52](_57.val_ref) // unchecked: false
+  
+  goto l53
+  label bb39
+  // ========== bb39 ==========
+  
+  __t21 := true
+  // [mir] EndRegion('140s)
+  
+  // [mir] StorageDead(_57)
+  
+  // [mir] _55 = Eq(move _56, const -2i32)
+  
+  _55 := builtin$havoc_ref()
+  inhale acc(_55.val_bool, write)
+  _55.val_bool := _56.val_int == -2
+  // [mir] StorageDead(_56)
+  
+  // [mir] _54 = Not(move _55)
+  
+  _54 := builtin$havoc_ref()
+  inhale acc(_54.val_bool, write)
+  _54.val_bool := !_55.val_bool
+  // [mir] StorageDead(_55)
+  
+  // [mir] switchInt(move _54) -> [false: bb42, otherwise: bb41]
+  
+  __t41 := _54.val_bool
+  if (!__t41) {
+    goto l55
+  }
+  goto l54
+  label bb41
+  // ========== bb41 ==========
+  
+  __t22 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: data.lookup(1) == -2", move _59) -> bb43
+  
+  // Rust panic - const "assertion failed: data.lookup(1) == -2"
+  
+  assert false
+  goto end_of_method
+  label bb42
+  // ========== bb42 ==========
+  
+  __t23 := true
+  // [mir] _53 = ()
+  
+  _53 := builtin$havoc_ref()
+  inhale acc(tuple0$(_53), write)
+  // [mir] StorageDead(_54)
+  
+  // [mir] StorageLive(_63)
+  
+  // [mir] StorageLive(_64)
+  
+  // [mir] StorageLive(_65)
+  
+  // [mir] StorageLive(_66)
+  
+  // [mir] _66 = &'161s _1
+  
+  _66 := builtin$havoc_ref()
+  inhale acc(_66.val_ref, write)
+  _66.val_ref := _1
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_66.val_ref), read$())
+  label l56
+  // [mir] _65 = const VecWrapperI32::lookup(move _66, const 2usize) -> [return: bb44, unwind: bb45]
+  
+  label l57
+  _65 := builtin$havoc_ref()
+  inhale acc(i32(_65), write)
+  unfold acc(i32(_65), write)
+  inhale _65.val_int == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_66.val_ref, 2)
+  // transfer perm _66.val_ref --> old[l57](_66.val_ref) // unchecked: false
+  
+  goto l58
+  label bb44
+  // ========== bb44 ==========
+  
+  __t24 := true
+  // [mir] EndRegion('161s)
+  
+  // [mir] StorageDead(_66)
+  
+  // [mir] _64 = Eq(move _65, const -3i32)
+  
+  _64 := builtin$havoc_ref()
+  inhale acc(_64.val_bool, write)
+  _64.val_bool := _65.val_int == -3
+  // [mir] StorageDead(_65)
+  
+  // [mir] _63 = Not(move _64)
+  
+  _63 := builtin$havoc_ref()
+  inhale acc(_63.val_bool, write)
+  _63.val_bool := !_64.val_bool
+  // [mir] StorageDead(_64)
+  
+  // [mir] switchInt(move _63) -> [false: bb47, otherwise: bb46]
+  
+  __t42 := _63.val_bool
+  if (!__t42) {
+    goto l60
+  }
+  goto l59
+  label bb46
+  // ========== bb46 ==========
+  
+  __t25 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: data.lookup(2) == -3", move _68) -> bb48
+  
+  // Rust panic - const "assertion failed: data.lookup(2) == -3"
+  
+  assert false
+  goto end_of_method
+  label bb47
+  // ========== bb47 ==========
+  
+  __t26 := true
+  // [mir] _62 = ()
+  
+  _62 := builtin$havoc_ref()
+  inhale acc(tuple0$(_62), write)
+  // [mir] StorageDead(_63)
+  
+  // [mir] StorageLive(_72)
+  
+  // [mir] StorageLive(_73)
+  
+  // [mir] StorageLive(_74)
+  
+  // [mir] StorageLive(_75)
+  
+  // [mir] _75 = &'182s _1
+  
+  _75 := builtin$havoc_ref()
+  inhale acc(_75.val_ref, write)
+  _75.val_ref := _1
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_75.val_ref), read$())
+  label l61
+  // [mir] _74 = const VecWrapperI32::lookup(move _75, const 3usize) -> [return: bb49, unwind: bb50]
+  
+  label l62
+  _74 := builtin$havoc_ref()
+  inhale acc(i32(_74), write)
+  unfold acc(i32(_74), write)
+  inhale _74.val_int == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_75.val_ref, 3)
+  // transfer perm _75.val_ref --> old[l62](_75.val_ref) // unchecked: false
+  
+  goto l63
+  label bb49
+  // ========== bb49 ==========
+  
+  __t27 := true
+  // [mir] EndRegion('182s)
+  
+  // [mir] StorageDead(_75)
+  
+  // [mir] _73 = Eq(move _74, const 4i32)
+  
+  _73 := builtin$havoc_ref()
+  inhale acc(_73.val_bool, write)
+  _73.val_bool := _74.val_int == 4
+  // [mir] StorageDead(_74)
+  
+  // [mir] _72 = Not(move _73)
+  
+  _72 := builtin$havoc_ref()
+  inhale acc(_72.val_bool, write)
+  _72.val_bool := !_73.val_bool
+  // [mir] StorageDead(_73)
+  
+  // [mir] switchInt(move _72) -> [false: bb52, otherwise: bb51]
+  
+  __t43 := _72.val_bool
+  if (!__t43) {
+    goto l65
+  }
+  goto l64
+  label bb51
+  // ========== bb51 ==========
+  
+  __t28 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: data.lookup(3) == 4", move _77) -> bb53
+  
+  // Rust panic - const "assertion failed: data.lookup(3) == 4"
+  
+  assert false
+  goto end_of_method
+  label bb52
+  // ========== bb52 ==========
+  
+  __t29 := true
+  // [mir] _71 = ()
+  
+  _71 := builtin$havoc_ref()
+  inhale acc(tuple0$(_71), write)
+  // [mir] StorageDead(_72)
+  
+  // [mir] StorageLive(_81)
+  
+  // [mir] StorageLive(_82)
+  
+  // [mir] StorageLive(_83)
+  
+  // [mir] StorageLive(_84)
+  
+  // [mir] _84 = &'202s _1
+  
+  _84 := builtin$havoc_ref()
+  inhale acc(_84.val_ref, write)
+  _84.val_ref := _1
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_84.val_ref), read$())
+  label l66
+  // [mir] _83 = const VecWrapperI32::lookup(move _84, const 4usize) -> [return: bb54, unwind: bb55]
+  
+  label l67
+  _83 := builtin$havoc_ref()
+  inhale acc(i32(_83), write)
+  unfold acc(i32(_83), write)
+  inhale _83.val_int == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_84.val_ref, 4)
+  // transfer perm _84.val_ref --> old[l67](_84.val_ref) // unchecked: false
+  
+  goto l68
+  label bb54
+  // ========== bb54 ==========
+  
+  __t30 := true
+  // [mir] EndRegion('202s)
+  
+  // [mir] StorageDead(_84)
+  
+  // [mir] _82 = Eq(move _83, const -5i32)
+  
+  _82 := builtin$havoc_ref()
+  inhale acc(_82.val_bool, write)
+  _82.val_bool := _83.val_int == -5
+  // [mir] StorageDead(_83)
+  
+  // [mir] _81 = Not(move _82)
+  
+  _81 := builtin$havoc_ref()
+  inhale acc(_81.val_bool, write)
+  _81.val_bool := !_82.val_bool
+  // [mir] StorageDead(_82)
+  
+  // [mir] switchInt(move _81) -> [false: bb57, otherwise: bb56]
+  
+  __t44 := _81.val_bool
+  if (!__t44) {
+    goto l70
+  }
+  goto l69
+  label bb56
+  // ========== bb56 ==========
+  
+  __t31 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: data.lookup(4) == -5", move _86) -> bb58
+  
+  // Rust panic - const "assertion failed: data.lookup(4) == -5"
+  
+  assert false
+  goto end_of_method
+  label bb57
+  // ========== bb57 ==========
+  
+  __t32 := true
+  // [mir] _80 = ()
+  
+  _80 := builtin$havoc_ref()
+  inhale acc(tuple0$(_80), write)
+  // [mir] StorageDead(_81)
+  
+  // [mir] StorageLive(_90)
+  
+  // [mir] StorageLive(_91)
+  
+  // [mir] StorageLive(_92)
+  
+  // [mir] StorageLive(_93)
+  
+  // [mir] _93 = &'223s _1
+  
+  _93 := builtin$havoc_ref()
+  inhale acc(_93.val_ref, write)
+  _93.val_ref := _1
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_93.val_ref), read$())
+  label l71
+  // [mir] _92 = const VecWrapperI32::lookup(move _93, const 5usize) -> [return: bb59, unwind: bb60]
+  
+  label l72
+  _92 := builtin$havoc_ref()
+  inhale acc(i32(_92), write)
+  unfold acc(i32(_92), write)
+  inhale _92.val_int == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_93.val_ref, 5)
+  // transfer perm _93.val_ref --> old[l72](_93.val_ref) // unchecked: false
+  
+  goto l73
+  label bb59
+  // ========== bb59 ==========
+  
+  __t33 := true
+  // [mir] EndRegion('223s)
+  
+  // [mir] StorageDead(_93)
+  
+  // [mir] _91 = Eq(move _92, const 6i32)
+  
+  _91 := builtin$havoc_ref()
+  inhale acc(_91.val_bool, write)
+  _91.val_bool := _92.val_int == 6
+  // [mir] StorageDead(_92)
+  
+  // [mir] _90 = Not(move _91)
+  
+  _90 := builtin$havoc_ref()
+  inhale acc(_90.val_bool, write)
+  _90.val_bool := !_91.val_bool
+  // [mir] StorageDead(_91)
+  
+  // [mir] switchInt(move _90) -> [false: bb62, otherwise: bb61]
+  
+  __t45 := _90.val_bool
+  if (!__t45) {
+    goto l75
+  }
+  goto l74
+  label bb6
+  // ========== bb6 ==========
+  
+  __t3 := true
+  // [mir] EndRegion('14s)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = &'18s mut _1
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _1
+  label l10
+  // [mir] _6 = const VecWrapperI32::push(move _7, const 3i32) -> [return: bb8, unwind: bb9]
+  
+  label l11
+  _t115 := builtin$havoc_ref()
+  inhale acc(i32(_t115), write)
+  assert true
+  exhale acc(_7.val_ref, write) && (acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_7.val_ref), write) && acc(i32(_t115), write))
+  _6 := builtin$havoc_ref()
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l11](_7.val_ref)), write)
+  inhale acc(tuple0$(_6), write)
+  inhale true
+  inhale !(old[l11](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) + 1 < 0 || old[l11](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) + 1 > 18446744073709551615) && m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l11](_7.val_ref)) == old[l11](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) + 1 && (m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l11](_7.val_ref), old[l11](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref))) == old[l11](3) && (forall i: Int :: 0 <= i && i < old[l11](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l11](_7.val_ref), i) == old[l11](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_7.val_ref, i))))
+  label l12
+  goto l13
+  label bb61
+  // ========== bb61 ==========
+  
+  __t34 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: data.lookup(5) == 6", move _95) -> bb63
+  
+  // Rust panic - const "assertion failed: data.lookup(5) == 6"
+  
+  assert false
+  goto end_of_method
+  label bb62
+  // ========== bb62 ==========
+  
+  __t35 := true
+  // [mir] _89 = ()
+  
+  _89 := builtin$havoc_ref()
+  inhale acc(tuple0$(_89), write)
+  // [mir] StorageDead(_90)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] EndRegion('229_4rs)
+  
+  // [mir] StorageDead(_8)
+  
+  // [mir] drop(_1) -> [return: bb64, unwind: bb1]
+  
+  goto bb64
+  label bb64
+  // ========== bb64 ==========
+  
+  __t36 := true
+  // [mir] StorageDead(_1)
+  
+  // [mir] return
+  
+  goto return
+  label bb8
+  // ========== bb8 ==========
+  
+  __t4 := true
+  // [mir] EndRegion('18s)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = &'229_4rs mut _1
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_ref, write)
+  _8.val_ref := _1
+  label l14
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = &'27s mut (*_8)
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_ref, write)
+  _10.val_ref := _8.val_ref
+  label l15
+  // [mir] _9 = const capitalize(move _10) -> [return: bb10, unwind: bb12]
+  
+  label l16
+  assert true
+  exhale acc(_10.val_ref, write) && acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_10.val_ref), write)
+  _9 := builtin$havoc_ref()
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l16](_10.val_ref)), write)
+  inhale acc(tuple0$(_9), write)
+  inhale true
+  inhale m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l16](_10.val_ref)) == old[l16](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_10.val_ref)) && ((forall i: Int :: 0 <= i && i < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l16](_10.val_ref)) ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l16](_10.val_ref), i) <= 0) && ((forall j: Int :: 0 <= j && (j < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l16](_10.val_ref)) && old[l16](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_10.val_ref, j)) > 0) ==> !(old[l16](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_10.val_ref, j)) == -2147483648) && -old[l16](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_10.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l16](_10.val_ref), j)) && (forall j: Int :: 0 <= j && (j < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l16](_10.val_ref)) && old[l16](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_10.val_ref, j)) <= 0) ==> old[l16](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_10.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l16](_10.val_ref), j))))
+  label l17
+  goto l18
+  label l13
+  // ========== l13 ==========
+  
+  // MIR edge bb6 --> bb8
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L61,L2,)
+
+  
+  goto bb8
+  label l18
+  // ========== l18 ==========
+  
+  // MIR edge bb8 --> bb10
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L68,L4,L3,)
+
+  
+  goto bb10
+  label l21
+  // ========== l21 ==========
+  
+  // MIR edge bb10 --> bb13
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L50,L5,)
+
+  
+  if (__t5 && __t5) {
+    // expire loan L5
+    
+    // transfer perm old[l20](_15.val_ref) --> old[l19](_15.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l19](_15.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  }
+  goto bb13
+  label l22
+  // ========== l22 ==========
+  
+  // MIR edge bb13 --> bb15
+  
+  goto bb15
+  label l23
+  // ========== l23 ==========
+  
+  // MIR edge bb13 --> bb16
+  
+  goto bb16
+  label l26
+  // ========== l26 ==========
+  
+  // MIR edge bb16 --> bb18
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L57,L8,)
+
+  
+  if (__t8 && __t8) {
+    // expire loan L8
+    
+    // transfer perm old[l25](_24.val_ref) --> old[l24](_24.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l24](_24.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  }
+  goto bb18
+  label l27
+  // ========== l27 ==========
+  
+  // MIR edge bb18 --> bb20
+  
+  goto bb20
+  label l28
+  // ========== l28 ==========
+  
+  // MIR edge bb18 --> bb21
+  
+  goto bb21
+  label l31
+  // ========== l31 ==========
+  
+  // MIR edge bb21 --> bb23
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L45,L11,)
+
+  
+  if (__t11 && __t11) {
+    // expire loan L11
+    
+    // transfer perm old[l30](_33.val_ref) --> old[l29](_33.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l29](_33.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  }
+  goto bb23
+  label l32
+  // ========== l32 ==========
+  
+  // MIR edge bb23 --> bb25
+  
+  goto bb25
+  label l33
+  // ========== l33 ==========
+  
+  // MIR edge bb23 --> bb26
+  
+  goto bb26
+  label l37
+  // ========== l37 ==========
+  
+  // MIR edge bb26 --> bb28
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L56,L14,)
+
+  
+  goto bb28
+  label l41
+  // ========== l41 ==========
+  
+  // MIR edge bb28 --> bb30
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L64,L15,)
+
+  
+  goto bb30
+  label l45
+  // ========== l45 ==========
+  
+  // MIR edge bb30 --> bb32
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L38,L16,)
+
+  
+  goto bb32
+  label l48
+  // ========== l48 ==========
+  
+  // MIR edge bb32 --> bb34
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L36,L17,)
+
+  
+  if (__t17 && __t17) {
+    // expire loan L17
+    
+    // transfer perm old[l47](_48.val_ref) --> old[l46](_48.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l46](_48.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  }
+  goto bb34
+  label l49
+  // ========== l49 ==========
+  
+  // MIR edge bb34 --> bb36
+  
+  goto bb36
+  label l5
+  // ========== l5 ==========
+  
+  // MIR edge bb2 --> bb3
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L53,L0,)
+
+  
+  goto bb3
+  label l50
+  // ========== l50 ==========
+  
+  // MIR edge bb34 --> bb37
+  
+  goto bb37
+  label l53
+  // ========== l53 ==========
+  
+  // MIR edge bb37 --> bb39
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L49,L20,)
+
+  
+  if (__t20 && __t20) {
+    // expire loan L20
+    
+    // transfer perm old[l52](_57.val_ref) --> old[l51](_57.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l51](_57.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  }
+  goto bb39
+  label l54
+  // ========== l54 ==========
+  
+  // MIR edge bb39 --> bb41
+  
+  goto bb41
+  label l55
+  // ========== l55 ==========
+  
+  // MIR edge bb39 --> bb42
+  
+  goto bb42
+  label l58
+  // ========== l58 ==========
+  
+  // MIR edge bb42 --> bb44
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L66,L23,)
+
+  
+  if (__t23 && __t23) {
+    // expire loan L23
+    
+    // transfer perm old[l57](_66.val_ref) --> old[l56](_66.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l56](_66.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  }
+  goto bb44
+  label l59
+  // ========== l59 ==========
+  
+  // MIR edge bb44 --> bb46
+  
+  goto bb46
+  label l60
+  // ========== l60 ==========
+  
+  // MIR edge bb44 --> bb47
+  
+  goto bb47
+  label l63
+  // ========== l63 ==========
+  
+  // MIR edge bb47 --> bb49
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L46,L26,)
+
+  
+  if (__t26 && __t26) {
+    // expire loan L26
+    
+    // transfer perm old[l62](_75.val_ref) --> old[l61](_75.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l61](_75.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  }
+  goto bb49
+  label l64
+  // ========== l64 ==========
+  
+  // MIR edge bb49 --> bb51
+  
+  goto bb51
+  label l65
+  // ========== l65 ==========
+  
+  // MIR edge bb49 --> bb52
+  
+  goto bb52
+  label l68
+  // ========== l68 ==========
+  
+  // MIR edge bb52 --> bb54
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L42,L29,)
+
+  
+  if (__t29 && __t29) {
+    // expire loan L29
+    
+    // transfer perm old[l67](_84.val_ref) --> old[l66](_84.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l66](_84.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  }
+  goto bb54
+  label l69
+  // ========== l69 ==========
+  
+  // MIR edge bb54 --> bb56
+  
+  goto bb56
+  label l70
+  // ========== l70 ==========
+  
+  // MIR edge bb54 --> bb57
+  
+  goto bb57
+  label l73
+  // ========== l73 ==========
+  
+  // MIR edge bb57 --> bb59
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L37,L32,)
+
+  
+  if (__t32 && __t32) {
+    // expire loan L32
+    
+    // transfer perm old[l72](_93.val_ref) --> old[l71](_93.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l71](_93.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write - read$())
+  }
+  goto bb59
+  label l74
+  // ========== l74 ==========
+  
+  // MIR edge bb59 --> bb61
+  
+  goto bb61
+  label l75
+  // ========== l75 ==========
+  
+  // MIR edge bb59 --> bb62
+  
+  goto bb62
+  label l9
+  // ========== l9 ==========
+  
+  // MIR edge bb3 --> bb6
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L51,L1,)
+
+  
+  goto bb6
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_case1_overflow$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var _1: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "case1_overflow::main"
+  
+  // Def path: "case1_overflow::main[0]"
+  
+  // Span: tests/verify_overflow/pass/nll-rfc/case1-overflow.rs:117:1: 119:2
+  
+  __t0 := false
+  __t1 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _1 = const bar() -> [return: bb2, unwind: bb1]
+  
+  label l0
+  _1 := builtin$havoc_ref()
+  inhale true
+  inhale acc(tuple0$(_1), write)
+  inhale true
+  inhale true
+  label l1
+  goto bb2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_case1_overflow$$capitalize$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var _preserve$0: Ref
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Int
+  var _5: Int
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _43: Ref
+  var _44: Ref
+  var _45: Int
+  var _46: Ref
+  var _47: Ref
+  var _48: Int
+  var _49: Ref
+  var _50: Ref
+  var _51: Int
+  var _52: Ref
+  var _53: Int
+  var _54: Ref
+  var _55: Ref
+  var _56: Ref
+  var _57: Int
+  var _58: Ref
+  var _59: Ref
+  var _60: Int
+  var _61: Int
+  var _62: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "case1_overflow::capitalize"
+  
+  // Def path: "case1_overflow::capitalize[0]"
+  
+  // Span: tests/verify_overflow/pass/nll-rfc/case1-overflow.rs:66:1: 91:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_2)
+  
+  // [mir] _2 = const 0usize
+  
+  _2 := builtin$havoc_ref()
+  inhale acc(_2.val_int, write)
+  _2.val_int := 0
+  // [mir] StorageLive(_3)
+  
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = _2
+  
+  _4 := builtin$havoc_int()
+  inhale true
+  _4 := _2.val_int
+  label l0
+  // [mir] StorageLive(_5)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = &'9s (*_1)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_ref, write)
+  _6.val_ref := _1.val_ref
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_6.val_ref), read$())
+  label l1
+  // [mir] _5 = const VecWrapperI32::len(move _6) -> [return: bb2, unwind: bb1]
+  
+  label l2
+  _5 := builtin$havoc_int()
+  inhale _5 >= 0 && 18446744073709551615 >= _5
+  inhale _5 >= 0 && 18446744073709551615 >= _5
+  inhale _5 == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)
+  // transfer perm _6.val_ref --> old[l2](_6.val_ref) // unchecked: false
+  
+  goto l3
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] EndRegion('9s)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] _3 = Lt(move _4, move _5)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_bool, write)
+  _3.val_bool := _4 < _5
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] goto -> bb3
+  
+  goto loop3_start
+  label bb4
+  // ========== bb4 ==========
+  
+  __t15 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] StorageDead(_2)
+  
+  // [mir] return
+  
+  goto return
+  label l10
+  // ========== l10 ==========
+  
+  // MIR edge bb8 --> bb9
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L40,L21,)
+
+  
+  if (__t5 && __t5) {
+    // expire loan L21
+    
+    // transfer perm old[l9](_44.val_ref) --> old[l7](_44.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l7](_44.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  goto loop3_group3_bb9
+  label l12
+  // ========== l12 ==========
+  
+  // MIR edge bb9 --> bb11
+  
+  goto loop3_group3_bb11
+  label l13
+  // ========== l13 ==========
+  
+  // MIR edge bb9 --> bb10
+  
+  goto loop3_group3_bb10
+  label l19
+  // ========== l19 ==========
+  
+  // MIR edge bb12 --> bb13
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L41,L22,)
+
+  
+  goto loop3_group3_bb13
+  label l25
+  // ========== l25 ==========
+  
+  // MIR edge bb11 --> bb14
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L39,L24,)
+
+  
+  goto loop3_group3_bb14
+  label l3
+  // ========== l3 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L27,L0,)
+
+  
+  if (__t0 && __t0) {
+    // expire loan L0
+    
+    // transfer perm old[l2](_6.val_ref) --> old[l1](_6.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l1](_6.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  goto bb2
+  label l30
+  // ========== l30 ==========
+  
+  // MIR edge bb16 --> bb17
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L32,L23,)
+
+  
+  if (__t13 && __t13) {
+    // expire loan L23
+    
+    // transfer perm old[l29](_62.val_ref) --> old[l28](_62.val_ref) // unchecked: false
+    
+    exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l28](_62.val_ref)), read$())
+    inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  goto loop3_group3_bb17
+  label l32
+  // ========== l32 ==========
+  
+  // MIR edge bb3 --> bb4
+  
+  goto l36
+  label l33
+  // ========== l33 ==========
+  
+  // MIR edge bb3 --> bb5
+  
+  goto loop3_group5_bb5
+  label l34
+  // ========== l34 ==========
+  
+  // drop Acc(_53.val_int, write) (Acc(_53.val_int, write))
+  
+  // drop Acc(_54.val_bool, write) (Acc(_54.val_bool, write))
+  
+  // drop Pred(_49, write) (Pred(_49, write))
+  
+  goto loop3_group3_bb15
+  label l35
+  // ========== l35 ==========
+  
+  // drop Pred(_55, write) (Pred(_55, write))
+  
+  goto loop3_group3_bb15
+  label l36
+  // ========== l36 ==========
+  
+  // drop Acc(_60.val_int, write) (Acc(_60.val_int, write))
+  
+  // drop Acc(_62.val_ref, write) (Acc(_62.val_ref, write))
+  
+  // drop Acc(_47.val_bool, write) (Acc(_47.val_bool, write))
+  
+  // drop Acc(_59.tuple_1.val_bool, write) (Acc(_59.tuple_1.val_bool, write))
+  
+  // drop Acc(_48.val_int, write) (Acc(_48.val_int, write))
+  
+  // drop Acc(_59.tuple_0, write) (Acc(_59.tuple_0, write))
+  
+  // drop Acc(_44.val_ref, write) (Acc(_44.val_ref, write))
+  
+  // drop Acc(_43.val_int, write) (Acc(_43.val_int, write))
+  
+  // drop Acc(_61.val_int, write) (Acc(_61.val_int, write))
+  
+  // drop Acc(old[l28](_62.val_ref), write) (Acc(old[l28](_62.val_ref), write))
+  
+  // drop Acc(old[l7](_44.val_ref), write) (Acc(old[l7](_44.val_ref), write))
+  
+  // drop Acc(_45.val_int, write) (Acc(_45.val_int, write))
+  
+  // drop Pred(_9, write) (Pred(_9, write))
+  
+  // drop Pred(_8, write) (Pred(_8, write))
+  
+  // drop Pred(_46, write) (Pred(_46, write))
+  
+  // drop Acc(_59.tuple_1, write) (Acc(_59.tuple_1, write))
+  
+  goto bb4
+  label l5
+  // ========== l5 ==========
+  
+  // MIR edge bb3 --> bb4
+  
+  goto bb4
+  label l6
+  // ========== l6 ==========
+  
+  // MIR edge bb3 --> bb5
+  
+  goto loop3_group2_bb5
+  label loop3_end_body
+  // ========== loop3_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb3
+  
+  fold acc(usize(_2), write)
+  // obtain acc(usize(_2), write)
+  
+  fold acc(bool(_3), write)
+  // obtain acc(bool(_3), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  assert (unfolding acc(usize(_2), write) in _2.val_int) < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && (m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && (0 <= (unfolding acc(usize(_2), write) in _2.val_int) && (unfolding acc(usize(_2), write) in _2.val_int) <= m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && (((unfolding acc(bool(_3), write) in _3.val_bool) ==> (unfolding acc(usize(_2), write) in _2.val_int) < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((!(unfolding acc(bool(_3), write) in _3.val_bool) ==> (unfolding acc(usize(_2), write) in _2.val_int) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((unfolding acc(usize(_2), write) in (forall j: Int :: 0 <= j && j < _2.val_int ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j) <= 0)) && ((unfolding acc(usize(_2), write) in (forall j: Int :: _2.val_int <= j && j < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) ==> old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j))) && ((unfolding acc(usize(_2), write) in (forall j: Int :: 0 <= j && (j < _2.val_int && old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) > 0) ==> !(old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == -2147483648) && -old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j))) && (unfolding acc(usize(_2), write) in (forall j: Int :: 0 <= j && (j < _2.val_int && old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) <= 0) ==> old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j))))))))))
+  assert _preserve$0 == _1.val_ref
+  exhale acc(usize(_2), write) && (acc(bool(_3), write) && (acc(_1.val_ref, read$()) && acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)))
+  inhale false
+  goto end_of_method
+  label loop3_group1_bb3
+  // ========== loop3_group1_bb3 ==========
+  
+  // This is a loop head
+  
+  __t2 := true
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _3
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_bool, write)
+  _7.val_bool := _3.val_bool
+  label l4
+  // [mir] switchInt(move _7) -> [false: bb4, otherwise: bb5]
+  
+  __t16 := _7.val_bool
+  if (__t16) {
+    goto l6
+  }
+  goto l5
+  label loop3_group2_bb5
+  // ========== loop3_group2_bb5 ==========
+  
+  __t3 := true
+  // [mir] switchInt(const false) -> [false: bb7, otherwise: bb6]
+  
+  __t17 := false
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop3_inv_pre
+  label loop3_group3_bb10
+  // ========== loop3_group3_bb10 ==========
+  
+  __t7 := true
+  // [mir] StorageLive(_50)
+  
+  // [mir] _50 = &'257s mut (*_1)
+  
+  _50 := builtin$havoc_ref()
+  inhale acc(_50.val_ref, write)
+  _50.val_ref := _1.val_ref
+  label l14
+  // [mir] StorageLive(_51)
+  
+  // [mir] _51 = _2
+  
+  _51 := builtin$havoc_int()
+  inhale true
+  _51 := _2.val_int
+  label l15
+  // [mir] StorageLive(_52)
+  
+  // [mir] StorageLive(_53)
+  
+  // [mir] _53 = _43
+  
+  _53 := builtin$havoc_int()
+  inhale true
+  _53 := _43.val_int
+  label l16
+  // [mir] _54 = Eq(_53, const -2147483648i32)
+  
+  _54 := builtin$havoc_ref()
+  inhale acc(_54.val_bool, write)
+  _54.val_bool := _53 == -2147483648
+  // [mir] assert(!move _54, "attempt to negate with overflow") -> [success: bb12, unwind: bb1]
+  
+  __t19 := _54.val_bool
+  // Rust assertion: attempt to negate with overflow
+  
+  assert !__t19
+  goto loop3_group3_bb12
+  label loop3_group3_bb11
+  // ========== loop3_group3_bb11 ==========
+  
+  __t10 := true
+  // [mir] StorageLive(_56)
+  
+  // [mir] _56 = &'249s mut (*_1)
+  
+  _56 := builtin$havoc_ref()
+  inhale acc(_56.val_ref, write)
+  _56.val_ref := _1.val_ref
+  label l20
+  // [mir] StorageLive(_57)
+  
+  // [mir] _57 = _2
+  
+  _57 := builtin$havoc_int()
+  inhale true
+  _57 := _2.val_int
+  label l21
+  // [mir] StorageLive(_58)
+  
+  // [mir] _58 = _43
+  
+  _58 := builtin$havoc_ref()
+  inhale acc(_58.val_int, write)
+  _58.val_int := _43.val_int
+  label l22
+  // [mir] _55 = const VecWrapperI32::store(move _56, move _57, move _58) -> [return: bb14, unwind: bb1]
+  
+  label l23
+  assert 0 <= _57 && _57 < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_56.val_ref)
+  fold acc(i32(_58), write)
+  assert _57 >= 0 && 18446744073709551615 >= _57
+  assert true
+  exhale acc(_56.val_ref, write) && (acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_56.val_ref), write) && (_57 >= 0 && 18446744073709551615 >= _57 && acc(i32(_58), write)))
+  _55 := builtin$havoc_ref()
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l23](_56.val_ref)), write)
+  inhale acc(tuple0$(_55), write)
+  inhale true
+  inhale m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l23](_56.val_ref)) == old[l23](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_56.val_ref)) && (m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l23](_56.val_ref), old[l23](_57)) == old[l23](_58.val_int) && (forall i: Int :: 0 <= i && (i < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l23](_56.val_ref)) && !(i == old[l23](_57))) ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l23](_56.val_ref), i) == old[l23](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_56.val_ref, i))))
+  label l24
+  goto l25
+  label loop3_group3_bb12
+  // ========== loop3_group3_bb12 ==========
+  
+  __t8 := true
+  // [mir] _52 = Neg(move _53)
+  
+  _52 := builtin$havoc_ref()
+  inhale acc(_52.val_int, write)
+  _52.val_int := -_53
+  // [mir] StorageDead(_53)
+  
+  // [mir] _49 = const VecWrapperI32::store(move _50, move _51, move _52) -> [return: bb13, unwind: bb1]
+  
+  label l17
+  assert 0 <= _51 && _51 < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_50.val_ref)
+  fold acc(i32(_52), write)
+  assert _51 >= 0 && 18446744073709551615 >= _51
+  assert true
+  exhale acc(_50.val_ref, write) && (acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_50.val_ref), write) && (_51 >= 0 && 18446744073709551615 >= _51 && acc(i32(_52), write)))
+  _49 := builtin$havoc_ref()
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l17](_50.val_ref)), write)
+  inhale acc(tuple0$(_49), write)
+  inhale true
+  inhale m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l17](_50.val_ref)) == old[l17](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_50.val_ref)) && (m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l17](_50.val_ref), old[l17](_51)) == old[l17](_52.val_int) && (forall i: Int :: 0 <= i && (i < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l17](_50.val_ref)) && !(i == old[l17](_51))) ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l17](_50.val_ref), i) == old[l17](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_50.val_ref, i))))
+  label l18
+  goto l19
+  label loop3_group3_bb13
+  // ========== loop3_group3_bb13 ==========
+  
+  __t9 := true
+  // [mir] EndRegion('257s)
+  
+  // [mir] StorageDead(_52)
+  
+  // [mir] StorageDead(_51)
+  
+  // [mir] StorageDead(_50)
+  
+  // [mir] _46 = ()
+  
+  _46 := builtin$havoc_ref()
+  inhale acc(tuple0$(_46), write)
+  // [mir] goto -> bb15
+  
+  goto l34
+  label loop3_group3_bb14
+  // ========== loop3_group3_bb14 ==========
+  
+  __t11 := true
+  // [mir] EndRegion('249s)
+  
+  // [mir] StorageDead(_58)
+  
+  // [mir] StorageDead(_57)
+  
+  // [mir] StorageDead(_56)
+  
+  // [mir] _46 = ()
+  
+  _46 := builtin$havoc_ref()
+  inhale acc(tuple0$(_46), write)
+  // [mir] goto -> bb15
+  
+  goto l35
+  label loop3_group3_bb15
+  // ========== loop3_group3_bb15 ==========
+  
+  __t12 := true
+  // [mir] StorageDead(_47)
+  
+  // [mir] _59 = CheckedAdd(_2, const 1usize)
+  
+  _59 := builtin$havoc_ref()
+  inhale acc(_59.tuple_0, write)
+  inhale acc(_59.tuple_0.val_int, write)
+  inhale acc(_59.tuple_1, write)
+  inhale acc(_59.tuple_1.val_bool, write)
+  _59.tuple_0.val_int := _2.val_int + 1
+  _59.tuple_1.val_bool := _2.val_int + 1 < 0 || _2.val_int + 1 > 18446744073709551615
+  // [mir] assert(!move (_59.1: bool), "attempt to add with overflow") -> [success: bb16, unwind: bb1]
+  
+  __t20 := _59.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t20
+  goto loop3_group3_bb16
+  label loop3_group3_bb16
+  // ========== loop3_group3_bb16 ==========
+  
+  __t13 := true
+  // [mir] _2 = move (_59.0: usize)
+  
+  _2 := _59.tuple_0
+  label l26
+  // [mir] StorageLive(_60)
+  
+  // [mir] _60 = _2
+  
+  _60 := builtin$havoc_int()
+  inhale true
+  _60 := _2.val_int
+  label l27
+  // [mir] StorageLive(_61)
+  
+  // [mir] StorageLive(_62)
+  
+  // [mir] _62 = &'273s (*_1)
+  
+  _62 := builtin$havoc_ref()
+  inhale acc(_62.val_ref, write)
+  _62.val_ref := _1.val_ref
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_62.val_ref), read$())
+  label l28
+  // [mir] _61 = const VecWrapperI32::len(move _62) -> [return: bb17, unwind: bb1]
+  
+  label l29
+  _61 := builtin$havoc_int()
+  inhale _61 >= 0 && 18446744073709551615 >= _61
+  inhale _61 >= 0 && 18446744073709551615 >= _61
+  inhale _61 == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_62.val_ref)
+  // transfer perm _62.val_ref --> old[l29](_62.val_ref) // unchecked: false
+  
+  goto l30
+  label loop3_group3_bb17
+  // ========== loop3_group3_bb17 ==========
+  
+  __t14 := true
+  // [mir] EndRegion('273s)
+  
+  // [mir] StorageDead(_62)
+  
+  // [mir] _3 = Lt(move _60, move _61)
+  
+  unfold acc(bool(_3), write)
+  _3.val_bool := _60 < _61
+  // [mir] StorageDead(_61)
+  
+  // [mir] StorageDead(_60)
+  
+  // [mir] _8 = ()
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(tuple0$(_8), write)
+  // [mir] StorageDead(_43)
+  
+  // [mir] goto -> bb3
+  
+  goto loop3_group4_bb3
+  label loop3_group3_bb7
+  // ========== loop3_group3_bb7 ==========
+  
+  __t4 := true
+  // [mir] _9 = ()
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(tuple0$(_9), write)
+  // [mir] goto -> bb8
+  
+  goto loop3_group3_bb8
+  label loop3_group3_bb8
+  // ========== loop3_group3_bb8 ==========
+  
+  __t5 := true
+  // [mir] StorageLive(_43)
+  
+  // [mir] StorageLive(_44)
+  
+  // [mir] _44 = &'244s (*_1)
+  
+  _44 := builtin$havoc_ref()
+  inhale acc(_44.val_ref, write)
+  _44.val_ref := _1.val_ref
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_44.val_ref), read$())
+  label l7
+  // [mir] StorageLive(_45)
+  
+  // [mir] _45 = _2
+  
+  _45 := builtin$havoc_int()
+  inhale true
+  unfold acc(usize(_2), write)
+  _45 := _2.val_int
+  label l8
+  // [mir] _43 = const VecWrapperI32::lookup(move _44, move _45) -> [return: bb9, unwind: bb1]
+  
+  label l9
+  _43 := builtin$havoc_ref()
+  inhale acc(i32(_43), write)
+  unfold acc(i32(_43), write)
+  inhale _43.val_int == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_44.val_ref, _45)
+  // transfer perm _44.val_ref --> old[l9](_44.val_ref) // unchecked: false
+  
+  goto l10
+  label loop3_group3_bb9
+  // ========== loop3_group3_bb9 ==========
+  
+  __t6 := true
+  // [mir] EndRegion('244s)
+  
+  // [mir] StorageDead(_45)
+  
+  // [mir] StorageDead(_44)
+  
+  // [mir] StorageLive(_47)
+  
+  // [mir] StorageLive(_48)
+  
+  // [mir] _48 = _43
+  
+  _48 := builtin$havoc_int()
+  inhale true
+  _48 := _43.val_int
+  label l11
+  // [mir] _47 = Gt(move _48, const 0i32)
+  
+  _47 := builtin$havoc_ref()
+  inhale acc(_47.val_bool, write)
+  _47.val_bool := _48 > 0
+  // [mir] StorageDead(_48)
+  
+  // [mir] switchInt(move _47) -> [false: bb11, otherwise: bb10]
+  
+  __t18 := _47.val_bool
+  if (__t18) {
+    goto l13
+  }
+  goto l12
+  label loop3_group4_bb3
+  // ========== loop3_group4_bb3 ==========
+  
+  // This is a loop head
+  
+  __t2 := true
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _3
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_bool, write)
+  _7.val_bool := _3.val_bool
+  label l31
+  // [mir] switchInt(move _7) -> [false: bb4, otherwise: bb5]
+  
+  __t21 := _7.val_bool
+  if (__t21) {
+    goto l33
+  }
+  goto l32
+  label loop3_group5_bb5
+  // ========== loop3_group5_bb5 ==========
+  
+  __t3 := true
+  // [mir] switchInt(const false) -> [false: bb7, otherwise: bb6]
+  
+  __t22 := false
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop3_end_body
+  label loop3_inv_post
+  // ========== loop3_inv_post ==========
+  
+  // Inhale the loop invariant of block bb3
+  
+  inhale acc(usize(_2), write) && (acc(bool(_3), write) && (acc(_1.val_ref, read$()) && acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)))
+  inhale _preserve$0 == _1.val_ref
+  inhale (unfolding acc(bool(_3), write) in (unfolding acc(usize(_2), write) in _2.val_int < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && (m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && (0 <= _2.val_int && _2.val_int <= m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((_3.val_bool ==> _2.val_int < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((!_3.val_bool ==> _2.val_int == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((forall j: Int :: 0 <= j && j < _2.val_int ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j) <= 0) && ((forall j: Int :: _2.val_int <= j && j < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) ==> old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) && ((forall j: Int :: 0 <= j && (j < _2.val_int && old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) > 0) ==> !(old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == -2147483648) && -old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) && (forall j: Int :: 0 <= j && (j < _2.val_int && old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) <= 0) ==> old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)))))))))))
+  goto loop3_group3_bb7
+  label loop3_inv_pre
+  // ========== loop3_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb3
+  
+  _preserve$0 := _1.val_ref
+  fold acc(usize(_2), write)
+  // obtain acc(usize(_2), write)
+  
+  fold acc(bool(_3), write)
+  // obtain acc(bool(_3), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  assert (unfolding acc(usize(_2), write) in _2.val_int) < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && (m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && (0 <= (unfolding acc(usize(_2), write) in _2.val_int) && (unfolding acc(usize(_2), write) in _2.val_int) <= m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && (((unfolding acc(bool(_3), write) in _3.val_bool) ==> (unfolding acc(usize(_2), write) in _2.val_int) < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((!(unfolding acc(bool(_3), write) in _3.val_bool) ==> (unfolding acc(usize(_2), write) in _2.val_int) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((unfolding acc(usize(_2), write) in (forall j: Int :: 0 <= j && j < _2.val_int ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j) <= 0)) && ((unfolding acc(usize(_2), write) in (forall j: Int :: _2.val_int <= j && j < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) ==> old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j))) && ((unfolding acc(usize(_2), write) in (forall j: Int :: 0 <= j && (j < _2.val_int && old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) > 0) ==> !(old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == -2147483648) && -old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j))) && (unfolding acc(usize(_2), write) in (forall j: Int :: 0 <= j && (j < _2.val_int && old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) <= 0) ==> old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j))))))))))
+  assert _preserve$0 == _1.val_ref
+  exhale acc(usize(_2), write) && (acc(bool(_3), write) && (acc(_1.val_ref, read$()) && acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)))
+  _61 := builtin$havoc_int()
+  __t11 := builtin$havoc_bool()
+  __t6 := builtin$havoc_bool()
+  __t22 := builtin$havoc_bool()
+  _43 := builtin$havoc_ref()
+  _7 := builtin$havoc_ref()
+  _49 := builtin$havoc_ref()
+  __t3 := builtin$havoc_bool()
+  _44 := builtin$havoc_ref()
+  _57 := builtin$havoc_int()
+  _62 := builtin$havoc_ref()
+  _46 := builtin$havoc_ref()
+  __t7 := builtin$havoc_bool()
+  __t2 := builtin$havoc_bool()
+  __t20 := builtin$havoc_bool()
+  _48 := builtin$havoc_int()
+  _8 := builtin$havoc_ref()
+  _55 := builtin$havoc_ref()
+  _50 := builtin$havoc_ref()
+  _59 := builtin$havoc_ref()
+  __t8 := builtin$havoc_bool()
+  _52 := builtin$havoc_ref()
+  __t10 := builtin$havoc_bool()
+  __t18 := builtin$havoc_bool()
+  __t21 := builtin$havoc_bool()
+  _2 := builtin$havoc_ref()
+  _60 := builtin$havoc_int()
+  __t4 := builtin$havoc_bool()
+  __t13 := builtin$havoc_bool()
+  _56 := builtin$havoc_ref()
+  _58 := builtin$havoc_ref()
+  _45 := builtin$havoc_int()
+  _51 := builtin$havoc_int()
+  __t14 := builtin$havoc_bool()
+  _53 := builtin$havoc_int()
+  _54 := builtin$havoc_ref()
+  _9 := builtin$havoc_ref()
+  __t19 := builtin$havoc_bool()
+  __t5 := builtin$havoc_bool()
+  _47 := builtin$havoc_ref()
+  __t9 := builtin$havoc_bool()
+  __t12 := builtin$havoc_bool()
+  goto loop3_inv_post
+  label loop3_start
+  // ========== loop3_start ==========
+  
+  goto loop3_group1_bb3
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) == old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((forall i: Int :: 0 <= i && i < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) ==> m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, i) <= 0) && ((forall j: Int :: 0 <= j && (j < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) && old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) > 0) ==> !(old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == -2147483648) && -old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, j)) && (forall j: Int :: 0 <= j && (j < m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) && old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) <= 0) ==> old[pre](m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, j)) == m_case1_overflow$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, j))))
+  assert true
+  exhale acc(m_case1_overflow$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)

@@ -1,0 +1,2003 @@
+domain $SnapshotMirrors$ {
+  
+  
+}
+
+field closure_0: Ref
+
+field closure_1: Ref
+
+field closure_2: Ref
+
+field closure_3: Ref
+
+field discriminant: Int
+
+field enum_Equal: Ref
+
+field enum_Greater: Ref
+
+field enum_Less: Ref
+
+field enum_None: Ref
+
+field enum_Some: Ref
+
+field f$0: Ref
+
+field f$a: Ref
+
+field f$buf: Ref
+
+field f$cap: Ref
+
+field f$len: Ref
+
+field f$ptr: Ref
+
+field f$v: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field tuple_2: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$undef_bool__$TY$__$bool$(): Bool
+
+
+function builtin$undef_int__$TY$__$int$(): Int
+
+
+function builtin$unreach_bool__$TY$__$bool$(): Bool
+  requires false
+
+
+function builtin$unreach_int__$TY$__$int$(): Int
+  requires false
+
+
+function m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures true
+  ensures 0 <= result
+  ensures result <= 18446744073709551615
+
+
+function m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_pure_1: Ref, _pure_2: Int): Int
+  requires acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires 0 <= _pure_2 && _pure_2 < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1)
+  requires 0 <= _pure_2
+  requires _pure_2 <= 18446744073709551615
+  ensures true
+  ensures -2147483648 <= result
+  ensures result <= 2147483647
+
+
+function m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_pure_1: Ref): Bool
+  requires acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures true
+{
+  !m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_pure_1)
+}
+
+function m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_pure_1: Ref): Bool
+  requires acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures true
+{
+  (unfolding acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in _pure_1.discriminant == 0)
+}
+
+function m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_pure_1)
+  ensures true
+  ensures 0 <= result
+  ensures result <= 18446744073709551615
+{
+  (unfolding acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in (_pure_1.discriminant == 0 ? (unfolding acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_Some(_pure_1.enum_Some), read$()) in (unfolding acc(usize(_pure_1.enum_Some.f$0), read$()) in _pure_1.enum_Some.f$0.val_int)) : builtin$unreach_int__$TY$__$int$()))
+}
+
+function m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$int$(self: Ref): Int
+  requires acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(self), read$())
+  ensures 0 <= result && result <= 2
+{
+  (unfolding acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(self), read$()) in self.discriminant)
+}
+
+function m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(self: Ref): Int
+  requires acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(self), read$())
+  ensures 0 <= result && result <= 1
+{
+  (unfolding acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(self), read$()) in self.discriminant)
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_11$3$14638646224268616196(self: Ref) 
+
+predicate closure$0_1_12$4$17001480277194006617(self: Ref) 
+
+predicate closure$0_1_13$3$14638646224268616196(self: Ref) 
+
+predicate closure$0_1_14$4$15549095298966453791(self: Ref) 
+
+predicate closure$0_1_15$5$5075898579489248679(self: Ref) 
+
+predicate closure$0_1_16$2$5059396678693552475(self: Ref) 
+
+predicate closure$0_1_17$3$13755076842142279428(self: Ref) 
+
+predicate closure$0_1_18$5$17753855177215072009(self: Ref) 
+
+predicate closure$0_1_19$4$11545708990456197808(self: Ref) 
+
+predicate closure$0_1_20$5$1201558823312298186(self: Ref) 
+
+predicate closure$0_1_21$4$9662796120604503583(self: Ref) 
+
+predicate closure$0_1_30$3$1832632346543900956(self: Ref) 
+
+predicate closure$0_1_34$3$9863146735187217849(self: Ref) 
+
+predicate closure$0_1_35$3$6764460164408742563(self: Ref) 
+
+predicate closure$0_1_36$5$15283588091169721285(self: Ref) 
+
+predicate closure$0_1_37$2$17309005470967841763(self: Ref) 
+
+predicate closure$0_1_38$5$18364178082525168913(self: Ref) 
+
+predicate closure$0_1_39$3$8557536310959760232(self: Ref) 
+
+predicate closure$0_1_40$3$439034602103774817(self: Ref) 
+
+predicate closure$0_1_41$3$17248028283071546651(self: Ref) 
+
+predicate closure$0_1_42$3$3125871853483277348(self: Ref) 
+
+predicate closure$0_1_43$3$12509036097101680182(self: Ref) 
+
+predicate closure$0_1_44$5$4519369578539410762(self: Ref) 
+
+predicate closure$0_1_45$5$2832236683162059153(self: Ref) 
+
+predicate closure$0_1_46$3$355636700252117518(self: Ref) 
+
+predicate closure$0_1_47$4$9974624642593201658(self: Ref) 
+
+predicate closure$0_1_48$4$14834637957093724395(self: Ref) 
+
+predicate closure$0_1_49$5$9982319475891260062(self: Ref) 
+
+predicate closure$0_1_50$4$18041856802123859140(self: Ref) 
+
+predicate closure$0_1_51$5$15456494779183064913(self: Ref) 
+
+predicate closure$0_1_52$3$1193994613319519282(self: Ref) 
+
+predicate closure$0_1_53$6$30781156464482553(self: Ref) 
+
+predicate closure$0_1_54$6$4276298801844591459(self: Ref) 
+
+predicate closure$0_1_55$5$15494941592042450304(self: Ref) 
+
+predicate closure$0_1_56$3$4759033578015280558(self: Ref) 
+
+predicate closure$0_1_57$5$938118686986066325(self: Ref) 
+
+predicate closure$0_1_58$3$10522504278762424813(self: Ref) 
+
+predicate closure$0_1_59$5$14474626718756964039(self: Ref) 
+
+predicate closure$0_1_60$5$13665772721162474095(self: Ref) 
+
+predicate closure$0_1_61$3$18399563375980868224(self: Ref) 
+
+predicate closure$0_1_62$3$7429684705094907427(self: Ref) 
+
+predicate closure$0_1_63$4$4460809016675536475(self: Ref) 
+
+predicate closure$0_1_64$4$4068400483846200362(self: Ref) 
+
+predicate closure$0_1_65$3$4739617661615336241(self: Ref) 
+
+predicate closure$0_1_66$3$7395530204526009362(self: Ref) 
+
+predicate closure$0_1_67$4$1770348032394913676(self: Ref) 
+
+predicate closure$0_1_68$4$4490636510610601042(self: Ref) 
+
+predicate closure$0_1_69$5$13165072392702278976(self: Ref) 
+
+predicate closure$0_1_70$3$14555767943206871429(self: Ref) 
+
+predicate closure$0_1_71$5$14559982558685517666(self: Ref) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write) && (-2147483648 <= self.val_int && self.val_int <= 2147483647)
+}
+
+predicate isize(self: Ref) {
+  acc(self.val_int, write) && (-9223372036854775808 <= self.val_int && self.val_int <= 9223372036854775807)
+}
+
+predicate m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.discriminant, write) && (0 <= self.discriminant && self.discriminant <= 2)
+}
+
+predicate m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.discriminant, write) && (0 <= self.discriminant && self.discriminant <= 1 && (acc(self.enum_Some, write) && (self.discriminant == 0 ==> acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_Some(self.enum_Some), write))))
+}
+
+predicate m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_Some(self: Ref) {
+  acc(self.f$0, write) && acc(usize(self.f$0), write)
+}
+
+predicate m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$v, write) && acc(m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_(self.f$v), write)
+}
+
+predicate m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  true
+}
+
+predicate m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.f$ptr, write) && (acc(m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$i32$_end_(self.f$ptr), write) && (acc(self.f$cap, write) && (acc(usize(self.f$cap), write) && (acc(self.f$a, write) && acc(m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self.f$a), write)))))
+}
+
+predicate m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) {
+  acc(self.f$buf, write) && (acc(m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$buf), write) && (acc(self.f$len, write) && acc(usize(self.f$len), write)))
+}
+
+predicate m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) 
+
+predicate ref$closure$0_1_11$3$14638646224268616196(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_11$3$14638646224268616196(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_12$4$17001480277194006617(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_12$4$17001480277194006617(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_13$3$14638646224268616196(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_13$3$14638646224268616196(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_14$4$15549095298966453791(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_14$4$15549095298966453791(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_15$5$5075898579489248679(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_15$5$5075898579489248679(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_16$2$5059396678693552475(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_16$2$5059396678693552475(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_17$3$13755076842142279428(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_17$3$13755076842142279428(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_18$5$17753855177215072009(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_18$5$17753855177215072009(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_19$4$11545708990456197808(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_19$4$11545708990456197808(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_20$5$1201558823312298186(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_20$5$1201558823312298186(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_21$4$9662796120604503583(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_21$4$9662796120604503583(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_30$3$1832632346543900956(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_30$3$1832632346543900956(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_34$3$9863146735187217849(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_34$3$9863146735187217849(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_35$3$6764460164408742563(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_35$3$6764460164408742563(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_36$5$15283588091169721285(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_36$5$15283588091169721285(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_38$5$18364178082525168913(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_38$5$18364178082525168913(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_39$3$8557536310959760232(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_39$3$8557536310959760232(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_40$3$439034602103774817(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_40$3$439034602103774817(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_41$3$17248028283071546651(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_41$3$17248028283071546651(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_42$3$3125871853483277348(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_42$3$3125871853483277348(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_43$3$12509036097101680182(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_43$3$12509036097101680182(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_44$5$4519369578539410762(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_44$5$4519369578539410762(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_45$5$2832236683162059153(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_45$5$2832236683162059153(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_46$3$355636700252117518(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_46$3$355636700252117518(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_47$4$9974624642593201658(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_47$4$9974624642593201658(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_48$4$14834637957093724395(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_48$4$14834637957093724395(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_49$5$9982319475891260062(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_49$5$9982319475891260062(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_50$4$18041856802123859140(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_50$4$18041856802123859140(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_51$5$15456494779183064913(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_51$5$15456494779183064913(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_52$3$1193994613319519282(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_52$3$1193994613319519282(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_53$6$30781156464482553(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_53$6$30781156464482553(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_54$6$4276298801844591459(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_54$6$4276298801844591459(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_55$5$15494941592042450304(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_55$5$15494941592042450304(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_56$3$4759033578015280558(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_56$3$4759033578015280558(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_57$5$938118686986066325(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_57$5$938118686986066325(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_58$3$10522504278762424813(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_58$3$10522504278762424813(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_59$5$14474626718756964039(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_59$5$14474626718756964039(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_60$5$13665772721162474095(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_60$5$13665772721162474095(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_61$3$18399563375980868224(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_61$3$18399563375980868224(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_62$3$7429684705094907427(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_62$3$7429684705094907427(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_63$4$4460809016675536475(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_63$4$4460809016675536475(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_64$4$4068400483846200362(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_64$4$4068400483846200362(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_65$3$4739617661615336241(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_65$3$4739617661615336241(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_66$3$7395530204526009362(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_66$3$7395530204526009362(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_67$4$1770348032394913676(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_67$4$1770348032394913676(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_68$4$4490636510610601042(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_68$4$4490636510610601042(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_69$5$13165072392702278976(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_69$5$13165072392702278976(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_70$3$14555767943206871429(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_70$3$14555767943206871429(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_71$5$14559982558685517666(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_71$5$14559982558685517666(self.val_ref), write)
+}
+
+predicate ref$i32(self: Ref) {
+  acc(self.val_ref, write) && acc(i32(self.val_ref), write)
+}
+
+predicate ref$m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$i32(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$i32(self.val_ref), write)
+}
+
+predicate ref$ref$m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$str(self: Ref) {
+  acc(self.val_ref, write) && acc(str(self.val_ref), write)
+}
+
+predicate ref$tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.val_ref, write) && acc(tuple3$ref$str$u32$u32(self.val_ref), write)
+}
+
+predicate ref$usize(self: Ref) {
+  acc(self.val_ref, write) && acc(usize(self.val_ref), write)
+}
+
+predicate str(self: Ref) 
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$usize$bool(self: Ref) {
+  acc(self.tuple_0, write) && (acc(usize(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(bool(self.tuple_1), write)))
+}
+
+predicate tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(ref$str(self.tuple_0), write) && (acc(self.tuple_1, write) && (acc(u32(self.tuple_1), write) && (acc(self.tuple_2, write) && acc(u32(self.tuple_2), write)))))
+}
+
+predicate u32(self: Ref) {
+  acc(self.val_int, write) && (0 <= self.val_int && self.val_int <= 4294967295)
+}
+
+predicate u8(self: Ref) {
+  acc(self.val_int, write) && (0 <= self.val_int && self.val_int <= 255)
+}
+
+predicate usize(self: Ref) {
+  acc(self.val_int, write) && (0 <= self.val_int && self.val_int <= 18446744073709551615)
+}
+
+method m_Binary_search$$cmp$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var _old$pre$0: Ref
+  var _old$pre$1: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Int
+  var _5: Int
+  var _6: Ref
+  var _7: Int
+  var _8: Int
+  label start
+  // ========== start ==========
+  
+  // Name: "Binary_search::cmp"
+  
+  // Def path: "Binary_search::cmp[0]"
+  
+  // Span: tests/verify_overflow/pass/rosetta/Binary_search.rs:151:1: 155:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(i32(_1.val_ref), write) && (acc(_2.val_ref, write) && acc(i32(_2.val_ref), write)))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = (*_1)
+  
+  _4 := builtin$havoc_int()
+  inhale true
+  unfold acc(i32(_1.val_ref), write)
+  _4 := _1.val_ref.val_int
+  label l0
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = (*_2)
+  
+  _5 := builtin$havoc_int()
+  inhale true
+  unfold acc(i32(_2.val_ref), write)
+  _5 := _2.val_ref.val_int
+  label l1
+  // [mir] _3 = Eq(move _4, move _5)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_bool, write)
+  _3.val_bool := _4 == _5
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] switchInt(move _3) -> [false: bb2, otherwise: bb1]
+  
+  __t7 := _3.val_bool
+  if (__t7) {
+    goto l3
+  }
+  goto l2
+  label bb1
+  // ========== bb1 ==========
+  
+  __t1 := true
+  // [mir] _0 = Ordering::Equal
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  inhale m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$int$(_0) == 1
+  // [mir] goto -> bb6
+  
+  goto bb6
+  label bb2
+  // ========== bb2 ==========
+  
+  __t2 := true
+  // [mir] StorageLive(_6)
+  
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = (*_1)
+  
+  _7 := builtin$havoc_int()
+  inhale true
+  _7 := _1.val_ref.val_int
+  label l4
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = (*_2)
+  
+  _8 := builtin$havoc_int()
+  inhale true
+  _8 := _2.val_ref.val_int
+  label l5
+  // [mir] _6 = Lt(move _7, move _8)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_bool, write)
+  _6.val_bool := _7 < _8
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] switchInt(move _6) -> [false: bb4, otherwise: bb3]
+  
+  __t8 := _6.val_bool
+  if (!__t8) {
+    goto l7
+  }
+  goto l6
+  label bb3
+  // ========== bb3 ==========
+  
+  __t3 := true
+  // [mir] _0 = Ordering::Less
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  inhale m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$int$(_0) == 0
+  // [mir] goto -> bb5
+  
+  goto bb5
+  label bb4
+  // ========== bb4 ==========
+  
+  __t4 := true
+  // [mir] _0 = Ordering::Greater
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  inhale m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$int$(_0) == 2
+  // [mir] goto -> bb5
+  
+  goto bb5
+  label bb5
+  // ========== bb5 ==========
+  
+  __t5 := true
+  // [mir] StorageDead(_6)
+  
+  // [mir] goto -> bb6
+  
+  goto l8
+  label bb6
+  // ========== bb6 ==========
+  
+  __t6 := true
+  // [mir] StorageDead(_3)
+  
+  // [mir] return
+  
+  goto return
+  label l2
+  // ========== l2 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  goto bb2
+  label l3
+  // ========== l3 ==========
+  
+  // MIR edge bb0 --> bb1
+  
+  goto bb1
+  label l6
+  // ========== l6 ==========
+  
+  // MIR edge bb2 --> bb3
+  
+  goto bb3
+  label l7
+  // ========== l7 ==========
+  
+  // MIR edge bb2 --> bb4
+  
+  goto bb4
+  label l8
+  // ========== l8 ==========
+  
+  // drop Acc(_7.val_int, write) (Acc(_7.val_int, write))
+  
+  // drop Acc(_6.val_bool, write) (Acc(_6.val_bool, write))
+  
+  // drop Acc(_8.val_int, write) (Acc(_8.val_int, write))
+  
+  goto bb6
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(i32(_1.val_ref), write)
+  // obtain acc(i32(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  fold acc(i32(_2.val_ref), write)
+  // obtain acc(i32(_2.val_ref), write)
+  
+  _old$pre$1 := _2.val_ref
+  // Fold the result
+  
+  // obtain acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert (unfolding acc(i32(_old$pre$0), write) in _old$pre$0.val_int) == old[pre]((unfolding acc(i32(_1.val_ref), write) in _1.val_ref.val_int)) && ((unfolding acc(i32(_old$pre$1), write) in _old$pre$1.val_int) == old[pre]((unfolding acc(i32(_2.val_ref), write) in _2.val_ref.val_int)) && ((unfolding acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_0), write) in _0.discriminant) == 1 ? (unfolding acc(i32(_old$pre$0), write) in _old$pre$0.val_int) == (unfolding acc(i32(_old$pre$1), write) in _old$pre$1.val_int) : ((unfolding acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_0), write) in _0.discriminant) == 0 ? (unfolding acc(i32(_old$pre$0), write) in _old$pre$0.val_int) < (unfolding acc(i32(_old$pre$1), write) in _old$pre$1.val_int) : (unfolding acc(i32(_old$pre$0), write) in _old$pre$0.val_int) > (unfolding acc(i32(_old$pre$1), write) in _old$pre$1.val_int))))
+  assert true
+  exhale acc(i32(_old$pre$0), write) && acc(i32(_old$pre$1), write)
+  exhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Binary_search$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  label start
+  // ========== start ==========
+  
+  // Name: "Binary_search::main"
+  
+  // Def path: "Binary_search::main[0]"
+  
+  // Span: tests/verify_overflow/pass/rosetta/Binary_search.rs:214:1: 214:13
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Binary_search$$binary_search$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var _preserve$0: Ref
+  var _preserve$1: Ref
+  var __t26: Bool
+  var __t27: Bool
+  var _old$l14$0: Ref
+  var __t28: Int
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var __t32: Bool
+  var __t33: Bool
+  var _old$pre$0: Ref
+  var _old$pre$1: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Int
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _47: Int
+  var _48: Int
+  var _49: Ref
+  var _50: Ref
+  var _51: Int
+  var _52: Int
+  var _53: Ref
+  var _54: Ref
+  var _55: Ref
+  var _56: Int
+  var _57: Ref
+  var _58: Ref
+  var _59: Ref
+  var _60: Ref
+  var _61: Int
+  var _62: Ref
+  var _63: Int
+  var _64: Ref
+  var _65: Ref
+  var _66: Ref
+  var _67: Ref
+  var _68: Int
+  var _69: Ref
+  var _70: Ref
+  var _71: Ref
+  var _72: Int
+  var _73: Ref
+  var _74: Ref
+  var _75: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Binary_search::binary_search"
+  
+  // Def path: "Binary_search::binary_search[0]"
+  
+  // Span: tests/verify_overflow/pass/rosetta/Binary_search.rs:167:1: 212:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && (acc(_2.val_ref, write) && acc(i32(_2.val_ref), write)))
+  inhale true
+  inhale true
+  inhale (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2))
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = &'4s (*_1)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  _4.val_ref := _1.val_ref
+  exhale acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_4.val_ref), read$())
+  label l0
+  // [mir] _3 = const VecWrapperI32::len(move _4) -> [return: bb2, unwind: bb1]
+  
+  label l1
+  _3 := builtin$havoc_ref()
+  inhale acc(usize(_3), write)
+  unfold acc(usize(_3), write)
+  inhale _3.val_int == m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_4.val_ref)
+  // transfer perm _4.val_ref --> old[l1](_4.val_ref) // unchecked: false
+  
+  goto l2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] EndRegion('4s)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = const 0usize
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_int, write)
+  _5.val_int := 0
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = UsizeOption::None
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_6), write)
+  inhale m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6) == 1
+  // [mir] StorageLive(_7)
+  
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = _3
+  
+  _8 := builtin$havoc_int()
+  inhale true
+  _8 := _3.val_int
+  label l3
+  // [mir] _7 = Gt(move _8, const 0usize)
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_bool, write)
+  _7.val_bool := _8 > 0
+  // [mir] StorageDead(_8)
+  
+  // [mir] goto -> bb3
+  
+  goto loop3_start
+  label bb4
+  // ========== bb4 ==========
+  
+  __t23 := true
+  // [mir] _9 = ()
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(tuple0$(_9), write)
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageLive(_75)
+  
+  // [mir] _75 = move _6
+  
+  _75 := _6
+  label l49
+  // [mir] _0 = move _75
+  
+  _0 := _75
+  label l50
+  // [mir] StorageDead(_75)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] return
+  
+  goto return
+  label l19
+  // ========== l19 ==========
+  
+  // MIR edge bb11 --> bb12
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L33,L32,L24,L23,L37,L38,L22,)
+
+  
+  if (__t7 && (__t8 && __t8)) {
+    // expire loan L37
+    
+    _old$l14$0 := _54.val_ref
+    inhale acc(DeadBorrowToken$(37), write) && acc(i32(_old$l14$0), write) --* acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l13](_55.val_ref)), write) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l13](_55.val_ref)) == old[l13](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_55.val_ref)) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l13](_55.val_ref), old[l13](_56)) == old[lhs]((unfolding acc(i32(_old$l14$0), write) in _old$l14$0.val_int)) && (forall i: Int :: 0 <= i && (i < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l13](_55.val_ref)) && !(i == old[l13](_56))) ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l13](_55.val_ref), i) == old[l13](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_55.val_ref, i)))))
+    inhale acc(DeadBorrowToken$(37), write)
+    apply acc(DeadBorrowToken$(37), write) && acc(i32(_old$l14$0), write) --* acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l13](_55.val_ref)), write) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l13](_55.val_ref)) == old[l13](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_55.val_ref)) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l13](_55.val_ref), old[l13](_56)) == old[lhs]((unfolding acc(i32(_old$l14$0), write) in _old$l14$0.val_int)) && (forall i: Int :: 0 <= i && (i < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l13](_55.val_ref)) && !(i == old[l13](_56))) ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l13](_55.val_ref), i) == old[l13](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_55.val_ref, i)))))
+  }
+  goto loop3_group3_bb12
+  label l2
+  // ========== l2 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L43,L0,)
+
+  
+  if (__t0 && __t0) {
+    // expire loan L0
+    
+    // transfer perm old[l1](_4.val_ref) --> old[l0](_4.val_ref) // unchecked: false
+    
+    exhale acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l0](_4.val_ref)), read$())
+    inhale acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  goto bb2
+  label l21
+  // ========== l21 ==========
+  
+  // MIR edge bb12 --> bb18
+  
+  goto loop3_group3_bb18
+  label l22
+  // ========== l22 ==========
+  
+  // MIR edge bb12 --> bb16
+  
+  goto loop3_group3_bb16
+  label l23
+  // ========== l23 ==========
+  
+  // MIR edge bb12 --> bb17
+  
+  goto loop3_group3_bb17
+  label l24
+  // ========== l24 ==========
+  
+  // MIR edge bb16 --> bb13
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L25,)
+
+  
+  if (__t9) {
+    // expire loan L25
+    
+    exhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_62.val_ref), read$())
+    inhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_57), write - read$())
+  }
+  goto loop3_group3_bb13
+  label l25
+  // ========== l25 ==========
+  
+  // MIR edge bb17 --> bb14
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L25,)
+
+  
+  if (__t9) {
+    // expire loan L25
+    
+    exhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_62.val_ref), read$())
+    inhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_57), write - read$())
+  }
+  goto loop3_group3_bb14
+  label l38
+  // ========== l38 ==========
+  
+  // MIR edge bb21 --> bb24
+  
+  goto loop3_group3_bb24
+  label l39
+  // ========== l39 ==========
+  
+  // MIR edge bb21 --> bb23
+  
+  goto loop3_group3_bb23
+  label l42
+  // ========== l42 ==========
+  
+  // MIR edge bb24 --> bb26
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L29,L26,)
+
+  
+  if (__t18 && __t18) {
+    // expire loan L26
+    
+    // transfer perm old[l41](_74.val_ref) --> old[l40](_74.val_ref) // unchecked: false
+    
+    exhale acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(old[l40](_74.val_ref)), read$())
+    inhale acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_6), write - read$())
+  }
+  goto loop3_group3_bb26
+  label l43
+  // ========== l43 ==========
+  
+  // MIR edge bb26 --> bb22
+  
+  goto loop3_group3_bb22
+  label l44
+  // ========== l44 ==========
+  
+  // MIR edge bb26 --> bb23
+  
+  goto l52
+  label l47
+  // ========== l47 ==========
+  
+  // MIR edge bb3 --> bb4
+  
+  goto l54
+  label l48
+  // ========== l48 ==========
+  
+  // MIR edge bb3 --> bb5
+  
+  goto loop3_group5_bb5
+  label l5
+  // ========== l5 ==========
+  
+  // MIR edge bb3 --> bb4
+  
+  goto bb4
+  label l51
+  // ========== l51 ==========
+  
+  fold acc(usize(_6.enum_Some.f$0), write)
+  fold acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_Some(_6.enum_Some), write)
+  fold acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_6), write)
+  goto loop3_group3_bb20
+  label l52
+  // ========== l52 ==========
+  
+  // drop Acc(_73.val_bool, write) (Acc(_73.val_bool, write))
+  
+  // drop Acc(old[l40](_74.val_ref), write) (Acc(old[l40](_74.val_ref), write))
+  
+  // drop Acc(_74.val_ref, write) (Acc(_74.val_ref, write))
+  
+  goto loop3_group3_bb23
+  label l53
+  // ========== l53 ==========
+  
+  // drop Acc(old[l40](_74.val_ref), write) (Acc(old[l40](_74.val_ref), write))
+  
+  // drop Acc(_74.val_ref, write) (Acc(_74.val_ref, write))
+  
+  // drop Acc(_73.val_bool, write) (Acc(_73.val_bool, write))
+  
+  goto loop3_group3_bb25
+  label l54
+  // ========== l54 ==========
+  
+  // drop Acc(_51.val_int, write) (Acc(_51.val_int, write))
+  
+  // drop Acc(_63.val_int, write) (Acc(_63.val_int, write))
+  
+  // drop Acc(_53.tuple_0, write) (Acc(_53.tuple_0, write))
+  
+  // drop Acc(_52.val_int, write) (Acc(_52.val_int, write))
+  
+  // drop Acc(_54.val_ref, write) (Acc(_54.val_ref, write))
+  
+  // drop Acc(_68.val_int, write) (Acc(_68.val_int, write))
+  
+  // drop Acc(_48.val_int, write) (Acc(_48.val_int, write))
+  
+  // drop Acc(_50.val_int, write) (Acc(_50.val_int, write))
+  
+  // drop Acc(_47.val_int, write) (Acc(_47.val_int, write))
+  
+  // drop Acc(_72.val_int, write) (Acc(_72.val_int, write))
+  
+  // drop Acc(_49.val_bool, write) (Acc(_49.val_bool, write))
+  
+  // drop Acc(_62.val_ref, write) (Acc(_62.val_ref, write))
+  
+  // drop Acc(_61.val_int, write) (Acc(_61.val_int, write))
+  
+  // drop Acc(_53.tuple_1.val_bool, write) (Acc(_53.tuple_1.val_bool, write))
+  
+  // drop Acc(_69.tuple_0, write) (Acc(_69.tuple_0, write))
+  
+  // drop Acc(_71.val_bool, write) (Acc(_71.val_bool, write))
+  
+  // drop Acc(_69.tuple_1.val_bool, write) (Acc(_69.tuple_1.val_bool, write))
+  
+  // drop Pred(_57, write) (Pred(_57, write))
+  
+  // drop Pred(_12, write) (Pred(_12, write))
+  
+  // drop Pred(_11, write) (Pred(_11, write))
+  
+  // drop Acc(_53.tuple_1, write) (Acc(_53.tuple_1, write))
+  
+  // drop Acc(_69.tuple_1, write) (Acc(_69.tuple_1, write))
+  
+  goto bb4
+  label l6
+  // ========== l6 ==========
+  
+  // MIR edge bb3 --> bb5
+  
+  goto loop3_group2_bb5
+  label loop3_end_body
+  // ========== loop3_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb3
+  
+  // obtain acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_6), write)
+  
+  fold acc(usize(_5), write)
+  // obtain acc(usize(_5), write)
+  
+  fold acc(usize(_3), write)
+  // obtain acc(usize(_3), write)
+  
+  fold acc(bool(_7), write)
+  // obtain acc(bool(_7), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  // obtain acc(_2.val_ref, read)
+  
+  // obtain acc(i32(_2.val_ref), write)
+  
+  assert !((unfolding acc(usize(_5), write) in _5.val_int) + (unfolding acc(usize(_3), write) in _3.val_int) < 0 || (unfolding acc(usize(_5), write) in _5.val_int) + (unfolding acc(usize(_3), write) in _3.val_int) > 18446744073709551615) && (unfolding acc(usize(_5), write) in _5.val_int) + (unfolding acc(usize(_3), write) in _3.val_int) <= m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_3), write) in _3.val_int) > 0 && m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_6) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((unfolding acc(i32(_2.val_ref), write) in _2.val_ref.val_int) == old[pre]((unfolding acc(i32(_2.val_ref), write) in _2.val_ref.val_int)) && ((forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2)) && ((forall k: Int :: 0 <= k && k < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k) == old[pre](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k))) && ((unfolding acc(i32(_2.val_ref), write) in (unfolding acc(usize(_5), write) in (forall k: Int :: 0 <= k && k < _5.val_int ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k) < _2.val_ref.val_int))) && ((m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_6) ==> (unfolding acc(i32(_2.val_ref), write) in (unfolding acc(usize(_3), write) in (unfolding acc(usize(_5), write) in (let _LET_0 == (_5.val_int + _3.val_int) in (forall k: Int :: !(_LET_0 < 0 || _LET_0 > 18446744073709551615) && (_LET_0 <= k && k < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) ==> _2.val_ref.val_int < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k))))))) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_6) ==> 0 <= m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6) < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6)) == (unfolding acc(i32(_2.val_ref), write) in _2.val_ref.val_int))))))))))
+  assert _preserve$0 == _1.val_ref && _preserve$1 == _2.val_ref
+  exhale acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_6), write) && (acc(usize(_5), write) && (acc(usize(_3), write) && (acc(bool(_7), write) && (acc(_1.val_ref, read$()) && (acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && (acc(_2.val_ref, read$()) && acc(i32(_2.val_ref), write)))))))
+  inhale false
+  goto end_of_method
+  label loop3_group1_bb3
+  // ========== loop3_group1_bb3 ==========
+  
+  // This is a loop head
+  
+  __t2 := true
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = _7
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_bool, write)
+  _10.val_bool := _7.val_bool
+  label l4
+  // [mir] switchInt(move _10) -> [false: bb4, otherwise: bb5]
+  
+  __t24 := _10.val_bool
+  if (__t24) {
+    goto l6
+  }
+  goto l5
+  label loop3_group2_bb5
+  // ========== loop3_group2_bb5 ==========
+  
+  __t3 := true
+  // [mir] switchInt(const false) -> [false: bb7, otherwise: bb6]
+  
+  __t25 := false
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop3_inv_pre
+  label loop3_group3_bb10
+  // ========== loop3_group3_bb10 ==========
+  
+  __t7 := true
+  // [mir] _50 = move (_53.0: usize)
+  
+  _50 := _53.tuple_0
+  label l10
+  // [mir] StorageDead(_52)
+  
+  // [mir] StorageDead(_51)
+  
+  // [mir] StorageLive(_54)
+  
+  // [mir] StorageLive(_55)
+  
+  // [mir] _55 = &'317_3rs mut (*_1)
+  
+  _55 := builtin$havoc_ref()
+  inhale acc(_55.val_ref, write)
+  _55.val_ref := _1.val_ref
+  label l11
+  // [mir] StorageLive(_56)
+  
+  // [mir] _56 = _50
+  
+  _56 := builtin$havoc_int()
+  inhale true
+  _56 := _50.val_int
+  label l12
+  // [mir] _54 = const VecWrapperI32::borrow(move _55, move _56) -> [return: bb11, unwind: bb1]
+  
+  label l13
+  assert 0 <= _56 && _56 < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_55.val_ref)
+  assert _56 >= 0 && 18446744073709551615 >= _56
+  assert true
+  exhale acc(_55.val_ref, write) && (acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_55.val_ref), write) && (_56 >= 0 && 18446744073709551615 >= _56))
+  _54 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_54.val_ref, write) && acc(i32(_54.val_ref), write)
+  inhale true
+  inhale (unfolding acc(i32(_54.val_ref), write) in _54.val_ref.val_int == old[l13](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_55.val_ref, _56)))
+  label l14
+  goto loop3_group3_bb11
+  label loop3_group3_bb11
+  // ========== loop3_group3_bb11 ==========
+  
+  __t8 := true
+  // [mir] StorageDead(_56)
+  
+  // [mir] StorageDead(_55)
+  
+  // [mir] StorageLive(_57)
+  
+  // [mir] StorageLive(_58)
+  
+  // [mir] _58 = &'279s mut (*_54)
+  
+  _58 := builtin$havoc_ref()
+  inhale acc(_58.val_ref, write)
+  _58.val_ref := _54.val_ref
+  label l15
+  // [mir] StorageLive(_59)
+  
+  // [mir] _59 = &'279s mut (*_2)
+  
+  _59 := builtin$havoc_ref()
+  inhale acc(_59.val_ref, write)
+  _59.val_ref := _2.val_ref
+  label l16
+  // [mir] _57 = const cmp(move _58, move _59) -> [return: bb12, unwind: bb1]
+  
+  label l17
+  assert true
+  exhale acc(_58.val_ref, write) && (acc(i32(_58.val_ref), write) && (acc(_59.val_ref, write) && acc(i32(_59.val_ref), write)))
+  _57 := builtin$havoc_ref()
+  inhale acc(i32(old[l17](_58.val_ref)), write) && acc(i32(old[l17](_59.val_ref)), write)
+  inhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_57), write)
+  inhale true
+  inhale (unfolding acc(i32(old[l17](_59.val_ref)), write) in (unfolding acc(i32(old[l17](_58.val_ref)), write) in (unfolding acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_57), write) in old[l17](_58.val_ref).val_int == old[l17]((unfolding acc(i32(_58.val_ref), write) in _58.val_ref.val_int)) && (old[l17](_59.val_ref).val_int == old[l17]((unfolding acc(i32(_59.val_ref), write) in _59.val_ref.val_int)) && (_57.discriminant == 1 ? old[l17](_58.val_ref).val_int == old[l17](_59.val_ref).val_int : (_57.discriminant == 0 ? old[l17](_58.val_ref).val_int < old[l17](_59.val_ref).val_int : old[l17](_58.val_ref).val_int > old[l17](_59.val_ref).val_int))))))
+  label l18
+  goto l19
+  label loop3_group3_bb12
+  // ========== loop3_group3_bb12 ==========
+  
+  __t9 := true
+  // [mir] EndRegion('279s)
+  
+  // [mir] StorageDead(_59)
+  
+  // [mir] StorageDead(_58)
+  
+  // [mir] StorageLive(_60)
+  
+  // [mir] _61 = discriminant(_57)
+  
+  _61 := builtin$havoc_int()
+  inhale true
+  _61 := m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$int$(_57)
+  // [mir] _62 = &'<empty> _57
+  
+  _62 := builtin$havoc_ref()
+  inhale acc(_62.val_ref, write)
+  _62.val_ref := _57
+  exhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_57), write - read$())
+  inhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_62.val_ref), read$())
+  label l20
+  // [mir] _63 = discriminant(_57)
+  
+  _63 := builtin$havoc_int()
+  inhale true
+  _63 := m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_$$int$(_62.val_ref)
+  // [mir] switchInt(move _63) -> [0isize: bb16, 2isize: bb17, otherwise: bb18]
+  
+  __t28 := _63
+  if (__t28 == 0) {
+    goto l22
+  }
+  if (__t28 == 2) {
+    goto l23
+  }
+  goto l21
+  label loop3_group3_bb13
+  // ========== loop3_group3_bb13 ==========
+  
+  __t15 := true
+  // [mir] StorageLive(_64)
+  
+  // [mir] _64 = _50
+  
+  _64 := builtin$havoc_ref()
+  inhale acc(_64.val_int, write)
+  _64.val_int := _50.val_int
+  label l32
+  // [mir] _60 = move _64
+  
+  _60 := _64
+  label l33
+  // [mir] StorageDead(_64)
+  
+  // [mir] goto -> bb20
+  
+  goto loop3_group3_bb20
+  label loop3_group3_bb14
+  // ========== loop3_group3_bb14 ==========
+  
+  __t14 := true
+  // [mir] StorageLive(_65)
+  
+  // [mir] _65 = _5
+  
+  _65 := builtin$havoc_ref()
+  inhale acc(_65.val_int, write)
+  _65.val_int := _5.val_int
+  label l30
+  // [mir] _60 = move _65
+  
+  _60 := _65
+  label l31
+  // [mir] StorageDead(_65)
+  
+  // [mir] goto -> bb20
+  
+  goto loop3_group3_bb20
+  label loop3_group3_bb15
+  // ========== loop3_group3_bb15 ==========
+  
+  __t13 := true
+  // [mir] StorageLive(_66)
+  
+  // [mir] _66 = _50
+  
+  _66 := builtin$havoc_ref()
+  inhale acc(_66.val_int, write)
+  _66.val_int := _50.val_int
+  label l26
+  // [mir] _6 = UsizeOption::Some(move _66,)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_6), write)
+  inhale m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$discriminant$$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6) == 0
+  unfold acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_6), write)
+  unfold acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_Some(_6.enum_Some), write)
+  _6.enum_Some.f$0 := _66
+  label l27
+  // [mir] StorageDead(_66)
+  
+  // [mir] StorageLive(_67)
+  
+  // [mir] _67 = _5
+  
+  _67 := builtin$havoc_ref()
+  inhale acc(_67.val_int, write)
+  _67.val_int := _5.val_int
+  label l28
+  // [mir] _60 = move _67
+  
+  _60 := _67
+  label l29
+  // [mir] StorageDead(_67)
+  
+  // [mir] goto -> bb20
+  
+  goto l51
+  label loop3_group3_bb16
+  // ========== loop3_group3_bb16 ==========
+  
+  __t10 := true
+  // [mir] ReadForMatch(_62)
+  
+  // [mir] falseEdges -> [real: bb13, imaginary: bb17]
+  
+  goto l24
+  label loop3_group3_bb17
+  // ========== loop3_group3_bb17 ==========
+  
+  __t11 := true
+  // [mir] ReadForMatch(_62)
+  
+  // [mir] falseEdges -> [real: bb14, imaginary: bb18]
+  
+  goto l25
+  label loop3_group3_bb18
+  // ========== loop3_group3_bb18 ==========
+  
+  __t12 := true
+  // [mir] ReadForMatch(_62)
+  
+  // expire_borrows ReborrowingDAG(L25,)
+
+  
+  if (__t9) {
+    // expire loan L25
+    
+    exhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_62.val_ref), read$())
+    inhale acc(m_Binary_search$$Ordering$opensqu$0$closesqu$$_beg_$_end_(_57), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb15, imaginary: bb19]
+  
+  goto loop3_group3_bb15
+  label loop3_group3_bb20
+  // ========== loop3_group3_bb20 ==========
+  
+  __t16 := true
+  // [mir] _5 = move _60
+  
+  _5 := _60
+  label l34
+  // [mir] StorageDead(_60)
+  
+  // [mir] StorageLive(_68)
+  
+  // [mir] _68 = _47
+  
+  _68 := builtin$havoc_int()
+  inhale true
+  _68 := _47
+  label l35
+  // [mir] _69 = CheckedSub(_3, move _68)
+  
+  _69 := builtin$havoc_ref()
+  inhale acc(_69.tuple_0, write)
+  inhale acc(_69.tuple_0.val_int, write)
+  inhale acc(_69.tuple_1, write)
+  inhale acc(_69.tuple_1.val_bool, write)
+  _69.tuple_0.val_int := _3.val_int - _68
+  _69.tuple_1.val_bool := _3.val_int - _68 < 0 || _3.val_int - _68 > 18446744073709551615
+  // [mir] assert(!move (_69.1: bool), "attempt to subtract with overflow") -> [success: bb21, unwind: bb1]
+  
+  __t29 := _69.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t29
+  goto loop3_group3_bb21
+  label loop3_group3_bb21
+  // ========== loop3_group3_bb21 ==========
+  
+  __t17 := true
+  // [mir] _3 = move (_69.0: usize)
+  
+  _3 := _69.tuple_0
+  label l36
+  // [mir] StorageDead(_68)
+  
+  // [mir] StorageLive(_70)
+  
+  // [mir] StorageLive(_71)
+  
+  // [mir] StorageLive(_72)
+  
+  // [mir] _72 = _3
+  
+  _72 := builtin$havoc_int()
+  inhale true
+  _72 := _3.val_int
+  label l37
+  // [mir] _71 = Gt(move _72, const 0usize)
+  
+  _71 := builtin$havoc_ref()
+  inhale acc(_71.val_bool, write)
+  _71.val_bool := _72 > 0
+  // [mir] StorageDead(_72)
+  
+  // [mir] switchInt(move _71) -> [false: bb23, otherwise: bb24]
+  
+  __t30 := _71.val_bool
+  if (!__t30) {
+    goto l39
+  }
+  goto l38
+  label loop3_group3_bb22
+  // ========== loop3_group3_bb22 ==========
+  
+  __t20 := true
+  // [mir] _70 = const true
+  
+  _70 := builtin$havoc_ref()
+  inhale acc(_70.val_bool, write)
+  _70.val_bool := true
+  // [mir] goto -> bb25
+  
+  goto l53
+  label loop3_group3_bb23
+  // ========== loop3_group3_bb23 ==========
+  
+  __t21 := true
+  // [mir] _70 = const false
+  
+  _70 := builtin$havoc_ref()
+  inhale acc(_70.val_bool, write)
+  _70.val_bool := false
+  // [mir] goto -> bb25
+  
+  goto loop3_group3_bb25
+  label loop3_group3_bb24
+  // ========== loop3_group3_bb24 ==========
+  
+  __t18 := true
+  // [mir] StorageLive(_73)
+  
+  // [mir] StorageLive(_74)
+  
+  // [mir] _74 = &'313s _6
+  
+  _74 := builtin$havoc_ref()
+  inhale acc(_74.val_ref, write)
+  _74.val_ref := _6
+  exhale acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_6), write - read$())
+  inhale acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_74.val_ref), read$())
+  label l40
+  // [mir] _73 = const UsizeOption::is_none(move _74) -> [return: bb26, unwind: bb1]
+  
+  label l41
+  _73 := builtin$havoc_ref()
+  inhale acc(bool(_73), write)
+  unfold acc(bool(_73), write)
+  inhale _73.val_bool == m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_74.val_ref)
+  // transfer perm _74.val_ref --> old[l41](_74.val_ref) // unchecked: false
+  
+  goto l42
+  label loop3_group3_bb25
+  // ========== loop3_group3_bb25 ==========
+  
+  __t22 := true
+  // [mir] StorageDead(_73)
+  
+  // [mir] StorageDead(_71)
+  
+  // [mir] _7 = move _70
+  
+  _7 := _70
+  label l45
+  // [mir] StorageDead(_70)
+  
+  // [mir] _11 = ()
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(tuple0$(_11), write)
+  // [mir] StorageDead(_57)
+  
+  // [mir] EndRegion('317_3rs)
+  
+  // [mir] StorageDead(_54)
+  
+  // [mir] StorageDead(_50)
+  
+  // [mir] StorageDead(_47)
+  
+  // [mir] goto -> bb3
+  
+  goto loop3_group4_bb3
+  label loop3_group3_bb26
+  // ========== loop3_group3_bb26 ==========
+  
+  __t19 := true
+  // [mir] EndRegion('313s)
+  
+  // [mir] StorageDead(_74)
+  
+  // [mir] switchInt(move _73) -> [false: bb23, otherwise: bb22]
+  
+  __t31 := _73.val_bool
+  if (!__t31) {
+    goto l44
+  }
+  goto l43
+  label loop3_group3_bb7
+  // ========== loop3_group3_bb7 ==========
+  
+  __t4 := true
+  // [mir] _12 = ()
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(tuple0$(_12), write)
+  // [mir] goto -> bb8
+  
+  goto loop3_group3_bb8
+  label loop3_group3_bb8
+  // ========== loop3_group3_bb8 ==========
+  
+  __t5 := true
+  // [mir] StorageLive(_47)
+  
+  // [mir] StorageLive(_48)
+  
+  // [mir] _48 = _3
+  
+  _48 := builtin$havoc_int()
+  inhale true
+  unfold acc(usize(_3), write)
+  _48 := _3.val_int
+  label l7
+  // [mir] _49 = Eq(const 2usize, const 0usize)
+  
+  _49 := builtin$havoc_ref()
+  inhale acc(_49.val_bool, write)
+  _49.val_bool := false
+  // [mir] assert(!move _49, "attempt to divide by zero") -> [success: bb9, unwind: bb1]
+  
+  __t26 := _49.val_bool
+  // Rust assertion: attempt to divide by zero
+  
+  assert !__t26
+  goto loop3_group3_bb9
+  label loop3_group3_bb9
+  // ========== loop3_group3_bb9 ==========
+  
+  __t6 := true
+  // [mir] _47 = Div(move _48, const 2usize)
+  
+  _47 := builtin$havoc_int()
+  inhale true
+  _47 := _48 / 2
+  // [mir] StorageDead(_48)
+  
+  // [mir] StorageLive(_50)
+  
+  // [mir] StorageLive(_51)
+  
+  // [mir] _51 = _5
+  
+  _51 := builtin$havoc_int()
+  inhale true
+  unfold acc(usize(_5), write)
+  _51 := _5.val_int
+  label l8
+  // [mir] StorageLive(_52)
+  
+  // [mir] _52 = _47
+  
+  _52 := builtin$havoc_int()
+  inhale true
+  _52 := _47
+  label l9
+  // [mir] _53 = CheckedAdd(move _51, move _52)
+  
+  _53 := builtin$havoc_ref()
+  inhale acc(_53.tuple_0, write)
+  inhale acc(_53.tuple_0.val_int, write)
+  inhale acc(_53.tuple_1, write)
+  inhale acc(_53.tuple_1.val_bool, write)
+  _53.tuple_0.val_int := _51 + _52
+  _53.tuple_1.val_bool := _51 + _52 < 0 || _51 + _52 > 18446744073709551615
+  // [mir] assert(!move (_53.1: bool), "attempt to add with overflow") -> [success: bb10, unwind: bb1]
+  
+  __t27 := _53.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t27
+  goto loop3_group3_bb10
+  label loop3_group4_bb3
+  // ========== loop3_group4_bb3 ==========
+  
+  // This is a loop head
+  
+  __t2 := true
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = _7
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_bool, write)
+  _10.val_bool := _7.val_bool
+  label l46
+  // [mir] switchInt(move _10) -> [false: bb4, otherwise: bb5]
+  
+  __t32 := _10.val_bool
+  if (__t32) {
+    goto l48
+  }
+  goto l47
+  label loop3_group5_bb5
+  // ========== loop3_group5_bb5 ==========
+  
+  __t3 := true
+  // [mir] switchInt(const false) -> [false: bb7, otherwise: bb6]
+  
+  __t33 := false
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop3_end_body
+  label loop3_inv_post
+  // ========== loop3_inv_post ==========
+  
+  // Inhale the loop invariant of block bb3
+  
+  inhale acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_6), write) && (acc(usize(_5), write) && (acc(usize(_3), write) && (acc(bool(_7), write) && (acc(_1.val_ref, read$()) && (acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && (acc(_2.val_ref, read$()) && acc(i32(_2.val_ref), write)))))))
+  inhale _preserve$0 == _1.val_ref && _preserve$1 == _2.val_ref
+  inhale (unfolding acc(usize(_5), write) in (unfolding acc(usize(_3), write) in (unfolding acc(i32(_2.val_ref), write) in !(_5.val_int + _3.val_int < 0 || _5.val_int + _3.val_int > 18446744073709551615) && _5.val_int + _3.val_int <= m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && (_3.val_int > 0 && m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_6) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && (_2.val_ref.val_int == old[pre]((unfolding acc(i32(_2.val_ref), write) in _2.val_ref.val_int)) && ((forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2)) && ((forall k: Int :: 0 <= k && k < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k) == old[pre](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k))) && ((forall k: Int :: 0 <= k && k < _5.val_int ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k) < _2.val_ref.val_int) && ((m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_6) ==> (forall k: Int :: !(_5.val_int + _3.val_int < 0 || _5.val_int + _3.val_int > 18446744073709551615) && (_5.val_int + _3.val_int <= k && k < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) ==> _2.val_ref.val_int < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k))) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_6) ==> 0 <= m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6) < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6)) == _2.val_ref.val_int))))))))))))
+  goto loop3_group3_bb7
+  label loop3_inv_pre
+  // ========== loop3_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb3
+  
+  _preserve$1 := _2.val_ref
+  _preserve$0 := _1.val_ref
+  // obtain acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_6), write)
+  
+  fold acc(usize(_5), write)
+  // obtain acc(usize(_5), write)
+  
+  fold acc(usize(_3), write)
+  // obtain acc(usize(_3), write)
+  
+  fold acc(bool(_7), write)
+  // obtain acc(bool(_7), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  // obtain acc(_2.val_ref, read)
+  
+  // obtain acc(i32(_2.val_ref), write)
+  
+  assert !((unfolding acc(usize(_5), write) in _5.val_int) + (unfolding acc(usize(_3), write) in _3.val_int) < 0 || (unfolding acc(usize(_5), write) in _5.val_int) + (unfolding acc(usize(_3), write) in _3.val_int) > 18446744073709551615) && (unfolding acc(usize(_5), write) in _5.val_int) + (unfolding acc(usize(_3), write) in _3.val_int) <= m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_3), write) in _3.val_int) > 0 && m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_6) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((unfolding acc(i32(_2.val_ref), write) in _2.val_ref.val_int) == old[pre]((unfolding acc(i32(_2.val_ref), write) in _2.val_ref.val_int)) && ((forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2)) && ((forall k: Int :: 0 <= k && k < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k) == old[pre](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k))) && ((unfolding acc(usize(_5), write) in (unfolding acc(i32(_2.val_ref), write) in (forall k: Int :: 0 <= k && k < _5.val_int ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k) < _2.val_ref.val_int))) && ((m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_6) ==> (unfolding acc(usize(_5), write) in (unfolding acc(i32(_2.val_ref), write) in (unfolding acc(usize(_3), write) in (let _LET_0 == (_5.val_int + _3.val_int) in (forall k: Int :: !(_LET_0 < 0 || _LET_0 > 18446744073709551615) && (_LET_0 <= k && k < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) ==> _2.val_ref.val_int < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k))))))) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_6) ==> 0 <= m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6) < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_6)) == (unfolding acc(i32(_2.val_ref), write) in _2.val_ref.val_int))))))))))
+  assert _preserve$0 == _1.val_ref && _preserve$1 == _2.val_ref
+  exhale acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_6), write) && (acc(usize(_5), write) && (acc(usize(_3), write) && (acc(bool(_7), write) && (acc(_1.val_ref, read$()) && (acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && (acc(_2.val_ref, read$()) && acc(i32(_2.val_ref), write)))))))
+  __t29 := builtin$havoc_bool()
+  __t31 := builtin$havoc_bool()
+  _61 := builtin$havoc_int()
+  _47 := builtin$havoc_int()
+  __t15 := builtin$havoc_bool()
+  _50 := builtin$havoc_ref()
+  _71 := builtin$havoc_ref()
+  __t9 := builtin$havoc_bool()
+  __t10 := builtin$havoc_bool()
+  __t28 := builtin$havoc_int()
+  _64 := builtin$havoc_ref()
+  __t26 := builtin$havoc_bool()
+  _68 := builtin$havoc_int()
+  _63 := builtin$havoc_int()
+  __t14 := builtin$havoc_bool()
+  __t16 := builtin$havoc_bool()
+  _72 := builtin$havoc_int()
+  __t12 := builtin$havoc_bool()
+  __t21 := builtin$havoc_bool()
+  __t22 := builtin$havoc_bool()
+  _73 := builtin$havoc_ref()
+  _57 := builtin$havoc_ref()
+  __t30 := builtin$havoc_bool()
+  _7 := builtin$havoc_ref()
+  __t3 := builtin$havoc_bool()
+  _6 := builtin$havoc_ref()
+  __t19 := builtin$havoc_bool()
+  __t33 := builtin$havoc_bool()
+  _3 := builtin$havoc_ref()
+  _5 := builtin$havoc_ref()
+  __t13 := builtin$havoc_bool()
+  _10 := builtin$havoc_ref()
+  __t5 := builtin$havoc_bool()
+  _62 := builtin$havoc_ref()
+  __t20 := builtin$havoc_bool()
+  __t2 := builtin$havoc_bool()
+  _59 := builtin$havoc_ref()
+  __t17 := builtin$havoc_bool()
+  _60 := builtin$havoc_ref()
+  _54 := builtin$havoc_ref()
+  __t18 := builtin$havoc_bool()
+  __t8 := builtin$havoc_bool()
+  __t4 := builtin$havoc_bool()
+  __t6 := builtin$havoc_bool()
+  _65 := builtin$havoc_ref()
+  __t11 := builtin$havoc_bool()
+  _74 := builtin$havoc_ref()
+  _56 := builtin$havoc_int()
+  _69 := builtin$havoc_ref()
+  __t27 := builtin$havoc_bool()
+  _12 := builtin$havoc_ref()
+  _58 := builtin$havoc_ref()
+  __t32 := builtin$havoc_bool()
+  _66 := builtin$havoc_ref()
+  _52 := builtin$havoc_int()
+  _70 := builtin$havoc_ref()
+  __t7 := builtin$havoc_bool()
+  _48 := builtin$havoc_int()
+  _51 := builtin$havoc_int()
+  _55 := builtin$havoc_ref()
+  _53 := builtin$havoc_ref()
+  _67 := builtin$havoc_ref()
+  _11 := builtin$havoc_ref()
+  _49 := builtin$havoc_ref()
+  goto loop3_inv_post
+  label loop3_start
+  // ========== loop3_start ==========
+  
+  goto loop3_group1_bb3
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // obtain acc(i32(_2.val_ref), write)
+  
+  _old$pre$1 := _2.val_ref
+  // Fold the result
+  
+  // obtain acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) == old[pre](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((forall k: Int :: 0 <= k && k < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) ==> m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, k) == old[pre](m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k))) && ((unfolding acc(i32(_old$pre$1), write) in _old$pre$1.val_int) == old[pre]((unfolding acc(i32(_2.val_ref), write) in _2.val_ref.val_int)) && ((m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_none$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_0) ==> (unfolding acc(i32(_old$pre$1), write) in (forall k: Int :: 0 <= k && k < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) ==> !(_old$pre$1.val_int == m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, k))))) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$is_some$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$bool$(_0) ==> 0 <= m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_0) && (m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_0) < m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) && m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, m_Binary_search$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$peek$opensqu$0$closesqu$__$TY$__m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_$$int$(_0)) == (unfolding acc(i32(_old$pre$1), write) in _old$pre$1.val_int))))))
+  assert true
+  exhale acc(m_Binary_search$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write) && acc(i32(_old$pre$1), write)
+  exhale acc(m_Binary_search$$UsizeOption$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_ref() returns (ret: Ref)

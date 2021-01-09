@@ -419,12 +419,6 @@ class DotTreeRenderer extends Renderer[String] {
   }
 
   private var previousNode = ""
-  private var unique_node_nr = this.hashCode()
-
-  private def unique_node_number(): Int = {
-    unique_node_nr = unique_node_nr + 1
-    unique_node_nr
-  }
 
   private def subsToDot(s: SymbolicRecord): String = {
     previousNode = s.dotNode()
@@ -588,11 +582,11 @@ class JSTreeRenderer extends Renderer[String] {
     list.map(s => recordToJS(s)).fold("") { (a, b) => if (a.isEmpty) b else a + ",\n" + b } + "\n"
   }
 
-  def printState(s: SymbolicRecord): String = {
+  def printState(record: SymbolicRecord): String = {
     var res = ""
-    if (s.state != null) {
-      val σ = s.state.asInstanceOf[State]
-      res = ",\"prestate\":" + JsonHelper.escape(stateFormatter.toJson(σ, s.pcs))
+    if (record.state != null) {
+      val s = record.state
+      res = ",\"prestate\":" + JsonHelper.escape(stateFormatter.toJson(s, record.pcs))
     }
     res
   }

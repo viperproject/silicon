@@ -1,0 +1,480 @@
+domain $SnapshotMirrors$ {
+  
+  
+}
+
+field closure_0: Ref
+
+field f$i: Ref
+
+field f$x: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate __TYPARAM__$Y$__(self: Ref) 
+
+predicate __TYPARAM__$Z$__(self: Ref) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_16$4$15554363898500845002(self: Ref) 
+
+predicate closure$0_1_18$4$15554363898500845002(self: Ref) 
+
+predicate closure$0_1_22$4$17159879712923064445(self: Ref) 
+
+predicate closure$0_1_24$4$17159879712923064445(self: Ref) 
+
+predicate closure$0_1_25$3$9695044066608409049(self: Ref) 
+
+predicate closure$0_1_26$3$9695044066608409049(self: Ref) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(self: Ref) {
+  acc(self.f$i, write) && (acc(i32(self.f$i), write) && (acc(self.f$x, write) && acc(__TYPARAM__$Y$__(self.f$x), write)))
+}
+
+predicate m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(self: Ref) {
+  acc(self.f$i, write) && (acc(i32(self.f$i), write) && (acc(self.f$x, write) && acc(__TYPARAM__$Z$__(self.f$x), write)))
+}
+
+predicate m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) {
+  acc(self.f$i, write) && (acc(i32(self.f$i), write) && (acc(self.f$x, write) && acc(i32(self.f$x), write)))
+}
+
+predicate ref$closure$0_1_16$4$15554363898500845002(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_16$4$15554363898500845002(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_18$4$15554363898500845002(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_18$4$15554363898500845002(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_22$4$17159879712923064445(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_22$4$17159879712923064445(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_24$4$17159879712923064445(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_24$4$17159879712923064445(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_25$3$9695044066608409049(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_25$3$9695044066608409049(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_26$3$9695044066608409049(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_26$3$9695044066608409049(self.val_ref), write)
+}
+
+predicate ref$m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(self.val_ref), write)
+}
+
+predicate ref$m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(self.val_ref), write)
+}
+
+predicate ref$m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(self.val_ref), write)
+}
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$i32$bool(self: Ref) {
+  acc(self.tuple_0, write) && (acc(i32(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(bool(self.tuple_1), write)))
+}
+
+method m_generics_basic_3_6$$test3$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "generics_basic_3_6::test3"
+  
+  // Def path: "generics_basic_3_6::test3[0]"
+  
+  // Span: tests/verify/fail/erdinm/generics-basic-3-6.rs:25:1: 28:2
+  
+  __t0 := false
+  __t1 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(_1.val_ref), write)
+  inhale true
+  inhale true
+  inhale (unfolding acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(_1.val_ref), write) in (unfolding acc(i32(_1.val_ref.f$i), write) in _1.val_ref.f$i.val_int >= 9000))
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = &'3s mut (*_1)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_ref, write)
+  _3.val_ref := _1.val_ref
+  label l0
+  // [mir] _2 = const test2(move _3) -> [return: bb2, unwind: bb1]
+  
+  label l1
+  unfold acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(_3.val_ref), write)
+  unfold acc(i32(_3.val_ref.f$i), write)
+  assert _3.val_ref.f$i.val_int >= 9000
+  fold acc(i32(_3.val_ref.f$i), write)
+  fold acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(_3.val_ref), write)
+  assert true
+  exhale acc(_3.val_ref, write) && acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(_3.val_ref), write)
+  _2 := builtin$havoc_ref()
+  inhale acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(old[l1](_3.val_ref)), write)
+  inhale acc(tuple0$(_2), write)
+  inhale true
+  inhale (unfolding acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(old[l1](_3.val_ref)), write) in (unfolding acc(i32(old[l1](_3.val_ref).f$i), write) in old[l1](_3.val_ref).f$i.val_int >= 8000))
+  label l2
+  goto l3
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] EndRegion('3s)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label l3
+  // ========== l3 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L1,L0,)
+
+  
+  goto bb2
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert (unfolding acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(_old$pre$0), write) in (unfolding acc(i32(_old$pre$0.f$i), write) in _old$pre$0.f$i.val_int)) >= 8001
+  assert true
+  exhale acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$i32$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_generics_basic_3_6$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  label start
+  // ========== start ==========
+  
+  // Name: "generics_basic_3_6::main"
+  
+  // Def path: "generics_basic_3_6::main[0]"
+  
+  // Span: tests/verify/fail/erdinm/generics-basic-3-6.rs:30:1: 30:13
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_generics_basic_3_6$$test2$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "generics_basic_3_6::test2"
+  
+  // Def path: "generics_basic_3_6::test2[0]"
+  
+  // Span: tests/verify/fail/erdinm/generics-basic-3-6.rs:18:1: 21:2
+  
+  __t0 := false
+  __t1 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(_1.val_ref), write)
+  inhale true
+  inhale true
+  inhale (unfolding acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(_1.val_ref), write) in (unfolding acc(i32(_1.val_ref.f$i), write) in _1.val_ref.f$i.val_int >= 9000))
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = &'3s mut (*_1)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_ref, write)
+  _3.val_ref := _1.val_ref
+  label l0
+  // [mir] _2 = const test1(move _3) -> [return: bb2, unwind: bb1]
+  
+  label l1
+  unfold acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(_3.val_ref), write)
+  unfold acc(i32(_3.val_ref.f$i), write)
+  assert _3.val_ref.f$i.val_int >= 9000
+  fold acc(i32(_3.val_ref.f$i), write)
+  fold acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(_3.val_ref), write)
+  assert true
+  exhale acc(_3.val_ref, write) && acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(_3.val_ref), write)
+  _2 := builtin$havoc_ref()
+  inhale acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(old[l1](_3.val_ref)), write)
+  inhale acc(tuple0$(_2), write)
+  inhale true
+  inhale (unfolding acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(old[l1](_3.val_ref)), write) in (unfolding acc(i32(old[l1](_3.val_ref).f$i), write) in old[l1](_3.val_ref).f$i.val_int >= 8000))
+  label l2
+  goto l3
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] EndRegion('3s)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label l3
+  // ========== l3 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L1,L0,)
+
+  
+  goto bb2
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert (unfolding acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(_old$pre$0), write) in (unfolding acc(i32(_old$pre$0.f$i), write) in _old$pre$0.f$i.val_int)) >= 8000
+  assert true
+  exhale acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Z$__$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_generics_basic_3_6$$test1$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "generics_basic_3_6::test1"
+  
+  // Def path: "generics_basic_3_6::test1[0]"
+  
+  // Span: tests/verify/fail/erdinm/generics-basic-3-6.rs:12:1: 14:2
+  
+  __t0 := false
+  __t1 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(_1.val_ref), write)
+  inhale true
+  inhale true
+  inhale (unfolding acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(_1.val_ref), write) in (unfolding acc(i32(_1.val_ref.f$i), write) in _1.val_ref.f$i.val_int >= 9000))
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _2 = CheckedSub(((*_1).0: i32), const 1000i32)
+  
+  _2 := builtin$havoc_ref()
+  inhale acc(_2.tuple_0, write)
+  inhale acc(_2.tuple_0.val_int, write)
+  inhale acc(_2.tuple_1, write)
+  inhale acc(_2.tuple_1.val_bool, write)
+  unfold acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(_1.val_ref), write)
+  unfold acc(i32(_1.val_ref.f$i), write)
+  _2.tuple_0.val_int := _1.val_ref.f$i.val_int - 1000
+  _2.tuple_1.val_bool := false
+  // [mir] assert(!move (_2.1: bool), "attempt to subtract with overflow") -> [success: bb2, unwind: bb1]
+  
+  __t2 := _2.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t2
+  goto bb2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] ((*_1).0: i32) = move (_2.0: i32)
+  
+  _1.val_ref.f$i := _2.tuple_0
+  label l0
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(i32(_1.val_ref.f$i), write)
+  fold acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(_1.val_ref), write)
+  // obtain acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert (unfolding acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(_old$pre$0), write) in (unfolding acc(i32(_old$pre$0.f$i), write) in _old$pre$0.f$i.val_int)) >= 8000
+  assert true
+  exhale acc(m_generics_basic_3_6$$Number$opensqu$0$closesqu$$_beg_$__TYPARAM__$Y$__$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_ref() returns (ret: Ref)
+
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)

@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import scala.annotation.unused
 import org.slf4j.LoggerFactory
 import viper.silicon.Stack
 import viper.silver.ast
@@ -171,7 +172,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
     var reactionResult: VerificationResult = globalActionResult
       /* A bit hacky, but having an initial result here simplifies things quite a bit */
 
-    globalActionResult match {
+    (globalActionResult: @unchecked) match {
       case _ if    localActionSuccess
                 || !globalActionResult.isFatal
                 || !s.applyHeuristics
@@ -238,7 +239,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
         say(s"reactionResult = $reactionResult")
     }
 
-    reactionResult match {
+    (reactionResult: @unchecked) match {
       case _ if !reactionResult.isFatal =>
         reactionResult
 
@@ -247,7 +248,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
     }
   }
 
-  def generateReactions(s: State, h: Heap, v: Verifier, cause: Failure)
+  def generateReactions(s: State, h: Heap, @unused v: Verifier, cause: Failure)
                        : Seq[(State, Heap, Verifier) => ((State, Heap, Verifier) => VerificationResult) => VerificationResult] = {
 
     val pve = HeuristicsFailed(ast.TrueLit()()) /* TODO: Use a meaningful node */
@@ -265,7 +266,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 
         /* HS1 (wands) */
         val wand = reason.offendingNode
-        val structureMatcher = matchers.structure(wand, Verifier.program)
+        val structureMatcher = matchers.structure(wand)
         val wandChunks = wandInstancesMatching(chunks, structureMatcher)
         val applyWandReactions = wandChunks flatMap {
           case ch if ok(ch.id.ghostFreeWand) => Some(applyWand(ch.id.ghostFreeWand, ch.bindings, pve) _)
@@ -325,16 +326,17 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 
   /* Heuristics */
 
-  def packageWand(wand: ast.MagicWand, pve: PartialVerificationError)
+  def packageWand(wand: ast.MagicWand, @unused pve: PartialVerificationError)
                  (s: State, h: Heap, v: Verifier)
                  (Q: (State, Heap, Verifier) => VerificationResult)
                  : VerificationResult = {
+
       val packageStmt = ast.Package(wand, ast.Seqn(Seq(), Seq())())()
-      exec(s.copy(h = h), packageStmt, v)((s1, v1) => {
-        Q(s1, s1.h, v1)})
+      exec(s.copy(h = h), packageStmt, v)((s1, v1) =>
+        Q(s1, s1.h, v1))
   }
 
-  def applyWand(wand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], pve: PartialVerificationError)
+  def applyWand(wand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], @unused pve: PartialVerificationError)
                (s: State, h: Heap, v: Verifier)
                (Q: (State, Heap, Verifier) => VerificationResult)
                : VerificationResult = {
@@ -344,35 +346,38 @@ object heuristicsSupporter extends SymbolicExecutionRules {
         Q(s1.copy(g = s.g), s1.h, v1)})
   }
 
-  def unfoldPredicate(acc: ast.PredicateAccessPredicate, pve: PartialVerificationError)
+  def unfoldPredicate(acc: ast.PredicateAccessPredicate, @unused pve: PartialVerificationError)
                      (s: State, h: Heap, v: Verifier)
                      (Q: (State, Heap, Verifier) => VerificationResult)
                      : VerificationResult = {
+
       val unfoldStmt = ast.Unfold(acc)()
-      exec(s.copy(h = h), unfoldStmt, v)((s1, v1) => {
-        Q(s1, s1.h, v1)})
+      exec(s.copy(h = h), unfoldStmt, v)((s1, v1) =>
+        Q(s1, s1.h, v1))
   }
 
-  def foldPredicate(acc: ast.PredicateAccessPredicate, pve: PartialVerificationError)
+  def foldPredicate(acc: ast.PredicateAccessPredicate, @unused pve: PartialVerificationError)
                    (s: State, h: Heap, v: Verifier)
                    (Q: (State, Heap, Verifier) => VerificationResult)
                    : VerificationResult = {
+
       val foldStmt = ast.Fold(acc)()
-      exec(s.copy(h = h), foldStmt, v)((s1, v1) => {
-        Q(s1, s1.h, v1)})
+      exec(s.copy(h = h), foldStmt, v)((s1, v1) =>
+        Q(s1, s1.h, v1))
   }
 
   def foldPredicate(predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError)
                    (s: State, h: Heap, v: Verifier)
                    (Q: (State, Heap, Verifier) => VerificationResult)
                    : VerificationResult = {
+
     predicateSupporter.fold(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)((s1, v1) =>
-        Q(s1, s1.h, v1))
+      Q(s1, s1.h, v1))
   }
 
   /* Helpers */
 
-  def predicateInstancesMatching(s: State, h: Heap, v: Verifier, f: PartialFunction[ast.Node, _]): Seq[ast.PredicateAccessPredicate] = {
+  def predicateInstancesMatching(s: State, h: Heap, @unused v: Verifier, f: PartialFunction[ast.Node, _]): Seq[ast.PredicateAccessPredicate] = {
     val allChunks = s.h.values ++ h.values ++ s.reserveHeaps.flatMap(_.values)
     val program = Verifier.program
 
@@ -422,7 +427,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
       case ast.AccessPredicate(locacc: ast.LocationAccess, _) if locacc.loc(program) == loc =>
     }
 
-    def structure(wand: ast.MagicWand, program: ast.Program): PartialFunction[ast.Node, Any] = {
+    def structure(wand: ast.MagicWand): PartialFunction[ast.Node, Any] = {
       case other: ast.MagicWand if MagicWandIdentifier(wand, Verifier.program) == MagicWandIdentifier(other, Verifier.program) =>
     }
   }

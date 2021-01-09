@@ -9,7 +9,7 @@ package viper.silicon
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
-
+import scala.collection.immutable.ArraySeq
 import scala.util.{Left, Right}
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
@@ -108,7 +108,6 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
 
   private var startTime: Long = _
   private var elapsedMillis: Long = _
-  private def overallTime = System.currentTimeMillis() - startTime
 
   def parseCommandLine(args: Seq[String]): Unit = {
     assert(lifetimeState == LifetimeState.Instantiated, "Silicon can only be configured once")
@@ -205,7 +204,9 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
       } catch { /* Catch exceptions thrown during verification (errors are not caught) */
         case _: TimeoutException =>
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
-        case exception: Exception if config.verified && !config.disableCatchingExceptions() =>
+        case exception: Exception if !config.disableCatchingExceptions() =>
+          config.assertVerified() // Raises an exception itself, if it fails
+
           /* An exception's root cause might be an error; the following code takes care of that */
           reporting.exceptionToViperError(exception) match {
             case Right((cause, failure)) =>
@@ -343,7 +344,7 @@ object SiliconRunner extends SiliconFrontend(StdIOReporter()) {
     var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
 
     try {
-      execute(args)
+      execute(ArraySeq.unsafeWrapArray(args))
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
 
       if (state >= DefaultStates.Verification && result == SilSuccess) {
@@ -351,8 +352,9 @@ object SiliconRunner extends SiliconFrontend(StdIOReporter()) {
       }
     } catch { /* Catch exceptions and errors thrown at any point of the execution of Silicon */
       case exception: Exception
-           if config == null ||
-              (config.verified && !config.asInstanceOf[Config].disableCatchingExceptions()) =>
+           if config == null || !config.asInstanceOf[Config].disableCatchingExceptions() =>
+
+        config.assertVerified() // Raises an exception itself, if it fails
 
         /* An exception's root cause might be an error; the following code takes care of that */
         reporting.exceptionToViperError(exception) match {

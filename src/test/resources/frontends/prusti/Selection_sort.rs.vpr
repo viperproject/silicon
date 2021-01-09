@@ -1,0 +1,2842 @@
+domain $SnapshotMirrors$ {
+  
+  
+}
+
+field closure_0: Ref
+
+field closure_1: Ref
+
+field closure_2: Ref
+
+field closure_3: Ref
+
+field f$a: Ref
+
+field f$buf: Ref
+
+field f$cap: Ref
+
+field f$len: Ref
+
+field f$ptr: Ref
+
+field f$v: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$unreach_bool__$TY$__$bool$(): Bool
+  requires false
+
+
+function m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures true
+  ensures 0 <= result
+  ensures result <= 18446744073709551615
+
+
+function m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_pure_1: Ref, _pure_2: Int): Int
+  requires acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires 0 <= _pure_2 && _pure_2 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1)
+  requires 0 <= _pure_2
+  requires _pure_2 <= 18446744073709551615
+  ensures true
+  ensures -2147483648 <= result
+  ensures result <= 2147483647
+
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_10$3$5025947003234148349(self: Ref) 
+
+predicate closure$0_1_11$3$15765438690761850618(self: Ref) 
+
+predicate closure$0_1_12$4$7048529785257799747(self: Ref) 
+
+predicate closure$0_1_13$3$15765438690761850618(self: Ref) 
+
+predicate closure$0_1_14$4$7048529785257799747(self: Ref) 
+
+predicate closure$0_1_15$5$13927103562872921321(self: Ref) 
+
+predicate closure$0_1_16$3$15765438690761850618(self: Ref) 
+
+predicate closure$0_1_17$4$15523507757431244527(self: Ref) 
+
+predicate closure$0_1_18$5$3980699002446144432(self: Ref) 
+
+predicate closure$0_1_19$2$6293050252958545034(self: Ref) 
+
+predicate closure$0_1_20$3$14586384464089816674(self: Ref) 
+
+predicate closure$0_1_21$5$6516947270698252826(self: Ref) 
+
+predicate closure$0_1_22$4$1613364831441531207(self: Ref) 
+
+predicate closure$0_1_23$5$339340244643477828(self: Ref) 
+
+predicate closure$0_1_24$4$426145462240784645(self: Ref) 
+
+predicate closure$0_1_25$3$8387839296446889492(self: Ref) 
+
+predicate closure$0_1_26$4$14834550820136027143(self: Ref) 
+
+predicate closure$0_1_27$3$17401215989928098433(self: Ref) 
+
+predicate closure$0_1_28$4$14725996966228553680(self: Ref) 
+
+predicate closure$0_1_29$4$5011012978171635513(self: Ref) 
+
+predicate closure$0_1_30$2$13994891442675209593(self: Ref) 
+
+predicate closure$0_1_31$3$1600388980139079346(self: Ref) 
+
+predicate closure$0_1_32$3$12097174197495273115(self: Ref) 
+
+predicate closure$0_1_33$4$17265103565152846534(self: Ref) 
+
+predicate closure$0_1_34$3$988506964091909110(self: Ref) 
+
+predicate closure$0_1_35$4$13863419843990886120(self: Ref) 
+
+predicate closure$0_1_36$3$3826142628974945485(self: Ref) 
+
+predicate closure$0_1_37$4$10131714698020045729(self: Ref) 
+
+predicate closure$0_1_38$4$15564781727596283296(self: Ref) 
+
+predicate closure$0_1_39$5$13809781631150042407(self: Ref) 
+
+predicate closure$0_1_40$5$18322230677846280824(self: Ref) 
+
+predicate closure$0_1_41$4$13567031608014809511(self: Ref) 
+
+predicate closure$0_1_42$6$7802784798437267329(self: Ref) 
+
+predicate closure$0_1_43$5$6169145554234317518(self: Ref) 
+
+predicate closure$0_1_44$2$13994891442675209593(self: Ref) 
+
+predicate closure$0_1_45$3$9765893351418371426(self: Ref) 
+
+predicate closure$0_1_46$3$3090985711722625817(self: Ref) 
+
+predicate closure$0_1_47$4$17759171189971550564(self: Ref) 
+
+predicate closure$0_1_48$4$17336250458711493274(self: Ref) 
+
+predicate closure$0_1_49$5$7268980316304182649(self: Ref) 
+
+predicate closure$0_1_50$5$18381689390906128933(self: Ref) 
+
+predicate closure$0_1_51$4$10495494951135187346(self: Ref) 
+
+predicate closure$0_1_52$6$10538300868879282966(self: Ref) 
+
+predicate closure$0_1_53$5$5252183286034364465(self: Ref) 
+
+predicate closure$0_1_54$4$10485008220710882862(self: Ref) 
+
+predicate closure$0_1_55$4$1366533644619494811(self: Ref) 
+
+predicate closure$0_1_56$4$16612207316456456741(self: Ref) 
+
+predicate closure$0_1_57$4$7803373796730001819(self: Ref) 
+
+predicate closure$0_1_58$5$12610067323094378902(self: Ref) 
+
+predicate closure$0_1_59$4$8368886383313047514(self: Ref) 
+
+predicate closure$0_1_60$5$14799634352897460720(self: Ref) 
+
+predicate closure$0_1_61$6$1154001166110592157(self: Ref) 
+
+predicate closure$0_1_62$6$13409969340209761913(self: Ref) 
+
+predicate closure$0_1_63$5$11063638906811104805(self: Ref) 
+
+predicate closure$0_1_64$3$12992718584680054993(self: Ref) 
+
+predicate closure$0_1_65$3$9809961069365430357(self: Ref) 
+
+predicate closure$0_1_66$5$9535372228205832665(self: Ref) 
+
+predicate closure$0_1_67$5$9169487630610805234(self: Ref) 
+
+predicate closure$0_1_68$3$15761736936064404933(self: Ref) 
+
+predicate closure$0_1_69$5$868015031522496376(self: Ref) 
+
+predicate closure$0_1_70$5$10648786759666739039(self: Ref) 
+
+predicate i32(self: Ref) {
+  acc(self.val_int, write) && (-2147483648 <= self.val_int && self.val_int <= 2147483647)
+}
+
+predicate m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$v, write) && acc(m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_(self.f$v), write)
+}
+
+predicate m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  true
+}
+
+predicate m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.f$ptr, write) && (acc(m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$i32$_end_(self.f$ptr), write) && (acc(self.f$cap, write) && (acc(usize(self.f$cap), write) && (acc(self.f$a, write) && acc(m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_(self.f$a), write)))))
+}
+
+predicate m_alloc$$vec$opensqu$0$closesqu$$$Vec$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) {
+  acc(self.f$buf, write) && (acc(m_alloc$$raw_vec$opensqu$0$closesqu$$$RawVec$opensqu$0$closesqu$$_beg_$i32$_sep_$m_alloc$$alloc$opensqu$0$closesqu$$$Global$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$buf), write) && (acc(self.f$len, write) && acc(usize(self.f$len), write)))
+}
+
+predicate m_core$$ptr$opensqu$0$closesqu$$$Unique$opensqu$0$closesqu$$_beg_$i32$_end_(self: Ref) 
+
+predicate ref$bool(self: Ref) {
+  acc(self.val_ref, write) && acc(bool(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_10$3$5025947003234148349(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_10$3$5025947003234148349(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_11$3$15765438690761850618(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_11$3$15765438690761850618(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_12$4$7048529785257799747(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_12$4$7048529785257799747(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_13$3$15765438690761850618(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_13$3$15765438690761850618(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_14$4$7048529785257799747(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_14$4$7048529785257799747(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_15$5$13927103562872921321(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_15$5$13927103562872921321(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_16$3$15765438690761850618(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_16$3$15765438690761850618(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_17$4$15523507757431244527(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_17$4$15523507757431244527(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_18$5$3980699002446144432(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_18$5$3980699002446144432(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_19$2$6293050252958545034(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_19$2$6293050252958545034(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_20$3$14586384464089816674(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_20$3$14586384464089816674(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_21$5$6516947270698252826(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_21$5$6516947270698252826(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_22$4$1613364831441531207(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_22$4$1613364831441531207(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_23$5$339340244643477828(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_23$5$339340244643477828(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_24$4$426145462240784645(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_24$4$426145462240784645(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_25$3$8387839296446889492(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_25$3$8387839296446889492(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_26$4$14834550820136027143(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_26$4$14834550820136027143(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_27$3$17401215989928098433(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_27$3$17401215989928098433(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_28$4$14725996966228553680(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_28$4$14725996966228553680(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_29$4$5011012978171635513(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_29$4$5011012978171635513(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_31$3$1600388980139079346(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_31$3$1600388980139079346(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_32$3$12097174197495273115(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_32$3$12097174197495273115(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_33$4$17265103565152846534(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_33$4$17265103565152846534(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_34$3$988506964091909110(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_34$3$988506964091909110(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_35$4$13863419843990886120(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_35$4$13863419843990886120(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_36$3$3826142628974945485(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_36$3$3826142628974945485(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_37$4$10131714698020045729(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_37$4$10131714698020045729(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_38$4$15564781727596283296(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_38$4$15564781727596283296(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_39$5$13809781631150042407(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_39$5$13809781631150042407(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_40$5$18322230677846280824(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_40$5$18322230677846280824(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_41$4$13567031608014809511(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_41$4$13567031608014809511(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_42$6$7802784798437267329(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_42$6$7802784798437267329(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_43$5$6169145554234317518(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_43$5$6169145554234317518(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_45$3$9765893351418371426(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_45$3$9765893351418371426(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_46$3$3090985711722625817(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_46$3$3090985711722625817(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_47$4$17759171189971550564(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_47$4$17759171189971550564(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_48$4$17336250458711493274(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_48$4$17336250458711493274(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_49$5$7268980316304182649(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_49$5$7268980316304182649(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_50$5$18381689390906128933(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_50$5$18381689390906128933(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_51$4$10495494951135187346(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_51$4$10495494951135187346(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_52$6$10538300868879282966(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_52$6$10538300868879282966(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_53$5$5252183286034364465(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_53$5$5252183286034364465(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_54$4$10485008220710882862(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_54$4$10485008220710882862(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_55$4$1366533644619494811(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_55$4$1366533644619494811(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_56$4$16612207316456456741(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_56$4$16612207316456456741(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_57$4$7803373796730001819(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_57$4$7803373796730001819(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_58$5$12610067323094378902(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_58$5$12610067323094378902(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_59$4$8368886383313047514(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_59$4$8368886383313047514(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_60$5$14799634352897460720(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_60$5$14799634352897460720(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_61$6$1154001166110592157(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_61$6$1154001166110592157(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_62$6$13409969340209761913(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_62$6$13409969340209761913(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_63$5$11063638906811104805(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_63$5$11063638906811104805(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_64$3$12992718584680054993(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_64$3$12992718584680054993(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_65$3$9809961069365430357(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_65$3$9809961069365430357(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_66$5$9535372228205832665(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_66$5$9535372228205832665(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_67$5$9169487630610805234(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_67$5$9169487630610805234(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_68$3$15761736936064404933(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_68$3$15761736936064404933(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_69$5$868015031522496376(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_69$5$868015031522496376(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_70$5$10648786759666739039(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_70$5$10648786759666739039(self.val_ref), write)
+}
+
+predicate ref$i32(self: Ref) {
+  acc(self.val_ref, write) && acc(i32(self.val_ref), write)
+}
+
+predicate ref$m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$i32(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$i32(self.val_ref), write)
+}
+
+predicate ref$ref$m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$usize(self: Ref) {
+  acc(self.val_ref, write) && acc(usize(self.val_ref), write)
+}
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$usize$bool(self: Ref) {
+  acc(self.tuple_0, write) && (acc(usize(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(bool(self.tuple_1), write)))
+}
+
+predicate usize(self: Ref) {
+  acc(self.val_int, write) && (0 <= self.val_int && self.val_int <= 18446744073709551615)
+}
+
+method m_Selection_sort$$test$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _13: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  var _23: Ref
+  var _24: Ref
+  var _25: Ref
+  var _26: Ref
+  var _t29: Ref
+  var _t32: Ref
+  var _t35: Ref
+  var _t38: Ref
+  var _t41: Ref
+  var _t44: Ref
+  var _t47: Ref
+  var _t50: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Selection_sort::test"
+  
+  // Def path: "Selection_sort::test[0]"
+  
+  // Span: tests/verify_overflow/pass/rosetta/Selection_sort.rs:145:1: 161:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_1)
+  
+  // [mir] _1 = const VecWrapperI32::new() -> [return: bb2, unwind: bb1]
+  
+  label l0
+  _1 := builtin$havoc_ref()
+  inhale true
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1), write)
+  inhale true
+  inhale m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1) == 0
+  label l1
+  goto bb2
+  label bb10
+  // ========== bb10 ==========
+  
+  __t5 := true
+  // [mir] EndRegion('21s)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = &'26s mut _1
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_ref, write)
+  _11.val_ref := _1
+  label l18
+  // [mir] _10 = const VecWrapperI32::push(move _11, const -6i32) -> [return: bb12, unwind: bb13]
+  
+  label l19
+  _t41 := builtin$havoc_ref()
+  inhale acc(i32(_t41), write)
+  assert true
+  exhale acc(_11.val_ref, write) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_11.val_ref), write) && acc(i32(_t41), write))
+  _10 := builtin$havoc_ref()
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l19](_11.val_ref)), write)
+  inhale acc(tuple0$(_10), write)
+  inhale true
+  inhale !(old[l19](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_11.val_ref)) + 1 < 0 || old[l19](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_11.val_ref)) + 1 > 18446744073709551615) && m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l19](_11.val_ref)) == old[l19](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_11.val_ref)) + 1 && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l19](_11.val_ref), old[l19](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_11.val_ref))) == old[l19](-6) && (forall i: Int :: 0 <= i && i < old[l19](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_11.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l19](_11.val_ref), i) == old[l19](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_11.val_ref, i))))
+  label l20
+  goto l21
+  label bb12
+  // ========== bb12 ==========
+  
+  __t6 := true
+  // [mir] EndRegion('26s)
+  
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageLive(_13)
+  
+  // [mir] _13 = &'30s mut _1
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_ref, write)
+  _13.val_ref := _1
+  label l22
+  // [mir] _12 = const VecWrapperI32::push(move _13, const 2i32) -> [return: bb14, unwind: bb15]
+  
+  label l23
+  _t44 := builtin$havoc_ref()
+  inhale acc(i32(_t44), write)
+  assert true
+  exhale acc(_13.val_ref, write) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_13.val_ref), write) && acc(i32(_t44), write))
+  _12 := builtin$havoc_ref()
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l23](_13.val_ref)), write)
+  inhale acc(tuple0$(_12), write)
+  inhale true
+  inhale !(old[l23](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_13.val_ref)) + 1 < 0 || old[l23](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_13.val_ref)) + 1 > 18446744073709551615) && m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l23](_13.val_ref)) == old[l23](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_13.val_ref)) + 1 && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l23](_13.val_ref), old[l23](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_13.val_ref))) == old[l23](2) && (forall i: Int :: 0 <= i && i < old[l23](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_13.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l23](_13.val_ref), i) == old[l23](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_13.val_ref, i))))
+  label l24
+  goto l25
+  label bb14
+  // ========== bb14 ==========
+  
+  __t7 := true
+  // [mir] EndRegion('30s)
+  
+  // [mir] StorageDead(_13)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = &'34s mut _1
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  _15.val_ref := _1
+  label l26
+  // [mir] _14 = const VecWrapperI32::push(move _15, const 1i32) -> [return: bb16, unwind: bb17]
+  
+  label l27
+  _t47 := builtin$havoc_ref()
+  inhale acc(i32(_t47), write)
+  assert true
+  exhale acc(_15.val_ref, write) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_15.val_ref), write) && acc(i32(_t47), write))
+  _14 := builtin$havoc_ref()
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l27](_15.val_ref)), write)
+  inhale acc(tuple0$(_14), write)
+  inhale true
+  inhale !(old[l27](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_15.val_ref)) + 1 < 0 || old[l27](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_15.val_ref)) + 1 > 18446744073709551615) && m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l27](_15.val_ref)) == old[l27](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_15.val_ref)) + 1 && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l27](_15.val_ref), old[l27](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_15.val_ref))) == old[l27](1) && (forall i: Int :: 0 <= i && i < old[l27](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_15.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l27](_15.val_ref), i) == old[l27](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_15.val_ref, i))))
+  label l28
+  goto l29
+  label bb16
+  // ========== bb16 ==========
+  
+  __t8 := true
+  // [mir] EndRegion('34s)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] StorageLive(_17)
+  
+  // [mir] _17 = &'38s mut _1
+  
+  _17 := builtin$havoc_ref()
+  inhale acc(_17.val_ref, write)
+  _17.val_ref := _1
+  label l30
+  // [mir] _16 = const VecWrapperI32::push(move _17, const 6i32) -> [return: bb18, unwind: bb19]
+  
+  label l31
+  _t50 := builtin$havoc_ref()
+  inhale acc(i32(_t50), write)
+  assert true
+  exhale acc(_17.val_ref, write) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_17.val_ref), write) && acc(i32(_t50), write))
+  _16 := builtin$havoc_ref()
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l31](_17.val_ref)), write)
+  inhale acc(tuple0$(_16), write)
+  inhale true
+  inhale !(old[l31](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_17.val_ref)) + 1 < 0 || old[l31](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_17.val_ref)) + 1 > 18446744073709551615) && m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l31](_17.val_ref)) == old[l31](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_17.val_ref)) + 1 && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l31](_17.val_ref), old[l31](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_17.val_ref))) == old[l31](6) && (forall i: Int :: 0 <= i && i < old[l31](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_17.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l31](_17.val_ref), i) == old[l31](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_17.val_ref, i))))
+  label l32
+  goto l33
+  label bb18
+  // ========== bb18 ==========
+  
+  __t9 := true
+  // [mir] EndRegion('38s)
+  
+  // [mir] StorageDead(_17)
+  
+  // [mir] StorageLive(_19)
+  
+  // [mir] StorageLive(_20)
+  
+  // [mir] _20 = &'43s mut _1
+  
+  _20 := builtin$havoc_ref()
+  inhale acc(_20.val_ref, write)
+  _20.val_ref := _1
+  label l34
+  // [mir] _19 = &'43s mut (*_20)
+  
+  _19 := builtin$havoc_ref()
+  inhale acc(_19.val_ref, write)
+  _19.val_ref := _20.val_ref
+  label l35
+  // [mir] _18 = const print_initial_array(move _19) -> [return: bb20, unwind: bb21]
+  
+  label l36
+  assert true
+  exhale acc(_19.val_ref, write) && acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_19.val_ref), write)
+  _18 := builtin$havoc_ref()
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l36](_19.val_ref)), write)
+  inhale acc(tuple0$(_18), write)
+  inhale true
+  inhale true
+  label l37
+  goto l38
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = &'9s mut _1
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_ref, write)
+  _3.val_ref := _1
+  label l2
+  // [mir] _2 = const VecWrapperI32::push(move _3, const 9i32) -> [return: bb3, unwind: bb5]
+  
+  label l3
+  _t29 := builtin$havoc_ref()
+  inhale acc(i32(_t29), write)
+  assert true
+  exhale acc(_3.val_ref, write) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_3.val_ref), write) && acc(i32(_t29), write))
+  _2 := builtin$havoc_ref()
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l3](_3.val_ref)), write)
+  inhale acc(tuple0$(_2), write)
+  inhale true
+  inhale !(old[l3](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref)) + 1 < 0 || old[l3](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref)) + 1 > 18446744073709551615) && m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l3](_3.val_ref)) == old[l3](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref)) + 1 && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l3](_3.val_ref), old[l3](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref))) == old[l3](9) && (forall i: Int :: 0 <= i && i < old[l3](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_3.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l3](_3.val_ref), i) == old[l3](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_3.val_ref, i))))
+  label l4
+  goto l5
+  label bb20
+  // ========== bb20 ==========
+  
+  __t10 := true
+  // [mir] EndRegion('43s)
+  
+  // [mir] StorageDead(_19)
+  
+  // [mir] StorageDead(_20)
+  
+  // [mir] StorageLive(_22)
+  
+  // [mir] StorageLive(_23)
+  
+  // [mir] _23 = &'48s mut _1
+  
+  _23 := builtin$havoc_ref()
+  inhale acc(_23.val_ref, write)
+  _23.val_ref := _1
+  label l39
+  // [mir] _22 = &'48s mut (*_23)
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_ref, write)
+  _22.val_ref := _23.val_ref
+  label l40
+  // [mir] _21 = const selection_sort(move _22) -> [return: bb22, unwind: bb23]
+  
+  label l41
+  assert true
+  exhale acc(_22.val_ref, write) && acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_22.val_ref), write)
+  _21 := builtin$havoc_ref()
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l41](_22.val_ref)), write)
+  inhale acc(tuple0$(_21), write)
+  inhale true
+  inhale m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l41](_22.val_ref)) == old[l41](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_22.val_ref)) && (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l41](_22.val_ref))) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l41](_22.val_ref), k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l41](_22.val_ref), k2))
+  label l42
+  goto l43
+  label bb22
+  // ========== bb22 ==========
+  
+  __t11 := true
+  // [mir] EndRegion('48s)
+  
+  // [mir] StorageDead(_22)
+  
+  // [mir] StorageDead(_23)
+  
+  // [mir] StorageLive(_25)
+  
+  // [mir] StorageLive(_26)
+  
+  // [mir] _26 = &'53s mut _1
+  
+  _26 := builtin$havoc_ref()
+  inhale acc(_26.val_ref, write)
+  _26.val_ref := _1
+  label l44
+  // [mir] _25 = &'53s mut (*_26)
+  
+  _25 := builtin$havoc_ref()
+  inhale acc(_25.val_ref, write)
+  _25.val_ref := _26.val_ref
+  label l45
+  // [mir] _24 = const print_sorted_array(move _25) -> [return: bb24, unwind: bb25]
+  
+  label l46
+  assert (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_25.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_25.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_25.val_ref, k2))
+  assert true
+  exhale acc(_25.val_ref, write) && acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_25.val_ref), write)
+  _24 := builtin$havoc_ref()
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l46](_25.val_ref)), write)
+  inhale acc(tuple0$(_24), write)
+  inhale true
+  inhale true
+  label l47
+  goto l48
+  label bb24
+  // ========== bb24 ==========
+  
+  __t12 := true
+  // [mir] EndRegion('53s)
+  
+  // [mir] StorageDead(_25)
+  
+  // [mir] StorageDead(_26)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] drop(_1) -> [return: bb26, unwind: bb1]
+  
+  goto bb26
+  label bb26
+  // ========== bb26 ==========
+  
+  __t13 := true
+  // [mir] StorageDead(_1)
+  
+  // [mir] return
+  
+  goto return
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] EndRegion('9s)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = &'13s mut _1
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  _5.val_ref := _1
+  label l6
+  // [mir] _4 = const VecWrapperI32::push(move _5, const 4i32) -> [return: bb6, unwind: bb7]
+  
+  label l7
+  _t32 := builtin$havoc_ref()
+  inhale acc(i32(_t32), write)
+  assert true
+  exhale acc(_5.val_ref, write) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_5.val_ref), write) && acc(i32(_t32), write))
+  _4 := builtin$havoc_ref()
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l7](_5.val_ref)), write)
+  inhale acc(tuple0$(_4), write)
+  inhale true
+  inhale !(old[l7](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_5.val_ref)) + 1 < 0 || old[l7](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_5.val_ref)) + 1 > 18446744073709551615) && m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l7](_5.val_ref)) == old[l7](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_5.val_ref)) + 1 && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l7](_5.val_ref), old[l7](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_5.val_ref))) == old[l7](4) && (forall i: Int :: 0 <= i && i < old[l7](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_5.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l7](_5.val_ref), i) == old[l7](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_5.val_ref, i))))
+  label l8
+  goto l9
+  label bb6
+  // ========== bb6 ==========
+  
+  __t3 := true
+  // [mir] EndRegion('13s)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = &'17s mut _1
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _1
+  label l10
+  // [mir] _6 = const VecWrapperI32::push(move _7, const 8i32) -> [return: bb8, unwind: bb9]
+  
+  label l11
+  _t35 := builtin$havoc_ref()
+  inhale acc(i32(_t35), write)
+  assert true
+  exhale acc(_7.val_ref, write) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_7.val_ref), write) && acc(i32(_t35), write))
+  _6 := builtin$havoc_ref()
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l11](_7.val_ref)), write)
+  inhale acc(tuple0$(_6), write)
+  inhale true
+  inhale !(old[l11](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) + 1 < 0 || old[l11](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) + 1 > 18446744073709551615) && m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l11](_7.val_ref)) == old[l11](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) + 1 && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l11](_7.val_ref), old[l11](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref))) == old[l11](8) && (forall i: Int :: 0 <= i && i < old[l11](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l11](_7.val_ref), i) == old[l11](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_7.val_ref, i))))
+  label l12
+  goto l13
+  label bb8
+  // ========== bb8 ==========
+  
+  __t4 := true
+  // [mir] EndRegion('17s)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = &'21s mut _1
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _1
+  label l14
+  // [mir] _8 = const VecWrapperI32::push(move _9, const 3i32) -> [return: bb10, unwind: bb11]
+  
+  label l15
+  _t38 := builtin$havoc_ref()
+  inhale acc(i32(_t38), write)
+  assert true
+  exhale acc(_9.val_ref, write) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_9.val_ref), write) && acc(i32(_t38), write))
+  _8 := builtin$havoc_ref()
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l15](_9.val_ref)), write)
+  inhale acc(tuple0$(_8), write)
+  inhale true
+  inhale !(old[l15](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref)) + 1 < 0 || old[l15](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref)) + 1 > 18446744073709551615) && m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l15](_9.val_ref)) == old[l15](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref)) + 1 && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l15](_9.val_ref), old[l15](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref))) == old[l15](3) && (forall i: Int :: 0 <= i && i < old[l15](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l15](_9.val_ref), i) == old[l15](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_9.val_ref, i))))
+  label l16
+  goto l17
+  label l13
+  // ========== l13 ==========
+  
+  // MIR edge bb6 --> bb8
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L24,L2,)
+
+  
+  goto bb8
+  label l17
+  // ========== l17 ==========
+  
+  // MIR edge bb8 --> bb10
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L16,L3,)
+
+  
+  goto bb10
+  label l21
+  // ========== l21 ==========
+  
+  // MIR edge bb10 --> bb12
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L15,L4,)
+
+  
+  goto bb12
+  label l25
+  // ========== l25 ==========
+  
+  // MIR edge bb12 --> bb14
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L20,L5,)
+
+  
+  goto bb14
+  label l29
+  // ========== l29 ==========
+  
+  // MIR edge bb14 --> bb16
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L17,L6,)
+
+  
+  goto bb16
+  label l33
+  // ========== l33 ==========
+  
+  // MIR edge bb16 --> bb18
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L14,L7,)
+
+  
+  goto bb18
+  label l38
+  // ========== l38 ==========
+  
+  // MIR edge bb18 --> bb20
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L23,L9,L8,)
+
+  
+  goto bb20
+  label l43
+  // ========== l43 ==========
+  
+  // MIR edge bb20 --> bb22
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L18,L11,L10,)
+
+  
+  goto bb22
+  label l48
+  // ========== l48 ==========
+  
+  // MIR edge bb22 --> bb24
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L19,L13,L12,)
+
+  
+  goto bb24
+  label l5
+  // ========== l5 ==========
+  
+  // MIR edge bb2 --> bb3
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L22,L0,)
+
+  
+  goto bb3
+  label l9
+  // ========== l9 ==========
+  
+  // MIR edge bb3 --> bb6
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L21,L1,)
+
+  
+  goto bb6
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Selection_sort$$selection_sort$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var __t28: Bool
+  var _preserve$0: Ref
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var _preserve$1: Ref
+  var _old$l21$0: Ref
+  var _old$l26$0: Ref
+  var __t32: Bool
+  var __t33: Bool
+  var __t34: Bool
+  var __t35: Bool
+  var _old$l43$0: Ref
+  var _old$l49$0: Ref
+  var _old$l55$0: Ref
+  var _old$l61$0: Ref
+  var __t36: Bool
+  var __t37: Bool
+  var __t38: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Int
+  var _6: Int
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _35: Ref
+  var _36: Ref
+  var _37: Int
+  var _38: Ref
+  var _39: Ref
+  var _40: Int
+  var _41: Int
+  var _42: Ref
+  var _43: Ref
+  var _44: Ref
+  var _45: Ref
+  var _81: Ref
+  var _82: Ref
+  var _83: Int
+  var _84: Ref
+  var _85: Ref
+  var _86: Int
+  var _87: Int
+  var _88: Ref
+  var _89: Ref
+  var _90: Int
+  var _91: Ref
+  var _92: Ref
+  var _93: Int
+  var _94: Int
+  var _95: Ref
+  var _96: Ref
+  var _97: Ref
+  var _98: Ref
+  var _99: Ref
+  var _100: Int
+  var _101: Ref
+  var _102: Ref
+  var _103: Ref
+  var _104: Ref
+  var _105: Int
+  var _106: Ref
+  var _107: Ref
+  var _108: Int
+  var _109: Ref
+  var _110: Ref
+  var _111: Ref
+  var _112: Int
+  var _113: Ref
+  var _114: Ref
+  var _115: Int
+  var _116: Int
+  var _117: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Selection_sort::selection_sort"
+  
+  // Def path: "Selection_sort::selection_sort[0]"
+  
+  // Span: tests/verify_overflow/pass/rosetta/Selection_sort.rs:76:1: 131:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  __t24 := false
+  __t25 := false
+  __t26 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_2)
+  
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = const 0usize
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_int, write)
+  _3.val_int := 0
+  // [mir] StorageLive(_4)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = _3
+  
+  _5 := builtin$havoc_int()
+  inhale true
+  _5 := _3.val_int
+  label l0
+  // [mir] StorageLive(_6)
+  
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = &'12s (*_1)
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _1.val_ref
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_7.val_ref), read$())
+  label l1
+  // [mir] _6 = const VecWrapperI32::len(move _7) -> [return: bb2, unwind: bb1]
+  
+  label l2
+  _6 := builtin$havoc_int()
+  inhale _6 >= 0 && 18446744073709551615 >= _6
+  inhale _6 >= 0 && 18446744073709551615 >= _6
+  inhale _6 == m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_7.val_ref)
+  // transfer perm _7.val_ref --> old[l2](_7.val_ref) // unchecked: false
+  
+  goto l3
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] EndRegion('12s)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] _4 = Lt(move _5, move _6)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_bool, write)
+  _4.val_bool := _5 < _6
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] goto -> bb3
+  
+  goto loop3_start
+  label bb4
+  // ========== bb4 ==========
+  
+  __t26 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] StorageDead(_2)
+  
+  // [mir] return
+  
+  goto return
+  label l14
+  // ========== l14 ==========
+  
+  // MIR edge bb9 --> bb10
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L50,L15,)
+
+  
+  if (__t6 && __t6) {
+    // expire loan L15
+    
+    // transfer perm old[l13](_42.val_ref) --> old[l12](_42.val_ref) // unchecked: false
+    
+    exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l12](_42.val_ref)), read$())
+    inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  goto loop3_group3_bb10
+  label l16
+  // ========== l16 ==========
+  
+  // MIR edge bb11 --> bb12
+  
+  goto loop3_group3_bb12
+  label l17
+  // ========== l17 ==========
+  
+  // MIR edge bb11 --> bb13
+  
+  goto loop3_group3_loop11_group2_bb13
+  label l28
+  // ========== l28 ==========
+  
+  // MIR edge bb18 --> bb19
+  
+  goto loop3_group3_loop11_group3_bb19
+  label l29
+  // ========== l29 ==========
+  
+  // MIR edge bb18 --> bb20
+  
+  goto loop3_group3_loop11_group3_bb20
+  label l3
+  // ========== l3 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L71,L0,)
+
+  
+  if (__t0 && __t0) {
+    // expire loan L0
+    
+    // transfer perm old[l2](_7.val_ref) --> old[l1](_7.val_ref) // unchecked: false
+    
+    exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l1](_7.val_ref)), read$())
+    inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  goto bb2
+  label l36
+  // ========== l36 ==========
+  
+  // MIR edge bb22 --> bb23
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L63,L41,)
+
+  
+  if (__t17 && __t17) {
+    // expire loan L41
+    
+    // transfer perm old[l35](_95.val_ref) --> old[l34](_95.val_ref) // unchecked: false
+    
+    exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l34](_95.val_ref)), read$())
+    inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  goto loop3_group3_loop11_group3_bb23
+  label l38
+  // ========== l38 ==========
+  
+  // MIR edge bb11 --> bb12
+  
+  goto l72
+  label l39
+  // ========== l39 ==========
+  
+  // MIR edge bb11 --> bb13
+  
+  goto loop3_group3_loop11_group5_bb13
+  label l5
+  // ========== l5 ==========
+  
+  // MIR edge bb3 --> bb4
+  
+  goto bb4
+  label l6
+  // ========== l6 ==========
+  
+  // MIR edge bb3 --> bb5
+  
+  goto loop3_group2_bb5
+  label l68
+  // ========== l68 ==========
+  
+  // MIR edge bb28 --> bb29
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L52,L46,)
+
+  
+  if (__t24 && __t24) {
+    // expire loan L46
+    
+    // transfer perm old[l67](_117.val_ref) --> old[l66](_117.val_ref) // unchecked: false
+    
+    exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l66](_117.val_ref)), read$())
+    inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  goto loop3_group3_bb29
+  label l70
+  // ========== l70 ==========
+  
+  // MIR edge bb3 --> bb4
+  
+  goto l73
+  label l71
+  // ========== l71 ==========
+  
+  // MIR edge bb3 --> bb5
+  
+  goto loop3_group5_bb5
+  label l72
+  // ========== l72 ==========
+  
+  // drop Acc(_82.val_bool, write) (Acc(_82.val_bool, write))
+  
+  // drop Acc(_84.val_ref, write) (Acc(_84.val_ref, write))
+  
+  // drop Acc(_92.tuple_0, write) (Acc(_92.tuple_0, write))
+  
+  // drop Acc(_93.val_int, write) (Acc(_93.val_int, write))
+  
+  // drop Acc(_94.val_int, write) (Acc(_94.val_int, write))
+  
+  unfold acc(usize(_3), write)
+  // drop Acc(_83.val_int, write) (Acc(_83.val_int, write))
+  
+  // drop Acc(_95.val_ref, write) (Acc(_95.val_ref, write))
+  
+  // drop Acc(_88.val_ref, write) (Acc(_88.val_ref, write))
+  
+  // drop Acc(_92.tuple_1.val_bool, write) (Acc(_92.tuple_1.val_bool, write))
+  
+  // drop Acc(_87.val_int, write) (Acc(_87.val_int, write))
+  
+  // drop Acc(old[l34](_95.val_ref), write) (Acc(old[l34](_95.val_ref), write))
+  
+  // drop Pred(_81, write) (Pred(_81, write))
+  
+  // drop Pred(_45, write) (Pred(_45, write))
+  
+  // drop Pred(_9, write) (Pred(_9, write))
+  
+  // drop Acc(_92.tuple_1, write) (Acc(_92.tuple_1, write))
+  
+  goto loop3_group3_bb12
+  label l73
+  // ========== l73 ==========
+  
+  // drop Acc(_98.val_ref, write) (Acc(_98.val_ref, write))
+  
+  // drop Acc(_39.val_bool, write) (Acc(_39.val_bool, write))
+  
+  // drop Acc(_36.val_int, write) (Acc(_36.val_int, write))
+  
+  // drop Acc(old[l66](_117.val_ref), write) (Acc(old[l66](_117.val_ref), write))
+  
+  // drop Acc(_114.tuple_0, write) (Acc(_114.tuple_0, write))
+  
+  // drop Acc(_117.val_ref, write) (Acc(_117.val_ref, write))
+  
+  // drop Acc(_2.val_int, write) (Acc(_2.val_int, write))
+  
+  // drop Acc(_40.val_int, write) (Acc(_40.val_int, write))
+  
+  // drop Acc(_38.tuple_1.val_bool, write) (Acc(_38.tuple_1.val_bool, write))
+  
+  // drop Acc(_106.val_ref, write) (Acc(_106.val_ref, write))
+  
+  // drop Acc(_114.tuple_1.val_bool, write) (Acc(_114.tuple_1.val_bool, write))
+  
+  // drop Acc(_110.val_ref, write) (Acc(_110.val_ref, write))
+  
+  // drop Acc(_44.val_bool, write) (Acc(_44.val_bool, write))
+  
+  // drop Acc(_37.val_int, write) (Acc(_37.val_int, write))
+  
+  // drop Acc(_41.val_int, write) (Acc(_41.val_int, write))
+  
+  // drop Acc(_103.val_ref, write) (Acc(_103.val_ref, write))
+  
+  // drop Acc(_38.tuple_0, write) (Acc(_38.tuple_0, write))
+  
+  // drop Acc(_116.val_int, write) (Acc(_116.val_int, write))
+  
+  // drop Acc(old[l12](_42.val_ref), write) (Acc(old[l12](_42.val_ref), write))
+  
+  // drop Acc(_115.val_int, write) (Acc(_115.val_int, write))
+  
+  // drop Acc(_96.val_int, write) (Acc(_96.val_int, write))
+  
+  // drop Acc(_101.val_int, write) (Acc(_101.val_int, write))
+  
+  // drop Acc(_42.val_ref, write) (Acc(_42.val_ref, write))
+  
+  // drop Pred(_43, write) (Pred(_43, write))
+  
+  // drop Pred(_9, write) (Pred(_9, write))
+  
+  // drop Pred(_10, write) (Pred(_10, write))
+  
+  // drop Acc(_114.tuple_1, write) (Acc(_114.tuple_1, write))
+  
+  // drop Acc(_38.tuple_1, write) (Acc(_38.tuple_1, write))
+  
+  goto bb4
+  label loop3_end_body
+  // ========== loop3_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb3
+  
+  fold acc(usize(_3), write)
+  // obtain acc(usize(_3), write)
+  
+  fold acc(bool(_4), write)
+  // obtain acc(bool(_4), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  assert m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && (0 <= (unfolding acc(usize(_3), write) in _3.val_int) && (unfolding acc(usize(_3), write) in _3.val_int) < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && (((unfolding acc(bool(_4), write) in _4.val_bool) ==> (unfolding acc(usize(_3), write) in _3.val_int) < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((!(unfolding acc(bool(_4), write) in _4.val_bool) ==> (unfolding acc(usize(_3), write) in _3.val_int) == m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((unfolding acc(usize(_3), write) in (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < _3.val_int) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2))) && (unfolding acc(usize(_3), write) in (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < _3.val_int && (_3.val_int <= k2 && k2 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref))) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2)))))))
+  assert _preserve$0 == _1.val_ref
+  exhale acc(usize(_3), write) && (acc(bool(_4), write) && (acc(_1.val_ref, read$()) && acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)))
+  inhale false
+  goto end_of_method
+  label loop3_group1_bb3
+  // ========== loop3_group1_bb3 ==========
+  
+  // This is a loop head
+  
+  __t2 := true
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = _4
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_bool, write)
+  _8.val_bool := _4.val_bool
+  label l4
+  // [mir] switchInt(move _8) -> [false: bb4, otherwise: bb5]
+  
+  __t27 := _8.val_bool
+  if (__t27) {
+    goto l6
+  }
+  goto l5
+  label loop3_group2_bb5
+  // ========== loop3_group2_bb5 ==========
+  
+  __t3 := true
+  // [mir] switchInt(const false) -> [false: bb7, otherwise: bb6]
+  
+  __t28 := false
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop3_inv_pre
+  label loop3_group3_bb10
+  // ========== loop3_group3_bb10 ==========
+  
+  __t7 := true
+  // [mir] EndRegion('183s)
+  
+  // [mir] StorageDead(_42)
+  
+  // [mir] _39 = Lt(move _40, move _41)
+  
+  _39 := builtin$havoc_ref()
+  inhale acc(_39.val_bool, write)
+  _39.val_bool := _40 < _41
+  // [mir] StorageDead(_41)
+  
+  // [mir] StorageDead(_40)
+  
+  // [mir] goto -> bb11
+  
+  goto loop3_group3_loop11_start
+  label loop3_group3_bb12
+  // ========== loop3_group3_bb12 ==========
+  
+  __t19 := true
+  // [mir] _43 = ()
+  
+  _43 := builtin$havoc_ref()
+  inhale acc(tuple0$(_43), write)
+  // [mir] StorageDead(_44)
+  
+  // [mir] StorageLive(_96)
+  
+  // [mir] StorageLive(_97)
+  
+  // [mir] StorageLive(_98)
+  
+  // [mir] StorageLive(_99)
+  
+  // [mir] _99 = &'446s (*_1)
+  
+  _99 := builtin$havoc_ref()
+  inhale acc(_99.val_ref, write)
+  _99.val_ref := _1.val_ref
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_99.val_ref), read$())
+  label l40
+  // [mir] StorageLive(_100)
+  
+  // [mir] _100 = _3
+  
+  _100 := builtin$havoc_int()
+  inhale true
+  _100 := _3.val_int
+  label l41
+  // [mir] _98 = const VecWrapperI32::index(move _99, move _100) -> [return: bb24, unwind: bb1]
+  
+  label l42
+  assert 0 <= _100 && _100 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_99.val_ref)
+  assert _100 >= 0 && 18446744073709551615 >= _100
+  assert true
+  exhale acc(_99.val_ref, write) && (_100 >= 0 && 18446744073709551615 >= _100)
+  // transfer perm _99.val_ref --> old[l42](_99.val_ref) // unchecked: true
+  
+  _98 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_98.val_ref, write) && acc(i32(_98.val_ref), read$())
+  inhale true
+  inhale (unfolding acc(i32(_98.val_ref), read$()) in _98.val_ref.val_int == old[l42](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_99.val_ref, _100)))
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l42](_99.val_ref)), read$())
+  label l43
+  goto loop3_group3_bb24
+  label loop3_group3_bb24
+  // ========== loop3_group3_bb24 ==========
+  
+  __t20 := true
+  // [mir] StorageDead(_100)
+  
+  // [mir] StorageDead(_99)
+  
+  // [mir] _97 = (*_98)
+  
+  _97 := builtin$havoc_ref()
+  inhale acc(_97.val_int, write)
+  unfold acc(i32(_98.val_ref), read$())
+  _97.val_int := _98.val_ref.val_int
+  label l44
+  // expire_borrows ReborrowingDAG(L55,L56,L42,)
+
+  
+  if (__t19) {
+    // expire loan L55
+    
+    _old$l43$0 := _98.val_ref
+    inhale acc(DeadBorrowToken$(55), write) && acc(i32(_old$l43$0), read$()) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l42](_99.val_ref)), read$())
+    fold acc(i32(_old$l43$0), read$())
+    inhale acc(DeadBorrowToken$(55), write)
+    apply acc(DeadBorrowToken$(55), write) && acc(i32(_old$l43$0), read$()) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l42](_99.val_ref)), read$())
+  }
+  if (__t19 && (__t19 && __t19)) {
+    // expire loan L42
+    
+    // transfer perm old[l42](_99.val_ref) --> old[l40](_99.val_ref) // unchecked: false
+    
+    exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l40](_99.val_ref)), read$())
+    inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  // [mir] _96 = move _97
+  
+  _96 := _97
+  label l45
+  // [mir] EndRegion('446s)
+  
+  // [mir] StorageDead(_97)
+  
+  // [mir] StorageDead(_98)
+  
+  // [mir] StorageLive(_101)
+  
+  // [mir] StorageLive(_102)
+  
+  // [mir] StorageLive(_103)
+  
+  // [mir] StorageLive(_104)
+  
+  // [mir] _104 = &'453s (*_1)
+  
+  _104 := builtin$havoc_ref()
+  inhale acc(_104.val_ref, write)
+  _104.val_ref := _1.val_ref
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_104.val_ref), read$())
+  label l46
+  // [mir] StorageLive(_105)
+  
+  // [mir] _105 = _2
+  
+  _105 := builtin$havoc_int()
+  inhale true
+  _105 := _2.val_int
+  label l47
+  // [mir] _103 = const VecWrapperI32::index(move _104, move _105) -> [return: bb25, unwind: bb1]
+  
+  label l48
+  assert 0 <= _105 && _105 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_104.val_ref)
+  assert _105 >= 0 && 18446744073709551615 >= _105
+  assert true
+  exhale acc(_104.val_ref, write) && (_105 >= 0 && 18446744073709551615 >= _105)
+  // transfer perm _104.val_ref --> old[l48](_104.val_ref) // unchecked: true
+  
+  _103 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_103.val_ref, write) && acc(i32(_103.val_ref), read$())
+  inhale true
+  inhale (unfolding acc(i32(_103.val_ref), read$()) in _103.val_ref.val_int == old[l48](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_104.val_ref, _105)))
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l48](_104.val_ref)), read$())
+  label l49
+  goto loop3_group3_bb25
+  label loop3_group3_bb25
+  // ========== loop3_group3_bb25 ==========
+  
+  __t21 := true
+  // [mir] StorageDead(_105)
+  
+  // [mir] StorageDead(_104)
+  
+  // [mir] _102 = (*_103)
+  
+  _102 := builtin$havoc_ref()
+  inhale acc(_102.val_int, write)
+  unfold acc(i32(_103.val_ref), read$())
+  _102.val_int := _103.val_ref.val_int
+  label l50
+  // expire_borrows ReborrowingDAG(L76,L77,L43,)
+
+  
+  if (__t20) {
+    // expire loan L76
+    
+    _old$l49$0 := _103.val_ref
+    inhale acc(DeadBorrowToken$(76), write) && acc(i32(_old$l49$0), read$()) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l48](_104.val_ref)), read$())
+    fold acc(i32(_old$l49$0), read$())
+    inhale acc(DeadBorrowToken$(76), write)
+    apply acc(DeadBorrowToken$(76), write) && acc(i32(_old$l49$0), read$()) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l48](_104.val_ref)), read$())
+  }
+  if (__t20 && (__t20 && __t20)) {
+    // expire loan L43
+    
+    // transfer perm old[l48](_104.val_ref) --> old[l46](_104.val_ref) // unchecked: false
+    
+    exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l46](_104.val_ref)), read$())
+    inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  // [mir] _101 = move _102
+  
+  _101 := _102
+  label l51
+  // [mir] EndRegion('453s)
+  
+  // [mir] StorageDead(_102)
+  
+  // [mir] StorageDead(_103)
+  
+  // [mir] StorageLive(_106)
+  
+  // [mir] StorageLive(_107)
+  
+  // [mir] _107 = &'488_7rs mut (*_1)
+  
+  _107 := builtin$havoc_ref()
+  inhale acc(_107.val_ref, write)
+  _107.val_ref := _1.val_ref
+  label l52
+  // [mir] StorageLive(_108)
+  
+  // [mir] _108 = _3
+  
+  _108 := builtin$havoc_int()
+  inhale true
+  _108 := _3.val_int
+  label l53
+  // [mir] _106 = const VecWrapperI32::index_mut(move _107, move _108) -> [return: bb26, unwind: bb1]
+  
+  label l54
+  assert 0 <= _108 && _108 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_107.val_ref)
+  assert _108 >= 0 && 18446744073709551615 >= _108
+  assert true
+  exhale acc(_107.val_ref, write) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_107.val_ref), write) && (_108 >= 0 && 18446744073709551615 >= _108))
+  _106 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_106.val_ref, write) && acc(i32(_106.val_ref), write)
+  inhale true
+  inhale (unfolding acc(i32(_106.val_ref), write) in _106.val_ref.val_int == old[l54](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_107.val_ref, _108)))
+  label l55
+  goto loop3_group3_bb26
+  label loop3_group3_bb26
+  // ========== loop3_group3_bb26 ==========
+  
+  __t22 := true
+  // [mir] StorageDead(_108)
+  
+  // [mir] StorageDead(_107)
+  
+  // [mir] StorageLive(_109)
+  
+  // [mir] _109 = _101
+  
+  _109 := builtin$havoc_ref()
+  inhale acc(_109.val_int, write)
+  _109.val_int := _101.val_int
+  label l56
+  // [mir] (*_106) = move _109
+  
+  _106.val_ref := _109
+  label l57
+  // expire_borrows ReborrowingDAG(L78,L79,L44,)
+
+  
+  if (__t21) {
+    // expire loan L78
+    
+    _old$l55$0 := _106.val_ref
+    inhale acc(DeadBorrowToken$(78), write) && acc(i32(_old$l55$0), write) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l54](_107.val_ref)), write) && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l54](_107.val_ref)) == old[l54](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_107.val_ref)) && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l54](_107.val_ref), old[l54](_108)) == old[lhs]((unfolding acc(i32(_old$l55$0), write) in _old$l55$0.val_int)) && (forall i: Int :: 0 <= i && (i < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l54](_107.val_ref)) && !(i == old[l54](_108))) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l54](_107.val_ref), i) == old[l54](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_107.val_ref, i)))))
+    fold acc(i32(_old$l55$0), write)
+    inhale acc(DeadBorrowToken$(78), write)
+    apply acc(DeadBorrowToken$(78), write) && acc(i32(_old$l55$0), write) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l54](_107.val_ref)), write) && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l54](_107.val_ref)) == old[l54](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_107.val_ref)) && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l54](_107.val_ref), old[l54](_108)) == old[lhs]((unfolding acc(i32(_old$l55$0), write) in _old$l55$0.val_int)) && (forall i: Int :: 0 <= i && (i < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l54](_107.val_ref)) && !(i == old[l54](_108))) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l54](_107.val_ref), i) == old[l54](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_107.val_ref, i)))))
+  }
+  // [mir] StorageDead(_109)
+  
+  // [mir] StorageLive(_110)
+  
+  // [mir] StorageLive(_111)
+  
+  // [mir] _111 = &'488_9rs mut (*_1)
+  
+  _111 := builtin$havoc_ref()
+  inhale acc(_111.val_ref, write)
+  _111.val_ref := _1.val_ref
+  label l58
+  // [mir] StorageLive(_112)
+  
+  // [mir] _112 = _2
+  
+  _112 := builtin$havoc_int()
+  inhale true
+  _112 := _2.val_int
+  label l59
+  // [mir] _110 = const VecWrapperI32::index_mut(move _111, move _112) -> [return: bb27, unwind: bb1]
+  
+  label l60
+  assert 0 <= _112 && _112 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_111.val_ref)
+  assert _112 >= 0 && 18446744073709551615 >= _112
+  assert true
+  exhale acc(_111.val_ref, write) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_111.val_ref), write) && (_112 >= 0 && 18446744073709551615 >= _112))
+  _110 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_110.val_ref, write) && acc(i32(_110.val_ref), write)
+  inhale true
+  inhale (unfolding acc(i32(_110.val_ref), write) in _110.val_ref.val_int == old[l60](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_111.val_ref, _112)))
+  label l61
+  goto loop3_group3_bb27
+  label loop3_group3_bb27
+  // ========== loop3_group3_bb27 ==========
+  
+  __t23 := true
+  // [mir] StorageDead(_112)
+  
+  // [mir] StorageDead(_111)
+  
+  // [mir] StorageLive(_113)
+  
+  // [mir] _113 = _96
+  
+  _113 := builtin$havoc_ref()
+  inhale acc(_113.val_int, write)
+  _113.val_int := _96.val_int
+  label l62
+  // [mir] (*_110) = move _113
+  
+  _110.val_ref := _113
+  label l63
+  // expire_borrows ReborrowingDAG(L61,L62,L45,)
+
+  
+  if (__t22) {
+    // expire loan L61
+    
+    _old$l61$0 := _110.val_ref
+    inhale acc(DeadBorrowToken$(61), write) && acc(i32(_old$l61$0), write) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l60](_111.val_ref)), write) && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l60](_111.val_ref)) == old[l60](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_111.val_ref)) && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l60](_111.val_ref), old[l60](_112)) == old[lhs]((unfolding acc(i32(_old$l61$0), write) in _old$l61$0.val_int)) && (forall i: Int :: 0 <= i && (i < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l60](_111.val_ref)) && !(i == old[l60](_112))) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l60](_111.val_ref), i) == old[l60](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_111.val_ref, i)))))
+    fold acc(i32(_old$l61$0), write)
+    inhale acc(DeadBorrowToken$(61), write)
+    apply acc(DeadBorrowToken$(61), write) && acc(i32(_old$l61$0), write) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l60](_111.val_ref)), write) && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l60](_111.val_ref)) == old[l60](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_111.val_ref)) && (m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l60](_111.val_ref), old[l60](_112)) == old[lhs]((unfolding acc(i32(_old$l61$0), write) in _old$l61$0.val_int)) && (forall i: Int :: 0 <= i && (i < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l60](_111.val_ref)) && !(i == old[l60](_112))) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l60](_111.val_ref), i) == old[l60](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_111.val_ref, i)))))
+  }
+  // [mir] StorageDead(_113)
+  
+  // [mir] _114 = CheckedAdd(_3, const 1usize)
+  
+  _114 := builtin$havoc_ref()
+  inhale acc(_114.tuple_0, write)
+  inhale acc(_114.tuple_0.val_int, write)
+  inhale acc(_114.tuple_1, write)
+  inhale acc(_114.tuple_1.val_bool, write)
+  _114.tuple_0.val_int := _3.val_int + 1
+  _114.tuple_1.val_bool := _3.val_int + 1 < 0 || _3.val_int + 1 > 18446744073709551615
+  // [mir] assert(!move (_114.1: bool), "attempt to add with overflow") -> [success: bb28, unwind: bb1]
+  
+  __t36 := _114.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t36
+  goto loop3_group3_bb28
+  label loop3_group3_bb28
+  // ========== loop3_group3_bb28 ==========
+  
+  __t24 := true
+  // [mir] _3 = move (_114.0: usize)
+  
+  _3 := _114.tuple_0
+  label l64
+  // [mir] StorageLive(_115)
+  
+  // [mir] _115 = _3
+  
+  _115 := builtin$havoc_int()
+  inhale true
+  _115 := _3.val_int
+  label l65
+  // [mir] StorageLive(_116)
+  
+  // [mir] StorageLive(_117)
+  
+  // [mir] _117 = &'484s (*_1)
+  
+  _117 := builtin$havoc_ref()
+  inhale acc(_117.val_ref, write)
+  _117.val_ref := _1.val_ref
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_117.val_ref), read$())
+  label l66
+  // [mir] _116 = const VecWrapperI32::len(move _117) -> [return: bb29, unwind: bb1]
+  
+  label l67
+  _116 := builtin$havoc_int()
+  inhale _116 >= 0 && 18446744073709551615 >= _116
+  inhale _116 >= 0 && 18446744073709551615 >= _116
+  inhale _116 == m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_117.val_ref)
+  // transfer perm _117.val_ref --> old[l67](_117.val_ref) // unchecked: false
+  
+  goto l68
+  label loop3_group3_bb29
+  // ========== loop3_group3_bb29 ==========
+  
+  __t25 := true
+  // [mir] EndRegion('484s)
+  
+  // [mir] StorageDead(_117)
+  
+  // [mir] _4 = Lt(move _115, move _116)
+  
+  unfold acc(bool(_4), write)
+  _4.val_bool := _115 < _116
+  // [mir] StorageDead(_116)
+  
+  // [mir] StorageDead(_115)
+  
+  // [mir] _9 = ()
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(tuple0$(_9), write)
+  // [mir] EndRegion('488_9rs)
+  
+  // [mir] StorageDead(_110)
+  
+  // [mir] EndRegion('488_7rs)
+  
+  // [mir] StorageDead(_106)
+  
+  // [mir] StorageDead(_101)
+  
+  // [mir] StorageDead(_96)
+  
+  // [mir] StorageDead(_39)
+  
+  // [mir] StorageDead(_36)
+  
+  // [mir] goto -> bb3
+  
+  goto loop3_group4_bb3
+  label loop3_group3_bb7
+  // ========== loop3_group3_bb7 ==========
+  
+  __t4 := true
+  // [mir] _10 = ()
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(tuple0$(_10), write)
+  // [mir] goto -> bb8
+  
+  goto loop3_group3_bb8
+  label loop3_group3_bb8
+  // ========== loop3_group3_bb8 ==========
+  
+  __t5 := true
+  // [mir] StorageLive(_35)
+  
+  // [mir] _35 = _3
+  
+  _35 := builtin$havoc_ref()
+  inhale acc(_35.val_int, write)
+  unfold acc(usize(_3), write)
+  _35.val_int := _3.val_int
+  label l7
+  // [mir] _2 = move _35
+  
+  _2 := _35
+  label l8
+  // [mir] StorageDead(_35)
+  
+  // [mir] StorageLive(_36)
+  
+  // [mir] StorageLive(_37)
+  
+  // [mir] _37 = _3
+  
+  _37 := builtin$havoc_int()
+  inhale true
+  _37 := _3.val_int
+  label l9
+  // [mir] _38 = CheckedAdd(move _37, const 1usize)
+  
+  _38 := builtin$havoc_ref()
+  inhale acc(_38.tuple_0, write)
+  inhale acc(_38.tuple_0.val_int, write)
+  inhale acc(_38.tuple_1, write)
+  inhale acc(_38.tuple_1.val_bool, write)
+  _38.tuple_0.val_int := _37 + 1
+  _38.tuple_1.val_bool := _37 + 1 < 0 || _37 + 1 > 18446744073709551615
+  // [mir] assert(!move (_38.1: bool), "attempt to add with overflow") -> [success: bb9, unwind: bb1]
+  
+  __t29 := _38.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t29
+  goto loop3_group3_bb9
+  label loop3_group3_bb9
+  // ========== loop3_group3_bb9 ==========
+  
+  __t6 := true
+  // [mir] _36 = move (_38.0: usize)
+  
+  _36 := _38.tuple_0
+  label l10
+  // [mir] StorageDead(_37)
+  
+  // [mir] StorageLive(_39)
+  
+  // [mir] StorageLive(_40)
+  
+  // [mir] _40 = _36
+  
+  _40 := builtin$havoc_int()
+  inhale true
+  _40 := _36.val_int
+  label l11
+  // [mir] StorageLive(_41)
+  
+  // [mir] StorageLive(_42)
+  
+  // [mir] _42 = &'183s (*_1)
+  
+  _42 := builtin$havoc_ref()
+  inhale acc(_42.val_ref, write)
+  _42.val_ref := _1.val_ref
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_42.val_ref), read$())
+  label l12
+  // [mir] _41 = const VecWrapperI32::len(move _42) -> [return: bb10, unwind: bb1]
+  
+  label l13
+  _41 := builtin$havoc_int()
+  inhale _41 >= 0 && 18446744073709551615 >= _41
+  inhale _41 >= 0 && 18446744073709551615 >= _41
+  inhale _41 == m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_42.val_ref)
+  // transfer perm _42.val_ref --> old[l13](_42.val_ref) // unchecked: false
+  
+  goto l14
+  label loop3_group3_loop11_end_body
+  // ========== loop3_group3_loop11_end_body ==========
+  
+  // Assert and exhale the loop invariant of block bb11
+  
+  fold acc(usize(_2), write)
+  // obtain acc(usize(_2), write)
+  
+  fold acc(usize(_36), write)
+  // obtain acc(usize(_36), write)
+  
+  fold acc(bool(_39), write)
+  // obtain acc(bool(_39), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read)
+  
+  // obtain acc(usize(_3), read)
+  
+  assert m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && (0 <= (unfolding acc(usize(_3), write) in _3.val_int) && (unfolding acc(usize(_3), write) in _3.val_int) < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_3), write) in (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < _3.val_int) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2))) && ((unfolding acc(usize(_3), write) in (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < _3.val_int && (_3.val_int <= k2 && k2 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref))) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2))) && ((unfolding acc(usize(_3), write) in _3.val_int) < (unfolding acc(usize(_36), write) in _36.val_int) && ((unfolding acc(usize(_36), write) in _36.val_int) < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_3), write) in _3.val_int) <= (unfolding acc(usize(_2), write) in _2.val_int) && ((unfolding acc(usize(_2), write) in _2.val_int) < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_3), write) in (unfolding acc(usize(_2), write) in (forall k1: Int :: 0 <= k1 && k1 < _3.val_int ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, _2.val_int)))) && (unfolding acc(usize(_2), write) in (unfolding acc(usize(_36), write) in (unfolding acc(usize(_3), write) in (forall k: Int :: _3.val_int <= k && (k < _36.val_int && k < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, _2.val_int) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k)))))))))))))
+  assert _preserve$1 == _1.val_ref
+  exhale acc(usize(_2), write) && (acc(usize(_36), write) && (acc(bool(_39), write) && (acc(_1.val_ref, read$()) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$()) && acc(usize(_3), read$())))))
+  inhale false
+  goto end_of_method
+  label loop3_group3_loop11_group1_bb11
+  // ========== loop3_group3_loop11_group1_bb11 ==========
+  
+  // This is a loop head
+  
+  __t8 := true
+  // [mir] StorageLive(_44)
+  
+  // [mir] _44 = _39
+  
+  _44 := builtin$havoc_ref()
+  inhale acc(_44.val_bool, write)
+  _44.val_bool := _39.val_bool
+  label l15
+  // [mir] switchInt(move _44) -> [false: bb12, otherwise: bb13]
+  
+  __t30 := _44.val_bool
+  if (__t30) {
+    goto l17
+  }
+  goto l16
+  label loop3_group3_loop11_group2_bb13
+  // ========== loop3_group3_loop11_group2_bb13 ==========
+  
+  __t9 := true
+  // [mir] switchInt(const false) -> [false: bb15, otherwise: bb14]
+  
+  __t31 := false
+  // Ignore default target bb14, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop3_group3_loop11_inv_pre
+  label loop3_group3_loop11_group3_bb15
+  // ========== loop3_group3_loop11_group3_bb15 ==========
+  
+  __t10 := true
+  // [mir] _45 = ()
+  
+  _45 := builtin$havoc_ref()
+  inhale acc(tuple0$(_45), write)
+  // [mir] goto -> bb16
+  
+  goto loop3_group3_loop11_group3_bb16
+  label loop3_group3_loop11_group3_bb16
+  // ========== loop3_group3_loop11_group3_bb16 ==========
+  
+  __t11 := true
+  // [mir] StorageLive(_82)
+  
+  // [mir] StorageLive(_83)
+  
+  // [mir] StorageLive(_84)
+  
+  // [mir] StorageLive(_85)
+  
+  // [mir] _85 = &'424s (*_1)
+  
+  _85 := builtin$havoc_ref()
+  inhale acc(_85.val_ref, write)
+  _85.val_ref := _1.val_ref
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_85.val_ref), read$())
+  label l18
+  // [mir] StorageLive(_86)
+  
+  // [mir] _86 = _36
+  
+  _86 := builtin$havoc_int()
+  inhale true
+  unfold acc(usize(_36), write)
+  _86 := _36.val_int
+  label l19
+  // [mir] _84 = const VecWrapperI32::index(move _85, move _86) -> [return: bb17, unwind: bb1]
+  
+  label l20
+  assert 0 <= _86 && _86 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_85.val_ref)
+  assert _86 >= 0 && 18446744073709551615 >= _86
+  assert true
+  exhale acc(_85.val_ref, write) && (_86 >= 0 && 18446744073709551615 >= _86)
+  // transfer perm _85.val_ref --> old[l20](_85.val_ref) // unchecked: true
+  
+  _84 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_84.val_ref, write) && acc(i32(_84.val_ref), read$())
+  inhale true
+  inhale (unfolding acc(i32(_84.val_ref), read$()) in _84.val_ref.val_int == old[l20](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_85.val_ref, _86)))
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l20](_85.val_ref)), read$())
+  label l21
+  goto loop3_group3_loop11_group3_bb17
+  label loop3_group3_loop11_group3_bb17
+  // ========== loop3_group3_loop11_group3_bb17 ==========
+  
+  __t12 := true
+  // [mir] StorageDead(_86)
+  
+  // [mir] StorageDead(_85)
+  
+  // [mir] _83 = (*_84)
+  
+  _83 := builtin$havoc_int()
+  inhale true
+  unfold acc(i32(_84.val_ref), read$())
+  _83 := _84.val_ref.val_int
+  label l22
+  // expire_borrows ReborrowingDAG(L74,L75,L39,)
+
+  
+  if (__t11) {
+    // expire loan L74
+    
+    _old$l21$0 := _84.val_ref
+    inhale acc(DeadBorrowToken$(74), write) && acc(i32(_old$l21$0), read$()) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l20](_85.val_ref)), read$())
+    fold acc(i32(_old$l21$0), read$())
+    inhale acc(DeadBorrowToken$(74), write)
+    apply acc(DeadBorrowToken$(74), write) && acc(i32(_old$l21$0), read$()) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l20](_85.val_ref)), read$())
+  }
+  if (__t11 && (__t11 && __t11)) {
+    // expire loan L39
+    
+    // transfer perm old[l20](_85.val_ref) --> old[l18](_85.val_ref) // unchecked: false
+    
+    exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l18](_85.val_ref)), read$())
+    inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  // [mir] StorageLive(_87)
+  
+  // [mir] StorageLive(_88)
+  
+  // [mir] StorageLive(_89)
+  
+  // [mir] _89 = &'424s (*_1)
+  
+  _89 := builtin$havoc_ref()
+  inhale acc(_89.val_ref, write)
+  _89.val_ref := _1.val_ref
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_89.val_ref), read$())
+  label l23
+  // [mir] StorageLive(_90)
+  
+  // [mir] _90 = _2
+  
+  _90 := builtin$havoc_int()
+  inhale true
+  unfold acc(usize(_2), write)
+  _90 := _2.val_int
+  label l24
+  // [mir] _88 = const VecWrapperI32::index(move _89, move _90) -> [return: bb18, unwind: bb1]
+  
+  label l25
+  assert 0 <= _90 && _90 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_89.val_ref)
+  assert _90 >= 0 && 18446744073709551615 >= _90
+  assert true
+  exhale acc(_89.val_ref, write) && (_90 >= 0 && 18446744073709551615 >= _90)
+  // transfer perm _89.val_ref --> old[l25](_89.val_ref) // unchecked: true
+  
+  _88 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_88.val_ref, write) && acc(i32(_88.val_ref), read$())
+  inhale true
+  inhale (unfolding acc(i32(_88.val_ref), read$()) in _88.val_ref.val_int == old[l25](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_89.val_ref, _90)))
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l25](_89.val_ref)), read$())
+  label l26
+  goto loop3_group3_loop11_group3_bb18
+  label loop3_group3_loop11_group3_bb18
+  // ========== loop3_group3_loop11_group3_bb18 ==========
+  
+  __t13 := true
+  // [mir] StorageDead(_90)
+  
+  // [mir] StorageDead(_89)
+  
+  // [mir] _87 = (*_88)
+  
+  _87 := builtin$havoc_int()
+  inhale true
+  unfold acc(i32(_88.val_ref), read$())
+  _87 := _88.val_ref.val_int
+  label l27
+  // expire_borrows ReborrowingDAG(L47,L48,L40,)
+
+  
+  if (__t12) {
+    // expire loan L47
+    
+    _old$l26$0 := _88.val_ref
+    inhale acc(DeadBorrowToken$(47), write) && acc(i32(_old$l26$0), read$()) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l25](_89.val_ref)), read$())
+    fold acc(i32(_old$l26$0), read$())
+    inhale acc(DeadBorrowToken$(47), write)
+    apply acc(DeadBorrowToken$(47), write) && acc(i32(_old$l26$0), read$()) --* acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l25](_89.val_ref)), read$())
+  }
+  if (__t12 && (__t12 && __t12)) {
+    // expire loan L40
+    
+    // transfer perm old[l25](_89.val_ref) --> old[l23](_89.val_ref) // unchecked: false
+    
+    exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(old[l23](_89.val_ref)), read$())
+    inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  // [mir] _82 = Lt(move _83, move _87)
+  
+  _82 := builtin$havoc_ref()
+  inhale acc(_82.val_bool, write)
+  _82.val_bool := _83 < _87
+  // [mir] EndRegion('424s)
+  
+  // [mir] StorageDead(_87)
+  
+  // [mir] StorageDead(_88)
+  
+  // [mir] StorageDead(_83)
+  
+  // [mir] StorageDead(_84)
+  
+  // [mir] switchInt(move _82) -> [false: bb20, otherwise: bb19]
+  
+  __t32 := _82.val_bool
+  if (!__t32) {
+    goto l29
+  }
+  goto l28
+  label loop3_group3_loop11_group3_bb19
+  // ========== loop3_group3_loop11_group3_bb19 ==========
+  
+  __t14 := true
+  // [mir] StorageLive(_91)
+  
+  // [mir] _91 = _36
+  
+  _91 := builtin$havoc_ref()
+  inhale acc(_91.val_int, write)
+  _91.val_int := _36.val_int
+  label l30
+  // [mir] _2 = move _91
+  
+  _2 := _91
+  label l31
+  // [mir] StorageDead(_91)
+  
+  // [mir] _81 = ()
+  
+  _81 := builtin$havoc_ref()
+  inhale acc(tuple0$(_81), write)
+  // [mir] goto -> bb21
+  
+  goto loop3_group3_loop11_group3_bb21
+  label loop3_group3_loop11_group3_bb20
+  // ========== loop3_group3_loop11_group3_bb20 ==========
+  
+  __t15 := true
+  // [mir] _81 = ()
+  
+  _81 := builtin$havoc_ref()
+  inhale acc(tuple0$(_81), write)
+  // [mir] goto -> bb21
+  
+  goto loop3_group3_loop11_group3_bb21
+  label loop3_group3_loop11_group3_bb21
+  // ========== loop3_group3_loop11_group3_bb21 ==========
+  
+  __t16 := true
+  // [mir] StorageDead(_82)
+  
+  // [mir] _92 = CheckedAdd(_36, const 1usize)
+  
+  _92 := builtin$havoc_ref()
+  inhale acc(_92.tuple_0, write)
+  inhale acc(_92.tuple_0.val_int, write)
+  inhale acc(_92.tuple_1, write)
+  inhale acc(_92.tuple_1.val_bool, write)
+  _92.tuple_0.val_int := _36.val_int + 1
+  _92.tuple_1.val_bool := _36.val_int + 1 < 0 || _36.val_int + 1 > 18446744073709551615
+  // [mir] assert(!move (_92.1: bool), "attempt to add with overflow") -> [success: bb22, unwind: bb1]
+  
+  __t33 := _92.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t33
+  goto loop3_group3_loop11_group3_bb22
+  label loop3_group3_loop11_group3_bb22
+  // ========== loop3_group3_loop11_group3_bb22 ==========
+  
+  __t17 := true
+  // [mir] _36 = move (_92.0: usize)
+  
+  _36 := _92.tuple_0
+  label l32
+  // [mir] StorageLive(_93)
+  
+  // [mir] _93 = _36
+  
+  _93 := builtin$havoc_int()
+  inhale true
+  _93 := _36.val_int
+  label l33
+  // [mir] StorageLive(_94)
+  
+  // [mir] StorageLive(_95)
+  
+  // [mir] _95 = &'434s (*_1)
+  
+  _95 := builtin$havoc_ref()
+  inhale acc(_95.val_ref, write)
+  _95.val_ref := _1.val_ref
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_95.val_ref), read$())
+  label l34
+  // [mir] _94 = const VecWrapperI32::len(move _95) -> [return: bb23, unwind: bb1]
+  
+  label l35
+  _94 := builtin$havoc_int()
+  inhale _94 >= 0 && 18446744073709551615 >= _94
+  inhale _94 >= 0 && 18446744073709551615 >= _94
+  inhale _94 == m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_95.val_ref)
+  // transfer perm _95.val_ref --> old[l35](_95.val_ref) // unchecked: false
+  
+  goto l36
+  label loop3_group3_loop11_group3_bb23
+  // ========== loop3_group3_loop11_group3_bb23 ==========
+  
+  __t18 := true
+  // [mir] EndRegion('434s)
+  
+  // [mir] StorageDead(_95)
+  
+  // [mir] _39 = Lt(move _93, move _94)
+  
+  unfold acc(bool(_39), write)
+  _39.val_bool := _93 < _94
+  // [mir] StorageDead(_94)
+  
+  // [mir] StorageDead(_93)
+  
+  // [mir] _9 = ()
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(tuple0$(_9), write)
+  // [mir] goto -> bb11
+  
+  goto loop3_group3_loop11_group4_bb11
+  label loop3_group3_loop11_group4_bb11
+  // ========== loop3_group3_loop11_group4_bb11 ==========
+  
+  // This is a loop head
+  
+  __t8 := true
+  // [mir] StorageLive(_44)
+  
+  // [mir] _44 = _39
+  
+  _44 := builtin$havoc_ref()
+  inhale acc(_44.val_bool, write)
+  _44.val_bool := _39.val_bool
+  label l37
+  // [mir] switchInt(move _44) -> [false: bb12, otherwise: bb13]
+  
+  __t34 := _44.val_bool
+  if (__t34) {
+    goto l39
+  }
+  goto l38
+  label loop3_group3_loop11_group5_bb13
+  // ========== loop3_group3_loop11_group5_bb13 ==========
+  
+  __t9 := true
+  // [mir] switchInt(const false) -> [false: bb15, otherwise: bb14]
+  
+  __t35 := false
+  // Ignore default target bb14, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop3_group3_loop11_end_body
+  label loop3_group3_loop11_inv_post
+  // ========== loop3_group3_loop11_inv_post ==========
+  
+  // Inhale the loop invariant of block bb11
+  
+  inhale acc(usize(_2), write) && (acc(usize(_36), write) && (acc(bool(_39), write) && (acc(_1.val_ref, read$()) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$()) && acc(usize(_3), read$())))))
+  inhale _preserve$1 == _1.val_ref
+  inhale (unfolding acc(usize(_36), write) in (unfolding acc(usize(_3), write) in (unfolding acc(usize(_2), write) in m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && (0 <= _3.val_int && _3.val_int < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < _3.val_int) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2)) && ((forall k1: Int, k2: Int :: 0 <= k1 && (k1 < _3.val_int && (_3.val_int <= k2 && k2 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref))) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2)) && (_3.val_int < _36.val_int && (_36.val_int < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && (_3.val_int <= _2.val_int && (_2.val_int < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((forall k1: Int :: 0 <= k1 && k1 < _3.val_int ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, _2.val_int)) && (forall k: Int :: _3.val_int <= k && (k < _36.val_int && k < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, _2.val_int) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k)))))))))))))
+  goto loop3_group3_loop11_group3_bb15
+  label loop3_group3_loop11_inv_pre
+  // ========== loop3_group3_loop11_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb11
+  
+  _preserve$1 := _1.val_ref
+  fold acc(usize(_2), write)
+  // obtain acc(usize(_2), write)
+  
+  fold acc(usize(_36), write)
+  // obtain acc(usize(_36), write)
+  
+  fold acc(bool(_39), write)
+  // obtain acc(bool(_39), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read)
+  
+  fold acc(usize(_3), write)
+  // obtain acc(usize(_3), read)
+  
+  assert m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && (0 <= (unfolding acc(usize(_3), write) in _3.val_int) && (unfolding acc(usize(_3), write) in _3.val_int) < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_3), write) in (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < _3.val_int) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2))) && ((unfolding acc(usize(_3), write) in (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < _3.val_int && (_3.val_int <= k2 && k2 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref))) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2))) && ((unfolding acc(usize(_3), write) in _3.val_int) < (unfolding acc(usize(_36), write) in _36.val_int) && ((unfolding acc(usize(_36), write) in _36.val_int) < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_3), write) in _3.val_int) <= (unfolding acc(usize(_2), write) in _2.val_int) && ((unfolding acc(usize(_2), write) in _2.val_int) < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((unfolding acc(usize(_2), write) in (unfolding acc(usize(_3), write) in (forall k1: Int :: 0 <= k1 && k1 < _3.val_int ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, _2.val_int)))) && (unfolding acc(usize(_3), write) in (unfolding acc(usize(_2), write) in (unfolding acc(usize(_36), write) in (forall k: Int :: _3.val_int <= k && (k < _36.val_int && k < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, _2.val_int) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k)))))))))))))
+  assert _preserve$1 == _1.val_ref
+  exhale acc(usize(_2), write) && (acc(usize(_36), write) && (acc(bool(_39), write) && (acc(_1.val_ref, read$()) && (acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$()) && acc(usize(_3), read$())))))
+  __t12 := builtin$havoc_bool()
+  _88 := builtin$havoc_ref()
+  _89 := builtin$havoc_ref()
+  _44 := builtin$havoc_ref()
+  __t16 := builtin$havoc_bool()
+  _45 := builtin$havoc_ref()
+  _86 := builtin$havoc_int()
+  _91 := builtin$havoc_ref()
+  __t11 := builtin$havoc_bool()
+  _83 := builtin$havoc_int()
+  __t18 := builtin$havoc_bool()
+  __t17 := builtin$havoc_bool()
+  _92 := builtin$havoc_ref()
+  __t15 := builtin$havoc_bool()
+  __t9 := builtin$havoc_bool()
+  _2 := builtin$havoc_ref()
+  _82 := builtin$havoc_ref()
+  _81 := builtin$havoc_ref()
+  _87 := builtin$havoc_int()
+  _95 := builtin$havoc_ref()
+  _36 := builtin$havoc_ref()
+  _90 := builtin$havoc_int()
+  _85 := builtin$havoc_ref()
+  __t35 := builtin$havoc_bool()
+  _93 := builtin$havoc_int()
+  __t14 := builtin$havoc_bool()
+  __t8 := builtin$havoc_bool()
+  __t33 := builtin$havoc_bool()
+  __t10 := builtin$havoc_bool()
+  _84 := builtin$havoc_ref()
+  _94 := builtin$havoc_int()
+  _9 := builtin$havoc_ref()
+  __t13 := builtin$havoc_bool()
+  __t32 := builtin$havoc_bool()
+  __t34 := builtin$havoc_bool()
+  goto loop3_group3_loop11_inv_post
+  label loop3_group3_loop11_start
+  // ========== loop3_group3_loop11_start ==========
+  
+  goto loop3_group3_loop11_group1_bb11
+  label loop3_group4_bb3
+  // ========== loop3_group4_bb3 ==========
+  
+  // This is a loop head
+  
+  __t2 := true
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = _4
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_bool, write)
+  _8.val_bool := _4.val_bool
+  label l69
+  // [mir] switchInt(move _8) -> [false: bb4, otherwise: bb5]
+  
+  __t37 := _8.val_bool
+  if (__t37) {
+    goto l71
+  }
+  goto l70
+  label loop3_group5_bb5
+  // ========== loop3_group5_bb5 ==========
+  
+  __t3 := true
+  // [mir] switchInt(const false) -> [false: bb7, otherwise: bb6]
+  
+  __t38 := false
+  // Ignore default target bb6, as it is only used by Prusti to type-check a loop invariant.
+  
+  goto loop3_end_body
+  label loop3_inv_post
+  // ========== loop3_inv_post ==========
+  
+  // Inhale the loop invariant of block bb3
+  
+  inhale acc(usize(_3), write) && (acc(bool(_4), write) && (acc(_1.val_ref, read$()) && acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)))
+  inhale _preserve$0 == _1.val_ref
+  inhale (unfolding acc(bool(_4), write) in (unfolding acc(usize(_3), write) in m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && (0 <= _3.val_int && _3.val_int < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && ((_4.val_bool ==> _3.val_int < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((!_4.val_bool ==> _3.val_int == m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < _3.val_int) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2)) && (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < _3.val_int && (_3.val_int <= k2 && k2 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref))) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2))))))))
+  goto loop3_group3_bb7
+  label loop3_inv_pre
+  // ========== loop3_inv_pre ==========
+  
+  // Assert and exhale the loop invariant of block bb3
+  
+  _preserve$0 := _1.val_ref
+  fold acc(usize(_3), write)
+  // obtain acc(usize(_3), write)
+  
+  fold acc(bool(_4), write)
+  // obtain acc(bool(_4), write)
+  
+  // obtain acc(_1.val_ref, read)
+  
+  // obtain acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  assert m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) == old[pre](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && (0 <= (unfolding acc(usize(_3), write) in _3.val_int) && (unfolding acc(usize(_3), write) in _3.val_int) < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) && (((unfolding acc(bool(_4), write) in _4.val_bool) ==> (unfolding acc(usize(_3), write) in _3.val_int) < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((!(unfolding acc(bool(_4), write) in _4.val_bool) ==> (unfolding acc(usize(_3), write) in _3.val_int) == m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && ((unfolding acc(usize(_3), write) in (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < _3.val_int) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2))) && (unfolding acc(usize(_3), write) in (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < _3.val_int && (_3.val_int <= k2 && k2 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref))) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, k2)))))))
+  assert _preserve$0 == _1.val_ref
+  exhale acc(usize(_3), write) && (acc(bool(_4), write) && (acc(_1.val_ref, read$()) && acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)))
+  __t36 := builtin$havoc_bool()
+  __t7 := builtin$havoc_bool()
+  __t2 := builtin$havoc_bool()
+  _112 := builtin$havoc_int()
+  _9 := builtin$havoc_ref()
+  __t30 := builtin$havoc_bool()
+  _86 := builtin$havoc_int()
+  _89 := builtin$havoc_ref()
+  __t6 := builtin$havoc_bool()
+  _103 := builtin$havoc_ref()
+  _106 := builtin$havoc_ref()
+  _102 := builtin$havoc_ref()
+  _43 := builtin$havoc_ref()
+  _100 := builtin$havoc_int()
+  __t21 := builtin$havoc_bool()
+  _115 := builtin$havoc_int()
+  __t34 := builtin$havoc_bool()
+  _3 := builtin$havoc_ref()
+  _91 := builtin$havoc_ref()
+  _116 := builtin$havoc_int()
+  _88 := builtin$havoc_ref()
+  _39 := builtin$havoc_ref()
+  _35 := builtin$havoc_ref()
+  _81 := builtin$havoc_ref()
+  _104 := builtin$havoc_ref()
+  __t32 := builtin$havoc_bool()
+  __t10 := builtin$havoc_bool()
+  _92 := builtin$havoc_ref()
+  _109 := builtin$havoc_ref()
+  _99 := builtin$havoc_ref()
+  _111 := builtin$havoc_ref()
+  _98 := builtin$havoc_ref()
+  _113 := builtin$havoc_ref()
+  __t5 := builtin$havoc_bool()
+  __t19 := builtin$havoc_bool()
+  __t24 := builtin$havoc_bool()
+  _117 := builtin$havoc_ref()
+  __t13 := builtin$havoc_bool()
+  __t3 := builtin$havoc_bool()
+  __t37 := builtin$havoc_bool()
+  _8 := builtin$havoc_ref()
+  _107 := builtin$havoc_ref()
+  _94 := builtin$havoc_int()
+  _2 := builtin$havoc_ref()
+  __t12 := builtin$havoc_bool()
+  _108 := builtin$havoc_int()
+  __t25 := builtin$havoc_bool()
+  _45 := builtin$havoc_ref()
+  _preserve$1 := builtin$havoc_ref()
+  __t17 := builtin$havoc_bool()
+  _85 := builtin$havoc_ref()
+  __t20 := builtin$havoc_bool()
+  __t29 := builtin$havoc_bool()
+  __t35 := builtin$havoc_bool()
+  _93 := builtin$havoc_int()
+  _83 := builtin$havoc_int()
+  __t14 := builtin$havoc_bool()
+  _95 := builtin$havoc_ref()
+  _110 := builtin$havoc_ref()
+  _84 := builtin$havoc_ref()
+  _41 := builtin$havoc_int()
+  _37 := builtin$havoc_int()
+  __t16 := builtin$havoc_bool()
+  __t11 := builtin$havoc_bool()
+  _87 := builtin$havoc_int()
+  _40 := builtin$havoc_int()
+  _82 := builtin$havoc_ref()
+  __t23 := builtin$havoc_bool()
+  _36 := builtin$havoc_ref()
+  _38 := builtin$havoc_ref()
+  _101 := builtin$havoc_ref()
+  __t9 := builtin$havoc_bool()
+  __t22 := builtin$havoc_bool()
+  __t4 := builtin$havoc_bool()
+  __t31 := builtin$havoc_bool()
+  _96 := builtin$havoc_ref()
+  __t38 := builtin$havoc_bool()
+  __t15 := builtin$havoc_bool()
+  __t18 := builtin$havoc_bool()
+  _97 := builtin$havoc_ref()
+  _42 := builtin$havoc_ref()
+  _44 := builtin$havoc_ref()
+  __t8 := builtin$havoc_bool()
+  _10 := builtin$havoc_ref()
+  _105 := builtin$havoc_int()
+  _114 := builtin$havoc_ref()
+  __t33 := builtin$havoc_bool()
+  _90 := builtin$havoc_int()
+  goto loop3_inv_post
+  label loop3_start
+  // ========== loop3_start ==========
+  
+  goto loop3_group1_bb3
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) == old[pre](m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) && (forall k1: Int, k2: Int :: 0 <= k1 && (k1 < k2 && k2 < m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0)) ==> m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, k1) <= m_Selection_sort$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, k2))
+  assert true
+  exhale acc(m_Selection_sort$$VecWrapperI32$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Selection_sort$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  label start
+  // ========== start ==========
+  
+  // Name: "Selection_sort::main"
+  
+  // Def path: "Selection_sort::main[0]"
+  
+  // Span: tests/verify_overflow/pass/rosetta/Selection_sort.rs:163:1: 163:14
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)

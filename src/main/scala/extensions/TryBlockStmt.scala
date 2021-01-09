@@ -10,7 +10,7 @@ import viper.silver.ast._
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.{NameAnalyser, PExtender, PNode, PStmt, Translator, TypeChecker}
 
-final case class PTryBlock(body: PStmt) extends PExtender with PStmt {
+final case class PTryBlock(body: PStmt)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PExtender with PStmt {
   override val getSubnodes: Seq[PNode] = Seq(body)
 
   override def translateStmt(translator: Translator): Stmt = {

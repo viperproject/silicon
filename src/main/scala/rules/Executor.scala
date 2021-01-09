@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
@@ -77,7 +78,7 @@ object executor extends ExecutionRules {
 
   private def follows(s: State,
                       edges: Seq[SilverEdge],
-                      pvef: ast.Exp => PartialVerificationError,
+                      @unused pvef: ast.Exp => PartialVerificationError,
                       v: Verifier)
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult = {
@@ -116,7 +117,7 @@ object executor extends ExecutionRules {
          */
         sys.error(s"Unexpected block: $block")
 
-      case block @ cfg.LoopHeadBlock(invs, stmts,_) =>
+      case block @ cfg.LoopHeadBlock(invs, stmts, _) =>
         incomingEdgeKind match {
           case cfg.Kind.In =>
             /* We've reached a loop head block via an in-edge. Steps to perform:
@@ -204,6 +205,7 @@ object executor extends ExecutionRules {
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
+
     val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
       SymbExLogger.currentLog().collapse(stmt, sepIdentifier)
@@ -214,7 +216,7 @@ object executor extends ExecutionRules {
            (continuation: (State, Verifier) => VerificationResult)
            : VerificationResult = {
 
-    val s = state.copy(h=magicWandSupporter.getExecutionHeap(state))
+    val s = state.copy(h = magicWandSupporter.getExecutionHeap(state))
     val Q: (State, Verifier) => VerificationResult = (s, v) => {
       continuation(magicWandSupporter.moveToReserveHeap(s, v), v)}
 
@@ -544,6 +546,8 @@ object executor extends ExecutionRules {
            | _: ast.If
            | _: ast.Label
            | _: ast.Seqn
+           | _: ast.Assume
+           | _: ast.ExtensionStmt
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
     }
 

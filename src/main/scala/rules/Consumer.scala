@@ -241,8 +241,6 @@ object consumer extends ConsumptionRules {
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
-              forall = forall,
-              acc = acc,
               resource = field,
               qvars = qvars,
               formalQVars = Seq(`?r`),
@@ -280,8 +278,6 @@ object consumer extends ConsumptionRules {
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
-              forall = forall,
-              acc = acc,
               resource = predicate,
               qvars = qvars,
               formalQVars = formalVars,
@@ -314,8 +310,6 @@ object consumer extends ConsumptionRules {
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
-              forall = forall,
-              acc = wand,
               resource = wand,
               qvars = qvars,
               formalQVars = formalVars,

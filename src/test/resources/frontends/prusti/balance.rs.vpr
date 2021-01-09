@@ -1,0 +1,612 @@
+domain $SnapshotMirrors$ {
+  
+  function mirror$m_balance$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$balance$opensqu$0$closesqu$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$$int$__$TY$__Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_): Int
+}
+
+domain Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_ {
+  
+  function cons$__$TY$__$int$$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_arg_0: Int): Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_
+  
+  axiom Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$injectivity {
+    (forall _arg_0_1: Int, _arg_0_2: Int :: { cons$__$TY$__$int$$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_arg_0_1),cons$__$TY$__$int$$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_arg_0_2) } cons$__$TY$__$int$$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_arg_0_1) == cons$__$TY$__$int$$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_arg_0_2) ==> _arg_0_1 == _arg_0_2)
+  }
+}
+
+field closure_0: Ref
+
+field closure_1: Ref
+
+field f$bal: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$unreach_bool__$TY$__$bool$(): Bool
+  requires false
+
+
+function equals$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_left), read$())
+  requires acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_right), read$())
+{
+  snap$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_left) == snap$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_right)
+}
+
+function equals$__$TY$__ref$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$ref$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(_left.val_ref, read$())
+  requires acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_left.val_ref), read$())
+  requires acc(_right.val_ref, read$())
+  requires acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_right.val_ref), read$())
+{
+  snap$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_left.val_ref) == snap$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_right.val_ref)
+}
+
+function m_balance$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$balance$opensqu$0$closesqu$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures true
+  ensures 0 <= result
+  ensures [result == mirror$m_balance$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$balance$opensqu$0$closesqu$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$$int$__$TY$__Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$$int$(snap$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_pure_1)), true]
+{
+  (unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in (unfolding acc(u32(_pure_1.f$bal), read$()) in _pure_1.f$bal.val_int))
+}
+
+function not_equals$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_left), read$())
+  requires acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_right), read$())
+{
+  snap$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_left) != snap$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_right)
+}
+
+function not_equals$__$TY$__ref$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$ref$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$$bool$(_left: Ref, _right: Ref): Bool
+  requires acc(_left.val_ref, read$())
+  requires acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_left.val_ref), read$())
+  requires acc(_right.val_ref, read$())
+  requires acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_right.val_ref), read$())
+{
+  snap$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_left.val_ref) != snap$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_right.val_ref)
+}
+
+function snap$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_arg: Ref): Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_
+  requires acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_arg), read$())
+{
+  (unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_arg), read$()) in cons$__$TY$__$int$$Snap$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(snap$__$TY$__u32$$int$(_arg.f$bal)))
+}
+
+function snap$__$TY$__u32$$int$(_arg: Ref): Int
+  requires acc(u32(_arg), read$())
+{
+  (unfolding acc(u32(_arg), read$()) in _arg.val_int)
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_10$4$13107371109836920090(self: Ref) 
+
+predicate closure$0_1_11$4$13107371109836920090(self: Ref) 
+
+predicate closure$0_1_12$4$13107371109836920090(self: Ref) 
+
+predicate closure$0_1_13$4$876046000986327712(self: Ref) 
+
+predicate m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$bal, write) && acc(u32(self.f$bal), write)
+}
+
+predicate ref$closure$0_1_10$4$13107371109836920090(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_10$4$13107371109836920090(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_11$4$13107371109836920090(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_11$4$13107371109836920090(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_12$4$13107371109836920090(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_12$4$13107371109836920090(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_13$4$876046000986327712(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_13$4$876046000986327712(self.val_ref), write)
+}
+
+predicate ref$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$u32(self: Ref) {
+  acc(self.val_ref, write) && acc(u32(self.val_ref), write)
+}
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$u32$bool(self: Ref) {
+  acc(self.tuple_0, write) && (acc(u32(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(bool(self.tuple_1), write)))
+}
+
+predicate u32(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+method m_balance$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  label start
+  // ========== start ==========
+  
+  // Name: "balance::main"
+  
+  // Def path: "balance::main[0]"
+  
+  // Span: tests/verify/fail/fold-unfold/balance.rs:32:1: 32:13
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_balance$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$transfer$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var _old$pre$0: Ref
+  var _old$pre$1: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "balance::Account::transfer"
+  
+  // Def path: "balance::{{impl}}[1]::transfer[0]"
+  
+  // Span: tests/verify/fail/fold-unfold/balance.rs:26:5: 29:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && (acc(_2.val_ref, write) && (acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), write) && acc(u32(_3), write))))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = &'3s mut (*_1)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  _5.val_ref := _1.val_ref
+  label l0
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = _3
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_int, write)
+  unfold acc(u32(_3), write)
+  _6.val_int := _3.val_int
+  label l1
+  // [mir] _4 = const Account::withdraw(move _5, move _6) -> [return: bb2, unwind: bb1]
+  
+  label l2
+  fold acc(u32(_6), write)
+  assert true
+  exhale acc(_5.val_ref, write) && (acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_5.val_ref), write) && acc(u32(_6), write))
+  _4 := builtin$havoc_ref()
+  inhale acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(old[l2](_5.val_ref)), write)
+  inhale acc(tuple0$(_4), write)
+  inhale true
+  inhale (unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(old[l2](_5.val_ref)), write) in (unfolding acc(u32(old[l2](_5.val_ref).f$bal), write) in old[l2](_5.val_ref).f$bal.val_int == old[l2]((unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_5.val_ref), write) in (unfolding acc(u32(_5.val_ref.f$bal), write) in _5.val_ref.f$bal.val_int))) - old[l2](_6.val_int)))
+  label l3
+  goto l4
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] EndRegion('3s)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = &'7s mut (*_2)
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_ref, write)
+  _8.val_ref := _2.val_ref
+  label l5
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = _3
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_int, write)
+  _9.val_int := _3.val_int
+  label l6
+  // [mir] _7 = const Account::deposit(move _8, move _9) -> [return: bb3, unwind: bb1]
+  
+  label l7
+  fold acc(u32(_9), write)
+  assert true
+  exhale acc(_8.val_ref, write) && (acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_8.val_ref), write) && acc(u32(_9), write))
+  _7 := builtin$havoc_ref()
+  inhale acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(old[l7](_8.val_ref)), write)
+  inhale acc(tuple0$(_7), write)
+  inhale true
+  inhale m_balance$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$balance$opensqu$0$closesqu$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l7](_8.val_ref)) == old[l7]((unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_8.val_ref), write) in (unfolding acc(u32(_8.val_ref.f$bal), write) in _8.val_ref.f$bal.val_int))) + old[l7](_9.val_int)
+  label l8
+  goto l9
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] EndRegion('7s)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] StorageDead(_8)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label l4
+  // ========== l4 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L3,L0,)
+
+  
+  goto bb2
+  label l9
+  // ========== l9 ==========
+  
+  // MIR edge bb2 --> bb3
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L2,L1,)
+
+  
+  goto bb3
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // obtain acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), write)
+  
+  _old$pre$1 := _2.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert (unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write) in (unfolding acc(u32(_old$pre$0.f$bal), write) in _old$pre$0.f$bal.val_int)) == old[pre]((unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in (unfolding acc(u32(_1.val_ref.f$bal), write) in _1.val_ref.f$bal.val_int))) - old[pre]((unfolding acc(u32(_3), write) in _3.val_int)) && (unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write) in (unfolding acc(u32(_old$pre$0.f$bal), write) in _old$pre$0.f$bal.val_int)) + (unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_old$pre$1), write) in (unfolding acc(u32(_old$pre$1.f$bal), write) in _old$pre$1.f$bal.val_int)) == old[pre]((unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in (unfolding acc(u32(_1.val_ref.f$bal), write) in _1.val_ref.f$bal.val_int)) + (unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), write) in (unfolding acc(u32(_2.val_ref.f$bal), write) in _2.val_ref.f$bal.val_int)))
+  assert true
+  exhale acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write) && acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_old$pre$1), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_balance$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$deposit$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Int
+  var _4: Int
+  var _5: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "balance::Account::deposit"
+  
+  // Def path: "balance::{{impl}}[1]::deposit[0]"
+  
+  // Span: tests/verify/fail/fold-unfold/balance.rs:15:5: 17:6
+  
+  __t0 := false
+  __t1 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && acc(u32(_2), write))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = ((*_1).0: u32)
+  
+  _3 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  unfold acc(u32(_1.val_ref.f$bal), write)
+  _3 := _1.val_ref.f$bal.val_int
+  label l0
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = _2
+  
+  _4 := builtin$havoc_int()
+  inhale true
+  unfold acc(u32(_2), write)
+  _4 := _2.val_int
+  label l1
+  // [mir] _5 = CheckedAdd(move _3, move _4)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.tuple_0, write)
+  inhale acc(_5.tuple_0.val_int, write)
+  inhale acc(_5.tuple_1, write)
+  inhale acc(_5.tuple_1.val_bool, write)
+  _5.tuple_0.val_int := _3 + _4
+  _5.tuple_1.val_bool := false
+  // [mir] assert(!move (_5.1: bool), "attempt to add with overflow") -> [success: bb2, unwind: bb1]
+  
+  __t2 := _5.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t2
+  goto bb2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] ((*_1).0: u32) = move (_5.0: u32)
+  
+  _1.val_ref.f$bal := _5.tuple_0
+  label l2
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(u32(_1.val_ref.f$bal), write)
+  fold acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  // obtain acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert m_balance$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$balance$opensqu$0$closesqu$__$TY$__m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) == old[pre]((unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in (unfolding acc(u32(_1.val_ref.f$bal), write) in _1.val_ref.f$bal.val_int))) + old[pre]((unfolding acc(u32(_2), write) in _2.val_int))
+  assert true
+  exhale acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_balance$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$withdraw$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Int
+  var _4: Int
+  var _5: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "balance::Account::withdraw"
+  
+  // Def path: "balance::{{impl}}[1]::withdraw[0]"
+  
+  // Span: tests/verify/fail/fold-unfold/balance.rs:20:5: 22:6
+  
+  __t0 := false
+  __t1 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && acc(u32(_2), write))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] _3 = ((*_1).0: u32)
+  
+  _3 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  unfold acc(u32(_1.val_ref.f$bal), write)
+  _3 := _1.val_ref.f$bal.val_int
+  label l0
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = _2
+  
+  _4 := builtin$havoc_int()
+  inhale true
+  unfold acc(u32(_2), write)
+  _4 := _2.val_int
+  label l1
+  // [mir] _5 = CheckedSub(move _3, move _4)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.tuple_0, write)
+  inhale acc(_5.tuple_0.val_int, write)
+  inhale acc(_5.tuple_1, write)
+  inhale acc(_5.tuple_1.val_bool, write)
+  _5.tuple_0.val_int := _3 - _4
+  _5.tuple_1.val_bool := false
+  // [mir] assert(!move (_5.1: bool), "attempt to subtract with overflow") -> [success: bb2, unwind: bb1]
+  
+  __t2 := _5.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t2
+  goto bb2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] ((*_1).0: u32) = move (_5.0: u32)
+  
+  _1.val_ref.f$bal := _5.tuple_0
+  label l2
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(u32(_1.val_ref.f$bal), write)
+  fold acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  // obtain acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert (unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write) in (unfolding acc(u32(_old$pre$0.f$bal), write) in _old$pre$0.f$bal.val_int)) == old[pre]((unfolding acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) in (unfolding acc(u32(_1.val_ref.f$bal), write) in _1.val_ref.f$bal.val_int))) - old[pre]((unfolding acc(u32(_2), write) in _2.val_int))
+  assert true
+  exhale acc(m_balance$$Account$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_ref() returns (ret: Ref)
