@@ -130,7 +130,7 @@ trait ExpressionTranslator {
         val df = Fun(id, inSorts, outSort)
         App(df, tArgs)
 
-      case ast.SMTFuncApp(func, args) =>
+      case ast.BackendFuncApp(func, args) =>
         val tArgs = args map f
         val inSorts = tArgs map (_.sort)
         val outSort = toSort(func.typ)

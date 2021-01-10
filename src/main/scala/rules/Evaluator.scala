@@ -403,7 +403,7 @@ object evaluator extends EvaluationRules {
           val fi = v1.symbolConverter.toFunction(Verifier.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(s1, App(fi, tArgs), v1)})
 
-      case sfa @ ast.SMTFuncApp(func, eArgs) =>
+      case ast.BackendFuncApp(func, eArgs) =>
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) => {
           val fi = v1.symbolConverter.toFunction(func)
           Q(s1, App(fi, tArgs), v1)})
