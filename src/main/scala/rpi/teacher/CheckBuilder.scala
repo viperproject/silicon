@@ -5,7 +5,6 @@ import rpi.inference._
 import rpi.util.Namespace
 import viper.silver.ast
 
-import scala.annotation.tailrec
 import scala.collection.mutable
 
 /**
@@ -58,7 +57,7 @@ class CheckBuilder(teacher: Teacher) {
   def framingCheck(hypothesis: Hypothesis): (ast.Program, Context) = {
     /**
       * Helper method that inhales the given expression conjunct-wise. The expression is implicitly rewritten to have
-      * its conjuncts at the top level by pushing implications inside ().
+      * its conjuncts at the top level by pushing implications inside.
       *
       * @param expression The expression to inhale.
       * @param guards     The guards guarding the current expression.

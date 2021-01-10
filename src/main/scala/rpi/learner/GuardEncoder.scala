@@ -135,7 +135,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
               // choices for this location
               locationGuard.map { sequence =>
                 val conjuncts = sequence.map { case (id, atoms) =>
-                  val values = record.state.getValues(atoms)
+                  val values = record.abstraction.getValues(atoms)
                   encodeState(id, values, default)
                 }
                 Expressions.bigAnd(conjuncts)

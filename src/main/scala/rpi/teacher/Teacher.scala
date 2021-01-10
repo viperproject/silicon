@@ -88,10 +88,12 @@ class Teacher(val inference: Inference) {
   * A context object used to pass information from the check builder to the example extractor.
   */
 class Context {
+  // TODO: Cleaan up inhaled anad exhaaled ?!
+
   /**
-    * The labels of the inhaled and exhaled states.
+    * The labels and instances of the inhaled and exhaled states.
     */
-  private var labels: Seq[String] = Seq.empty
+  private var snapshots: Seq[(String, Instance)] = Seq.empty
 
   /**
     * A map holding the instances corresponding to the inhaled states.
@@ -127,14 +129,14 @@ class Context {
     exhaled.contains(label)
 
   /**
-    * Returns the labels of all inhaled and exhaled states. Since the labels were added in topological order with
-    * respect to the control flow, the labels are guaranteed to appear in that order in any actual execution, if they
-    * are encountered (note: there are no loops as they are handled modularly).
+    * Returns the labels and instances of all inhaled and exhaled states. Since the labels were added in topological
+    * order with respect to the control flow, the labels are guaranteed to appear in that order in any actual execution,
+    * if they are encountered (note: there are no loops as they are handled modularly).
     *
     * @return The labels of all inhaled and exhale states.
     */
-  def allLabels: Seq[String] =
-    labels
+  def allSnapshots: Seq[(String, Instance)] =
+    snapshots
 
   /**
     * Adds the given instance as an instance corresponding to an inhaled state.
@@ -143,7 +145,7 @@ class Context {
     * @param instance The instance.
     */
   def addInhaled(label: String, instance: Instance): Unit = {
-    labels = labels :+ label
+    snapshots = snapshots :+ (label, instance)
     inhaled = inhaled.updated(label, instance)
   }
 
@@ -154,7 +156,7 @@ class Context {
     * @param instance The instance.
     */
   def addExhaled(label: String, instance: Instance): Unit = {
-    labels = labels :+ label
+    snapshots = snapshots :+ (label, instance)
     exhaled = exhaled.updated(label, instance)
   }
 

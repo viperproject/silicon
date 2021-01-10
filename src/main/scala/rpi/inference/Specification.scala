@@ -15,7 +15,7 @@ case class Specification(name: String, parameters: Seq[ast.LocalVarDecl], atoms:
     * Returns the variables corresponding to the parameters.
     * @return The variables.
     */
-  def variables =
+  def variables: Seq[ast.LocalVar] =
     parameters.map { parameter => parameter.localVar }
 
   override def toString: String =

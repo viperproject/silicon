@@ -29,25 +29,20 @@ case class NegativeExample(record: Record) extends Example
   */
 case class ImplicationExample(left: Record, right: Seq[Record]) extends Example
 
-case class Record(specification: Specification, state: Abstraction, locations: Set[ast.LocationAccess]) {
-  override def toString: String = s"${specification.name}: $state -> {${locations.mkString(", ")}}"
-}
-
 /**
-  * A data point.
-  *
+  * A record representing a data pont.
   * @param specification The specification.
-  * @param state         The abstract state.
+  * @param abstraction   The state abstraction.
   * @param locations     The (under-approximate) set of location accesses that can be used to represent the resource for
-  *                      which some permissions are required.
+  *                      which permissions are required.
   */
-case class Rec(specification: Specification, state: Abstraction, locations: Set[ast.LocationAccess]) {
-  override def toString: String =
-    s"${specification.name}: $state -> ${locations.map { location => s"$location" }.mkString("{", ", ", "}")}"
+case class Record(specification: Specification, abstraction: Abstraction, locations: Set[ast.LocationAccess]) {
+  override def toString: String = s"${specification.name}: $abstraction -> {${locations.mkString(", ")}}"
 }
 
+
 /**
-  * An abstraction of a set that describes the set of concrete states where the given atoms evaluate to the given
+  * An abstraction of a snapshot that describes the set of concrete states that evaluate the given atoms to the given
   * values.
   *
   * TODO: A canonical form for atoms could allow us to recognize equivalent expressions.
