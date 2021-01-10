@@ -1,7 +1,7 @@
 package rpi.teacher.state
 
 import rpi.inference.{Abstraction, Instance, Specification}
-import rpi.util.Collections
+import rpi.util.{Collections, Maps}
 import viper.silver.ast
 
 /**
@@ -25,36 +25,43 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
       else {
         // compute next step of reachability
         val next = current.foldLeft(Map.empty[String, Set[ast.Exp]]) {
-          case (map1, (source, paths)) => state
+          case (map1, (key, paths)) => state
             .heap
-            .getOrElse(source, Map.empty)
+            .getOrElse(key, Map.empty)
             .foldLeft(map1) {
-              case (map2, (name, target)) =>
+              case (map2, (name, value)) =>
                 val field = ast.Field(name, ast.Ref)()
-                val extended = paths.map { path => ast.FieldAccess(path, field)() }
-                val existing = map2.getOrElse(target, Set.empty)
-                map2.updated(target, existing ++ extended)
+                val extended = paths.map { path => ast.FieldAccess(path, field)(): ast.Exp }
+                Maps.addSet(map2, value, extended)
             }
         }
         // recurse and combine results
         val future = recurse(next, steps - 1)
-        Collections.combine[String, Set[ast.Exp]](current, future, _ ++ _)
+        Maps.union(current, future)
       }
 
     // initial reachability map.
     val initial = instance
       .arguments
       .zip(instance.parameters)
-      .appended((ast.NullLit()(), ast.NullLit()()))
       .foldLeft(Map.empty[String, Set[ast.Exp]]) {
         case (result, (argument, parameter)) =>
-          val value = state.evaluateReference(argument)
-          val existing = result.getOrElse(value, Set.empty)
-          result.updated(value, existing + parameter)
+          if (argument.typ == ast.Ref) {
+            val value = state.evaluateReference(argument)
+            Maps.addValue(result, value, parameter)
+          } else result
       }
 
+    // recursively follow fields
     // TODO: Number of steps.
     recurse(initial, steps = 3)
+  }
+
+  // reachability map with null literal
+  private[state] lazy val nullableReachability = {
+    val nil = ast.NullLit()()
+    val value = state.evaluateReference(nil)
+    Maps.addValue(reachability, value, nil)
   }
 
   // lazily computed abstraction
@@ -107,7 +114,7 @@ case class Adaptor(source: StateEvaluator, target: Snapshot) {
   def adaptLocation(location: ast.LocationAccess): Set[ast.LocationAccess] =
     location match {
       case ast.FieldAccess(receiver, field) =>
-        val adaptedReceiver = adaptReference(receiver)
+        val adaptedReceiver = adaptReference(receiver, nonnull = true)
         adaptedReceiver.map { adapted => ast.FieldAccess(adapted, field)() }
       case ast.PredicateAccess(arguments, name) =>
         val adaptedArguments = arguments.map { argument => adaptReference(argument) }
@@ -142,8 +149,10 @@ case class Adaptor(source: StateEvaluator, target: Snapshot) {
         for (l <- adapt(left); r <- adapt(right)) yield ast.NeCmp(l, r)()
     }
 
-  private def adaptReference(expression: ast.Exp): Set[ast.Exp] = {
+  private def adaptReference(expression: ast.Exp, nonnull: Boolean = false): Set[ast.Exp] = {
     val value = source.evaluateReference(expression)
-    target.reachability.getOrElse(value, Set.empty)
+    if (nonnull) target.reachability.getOrElse(value, Set.empty)
+    else target.nullableReachability.getOrElse(value, Set.empty)
+
   }
 }
