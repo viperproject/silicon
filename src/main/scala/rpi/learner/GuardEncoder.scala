@@ -1,10 +1,9 @@
 package rpi.learner
 
 import java.util.concurrent.atomic.AtomicInteger
-
 import rpi.Settings
 import rpi.inference._
-import rpi.util.{Collections, Expressions}
+import rpi.util.{Collections, Expressions, SeqMap}
 import viper.silver.ast
 
 class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
@@ -15,42 +14,105 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
   /**
     * Type shortcut for an effective guard.
     *
-    * The outer sequence represents a choice of exactly one of the options. The inner sequence represents a disjunction
-    * of guards. The guards are represented by their id and which atomic predicates of the context correspond to the
-    * atomic predicates of the guard.
+    * The inner sequence represents a choice that is possible if all guards of the sequence evaluate to true. The outer
+    * sequence represents that exactly one of the choices should be picked.
     */
-  private type Effective = Seq[Seq[(Int, Seq[ast.Exp])]]
+  private type Effective = Seq[Seq[Guard]]
 
-  private val guards: Map[String, Map[ast.LocationAccess, Effective]] = {
-    // compute effective guards.
-    val result = templates
-      .map { case (name, template) =>
-        // TODO: Depth depending on length of longest access path.
-        name -> collectGuards(template, View.empty, depth = 3)
+  /**
+    * Type shortcut for the map containing all effective guards.
+    */
+  private type EffectiveMap = Map[ast.LocationAccess, Effective]
+
+  /**
+    * The choices appearing in the templates.
+    */
+  private val choices = {
+    def collectChoices(expression: TemplateExpression): Seq[Choice] =
+      expression match {
+        case Conjunction(conjuncts) =>
+          conjuncts.flatMap { conjunct => collectChoices(conjunct) }
+        case choice@Choice(_, _, body) =>
+          choice +: collectChoices(body)
+        case Truncation(_, body) =>
+          collectChoices(body)
+        case _ => Seq.empty
       }
 
-    // debug printing
-    if (Settings.debugPrintGuards) result
-      .foreach { case (name, map) => map
-        .foreach { case (location, guard) =>
-          val label = s"$location@$name"
-          val string = guard
-            .map { choice =>
-              choice
-                .map { case (id, atoms) =>
-                  s"phi_$id${atoms.mkString("[", ",", "]")}"
-                }
-                .mkString(" && ")
-            }
-            .mkString("{", ", ", "}")
-          println(s"$label: $string")
-        }
-      }
-
-    // return effective guards
-    result
+    templates.flatMap { case (_, template) => collectChoices(template.body) }
   }
 
+  /**
+    * A map, mapping specification names to maps containing all effective guards.
+    */
+  private val guards: Map[String, EffectiveMap] = {
+    def collectGuards(template: Template, view: View, depth: Int): Map[ast.LocationAccess, Effective] =
+      if (depth == 0) Map.empty
+      else {
+        // get and adapt atoms
+        val atoms = template
+          .atoms
+          .map { atom => view.adapt(atom) }
+
+        def collect(expression: TemplateExpression, result: Map[ast.LocationAccess, Effective], view: View): Map[ast.LocationAccess, Effective] =
+          expression match {
+            case Conjunction(conjuncts) =>
+              conjuncts.foldLeft(result) {
+                case (current, conjunct) => collect(conjunct, current, view)
+              }
+            case Resource(guardId, access) =>
+              val resourceGuard = ResourceGuard(guardId, atoms)
+              access match {
+                case ast.FieldAccess(receiver, field) =>
+                  // update guard of field access
+                  val adapted = ast.FieldAccess(view.adapt(receiver), field)()
+                  SeqMap.add(result, adapted, Seq(resourceGuard))
+                case ast.PredicateAccess(arguments, name) =>
+                  // update guard of predicate access
+                  val adaptedArguments = arguments.map { argument => view.adapt(argument) }
+                  val adapted = ast.PredicateAccess(adaptedArguments, name)()
+                  val updatedResult = SeqMap.add(result, adapted, Seq(resourceGuard))
+                  // recursively collect guards
+                  val innerTemplate = templates(name)
+                  val innerView = View.create(innerTemplate, adaptedArguments)
+                  collectGuards(innerTemplate, innerView, depth - 1)
+                    .foldLeft(updatedResult) {
+                      case (innerResult, (innerAccess, innerGuard)) =>
+                        val updatedGuard = innerGuard.map { choice => choice :+ resourceGuard }
+                        SeqMap.addAll(innerResult, innerAccess, updatedGuard)
+                    }
+              }
+            case Choice(choiceId, choices, body) =>
+              choices
+                .zipWithIndex
+                .foldLeft(result) {
+                  case (currentResult, (choice, index)) =>
+                    val choiceGuard = ChoiceGuard(choiceId, index)
+                    val innerView = view.updated(name = s"t_$choiceId", choice)
+                    collect(body, Map.empty, innerView)
+                      .foldLeft(currentResult) {
+                        case (innerResult, (innerAccess, innerGuard)) =>
+                          val updatedGuard = innerGuard.map { choice => choice :+ choiceGuard }
+                          SeqMap.addAll(innerResult, innerAccess, updatedGuard)
+                      }
+                }
+            case _ => ???
+          }
+
+        // collect guards
+        collect(template.body, Map.empty, view)
+      }
+
+    // collect effective guards for every template
+    templates.map { case (name, template) =>
+      val map = collectGuards(template, View.empty, depth = 3)
+      name -> map
+    }
+  }
+
+  /**
+    * T
+    */
   private val unique = new AtomicInteger
 
   /**
@@ -59,8 +121,19 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @param examples The examples to encode.
     * @return The constraints representing the encodings of the examples.
     */
-  def encodeExamples(examples: Seq[Example]): Seq[ast.Exp] =
-    examples.flatMap { example => encodeExample(example) }
+  def encodeExamples(examples: Seq[Example]): Seq[ast.Exp] = {
+    // encode examples
+    val exampleEncodings = examples.flatMap { example => encodeExample(example) }
+    // encode that only one option per choice can be picked
+    val choiceEncodings = choices.map { case Choice(choiceId, options, _) =>
+      val variables = options
+        .indices
+        .map { index => ast.LocalVar(s"c_${choiceId}_$index", ast.Bool)() }
+      exactlyOne(variables)
+    }
+    // return encoding
+    exampleEncodings ++ choiceEncodings
+  }
 
   /**
     * Returns the encoding of the given example.
@@ -90,34 +163,8 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @return A tuple holding the encoding and a sequence of global constraints.
     */
   private def encodeRecords(records: Seq[Record], default: Boolean): (ast.Exp, Seq[ast.Exp]) = {
-    // method used to introduce auxiliary variables
-    def auxiliary(expression: ast.Exp): (ast.LocalVar, ast.Exp) = {
-      val name = s"t_${unique.getAndIncrement}"
-      val variable = ast.LocalVar(name, ast.Bool)()
-      val equality = ast.EqCmp(variable, expression)()
-      (variable, equality)
-    }
-
-    // method used to introduce auxiliary variables.
-    def auxiliaries(expressions: Iterable[ast.Exp]): (Seq[ast.LocalVar], Seq[ast.Exp]) =
-      expressions
-        .foldLeft((Seq.empty[ast.LocalVar], Seq.empty[ast.Exp])) {
-          case ((variables, equalities), expression) =>
-            val (variable, equality) = auxiliary(expression)
-            (variables :+ variable, equalities :+ equality)
-        }
-
-    // method used to encode that at most one choice should be picked.
-    def atMost(expressions: Seq[ast.Exp]): ast.Exp = {
-      val constraints = Collections
-        .pairs(expressions)
-        .map { case (first, second) =>
-          ast.Not(ast.And(first, second)())()
-        }
-      bigAnd(constraints)
-    }
-
     // collect encodings and constraints
+    // TODO: Fix default value (every other record is negative)
     val (variables, constraints) = {
       val empty = Seq.empty[ast.Exp]
       records.foldLeft((empty, empty)) {
@@ -134,9 +181,12 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
               val locationGuard = localGuards.getOrElse(location, Seq.empty)
               // choices for this location
               locationGuard.map { sequence =>
-                val conjuncts = sequence.map { case (id, atoms) =>
-                  val values = record.abstraction.getValues(atoms)
-                  encodeState(id, values, default)
+                val conjuncts = sequence.map {
+                  case ResourceGuard(id, atoms) =>
+                    val values = record.abstraction.getValues(atoms)
+                    encodeState(id, values, default)
+                  case ChoiceGuard(choiceId, index) =>
+                    encodeChoice(choiceId, index)
                 }
                 Expressions.bigAnd(conjuncts)
               }
@@ -144,7 +194,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
 
           val (encodingVariables, equalities) = auxiliaries(encodings)
           val (variable, lower) = auxiliary(bigOr(encodingVariables))
-          val upper = atMost(encodingVariables)
+          val upper = atMostOne(encodingVariables)
           (variables :+ variable, constraints ++ equalities :+ lower :+ upper)
       }
     }
@@ -213,51 +263,63 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
   }
 
   /**
-    * Collects the effective guards for the given template up to the given depth.
+    * Computes the encoding of the fact that the choice with the given id happens to be the option with the given index.
     *
-    * @param template The template for which to collect the effective guards.
-    * @param view     The view used to adapt expressions to the current context.
-    * @param depth    The depth.
-    * @return The collected effective guards.
+    * @param choiceId The id of the choice.
+    * @param index    The index of the option.
+    * @return The encoding.
     */
-  private def collectGuards(template: Template, view: View, depth: Int): Map[ast.LocationAccess, Effective] = {
-    val empty = Map.empty[ast.LocationAccess, Effective]
-    if (depth == 0) empty
-    else {
-      // get and adapt atoms
-      val atoms = template
-        .atoms
-        .map { atom => view.adapt(atom) }
-      // process accesses
-      template
-        .body
-        .foldLeft(empty) {
-          case (result, resource) =>
-            resource match {
-              case FieldResource(guardId, ast.FieldAccess(receiver, field)) =>
-                // update guard of field access
-                val adapted = ast.FieldAccess(view.adapt(receiver), field)()
-                val guard = result.getOrElse(adapted, Seq.empty) :+ Seq((guardId, atoms))
-                result.updated(adapted, guard)
-              case PredicateResource(guardId, choiceId, ast.PredicateAccess(arguments, name)) =>
-                // update guard of predicate access
-                val adaptedArguments = arguments.map { argument => view.adapt(argument) }
-                val adapted = ast.PredicateAccess(adaptedArguments, name)()
-                val guard = result.getOrElse(adapted, Seq.empty) :+ Seq((guardId, atoms))
-                val updated = result.updated(adapted, guard)
-                // process nested accesses
-                val innerTemplate = templates(name)
-                val innerView = View.create(innerTemplate, adaptedArguments)
-                collectGuards(innerTemplate, innerView, depth - 1).foldLeft(updated) {
-                  case (innerResult, (innerAccess, innerGuard)) =>
-                    val mappedGuard = innerGuard.map { choice => choice :+ (guardId, atoms) }
-                    val updatedGuard = innerResult.getOrElse(innerAccess, Seq.empty) ++ mappedGuard
-                    innerResult.updated(innerAccess, updatedGuard)
-                }
-            }
-        }
-    }
+  private def encodeChoice(choiceId: Int, index: Int): ast.Exp =
+    ast.LocalVar(s"c_${choiceId}_$index", ast.Bool)()
+
+  // method used to introduce auxiliary variables
+  private def auxiliary(expression: ast.Exp): (ast.LocalVar, ast.Exp) = {
+    val name = s"t_${unique.getAndIncrement}"
+    val variable = ast.LocalVar(name, ast.Bool)()
+    val equality = ast.EqCmp(variable, expression)()
+    (variable, equality)
   }
+
+  // method used to introduce auxiliary variables.
+  private def auxiliaries(expressions: Iterable[ast.Exp]): (Seq[ast.LocalVar], Seq[ast.Exp]) =
+    expressions
+      .foldLeft((Seq.empty[ast.LocalVar], Seq.empty[ast.Exp])) {
+        case ((variables, equalities), expression) =>
+          val (variable, equality) = auxiliary(expression)
+          (variables :+ variable, equalities :+ equality)
+      }
+
+  /**
+    * Computes the encoding of the fact that exactly one of the given expressions is true.
+    *
+    * @param expressions The expressions.
+    * @return The encoding.
+    */
+  private def exactlyOne(expressions: Seq[ast.Exp]): ast.Exp = {
+    ast.And(bigOr(expressions), atMostOne(expressions))()
+  }
+
+  /**
+    * Computes the encoding of the fact that at most one of the given expressions is true.
+    *
+    * @param expressions The expressions.
+    * @return The encoding.
+    */
+  private def atMostOne(expressions: Seq[ast.Exp]): ast.Exp = {
+    val constraints = Collections
+      .pairs(expressions)
+      .map { case (first, second) =>
+        ast.Not(ast.And(first, second)())()
+      }
+    bigAnd(constraints)
+  }
+
+  // TODO: truncation guard.
+  sealed trait Guard
+
+  case class ResourceGuard(guardId: Int, atoms: Seq[ast.Exp]) extends Guard
+
+  case class ChoiceGuard(choiceId: Int, index: Int) extends Guard
 
   object View {
     def empty: View =
@@ -278,8 +340,12 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     def adapt(expression: ast.Exp): ast.Exp =
       if (isEmpty) expression
       else expression.transform {
-        case ast.LocalVar(name, _) => map(name)
+        case variable@ast.LocalVar(name, _) =>
+          map.getOrElse(name, variable)
       }
+
+    def updated(name: String, value: ast.Exp): View =
+      View(map.updated(name, value))
   }
 
 }

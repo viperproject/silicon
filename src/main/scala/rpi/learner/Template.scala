@@ -2,7 +2,7 @@ package rpi.learner
 
 import rpi.{Names, Settings}
 import rpi.inference._
-import rpi.util.{Collections, Expressions}
+import rpi.util.{Collections, Expressions, SetMap}
 import viper.silver.ast
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -11,9 +11,9 @@ import java.util.concurrent.atomic.AtomicInteger
   * A template for a specification that needs to be inferred.
   *
   * @param specification The specification for which this is the template.
-  * @param body          The resources allowed by this template.
+  * @param body          The body representing the resources allowed by this template.
   */
-case class Template(specification: Specification, body: Seq[Resource]) {
+case class Template(specification: Specification, body: TemplateExpression) {
   /**
     * Returns the name identifying the specification.
     *
@@ -36,37 +36,53 @@ case class Template(specification: Specification, body: Seq[Resource]) {
   def atoms: Seq[ast.Exp] = specification.atoms
 
   override def toString: String =
-    s"$specification = ${body.mkString(" * ")}"
+    s"$specification = $body"
 }
 
 /**
-  * A resource appearing in a template.
+  * A template expression.
   */
-sealed trait Resource {
-  /**
-    * The id of the resource's guard.
-    */
-  val guardId: Int
+sealed trait TemplateExpression
 
-  val access: ast.LocationAccess
+/**
+  * A template expression representing a conjunction of some conjuncts.
+  *
+  * @param conjuncts The conjuncts.
+  */
+case class Conjunction(conjuncts: Seq[TemplateExpression]) extends TemplateExpression {
+  override def toString: String = conjuncts.mkString("(", " * ", ")")
 }
 
 /**
-  * A field access appearing in a template.
+  * A template expression representing a resource access guarded by some condition.
   *
-  * @param guardId The id of the field access' guard.
-  * @param access  The field access.
+  * @param guardId The id of the guard condition.
+  * @param access The resource access.
   */
-case class FieldResource(guardId: Int, access: ast.FieldAccess) extends Resource
+case class Resource(guardId: Int, access: ast.LocationAccess) extends TemplateExpression {
+  override def toString: String = s"(phi_$guardId -> $access)"
+}
 
 /**
-  * A predicate access appearing in a template.
+  * A template expression representing a choice.
   *
-  * @param guardId  The id of the predicate access' guard.
-  * @param choiceId The id of the truncation argument's choice.
-  * @param access  The predicate access.
+  * @param choiceId The id of the choice.
+  * @param options  The available options.
+  * @param body The template expression for which the choice has to be made.
   */
-case class PredicateResource(guardId: Int, choiceId: Int, access: ast.PredicateAccess) extends Resource
+case class Choice(choiceId: Int, options: Seq[ast.Exp], body: TemplateExpression) extends TemplateExpression {
+  override def toString: String = s"(choose t_$choiceId from {${options.mkString(", ")}} in $body)"
+}
+
+/**
+  * A truncated template expression.
+  *
+  * @param condition The truncation condition.
+  * @param body The truncated template expression.
+  */
+case class Truncation(condition: ast.Exp, body: TemplateExpression) extends TemplateExpression {
+  override def toString: String = s"($condition -> $body)"
+}
 
 /**
   * A helper class used to compute templates.
@@ -116,8 +132,7 @@ class TemplateGenerator(learner: Learner) {
       records.foldLeft(Map.empty[String, Set[ast.LocationAccess]]) {
         case (result, record) =>
           val name = record.specification.name
-          val existing = result.getOrElse(name, Set.empty)
-          result.updated(name, existing ++ record.locations)
+          SetMap.addAll(result, name, record.locations)
       }
     }
 
@@ -172,6 +187,7 @@ class TemplateGenerator(learner: Learner) {
     */
   def createTemplate(specification: Specification, resources: Set[ast.LocationAccess])(implicit id: AtomicInteger): Template = {
     val sequence = resources.toSeq
+
     // get all field accesses, then filter and sort them
     val fields = sequence
       .collect { case field: ast.FieldAccess =>
@@ -182,17 +198,50 @@ class TemplateGenerator(learner: Learner) {
       .sortWith { case ((first, _), (second, _)) => first < second }
       .map { case (_, field) =>
         val guardId = id.getAndIncrement()
-        FieldResource(guardId, field)
+        Resource(guardId, field)
       }
+
     // get all predicate accesses
-    val predicates = sequence
-      .collect { case predicate: ast.PredicateAccess =>
-        val guardId = id.getAndIncrement()
-        val choiceId = id.getAndIncrement()
-        PredicateResource(guardId, choiceId, predicate)
-      }
+    val predicates =
+      if (Settings.useSegments) sequence
+        // group by first argument
+        .foldLeft(Map.empty[ast.Exp, Set[ast.Exp]]) {
+          case (result, access) => access match {
+            case ast.PredicateAccess(arguments, name) =>
+              assert(name == Names.recursive)
+              assert(arguments.length == 2)
+              val Seq(first, second) = arguments
+              SetMap.add(result, first, second)
+            case _ => result
+          }
+        }
+        .map { case (first, options) =>
+          // TODO: Optimize if there is only one option.
+          // create ids
+          val guardId = id.getAndIncrement()
+          val choiceId = id.getAndIncrement()
+          // create predicate with choice placeholder
+          val predicate = {
+            val second = ast.LocalVar(s"t_$choiceId", ast.Ref)()
+            val arguments = Seq(first, second)
+            ast.PredicateAccess(arguments, Names.recursive)()
+          }
+          // create resource and choice
+          val resource = Resource(guardId, predicate)
+          Choice(choiceId, options.toSeq, resource)
+        }
+        .toSeq
+      else sequence
+        .collect { case predicate: ast.PredicateAccess =>
+          // create resource
+          val guardId = id.getAndIncrement()
+          Resource(guardId, predicate)
+        }
+
     // create template
-    Template(specification, fields ++ predicates)
+    // TODO: Add truncation.
+    val body = Conjunction(fields ++ predicates)
+    Template(specification, body)
   }
 
   /**

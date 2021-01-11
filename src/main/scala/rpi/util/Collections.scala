@@ -23,17 +23,26 @@ object Collections {
     }
 }
 
-object Maps {
+object SeqMap {
+  @inline
+  def add[K, V](map: Map[K, Seq[V]], key: K, element: V): Map[K, Seq[V]] =
+    map.updated(key, map.get(key).map(_ :+ element).getOrElse(Seq(element)))
+
+  def addAll[K,V](map: Map[K,Seq[V]], key: K, elements: Seq[V]): Map[K,Seq[V]] =
+    map.updated(key, map.get(key).map(_ ++ elements).getOrElse(elements))
+}
+
+object SetMap {
   @inline
   def union[K, V](map1: Map[K, Set[V]], map2: Map[K, Set[V]]): Map[K, Set[V]] =
-    map2.foldLeft(map1) { case (map, (key, value)) => addSet(map, key, value) }
+    map2.foldLeft(map1) { case (map, (key, value)) => addAll(map, key, value) }
 
 
   @inline
-  def addValue[K, V](map: Map[K, Set[V]], key: K, value: V): Map[K, Set[V]] =
-    map.updated(key, map.get(key).map(_ + value).getOrElse(Set(value)))
+  def add[K, V](map: Map[K, Set[V]], key: K, element: V): Map[K, Set[V]] =
+    map.updated(key, map.get(key).map(_ + element).getOrElse(Set(element)))
 
   @inline
-  def addSet[K, V](map: Map[K, Set[V]], key: K, value: Set[V]): Map[K, Set[V]] =
-    map.updated(key, map.get(key).map(_ ++ value).getOrElse(value))
+  def addAll[K, V](map: Map[K, Set[V]], key: K, elements: Set[V]): Map[K, Set[V]] =
+    map.updated(key, map.get(key).map(_ ++ elements).getOrElse(elements))
 }

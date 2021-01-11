@@ -83,9 +83,8 @@ class Learner(val inference: Inference) {
           name -> ast.Predicate(name, parameters, Some(body))()
         }
 
-      predicates.foreach { predicate => println(predicate) }
-
       // return hypothesis
+      predicates.foreach { predicate => println(predicate) }
       Hypothesis(predicates)
     }
 }

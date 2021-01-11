@@ -40,7 +40,6 @@ case class Record(specification: Specification, abstraction: Abstraction, locati
   override def toString: String = s"${specification.name}: $abstraction -> {${locations.mkString(", ")}}"
 }
 
-
 /**
   * An abstraction of a snapshot that describes the set of concrete states that evaluate the given atoms to the given
   * values.

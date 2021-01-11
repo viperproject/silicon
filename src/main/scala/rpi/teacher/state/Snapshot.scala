@@ -1,7 +1,7 @@
 package rpi.teacher.state
 
 import rpi.inference.{Abstraction, Instance, Specification}
-import rpi.util.{Collections, Maps}
+import rpi.util.{Collections, SetMap}
 import viper.silver.ast
 
 /**
@@ -32,12 +32,12 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
               case (map2, (name, value)) =>
                 val field = ast.Field(name, ast.Ref)()
                 val extended = paths.map { path => ast.FieldAccess(path, field)(): ast.Exp }
-                Maps.addSet(map2, value, extended)
+                SetMap.addAll(map2, value, extended)
             }
         }
         // recurse and combine results
         val future = recurse(next, steps - 1)
-        Maps.union(current, future)
+        SetMap.union(current, future)
       }
 
     // initial reachability map.
@@ -48,7 +48,7 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
         case (result, (argument, parameter)) =>
           if (argument.typ == ast.Ref) {
             val value = state.evaluateReference(argument)
-            Maps.addValue(result, value, parameter)
+            SetMap.add(result, value, parameter)
           } else result
       }
 
@@ -61,7 +61,7 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
   private[state] lazy val nullableReachability = {
     val nil = ast.NullLit()()
     val value = state.evaluateReference(nil)
-    Maps.addValue(reachability, value, nil)
+    SetMap.add(reachability, value, nil)
   }
 
   // lazily computed abstraction

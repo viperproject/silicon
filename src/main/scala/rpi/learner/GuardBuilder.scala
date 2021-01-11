@@ -21,8 +21,7 @@ class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
     */
   def buildBody(template: Template): ast.Exp = {
     val atoms = template.atoms
-    val conjuncts = template.body.map { resource => buildResource(resource, atoms) }
-    val body = simplify(bigAnd(conjuncts))
+    val body = buildExpression(template.body, atoms)
     // TODO: Incorporate truncation guard into template.
     if (template.name == Names.recursive && Settings.useSegments) {
       val Seq(first, second) = template.parameters.map { parameter => parameter.localVar }
@@ -32,17 +31,40 @@ class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
   }
 
   /**
-    * Builds the given resource including its guard.
+    * Builds the expression corresponding to the given template expression.
     *
-    * @param resource The resource to build.
+    * @param expression The template expression to build.
     * @param atoms    The atoms used to build the guard.
     * @return The resource.
     */
-  private def buildResource(resource: Resource, atoms: Seq[ast.Exp]): ast.Exp = {
-    val guard = buildGuard(resource.guardId, atoms)
-    val accessPredicate = buildAccessPredicate(resource.access)
-    ast.Implies(guard, accessPredicate)()
-  }
+  private def buildExpression(expression: TemplateExpression, atoms: Seq[ast.Exp]): ast.Exp =
+    expression match {
+      case Conjunction(conjuncts) =>
+        val built = conjuncts.map { conjunct => buildExpression(conjunct, atoms) }
+        bigAnd(built)
+      case Resource(guardId, access) =>
+        val guard = buildGuard(guardId, atoms)
+        val accessPredicate = buildAccessPredicate(access)
+        ast.Implies(guard, accessPredicate)()
+      case choice@Choice(choiceId, options, body) =>
+        val built = buildExpression(body, atoms)
+        val name = s"t_$choiceId"
+        val option = getOption(choice)
+        val x = built.transform {
+          case ast.LocalVar(`name`, _) => option
+        }
+        x
+    }
+
+  private def getOption(choice: Choice): ast.Exp =
+    choice
+      .options
+      .zipWithIndex
+      .find { case (_, index) =>
+        model.getOrElse(s"c_${choice.choiceId}_$index", false)
+      }
+      .map { case (option, _) => option }
+      .get
 
   /**
     * Builds the guard with the given id.
