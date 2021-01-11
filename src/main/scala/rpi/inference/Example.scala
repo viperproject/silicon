@@ -64,6 +64,10 @@ case class Abstraction(values: Map[ast.Exp, Boolean]) {
     Abstraction(combined)
   }
 
+  @inline
+  def getValue(expression: ast.Exp): Option[Boolean] =
+    values.get(expression)
+
   /**
     * Returns the values of the given atoms in the abstract state.
     *

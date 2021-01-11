@@ -21,13 +21,7 @@ class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
     */
   def buildBody(template: Template): ast.Exp = {
     val atoms = template.atoms
-    val body = buildExpression(template.body, atoms)
-    // TODO: Incorporate truncation guard into template.
-    if (template.name == Names.recursive && Settings.useSegments) {
-      val Seq(first, second) = template.parameters.map { parameter => parameter.localVar }
-      val truncationGuard = ast.NeCmp(first, second)()
-      ast.Implies(truncationGuard, body)()
-    } else body
+    buildExpression(template.body, atoms)
   }
 
   /**
@@ -40,28 +34,32 @@ class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
   private def buildExpression(expression: TemplateExpression, atoms: Seq[ast.Exp]): ast.Exp =
     expression match {
       case Conjunction(conjuncts) =>
-        val built = conjuncts.map { conjunct => buildExpression(conjunct, atoms) }
-        bigAnd(built)
+        val builtConjuncts = conjuncts.map { conjunct => buildExpression(conjunct, atoms) }
+        bigAnd(builtConjuncts)
       case Resource(guardId, access) =>
-        val guard = buildGuard(guardId, atoms)
-        val accessPredicate = buildAccessPredicate(access)
-        ast.Implies(guard, accessPredicate)()
-      case choice@Choice(choiceId, options, body) =>
-        val built = buildExpression(body, atoms)
+        val builtGuard = buildGuard(guardId, atoms)
+        val builtResource = buildResource(access)
+        ast.Implies(builtGuard, builtResource)()
+      case Choice(choiceId, options, body) =>
+        // build body
+        val builtBody = buildExpression(body, atoms)
+        // get option
         val name = s"t_$choiceId"
-        val option = getOption(choice)
-        val x = built.transform {
+        val option = getOption(choiceId, options)
+        // adapt body according to picked option
+        builtBody.transform {
           case ast.LocalVar(`name`, _) => option
         }
-        x
+      case Truncation(condition, body) =>
+        val builtBody = buildExpression(body, atoms)
+        ast.Implies(condition, builtBody)()
     }
 
-  private def getOption(choice: Choice): ast.Exp =
-    choice
-      .options
+  private def getOption(choiceId: Int, options: Seq[ast.Exp]): ast.Exp =
+    options
       .zipWithIndex
       .find { case (_, index) =>
-        model.getOrElse(s"c_${choice.choiceId}_$index", false)
+        model.getOrElse(s"c_${choiceId}_$index", false)
       }
       .map { case (option, _) => option }
       .get
@@ -100,7 +98,7 @@ class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
     * @param access The access.
     * @return The predicate access.
     */
-  private def buildAccessPredicate(access: ast.LocationAccess): ast.AccessPredicate =
+  private def buildResource(access: ast.LocationAccess): ast.AccessPredicate =
     access match {
       case field: ast.FieldAccess => ast.FieldAccessPredicate(field, ast.FullPerm()())()
       case predicate: ast.PredicateAccess => ast.PredicateAccessPredicate(predicate, ast.FullPerm()())()

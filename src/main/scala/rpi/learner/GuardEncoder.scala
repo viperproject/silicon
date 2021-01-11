@@ -88,7 +88,8 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
                 .foldLeft(result) {
                   case (currentResult, (choice, index)) =>
                     val choiceGuard = ChoiceGuard(choiceId, index)
-                    val innerView = view.updated(name = s"t_$choiceId", choice)
+                    val adaptedChoice = view.adapt(choice)
+                    val innerView = view.updated(name = s"t_$choiceId", adaptedChoice)
                     collect(body, Map.empty, innerView)
                       .foldLeft(currentResult) {
                         case (innerResult, (innerAccess, innerGuard)) =>
@@ -96,7 +97,15 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
                           SeqMap.addAll(innerResult, innerAccess, updatedGuard)
                       }
                 }
-            case _ => ???
+            case Truncation(condition, body) =>
+              val adaptedCondition = view.adapt(condition)
+              val truncationGuard = TruncationGuard(adaptedCondition)
+              collect(body, Map.empty, view)
+                .foldLeft(result) {
+                  case (innerResult, (innerAccess, innerGuard)) =>
+                    val updatedGuard = innerGuard.map { choice => choice :+ truncationGuard }
+                    SeqMap.addAll(innerResult, innerAccess, updatedGuard)
+                }
           }
 
         // collect guards
@@ -106,12 +115,20 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     // collect effective guards for every template
     templates.map { case (name, template) =>
       val map = collectGuards(template, View.empty, depth = 3)
+      println(template)
+      map.foreach { case (loc, g) =>
+        println(s"  $loc:")
+        g.foreach { x =>
+          print("    ")
+          println(x.mkString("(", " && ", ")"))
+        }
+      }
       name -> map
     }
   }
 
   /**
-    * T
+    * The atomic integer used to generate unique names.
     */
   private val unique = new AtomicInteger
 
@@ -187,6 +204,13 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
                     encodeState(id, values, default)
                   case ChoiceGuard(choiceId, index) =>
                     encodeChoice(choiceId, index)
+                  case TruncationGuard(condition) =>
+                    val value = record.abstraction.getValue(condition)
+                    value match {
+                      case Some(true) => ast.TrueLit()()
+                      case Some(false) => ast.FalseLit()()
+                      case _ => ast.BoolLit(default)() // TODO: default.
+                    }
                 }
                 Expressions.bigAnd(conjuncts)
               }
@@ -314,12 +338,19 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     bigAnd(constraints)
   }
 
-  // TODO: truncation guard.
   sealed trait Guard
 
-  case class ResourceGuard(guardId: Int, atoms: Seq[ast.Exp]) extends Guard
+  case class ResourceGuard(guardId: Int, atoms: Seq[ast.Exp]) extends Guard {
+    override def toString: String = s"phi_$guardId[${atoms.mkString(", ")}]"
+  }
 
-  case class ChoiceGuard(choiceId: Int, index: Int) extends Guard
+  case class ChoiceGuard(choiceId: Int, index: Int) extends Guard {
+    override def toString: String = s"c_$choiceId=$index"
+  }
+
+  case class TruncationGuard(condition: ast.Exp) extends Guard {
+    override def toString: String = condition.toString
+  }
 
   object View {
     def empty: View =

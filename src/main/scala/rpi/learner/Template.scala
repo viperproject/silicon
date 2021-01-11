@@ -147,7 +147,8 @@ class TemplateGenerator(learner: Learner) {
         // compute template
         val template = {
           val specification = inference.getSpecification(name)
-          createTemplate(specification, accesses ++ instances)
+          val body = createBody(accesses ++ instances)
+          Template(specification, body)
         }
         // add template and update global structure
         (result.updated(name, template), global.join(local))
@@ -167,8 +168,18 @@ class TemplateGenerator(learner: Learner) {
           }
           fields ++ framed ++ recursions
         }
+        // template body
+        val body = {
+          val full = createBody(accesses)
+          if (Settings.useSegments) {
+            val Seq(first, second) = specification.variables
+            val condition = ast.NeCmp(first, second)()
+            Truncation(condition, full)
+          }
+          else full
+        }
         // create template
-        createTemplate(specification, accesses)
+        Template(specification, body)
       }
 
     // return templates
@@ -178,14 +189,13 @@ class TemplateGenerator(learner: Learner) {
   }
 
   /**
-    * Creates a template corresponding to the given specification with the given resources.
+    * Creaates the body for a template corresponding to the given resources.
     *
-    * @param specification The specification.
-    * @param resources     The resources.
-    * @param id            The atomic integer used to generate unique ids.
-    * @return The template.
+    * @param resources The resources.
+    * @param id        The atomic integer used to generate unique ids.
+    * @return The template body.
     */
-  def createTemplate(specification: Specification, resources: Set[ast.LocationAccess])(implicit id: AtomicInteger): Template = {
+  def createBody(resources: Set[ast.LocationAccess])(implicit id: AtomicInteger): TemplateExpression = {
     val sequence = resources.toSeq
 
     // get all field accesses, then filter and sort them
@@ -239,9 +249,7 @@ class TemplateGenerator(learner: Learner) {
         }
 
     // create template
-    // TODO: Add truncation.
-    val body = Conjunction(fields ++ predicates)
-    Template(specification, body)
+    Conjunction(fields ++ predicates)
   }
 
   /**
