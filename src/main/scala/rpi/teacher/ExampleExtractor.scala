@@ -41,15 +41,7 @@ class ExampleExtractor(teacher: Teacher) {
     val (counter, offending, Some(info)) = extractInformation[FramingInfo](error)
 
     // get label and instance
-    val label = counter
-      .state
-      .oldHeaps
-      .flatMap {
-        case (name, _) if context.isInhaled(name) => Some(name)
-        case _ => None
-      }
-      .head
-    val instance = context.getInhaled(label)
+    val (label, instance) = context.allSnapshots.head
 
     // get state abstraction
     val abstraction = {
@@ -165,7 +157,7 @@ class ExampleExtractor(teacher: Teacher) {
       }
 
     // create example
-    currentRecord match {
+    val example = currentRecord match {
       case Some(currentRecord) =>
         // evaluate permission amount
         val permission = {
@@ -179,6 +171,7 @@ class ExampleExtractor(teacher: Teacher) {
         else NegativeExample(currentRecord)
       case None => PositiveExample(otherRecords)
     }
+    example
   }
 
   /**

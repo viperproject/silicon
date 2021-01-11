@@ -8,16 +8,15 @@ import viper.silver.ast.utility.rewriter.Traverse
   */
 object Expressions {
   /**
-    * Assumes that the given field access is an access path and returns its length.
+    * Assumes that the given expression is an access path and returns its length.
     *
-    * @param access The access path.
+    * @param expression The expression.
     * @return The length of the access path.
     */
-  def length(access: ast.FieldAccess): Int =
-    access.rcv match {
-      case _: ast.LocalVar => 2
-      case receiver: ast.FieldAccess => length(receiver) + 1
-      case _ => ??? // should not occur
+  def length(expression: ast.Exp): Int =
+    expression match {
+      case _: ast.LocalVar => 1
+      case ast.FieldAccess(receiver, _) => length(receiver) + 1
     }
 
   /**

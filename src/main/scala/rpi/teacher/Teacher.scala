@@ -88,45 +88,15 @@ class Teacher(val inference: Inference) {
   * A context object used to pass information from the check builder to the example extractor.
   */
 class Context {
-  // TODO: Cleaan up inhaled anad exhaaled ?!
-
   /**
     * The labels and instances of the inhaled and exhaled states.
     */
   private var snapshots: Seq[(String, Instance)] = Seq.empty
 
   /**
-    * A map holding the instances corresponding to the inhaled states.
-    */
-  private var inhaled: Map[String, Instance] = Map.empty
-
-  /**
-    * A map holding the instances corresponding to the exhaled states.
-    */
-  private var exhaled: Map[String, Instance] = Map.empty
-
-  /**
     * A map holding variable names for all states.
     */
   private var names: Map[String, Map[ast.LocationAccess, String]] = Map.empty
-
-  /**
-    * Returns whether the given label corresponds to an inhaled state or not.
-    *
-    * @param label The label of the state.
-    * @return True if the given label corresponds to an inhaled state.
-    */
-  def isInhaled(label: String): Boolean =
-    inhaled.contains(label)
-
-  /**
-    * Returns whether the given label corresponds to an exhaled state or not.
-    *
-    * @param label The label of the state.
-    * @return True if the given label corresponds to an exhaled state.
-    */
-  def isExhaled(label: String): Boolean =
-    exhaled.contains(label)
 
   /**
     * Returns the labels and instances of all inhaled and exhaled states. Since the labels were added in topological
@@ -144,20 +114,19 @@ class Context {
     * @param label    The label of the state.
     * @param instance The instance.
     */
-  def addInhaled(label: String, instance: Instance): Unit = {
+  def addSnapshot(label: String, instance: Instance): Unit = {
     snapshots = snapshots :+ (label, instance)
-    inhaled = inhaled.updated(label, instance)
   }
 
   /**
-    * Adds the given instance as an instance corresponding to an exhaled state.
+    * Returns the name of the variable associated with the given location access in the given state.
     *
-    * @param label    The label of the state.
-    * @param instance The instance.
+    * @param label  The label of the state.
+    * @param access The location access.
+    * @return The variable name.
     */
-  def addExhaled(label: String, instance: Instance): Unit = {
-    snapshots = snapshots :+ (label, instance)
-    exhaled = exhaled.updated(label, instance)
+  def getName(label: String, access: ast.LocationAccess): String = {
+    names(label)(access)
   }
 
   /**
@@ -172,38 +141,6 @@ class Context {
       .getOrElse(label, Map.empty)
       .updated(access, name)
     names = names.updated(label, updated)
-  }
-
-  def getInstance(label: String): Instance =
-    inhaled.getOrElse(label, exhaled(label))
-
-  /**
-    * Returns the instance corresponding to the inhaled state with the given label.
-    *
-    * @param label The label of the state.
-    * @return The instances.
-    */
-  def getInhaled(label: String): Instance =
-    inhaled(label)
-
-  /**
-    * Returns the instance corresponding to the exhaled state with the given label.
-    *
-    * @param label The label of the state.
-    * @return The instance.
-    */
-  def getExhaled(label: String): Instance =
-    exhaled(label)
-
-  /**
-    * Returns the name of the variable associated with the given location access in the given state.
-    *
-    * @param label  The label of the state.
-    * @param access The location access.
-    * @return The variable name.
-    */
-  def getName(label: String, access: ast.LocationAccess): String = {
-    names(label)(access)
   }
 }
 

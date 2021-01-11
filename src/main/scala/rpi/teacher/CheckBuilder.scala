@@ -92,7 +92,7 @@ class CheckBuilder(teacher: Teacher) {
         val arguments = predicate.formalArgs.map { parameter => parameter.localVar }
         val instance = inference.getInstance(name, arguments)
         val label = saveState(instance)
-        context.addInhaled(label, instance)
+        context.addSnapshot(label, instance)
         // inhale inferred specification
         val inferred = hypothesis.get(instance)
         addInhales(inferred)
@@ -171,14 +171,14 @@ class CheckBuilder(teacher: Teacher) {
           }
           // save state
           val label = saveState(instance)
-          context.addInhaled(label, instance)
+          context.addSnapshot(label, instance)
         case ast.Exhale(predicate: ast.PredicateAccessPredicate) =>
           // get specification
           val instance = getInstance(predicate)
           val body = hypothesis.get(instance)
           // save state
           val label = saveState(instance)
-          context.addExhaled(label, instance)
+          context.addSnapshot(label, instance)
           // save and fold ingredients
           if (Settings.useAnnotations) {
             annotation match {
