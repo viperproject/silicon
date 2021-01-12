@@ -1,6 +1,7 @@
 package rpi.learner
 
 import rpi.inference._
+import rpi.util.Expressions
 import viper.silver.ast
 
 /**
@@ -80,7 +81,8 @@ class Learner(val inference: Inference) {
         .map { case (name, template) =>
           val parameters = template.parameters
           val body = solver.buildBody(template)
-          name -> ast.Predicate(name, parameters, Some(body))()
+          val simplified = Expressions.simplify(body)
+          name -> ast.Predicate(name, parameters, Some(simplified))()
         }
 
       // return hypothesis
