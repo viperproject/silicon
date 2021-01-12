@@ -41,7 +41,13 @@ class ExampleExtractor(teacher: Teacher) {
     val (counter, offending, Some(info)) = extractInformation[FramingInfo](error)
 
     // get label and instance
-    val (label, instance) = context.allSnapshots.head
+    val (label, instance) = {
+      val heaps = counter.state.oldHeaps
+      context
+        .allSnapshots
+        .filter { case (label, _) => heaps.contains(label) }
+        .head
+    }
 
     // get state abstraction
     val abstraction = {
@@ -73,10 +79,9 @@ class ExampleExtractor(teacher: Teacher) {
     // get counter example, offending location, and context info
     val (counter, offending, info) = extractInformation[BasicInfo](error)
 
-    // get model and current state
+    // get state and model
+    val siliconState = counter.state
     val model = ModelEvaluator(counter.model)
-    val state = counter.state
-    val failState = StateEvaluator(None, state, model)
 
     // get state snapshots
     val (currentSnapshot, otherSnapshots) = {
@@ -84,9 +89,9 @@ class ExampleExtractor(teacher: Teacher) {
       val encountered = context
         .allSnapshots
         .flatMap { case (label, instance) =>
-          if (state.oldHeaps.contains(label)) {
+          if (siliconState.oldHeaps.contains(label)) {
             //Snapshot(label, instance, state, evaluator)
-            val encounteredState = StateEvaluator(Some(label), state, model)
+            val encounteredState = StateEvaluator(Some(label), siliconState, model)
             val snapshot = Snapshot(instance, encounteredState)
             Some(snapshot)
           } else None
@@ -101,6 +106,12 @@ class ExampleExtractor(teacher: Teacher) {
         val current = None
         (current, encountered)
       }
+    }
+
+    // failing state
+    val failState = currentSnapshot match {
+      case Some(snapshot) => snapshot.state
+      case None => StateEvaluator(None, siliconState, model)
     }
 
     // get current location
