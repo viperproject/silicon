@@ -20,6 +20,10 @@ case class ModelEvaluator(model: Model) {
     term match {
       case terms.True() => true
       case terms.False() => false
+      case terms.Var(identifier, _) =>
+        getEntry(identifier.name) match {
+          case ConstantEntry(value) => value.toBoolean
+        }
       case terms.Not(argument) =>
         !evaluateBoolean(argument)
       case terms.Equals(left, right) =>
