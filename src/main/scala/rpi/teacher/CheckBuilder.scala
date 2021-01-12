@@ -233,17 +233,17 @@ class CheckBuilder(teacher: Teacher) {
         case _ => // do nothing
       }
 
-    def save(expression: ast.Exp)(implicit label: String): Unit =
+    def save(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty)(implicit label: String): Unit =
       expression match {
         case ast.And(left, right) =>
-          save(left)
-          save(right)
-        case ast.Implies(_, guarded) =>
-          save(guarded)
+          save(left, guards)
+          save(right, guards)
+        case ast.Implies(guard, guarded) =>
+          save(guarded, guards :+ guard)
         case ast.FieldAccessPredicate(resource, _) =>
-          savePermission(label, resource)
+          savePermission(resource, guards)
         case ast.PredicateAccessPredicate(resource, _) =>
-          savePermission(label, resource)
+          savePermission(resource, guards)
         case _ => // do nothing
       }
 
@@ -259,13 +259,13 @@ class CheckBuilder(teacher: Teacher) {
           // save body
           val instance = inference.getInstance(name, arguments)
           val body = hypothesis.get(instance)
-          save(body)
+          save(body, guards)
           // conditional fold
           val info = BasicInfo(label, instance)
           val fold = ast.Fold(predicate)(info = info)
           val conditions = guards :+ ast.EqCmp(argument, arguments.head)()
           addStatement(ast.If(bigAnd(conditions), asSequence(fold), skip)())
-        case other => save(other)
+        case other => save(other, guards)
       }
 
     def foldAll(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty, depth: Int = 0)
@@ -285,7 +285,7 @@ class CheckBuilder(teacher: Teacher) {
           val info = BasicInfo(label, instance)
           val fold = ast.Fold(predicate)(info = info)
           addStatement(ast.If(bigAnd(guards), asSequence(fold), skip)())
-        case other => save(other)
+        case other => save(other, guards)
       }
 
     // build instrumented program
@@ -402,10 +402,11 @@ class CheckBuilder(teacher: Teacher) {
   /**
     * Saves the currently held permission amount for the given resource.
     *
-    * @param label    The label of the state under which the name of the variable should be stored.
     * @param resource The resource.
+    * @param guards   The conditions guarding the resource.
+    * @param label    The label of the state under which the name of the variable should be stored.
     */
-  private def savePermission(label: String, resource: ast.LocationAccess): Unit = {
+  private def savePermission(resource: ast.LocationAccess, guards: Seq[ast.Exp])(implicit label: String): Unit = {
     // auxiliary method to extract condition under which we have permission to even talk about this resource
     def extractConditions(resource: ast.Exp): Seq[ast.Exp] =
       resource match {
@@ -416,30 +417,28 @@ class CheckBuilder(teacher: Teacher) {
         case _ => Seq.empty
       }
 
-    // auxiliary method to actually save the permission
-    def savePermission(conditions: Seq[ast.Exp]): Unit = {
-      // generate unique name
-      val name = namespace.uniqueIdentifier(base = "p", Some(0))
-      context.addName(label, resource, name)
-      // construct potentially conditional value
-      val value = {
-        val current = ast.CurrentPerm(resource)()
-        if (conditions.isEmpty) current
-        else ast.CondExp(bigAnd(conditions), current, ast.NoPerm()())()
+    // compute conditions
+    val conditions = {
+      val extracted = resource match {
+        case ast.FieldAccess(receiver, _) =>
+          extractConditions(receiver)
+        case ast.PredicateAccess(arguments, _) =>
+          arguments.flatMap { argument => extractConditions(argument) }
       }
-      // save value
-      saveValue(name, value)
+      guards ++ extracted
     }
 
-    // process resource
-    resource match {
-      case ast.FieldAccess(receiver, _) =>
-        val conditions = extractConditions(receiver)
-        savePermission(conditions)
-      case ast.PredicateAccess(arguments, _) =>
-        val conditions = arguments.flatMap { argument => extractConditions(argument) }
-        savePermission(conditions)
+    // generate unique name
+    val name = namespace.uniqueIdentifier(base = "p", Some(0))
+    context.addName(label, resource, name)
+    // construct potentially conditional value
+    val value = {
+      val current = ast.CurrentPerm(resource)()
+      if (conditions.isEmpty) current
+      else ast.CondExp(bigAnd(conditions), current, ast.NoPerm()())()
     }
+    // save value
+    saveValue(name, value)
   }
 
   /**
