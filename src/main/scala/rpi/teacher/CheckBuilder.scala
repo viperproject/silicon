@@ -205,14 +205,15 @@ class CheckBuilder(teacher: Teacher) {
             addStatement(ast.Exhale(adapted)())
           }
         case call@ast.MethodCall(name, Seq(argument), _) if Names.isAnnotation(name) =>
-          // handle annotations (only occur when enabled)
-          name match {
-            case `unfoldDownAnnotation` =>
-              inhaled.foreach { expression => unfoldDown(expression)(argument) }
-              inhaled = None
-            case `foldUpAnnotation` =>
-              annotation = Some(call)
-          }
+          // handle annotations
+          if (Settings.useAnnotations)
+            name match {
+              case `unfoldDownAnnotation` =>
+                inhaled.foreach { expression => unfoldDown(expression)(argument) }
+                inhaled = None
+              case `foldUpAnnotation` =>
+                annotation = Some(call)
+            }
         case _ =>
           addStatement(statement)
       }
