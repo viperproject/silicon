@@ -1,5 +1,6 @@
 package rpi.teacher.state
 
+import viper.silicon.resources.FieldID
 import viper.silicon.state.{BasicChunk, State, terms}
 import viper.silver.ast
 
@@ -35,9 +36,8 @@ case class StateEvaluator(label: Option[String], state: State, model: ModelEvalu
     .getOrElse(state.h)
     .values
     .foldLeft(Map.empty[String, Map[String, String]]) {
-      case (result, chunk: BasicChunk) =>
+      case (result, chunk: BasicChunk) if chunk.resourceID == FieldID =>
         // TODO: Ignore non-ref
-        // TODO: Can be non field?
         val receiver = model.evaluateReference(chunk.args.head)
         val field = chunk.id.name
         val value = model.evaluateReference(chunk.snap)
@@ -47,6 +47,8 @@ case class StateEvaluator(label: Option[String], state: State, model: ModelEvalu
           .updated(field, value)
         // update heap
         result.updated(receiver, fields)
+      case (result, _) =>
+        result
     }
 
   def evaluateBoolean(name: String): Boolean = {
