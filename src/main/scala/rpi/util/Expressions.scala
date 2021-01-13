@@ -29,12 +29,12 @@ object Expressions {
   def instantiate(predicate: ast.Predicate, arguments: Seq[ast.Exp]): ast.Exp =
     predicate.body match {
       case Some(body) =>
-        val map = computeMap(predicate.formalArgs, arguments)
+        val map = substitutionMap(predicate.formalArgs, arguments)
         substitute(body, map)
       case _ => ???
     }
 
-  def computeMap(parameters: Seq[ast.LocalVarDecl], arguments: Seq[ast.Exp]): Map[String, ast.Exp] =
+  def substitutionMap(parameters: Seq[ast.LocalVarDecl], arguments: Seq[ast.Exp]): Map[String, ast.Exp] =
     parameters
       .map { parameter => parameter.name }
       .zip(arguments)

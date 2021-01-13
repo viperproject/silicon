@@ -35,7 +35,7 @@ case class Instance(specification: Specification, arguments: Seq[ast.Exp]) {
     * The substitution map for the formal-to-actual translation.
     */
   private lazy val toActualMap: Map[String, ast.Exp] =
-    Expressions.computeMap(specification.parameters, arguments)
+    Expressions.substitutionMap(specification.parameters, arguments)
 
   /**
     * Returns the name of the specification.

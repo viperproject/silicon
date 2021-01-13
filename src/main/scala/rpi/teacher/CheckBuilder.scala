@@ -114,14 +114,8 @@ class CheckBuilder(teacher: Teacher) {
     * @param hypothesis The hypothesis.
     * @return The program and the context object.
     */
-  def basicCheck(checks: Seq[ast.Seqn], hypothesis: Hypothesis): (ast.Program, Context) = {
+  def basicCheck(checks: Seq[Check], hypothesis: Hypothesis): (ast.Program, Context) = {
     import Names._
-
-    // remember the last inhaled specification (to be handled by future unfold annotations)
-    // and the last fold annotation (to be handled by future exhaled specifications)
-    var inhaled: Option[ast.Exp] = None
-    var annotation: Option[ast.MethodCall] = None
-
     /**
       * Helper method that instruments the given sequence.
       *
@@ -152,7 +146,6 @@ class CheckBuilder(teacher: Teacher) {
           // get specification
           val instance = getInstance(predicate)
           val body = hypothesis.get(instance)
-          inhaled = Some(body)
           // inhale
           if (Settings.inline) {
             // inhale body of specification predicate
@@ -169,6 +162,14 @@ class CheckBuilder(teacher: Teacher) {
             addStatement(ast.Inhale(adapted)())
             addStatement(ast.Unfold(adapted)())
           }
+          // handle annotations
+          if (Settings.useAnnotations) {
+            val annotations = predicate.info.getAllInfos[AnnotationInfo]
+            annotations.foreach {
+              case AnnotationInfo(`unfoldDownAnnotation`, Seq(argument) ) =>
+                unfoldDown(body)(argument)
+            }
+          }
           // save state
           val label = saveState(instance)
           context.addSnapshot(label, instance)
@@ -181,11 +182,10 @@ class CheckBuilder(teacher: Teacher) {
           context.addSnapshot(label, instance)
           // save and fold ingredients
           if (Settings.useAnnotations) {
-            annotation match {
-              case Some(ast.MethodCall(`foldUpAnnotation`, Seq(argument), _)) =>
-                foldUp(body)(argument, label)
-                annotation = None
-              case None => save(body)(label)
+            val annotations = predicate.info.getAllInfos[AnnotationInfo]
+            if (annotations.isEmpty) save(body)(label)
+            else annotations.foreach {
+              case AnnotationInfo(`foldUpAnnotation`, Seq(argument)) => foldUp(body)(argument, label)
             }
           } else foldAll(body)(label)
           // exhale
@@ -205,15 +205,7 @@ class CheckBuilder(teacher: Teacher) {
             addStatement(ast.Exhale(adapted)())
           }
         case call@ast.MethodCall(name, Seq(argument), _) if Names.isAnnotation(name) =>
-          // handle annotations
-          if (Settings.useAnnotations)
-            name match {
-              case `unfoldDownAnnotation` =>
-                inhaled.foreach { expression => unfoldDown(expression)(argument) }
-                inhaled = None
-              case `foldUpAnnotation` =>
-                annotation = Some(call)
-            }
+          ???
         case _ =>
           addStatement(statement)
       }
@@ -291,7 +283,11 @@ class CheckBuilder(teacher: Teacher) {
 
     // build instrumented program
     clear()
-    val instrumented = checks.map { check => instrumentSequence(check) }
+    val instrumented = checks
+      .map { check =>
+        val sequence = ast.Seqn(check.statements, Seq.empty)()
+        instrumentSequence(sequence)
+      }
     val program = buildProgram(instrumented, hypothesis)
     // return program and context
     (program, context)
