@@ -142,68 +142,78 @@ class CheckBuilder(teacher: Teacher) {
           // add instrumented conditional
           val instrumented = ast.If(condition, thenInstrumented, elseInstrumented)()
           addStatement(instrumented)
-        case ast.Inhale(predicate: ast.PredicateAccessPredicate) =>
-          // get specification
-          val instance = getInstance(predicate)
-          val body = hypothesis.get(instance)
-          // inhale
-          if (Settings.inline) {
-            // inhale body of specification predicate
-            val info = ast.SimpleInfo(Seq(instance.name))
-            addStatement(ast.Inhale(body)(info = info))
-          } else {
-            // inhale and unfold specification predicate
-            val adapted = {
-              val name = instance.name
-              val arguments = instance.arguments
-              val access = ast.PredicateAccess(arguments, name)()
-              ast.PredicateAccessPredicate(access, predicate.perm)()
+        case ast.Inhale(expression) => expression match {
+          case predicate: ast.PredicateAccessPredicate =>
+            // get specification
+            val instance = getInstance(predicate)
+            val body = hypothesis.get(instance)
+            // inhale
+            if (Settings.inline) {
+              // inhale body of specification predicate
+              val info = ast.SimpleInfo(Seq(instance.name))
+              addStatement(ast.Inhale(body)(info = info))
+            } else {
+              // inhale and unfold specification predicate
+              val adapted = {
+                val name = instance.name
+                val arguments = instance.arguments
+                val access = ast.PredicateAccess(arguments, name)()
+                ast.PredicateAccessPredicate(access, predicate.perm)()
+              }
+              addStatement(ast.Inhale(adapted)())
+              addStatement(ast.Unfold(adapted)())
             }
-            addStatement(ast.Inhale(adapted)())
-            addStatement(ast.Unfold(adapted)())
-          }
-          // handle annotations
-          if (Settings.useAnnotations) {
-            val annotations = predicate.info.getAllInfos[AnnotationInfo]
-            annotations.foreach {
-              case AnnotationInfo(`unfoldDownAnnotation`, Seq(argument) ) =>
-                unfoldDown(body)(argument)
+            // handle annotations
+            if (Settings.useAnnotations) {
+              val annotations = statement.info.getAllInfos[AnnotationInfo]
+              annotations.foreach {
+                case AnnotationInfo(`unfoldDownAnnotation`, Seq(argument)) =>
+                  unfoldDown(body)(argument)
+              }
             }
-          }
-          // save state
-          val label = saveState(instance)
-          context.addSnapshot(label, instance)
-        case ast.Exhale(predicate: ast.PredicateAccessPredicate) =>
-          // get specification
-          val instance = getInstance(predicate)
-          val body = hypothesis.get(instance)
-          // save state
-          val label = saveState(instance)
-          context.addSnapshot(label, instance)
-          // save and fold ingredients
-          if (Settings.useAnnotations) {
-            val annotations = predicate.info.getAllInfos[AnnotationInfo]
-            if (annotations.isEmpty) save(body)(label)
-            else annotations.foreach {
-              case AnnotationInfo(`foldUpAnnotation`, Seq(argument)) => foldUp(body)(argument, label)
+            // save state
+            val label = saveState(instance)
+            context.addSnapshot(label, instance)
+          case condition =>
+            assert(condition.isPure)
+            addStatement(ast.Inhale(condition)())
+        }
+        case ast.Exhale(expression) => expression match {
+          case predicate: ast.PredicateAccessPredicate =>
+            // get specification
+            val instance = getInstance(predicate)
+            val body = hypothesis.get(instance)
+            // save state
+            val label = saveState(instance)
+            context.addSnapshot(label, instance)
+            // save and fold ingredients
+            if (Settings.useAnnotations) {
+              val annotations = statement.info.getAllInfos[AnnotationInfo]
+              if (annotations.isEmpty) save(body)(label)
+              else annotations.foreach {
+                case AnnotationInfo(`foldUpAnnotation`, Seq(argument)) => foldUp(body)(argument, label)
+              }
+            } else foldAll(body)(label)
+            // exhale
+            val info = BasicInfo(label, instance)
+            if (Settings.inline) {
+              // exhale body of specification
+              addStatement(ast.Exhale(body)(info = info))
+            } else {
+              // fold and exhale specification predicate
+              val adapted = {
+                val name = instance.name
+                val arguments = instance.arguments
+                val access = ast.PredicateAccess(arguments, name)()
+                ast.PredicateAccessPredicate(access, predicate.perm)()
+              }
+              addStatement(ast.Fold(adapted)(info = info))
+              addStatement(ast.Exhale(adapted)())
             }
-          } else foldAll(body)(label)
-          // exhale
-          val info = BasicInfo(label, instance)
-          if (Settings.inline) {
-            // exhale body of specification
-            addStatement(ast.Exhale(body)(info = info))
-          } else {
-            // fold and exhale specification predicate
-            val adapted = {
-              val name = instance.name
-              val arguments = instance.arguments
-              val access = ast.PredicateAccess(arguments, name)()
-              ast.PredicateAccessPredicate(access, predicate.perm)()
-            }
-            addStatement(ast.Fold(adapted)(info = info))
-            addStatement(ast.Exhale(adapted)())
-          }
+          case condition =>
+            assert(condition.isPure)
+            addStatement(ast.Exhale(condition)())
+        }
         case call@ast.MethodCall(name, Seq(argument), _) if Names.isAnnotation(name) =>
           ???
         case _ =>
