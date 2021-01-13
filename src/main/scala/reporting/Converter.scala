@@ -3,7 +3,9 @@ package viper.silicon.reporting
 import viper.silver.verifier.{
   Model,
   ModelEntry,
-  SingleEntry,
+  ValueEntry,
+  ConstantEntry,
+  ApplicationEntry,
   MapEntry,
   ModelParser
 }
@@ -118,13 +120,13 @@ object Converter {
   def getFunctionValue(model: Model, fname: String, args: String): String = {
     val entry: ModelEntry = model.entries(fname)
     entry match {
-      case SingleEntry(s) => s
-      case MapEntry(m: Map[Seq[String], String], els: String) =>
-        val filtered = m.filter(x => snapToOneLine(x._1.mkString(" ")) == args)
+      case ConstantEntry(s) => s
+      case MapEntry(m: Map[Seq[ValueEntry], ValueEntry], els: ValueEntry) =>
+        val filtered = m.filter(x => snapToOneLine(x._1.map(_.toString).mkString(" ")) == args)
         if (filtered.nonEmpty) {
           filtered.head._2.toString
         } else {
-          els
+          els.toString
         }
     }
   }
@@ -155,14 +157,14 @@ object Converter {
   def evaluateTerm(term: Term, model: Model): String = {
     term match {
       case Unit              => "$Snap.unit"
-      case IntLiteral(n)     => term.toString
+      case IntLiteral(_)     => term.toString
       case t: BooleanLiteral => t.value.toString
       case Null()            => model.entries("$Ref.null").toString
-      case Var(id, sort) =>
+      case Var(_, _) =>
         val key = term.toString
         //this can fail : TODO throw and catch exception
         model.entries(key).toString
-      case t @ App(app, args) =>
+      case App(app, args) =>
         /* not tested yet, not sure for which examples this occurs on heap*/
         var fname = app.id + "%limited"
         if (!model.entries.contains(fname)) {
@@ -171,7 +173,7 @@ object Converter {
             fname = fname.replace("[", "<").replace("]", ">")
           }
         }
-        var arg = snapToOneLine(
+        val arg = snapToOneLine(
           args.map(x => evaluateTerm(x, model)).mkString(" ")
         )
         getFunctionValue(model, fname, arg)
@@ -218,14 +220,12 @@ object Converter {
   def extractHeap(h: Iterable[Chunk], model: Model): ExtractedHeap = {
     var target: ExtractedHeap = Map()
     h foreach {
-      case c @ BasicChunk(FieldID, id, args, snap, perm) =>
+      case c @ BasicChunk(FieldID, _, _, _, _) =>
         val (entry, value) = extractField(c, model)
         target += (entry -> value)
-      case c @ BasicChunk(PredicateID, id, args, snap, perm) =>
-        val entry = extractPredicate(c, model)
+      case c @ BasicChunk(PredicateID, _, _, _, _) =>
+        val entry = extractPredicate(c)
         target += (entry -> "")
-      case c @ BasicChunk(resId, id, args, snap, perm) =>
-        println("chunks for magic wands not implemented")
       case _ => println("WARNING: not handling non-basic chunks")
     }
     target
@@ -233,7 +233,7 @@ object Converter {
 
   def extractField(chunk: BasicChunk, model: Model): (HeapEntry, String) = {
     val fieldname = chunk.id.name
-    var recvString = evaluateTerm(chunk.args.head, model)
+    val recvString = evaluateTerm(chunk.args.head, model)
 
     val perm: Rational = chunk.perm match {
       case p: PermLiteral => p.literal
@@ -249,7 +249,7 @@ object Converter {
     (entry, value)
   }
 
-  def extractPredicate(chunk: BasicChunk, model: Model): HeapEntry = {
+  def extractPredicate(chunk: BasicChunk): HeapEntry = {
     //this might be too simple for some cases but for prusti to tell if some
     //variable is part of a class it should be good enough
     //not really sure if the snap value should be added, seems to be same as one of
@@ -283,7 +283,7 @@ object Converter {
         var map: Map[String, ExtractedModelEntry] = Map()
         for ((entry: HeapEntry, value: String) <- heap) {
           entry match {
-            case FieldHeapEntry(recv, field, perm, typ) =>
+            case FieldHeapEntry(recv, field, perm@_, typ) =>
               if (recv == termEval) {
                 if (typ.isDefined) {
                   val recEntry = mapLocalVar(typ.get, value, heap, model)

@@ -29,7 +29,7 @@ trait SymbolicExecutionRules {
       if (model != null && !model.contains("model is not available")){
         val nativeModel = Model(model)
         val ce_type = Verifier.config.counterexample()
-        var ce: Counterexample = ce_type match {
+        val ce: Counterexample = ce_type match {
           case "native" => 
             val oldHeap = s.oldHeaps.get(Verifier.PRE_STATE_LABEL).map(_.values)
             SiliconNativeCounterexample(s.g, s.h.values, oldHeap, nativeModel)
