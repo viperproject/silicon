@@ -139,15 +139,24 @@ class TemplateGenerator(learner: Learner) {
     // compute templates for specifications and structure for recursive predicate
     val (templates, structure) = map.foldLeft((Map.empty[String, Template], bottom)) {
       case ((result, global), (name, accesses)) =>
-        // compute local structure
-        val (instances, local) = {
-          val fields = accesses.collect { case field: ast.FieldAccess => field }
-          computeStructure(fields)
+        // separate field from predicate accesses
+        val fields = accesses.collect { case field: ast.FieldAccess => field }
+        val predicates = accesses.collect { case predicate: ast.PredicateAccess => predicate }
+        // compute structure
+        val (instances, local) = computeStructure(fields)
+        // filter unwanted instances
+        val all = predicates ++ instances
+        val filtered = all.filter { case ast.PredicateAccess(arguments, _) =>
+          arguments.zipWithIndex.forall {
+            case (_: ast.NullLit, index) => index > 0
+            case (_: ast.LocalVar, _) => true
+            case (_: ast.FieldAccess, _) => false
+          }
         }
         // compute template
         val template = {
           val specification = inference.getSpecification(name)
-          val body = createBody(accesses ++ instances)
+          val body = createBody(fields ++ filtered)
           Template(specification, body)
         }
         // add template and update global structure
