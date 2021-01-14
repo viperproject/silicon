@@ -18,6 +18,8 @@ trait SymbolConverter {
   def toFunction(function: ast.DomainFunc): terms.DomainFun
   def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.DomainFun
 
+  def toFunction(function: ast.BackendFunc): terms.SMTFun
+
   def toFunction(function: ast.Function): terms.HeapDepFun
 }
 
@@ -36,8 +38,10 @@ class DefaultSymbolConverter extends SymbolConverter {
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
       sorts.UserSort(Identifier(dt.toString()))
 
+    case ast.BackendType(_, smtName) if smtName != null => sorts.SMTSort(Identifier(smtName))
+    case ast.BackendType(_, _) => sys.error("Found backend type without SMTLIB name.")
     case viper.silicon.utils.ast.ViperEmbedding(sort) => sort
-
+      
     case   ast.InternalType
          | _: ast.TypeVar
          | ast.Wand
@@ -53,6 +57,15 @@ class DefaultSymbolConverter extends SymbolConverter {
     val outSort = toSort(function.typ)
 
     toFunction(function, inSorts :+ outSort)
+  }
+
+  def toFunction(function: ast.BackendFunc): terms.SMTFun = {
+    val inSorts = function.formalArgs map (_.typ) map toSort
+    val outSort = toSort(function.typ)
+
+    val id = Identifier(function.smtName)
+
+    terms.SMTFun(id, inSorts, outSort)
   }
 
   def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.DomainFun = {
