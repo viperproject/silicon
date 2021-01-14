@@ -128,7 +128,7 @@ case class SiliconMappedCounterexample(internalStore: Store, heap: Iterable[Chun
   override def toString = {
     val buf = converter.modelAtLabel.map(x => s"model at label: ${x._1}\n${x._2.toString}").mkString("\n")
     s"$buf\non return: \n${converter.extractedModel.toString}"
-  }
+  } 
   
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel)
