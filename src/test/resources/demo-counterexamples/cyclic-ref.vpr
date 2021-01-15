@@ -1,0 +1,10 @@
+field next: Ref
+
+method foo(a: Ref, b: Ref)
+requires acc(a.next) && acc(b.next)
+requires a!=b
+{
+  a.next := b
+  b.next := a
+  assert(false)
+}
