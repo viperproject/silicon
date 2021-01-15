@@ -154,5 +154,5 @@ case class FramingInfo(location: ast.LocationAccess) extends ContextInfo {
 
 case class BasicInfo(label: String, instance: Instance) extends ContextInfo {
   override def comment: Seq[String] =
-    Seq(instance.name)
+    Seq(instance.toString)
 }

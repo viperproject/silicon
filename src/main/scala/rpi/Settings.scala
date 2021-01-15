@@ -35,6 +35,7 @@ object Settings {
     */
   val useSegments = true
 
+  // TODO: Implement or remove me.
   val useChoices = true
 
   /**
@@ -47,15 +48,34 @@ object Settings {
   val useAnnotations = true
 
   /**
-    * Since Silicon is a iso-recursive verifier, we force folds in positions where a predicate needs to be established,
-    * such that we only have to rely on unfold heuristics (as failing fold heuristics may yield incorrect  examples).
-    * This parameter regulates up to which depth we statically fold predicates.
+    * The depth up to which specifications are unfolded.
     */
-  val foldDepth = 1
+  val unfoldDepth: Int = 1
 
+  /**
+    * The folding delta: Since Silicon is a iso-recursive verifier, we force additional folds in positions where
+    * a predicate needs to be established, such that we only have to rely on unfold heuristics (as failing fold
+    * heuristics may yield incorrect examples). This parameter regulates up to which depth we statically fold
+    * predicates.
+    */
+  val foldDelta: Int = 1
+
+  /**
+    * The sum of the unfold depth and the folding delta.
+    */
+  val foldDepth: Int =
+    if (Settings.useAnnotations) unfoldDepth
+    else unfoldDepth + foldDelta
+
+  /**
+    * The flag indicating whether specification predicates are inlined.
+    */
   val inline = true
 
-  val batch = true
+  /**
+    * The flag indicating whether the checks of a single top-level iteration are processed in a single batch.
+    */
+  val batch = false
 
   /**
     * The flag indicating whether silicons branching should be used to concretize values of atomic predicates.
@@ -66,10 +86,6 @@ object Settings {
     * The flag indicating whether parameters of inferred predicates should be renamed (mostly to test stuff).
     */
   val renameParameters = false
-
-  val debugPrintProgram = true
-  val debugPrintTemplates = true
-  val debugPrintGuards = true
 }
 
 object Names {
@@ -123,5 +139,4 @@ object Names {
 
   def isPredicate(name: String): Boolean =
     name == recursive || name == segment
-
 }
