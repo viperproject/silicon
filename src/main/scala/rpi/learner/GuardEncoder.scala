@@ -133,14 +133,14 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
   private val unique = new AtomicInteger
 
   /**
-    * Returns the encoding of the given examples.
+    * Returns the encoding of the given samples.
     *
-    * @param examples The examples to encode.
-    * @return The constraints representing the encodings of the examples.
+    * @param samples The samples to encode.
+    * @return The constraints representing the encodings of the samples.
     */
-  def encodeExamples(examples: Seq[Example]): Seq[ast.Exp] = {
-    // encode examples
-    val exampleEncodings = examples.flatMap { example => encodeExample(example) }
+  def encodeSamples(samples: Seq[Sample]): Seq[ast.Exp] = {
+    // encode samples
+    val sampleEncodings = samples.flatMap { sample => encodeSample(sample) }
     // encode that only one option per choice can be picked
     val choiceEncodings = choices.map { case Choice(choiceId, options, _) =>
       val variables = options
@@ -149,24 +149,24 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
       exactlyOne(variables)
     }
     // return encoding
-    exampleEncodings ++ choiceEncodings
+    sampleEncodings ++ choiceEncodings
   }
 
   /**
-    * Returns the encoding of the given example.
+    * Returns the encoding of the given sample.
     *
-    * @param example The example to encode.
-    * @return The constraints representing the encoding of the example.
+    * @param sample The sample to encode.
+    * @return The constraints representing the encoding of the sample.
     */
-  def encodeExample(example: Example): Seq[ast.Exp] =
-    example match {
-      case PositiveExample(records) =>
+  def encodeSample(sample: Sample): Seq[ast.Exp] =
+    sample match {
+      case PositiveSample(records) =>
         val (encoding, constraints) = encodeRecords(records, default = false)
         constraints :+ encoding
-      case NegativeExample(record) =>
+      case NegativeSample(record) =>
         val (encoding, constraints) = encodeRecords(Seq(record), default = false)
         constraints :+ not(encoding)
-      case ImplicationExample(leftRecord, rightRecords) =>
+      case ImplicationSample(leftRecord, rightRecords) =>
         val (leftEncoding, leftConstraints) = encodeRecords(Seq(leftRecord), default = true)
         val (rightEncoding, rightConstraints) = encodeRecords(rightRecords, default = false)
         leftConstraints ++ rightConstraints :+ implies(leftEncoding, rightEncoding)

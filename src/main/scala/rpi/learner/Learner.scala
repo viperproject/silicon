@@ -11,9 +11,9 @@ import viper.silver.ast
   */
 class Learner(val inference: Inference) {
   /**
-    * The sequence of examples.
+    * The sequence of samples.
     */
-  private var examples: Seq[Example] = Seq.empty
+  private var samples: Seq[Sample] = Seq.empty
 
   /**
     * The specifications introduced by the learner.
@@ -43,12 +43,12 @@ class Learner(val inference: Inference) {
   def stop(): Unit = {}
 
   /**
-    * Adds the given example.
+    * Adds the given sample.
     *
-    * @param example The example to add.
+    * @param sample The sample to add.
     */
-  def addExample(example: Example): Unit =
-    examples = examples :+ example
+  def addSample(sample: Sample): Unit =
+    samples = samples :+ sample
 
   def allSpecifications: Seq[Specification] =
     specifications.values.toSeq
@@ -60,20 +60,20 @@ class Learner(val inference: Inference) {
     specifications(name)
 
   /**
-    * Returns a hypothesis that is consistent with all examples.
+    * Returns a hypothesis that is consistent with all samples.
     *
     * @return The hypothesis.
     */
   def hypothesis: Hypothesis =
-    if (examples.isEmpty) Hypothesis(Map.empty)
+    if (samples.isEmpty) Hypothesis(Map.empty)
     else {
-      examples.foreach { example => println(example) }
+      samples.foreach { sample => println(sample) }
       // compute templates
-      val templates = templateGenerator.generate(examples)
+      val templates = templateGenerator.generate(samples)
 
-      // encode examples
+      // encode samples
       val encoder = new GuardEncoder(learner = this, templates)
-      val encodings = encoder.encodeExamples(examples)
+      val encodings = encoder.encodeSamples(samples)
 
       // build guards
       val solver = new GuardBuilder(learner = this, encodings)

@@ -11,11 +11,11 @@ import viper.silver.verifier.reasons.InsufficientPermission
 import scala.reflect.ClassTag
 
 /**
-  * Extracts examples from verification errors.
+  * Extracts samples from verification errors.
   *
   * @param teacher The pointer to the teacher.
   */
-class ExampleExtractor(teacher: Teacher) {
+class SampleExtractor(teacher: Teacher) {
   /**
     * Type shortcut for counter examples.
     */
@@ -29,13 +29,13 @@ class ExampleExtractor(teacher: Teacher) {
   def inference: Inference = teacher.inference
 
   /**
-    * Extracts an example from the given verification error corresponding to a self-framingness check.
+    * Extracts a sample from the given verification error corresponding to a self-framingness check.
     *
     * @param error   The verification error.
     * @param context The context object.
-    * @return The extracted example.
+    * @return The extracted sample.
     */
-  def extractFraming(error: VerificationError, context: Context): Example = {
+  def extractFraming(error: VerificationError, context: Context): Sample = {
     println(error)
     // get counter example and offending location
     val (counter, offending, Some(info)) = extractInformation[FramingInfo](error)
@@ -60,21 +60,21 @@ class ExampleExtractor(teacher: Teacher) {
       snapshot.formalAbstraction
     }
 
-    // create and return example
+    // create and return sample
     val specification = instance.specification
     val left = Record(specification, abstraction, Set(info.location))
     val right = Record(specification, abstraction, Set(offending))
-    ImplicationExample(left, Seq(right))
+    ImplicationSample(left, Seq(right))
   }
 
   /**
-    * Extracts an example from the given verification error corresponding to a basic check.
+    * Extracts a sample from the given verification error corresponding to a basic check.
     *
     * @param error   The verification error.
     * @param context The context object.
-    * @return The extracted example.
+    * @return The extracted sample.
     */
-  def extractBasic(error: VerificationError, context: Context): Example = {
+  def extractBasic(error: VerificationError, context: Context): Sample = {
     println(error)
     // get counter example, offending location, and context info
     val (counter, offending, info) = extractInformation[BasicInfo](error)
@@ -167,8 +167,8 @@ class ExampleExtractor(teacher: Teacher) {
         Record(specification, abstraction, locations)
       }
 
-    // create example
-    val example = currentRecord match {
+    // create sample
+    val sample = currentRecord match {
       case Some(currentRecord) =>
         // evaluate permission amount
         val permission = {
@@ -178,11 +178,11 @@ class ExampleExtractor(teacher: Teacher) {
         }
         // we want to require the missing permission form an upstream specification,
         // unless we previously already held some permission for the location
-        if (permission == 0) ImplicationExample(currentRecord, otherRecords)
-        else NegativeExample(currentRecord)
-      case None => PositiveExample(otherRecords)
+        if (permission == 0) ImplicationSample(currentRecord, otherRecords)
+        else NegativeSample(currentRecord)
+      case None => PositiveSample(otherRecords)
     }
-    example
+    sample
   }
 
   /**

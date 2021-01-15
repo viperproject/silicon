@@ -23,7 +23,7 @@ class Inference(program: ast.Program) {
   val magic: ast.Field = ast.Field("__CONFIG_HEURISTICS", ast.Bool)()
 
   /**
-    * The instance of the silicon verifier used to generate the examples.
+    * The instance of the silicon verifier used to generate the samples.
     */
   private val verifier: Verifier = {
     // create instance
@@ -126,7 +126,7 @@ class Inference(program: ast.Program) {
   }
 
   /**
-    * The teacher providing the examples.
+    * The teacher providing the samples.
     */
   private val teacher = new Teacher(inference = this)
 
@@ -227,11 +227,11 @@ class Inference(program: ast.Program) {
     else {
       println(s"----- round ${Settings.maxRounds - rounds} -----")
       // check hypothesis
-      val examples = teacher.check(hypothesis)
-      if (examples.isEmpty) hypothesis
+      val samples = teacher.check(hypothesis)
+      if (samples.isEmpty) hypothesis
       else {
-        // add examples and recurse
-        examples.foreach { example => learner.addExample(example) }
+        // add samples and iterate
+        samples.foreach { sample => learner.addSample(sample) }
         infer(rounds - 1)
       }
     }

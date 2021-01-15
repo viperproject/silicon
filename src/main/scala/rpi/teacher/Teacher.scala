@@ -6,7 +6,7 @@ import viper.silver.ast
 import viper.silver.verifier.{Failure, Success, VerificationError}
 
 /**
-  * The teacher providing the examples.
+  * The teacher providing the samples.
   *
   * @param inference The pointer to the inference.
   */
@@ -17,9 +17,9 @@ class Teacher(val inference: Inference) {
   private val builder = new CheckBuilder(teacher = this)
 
   /**
-    * The extractor used to extract examples from verification errors.
+    * The extractor used to extract samples from verification errors.
     */
-  private val extractor = new ExampleExtractor(teacher = this)
+  private val extractor = new SampleExtractor(teacher = this)
 
   /**
     * The list of all checks.
@@ -44,12 +44,12 @@ class Teacher(val inference: Inference) {
 
   /**
     * Checks the given hypothesis. If the hypothesis is valid, an empty sequence is returned. If the hypothesis is not
-    * valid, a non-empty sequence of examples is returned.
+    * valid, a non-empty sequence of samples is returned.
     *
     * @param hypothesis The hypothesis to check.
-    * @return The sequence of examples.
+    * @return The sequence of samples.
     */
-  def check(hypothesis: Hypothesis): Seq[Example] = {
+  def check(hypothesis: Hypothesis): Seq[Sample] = {
     // self-framing check
     val framing = {
       val (check, context) = builder.framingCheck(hypothesis)
@@ -65,14 +65,14 @@ class Teacher(val inference: Inference) {
   }
 
   /**
-    * Executes the check represented by the given program and uses the given extraction method to produce examples in
+    * Executes the check represented by the given program and uses the given extraction method to produce samples in
     * case there are failures.
     *
     * @param program The check program.
-    * @param extract The method extracting examples from verification errors.
-    * @return The extracted examples.
+    * @param extract The method extracting samples from verification errors.
+    * @return The extracted samples.
     */
-  private def execute(program: ast.Program, extract: VerificationError => Example): Seq[Example] =
+  private def execute(program: ast.Program, extract: VerificationError => Sample): Seq[Sample] =
     inference.verify(program) match {
       case Success => Seq.empty
       case Failure(errors) => errors
@@ -84,7 +84,7 @@ class Teacher(val inference: Inference) {
 }
 
 /**
-  * A context object used to pass information from the check builder to the example extractor.
+  * A context object used to pass information from the check builder to the sample extractor.
   */
 class Context {
   /**

@@ -111,22 +111,22 @@ class TemplateGenerator(learner: Learner) {
     } else None
 
   /**
-    * Computes templates for the given examples.
+    * Computes templates for the given samples.
     *
-    * @param examples The examples.
+    * @param samples The samples.
     * @return The templates.
     */
-  def generate(examples: Seq[Example]): Map[String, Template] = {
+  def generate(samples: Seq[Sample]): Map[String, Template] = {
     // used to generate unique ids for guards
     implicit val id: AtomicInteger = new AtomicInteger
 
     // map from specifications to accesses
     val map = {
-      // collect records from examples
-      val records = examples.flatMap {
-        case PositiveExample(records) => records
-        case NegativeExample(record) => Seq(record)
-        case ImplicationExample(left, right) => left +: right
+      // collect records from samples
+      val records = samples.flatMap {
+        case PositiveSample(records) => records
+        case NegativeSample(record) => Seq(record)
+        case ImplicationSample(left, right) => left +: right
       }
       // build map
       records.foldLeft(Map.empty[String, Set[ast.LocationAccess]]) {

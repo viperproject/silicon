@@ -38,7 +38,7 @@ class CheckBuilder(teacher: Teacher) {
   private var namespace: Namespace = _
 
   /**
-    * The context information for the example extractor.
+    * The context information for the sample extractor.
     */
   private var context: Context = _
 

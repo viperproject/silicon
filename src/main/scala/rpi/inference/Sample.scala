@@ -4,30 +4,31 @@ import rpi.util.Expressions
 import viper.silver.ast
 
 /**
-  * The super trait for all examples.
+  * The super trait for all samples..
   */
-trait Example
+trait Sample
 
 /**
-  * A positive example.
+  * A positive sample.
+  *
   * @param records The records.
   */
-case class PositiveExample(records: Seq[Record]) extends Example
+case class PositiveSample(records: Seq[Record]) extends Sample
 
 /**
-  * A negative example.
+  * A negative sample.
   *
   * @param record The records.
   */
-case class NegativeExample(record: Record) extends Example
+case class NegativeSample(record: Record) extends Sample
 
 /**
-  * An implication example.
+  * An implication sample.
   *
   * @param left  The left-hand side of the implication.
   * @param right The right-hand side of the implication.
   */
-case class ImplicationExample(left: Record, right: Seq[Record]) extends Example
+case class ImplicationSample(left: Record, right: Seq[Record]) extends Sample
 
 /**
   * A record representing a data pont.

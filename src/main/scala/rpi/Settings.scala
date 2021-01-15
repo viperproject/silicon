@@ -55,7 +55,7 @@ object Settings {
   /**
     * The folding delta: Since Silicon is a iso-recursive verifier, we force additional folds in positions where
     * a predicate needs to be established, such that we only have to rely on unfold heuristics (as failing fold
-    * heuristics may yield incorrect examples). This parameter regulates up to which depth we statically fold
+    * heuristics may yield incorrect samples). This parameter regulates up to which depth we statically fold
     * predicates.
     */
   val foldDelta: Int = 1
@@ -78,7 +78,7 @@ object Settings {
   val batch = false
 
   /**
-    * The flag indicating whether silicons branching should be used to concretize values of atomic predicates.
+    * The flag indicating whether silicons branching should be used to concretie values of atomic predicates.
     */
   val useBranching = true
 
