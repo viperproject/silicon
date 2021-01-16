@@ -13,7 +13,6 @@ import scala.collection.mutable
   * @param teacher The pointer to the teacher.
   */
 class CheckBuilder(teacher: Teacher) {
-  // import utility methods
 
   import rpi.util.Expressions._
   import rpi.util.Statements._
@@ -77,7 +76,7 @@ class CheckBuilder(teacher: Teacher) {
             case _ => ast.NoInfo
           }
           // inhale part
-          val condition = ast.Implies(bigAnd(guards), conjunct)()
+          val condition = implies(bigAnd(guards), conjunct)
           val inhale = ast.Inhale(condition)(info = info)
           addStatement(inhale)
       }
@@ -328,7 +327,7 @@ class CheckBuilder(teacher: Teacher) {
     clear()
     val instrumented = checks
       .map { check =>
-        val sequence = ast.Seqn(check.statements, Seq.empty)()
+        val sequence = asSequence(check.statements)
         instrumentSequence(sequence)
       }
     val program = buildProgram(instrumented, hypothesis)
@@ -491,8 +490,8 @@ class CheckBuilder(teacher: Teacher) {
     val variable = ast.LocalVar(name, expression.typ)()
     if (Settings.useBranching && expression.typ == ast.Bool) {
       // create conditional
-      val thenBody = asSequence(ast.LocalVarAssign(variable, ast.TrueLit()())())
-      val elseBody = asSequence(ast.LocalVarAssign(variable, ast.FalseLit()())())
+      val thenBody = asSequence(ast.LocalVarAssign(variable, top)())
+      val elseBody = asSequence(ast.LocalVarAssign(variable, bottom)())
       addStatement(ast.If(expression, thenBody, elseBody)())
     } else {
       // create assignment

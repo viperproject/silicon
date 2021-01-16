@@ -1,6 +1,6 @@
 package rpi.learner
 
-import rpi.{Names, Settings}
+import rpi.Settings
 import rpi.util.Expressions
 import viper.silver.ast
 
@@ -39,7 +39,7 @@ class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
       case Resource(guardId, access) =>
         val builtGuard = buildGuard(guardId, atoms)
         val builtResource = buildResource(access)
-        ast.Implies(builtGuard, builtResource)()
+        implies(builtGuard, builtResource)
       case Choice(choiceId, options, body) =>
         // build body
         val builtBody = buildExpression(body, atoms)
@@ -52,7 +52,7 @@ class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
         }
       case Truncation(condition, body) =>
         val builtBody = buildExpression(body, atoms)
-        ast.Implies(condition, builtBody)()
+        implies(condition, builtBody)
     }
 
   private def getOption(choiceId: Int, options: Seq[ast.Exp]): ast.Exp =
@@ -75,21 +75,23 @@ class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
     val clauses = for (j <- 0 until Settings.maxClauses) yield {
       val clauseActivation = model.getOrElse(s"x_${guardId}_$j", false)
       if (clauseActivation) {
-        val literals = atoms.zipWithIndex.map {
-          case (atom, i) => model
-            .get(s"y_${guardId}_${i}_$j")
-            .flatMap { literalActivation =>
-              if (literalActivation) model
-                .get(s"s_${guardId}_${i}_$j")
-                .map { sign => if (sign) atom else ast.Not(atom)() }
-              else None
-            }
-            .getOrElse(ast.TrueLit()())
-        }
-        Expressions.bigAnd(literals)
-      } else ast.FalseLit()()
+        val literals = atoms
+          .zipWithIndex
+          .map {
+            case (atom, i) => model
+              .get(s"y_${guardId}_${i}_$j")
+              .flatMap { literalActivation =>
+                if (literalActivation) model
+                  .get(s"s_${guardId}_${i}_$j")
+                  .map { sign => if (sign) atom else not(atom) }
+                else None
+              }
+              .getOrElse(top)
+          }
+        bigAnd(literals)
+      } else bottom
     }
-    Expressions.bigOr(clauses)
+    bigOr(clauses)
   }
 
   /**

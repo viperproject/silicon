@@ -83,8 +83,7 @@ object Expressions {
 
   @inline
   def literal(value: Boolean): ast.Exp =
-    if (value) top
-    else bottom
+    if (value) top else bottom
 
   @inline
   def top: ast.Exp =
