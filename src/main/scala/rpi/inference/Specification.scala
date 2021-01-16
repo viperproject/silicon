@@ -1,5 +1,6 @@
 package rpi.inference
 
+import rpi.Names
 import rpi.util.Expressions
 import viper.silver.ast
 
@@ -17,6 +18,14 @@ case class Specification(name: String, parameters: Seq[ast.LocalVarDecl], atoms:
     */
   def variables: Seq[ast.LocalVar] =
     parameters.map { parameter => parameter.localVar }
+
+  /**
+    * Returns whether this is the specification corresponding to the recursive predicate.
+    *
+    * @return True if this is the specification corresponding to the recursive predicate.
+    */
+  def isRecursive: Boolean =
+    name == Names.recursive
 
   override def toString: String =
     s"$name(${parameters.map(_.name).mkString(", ")})"

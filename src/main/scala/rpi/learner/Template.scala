@@ -156,8 +156,7 @@ class TemplateGenerator(learner: Learner) {
         // compute template
         val template = {
           val specification = inference.getSpecification(name)
-          val body = createBody(fields ++ filtered)
-          Template(specification, body)
+          createTemplate(specification, fields ++ filtered)
         }
         // add template and update global structure
         (result.updated(name, template), global.join(local))
@@ -166,8 +165,8 @@ class TemplateGenerator(learner: Learner) {
     // compute template for recursive predicate
     val recursive = recursiveSpecification
       .map { specification =>
-        // collect accesses
-        val accesses: Set[ast.LocationAccess] = {
+        // collect resources
+        val resources: Set[ast.LocationAccess] = {
           // get fields and recursions
           val fields = structure.fields
           val recursions = structure.recursions
@@ -177,18 +176,8 @@ class TemplateGenerator(learner: Learner) {
           }
           fields ++ framed ++ recursions
         }
-        // template body
-        val body = {
-          val full = createBody(accesses)
-          if (Settings.useSegments) {
-            val Seq(first, second) = specification.variables
-            val condition = ast.NeCmp(first, second)()
-            Truncation(condition, full)
-          }
-          else full
-        }
         // create template
-        Template(specification, body)
+        createTemplate(specification, resources)
       }
 
     // return templates
@@ -198,13 +187,15 @@ class TemplateGenerator(learner: Learner) {
   }
 
   /**
-    * Creaates the body for a template corresponding to the given resources.
+    * Creates a template corresponding to the given specification with the given resources.
     *
-    * @param resources The resources.
-    * @param id        The atomic integer used to generate unique ids.
-    * @return The template body.
+    * @param specification The specification for which a template is created.
+    * @param resources     The resources.
+    * @param id            The implicitly passed atomic integer used to generate unique ids.
+    * @return The template.
     */
-  def createBody(resources: Set[ast.LocationAccess])(implicit id: AtomicInteger): TemplateExpression = {
+  def createTemplate(specification: Specification, resources: Set[ast.LocationAccess])
+                    (implicit id: AtomicInteger): Template = {
     val sequence = resources.toSeq
 
     // get all field accesses, then filter and sort them
@@ -222,35 +213,73 @@ class TemplateGenerator(learner: Learner) {
 
     // get all predicate accesses
     val predicates =
-      if (Settings.useSegments) sequence
-        // group by first argument
-        .foldLeft(Map.empty[ast.Exp, Set[ast.Exp]]) {
-          case (result, access) => access match {
-            case ast.PredicateAccess(arguments, name) =>
-              assert(name == Names.recursive)
-              assert(arguments.length == 2)
-              val Seq(first, second) = arguments
-              SetMap.add(result, first, second)
-            case _ => result
+      if (Settings.useSegments) {
+        // map from first arguments to options for second arguments
+        val arguments: Iterable[(ast.Exp, Seq[ast.Exp])] =
+          if (specification.isRecursive || Settings.restrictChoices) {
+            sequence
+              // group second arguments by first argument
+              .foldLeft(Map.empty[ast.Exp, Set[ast.Exp]]) {
+                case (result, access) => access match {
+                  case ast.PredicateAccess(arguments, name) =>
+                    assert(name == Names.recursive)
+                    assert(arguments.length == 2)
+                    val Seq(first, second) = arguments
+                    SetMap.add(result, first, second)
+                  case _ => result
+                }
+              }
+              .view
+              .mapValues { values => values.toSeq }
+          } else {
+            // get reference-typed variables
+            val variables = specification
+              .variables
+              .filter { variable => variable.isSubtype(ast.Ref) }
+            // build map that always returns all possible options
+            val options = variables :+ ast.NullLit()()
+            sequence
+              .collect { case ast.PredicateAccess(first +: _, name) =>
+                assert(name == Names.recursive)
+                first
+              }
+              .distinct
+              .map { first => first -> options }
           }
-        }
-        .map { case (first, options) =>
-          // TODO: Optimize if there is only one option.
-          // create ids
-          val guardId = id.getAndIncrement()
-          val choiceId = id.getAndIncrement()
-          // create predicate with choice placeholder
-          val predicate = {
-            val second = ast.LocalVar(s"t_$choiceId", ast.Ref)()
-            val arguments = Seq(first, second)
-            ast.PredicateAccess(arguments, Names.recursive)()
+        // create resources with choices
+        arguments
+          .flatMap {
+            case (first, options) => options match {
+              case Seq() => None
+              case Seq(only) =>
+                // create id
+                val guardId = id.getAndIncrement()
+                // create predicate
+                val predicate = {
+                  val arguments = Seq(first, only)
+                  ast.PredicateAccess(arguments, Names.recursive)()
+                }
+                // create resource
+                val resource = Resource(guardId, predicate)
+                Some(resource)
+              case _ =>
+                // create ids
+                val guardId = id.getAndIncrement()
+                val choiceId = id.getAndIncrement()
+                // create predicate with choice placeholder
+                val predicate = {
+                  val second = ast.LocalVar(s"t_$choiceId", ast.Ref)()
+                  val arguments = Seq(first, second)
+                  ast.PredicateAccess(arguments, Names.recursive)()
+                }
+                // create resource and choice
+                val resource = Resource(guardId, predicate)
+                val choice = Choice(choiceId, options.toSeq, resource)
+                Some(choice)
+            }
           }
-          // create resource and choice
-          val resource = Resource(guardId, predicate)
-          Choice(choiceId, options.toSeq, resource)
-        }
-        .toSeq
-      else sequence
+          .toSeq
+      } else sequence
         .collect { case predicate: ast.PredicateAccess =>
           // create resource
           val guardId = id.getAndIncrement()
@@ -258,7 +287,13 @@ class TemplateGenerator(learner: Learner) {
         }
 
     // create template
-    Conjunction(fields ++ predicates)
+    val body =
+      if (specification.isRecursive && Settings.useSegments) {
+        val Seq(first, second) = specification.variables
+        val condition = ast.NeCmp(first, second)()
+        Truncation(condition, Conjunction(fields ++ predicates))
+      } else Conjunction(fields ++ predicates)
+    Template(specification, body)
   }
 
   /**

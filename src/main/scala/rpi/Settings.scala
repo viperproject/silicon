@@ -35,8 +35,11 @@ object Settings {
     */
   val useSegments = true
 
-  // TODO: Implement or remove me.
-  val useChoices = true
+  /**
+    * The flag indicating whether tha choices for predicate arguments should be restricted to the ones appearing in the
+    * samples.
+    */
+  val restrictChoices = false
 
   /**
     * The flag indicating whether the black box verifier used by the inference should use annotations or heuristics for
