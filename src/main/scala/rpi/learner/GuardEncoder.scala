@@ -6,8 +6,10 @@ import rpi.inference._
 import rpi.util.{Collections, Expressions, SeqMap}
 import viper.silver.ast
 
-class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
-  // import utility methods
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
+
+class GuardEncoder(templates: Map[String, Template]) {
 
   import Expressions._
 
@@ -139,95 +141,58 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @return The constraints representing the encodings of the samples.
     */
   def encodeSamples(samples: Seq[Sample]): Seq[ast.Exp] = {
+    // the buffer that accumulates constraints
+    implicit val buffer: mutable.Buffer[ast.Exp] = new ListBuffer[ast.Exp]
+
     // encode samples
-    val sampleEncodings = samples.flatMap { sample => encodeSample(sample) }
+    samples.foreach { sample => encodeSample(sample) }
+
     // encode that only one option per choice can be picked
-    val choiceEncodings = choices.map { case Choice(choiceId, options, _) =>
-      val variables = options
-        .indices
-        .map { index => ast.LocalVar(s"c_${choiceId}_$index", ast.Bool)() }
-      exactlyOne(variables)
+    choices.foreach {
+      case Choice(choiceId, options, _) =>
+        val variables = options
+          .indices
+          .map { index => ast.LocalVar(s"c_${choiceId}_$index", ast.Bool)() }
+        addConstraint(exactlyOne(variables))
     }
+
     // return encoding
-    sampleEncodings ++ choiceEncodings
+    buffer.toSeq
   }
 
   /**
-    * Returns the encoding of the given sample.
+    * Encodes the given sample.
     *
     * @param sample The sample to encode.
-    * @return The constraints representing the encoding of the sample.
+    * @param buffer The implicitly passed buffer that accumulates global constraints.
     */
-  def encodeSample(sample: Sample): Seq[ast.Exp] =
+  private def encodeSample(sample: Sample)(implicit buffer: mutable.Buffer[ast.Exp]): Unit =
     sample match {
       case PositiveSample(records) =>
-        val (encoding, constraints) = encodeRecords(records, default = false)
-        constraints :+ encoding
+        val encoding = encodeRecords(records, default = false)
+        addConstraint(encoding)
       case NegativeSample(record) =>
-        val (encoding, constraints) = encodeRecords(Seq(record), default = false)
-        constraints :+ not(encoding)
+        val encoding = encodeRecord(record, default = false)
+        addConstraint(not(encoding))
       case ImplicationSample(leftRecord, rightRecords) =>
-        val (leftEncoding, leftConstraints) = encodeRecords(Seq(leftRecord), default = true)
-        val (rightEncoding, rightConstraints) = encodeRecords(rightRecords, default = false)
-        leftConstraints ++ rightConstraints :+ implies(leftEncoding, rightEncoding)
+        val leftEncoding = encodeRecord(leftRecord, default = true)
+        val rightEncoding = encodeRecords(rightRecords, default = false)
+        addConstraint(implies(leftEncoding, rightEncoding))
     }
 
   /**
     * Encodes the given records.
-    *
     * @param records The records to encode.
-    * @param default The default value to assume for unknown atoms (approximation).
-    * @return A tuple holding the encoding and a sequence of global constraints.
+    * @param default The default value used to approximate unknown atoms.
+    * @param buffer  The implicitly passed buffer that accumulates global constraints.
+    * @return The encoding.
     */
-  private def encodeRecords(records: Seq[Record], default: Boolean): (ast.Exp, Seq[ast.Exp]) = {
-    // collect encodings and constraints
-    // TODO: Fix default value (every other record is negative)
-    val (variables, constraints) = {
-      val empty = Seq.empty[ast.Exp]
-      records.foldLeft((empty, empty)) {
-        case ((variables, constraints), record) =>
-          // get guards
-          val name = record.specification.name
-          val localGuards = guards.getOrElse(name, Map.empty)
-
-          // compute encodings
-          val encodings = record
-            .locations
-            .flatMap { location =>
-              // get guard for location
-              val locationGuard = localGuards.getOrElse(location, Seq.empty)
-              // choices for this location
-              locationGuard.map { sequence =>
-                val conjuncts = sequence.map {
-                  case ResourceGuard(id, atoms) =>
-                    val values = record.abstraction.getValues(atoms)
-                    encodeState(id, values, default)
-                  case ChoiceGuard(choiceId, index) =>
-                    encodeChoice(choiceId, index)
-                  case TruncationGuard(condition) =>
-                    val value = record.abstraction.getValue(condition)
-                    value match {
-                      case Some(true) => ast.TrueLit()()
-                      case Some(false) => ast.FalseLit()()
-                      case _ => ast.BoolLit(default)() // TODO: default.
-                    }
-                }
-                Expressions.bigAnd(conjuncts)
-              }
-            }
-
-          val (encodingVariables, equalities) = auxiliaries(encodings)
-          val (variable, lower) = auxiliary(bigOr(encodingVariables))
-          val upper = atMostOne(encodingVariables)
-          (variables :+ variable, constraints ++ equalities :+ lower :+ upper)
-      }
-    }
-
+  private def encodeRecords(records: Seq[Record], default: Boolean)(implicit buffer: mutable.Buffer[ast.Exp]): ast.Exp = {
     /**
-      * The given encodings is assumed ot correspond to a sequence of records, where the records alternate between
-      * inhaled records and exhaled records (starting and ending with inhaled records). The encoding produced by this
-      * method captures that the permissions from an inhaled record only survive if it is not exhaled by any of the
-      * subsequent exhaled records.
+      * The given encodings are assumed to correspond to a sequence of records , where the record alternate between
+      * inhaled and exhaled records (with odd length, starting and ending with inhaled records). The encoding produced
+      * by this helper method capture the fact that permissions from an inhaled record only survive if it is not exhaled
+      * by any onf the subsequent exhaled records.
       *
       * @param encodings The encodings corresponding to the records.
       * @return The resulting encoding.
@@ -235,19 +200,74 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     def ensureFraming(encodings: Seq[ast.Exp]): (ast.Exp, ast.Exp) =
       encodings match {
         case inhaled +: exhaled +: rest =>
-          val (innerEncoding, innerCondition) = ensureFraming(rest)
-          val condition = ast.And(ast.Not(exhaled)(), innerCondition)()
-          val encoding = ast.Or(ast.And(inhaled, condition)(), innerEncoding)()
+          val (restEncoding, restCondition) = ensureFraming(rest)
+          val condition = and(not(exhaled), restCondition)
+          val encoding = or(and(inhaled, condition), restEncoding)
           (encoding, condition)
-        case Seq(inhaled) => (inhaled, ast.TrueLit()())
+        case Seq(inhaled) => (inhaled, top)
       }
 
-    // TODO: Remove conditional if list is never empty.
-    val encoding =
-      if (variables.isEmpty) ??? // was: true
-      else ensureFraming(variables)._1
+    // compute encodings for records
+    val encodings = records
+      .zipWithIndex
+      .map { case (record, index) =>
+        // note: every other record is in negative position
+        val adapted = if (index % 2 == 0) default else !default
+        encodeRecord(record, adapted)
+      }
 
-    (encoding, constraints)
+    // encode framing constraints
+    val (framed, _) = ensureFraming(encodings)
+    framed
+  }
+
+  /**
+    * Encodes the given record.
+    *
+    * @param record  The record to encode.
+    * @param default The default value used to approximate unknown atoms.
+    * @param buffer  The implicitly passed buffer that accumulates global constraints.
+    * @return The encoding.
+    */
+  private def encodeRecord(record: Record, default: Boolean)(implicit buffer: mutable.Buffer[ast.Exp]): ast.Exp = {
+    // get guards
+    val name = record.specification.name
+    val localGuards = guards.getOrElse(name, Map.empty)
+
+    // compute encodings for location options
+    val options = record
+      .locations
+      .flatMap { location =>
+        // get guard and build encoding for location option
+        val locationGuard = localGuards.getOrElse(location, Seq.empty)
+        locationGuard.map { sequence =>
+          // build encodings for option
+          val conjuncts = sequence.map {
+            case ResourceGuard(id, atoms) =>
+              val values = record.abstraction.getValues(atoms)
+              encodeState(id, values, default)
+            case ChoiceGuard(choiceId, index) =>
+              encodeChoice(choiceId, index)
+            case TruncationGuard(condition) =>
+              val value = record.abstraction.getValue(condition)
+              value match {
+                case Some(true) => top
+                case Some(false) => bottom
+                case _ =>
+                  // TODO: Maybe try model evaluation here?
+                  literal(default)
+              }
+          }
+          // introduce auxiliary variable for location option
+          val option = bigAnd(conjuncts)
+          auxiliary(option)
+        }
+      }
+
+    // it is never good to pick more than one option
+    addConstraint(atMostOne(options))
+    // at least one option needs to be picked
+    auxiliary(bigOr(options))
   }
 
   /**
@@ -271,19 +291,19 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
             val literalEncoding = value match {
               case Some(sign) =>
                 val variable = ast.LocalVar(s"s_${guardId}_${i}_$j", ast.Bool)()
-                if (sign) variable else ast.Not(variable)()
+                if (sign) variable else not(variable)
               case None =>
-                if (default) ast.TrueLit()() else ast.FalseLit()()
+                literal(default)
             }
-            ast.Implies(literalActivation, literalEncoding)()
+            implies(literalActivation, literalEncoding)
           }
         // conjoin all literals
-        Expressions.bigAnd(literals)
+        bigAnd(literals)
       }
-      ast.And(clauseActivation, clauseEncoding)()
+      and(clauseActivation, clauseEncoding)
     }
     // return disjunction of clauses
-    Expressions.bigOr(clauses)
+    bigOr(clauses)
   }
 
   /**
@@ -296,22 +316,29 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
   private def encodeChoice(choiceId: Int, index: Int): ast.Exp =
     ast.LocalVar(s"c_${choiceId}_$index", ast.Bool)()
 
-  // method used to introduce auxiliary variables
-  private def auxiliary(expression: ast.Exp): (ast.LocalVar, ast.Exp) = {
+  /**
+    * Introduces an auxiliary variable for the given expression.
+    *
+    * @param expression The expression.
+    * @param buffer     The implicitly passed buffer that accumulates global constraints.
+    * @return The auxiliary variable.
+    */
+  private def auxiliary(expression: ast.Exp)(implicit buffer: mutable.Buffer[ast.Exp]): ast.LocalVar = {
+    // create auxiliary variable
     val name = s"t_${unique.getAndIncrement}"
     val variable = ast.LocalVar(name, ast.Bool)()
-    val equality = ast.EqCmp(variable, expression)()
-    (variable, equality)
+    // add equality constraint and return variable
+    addConstraint(ast.EqCmp(variable, expression)())
+    variable
   }
 
-  // method used to introduce auxiliary variables.
-  private def auxiliaries(expressions: Iterable[ast.Exp]): (Seq[ast.LocalVar], Seq[ast.Exp]) =
-    expressions
-      .foldLeft((Seq.empty[ast.LocalVar], Seq.empty[ast.Exp])) {
-        case ((variables, equalities), expression) =>
-          val (variable, equality) = auxiliary(expression)
-          (variables :+ variable, equalities :+ equality)
-      }
+  /**
+    * Adds the given expression to the list of constraints.
+    * @param expression The expression.
+    * @param buffer     The implicitly passed buffer that accumulates global constraints.
+    */
+  private def addConstraint(expression: ast.Exp)(implicit buffer: mutable.Buffer[ast.Exp]): Unit =
+    buffer.append(expression)
 
   /**
     * Computes the encoding of the fact that exactly one of the given expressions is true.
@@ -319,9 +346,8 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @param expressions The expressions.
     * @return The encoding.
     */
-  private def exactlyOne(expressions: Seq[ast.Exp]): ast.Exp = {
-    ast.And(bigOr(expressions), atMostOne(expressions))()
-  }
+  private def exactlyOne(expressions: Iterable[ast.Exp]): ast.Exp =
+    and(bigOr(expressions), atMostOne(expressions))
 
   /**
     * Computes the encoding of the fact that at most one of the given expressions is true.
@@ -329,12 +355,10 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
     * @param expressions The expressions.
     * @return The encoding.
     */
-  private def atMostOne(expressions: Seq[ast.Exp]): ast.Exp = {
+  private def atMostOne(expressions: Iterable[ast.Exp]): ast.Exp = {
     val constraints = Collections
       .pairs(expressions)
-      .map { case (first, second) =>
-        ast.Not(ast.And(first, second)())()
-      }
+      .map { case (first, second) => not(and(first, second)) }
     bigAnd(constraints)
   }
 
@@ -349,7 +373,7 @@ class GuardEncoder(learner: Learner, templates: Map[String, Template]) {
   }
 
   case class TruncationGuard(condition: ast.Exp) extends Guard {
-    override def toString: String = condition.toString
+    override def toString: String = condition.toString()
   }
 
   object View {

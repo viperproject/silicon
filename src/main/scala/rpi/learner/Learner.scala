@@ -72,7 +72,7 @@ class Learner(val inference: Inference) {
       val templates = templateGenerator.generate(samples)
 
       // encode samples
-      val encoder = new GuardEncoder(learner = this, templates)
+      val encoder = new GuardEncoder(templates)
       val encodings = encoder.encodeSamples(samples)
 
       // build guards

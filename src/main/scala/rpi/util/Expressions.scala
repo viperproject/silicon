@@ -81,9 +81,28 @@ object Expressions {
       case _ => ast.Not(expression)()
     }
 
+  @inline
+  def literal(value: Boolean): ast.Exp =
+    if (value) top
+    else bottom
+
+  @inline
+  def top: ast.Exp =
+    ast.TrueLit()()
+
+  @inline
+  def bottom: ast.Exp =
+    ast.FalseLit()()
+
+  @inline
   def and(left: ast.Exp, right: ast.Exp): ast.Exp =
     ast.And(left, right)()
 
+  @inline
+  def or(left: ast.Exp, right: ast.Exp): ast.Exp =
+    ast.Or(left, right)()
+
+  @inline
   def implies(left: ast.Exp, right: ast.Exp): ast.Exp =
     ast.Implies(left, right)()
 
