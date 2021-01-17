@@ -18,4 +18,3 @@ method foo(a: Ref, b: Ref)
   b.y := 6
   assert(false)
 }
-
