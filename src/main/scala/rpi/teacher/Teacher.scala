@@ -52,13 +52,13 @@ class Teacher(val inference: Inference) {
   def check(hypothesis: Hypothesis): Seq[Sample] = {
     // self-framing check
     val framing = {
-      val (check, context) = builder.framingCheck(hypothesis)
+      val (check, context) = builder.framingChecks(hypothesis)
       execute(check, error => extractor.extractFraming(error, context))
     }
     // other checks, if hypothesis is self-framing
     if (framing.isEmpty) checks
       .flatMap { group =>
-        val (check, context) = builder.basicCheck(group, hypothesis)
+        val (check, context) = builder.basicChecks(group, hypothesis)
         execute(check, error => extractor.extractBasic(error, context))
       }
     else framing

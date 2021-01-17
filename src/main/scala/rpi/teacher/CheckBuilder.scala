@@ -53,7 +53,7 @@ class CheckBuilder(teacher: Teacher) {
     * @param hypothesis The hypothesis to check for self-framingness.
     * @return The program and the context object.
     */
-  def framingCheck(hypothesis: Hypothesis): (ast.Program, Context) = {
+  def framingChecks(hypothesis: Hypothesis): (ast.Program, Context) = {
     /**
       * Helper method that inhales the given expression conjunct-wise. The expression is implicitly rewritten to have
       * its conjuncts at the top level by pushing implications inside.
@@ -108,12 +108,26 @@ class CheckBuilder(teacher: Teacher) {
 
   /**
     * Returns a program that performs the given checks.
-    *
-    * @param checks     The checks to perform.
+    * @param checks     The checks.
     * @param hypothesis The hypothesis.
     * @return The program and the context object.
     */
-  def basicCheck(checks: Seq[Check], hypothesis: Hypothesis): (ast.Program, Context) = {
+  def basicChecks(checks: Seq[Check], hypothesis: Hypothesis): (ast.Program, Context) = {
+    // instrument checks
+    clear()
+    val instrumented = checks.map { check => basicCheck(check, hypothesis) }
+    // return program and context
+    val program = buildProgram(instrumented, hypothesis)
+    (program, context)
+  }
+
+  /**
+    * Returns the body of a method performing the given check.
+    * @param check      The check.
+    * @param hypothesis The hypothesis.
+    * @return The body.
+    */
+  private def basicCheck(check: Check, hypothesis: Hypothesis): ast.Seqn = {
     import Names._
     /**
       * Helper method that instruments the given sequence.
@@ -148,11 +162,7 @@ class CheckBuilder(teacher: Teacher) {
         case ast.Inhale(expression) => expression match {
           case predicate: ast.PredicateAccessPredicate =>
             // get annotations
-            implicit val annotations: Seq[AnnotationInfo] =
-              if (Settings.useAnnotations) statement
-                .info
-                .getAllInfos[AnnotationInfo]
-              else Seq.empty
+            implicit val annotations: Seq[Annotation] = Annotations.extract(statement)
             // get specification
             val instance = getInstance(predicate)
             val body = hypothesis.get(instance)
@@ -173,7 +183,7 @@ class CheckBuilder(teacher: Teacher) {
               addStatement(ast.Unfold(adapted)())
             }
             // unfold predicate
-            unfold(body)
+            unfold(body, check.unfoldDepth)
             // save state
             val label = saveState(instance)
             context.addSnapshot(label, instance)
@@ -184,11 +194,7 @@ class CheckBuilder(teacher: Teacher) {
         case ast.Exhale(expression) => expression match {
           case predicate: ast.PredicateAccessPredicate =>
             // get annotations
-            implicit val annotations: Seq[AnnotationInfo] =
-              if (Settings.useAnnotations) statement
-                .info
-                .getAllInfos[AnnotationInfo]
-              else Seq.empty
+            implicit val annotations: Seq[Annotation] = Annotations.extract(statement)
             // get specification
             val instance = getInstance(predicate)
             val body = hypothesis.get(instance)
@@ -196,7 +202,7 @@ class CheckBuilder(teacher: Teacher) {
             implicit val label: String = saveState(instance)
             context.addSnapshot(label, instance)
             // save ingredients and fold predicate
-            saveAndFold(body)
+            saveAndFold(body, check.foldDepth)
             // exhale predicate
             val info = BasicInfo(label, instance)
             if (Settings.inline) {
@@ -229,35 +235,35 @@ class CheckBuilder(teacher: Teacher) {
       * The implicitly passed list of annotations represents the annotations that have not been processed yet.
       *
       * @param expression  The expression to unfold.
-      * @param guards      The guards collected so far.
       * @param depth       The depth up to which to unfold.
+      * @param guards      The guards collected so far.
       * @param annotations The list of unprocessed annotations.
       */
-    def unfold(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty, depth: Int = Settings.unfoldDepth)
-              (implicit annotations: Seq[AnnotationInfo]): Unit =
+    def unfold(expression: ast.Exp, depth: Int, guards: Seq[ast.Exp] = Seq.empty)
+              (implicit annotations: Seq[Annotation]): Unit =
       expression match {
         case ast.And(left, right) =>
-          unfold(left, guards, depth)
-          unfold(right, guards, depth)
+          unfold(left, depth, guards)
+          unfold(right, depth, guards)
         case ast.Implies(guard, guarded) =>
-          unfold(guarded, guards :+ guard, depth)
+          unfold(guarded, depth, guards :+ guard)
         case predicate@ast.PredicateAccessPredicate(ast.PredicateAccess(arguments, name), _) =>
           if (annotations.nonEmpty) {
             // handle annotations (only occur when enabled)
             val condition = {
               val equalities = annotations.map {
-                case AnnotationInfo(`unfoldDownAnnotation`, Seq(argument)) =>
+                case Annotation(`unfoldDownAnnotation`, Seq(argument)) =>
                   ast.EqCmp(arguments.head, argument)()
               }
               bigOr(equalities)
             }
             val unfolds = conditional(Seq(condition), {
               push()
-              unfold(predicate, depth = depth + 1)(Seq.empty)
+              unfold(predicate, depth + 1)(Seq.empty)
               pop()
             }, {
               push()
-              unfold(predicate, depth = depth)(Seq.empty)
+              unfold(predicate, depth)(Seq.empty)
               pop()
             })
             addStatement(conditional(guards, unfolds))
@@ -270,7 +276,7 @@ class CheckBuilder(teacher: Teacher) {
             if (depth > 1) {
               val instance = inference.getInstance(name, arguments)
               val body = hypothesis.get(instance)
-              unfold(body, depth = depth - 1)
+              unfold(body, depth - 1)
             }
             // close scope and make unfolds conditional
             val unfolds = pop()
@@ -284,33 +290,33 @@ class CheckBuilder(teacher: Teacher) {
       * saves the permission amounts held for each of the ingredients.
       *
       * @param expression  The expression to save and fold.
-      * @param guards      The guards collected
       * @param depth       The depth up to which to fold.
+      * @param guards      The guards collected
       * @param label       The label of the current state.
       * @param annotations The list of unprocessed annotations.
       */
-    def saveAndFold(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty, depth: Int = Settings.foldDepth)
-                   (implicit label: String, annotations: Seq[AnnotationInfo]): Unit =
+    def saveAndFold(expression: ast.Exp, depth: Int, guards: Seq[ast.Exp] = Seq.empty)
+                   (implicit label: String, annotations: Seq[Annotation]): Unit =
       expression match {
         case ast.And(left, right) =>
-          saveAndFold(left, guards, depth)
-          saveAndFold(right, guards, depth)
+          saveAndFold(left, depth, guards)
+          saveAndFold(right, depth, guards)
         case ast.Implies(guard, guarded) =>
-          saveAndFold(guarded, guards :+ guard, depth)
+          saveAndFold(guarded, depth, guards :+ guard)
         case ast.FieldAccessPredicate(resource, _) =>
           savePermission(resource, guards)
         case predicate@ast.PredicateAccessPredicate(resource@ast.PredicateAccess(arguments, name), _) =>
           if (annotations.nonEmpty) {
             // handle annotations (only occur when enabled)
             // TODO: Actually handle annotations.
-            saveAndFold(predicate, guards, depth)(label, Seq.empty)
+            saveAndFold(predicate, depth, guards)(label, Seq.empty)
           } else if (depth > 0) {
             // open scope
             push()
             // recursively fold predicates appearing in body
             val instance = inference.getInstance(name, arguments)
             val body = hypothesis.get(instance)
-            saveAndFold(body, depth = depth - 1)
+            saveAndFold(body, depth - 1)
             // fold predicate
             val info = BasicInfo(label, instance)
             addStatement(ast.Fold(predicate)(info = info))
@@ -323,16 +329,9 @@ class CheckBuilder(teacher: Teacher) {
         case _ => // do nothing
       }
 
-    // build instrumented program
-    clear()
-    val instrumented = checks
-      .map { check =>
-        val sequence = asSequence(check.statements)
-        instrumentSequence(sequence)
-      }
-    val program = buildProgram(instrumented, hypothesis)
-    // return program and context
-    (program, context)
+    // instrument check
+    val sequence = asSequence(check.statements)
+    instrumentSequence(sequence)
   }
 
   /**
