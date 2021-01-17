@@ -6,6 +6,7 @@ import rpi.util.Namespace
 import viper.silver.ast
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 /**
   * Builds programs used to check hypotheses.
@@ -352,7 +353,11 @@ class CheckBuilder(teacher: Teacher) {
       val inferred = inference.predicates(hypothesis)
       existing ++ inferred
     }
-    val methods = checks.map { check => buildMethod(check) }
+    val methods = {
+      val lemmaMethods = hypothesis.lemmaMethods
+      val checkMethods = checks.map { check => buildMethod(check) }
+      lemmaMethods ++ checkMethods
+    }
     val extensions = Seq.empty
     val program = ast.Program(domains, fields, functions, predicates, methods, extensions)()
     println(program)
@@ -508,7 +513,7 @@ class CheckBuilder(teacher: Teacher) {
   }
 
   private def push(): Unit =
-    stack = mutable.Buffer.empty[ast.Stmt] :: stack
+    stack = ListBuffer.empty[ast.Stmt] :: stack
 
   private def pop(): ast.Seqn =
     stack match {

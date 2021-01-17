@@ -1,7 +1,7 @@
 package rpi.learner
 
 import java.util.concurrent.atomic.AtomicInteger
-import rpi.Settings
+import rpi.{Names, Settings}
 import rpi.inference._
 import rpi.util.{Collections, Expressions, SeqMap}
 import viper.silver.ast
@@ -62,7 +62,7 @@ class GuardEncoder(templates: Map[String, Template]) {
               conjuncts.foldLeft(result) {
                 case (current, conjunct) => collect(conjunct, current, view)
               }
-            case Resource(guardId, access) =>
+            case Guarded(guardId, access) =>
               val resourceGuard = ResourceGuard(guardId, atoms)
               access match {
                 case ast.FieldAccess(receiver, field) =>
@@ -115,17 +115,19 @@ class GuardEncoder(templates: Map[String, Template]) {
       }
 
     // collect effective guards for every template
-    templates.map { case (name, template) =>
-      val map = collectGuards(template, View.empty, depth = 3)
+    templates.flatMap { case (name, template) =>
       println(template)
-      map.foreach { case (loc, g) =>
-        println(s"  $loc:")
-        g.foreach { x =>
-          print("    ")
-          println(x.mkString("(", " && ", ")"))
+      if (!Names.isPredicate(name)) {
+        val map = collectGuards(template, View.empty, depth = 3)
+        map.foreach { case (loc, g) =>
+          println(s"  $loc:")
+          g.foreach { x =>
+            print("    ")
+            println(x.mkString("(", " && ", ")"))
+          }
         }
-      }
-      name -> map
+        Some(name -> map)
+      } else None
     }
   }
 
@@ -142,7 +144,7 @@ class GuardEncoder(templates: Map[String, Template]) {
     */
   def encodeSamples(samples: Seq[Sample]): Seq[ast.Exp] = {
     // the buffer that accumulates constraints
-    implicit val buffer: mutable.Buffer[ast.Exp] = new ListBuffer[ast.Exp]
+    implicit val buffer: mutable.Buffer[ast.Exp] = ListBuffer.empty
 
     // encode samples
     samples.foreach { sample => encodeSample(sample) }

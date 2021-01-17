@@ -53,8 +53,8 @@ object Expressions {
     */
   def bigAnd(expressions: Iterable[ast.Exp]): ast.Exp =
     expressions
-      .reduceOption(ast.And(_, _)())
-      .getOrElse(ast.TrueLit()())
+      .reduceOption { (left, right) => and(left, right) }
+      .getOrElse(top)
 
   /**
     * Returns the disjunction of the given expressions.
@@ -64,8 +64,8 @@ object Expressions {
     */
   def bigOr(expressions: Iterable[ast.Exp]): ast.Exp =
     expressions
-      .reduceOption(ast.Or(_, _)())
-      .getOrElse(ast.FalseLit()())
+      .reduceOption { (left, right) => or(left, right) }
+      .getOrElse(bottom)
 
   /**
     * Negates the given expression.

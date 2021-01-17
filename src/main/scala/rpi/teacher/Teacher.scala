@@ -1,6 +1,6 @@
 package rpi.teacher
 
-import rpi.{Settings, Names}
+import rpi.Settings
 import rpi.inference._
 import viper.silver.ast
 import viper.silver.verifier.{Failure, Success, VerificationError}

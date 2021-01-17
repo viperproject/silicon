@@ -95,29 +95,24 @@ object Names {
   /**
     * The prefix used for precondition predicates.
     */
-  val precondition = "P"
+  val precondition = "pre"
 
   /**
     * The prefix used for postcondition predicates.
     */
-  val postcondition = "Q"
+  val postcondition = "post"
 
   /**
     * The prefix used for invariant predicates.
     */
-  val invariant = "I"
+  val invariant = "inv"
 
   /**
     * The name used for the recursive predicate.
     */
-  val recursive = "R"
+  val recursive = "P"
 
-  /**
-    * The name used for the recursive predicate segment.
-    */
-  val segment = "S"
-
-  val initAnnotation = "__init__"
+  val appendLemma = "append_lemma"
 
   val unfoldDownAnnotation = "__unfoldDown__"
 
@@ -126,7 +121,6 @@ object Names {
   val foldUpAnnotation = "__foldUp__"
 
   val allAnnotations = Seq(
-    initAnnotation,
     unfoldDownAnnotation,
     foldDownAnnotation,
     foldUpAnnotation)
@@ -141,5 +135,5 @@ object Names {
     allAnnotations.contains(name)
 
   def isPredicate(name: String): Boolean =
-    name == recursive || name == segment
+    name == recursive
 }

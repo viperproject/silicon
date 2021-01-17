@@ -49,8 +49,8 @@ case class Check(statements: Seq[ast.Stmt]) {
       */
     def maxDepth(nodes: Seq[ast.Node]): Int =
       nodes
-        .map(depth)
-        .reduceOption(math.max)
+        .map { node => depth(node) }
+        .reduceOption { (left, right) => math.max(left, right) }
         .getOrElse(0)
 
     maxDepth(statements)
