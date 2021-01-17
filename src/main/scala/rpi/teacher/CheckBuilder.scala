@@ -160,6 +160,9 @@ class CheckBuilder(teacher: Teacher) {
           val instrumented = ast.If(condition, thenInstrumented, elseInstrumented)()
           addStatement(instrumented)
         case ast.Inhale(expression) => expression match {
+          case condition if condition.isPure =>
+            // inhale pure conditions (presumably non-specification)
+            addStatement(ast.Inhale(condition)())
           case predicate: ast.PredicateAccessPredicate =>
             // get annotations
             implicit val annotations: Seq[Annotation] = Annotations.extract(statement)
@@ -187,11 +190,11 @@ class CheckBuilder(teacher: Teacher) {
             // save state
             val label = saveState(instance)
             context.addSnapshot(label, instance)
-          case condition =>
-            assert(condition.isPure)
-            addStatement(ast.Inhale(condition)())
         }
         case ast.Exhale(expression) => expression match {
+          case condition if condition.isPure =>
+            // exhale pure conditions (presumably non-specification)
+            addStatement(ast.Exhale(condition)())
           case predicate: ast.PredicateAccessPredicate =>
             // get annotations
             implicit val annotations: Seq[Annotation] = Annotations.extract(statement)
@@ -219,9 +222,6 @@ class CheckBuilder(teacher: Teacher) {
               addStatement(ast.Fold(adapted)(info = info))
               addStatement(ast.Exhale(adapted)())
             }
-          case condition =>
-            assert(condition.isPure)
-            addStatement(ast.Exhale(condition)())
         }
         case ast.MethodCall(name, _, _) if Names.isAnnotation(name) =>
           ???
