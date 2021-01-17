@@ -6,11 +6,10 @@ method simple(x: Ref, y:Ref) returns (n:Int)
     requires acc(y.left)&&acc(y.right)
     requires y.left == 3 && y.right == 4
     requires x.left == 42 && x.right > 52
-    ensures n == 1
     {
         n := x.left
         label ret;
         x.left := 101;
         x.right := 201;
-        assert(true);
+        assert(false)
     }
