@@ -435,7 +435,7 @@ class CheckBuilder(teacher: Teacher) {
       .foreach {
         case (atom, index) =>
           val name = s"${label}_$index"
-          saveValue(name, atom)
+          saveAtom(name, atom)
       }
     // add label
     addStatement(ast.Label(label, Seq.empty)())
@@ -485,22 +485,32 @@ class CheckBuilder(teacher: Teacher) {
   }
 
   /**
+    * Saves the value of the given atom in a variable with the given name.
+    *
+    * @param name The name of the variable.
+    * @param atom The atom to save.
+    */
+  private def saveAtom(name: String, atom: ast.Exp): Unit =
+    if (Settings.useBranching) {
+      // create variable
+      val variable = ast.LocalVar(name, ast.Bool)()
+      // create conditional
+      val thenBody = asSequence(ast.LocalVarAssign(variable, top)())
+      val elseBody = asSequence(ast.LocalVarAssign(variable, bottom)())
+      addStatement(ast.If(atom, thenBody, elseBody)())
+    } else saveValue(name, atom)
+
+
+  /**
     * Saves the value of the given expression in a variable with the given name.
     *
     * @param name       The name of the variable.
     * @param expression The expression to save.
     */
   private def saveValue(name: String, expression: ast.Exp): Unit = {
+    // create variable and assignment
     val variable = ast.LocalVar(name, expression.typ)()
-    if (Settings.useBranching && expression.typ == ast.Bool) {
-      // create conditional
-      val thenBody = asSequence(ast.LocalVarAssign(variable, top)())
-      val elseBody = asSequence(ast.LocalVarAssign(variable, bottom)())
-      addStatement(ast.If(expression, thenBody, elseBody)())
-    } else {
-      // create assignment
-      addStatement(ast.LocalVarAssign(variable, expression)())
-    }
+    addStatement(ast.LocalVarAssign(variable, expression)())
   }
 
   private def addStatement(statement: ast.Stmt): Unit =
