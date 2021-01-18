@@ -2,6 +2,7 @@ package rpi.learner
 
 import rpi.{Names, Settings}
 import rpi.inference._
+import rpi.util.Expressions._
 import rpi.util.{Collections, Expressions, SetMap}
 import viper.silver.ast
 
@@ -12,17 +13,11 @@ import scala.collection.mutable.ListBuffer
 /**
   * A template for a specification that needs to be inferred.
   *
+  * @param name          The name of the template.
   * @param specification The specification for which this is the template.
   * @param body          The body representing the resources allowed by this template.
   */
-case class Template(specification: Specification, body: TemplateExpression) {
-  /**
-    * Returns the name identifying the specification.
-    *
-    * @return The name.
-    */
-  def name: String = specification.name
-
+case class Template(name: String, specification: Specification, body: TemplateExpression) {
   /**
     * Returns the parameters for the specification.
     *
@@ -57,14 +52,24 @@ case class Conjunction(conjuncts: Seq[TemplateExpression]) extends TemplateExpre
 }
 
 /**
-  * A template expression representing a resource access guarded by some condition.
+  * A template expression wrapping an expression.
   *
-  * @param guardId The id of the guard condition.
-  * @param access The resource access.
+  * @param expression The wrapped expression.
   */
-case class Guarded(guardId: Int, access: ast.LocationAccess) extends TemplateExpression {
+case class Wrapped(expression: ast.Exp) extends TemplateExpression {
   override def toString: String =
-    s"(phi_$guardId -> $access)"
+    expression.toString()
+}
+
+/**
+  * A template expression representing a guarded expression.
+  *
+  * @param guardId The id of the guard.
+  * @param body    The guarded expression.
+  */
+case class Guarded(guardId: Int, body: TemplateExpression) extends TemplateExpression {
+  override def toString: String =
+    s"(phi_$guardId -> $body)"
 }
 
 /**
@@ -101,20 +106,38 @@ class TemplateGenerator(learner: Learner) {
     */
   private val inference = learner.inference
 
-  private val recursiveSpecification =
-    if (Settings.useRecursion) {
-      // TODO: Potentially exclude second parameter from atoms.
-      val specification = {
-        val names = if (Settings.useSegments) Seq("x", "y") else Seq("x")
-        val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
-        val variables = parameters.take(1).map { parameter => parameter.localVar }
-        val atoms = inference.instantiateAtoms(variables)
-        Specification(Names.recursive, parameters, atoms)
-      }
+  /**
+    * The specifications introduced by this template generator.
+    */
+  private val specifications: Map[String, Specification] = {
+    val buffer: mutable.Buffer[Specification] = ListBuffer.empty
 
-      learner.addSpecification(specification)
-      Some(specification)
-    } else None
+    // add specification for recursive predicate
+    if (Settings.useRecursion) {
+      val names = if (Settings.useSegments) Seq("x", "y") else Seq("x")
+      val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
+      val variables = parameters.take(1).map { parameter => parameter.localVar }
+      val atoms = inference.instantiateAtoms(variables)
+      buffer.append(Specification(Names.recursive, parameters, atoms))
+    }
+
+    // add specifications for append lemma
+    if (Settings.useSegments) {
+      val names = Seq("x", "y", "z")
+      val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
+      val variables = parameters.slice(1, 2).map { parameter => parameter.localVar }
+      val atoms = inference.instantiateAtoms(variables)
+      buffer.append(Specification(Names.appendLemma, parameters, atoms))
+    }
+
+    // create map
+    buffer
+      .map { specification => specification.name -> specification }
+      .toMap
+  }
+
+  def getSpecification(name: String): Specification =
+    specifications(name)
 
   /**
     * Computes templates for the given samples.
@@ -169,7 +192,9 @@ class TemplateGenerator(learner: Learner) {
       }
 
     // compute template for recursive predicate
-    recursiveSpecification.foreach { specification => createRecursiveTemplate(specification, structure) }
+    specifications
+      .get(Names.recursive)
+      .foreach { specification => createRecursiveTemplate(specification, structure) }
 
     // return templates
     buffer.foldLeft(Map.empty[String, Template]) {
@@ -188,14 +213,9 @@ class TemplateGenerator(learner: Learner) {
     */
   private def createTemplate(specification: Specification, resources: Set[ast.LocationAccess])
                             (implicit id: AtomicInteger, buffer: mutable.Buffer[Template]): Unit = {
-    // create template body
-    val body = {
-      val (fields, predicates) = createTemplateExpressions(specification, resources.toSeq)
-      Conjunction(fields ++ predicates)
-    }
-
-    // create template
-    val template = Template(specification, body)
+    val name = specification.name
+    val body = createTemplateBody(specification, resources.toSeq)
+    val template = Template(name, specification, body)
     buffer.append(template)
   }
 
@@ -209,6 +229,8 @@ class TemplateGenerator(learner: Learner) {
     */
   private def createRecursiveTemplate(specification: Specification, structure: Structure)
                                      (implicit id: AtomicInteger, buffer: mutable.Buffer[Template]): Unit = {
+
+
     // collect resources
     val resources: Set[ast.LocationAccess] = {
       // get fields and recursions
@@ -221,19 +243,16 @@ class TemplateGenerator(learner: Learner) {
       fields ++ framed ++ recursions
     }
 
-    // create template body
-    val (fields, predicates) = createTemplateExpressions(specification, resources.toSeq)
+    // create template
     val body = {
-      val full = Conjunction(fields ++ predicates)
+      val full = createTemplateBody(specification, resources.toSeq)
       if (Settings.useSegments) {
         val Seq(first, second) = specification.variables
         val condition = ast.NeCmp(first, second)()
-        Truncation(condition, Conjunction(fields ++ predicates))
+        Truncation(condition, full)
       } else full
     }
-
-    // create template
-    val template = Template(specification, body)
+    val template = Template(Names.recursive, specification, body)
     buffer.append(template)
   }
 
@@ -245,8 +264,8 @@ class TemplateGenerator(learner: Learner) {
     * @param id            The implicitly passed atomic integer used to generate unique ids.
     * @return A tuple holding the template expressions for field accesses and predicate accesses.
     */
-  private def createTemplateExpressions(specification: Specification, resources: Seq[ast.LocationAccess])
-                                       (implicit id: AtomicInteger): (Seq[TemplateExpression], Seq[TemplateExpression]) = {
+  private def createTemplateBody(specification: Specification, resources: Seq[ast.LocationAccess])
+                                (implicit id: AtomicInteger): TemplateExpression = {
     // create template expressions for fields
     val fields = resources
       .collect { case field: ast.FieldAccess =>
@@ -257,7 +276,7 @@ class TemplateGenerator(learner: Learner) {
       .sortWith { case ((first, _), (second, _)) => first < second }
       .map { case (_, field) =>
         val guardId = id.getAndIncrement()
-        Guarded(guardId, field)
+        Guarded(guardId, Wrapped(makeAccessPredicate(field)))
       }
 
     // create template expressions for predicates
@@ -304,12 +323,9 @@ class TemplateGenerator(learner: Learner) {
                 // create id
                 val guardId = id.getAndIncrement()
                 // create predicate
-                val predicate = {
-                  val arguments = Seq(first, only)
-                  ast.PredicateAccess(arguments, Names.recursive)()
-                }
+                val predicate = makeAccessPredicate(makeSegment(first, only))
                 // create resource
-                val resource = Guarded(guardId, predicate)
+                val resource = Guarded(guardId, Wrapped(predicate))
                 Some(resource)
               case _ =>
                 // create ids
@@ -318,11 +334,10 @@ class TemplateGenerator(learner: Learner) {
                 // create predicate with choice placeholder
                 val predicate = {
                   val second = ast.LocalVar(s"t_$choiceId", ast.Ref)()
-                  val arguments = Seq(first, second)
-                  ast.PredicateAccess(arguments, Names.recursive)()
+                  makeAccessPredicate(makeSegment(first, second))
                 }
                 // create resource and choice
-                val resource = Guarded(guardId, predicate)
+                val resource = Guarded(guardId, Wrapped(predicate))
                 val choice = Choice(choiceId, options, resource)
                 Some(choice)
             }
@@ -332,11 +347,11 @@ class TemplateGenerator(learner: Learner) {
         .collect { case predicate: ast.PredicateAccess =>
           // create resource
           val guardId = id.getAndIncrement()
-          Guarded(guardId, predicate)
+          Guarded(guardId, Wrapped(makeAccessPredicate(predicate)))
         }
 
-    // return template expressions
-    (fields, predicates)
+    // return template expression
+    Conjunction(fields ++ predicates)
   }
 
   /**
@@ -402,7 +417,8 @@ class TemplateGenerator(learner: Learner) {
     }
 
     private def createRecursion(path: Seq[String]): ast.PredicateAccess = {
-      val variable +: others = recursiveSpecification.get.variables
+      val specification = specifications(Names.recursive)
+      val variable +: others = specification.variables
       val first = fromSeq(variable.name +: path)
       ast.PredicateAccess(first +: others, Names.recursive)()
     }

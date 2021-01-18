@@ -48,77 +48,89 @@ class GuardEncoder(templates: Map[String, Template]) {
     * A map, mapping specification names to maps containing all effective guards.
     */
   private val guards: Map[String, EffectiveMap] = {
-    def collectGuards(template: Template, view: View, depth: Int): Map[ast.LocationAccess, Effective] =
-      if (depth == 0) Map.empty
-      else {
+    // the buffer used to accumulate parts of effective guards
+    val buffer: mutable.Buffer[(ast.LocationAccess, Seq[Guard])] = ListBuffer.empty
+
+    /**
+      * Processes the given template.
+      *
+      * @param template The template to process.
+      * @param depth    The depth up to which to process templates.
+      * @param view     The view mapping template parameters to their expression in the current context.
+      * @param guards   The guards collected so far.
+      */
+    def processTemplate(template: Template, depth: Int, view: View = View.empty, guards: Seq[Guard] = Seq.empty): Unit =
+      if (depth != 0) {
         // get and adapt atoms
         val atoms = template
           .atoms
           .map { atom => view.adapt(atom) }
-
-        def collect(expression: TemplateExpression, result: Map[ast.LocationAccess, Effective], view: View): Map[ast.LocationAccess, Effective] =
-          expression match {
-            case Conjunction(conjuncts) =>
-              conjuncts.foldLeft(result) {
-                case (current, conjunct) => collect(conjunct, current, view)
-              }
-            case Guarded(guardId, access) =>
-              val resourceGuard = ResourceGuard(guardId, atoms)
-              access match {
-                case ast.FieldAccess(receiver, field) =>
-                  // update guard of field access
-                  val adapted = ast.FieldAccess(view.adapt(receiver), field)()
-                  SeqMap.add(result, adapted, Seq(resourceGuard))
-                case ast.PredicateAccess(arguments, name) =>
-                  // update guard of predicate access
-                  val adaptedArguments = arguments.map { argument => view.adapt(argument) }
-                  val adapted = ast.PredicateAccess(adaptedArguments, name)()
-                  val updatedResult = SeqMap.add(result, adapted, Seq(resourceGuard))
-                  // recursively collect guards
-                  val innerTemplate = templates(name)
-                  val innerView = View.create(innerTemplate, adaptedArguments)
-                  collectGuards(innerTemplate, innerView, depth - 1)
-                    .foldLeft(updatedResult) {
-                      case (innerResult, (innerAccess, innerGuard)) =>
-                        val updatedGuard = innerGuard.map { choice => choice :+ resourceGuard }
-                        SeqMap.addAll(innerResult, innerAccess, updatedGuard)
-                    }
-              }
-            case Choice(choiceId, choices, body) =>
-              choices
-                .zipWithIndex
-                .foldLeft(result) {
-                  case (currentResult, (choice, index)) =>
-                    val choiceGuard = ChoiceGuard(choiceId, index)
-                    val adaptedChoice = view.adapt(choice)
-                    val innerView = view.updated(name = s"t_$choiceId", adaptedChoice)
-                    collect(body, Map.empty, innerView)
-                      .foldLeft(currentResult) {
-                        case (innerResult, (innerAccess, innerGuard)) =>
-                          val updatedGuard = innerGuard.map { choice => choice :+ choiceGuard }
-                          SeqMap.addAll(innerResult, innerAccess, updatedGuard)
-                      }
-                }
-            case Truncation(condition, body) =>
-              val adaptedCondition = view.adapt(condition)
-              val truncationGuard = TruncationGuard(adaptedCondition)
-              collect(body, Map.empty, view)
-                .foldLeft(result) {
-                  case (innerResult, (innerAccess, innerGuard)) =>
-                    val updatedGuard = innerGuard.map { choice => choice :+ truncationGuard }
-                    SeqMap.addAll(innerResult, innerAccess, updatedGuard)
-                }
-          }
-
-        // collect guards
-        collect(template.body, Map.empty, view)
+        // process body
+        val body = template.body
+        processExpression(body, view, guards)(depth, atoms)
       }
 
-    // collect effective guards for every template
+    /**
+      * Processes the given template expression.
+      *
+      * @param expression The template expression to process.
+      * @param view       The view mapping template parameters to their expression in the current context.
+      * @param guards     The guards collected so far.
+      * @param depth      The implicitly passed depth up to which to process templates.
+      * @param atoms      The implicitly passed atoms available in the current template.
+      */
+    def processExpression(expression: TemplateExpression, view: View, guards: Seq[Guard])
+                         (implicit depth: Int, atoms: Seq[ast.Exp]): Unit =
+      expression match {
+        case Conjunction(conjuncts) =>
+          conjuncts.foreach { conjunct => processExpression(conjunct, view, guards) }
+        case Wrapped(expression) => expression match {
+          case ast.FieldAccessPredicate(ast.FieldAccess(receiver, field), _) =>
+            // add guards for field access
+            val access = ast.FieldAccess(view.adapt(receiver), field)()
+            buffer.append(access -> guards)
+          case ast.PredicateAccessPredicate(ast.PredicateAccess(arguments, name), _) =>
+            // add guards for predicate access
+            val adaptedArguments = arguments.map { argument => view.adapt(argument) }
+            val access = ast.PredicateAccess(adaptedArguments, name)()
+            buffer.append(access -> guards)
+            // recursively process templates
+            val innerTemplate = templates(name)
+            val innerView = View.create(innerTemplate, adaptedArguments)
+            processTemplate(innerTemplate, depth - 1, innerView, guards)
+          case _ =>
+          sys.error(s"Unexpected expression in template: $expression")
+        }
+        case Guarded(guardId, body) =>
+          val resourceGuard = ResourceGuard(guardId, atoms)
+          processExpression(body, view, guards :+ resourceGuard)
+        case Choice(choiceId, choices, body) =>
+          choices
+            .zipWithIndex
+            .foreach { case (choice, index) =>
+              val choiceGuard = ChoiceGuard(choiceId, index)
+              val adaptedView = view.updated(name = s"t_$choiceId", view.adapt(choice))
+              processExpression(body, adaptedView, guards :+ choiceGuard)
+            }
+        case Truncation(condition, body) =>
+          val truncationGuard = TruncationGuard(view.adapt(condition))
+          processExpression(body, view, guards :+ truncationGuard)
+      }
+
+    // compute effective guards for all templates
     templates.flatMap { case (name, template) =>
       println(template)
-      if (!Names.isPredicate(name)) {
-        val map = collectGuards(template, View.empty, depth = 3)
+      if (Names.isRecursive(name)) None
+      else {
+        // process template
+        buffer.clear()
+        processTemplate(template, depth = 3)
+        // create map from accesses to effective guards
+        val map = buffer.foldLeft(Map.empty: EffectiveMap) {
+          case (result, (access, guards)) =>
+            SeqMap.add(result, access, guards)
+        }
+        // debug print
         map.foreach { case (loc, g) =>
           println(s"  $loc:")
           g.foreach { x =>
@@ -126,8 +138,9 @@ class GuardEncoder(templates: Map[String, Template]) {
             println(x.mkString("(", " && ", ")"))
           }
         }
+        // add map
         Some(name -> map)
-      } else None
+      }
     }
   }
 

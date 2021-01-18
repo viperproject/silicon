@@ -155,23 +155,21 @@ class Inference(program: ast.Program) {
 
   def labeled: ast.Program = _labeled
 
-  def predicates(hypothesis: Hypothesis): Seq[ast.Predicate] =
-    allSpecifications
-      .filter { specification => Names.isPredicate(specification.name) || !Settings.inline }
+  def predicates(hypothesis: Hypothesis): Seq[ast.Predicate] = {
+    // get all specifications
+    val nonRecursive = if (Settings.inline) Seq.empty else specifications.values
+    val recursive = if (Settings.useRecursion) Seq(learner.getSpecification(Names.recursive)) else Seq.empty
+    val all = nonRecursive ++ recursive
+    // create predicates
+    all
       .map { specification =>
         val name = specification.name
         val arguments = specification.parameters
         val body = Some(hypothesis.get(name))
         ast.Predicate(name, arguments, body)()
       }
-
-  /**
-    * Returns all specifications, including the ones inferred by the learner.
-    *
-    * @return All specifications.
-    */
-  def allSpecifications: Seq[Specification] =
-    specifications.values.toSeq ++ learner.allSpecifications
+      .toSeq
+  }
 
   /**
     * Returns the specification with the given name.

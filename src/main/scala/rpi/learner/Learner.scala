@@ -16,11 +16,6 @@ class Learner(val inference: Inference) {
   private var samples: Seq[Sample] = Seq.empty
 
   /**
-    * The specifications introduced by the learner.
-    */
-  private var specifications: Map[String, Specification] = Map.empty
-
-  /**
     * The SMT solver.
     */
   val solver = new Smt
@@ -43,21 +38,21 @@ class Learner(val inference: Inference) {
   def stop(): Unit = {}
 
   /**
+    * Returns the specification with the given name.
+    *
+    * @param name The name of the specification.
+    * @return The specification.
+    */
+  def getSpecification(name: String): Specification =
+    templateGenerator.getSpecification(name)
+
+  /**
     * Adds the given sample.
     *
     * @param sample The sample to add.
     */
   def addSample(sample: Sample): Unit =
     samples = samples :+ sample
-
-  def allSpecifications: Seq[Specification] =
-    specifications.values.toSeq
-
-  def addSpecification(specification: Specification): Unit =
-    specifications = specifications.updated(specification.name, specification)
-
-  def getSpecification(name: String): Specification =
-    specifications(name)
 
   /**
     * Returns a hypothesis that is consistent with all samples.

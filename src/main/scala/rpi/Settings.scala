@@ -39,7 +39,7 @@ object Settings {
     * The flag indicating whether tha choices for predicate arguments should be restricted to the ones appearing in the
     * samples.
     */
-  val restrictChoices = false
+  val restrictChoices = true
 
   /**
     * The flag indicating whether the black box verifier used by the inference should use annotations or heuristics for
@@ -134,6 +134,6 @@ object Names {
   def isAnnotation(name: String): Boolean =
     allAnnotations.contains(name)
 
-  def isPredicate(name: String): Boolean =
+  def isRecursive(name: String): Boolean =
     name == recursive
 }

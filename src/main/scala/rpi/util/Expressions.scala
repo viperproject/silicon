@@ -1,5 +1,6 @@
 package rpi.util
 
+import rpi.{Names, Settings}
 import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
 
@@ -104,6 +105,26 @@ object Expressions {
   @inline
   def implies(left: ast.Exp, right: ast.Exp): ast.Exp =
     ast.Implies(left, right)()
+
+
+  // TODO: Always used to create access predicate?
+  def makeInstance(from: ast.Exp): ast.PredicateAccess = {
+    val arguments = if (Settings.useSegments) Seq(from, ast.NullLit()()) else Seq(from)
+    makeRecursive(arguments)
+  }
+
+  def makeSegment(from: ast.Exp, to: ast.Exp): ast.PredicateAccess =
+    makeRecursive(Seq(from, to))
+
+  private def makeRecursive(arguments: Seq[ast.Exp]): ast.PredicateAccess = {
+    ast.PredicateAccess(arguments, Names.recursive)()
+  }
+
+  def makeAccessPredicate(access: ast.LocationAccess): ast.AccessPredicate =
+    access match {
+      case field: ast.FieldAccess => ast.FieldAccessPredicate(field, ast.FullPerm()())()
+      case predicate: ast.PredicateAccess => ast.PredicateAccessPredicate(predicate, ast.FullPerm()())()
+    }
 
   /**
     * Simplifies the given expression.

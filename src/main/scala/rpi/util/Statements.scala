@@ -24,7 +24,12 @@ object Statements {
   def conditional(conditions: Seq[ast.Exp], body: ast.Stmt): ast.Stmt =
     conditional(conditions, body, skip)
 
+  @inline
   def conditional(conditions: Seq[ast.Exp], thenBody: ast.Stmt, elseBody: ast.Stmt): ast.Stmt =
     if (conditions.isEmpty) thenBody
-    else ast.If(bigAnd(conditions), asSequence(thenBody), asSequence(elseBody))()
+    else conditional(bigAnd(conditions), thenBody, elseBody)
+
+  @inline
+  def conditional(condition: ast.Exp, thenBody: ast.Stmt, elseBody: ast.Stmt): ast.Stmt =
+    ast.If(condition, asSequence(thenBody), asSequence(elseBody))()
 }

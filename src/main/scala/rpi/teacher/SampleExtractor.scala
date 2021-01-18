@@ -117,7 +117,7 @@ class SampleExtractor(teacher: Teacher) {
     // get current location
     val currentLocation = info match {
       case Some(BasicInfo(_, instance)) =>
-        if (Settings.inline && !Names.isPredicate(instance.name)) offending
+        if (Settings.inline && !Names.isRecursive(instance.name)) offending
         else instance.toActual(offending)
       case _ => offending
     }

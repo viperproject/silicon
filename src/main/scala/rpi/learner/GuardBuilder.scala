@@ -36,10 +36,12 @@ class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
       case Conjunction(conjuncts) =>
         val builtConjuncts = conjuncts.map { conjunct => buildExpression(conjunct, atoms) }
         bigAnd(builtConjuncts)
-      case Guarded(guardId, access) =>
+      case Wrapped(expression) =>
+        expression
+      case Guarded(guardId, body) =>
         val builtGuard = buildGuard(guardId, atoms)
-        val builtResource = buildResource(access)
-        implies(builtGuard, builtResource)
+        val builtBody = buildExpression(body, atoms)
+        implies(builtGuard, builtBody)
       case Choice(choiceId, options, body) =>
         // build body
         val builtBody = buildExpression(body, atoms)
