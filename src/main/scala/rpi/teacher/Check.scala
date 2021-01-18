@@ -24,8 +24,7 @@ case class Check(statements: Seq[ast.Stmt]) {
           maxDepth(statements)
         case ast.If(condition, thenBranch, elseBranch) =>
           maxDepth(Seq(condition, thenBranch, elseBranch))
-        case _: ast.While =>
-          0
+        case _: ast.While => 0
         case ast.Inhale(condition) =>
           if (condition.isPure) depth(condition) else 0
         case ast.Exhale(condition) =>
@@ -33,11 +32,19 @@ case class Check(statements: Seq[ast.Stmt]) {
         case ast.MethodCall(name, arguments, _) =>
           if (Names.isAnnotation(name)) 0
           else maxDepth(arguments)
-        case ast.LocalVarAssign(_, value) => depth(value)
+        case _: ast.NewStmt => 0
+        case ast.LocalVarAssign(_, value) =>
+          depth(value)
+        case ast.FieldAssign(target, value) =>
+          maxDepth(Seq(target, value))
         case _: ast.Literal => 0
         case _: ast.LocalVar => 0
-        case ast.FieldAccess(receiver, _) => depth(receiver) + 1
-        case ast.BinExp(left, right) => maxDepth(Seq(left, right))
+        case ast.FieldAccess(receiver, _) =>
+          depth(receiver) + 1
+        case ast.UnExp(argument) =>
+          depth(argument)
+        case ast.BinExp(left, right) =>
+          maxDepth(Seq(left, right))
         case _ => ???
       }
 
