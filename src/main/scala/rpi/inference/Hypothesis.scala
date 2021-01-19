@@ -55,7 +55,7 @@ case class Hypothesis(lemmas: Seq[ast.Method], predicates: Seq[ast.Predicate]) {
       case None =>
         val name = specification.name
         val parameters = specification.parameters
-        val body = Some(top)
+        val body = Some(makeTrue)
         ast.Predicate(name, parameters, body)()
     }
 
@@ -68,7 +68,7 @@ case class Hypothesis(lemmas: Seq[ast.Method], predicates: Seq[ast.Predicate]) {
   def getPredicateBody(instance: Instance): ast.Exp = {
     val body = getPredicate(instance.name)
       .flatMap { predicate => predicate.body }
-      .getOrElse(top)
+      .getOrElse(makeTrue)
     instance.toActual(body)
   }
 }

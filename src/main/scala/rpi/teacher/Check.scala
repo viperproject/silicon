@@ -132,7 +132,7 @@ object Checks {
 
     def processSequence(sequence: ast.Seqn): ast.Seqn = {
       val processedStatements = processStatements(Seq.empty, sequence.ss)
-      asSequence(processedStatements)
+      makeSequence(processedStatements)
     }
 
     @tailrec
@@ -163,13 +163,13 @@ object Checks {
               val inhaleInfo = AnnotationInfo(futureAnnotations)
               // compute exhales and inhales corresponding to loop specification
               val exhales = invariants.map { expression => ast.Exhale(expression)(info = exhaleInfo) }
-              val inhales = invariants.map { expression => ast.Inhale(expression)(info = inhaleInfo) } :+ ast.Inhale(not(condition))()
+              val inhales = invariants.map { expression => ast.Inhale(expression)(info = inhaleInfo) } :+ ast.Inhale(makeNot(condition))()
               // havoc variables
               val havoc = {
                 val assignments = body
                   .writtenVars
                   .map { variable => ast.LocalVarAssign(variable, variable)() }
-                ast.While(ast.FalseLit()(), Seq.empty, asSequence(assignments))()
+                ast.While(ast.FalseLit()(), Seq.empty, makeSequence(assignments))()
               }
               // advance
               (trimmedPast ++ exhales ++ Seq(havoc) ++ inhales, trimmedFuture)

@@ -7,29 +7,29 @@ object Statements {
   import Expressions._
 
   @inline
-  def skip: ast.Seqn =
-    asSequence(Seq.empty)
+  def makeSkip: ast.Seqn =
+    makeSequence(Seq.empty)
 
-  def asSequence(statement: ast.Stmt): ast.Seqn =
+  def makeSequence(statement: ast.Stmt): ast.Seqn =
     statement match {
       case sequence: ast.Seqn => sequence
       case other => ast.Seqn(Seq(other), Seq.empty)()
     }
 
   @inline
-  def asSequence(statements: Seq[ast.Stmt]): ast.Seqn =
+  def makeSequence(statements: Seq[ast.Stmt]): ast.Seqn =
     ast.Seqn(statements, Seq.empty)()
 
   @inline
-  def conditional(conditions: Seq[ast.Exp], body: ast.Stmt): ast.Stmt =
-    conditional(conditions, body, skip)
+  def makeConditional(conditions: Seq[ast.Exp], body: ast.Stmt): ast.Stmt =
+    makeConditional(conditions, body, makeSkip)
 
   @inline
-  def conditional(conditions: Seq[ast.Exp], thenBody: ast.Stmt, elseBody: ast.Stmt): ast.Stmt =
+  def makeConditional(conditions: Seq[ast.Exp], thenBody: ast.Stmt, elseBody: ast.Stmt): ast.Stmt =
     if (conditions.isEmpty) thenBody
-    else conditional(bigAnd(conditions), thenBody, elseBody)
+    else makeConditional(makeAnd(conditions), thenBody, elseBody)
 
   @inline
-  def conditional(condition: ast.Exp, thenBody: ast.Stmt, elseBody: ast.Stmt): ast.Stmt =
-    ast.If(condition, asSequence(thenBody), asSequence(elseBody))()
+  def makeConditional(condition: ast.Exp, thenBody: ast.Stmt, elseBody: ast.Stmt): ast.If =
+    ast.If(condition, makeSequence(thenBody), makeSequence(elseBody))()
 }

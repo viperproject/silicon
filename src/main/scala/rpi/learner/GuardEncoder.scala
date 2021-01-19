@@ -205,11 +205,11 @@ class GuardEncoder(templates: Seq[Template]) {
         addConstraint(encoding)
       case NegativeSample(record) =>
         val encoding = encodeRecord(record, default = false)
-        addConstraint(not(encoding))
+        addConstraint(makeNot(encoding))
       case ImplicationSample(leftRecord, rightRecords) =>
         val leftEncoding = encodeRecord(leftRecord, default = true)
         val rightEncoding = encodeRecords(rightRecords, default = false)
-        addConstraint(implies(leftEncoding, rightEncoding))
+        addConstraint(makeImplication(leftEncoding, rightEncoding))
     }
 
   /**
@@ -233,10 +233,10 @@ class GuardEncoder(templates: Seq[Template]) {
       encodings match {
         case inhaled +: exhaled +: rest =>
           val (restEncoding, restCondition) = ensureFraming(rest)
-          val condition = and(not(exhaled), restCondition)
-          val encoding = or(and(inhaled, condition), restEncoding)
+          val condition = makeAnd(makeNot(exhaled), restCondition)
+          val encoding = makeOr(makeAnd(inhaled, condition), restEncoding)
           (encoding, condition)
-        case Seq(inhaled) => (inhaled, top)
+        case Seq(inhaled) => (inhaled, makeTrue)
       }
 
     // compute encodings for records
@@ -283,15 +283,15 @@ class GuardEncoder(templates: Seq[Template]) {
             case TruncationGuard(condition) =>
               val value = record.abstraction.getValue(condition)
               value match {
-                case Some(true) => top
-                case Some(false) => bottom
+                case Some(true) => makeTrue
+                case Some(false) => makeFalse
                 case _ =>
                   // TODO: Maybe try model evaluation here?
-                  literal(default)
+                  makeLiteral(default)
               }
           }
           // introduce auxiliary variable for location option
-          val option = bigAnd(conjuncts)
+          val option = makeAnd(conjuncts)
           auxiliary(option)
         }
       }
@@ -299,7 +299,7 @@ class GuardEncoder(templates: Seq[Template]) {
     // it is never good to pick more than one option
     addConstraint(atMostOne(options))
     // at least one option needs to be picked
-    auxiliary(bigOr(options))
+    auxiliary(makeOr(options))
   }
 
   /**
@@ -322,20 +322,21 @@ class GuardEncoder(templates: Seq[Template]) {
             val literalActivation = ast.LocalVar(s"y_${guardId}_${i}_$j", ast.Bool)()
             val literalEncoding = value match {
               case Some(sign) =>
+
                 val variable = ast.LocalVar(s"s_${guardId}_${i}_$j", ast.Bool)()
-                if (sign) variable else not(variable)
+                if (sign) variable else makeNot(variable)
               case None =>
-                literal(default)
+                makeLiteral(default)
             }
-            implies(literalActivation, literalEncoding)
+            makeImplication(literalActivation, literalEncoding)
           }
         // conjoin all literals
-        bigAnd(literals)
+        makeAnd(literals)
       }
-      and(clauseActivation, clauseEncoding)
+      makeAnd(clauseActivation, clauseEncoding)
     }
     // return disjunction of clauses
-    bigOr(clauses)
+    makeOr(clauses)
   }
 
   /**
@@ -379,7 +380,7 @@ class GuardEncoder(templates: Seq[Template]) {
     * @return The encoding.
     */
   private def exactlyOne(expressions: Iterable[ast.Exp]): ast.Exp =
-    and(bigOr(expressions), atMostOne(expressions))
+    makeAnd(makeOr(expressions), atMostOne(expressions))
 
   /**
     * Computes the encoding of the fact that at most one of the given expressions is true.
@@ -390,8 +391,8 @@ class GuardEncoder(templates: Seq[Template]) {
   private def atMostOne(expressions: Iterable[ast.Exp]): ast.Exp = {
     val constraints = Collections
       .pairs(expressions)
-      .map { case (first, second) => not(and(first, second)) }
-    bigAnd(constraints)
+      .map { case (first, second) => makeNot(makeAnd(first, second)) }
+    makeAnd(constraints)
   }
 
   sealed trait Guard

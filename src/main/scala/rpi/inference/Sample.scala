@@ -1,6 +1,6 @@
 package rpi.inference
 
-import rpi.util.Expressions
+import rpi.util.Expressions._
 import viper.silver.ast
 
 /**
@@ -80,6 +80,6 @@ case class Abstraction(values: Map[ast.Exp, Boolean]) {
 
   override def toString: String =
     values
-      .map { case (atom, value) => if (value) atom else Expressions.not(atom) }
+      .map { case (atom, value) => if (value) atom else simplify(makeNot(atom)) }
       .mkString("{", ", ", "}")
 }

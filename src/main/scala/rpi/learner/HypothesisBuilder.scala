@@ -100,13 +100,13 @@ class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
     expression match {
       case Conjunction(conjuncts) =>
         val builtConjuncts = conjuncts.map { conjunct => buildExpression(conjunct, atoms) }
-        bigAnd(builtConjuncts)
+        makeAnd(builtConjuncts)
       case Wrapped(expression) =>
         expression
       case Guarded(guardId, body) =>
         val builtGuard = buildGuard(guardId, atoms)
         val builtBody = buildExpression(body, atoms)
-        implies(builtGuard, builtBody)
+        makeImplication(builtGuard, builtBody)
       case Choice(choiceId, options, body) =>
         // build body
         val builtBody = buildExpression(body, atoms)
@@ -119,7 +119,7 @@ class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
         }
       case Truncation(condition, body) =>
         val builtBody = buildExpression(body, atoms)
-        implies(condition, builtBody)
+        makeImplication(condition, builtBody)
     }
 
   private def getOption(choiceId: Int, options: Seq[ast.Exp]): ast.Exp =
@@ -150,14 +150,14 @@ class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
               .flatMap { literalActivation =>
                 if (literalActivation) model
                   .get(s"s_${guardId}_${i}_$j")
-                  .map { sign => if (sign) atom else not(atom) }
+                  .map { sign => if (sign) atom else makeNot(atom) }
                 else None
               }
-              .getOrElse(top)
+              .getOrElse(makeTrue)
           }
-        bigAnd(literals)
-      } else bottom
+        makeAnd(literals)
+      } else makeFalse
     }
-    bigOr(clauses)
+    makeOr(clauses)
   }
 }

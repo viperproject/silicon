@@ -77,7 +77,7 @@ class CheckBuilder(teacher: Teacher) {
             case _ => ast.NoInfo
           }
           // inhale part
-          val condition = implies(bigAnd(guards), conjunct)
+          val condition = makeImplication(makeAnd(guards), conjunct)
           val inhale = ast.Inhale(condition)(info = info)
           addStatement(inhale)
       }
@@ -161,8 +161,7 @@ class CheckBuilder(teacher: Teacher) {
           val thenInstrumented = instrumentSequence(thenBody)
           val elseInstrumented = instrumentSequence(elseBody)
           // add instrumented conditional
-          val instrumented = ast.If(condition, thenInstrumented, elseInstrumented)()
-          addStatement(instrumented)
+          addStatement(makeConditional(condition, thenInstrumented, elseInstrumented))
         case ast.Inhale(expression) => expression match {
           case condition if condition.isPure =>
             // inhale pure conditions (presumably non-specification)
@@ -260,9 +259,9 @@ class CheckBuilder(teacher: Teacher) {
                 case Annotation(`unfoldDownAnnotation`, Seq(argument)) =>
                   ast.EqCmp(arguments.head, argument)()
               }
-              bigOr(equalities)
+              makeOr(equalities)
             }
-            val unfolds = conditional(downCondition, {
+            val unfolds = makeConditional(downCondition, {
               push()
               unfold(predicate, depth + 1)(Seq.empty)
               pop()
@@ -271,7 +270,7 @@ class CheckBuilder(teacher: Teacher) {
               unfold(predicate, depth)(Seq.empty)
               pop()
             })
-            addStatement(conditional(guards, unfolds))
+            addStatement(makeConditional(guards, unfolds))
           } else if (depth > 0) {
             // open scope
             push()
@@ -285,7 +284,7 @@ class CheckBuilder(teacher: Teacher) {
             }
             // close scope and make unfolds conditional
             val unfolds = pop()
-            addStatement(conditional(guards, unfolds))
+            addStatement(makeConditional(guards, unfolds))
           }
         case _ => // do nothing
       }
@@ -327,7 +326,7 @@ class CheckBuilder(teacher: Teacher) {
             addStatement(ast.Fold(predicate)(info = info))
             // close scope and make folds conditional
             val folds = pop()
-            addStatement(ast.If(bigAnd(guards), folds, skip)())
+            addStatement(makeConditional(guards, folds))
           } else {
             savePermission(resource, guards)
           }
@@ -335,7 +334,7 @@ class CheckBuilder(teacher: Teacher) {
       }
 
     // instrument check
-    val sequence = asSequence(check.statements)
+    val sequence = makeSequence(check.statements)
     instrumentSequence(sequence)
   }
 
@@ -482,7 +481,7 @@ class CheckBuilder(teacher: Teacher) {
     val value = {
       val current = ast.CurrentPerm(resource)()
       if (conditions.isEmpty) current
-      else ast.CondExp(bigAnd(conditions), current, ast.NoPerm()())()
+      else ast.CondExp(makeAnd(conditions), current, ast.NoPerm()())()
     }
     // save value
     saveValue(name, value)
@@ -499,9 +498,9 @@ class CheckBuilder(teacher: Teacher) {
       // create variable
       val variable = ast.LocalVar(name, ast.Bool)()
       // create conditional
-      val thenBody = asSequence(ast.LocalVarAssign(variable, top)())
-      val elseBody = asSequence(ast.LocalVarAssign(variable, bottom)())
-      addStatement(ast.If(atom, thenBody, elseBody)())
+      val thenBody = ast.LocalVarAssign(variable, makeTrue)()
+      val elseBody = ast.LocalVarAssign(variable, makeFalse)()
+      addStatement(makeConditional(atom, thenBody, elseBody))
     } else saveValue(name, atom)
 
 
@@ -533,6 +532,6 @@ class CheckBuilder(teacher: Teacher) {
     stack match {
       case head :: tail =>
         stack = tail
-        asSequence(head.toSeq)
+        makeSequence(head.toSeq)
     }
 }
