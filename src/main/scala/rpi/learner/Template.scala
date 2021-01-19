@@ -11,29 +11,62 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
-  * A template for a specification that needs to be inferred.
-  *
-  * @param name          The name of the template.
-  * @param specification The specification for which this is the template.
-  * @param body          The body representing the resources allowed by this template.
+  * A template for some specification that needs to be inferred.
   */
-case class Template(name: String, specification: Specification, body: TemplateExpression) {
+sealed trait Template {
   /**
-    * Returns the parameters for the specification.
+    * Returns the name of the template.
+    *
+    * @return The name.
+    */
+  def name: String =
+    specification.name
+
+  /**
+    * The specification corresponding to this template.
+    */
+  val specification: Specification
+
+  /**
+    * Returns the parameters of the specification.
     *
     * @return The parameters.
     */
-  def parameters: Seq[ast.LocalVarDecl] = specification.parameters
+  def parameters: Seq[ast.LocalVarDecl] =
+    specification.parameters
 
   /**
-    * Returns the atomic predicates that may be used for the specification.
+    * Returns the atoms of the specification.
     *
-    * @return The atomic predicates.
+    * @return The atoms.
     */
-  def atoms: Seq[ast.Exp] = specification.atoms
+  def atoms: Seq[ast.Exp] =
+    specification.atoms
+}
 
+/**
+  * A template for a specification predicate that needs to be inferred.
+  *
+  * @param specification The specification corresponding to the template.
+  * @param body          The body representing the structure allowed by the template.
+  */
+case class PredicateTemplate(specification: Specification, body: TemplateExpression) extends Template {
   override def toString: String =
     s"$specification = $body"
+}
+
+/**
+  * A template for a lemma method.
+  *
+  * @param specification The specification corresponding to the template.
+  * @param precondition  The expression representing the structure of the precondition.
+  * @param postcondition The expression representing the structure of the postcondition.
+  */
+case class LemmaTemplate(specification: Specification, precondition: TemplateExpression, postcondition: TemplateExpression) extends Template {
+  override def toString: String =
+    s"$specification\n" +
+      s"   requires $precondition\n" +
+      s"   ensures $postcondition"
 }
 
 /**
@@ -145,7 +178,7 @@ class TemplateGenerator(learner: Learner) {
     * @param samples The samples.
     * @return The templates.
     */
-  def generate(samples: Seq[Sample]): Map[String, Template] = {
+  def generate(samples: Seq[Sample]): Seq[Template] = {
     // used to generate unique ids for guards
     implicit val id: AtomicInteger = new AtomicInteger
     implicit val buffer: mutable.Buffer[Template] = ListBuffer.empty
@@ -197,10 +230,7 @@ class TemplateGenerator(learner: Learner) {
       .foreach { specification => createRecursiveTemplate(specification, structure) }
 
     // return templates
-    buffer.foldLeft(Map.empty[String, Template]) {
-      case (result, template) => result.updated(template.name, template)
-    }
-
+    buffer.toSeq
   }
 
   /**
@@ -213,9 +243,8 @@ class TemplateGenerator(learner: Learner) {
     */
   private def createTemplate(specification: Specification, resources: Set[ast.LocationAccess])
                             (implicit id: AtomicInteger, buffer: mutable.Buffer[Template]): Unit = {
-    val name = specification.name
     val body = createTemplateBody(specification, resources.toSeq)
-    val template = Template(name, specification, body)
+    val template = PredicateTemplate(specification, body)
     buffer.append(template)
   }
 
@@ -252,8 +281,53 @@ class TemplateGenerator(learner: Learner) {
         Truncation(condition, full)
       } else full
     }
-    val template = Template(Names.recursive, specification, body)
+    val template = PredicateTemplate(specification, body)
     buffer.append(template)
+
+    if (Settings.useSegments) {
+      // get lemma specification and parameter variables
+      val lemmaSpecification = getSpecification(Names.appendLemma)
+      val Seq(from, current, next) = lemmaSpecification.variables
+      // the recursive predicate instance used to adapt expressions
+      val instance = Instance(specification, Seq(current, next))
+
+      /**
+        * Helper method that extracts the link part of the append lemma.
+        *
+        * @param expression The expression to process.
+        * @return The extracted link expression.
+        */
+      def linkExpression(expression: TemplateExpression): TemplateExpression =
+        expression match {
+          case Conjunction(conjuncts) =>
+            val results = conjuncts.map { conjunct => linkExpression(conjunct) }
+            Conjunction(results)
+          case Wrapped(expression) => expression match {
+            case ast.PredicateAccessPredicate(ast.PredicateAccess(recursion +: _, _), _) =>
+              val adaptedRecursion = instance.toActual(recursion)
+              val equality = ast.EqCmp(adaptedRecursion, next)()
+              Wrapped(equality)
+            case _ =>
+              val adapted = instance.toActual(expression)
+              Wrapped(adapted)
+          }
+          case Guarded(guardId, body) =>
+            val bodyResult = linkExpression(body)
+            Guarded(guardId, bodyResult)
+          case Truncation(condition, body) =>
+            val adaptedCondition = instance.toActual(condition)
+            val bodyResult = linkExpression(body)
+            Truncation(adaptedCondition, bodyResult)
+        }
+
+      // create precondition and postcondition
+      val link = linkExpression(body)
+      val precondition = Conjunction(Seq(Wrapped(makeSegment(from, current)), link))
+      val postcondition = Wrapped(makeSegment(from, next))
+      // create and add lemma template
+      val lemmaTemplate = LemmaTemplate(lemmaSpecification, precondition, postcondition)
+      buffer.append(lemmaTemplate)
+    }
   }
 
   /**
@@ -322,23 +396,21 @@ class TemplateGenerator(learner: Learner) {
               case Seq(only) =>
                 // create id
                 val guardId = id.getAndIncrement()
-                // create predicate
-                val predicate = makeAccessPredicate(makeSegment(first, only))
-                // create resource
-                val resource = Guarded(guardId, Wrapped(predicate))
-                Some(resource)
+                // create guarded resource
+                val guarded = Guarded(guardId, Wrapped(makeSegment(first, only)))
+                Some(guarded)
               case _ =>
                 // create ids
                 val guardId = id.getAndIncrement()
                 val choiceId = id.getAndIncrement()
-                // create predicate with choice placeholder
-                val predicate = {
+                // create predicate segment with choice placeholder
+                val segment = {
                   val second = ast.LocalVar(s"t_$choiceId", ast.Ref)()
-                  makeAccessPredicate(makeSegment(first, second))
+                  makeSegment(first, second)
                 }
-                // create resource and choice
-                val resource = Guarded(guardId, Wrapped(predicate))
-                val choice = Choice(choiceId, options, resource)
+                // create guarded resource with choice
+                val guarded = Guarded(guardId, Wrapped(segment))
+                val choice = Choice(choiceId, options, guarded)
                 Some(choice)
             }
           }

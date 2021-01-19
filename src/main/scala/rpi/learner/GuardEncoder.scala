@@ -9,7 +9,7 @@ import viper.silver.ast
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-class GuardEncoder(templates: Map[String, Template]) {
+class GuardEncoder(templates: Seq[Template]) {
 
   import Expressions._
 
@@ -26,6 +26,15 @@ class GuardEncoder(templates: Map[String, Template]) {
     */
   private type EffectiveMap = Map[ast.LocationAccess, Effective]
 
+  private val predicates: Map[String, PredicateTemplate] =
+    templates
+      .flatMap {
+        case template: PredicateTemplate =>
+          Some(template.name -> template)
+        case _ => None
+      }
+      .toMap
+
   /**
     * The choices appearing in the templates.
     */
@@ -41,7 +50,12 @@ class GuardEncoder(templates: Map[String, Template]) {
         case _ => Seq.empty
       }
 
-    templates.flatMap { case (_, template) => collectChoices(template.body) }
+    templates.flatMap {
+      case template: PredicateTemplate =>
+        collectChoices(template.body)
+      case _ =>
+        Seq.empty
+    }
   }
 
   /**
@@ -59,7 +73,7 @@ class GuardEncoder(templates: Map[String, Template]) {
       * @param view     The view mapping template parameters to their expression in the current context.
       * @param guards   The guards collected so far.
       */
-    def processTemplate(template: Template, depth: Int, view: View = View.empty, guards: Seq[Guard] = Seq.empty): Unit =
+    def processTemplate(template: PredicateTemplate, depth: Int, view: View = View.empty, guards: Seq[Guard] = Seq.empty): Unit =
       if (depth != 0) {
         // get and adapt atoms
         val atoms = template
@@ -95,11 +109,11 @@ class GuardEncoder(templates: Map[String, Template]) {
             val access = ast.PredicateAccess(adaptedArguments, name)()
             buffer.append(access -> guards)
             // recursively process templates
-            val innerTemplate = templates(name)
+            val innerTemplate = predicates(name)
             val innerView = View.create(innerTemplate, adaptedArguments)
             processTemplate(innerTemplate, depth - 1, innerView, guards)
           case _ =>
-          sys.error(s"Unexpected expression in template: $expression")
+            sys.error(s"Unexpected expression in template: $expression")
         }
         case Guarded(guardId, body) =>
           val resourceGuard = ResourceGuard(guardId, atoms)
@@ -117,31 +131,34 @@ class GuardEncoder(templates: Map[String, Template]) {
           processExpression(body, view, guards :+ truncationGuard)
       }
 
-    // compute effective guards for all templates
-    templates.flatMap { case (name, template) =>
-      println(template)
-      if (Names.isRecursive(name)) None
-      else {
-        // process template
-        buffer.clear()
-        processTemplate(template, depth = 3)
-        // create map from accesses to effective guards
-        val map = buffer.foldLeft(Map.empty: EffectiveMap) {
-          case (result, (access, guards)) =>
-            SeqMap.add(result, access, guards)
-        }
-        // debug print
-        map.foreach { case (loc, g) =>
-          println(s"  $loc:")
-          g.foreach { x =>
-            print("    ")
-            println(x.mkString("(", " && ", ")"))
+    // compute effective guards for all predicate templates
+    templates
+      .flatMap {
+        case template: PredicateTemplate if !Names.isRecursive(template.name) =>
+          println(template)
+          // process template
+          buffer.clear()
+          processTemplate(template, depth = 3)
+          // create map from accesses to effective guards
+          val map = buffer.foldLeft(Map.empty: EffectiveMap) {
+            case (result, (access, guards)) =>
+              SeqMap.add(result, access, guards)
           }
-        }
-        // add map
-        Some(name -> map)
+          // debug print
+          map.foreach { case (loc, g) =>
+            println(s"  $loc:")
+            g.foreach { x =>
+              print("    ")
+              println(x.mkString("(", " && ", ")"))
+            }
+          }
+          // add map
+          Some(template.name -> map)
+        case template =>
+          println(template)
+          None
       }
-    }
+      .toMap
   }
 
   /**

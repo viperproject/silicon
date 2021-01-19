@@ -162,12 +162,7 @@ class Inference(program: ast.Program) {
     val all = nonRecursive ++ recursive
     // create predicates
     all
-      .map { specification =>
-        val name = specification.name
-        val arguments = specification.parameters
-        val body = Some(hypothesis.get(name))
-        ast.Predicate(name, arguments, body)()
-      }
+      .map { specification => hypothesis.getPredicate(specification) }
       .toSeq
   }
 
@@ -252,7 +247,7 @@ class Inference(program: ast.Program) {
             val arguments = predicate.args
             getInstance(name, arguments)
           }
-          hypothesis.get(instance)
+          hypothesis.getPredicateBody(instance)
         case _ => expression
       }
 
@@ -261,10 +256,7 @@ class Inference(program: ast.Program) {
     // create predicates
     val predicates = {
       val existing = program.predicates
-      val inferred = hypothesis
-        .predicates
-        .get(Names.recursive)
-        .toSeq
+      val inferred = hypothesis.getPredicate(Names.recursive).toSeq
       existing ++ inferred
     }
     // annotate methods

@@ -1,8 +1,6 @@
 package rpi.learner
 
 import rpi.inference._
-import rpi.util.Expressions
-import viper.silver.ast
 
 /**
   * The learner synthesizing the hypotheses.
@@ -60,7 +58,7 @@ class Learner(val inference: Inference) {
     * @return The hypothesis.
     */
   def hypothesis: Hypothesis =
-    if (samples.isEmpty) Hypothesis(Map.empty)
+    if (samples.isEmpty) Hypothesis(Seq.empty, Seq.empty)
     else {
       samples.foreach { sample => println(sample) }
       // compute templates
@@ -70,18 +68,8 @@ class Learner(val inference: Inference) {
       val encoder = new GuardEncoder(templates)
       val encodings = encoder.encodeSamples(samples)
 
-      // build guards
-      val solver = new GuardBuilder(learner = this, encodings)
-      val predicates = templates
-        .map { case (name, template) =>
-          val parameters = template.parameters
-          val body = solver.buildBody(template)
-          val simplified = Expressions.simplify(body)
-          name -> ast.Predicate(name, parameters, Some(simplified))()
-        }
-
-      // return hypothesis
-      predicates.foreach { predicate => println(predicate) }
-      Hypothesis(predicates)
+      // build hypothesis
+      val builder = new HypothesisBuilder(learner = this, encodings)
+      builder.buildHypothesis(templates)
     }
 }

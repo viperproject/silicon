@@ -86,23 +86,22 @@ class CheckBuilder(teacher: Teacher) {
     clear()
     val checks = hypothesis
       .predicates
-      .map { case (name, predicate) =>
+      .map { predicate =>
         push()
         // save state
         val arguments = predicate.formalArgs.map { parameter => parameter.localVar }
-        val instance = inference.getInstance(name, arguments)
+        val instance = inference.getInstance(predicate.name, arguments)
         val label = saveState(instance)
         context.addSnapshot(label, instance)
         // inhale inferred specification
-        val inferred = hypothesis.get(instance)
+        val inferred = hypothesis.getPredicateBody(instance)
         addInhales(inferred)
         // return check
         pop()
       }
-      .toSeq
 
     // return program
-    val dummy = Hypothesis(Map.empty)
+    val dummy = Hypothesis(Seq.empty, Seq.empty)
     val program = buildProgram(checks, dummy)
     (program, context)
   }
@@ -130,6 +129,10 @@ class CheckBuilder(teacher: Teacher) {
     */
   private def basicCheck(check: Check, hypothesis: Hypothesis): ast.Seqn = {
     import Names._
+
+    // TODO: Incorporate into annotation info.
+    var old: Option[String] = None
+
     /**
       * Helper method that instruments the given sequence.
       *
@@ -169,7 +172,7 @@ class CheckBuilder(teacher: Teacher) {
             implicit val annotations: Seq[Annotation] = Annotations.extract(statement)
             // get specification
             val instance = getInstance(predicate)
-            val body = hypothesis.get(instance)
+            val body = hypothesis.getPredicateBody(instance)
             // inhale predicate
             if (Settings.inline) {
               // inhale body of specification predicate
@@ -191,6 +194,7 @@ class CheckBuilder(teacher: Teacher) {
             // save state
             val label = saveState(instance)
             context.addSnapshot(label, instance)
+            old = Some(label)
         }
         case ast.Exhale(expression) => expression match {
           case condition if condition.isPure =>
@@ -201,7 +205,7 @@ class CheckBuilder(teacher: Teacher) {
             implicit val annotations: Seq[Annotation] = Annotations.extract(statement)
             // get specification
             val instance = getInstance(predicate)
-            val body = hypothesis.get(instance)
+            val body = hypothesis.getPredicateBody(instance)
             // save state
             implicit val label: String = saveState(instance)
             context.addSnapshot(label, instance)
@@ -224,8 +228,8 @@ class CheckBuilder(teacher: Teacher) {
               addStatement(ast.Exhale(adapted)())
             }
         }
-        case ast.MethodCall(name, _, _) if Names.isAnnotation(name) =>
-          ???
+        case call@ast.MethodCall(name, _, _) if Names.isAnnotation(name) =>
+          sys.error(s"Unhandled annotation: $call")
         case _ =>
           addStatement(statement)
       }
@@ -251,14 +255,14 @@ class CheckBuilder(teacher: Teacher) {
         case predicate@ast.PredicateAccessPredicate(ast.PredicateAccess(arguments, name), _) =>
           if (annotations.nonEmpty) {
             // handle annotations (only occur when enabled)
-            val condition = {
+            val downCondition = {
               val equalities = annotations.map {
                 case Annotation(`unfoldDownAnnotation`, Seq(argument)) =>
                   ast.EqCmp(arguments.head, argument)()
               }
               bigOr(equalities)
             }
-            val unfolds = conditional(Seq(condition), {
+            val unfolds = conditional(downCondition, {
               push()
               unfold(predicate, depth + 1)(Seq.empty)
               pop()
@@ -276,7 +280,7 @@ class CheckBuilder(teacher: Teacher) {
             // recursively unfold predicates appearing in body
             if (depth > 1) {
               val instance = inference.getInstance(name, arguments)
-              val body = hypothesis.get(instance)
+              val body = hypothesis.getPredicateBody(instance)
               unfold(body, depth - 1)
             }
             // close scope and make unfolds conditional
@@ -308,15 +312,15 @@ class CheckBuilder(teacher: Teacher) {
           savePermission(resource, guards)
         case predicate@ast.PredicateAccessPredicate(resource@ast.PredicateAccess(arguments, name), _) =>
           if (annotations.nonEmpty) {
-            // handle annotations (only occur when enabled)
-            // TODO: Actually handle annotations.
+            // TODO: handle annotations (only occur when enabled)
+            // note: recursion parameter handled via inhales
             saveAndFold(predicate, depth, guards)(label, Seq.empty)
           } else if (depth > 0) {
             // open scope
             push()
             // recursively fold predicates appearing in body
             val instance = inference.getInstance(name, arguments)
-            val body = hypothesis.get(instance)
+            val body = hypothesis.getPredicateBody(instance)
             saveAndFold(body, depth - 1)
             // fold predicate
             val info = BasicInfo(label, instance)
@@ -354,7 +358,7 @@ class CheckBuilder(teacher: Teacher) {
       existing ++ inferred
     }
     val methods = {
-      val lemmaMethods = hypothesis.lemmaMethods
+      val lemmaMethods = hypothesis.lemmas
       val checkMethods = checks.map { check => buildMethod(check) }
       lemmaMethods ++ checkMethods
     }

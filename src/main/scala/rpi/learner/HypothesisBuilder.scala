@@ -1,27 +1,92 @@
 package rpi.learner
 
 import rpi.Settings
+import rpi.inference.Hypothesis
 import rpi.util.Expressions
 import viper.silver.ast
 
-class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
+
+/**
+  * A hypothesis builder that first solves the constraints at hand and then builds the hypothesis corresponding to the
+  * found solution for any given template.
+  *
+  * @param learner     The pointer to the learner.
+  * @param constraints The constraints at hand.
+  */
+class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
 
   import Expressions._
 
+  /**
+    * The model returned by the solver.
+    */
   private val model: Map[String, Boolean] = {
     val solver = learner.solver
     solver.solve(constraints)
   }
 
   /**
-    * Builds the body of the given template.
+    * Builds a hypothesis for the given templates.
+    *
+    * @param templates The templates.
+    * @return The hypothesis.
+    */
+  def buildHypothesis(templates: Seq[Template]): Hypothesis = {
+    val lemmaBuffer: mutable.Buffer[ast.Method] = ListBuffer.empty
+    val predicateBuffer: mutable.Buffer[ast.Predicate] = ListBuffer.empty
+
+    templates.foreach {
+      case template: PredicateTemplate =>
+        val predicate = buildPredicate(template)
+        predicateBuffer.append(predicate)
+      case template: LemmaTemplate =>
+        val lemma = buildLemma(template)
+        lemmaBuffer.append(lemma)
+    }
+
+    // create and return hypothesis
+    Hypothesis(lemmaBuffer.toSeq, predicateBuffer.toSeq)
+  }
+
+  /**
+    * Builds the predicate corresponding to the given template.
     *
     * @param template The template.
-    * @return The body.
+    * @return The predicate.
     */
-  def buildBody(template: Template): ast.Exp = {
-    val atoms = template.atoms
-    buildExpression(template.body, atoms)
+  private def buildPredicate(template: PredicateTemplate): ast.Predicate = {
+    val name = template.name
+    val parameters = template.parameters
+    val body = buildBody(template.body, template.atoms)
+    ast.Predicate(name, parameters, body)()
+  }
+
+  /**
+    * Builds the lemma corresponding to the given template.
+    *
+    * @param template The template.
+    * @return The lemmaa method.
+    */
+  private def buildLemma(template: LemmaTemplate): ast.Method = {
+    val name = template.name
+    val parameters = template.parameters
+    val preconditions = buildConditions(template.precondition, template.atoms)
+    val postconditions = buildConditions(template.postcondition, template.atoms)
+    ast.Method(name, parameters, Seq.empty, preconditions, postconditions, None)()
+  }
+
+  private def buildBody(body: TemplateExpression, atoms: Seq[ast.Exp]): Option[ast.Exp] = {
+    val expression = buildExpression(body, atoms)
+    val simplified = simplify(expression)
+    Some(simplified)
+  }
+
+  private def buildConditions(condition: TemplateExpression, atoms: Seq[ast.Exp]): Seq[ast.Exp] = {
+    val expression = buildExpression(condition, atoms)
+    val simplified = simplify(expression)
+    Seq(simplified)
   }
 
   /**
@@ -95,16 +160,4 @@ class GuardBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
     }
     bigOr(clauses)
   }
-
-  /**
-    * Builds an access predicate for the given access.
-    *
-    * @param access The access.
-    * @return The predicate access.
-    */
-  private def buildResource(access: ast.LocationAccess): ast.AccessPredicate =
-    access match {
-      case field: ast.FieldAccess => ast.FieldAccessPredicate(field, ast.FullPerm()())()
-      case predicate: ast.PredicateAccess => ast.PredicateAccessPredicate(predicate, ast.FullPerm()())()
-    }
 }

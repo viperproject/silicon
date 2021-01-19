@@ -106,25 +106,27 @@ object Expressions {
   def implies(left: ast.Exp, right: ast.Exp): ast.Exp =
     ast.Implies(left, right)()
 
-
-  // TODO: Always used to create access predicate?
-  def makeInstance(from: ast.Exp): ast.PredicateAccess = {
+  def makeInstance(from: ast.Exp): ast.PredicateAccessPredicate = {
     val arguments = if (Settings.useSegments) Seq(from, ast.NullLit()()) else Seq(from)
     makeRecursive(arguments)
   }
 
-  def makeSegment(from: ast.Exp, to: ast.Exp): ast.PredicateAccess =
+  @inline
+  def makeSegment(from: ast.Exp, to: ast.Exp): ast.PredicateAccessPredicate =
     makeRecursive(Seq(from, to))
 
-  private def makeRecursive(arguments: Seq[ast.Exp]): ast.PredicateAccess = {
-    ast.PredicateAccess(arguments, Names.recursive)()
+  private def makeRecursive(arguments: Seq[ast.Exp]): ast.PredicateAccessPredicate = {
+    val access = ast.PredicateAccess(arguments, Names.recursive)()
+    makeAccessPredicate(access)
   }
 
-  def makeAccessPredicate(access: ast.LocationAccess): ast.AccessPredicate =
-    access match {
-      case field: ast.FieldAccess => ast.FieldAccessPredicate(field, ast.FullPerm()())()
-      case predicate: ast.PredicateAccess => ast.PredicateAccessPredicate(predicate, ast.FullPerm()())()
-    }
+  @inline
+  def makeAccessPredicate(access: ast.FieldAccess): ast.FieldAccessPredicate =
+    ast.FieldAccessPredicate(access, ast.FullPerm()())()
+
+  @inline
+  def makeAccessPredicate(access: ast.PredicateAccess): ast.PredicateAccessPredicate =
+    ast.PredicateAccessPredicate(access, ast.FullPerm()())()
 
   /**
     * Simplifies the given expression.
