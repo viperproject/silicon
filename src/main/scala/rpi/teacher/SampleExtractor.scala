@@ -197,12 +197,12 @@ class SampleExtractor(teacher: Teacher) {
     // extract counter example
     val counter = error.counterexample match {
       case Some(value: Counter) => value
-      case _ => ??? // should not happen
+      case _ => sys.error("Verification error does not contain a counter example.")
     }
     // extract offending location
     val offending = error.reason match {
       case InsufficientPermission(location) => location
-      case _ => ??? // should not happen
+      case reason => sys.error(s"Unexpected reason: $reason")
     }
     // extract context info
     val info = error.offendingNode match {
