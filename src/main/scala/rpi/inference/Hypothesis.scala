@@ -76,7 +76,7 @@ case class Hypothesis(lemmas: Seq[ast.Method], predicates: Seq[ast.Predicate]) {
     }
 
   /**
-    * Optionally returns the predicaate with the given name.
+    * Optionally returns the predicate with the given name.
     *
     * @param name The name of the predicate.
     * @return The predicate.

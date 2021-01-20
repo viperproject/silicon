@@ -3,9 +3,6 @@ package rpi.util
 import viper.silver.ast
 
 object Statements {
-
-  import Expressions._
-
   @inline
   def makeSkip: ast.Seqn =
     makeSequence(Seq.empty)
@@ -13,23 +10,18 @@ object Statements {
   def makeSequence(statement: ast.Stmt): ast.Seqn =
     statement match {
       case sequence: ast.Seqn => sequence
-      case other => ast.Seqn(Seq(other), Seq.empty)()
+      case other => makeSequence(Seq(other))
     }
 
   @inline
-  def makeSequence(statements: Seq[ast.Stmt]): ast.Seqn =
-    ast.Seqn(statements, Seq.empty)()
+  def makeSequence(statements: Seq[ast.Stmt], declarations: Seq[ast.Declaration] = Seq.empty): ast.Seqn =
+    ast.Seqn(statements, declarations)()
 
   @inline
-  def makeConditional(conditions: Seq[ast.Exp], body: ast.Stmt): ast.Stmt =
-    makeConditional(conditions, body, makeSkip)
+  def makeConditional(condition: ast.Exp, thenBranch: ast.Stmt, elseBranch: ast.Stmt): ast.If =
+    ast.If(condition, makeSequence(thenBranch), makeSequence(elseBranch))()
 
   @inline
-  def makeConditional(conditions: Seq[ast.Exp], thenBody: ast.Stmt, elseBody: ast.Stmt): ast.Stmt =
-    if (conditions.isEmpty) thenBody
-    else makeConditional(makeAnd(conditions), thenBody, elseBody)
-
-  @inline
-  def makeConditional(condition: ast.Exp, thenBody: ast.Stmt, elseBody: ast.Stmt): ast.If =
-    ast.If(condition, makeSequence(thenBody), makeSequence(elseBody))()
+  def makeAssign(target: ast.LocalVar, value: ast.Exp): ast.LocalVarAssign =
+    ast.LocalVarAssign(target, value)()
 }

@@ -77,8 +77,7 @@ class CheckBuilder(teacher: Teacher) {
           }
           // inhale part
           val condition = makeImplication(makeAnd(guards), conjunct)
-          val inhale = ast.Inhale(condition)(info = info)
-          addStatement(inhale)
+          addInhale(condition, info)
       }
 
     // create a check for each specification predicate
@@ -157,14 +156,12 @@ class CheckBuilder(teacher: Teacher) {
           val thenInstrumented = instrumentSequence(thenBody)
           val elseInstrumented = instrumentSequence(elseBody)
           // add instrumented conditional
-          addStatement(makeConditional(condition, thenInstrumented, elseInstrumented))
+          addConditional(condition, thenInstrumented, elseInstrumented)
         case ast.Inhale(expression) => expression match {
           case condition if condition.isPure =>
             // inhale pure conditions (presumably non-specification)
-            addStatement(ast.Inhale(condition)())
+            addInhale(condition)
           case predicate: ast.PredicateAccessPredicate =>
-            // get annotations
-            implicit val annotations: Seq[Annotation] = Annotations.extract(statement)
             // get specification
             val instance = getInstance(predicate)
             val body = hypothesis.getPredicateBody(instance)
@@ -172,7 +169,7 @@ class CheckBuilder(teacher: Teacher) {
             if (Settings.inline) {
               // inhale body of specification predicate
               val info = ast.SimpleInfo(Seq(instance.toString))
-              addStatement(ast.Inhale(body)(info = info))
+              addInhale(body, info)
             } else {
               // inhale and unfold specification predicate
               val adapted = {
@@ -181,11 +178,13 @@ class CheckBuilder(teacher: Teacher) {
                 val access = ast.PredicateAccess(arguments, name)()
                 ast.PredicateAccessPredicate(access, predicate.perm)()
               }
-              addStatement(ast.Inhale(adapted)())
-              addStatement(ast.Unfold(adapted)())
+              addInhale(adapted)
+              addUnfold(adapted)
             }
             // unfold predicate
-            unfold(body, check.unfoldDepth)
+            // TODO: adaptive w.r.t. to specifications.
+            implicit val maxDepth: Int = math.max(check.unfoldDepth, 1)
+            unfold(body)
             // save state snapshot
             val label = saveSnapshot(instance)
             context.addSnapshot(label, instance)
@@ -194,10 +193,8 @@ class CheckBuilder(teacher: Teacher) {
         case ast.Exhale(expression) => expression match {
           case condition if condition.isPure =>
             // exhale pure conditions (presumably non-specification)
-            addStatement(ast.Exhale(condition)())
+            addExhale(condition)
           case predicate: ast.PredicateAccessPredicate =>
-            // get annotations
-            implicit val annotations: Seq[Annotation] = Annotations.extract(statement)
             // get specification
             val instance = getInstance(predicate)
             val body = hypothesis.getPredicateBody(instance)
@@ -205,12 +202,16 @@ class CheckBuilder(teacher: Teacher) {
             implicit val label: String = saveSnapshot(instance)
             context.addSnapshot(label, instance)
             // save ingredients and fold predicate
-            saveAndFold(body, check.foldDepth)
+            // TODO: adaptive w.r.t. to specifications.
+            implicit val maxDepth: Int = math.max(check.unfoldDepth, 1)
+            val annotations: Seq[Annotation] = Annotations.extract(statement)
+            if (Settings.useAnnotations && annotations.nonEmpty) handleAnnotations(body, annotations)
+            else saveAndFold(body)
             // exhale predicate
             val info = BasicInfo(label, instance)
             if (Settings.inline) {
               // exhale body of specification
-              addStatement(ast.Exhale(body)(info = info))
+              addExhale(body, info)
             } else {
               // fold and exhale specification predicate
               val adapted = {
@@ -219,8 +220,8 @@ class CheckBuilder(teacher: Teacher) {
                 val access = ast.PredicateAccess(arguments, name)()
                 ast.PredicateAccessPredicate(access, predicate.perm)()
               }
-              addStatement(ast.Fold(adapted)(info = info))
-              addStatement(ast.Exhale(adapted)())
+              addFold(adapted, info)
+              addExhale(adapted)
             }
         }
         case call@ast.MethodCall(name, _, _) if Names.isAnnotation(name) =>
@@ -230,104 +231,70 @@ class CheckBuilder(teacher: Teacher) {
       }
 
     /**
-      * Helper methods used to unfold predicate accesses appearing in the given expression.
+      * Recursively unfolds predicates appearing in the given expression.
       *
-      * The implicitly passed list of annotations represents the annotations that have not been processed yet.
-      *
-      * @param expression  The expression to unfold.
-      * @param depth       The depth up to which to unfold.
-      * @param guards      The guards collected so far.
-      * @param annotations The implicitly passed list of unprocessed annotations.
+      * @param expression The expression to unfold.
+      * @param guards     The guards collected so far.
+      * @param maxDepth   The implicitly passed maximal depth up to which to unfold.
       */
-    def unfold(expression: ast.Exp, depth: Int, guards: Seq[ast.Exp] = Seq.empty)
-              (implicit annotations: Seq[Annotation]): Unit =
+    def unfold(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty)
+              (implicit maxDepth: Int): Unit =
       expression match {
         case ast.And(left, right) =>
-          unfold(left, depth, guards)
-          unfold(right, depth, guards)
+          unfold(left, guards)
+          unfold(right, guards)
         case ast.Implies(guard, guarded) =>
-          unfold(guarded, depth, guards :+ guard)
+          unfold(guarded, guards :+ guard)
         case predicate@ast.PredicateAccessPredicate(ast.PredicateAccess(arguments, name), _) =>
-          val unfolds = makeScope {
-            // check if there are any annotations (only occur when enabled)
-            if (annotations.nonEmpty) {
-              // handle annotations
-              handleUnfoldAnnotations(predicate, depth, annotations)
-            } else if (depth > 0) {
+          val depth = getDepth(arguments.head)
+          if (depth <= maxDepth) {
+            val unfolds = makeScope {
               // unfold predicate
-              addStatement(ast.Unfold(predicate)())
+              addUnfold(predicate)
               // recursively unfold predicates appearing in body
-              if (depth > 1) {
+              if (depth < maxDepth) {
                 val instance = inference.getInstance(name, arguments)
                 val body = hypothesis.getPredicateBody(instance)
-                unfold(body, depth - 1)
+                unfold(body)
               }
             }
+            addConditional(guards, unfolds)
           }
-          addStatement(makeConditional(guards, unfolds))
         case _ => // do nothing
       }
 
     /**
-      * Method that handles the given unfold annotations and then continues by unfolding the given predicate.
+      * Recursively folds predicates appearing in the given expression. Moreover, this method also saves permission
+      * amounts held for all of the ingredients.
       *
-      * @param predicate   The predicate.
-      * @param depth       The depth up to which to unfold the predicate by default.
-      * @param annotations The annotations.
-      */
-    def handleUnfoldAnnotations(predicate: ast.PredicateAccessPredicate, depth: Int, annotations: Seq[Annotation]): Unit = {
-      // build condition for additional unfold
-      val from = predicate.loc.args.head
-      val condition = {
-        val equalities = annotations.map {
-          case Annotation(`unfoldDownAnnotation`, argument) =>
-            makeEquality(from, argument)
-        }
-        makeOr(equalities)
-      }
-      // conditionally unfold up to depth + 1 or depth
-      val thenBody = makeScope(unfold(predicate, depth + 1)(Seq.empty))
-      val elseBody = makeScope(unfold(predicate, depth)(Seq.empty))
-      addStatement(makeConditional(condition, thenBody, elseBody))
-    }
-
-    /**
-      * Helper method used to recursively fold predicate accesses appearing in the given expression. Moreover, it also
-      * saves the permission amounts held for each of the ingredients.
-      *
-      * @param expression  The expression to save and fold.
-      * @param depth       The depth up to which to fold.
-      * @param guards      The guards collected
+      * @param expression  The expression to fold.
+      * @param guards      The guards collected so far.
+      * @param maxDepth    The implicitly passed maximal depth up to which to fold.
       * @param label       The implicitly passed label of the current state snapshot.
-      * @param annotations The implicitly passed list of unprocessed annotations.
       */
-    def saveAndFold(expression: ast.Exp, depth: Int, guards: Seq[ast.Exp] = Seq.empty)
-                   (implicit label: String, annotations: Seq[Annotation]): Unit =
+    def saveAndFold(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty)
+                   (implicit maxDepth: Int, label: String): Unit =
       expression match {
         case ast.And(left, right) =>
-          saveAndFold(left, depth, guards)
-          saveAndFold(right, depth, guards)
+          saveAndFold(left, guards)
+          saveAndFold(right, guards)
         case ast.Implies(guard, guarded) =>
-          saveAndFold(guarded, depth, guards :+ guard)
+          saveAndFold(guarded, guards :+ guard)
         case ast.FieldAccessPredicate(resource, _) =>
           savePermission(resource, guards)
         case predicate@ast.PredicateAccessPredicate(resource@ast.PredicateAccess(arguments, name), _) =>
-          // check if there are any annotations (only occur when enabled)
-          if (annotations.nonEmpty) {
-            // handle annotations
-            val folds = makeScope(handleFoldAnnotations(predicate, depth, annotations))
-            addStatement(makeConditional(guards, folds))
-          } else if (depth > 0) {
+          val depth = getDepth(arguments.head)
+          if (depth <= maxDepth) {
             val folds = makeScope {
               // recursively fold predicates appearing in body
               val instance = inference.getInstance(name, arguments)
               val body = hypothesis.getPredicateBody(instance)
-              saveAndFold(body, depth - 1)
+              saveAndFold(body)
               // fold predicate
               val info = BasicInfo(label, instance)
-              addStatement(ast.Fold(predicate)(info = info))
+              addFold(predicate, info)
             }
-            addStatement(makeConditional(guards, folds))
+            addConditional(guards, folds)
           } else {
             savePermission(resource, guards)
           }
@@ -335,51 +302,104 @@ class CheckBuilder(teacher: Teacher) {
       }
 
     /**
-      * Method that handles the given annotations and then continues by folding the given predicate.
+      * Handles the given annotations and then saves and folds the given expression.
       *
-      * @param predicate   The predicate.
-      * @param depth       The depth up to which to fold by default.
+      * @param expression  The expression to fold.
       * @param annotations The annotations.
+      * @param maxDepth    The implicitly passed maximal depth up to which to fold.
       * @param label       The implicitly passed label of the current state snapshot.
       */
-    def handleFoldAnnotations(predicate: ast.PredicateAccessPredicate, depth: Int, annotations: Seq[Annotation])
-                             (implicit label: String): Unit = {
-      if (Settings.useSegments) {
-        val arguments = predicate.loc.args
-        arguments match {
-          case Seq(_, ast.NullLit()) =>
-            saveAndFold(predicate, depth)(label, Seq.empty)
-          case Seq(from, to: ast.LocalVar) =>
-            // condition for append
-            val condition = {
-              val equalities = annotations.map {
-                case Annotation(`foldDownAnnotation`, argument) =>
-                  makeEquality(to, argument)
-              }
-              makeOr(equalities)
+    def handleAnnotations(expression: ast.Exp, annotations: Seq[Annotation])
+                         (implicit maxDepth: Int, label: String): Unit = {
+      /**
+        * Handles the end argument of predicate instances (and afterwards, handles the start argument of predicate
+        * instances, and finally saves and folds the expression).
+        *
+        * @param expression The expression to handle.
+        * @param guards     The guards collected so far.
+        */
+      def handleEnd(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty): Unit =
+        expression match {
+          case ast.And(left, right) =>
+            handleEnd(left, guards)
+            handleEnd(right, guards)
+          case ast.Implies(guard, guarded) =>
+            handleEnd(guarded, guards :+ guard)
+          case predicate: ast.PredicateAccessPredicate =>
+            val arguments = predicate.loc.args
+            arguments match {
+              case Seq(start, end: ast.LocalVar) =>
+                val body = makeScope {
+                  // down condition
+                  val condition = {
+                    val equalities = annotations.map {
+                      case Annotation(`foldDownAnnotation`, argument) =>
+                        makeEquality(end, argument)
+                    }
+                    makeOr(equalities)
+                  }
+                  // TODO:
+                  val thenBody = makeScope {
+                    // get lemma instance
+                    val instance = {
+                      val previous = ast.LocalVar(s"${old.get}_${end.name}", ast.Ref)()
+                      val arguments = Seq(start, previous, end)
+                      inference.getInstance(Names.appendLemma, arguments)
+                    }
+                    // fold lemma precondition
+                    val precondition = hypothesis.getLemmaPrecondition(instance)
+                    handleStart(precondition)
+                    // apply lemma
+                    val lemmaApplication = hypothesis.getLemmaApplication(instance)
+                    addStatement(lemmaApplication)
+                  }
+                  val elseBody = makeScope(handleStart(predicate))
+                  addConditional(condition, thenBody, elseBody)
+                }
+                addConditional(guards, body)
+              case _ =>
+                handleStart(predicate, guards)
             }
-            // conditionally apply append lemma
-            val thenBody = makeScope {
-              // get lemma instance
-              val instance = {
-                val previous = ast.LocalVar(s"${old.get}_${to.name}", ast.Ref)()
-                val arguments = Seq(from, previous, to)
-                inference.getInstance(Names.appendLemma, arguments)
-              }
-              // fold lemma precondition
-              val precondition = hypothesis.getLemmaPrecondition(instance)
-              saveAndFold(precondition, depth)(label, Seq.empty)
-              // apply lemma
-              val lemmaApplication = hypothesis.getLemmaApplication(instance)
-              addStatement(lemmaApplication)
-            }
-            val elseBody = makeScope(saveAndFold(predicate, depth)(label, Seq.empty))
-            addStatement(makeConditional(condition, thenBody, elseBody))
+          case other =>
+            saveAndFold(other, guards)
         }
-      } else {
-        // note: recursion parameter handled via inhales
-        saveAndFold(predicate, depth)(label, Seq.empty)
-      }
+
+      /**
+        * Handles the start argument of predicates instances (and afterwards saves and folds the expression).
+        *
+        * @param expression The expression to handle.
+        * @param guards     The guards collected so far.
+        */
+      def handleStart(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty): Unit =
+        expression match {
+          case ast.And(left, right) =>
+            handleStart(left, guards)
+            handleStart(right, guards)
+          case ast.Implies(guard, guarded) =>
+            handleStart(guarded, guards :+ guard)
+          case predicate: ast.PredicateAccessPredicate =>
+            val body = makeScope {
+              // down condition
+              val condition = {
+                val start = predicate.loc.args.head
+                val equalities = annotations.map {
+                  case Annotation(`foldDownAnnotation`, argument) =>
+                    makeEquality(start, argument)
+                }
+                makeOr(equalities)
+              }
+              // conditionally decrease the maximal fold depth
+              val thenBranch = makeScope(saveAndFold(predicate)(maxDepth - 1, label))
+              val elseBranch = makeScope(saveAndFold(predicate))
+              addConditional(condition, thenBranch, elseBranch)
+            }
+            addConditional(guards, body)
+          case other =>
+            saveAndFold(other, guards)
+        }
+
+      // process expression
+      handleEnd(expression)
     }
 
     // instrument check
@@ -434,7 +454,7 @@ class CheckBuilder(teacher: Teacher) {
         .deepCollect { case variable: ast.LocalVar => variable }
         .distinct
         .map { variable => ast.LocalVarDecl(variable.name, variable.typ)() }
-      Some(ast.Seqn(statements, declarations)())
+      Some(makeSequence(statements, declarations))
     }
     ast.Method(name, arguments, returns, preconditions, postconditions, body)()
   }
@@ -547,9 +567,9 @@ class CheckBuilder(teacher: Teacher) {
       // create variable
       val variable = ast.LocalVar(name, ast.Bool)()
       // create conditional
-      val thenBody = ast.LocalVarAssign(variable, makeTrue)()
-      val elseBody = ast.LocalVarAssign(variable, makeFalse)()
-      addStatement(makeConditional(atom, thenBody, elseBody))
+      val thenBody = makeAssign(variable, makeTrue)
+      val elseBody = makeAssign(variable, makeFalse)
+      addConditional(atom, thenBody, elseBody)
     } else saveValue(name, atom)
 
 
@@ -562,11 +582,8 @@ class CheckBuilder(teacher: Teacher) {
   private def saveValue(name: String, expression: ast.Exp): Unit = {
     // create variable and assignment
     val variable = ast.LocalVar(name, expression.typ)()
-    addStatement(ast.LocalVarAssign(variable, expression)())
+    addAssign(variable, expression)
   }
-
-  private def addStatement(statement: ast.Stmt): Unit =
-    buffer.append(statement)
 
   private def makeScope(generate: => Unit): ast.Seqn = {
     // save outer buffer and create and set current one
@@ -579,6 +596,43 @@ class CheckBuilder(teacher: Teacher) {
     buffer = outer
     makeSequence(current.toSeq)
   }
+
+  @inline
+  private def addStatement(statement: ast.Stmt): Unit =
+    buffer.append(statement)
+
+  @inline
+  private def addConditional(condition: ast.Exp, thenBody: ast.Stmt, elseBody: ast.Stmt): Unit =
+    addStatement(makeConditional(condition, thenBody, elseBody))
+
+  @inline
+  private def addConditional(conditions: Seq[ast.Exp], thenBody: ast.Stmt): Unit =
+    addConditional(conditions, thenBody, makeSkip)
+
+  private def addConditional(conditions: Seq[ast.Exp], thenBody: ast.Stmt, elseBody: ast.Stmt): Unit =
+    if (conditions.isEmpty) addStatement(thenBody)
+    else addConditional(makeAnd(conditions), thenBody, elseBody)
+
+  @inline
+  private def addAssign(target: ast.LocalVar, value: ast.Exp): Unit =
+    addStatement(makeAssign(target, value))
+
+  @inline
+  private def addInhale(expression: ast.Exp, info: ast.Info = ast.NoInfo): Unit =
+    addStatement(ast.Inhale(expression)(info = info))
+
+  @inline
+  private def addExhale(expression: ast.Exp, info: ast.Info = ast.NoInfo): Unit =
+    addStatement(ast.Exhale(expression)(info = info))
+
+  @inline
+  private def addUnfold(predicate: ast.PredicateAccessPredicate): Unit =
+    addStatement(ast.Unfold(predicate)())
+
+  @inline
+  private def addFold(predicate: ast.PredicateAccessPredicate, info: ast.Info = ast.NoInfo): Unit =
+    addStatement(ast.Fold(predicate)(info = info))
+
 
   private def clear(): Unit = {
     namespace = new Namespace

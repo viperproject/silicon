@@ -9,15 +9,18 @@ import viper.silver.ast.utility.rewriter.Traverse
   */
 object Expressions {
   /**
-    * Assumes that the given expression is an access path and returns its length.
+    * Returns the depth of the given access path.
     *
-    * @param expression The expression.
-    * @return The length of the access path.
+    * @param path The access path.
+    * @return The depth of the access path.
     */
-  def length(expression: ast.Exp): Int =
-    expression match {
+  def getDepth(path: ast.Exp): Int =
+    path match {
+      case _: ast.NullLit => 1
       case _: ast.LocalVar => 1
-      case ast.FieldAccess(receiver, _) => length(receiver) + 1
+      case ast.FieldAccess(receiver, _) =>
+        getDepth(receiver) + 1
+      case _ => sys.error(s"Expression $path is not an access path.")
     }
 
   /**

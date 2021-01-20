@@ -8,11 +8,13 @@ method main(a: Ref)
     {
         __unfoldDown__(c)
         c := c.n
+        __foldDown__(c)
     }
     c := a
     while (c != null)
     {
         __unfoldDown__(c)
         c := c.n
+        __foldDown__(c)
     }
 }

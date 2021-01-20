@@ -342,10 +342,7 @@ class TemplateGenerator(learner: Learner) {
                                 (implicit id: AtomicInteger): TemplateExpression = {
     // create template expressions for fields
     val fields = resources
-      .collect { case field: ast.FieldAccess =>
-        val length = Expressions.length(field)
-        (length, field)
-      }
+      .collect { case field: ast.FieldAccess => (getDepth(field), field) }
       .filter { case (length, _) => length <= Settings.maxLength }
       .sortWith { case ((first, _), (second, _)) => first < second }
       .map { case (_, field) =>
