@@ -10,7 +10,7 @@ method main()
     // create list
     a := new(n)
     b := a
-    __init__(a)
+    __up__(a)
     while (i < 10)
     {
         var t: Ref
@@ -25,7 +25,7 @@ method main()
     c := a
     while (c != null)
     {
-        __down__(c)
         c := c.n
+        __down__(c)
     }
 }

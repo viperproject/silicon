@@ -6,7 +6,7 @@ method main(a: Ref)
     c := a
     while (c != null)
     {
-        __unfoldDown__(c)
         c := c.n
+        __down__(c)
     }
 }

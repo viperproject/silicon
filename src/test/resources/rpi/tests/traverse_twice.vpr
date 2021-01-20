@@ -6,15 +6,13 @@ method main(a: Ref)
     c := a
     while (c != null)
     {
-        __unfoldDown__(c)
         c := c.n
-        __foldDown__(c)
+        __down__(c)
     }
     c := a
     while (c != null)
     {
-        __unfoldDown__(c)
         c := c.n
-        __foldDown__(c)
+        __down__(c)
     }
 }

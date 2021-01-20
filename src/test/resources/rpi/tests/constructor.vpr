@@ -8,7 +8,7 @@ method main()
     c := null
     i := 10
 
-    __foldUp__(c)
+    __up__(c)
     while (i > 0)
     {
         var t: Ref
@@ -16,12 +16,12 @@ method main()
         t.n := c
         c := t
         i := i - 1
-        __foldUp__(c)
+        __up__(c)
     }
 
     while (c != null)
     {
-        __unfoldDown__(c)
         c := c.n
+        __down__(c)
     }
 }

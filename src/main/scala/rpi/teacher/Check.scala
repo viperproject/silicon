@@ -157,13 +157,11 @@ object Checks {
               // add check for loop body
               addCheck(invariants :+ condition, invariants, body)
               // trim annotations (ignored if disabled)
-              val (pastAnnotations, trimmedPast) = trimAnnotationSuffix(past)
-              val (futureAnnotations, trimmedFuture) = trimAnnotationPrefix(future)
-              val exhaleInfo = AnnotationInfo(pastAnnotations)
-              val inhaleInfo = AnnotationInfo(futureAnnotations)
+              val (pastAnnotations, trimmedPast) = trimAnnotations(past)
+              val info = AnnotationInfo(pastAnnotations)
               // compute exhales and inhales corresponding to loop specification
-              val exhales = invariants.map { expression => ast.Exhale(expression)(info = exhaleInfo) }
-              val inhales = invariants.map { expression => ast.Inhale(expression)(info = inhaleInfo) } :+ ast.Inhale(makeNot(condition))()
+              val exhales = invariants.map { expression => ast.Exhale(expression)(info = info) }
+              val inhales = invariants.map { expression => ast.Inhale(expression)() } :+ ast.Inhale(makeNot(condition))()
               // havoc variables
               val havoc = {
                 val assignments = body
@@ -172,21 +170,19 @@ object Checks {
                 ast.While(ast.FalseLit()(), Seq.empty, makeSequence(assignments))()
               }
               // advance
-              (trimmedPast ++ exhales ++ Seq(havoc) ++ inhales, trimmedFuture)
+              (trimmedPast ++ exhales ++ Seq(havoc) ++ inhales, future)
             // process method call
             case ast.MethodCall(name, arguments, _) if !Names.isAnnotation(name) =>
-              // extract annotations before and after
-              val (pastAnnotations, trimmedPast) = trimAnnotationSuffix(past)
-              val (futureAnnotations, trimmedFuture) = trimAnnotationPrefix(future)
-              val exhaleInfo = AnnotationInfo(pastAnnotations)
-              val inhaleInfo = AnnotationInfo(futureAnnotations)
+              // extract annotations
+              val (pastAnnotations, trimmedPast) = trimAnnotations(past)
+              val info = AnnotationInfo(pastAnnotations)
               // compute exhales and inhales corresponding to method specification
               val method = methods(name)
               val bindings = substitutionMap(method.formalArgs, arguments)
-              val exhales = method.pres.map { expression => ast.Exhale(substitute(expression, bindings))(info = exhaleInfo) }
-              val inhales = method.posts.map { expression => ast.Inhale(substitute(expression, bindings))(info = inhaleInfo) }
+              val exhales = method.pres.map { expression => ast.Exhale(substitute(expression, bindings))(info = info) }
+              val inhales = method.posts.map { expression => ast.Inhale(substitute(expression, bindings))() }
               // advance
-              (trimmedPast ++ exhales ++ inhales, trimmedFuture)
+              (trimmedPast ++ exhales ++ inhales, future)
             // process any other statement
             case _ =>
               // advance
@@ -200,13 +196,11 @@ object Checks {
 
     def addCheck(preconditions: Seq[ast.Exp], postconditions: Seq[ast.Exp], body: ast.Seqn): Unit = {
       // trim annotations (ignored if disabled)
-      val (prefixAnnotations, withoutPrefix) = trimAnnotationPrefix(body.ss)
-      val (suffixAnnotations, trimmed) = trimAnnotationSuffix(withoutPrefix)
-      val inhaleInfo = AnnotationInfo(prefixAnnotations)
-      val exhaleInfo = AnnotationInfo(suffixAnnotations)
+      val (suffixAnnotations, trimmed) = trimAnnotations(body.ss)
+      val info = AnnotationInfo(suffixAnnotations)
       // compute inhale and exhales corresponding to loop specification
-      val inhales = preconditions.map { expression => ast.Inhale(expression)(info = inhaleInfo) }
-      val exhales = postconditions.map { expression => ast.Exhale(expression)(info = exhaleInfo) }
+      val inhales = preconditions.map { expression => ast.Inhale(expression)() }
+      val exhales = postconditions.map { expression => ast.Exhale(expression)(info = info) }
       // process loop body
       val processedBody = processStatements(Seq.empty, trimmed)
       // create and add check
@@ -227,25 +221,14 @@ object Checks {
     checks
   }
 
-  private def trimAnnotationSuffix(statements: Seq[ast.Stmt]): (Seq[Annotation], Seq[ast.Stmt]) =
+  private def trimAnnotations(statements: Seq[ast.Stmt]): (Seq[Annotation], Seq[ast.Stmt]) =
     statements match {
       case rest :+ ast.MethodCall(name, Seq(argument), _) if Names.isAnnotation(name) =>
         if (Settings.useAnnotations) {
-          val (suffix, trimmed) = trimAnnotationSuffix(rest)
+          val (suffix, trimmed) = trimAnnotations(rest)
           val annotation = Annotation(name, argument)
           (suffix :+ annotation, trimmed)
-        } else trimAnnotationSuffix(rest)
-      case _ => (Seq.empty, statements)
-    }
-
-  private def trimAnnotationPrefix(statements: Seq[ast.Stmt]): (Seq[Annotation], Seq[ast.Stmt]) =
-    statements match {
-      case ast.MethodCall(name, Seq(argument), _) +: rest if Names.isAnnotation(name) =>
-        if (Settings.useAnnotations) {
-          val (prefix, trimmed) = trimAnnotationPrefix(rest)
-          val annotation = Annotation(name, argument)
-          (annotation +: prefix, trimmed)
-        } else trimAnnotationPrefix(rest)
+        } else trimAnnotations(rest)
       case _ => (Seq.empty, statements)
     }
 }

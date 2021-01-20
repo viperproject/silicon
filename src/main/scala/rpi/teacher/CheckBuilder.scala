@@ -333,7 +333,7 @@ class CheckBuilder(teacher: Teacher) {
                   // down condition
                   val condition = {
                     val equalities = annotations.map {
-                      case Annotation(`foldDownAnnotation`, argument) =>
+                      case Annotation(`downAnnotation`, argument) =>
                         makeEquality(end, argument)
                     }
                     makeOr(equalities)
@@ -383,7 +383,7 @@ class CheckBuilder(teacher: Teacher) {
               val condition = {
                 val start = predicate.loc.args.head
                 val equalities = annotations.map {
-                  case Annotation(`foldDownAnnotation`, argument) =>
+                  case Annotation(`downAnnotation`, argument) =>
                     makeEquality(start, argument)
                 }
                 makeOr(equalities)

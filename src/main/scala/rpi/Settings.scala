@@ -114,16 +114,13 @@ object Names {
 
   val appendLemma = "append_lemma"
 
-  val unfoldDownAnnotation = "__unfoldDown__"
+  val downAnnotation = "__down__"
 
-  val foldDownAnnotation = "__foldDown__"
-
-  val foldUpAnnotation = "__foldUp__"
+  val upAnnotation = "__up__"
 
   val allAnnotations = Seq(
-    unfoldDownAnnotation,
-    foldDownAnnotation,
-    foldUpAnnotation)
+    downAnnotation,
+    upAnnotation)
 
   /**
     * Returns whether the given name corresponds to an annotation.
