@@ -128,8 +128,23 @@ object Expressions {
       .getOrElse(makeFalse)
 
   @inline
-  def makeImplication(left: ast.Exp, right: ast.Exp): ast.Exp =
+  def makeImplication(left: ast.Exp, right: ast.Exp): ast.Implies =
     ast.Implies(left, right)()
+
+  /**
+    * Returns an equality expression that compares the two given expressions.
+    *
+    * @param left  The left expression.
+    * @param right The right expression.
+    * @return The equality.
+    */
+  @inline
+  def makeEquality(left: ast.Exp, right: ast.Exp): ast.EqCmp =
+    ast.EqCmp(left, right)()
+
+  @inline
+  def makeCall(method: ast.Method, arguments: Seq[ast.Exp]): ast.MethodCall =
+    ast.MethodCall(method, arguments, Seq.empty)()
 
   def makeInstance(from: ast.Exp): ast.PredicateAccessPredicate = {
     val arguments = if (Settings.useSegments) Seq(from, ast.NullLit()()) else Seq(from)

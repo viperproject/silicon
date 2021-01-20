@@ -34,6 +34,48 @@ case class Hypothesis(lemmas: Seq[ast.Method], predicates: Seq[ast.Predicate]) {
     lemmaMap.get(name)
 
   /**
+    * Returns a method call corresponding to an application of the given lemma instance.
+    *
+    * @param instance The instance of the lemma.
+    * @return The lemma application.
+    */
+  def getLemmaApplication(instance: Instance): ast.MethodCall =
+    getLemma(instance.name) match {
+      case Some(lemma) =>
+        val arguments = instance.arguments
+        makeCall(lemma, arguments)
+      case _ => sys.error(s"Lemma $instance not defined by hypothesis.")
+    }
+
+  /**
+    * Returns the precondition of the given lemma instance.
+    *
+    * @param instance The instance of the lemma.
+    * @return The precondition.
+    */
+  def getLemmaPrecondition(instance: Instance): ast.Exp =
+    getLemma(instance.name) match {
+      case Some(lemma) =>
+        val precondition = makeAnd(lemma.pres)
+        instance.toActual(precondition)
+      case _ => sys.error(s"Lemma $instance not defined by hypothesis.")
+    }
+
+  /**
+    * Returns the postcondition of the given lemma instance.
+    *
+    * @param instance The instance of the lemma.
+    * @return The postcondition.
+    */
+  def getLemmaPostcondition(instance: Instance): ast.Exp =
+    getLemma(instance.name) match {
+      case Some(lemma) =>
+        val postcondition = makeAnd(lemma.posts)
+        instance.toActual(postcondition)
+      case _ => sys.error(s"Lemma $instance not defined by hypothesis.")
+    }
+
+  /**
     * Optionally returns the predicaate with the given name.
     *
     * @param name The name of the predicate.
@@ -51,7 +93,7 @@ case class Hypothesis(lemmas: Seq[ast.Method], predicates: Seq[ast.Predicate]) {
     */
   def getPredicate(specification: Specification): ast.Predicate =
     getPredicate(specification.name) match {
-      case Some(existing) => existing
+      case Some(predicate) => predicate
       case None =>
         val name = specification.name
         val parameters = specification.parameters

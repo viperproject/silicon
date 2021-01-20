@@ -89,10 +89,10 @@ object Annotations {
   * An annotation.
   *
   * @param name      The name.
-  * @param arguments The arguments.
+  * @param arguments The argument.
   */
-case class Annotation(name: String, arguments: Seq[ast.Exp]) {
-  override def toString: String = s"$name(${arguments.mkString(", ")})"
+case class Annotation(name: String, argument: ast.Exp) {
+  override def toString: String = s"$name($argument)"
 }
 
 /**
@@ -229,10 +229,10 @@ object Checks {
 
   private def trimAnnotationSuffix(statements: Seq[ast.Stmt]): (Seq[Annotation], Seq[ast.Stmt]) =
     statements match {
-      case rest :+ ast.MethodCall(name, arguments, _) if Names.isAnnotation(name) =>
+      case rest :+ ast.MethodCall(name, Seq(argument), _) if Names.isAnnotation(name) =>
         if (Settings.useAnnotations) {
           val (suffix, trimmed) = trimAnnotationSuffix(rest)
-          val annotation = Annotation(name, arguments)
+          val annotation = Annotation(name, argument)
           (suffix :+ annotation, trimmed)
         } else trimAnnotationSuffix(rest)
       case _ => (Seq.empty, statements)
@@ -240,13 +240,12 @@ object Checks {
 
   private def trimAnnotationPrefix(statements: Seq[ast.Stmt]): (Seq[Annotation], Seq[ast.Stmt]) =
     statements match {
-      case ast.MethodCall(name, arguments, _) +: rest if Names.isAnnotation(name) =>
+      case ast.MethodCall(name, Seq(argument), _) +: rest if Names.isAnnotation(name) =>
         if (Settings.useAnnotations) {
           val (prefix, trimmed) = trimAnnotationPrefix(rest)
-          val annotation = Annotation(name, arguments)
+          val annotation = Annotation(name, argument)
           (annotation +: prefix, trimmed)
         } else trimAnnotationPrefix(rest)
-
       case _ => (Seq.empty, statements)
     }
 }

@@ -43,10 +43,9 @@ class CheckBuilder(teacher: Teacher) {
   private var context: Context = _
 
   /**
-    * The stack of statement buffers used to accumulate the instrumented statements. The stack is required to properly
-    * handle control flow. The topmost buffer accumulates statements for the current branch.
+    * The buffer used to accumulate statements for the current scope.
     */
-  private var stack: List[mutable.Buffer[ast.Stmt]] = _
+  private var buffer: mutable.Buffer[ast.Stmt] = _
 
   /**
     * Returns a program that performs self-framing checks for the given hypothesis.
@@ -87,17 +86,17 @@ class CheckBuilder(teacher: Teacher) {
     val checks = hypothesis
       .predicates
       .map { predicate =>
-        push()
-        // save state
-        val arguments = predicate.formalArgs.map { parameter => parameter.localVar }
-        val instance = inference.getInstance(predicate.name, arguments)
-        val label = saveState(instance)
-        context.addSnapshot(label, instance)
-        // inhale inferred specification
-        val inferred = hypothesis.getPredicateBody(instance)
-        addInhales(inferred)
-        // return check
-        pop()
+        makeScope {
+          // save state snapshot
+          val arguments = predicate.formalArgs.map { parameter => parameter.localVar }
+          val instance = inference.getInstance(predicate.name, arguments)
+          val label = saveSnapshot(instance)
+          context.addSnapshot(label, instance)
+          // inhale inferred specification
+          val inferred = hypothesis.getPredicateBody(instance)
+          addInhales(inferred)
+          // return check
+        }
       }
 
     // return program
@@ -139,15 +138,12 @@ class CheckBuilder(teacher: Teacher) {
       * @param sequence The sequence to instrument.
       * @return The instrumented sequence.
       */
-    def instrumentSequence(sequence: ast.Seqn): ast.Seqn = {
-      push()
-      sequence
-        .ss
-        .foreach { statement =>
-          instrumentStatement(statement)
-        }
-      pop()
-    }
+    def instrumentSequence(sequence: ast.Seqn): ast.Seqn =
+      makeScope {
+        sequence
+          .ss
+          .foreach { statement => instrumentStatement(statement) }
+      }
 
     /**
       * Helper method that instruments the given statement.
@@ -190,8 +186,8 @@ class CheckBuilder(teacher: Teacher) {
             }
             // unfold predicate
             unfold(body, check.unfoldDepth)
-            // save state
-            val label = saveState(instance)
+            // save state snapshot
+            val label = saveSnapshot(instance)
             context.addSnapshot(label, instance)
             old = Some(label)
         }
@@ -205,8 +201,8 @@ class CheckBuilder(teacher: Teacher) {
             // get specification
             val instance = getInstance(predicate)
             val body = hypothesis.getPredicateBody(instance)
-            // save state
-            implicit val label: String = saveState(instance)
+            // save state snapshot
+            implicit val label: String = saveSnapshot(instance)
             context.addSnapshot(label, instance)
             // save ingredients and fold predicate
             saveAndFold(body, check.foldDepth)
@@ -241,7 +237,7 @@ class CheckBuilder(teacher: Teacher) {
       * @param expression  The expression to unfold.
       * @param depth       The depth up to which to unfold.
       * @param guards      The guards collected so far.
-      * @param annotations The list of unprocessed annotations.
+      * @param annotations The implicitly passed list of unprocessed annotations.
       */
     def unfold(expression: ast.Exp, depth: Int, guards: Seq[ast.Exp] = Seq.empty)
               (implicit annotations: Seq[Annotation]): Unit =
@@ -252,42 +248,48 @@ class CheckBuilder(teacher: Teacher) {
         case ast.Implies(guard, guarded) =>
           unfold(guarded, depth, guards :+ guard)
         case predicate@ast.PredicateAccessPredicate(ast.PredicateAccess(arguments, name), _) =>
-          if (annotations.nonEmpty) {
-            // handle annotations (only occur when enabled)
-            val downCondition = {
-              val equalities = annotations.map {
-                case Annotation(`unfoldDownAnnotation`, Seq(argument)) =>
-                  ast.EqCmp(arguments.head, argument)()
+          val unfolds = makeScope {
+            // check if there are any annotations (only occur when enabled)
+            if (annotations.nonEmpty) {
+              // handle annotations
+              handleUnfoldAnnotations(predicate, depth, annotations)
+            } else if (depth > 0) {
+              // unfold predicate
+              addStatement(ast.Unfold(predicate)())
+              // recursively unfold predicates appearing in body
+              if (depth > 1) {
+                val instance = inference.getInstance(name, arguments)
+                val body = hypothesis.getPredicateBody(instance)
+                unfold(body, depth - 1)
               }
-              makeOr(equalities)
             }
-            val unfolds = makeConditional(downCondition, {
-              push()
-              unfold(predicate, depth + 1)(Seq.empty)
-              pop()
-            }, {
-              push()
-              unfold(predicate, depth)(Seq.empty)
-              pop()
-            })
-            addStatement(makeConditional(guards, unfolds))
-          } else if (depth > 0) {
-            // open scope
-            push()
-            // unfold predicate
-            addStatement(ast.Unfold(predicate)())
-            // recursively unfold predicates appearing in body
-            if (depth > 1) {
-              val instance = inference.getInstance(name, arguments)
-              val body = hypothesis.getPredicateBody(instance)
-              unfold(body, depth - 1)
-            }
-            // close scope and make unfolds conditional
-            val unfolds = pop()
-            addStatement(makeConditional(guards, unfolds))
           }
+          addStatement(makeConditional(guards, unfolds))
         case _ => // do nothing
       }
+
+    /**
+      * Method that handles the given unfold annotations and then continues by unfolding the given predicate.
+      *
+      * @param predicate   The predicate.
+      * @param depth       The depth up to which to unfold the predicate by default.
+      * @param annotations The annotations.
+      */
+    def handleUnfoldAnnotations(predicate: ast.PredicateAccessPredicate, depth: Int, annotations: Seq[Annotation]): Unit = {
+      // build condition for additional unfold
+      val from = predicate.loc.args.head
+      val condition = {
+        val equalities = annotations.map {
+          case Annotation(`unfoldDownAnnotation`, argument) =>
+            makeEquality(from, argument)
+        }
+        makeOr(equalities)
+      }
+      // conditionally unfold up to depth + 1 or depth
+      val thenBody = makeScope(unfold(predicate, depth + 1)(Seq.empty))
+      val elseBody = makeScope(unfold(predicate, depth)(Seq.empty))
+      addStatement(makeConditional(condition, thenBody, elseBody))
+    }
 
     /**
       * Helper method used to recursively fold predicate accesses appearing in the given expression. Moreover, it also
@@ -296,8 +298,8 @@ class CheckBuilder(teacher: Teacher) {
       * @param expression  The expression to save and fold.
       * @param depth       The depth up to which to fold.
       * @param guards      The guards collected
-      * @param label       The label of the current state.
-      * @param annotations The list of unprocessed annotations.
+      * @param label       The implicitly passed label of the current state snapshot.
+      * @param annotations The implicitly passed list of unprocessed annotations.
       */
     def saveAndFold(expression: ast.Exp, depth: Int, guards: Seq[ast.Exp] = Seq.empty)
                    (implicit label: String, annotations: Seq[Annotation]): Unit =
@@ -310,28 +312,75 @@ class CheckBuilder(teacher: Teacher) {
         case ast.FieldAccessPredicate(resource, _) =>
           savePermission(resource, guards)
         case predicate@ast.PredicateAccessPredicate(resource@ast.PredicateAccess(arguments, name), _) =>
+          // check if there are any annotations (only occur when enabled)
           if (annotations.nonEmpty) {
-            // TODO: handle annotations (only occur when enabled)
-            // note: recursion parameter handled via inhales
-            saveAndFold(predicate, depth, guards)(label, Seq.empty)
+            // handle annotations
+            val folds = makeScope(handleFoldAnnotations(predicate, depth, annotations))
+            addStatement(makeConditional(guards, folds))
           } else if (depth > 0) {
-            // open scope
-            push()
-            // recursively fold predicates appearing in body
-            val instance = inference.getInstance(name, arguments)
-            val body = hypothesis.getPredicateBody(instance)
-            saveAndFold(body, depth - 1)
-            // fold predicate
-            val info = BasicInfo(label, instance)
-            addStatement(ast.Fold(predicate)(info = info))
-            // close scope and make folds conditional
-            val folds = pop()
+            val folds = makeScope {
+              // recursively fold predicates appearing in body
+              val instance = inference.getInstance(name, arguments)
+              val body = hypothesis.getPredicateBody(instance)
+              saveAndFold(body, depth - 1)
+              // fold predicate
+              val info = BasicInfo(label, instance)
+              addStatement(ast.Fold(predicate)(info = info))
+            }
             addStatement(makeConditional(guards, folds))
           } else {
             savePermission(resource, guards)
           }
         case _ => // do nothing
       }
+
+    /**
+      * Method that handles the given annotations and then continues by folding the given predicate.
+      *
+      * @param predicate   The predicate.
+      * @param depth       The depth up to which to fold by default.
+      * @param annotations The annotations.
+      * @param label       The implicitly passed label of the current state snapshot.
+      */
+    def handleFoldAnnotations(predicate: ast.PredicateAccessPredicate, depth: Int, annotations: Seq[Annotation])
+                             (implicit label: String): Unit = {
+      if (Settings.useSegments) {
+        val arguments = predicate.loc.args
+        arguments match {
+          case Seq(_, ast.NullLit()) =>
+            saveAndFold(predicate, depth)(label, Seq.empty)
+          case Seq(from, to: ast.LocalVar) =>
+            // condition for append
+            val condition = {
+              val equalities = annotations.map {
+                case Annotation(`foldDownAnnotation`, argument) =>
+                  makeEquality(to, argument)
+              }
+              makeOr(equalities)
+            }
+            // conditionally apply append lemma
+            val thenBody = makeScope {
+              // get lemma instance
+              val instance = {
+                val previous = ast.LocalVar(s"${old.get}_${to.name}", ast.Ref)()
+                val arguments = Seq(from, previous, to)
+                inference.getInstance(Names.appendLemma, arguments)
+              }
+              // fold lemma precondition
+              val precondition = hypothesis.getLemmaPrecondition(instance)
+              saveAndFold(precondition, depth)(label, Seq.empty)
+              // apply lemma
+              val lemmaApplication = hypothesis.getLemmaApplication(instance)
+              addStatement(lemmaApplication)
+            }
+            val elseBody = makeScope(saveAndFold(predicate, depth)(label, Seq.empty))
+            addStatement(makeConditional(condition, thenBody, elseBody))
+        }
+      } else {
+        // note: recursion parameter handled via inhales
+        saveAndFold(predicate, depth)(label, Seq.empty)
+      }
+    }
 
     // instrument check
     val sequence = makeSequence(check.statements)
@@ -416,12 +465,12 @@ class CheckBuilder(teacher: Teacher) {
   }
 
   /**
-    * Saves the state relevant for the given specification instance.
+    * Saves a state snapshot for the given specification instance.
     *
     * @param instance The instance.
-    * @return The label of the state.
+    * @return The label of the state snapshot.
     */
-  private def saveState(instance: Instance): String = {
+  private def saveSnapshot(instance: Instance): String = {
     val label = namespace.uniqueIdentifier(base = "s", Some(0))
     // save values of variables
     instance
@@ -517,21 +566,22 @@ class CheckBuilder(teacher: Teacher) {
   }
 
   private def addStatement(statement: ast.Stmt): Unit =
-    stack.head.append(statement)
+    buffer.append(statement)
+
+  private def makeScope(generate: => Unit): ast.Seqn = {
+    // save outer buffer and create and set current one
+    val outer = buffer
+    val current = ListBuffer.empty[ast.Stmt]
+    buffer = current
+    // generate inner statements
+    generate
+    // restore old buffer and return generated scope
+    buffer = outer
+    makeSequence(current.toSeq)
+  }
 
   private def clear(): Unit = {
     namespace = new Namespace
     context = new Context
-    stack = List.empty
   }
-
-  private def push(): Unit =
-    stack = ListBuffer.empty[ast.Stmt] :: stack
-
-  private def pop(): ast.Seqn =
-    stack match {
-      case head :: tail =>
-        stack = tail
-        makeSequence(head.toSeq)
-    }
 }
