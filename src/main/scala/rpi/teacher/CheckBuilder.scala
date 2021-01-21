@@ -476,8 +476,6 @@ class CheckBuilder(teacher: Teacher) {
       }
     }
 
-    // TODO: Inhale permissions to make stuff self-framing
-    if (!Settings.useFraming) ???
     assignments.foreach { assignment => addStatement(assignment) }
 
     // create and return instance
