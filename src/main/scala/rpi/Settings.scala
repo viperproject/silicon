@@ -51,24 +51,13 @@ object Settings {
   val useAnnotations = true
 
   /**
-    * The depth up to which specifications are unfolded.
-    */
-  val unfoldDepth: Int = 1
-
-  /**
     * The folding delta: Since Silicon is a iso-recursive verifier, we force additional folds in positions where
     * a predicate needs to be established, such that we only have to rely on unfold heuristics (as failing fold
     * heuristics may yield incorrect samples). This parameter regulates up to which depth we statically fold
     * predicates.
     */
-  val foldDelta: Int = 1
-
-  /**
-    * The sum of the unfold depth and the folding delta.
-    */
-  val foldDepth: Int =
-    if (Settings.useAnnotations) unfoldDepth
-    else unfoldDepth + foldDelta
+  val foldDelta: Int =
+    if (useAnnotations) 0 else 1
 
   /**
     * The flag indicating whether specification predicates are inlined.

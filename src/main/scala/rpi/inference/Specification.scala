@@ -1,7 +1,7 @@
 package rpi.inference
 
 import rpi.Names
-import rpi.util.Expressions
+import rpi.util.{Expressions, ValueInfo}
 import viper.silver.ast
 
 /**
@@ -122,3 +122,5 @@ case class Instance(specification: Specification, arguments: Seq[ast.Exp]) {
   override def toString: String =
     s"$name(${arguments.mkString(", ")})"
 }
+
+case class InstanceInfo(instance: Instance) extends ValueInfo

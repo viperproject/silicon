@@ -2,7 +2,9 @@ package rpi.teacher
 
 import rpi.{Names, Settings}
 import rpi.inference._
+import rpi.util.Expressions._
 import rpi.util.Namespace
+import rpi.util.Statements._
 import viper.silver.ast
 
 import scala.collection.mutable
@@ -15,8 +17,6 @@ import scala.collection.mutable.ListBuffer
   */
 class CheckBuilder(teacher: Teacher) {
 
-  import rpi.util.Expressions._
-  import rpi.util.Statements._
 
   /**
     * Returns the pointer to the inference.
@@ -128,6 +128,10 @@ class CheckBuilder(teacher: Teacher) {
   private def basicCheck(check: Check, hypothesis: Hypothesis): ast.Seqn = {
     import Names._
 
+    // compute unfold and fold depth
+    val unfoldDepth: Int = check.baseDepth(hypothesis)
+    val foldDepth: Int = unfoldDepth + Settings.foldDelta
+
     // TODO: Incorporate into annotation info.
     var old: Option[String] = None
 
@@ -182,9 +186,7 @@ class CheckBuilder(teacher: Teacher) {
               addUnfold(adapted)
             }
             // unfold predicate
-            // TODO: adaptive w.r.t. to specifications.
-            implicit val maxDepth: Int = math.max(check.unfoldDepth, 1)
-            unfold(body)
+            unfold(body)(unfoldDepth)
             // save state snapshot
             val label = saveSnapshot(instance)
             context.addSnapshot(label, instance)
@@ -202,11 +204,9 @@ class CheckBuilder(teacher: Teacher) {
             implicit val label: String = saveSnapshot(instance)
             context.addSnapshot(label, instance)
             // save ingredients and fold predicate
-            // TODO: adaptive w.r.t. to specifications.
-            implicit val maxDepth: Int = math.max(check.unfoldDepth, 1)
             val annotations: Seq[Annotation] = Annotations.extract(statement)
-            if (Settings.useAnnotations && annotations.nonEmpty) handleAnnotations(body, annotations)
-            else saveAndFold(body)
+            if (annotations.nonEmpty) handleAnnotations(body, annotations)(foldDepth, label)
+            else saveAndFold(body)(foldDepth, label)
             // exhale predicate
             val info = BasicInfo(label, instance)
             if (Settings.inline) {
@@ -460,6 +460,7 @@ class CheckBuilder(teacher: Teacher) {
   }
 
   private def getInstance(predicate: ast.PredicateAccessPredicate): Instance = {
+    // TODO: Do when checks are created.
     // make sure all arguments are variable accesses
     val access = predicate.loc
     val (arguments, assignments) = {

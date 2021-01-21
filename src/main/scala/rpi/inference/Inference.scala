@@ -102,7 +102,9 @@ class Inference(program: ast.Program) {
       // predicate access
       val arguments = parameters.map { parameter => parameter.localVar }
       val access = ast.PredicateAccess(arguments, name)()
-      ast.PredicateAccessPredicate(access, ast.FullPerm()())()
+      val instance = Instance(specification, arguments)
+      val info = InstanceInfo(instance)
+      ast.PredicateAccessPredicate(access, ast.FullPerm()())(info = info)
     }
 
     // labels all positions of the program for which specifications need to be inferred

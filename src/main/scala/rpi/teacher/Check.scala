@@ -1,5 +1,7 @@
 package rpi.teacher
 
+import rpi.inference.{Hypothesis, Instance, InstanceInfo}
+import rpi.util.ValueInfo
 import rpi.{Names, Settings}
 import viper.silver.ast
 
@@ -7,69 +9,85 @@ import scala.annotation.tailrec
 
 case class Check(statements: Seq[ast.Stmt]) {
   /**
+    * The instances corresponding to exhaled specifications appearing in the statements.
+    */
+  private val exhaled: Seq[Instance] =
+    statements
+      .flatMap {
+        case ast.Exhale(predicate: ast.PredicateAccessPredicate) =>
+          predicate.info.getUniqueInfo[InstanceInfo].map { info => info.instance }
+        case _ => None
+      }
+      .distinct
+
+  /**
     * The depth up to which specifications should be unfolded.
     *
     * Note: Ths is a very crude approximation.
     */
-  lazy val unfoldDepth: Int = {
-    /**
-      * Computes the unfold depth for the given node.
-      *
-      * @param node The node.
-      * @return The unfold depth.
-      */
-    def depth(node: ast.Node): Int =
-      node match {
-        case ast.Seqn(statements, _) =>
-          maxDepth(statements)
-        case ast.If(condition, thenBranch, elseBranch) =>
-          maxDepth(Seq(condition, thenBranch, elseBranch))
-        case _: ast.While => 0
-        case ast.Inhale(condition) =>
-          if (condition.isPure) depth(condition) else 0
-        case ast.Exhale(condition) =>
-          if (condition.isPure) depth(condition) else 0
-        case ast.MethodCall(name, arguments, _) =>
-          if (Names.isAnnotation(name)) 0
-          else maxDepth(arguments)
-        case _: ast.NewStmt => 0
-        case ast.LocalVarAssign(_, value) =>
-          depth(value)
-        case ast.FieldAssign(target, value) =>
-          maxDepth(Seq(target, value))
-        case _: ast.Literal => 0
-        case _: ast.LocalVar => 0
-        case ast.FieldAccess(receiver, _) =>
-          depth(receiver) + 1
-        case ast.UnExp(argument) =>
-          depth(argument)
-        case ast.BinExp(left, right) =>
-          maxDepth(Seq(left, right))
-        case _ => ???
-      }
+  private val statementsDepth: Int = maxDepth(statements)
 
-    /**
-      * Computes the maximal unfold depth among the given nodes.
-      *
-      * @param nodes The nodes.
-      * @return The maximal unfold depth.
-      */
-    def maxDepth(nodes: Seq[ast.Node]): Int =
-      nodes
-        .map { node => depth(node) }
-        .reduceOption { (left, right) => math.max(left, right) }
-        .getOrElse(0)
-
-    maxDepth(statements)
+  def baseDepth(hypothesis: Hypothesis): Int = {
+    val specifications = exhaled.map { instance => hypothesis.getPredicateBody(instance) }
+    val specificationDepth = maxDepth(specifications)
+    math.max(statementsDepth, specificationDepth)
   }
 
   /**
-    * The depth upt to which specifications should be folded (equal to the unfold depth but accounting for the fold
-    * delta if heuristics are enabled).
+    * Computes the unfold depth for the given node.
+    *
+    * @param node The node.
+    * @return The unfold depth.
     */
-  lazy val foldDepth: Int =
-    if (Settings.useAnnotations) unfoldDepth
-    else unfoldDepth + Settings.foldDelta
+  private def depth(node: ast.Node): Int =
+    node match {
+      // statements
+      case ast.Seqn(statements, _) =>
+        maxDepth(statements)
+      case ast.If(condition, thenBranch, elseBranch) =>
+        maxDepth(Seq(condition, thenBranch, elseBranch))
+      case _: ast.While => 0
+      case ast.Inhale(condition) =>
+        if (condition.isPure) depth(condition) else 0
+      case ast.Exhale(condition) =>
+        if (condition.isPure) depth(condition) else 0
+      case ast.MethodCall(name, arguments, _) =>
+        if (Names.isAnnotation(name)) 0
+        else maxDepth(arguments)
+      case _: ast.NewStmt => 0
+      case ast.LocalVarAssign(_, value) =>
+        depth(value)
+      case ast.FieldAssign(target, value) =>
+        maxDepth(Seq(target, value))
+      // expressions
+      case _: ast.Literal => 0
+      case _: ast.LocalVar => 0
+      case ast.FieldAccess(receiver, _) =>
+        depth(receiver) + 1
+      case ast.UnExp(argument) =>
+        depth(argument)
+      case ast.BinExp(left, right) =>
+        maxDepth(Seq(left, right))
+      // resources
+      case ast.FieldAccessPredicate(resource, _) =>
+        depth(resource)
+      case ast.PredicateAccessPredicate(resource, _) =>
+        maxDepth(resource.args)
+      case _ => ???
+    }
+
+  /**
+    * Computes the maximal unfold depth among the given nodes.
+    *
+    * @param nodes The nodes.
+    * @return The maximal unfold depth.
+    */
+  private def maxDepth(nodes: Seq[ast.Node]): Int =
+    nodes
+      .map { node => depth(node) }
+      .reduceOption { (left, right) => math.max(left, right) }
+      .getOrElse(0)
+
 }
 
 /**
@@ -88,8 +106,8 @@ object Annotations {
 /**
   * An annotation.
   *
-  * @param name      The name.
-  * @param arguments The argument.
+  * @param name     The name.
+  * @param argument The argument.
   */
 case class Annotation(name: String, argument: ast.Exp) {
   override def toString: String = s"$name($argument)"
@@ -100,11 +118,7 @@ case class Annotation(name: String, argument: ast.Exp) {
   *
   * @param annotations The annotations.
   */
-case class AnnotationInfo(annotations: Seq[Annotation]) extends ast.Info {
-  override def comment: Seq[String] = Seq.empty
-
-  override def isCached: Boolean = false
-}
+case class AnnotationInfo(annotations: Seq[Annotation]) extends ValueInfo
 
 /**
   * Utility object used providing a method to collect checks form aa program.
