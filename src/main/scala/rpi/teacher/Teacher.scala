@@ -8,24 +8,19 @@ import viper.silver.verifier.{Failure, Success, VerificationError}
 /**
   * The teacher providing the samples.
   *
-  * @param inference The pointer to the inference.
+  * @param context The pointer to the context.
   */
-class Teacher(val inference: Inference) {
+class Teacher(val context: Context) {
   /**
     * The builder used to build the programs used to check hypotheses.
     */
   private val builder = new CheckBuilder(teacher = this)
 
   /**
-    * The extractor used to extract samples from verification errors.
-    */
-  private val extractor = new SampleExtractor(teacher = this)
-
-  /**
     * The list of all checks.
     */
   private val checks = {
-    val collected = Checks.collect(inference.labeled)
+    val collected = Checks.collect(context.labeled)
     if (Settings.batch) Seq(collected)
     else collected.map { check => Seq(check) }
   }
@@ -53,13 +48,13 @@ class Teacher(val inference: Inference) {
     // self-framing check
     val framing = {
       val (check, context) = builder.framingChecks(hypothesis)
-      execute(check, error => extractor.extractFraming(error, context))
+      execute(check, error => SampleExtractor.extractFraming(error, context))
     }
     // other checks, if hypothesis is self-framing
     if (framing.isEmpty) checks
       .flatMap { group =>
         val (check, context) = builder.basicChecks(group, hypothesis)
-        execute(check, error => extractor.extractBasic(error, context))
+        execute(check, error => SampleExtractor.extractBasic(error, context))
       }
     else framing
   }
@@ -73,7 +68,7 @@ class Teacher(val inference: Inference) {
     * @return The extracted samples.
     */
   private def execute(program: ast.Program, extract: VerificationError => Sample): Seq[Sample] =
-    inference.verify(program) match {
+    context.inference.verify(program) match {
       case Success => Seq.empty
       case Failure(errors) => errors
         .map {
@@ -86,7 +81,7 @@ class Teacher(val inference: Inference) {
 /**
   * A context object used to pass information from the check builder to the sample extractor.
   */
-class Context {
+class CheckContext {
   /**
     * The labels and instances of the inhaled and exhaled states.
     */
@@ -143,16 +138,16 @@ class Context {
   }
 }
 
-trait ContextInfo extends ast.Info {
+trait CheckInfo extends ast.Info {
   override def isCached: Boolean = false
 }
 
-case class FramingInfo(location: ast.LocationAccess) extends ContextInfo {
+case class FramingInfo(location: ast.LocationAccess) extends CheckInfo {
   override def comment: Seq[String] =
     Seq.empty
 }
 
-case class BasicInfo(label: String, instance: Instance) extends ContextInfo {
+case class BasicInfo(label: String, instance: Instance) extends CheckInfo {
   override def comment: Seq[String] =
     Seq(instance.toString)
 }

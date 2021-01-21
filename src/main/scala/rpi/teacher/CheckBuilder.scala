@@ -16,21 +16,17 @@ import scala.collection.mutable.ListBuffer
   * @param teacher The pointer to the teacher.
   */
 class CheckBuilder(teacher: Teacher) {
-
-
   /**
-    * Returns the pointer to the inference.
-    *
-    * @return The pointer to the inference.
+    * The pointer to the context.
     */
-  private def inference: Inference = teacher.inference
+  private val context: Context = teacher.context
 
   /**
     * Returns the pointer to the original program (labeled).
     *
     * @return The pointer to the original program.
     */
-  private def original: ast.Program = inference.labeled
+  private def original: ast.Program = context.labeled
 
   /**
     * The namespace used to generate unique identifiers.
@@ -40,7 +36,7 @@ class CheckBuilder(teacher: Teacher) {
   /**
     * The context information for the sample extractor.
     */
-  private var context: Context = _
+  private var checkContext: CheckContext = _
 
   /**
     * The buffer used to accumulate statements for the current scope.
@@ -53,7 +49,7 @@ class CheckBuilder(teacher: Teacher) {
     * @param hypothesis The hypothesis to check for self-framingness.
     * @return The program and the context object.
     */
-  def framingChecks(hypothesis: Hypothesis): (ast.Program, Context) = {
+  def framingChecks(hypothesis: Hypothesis): (ast.Program, CheckContext) = {
     /**
       * Helper method that inhales the given expression conjunct-wise. The expression is implicitly rewritten to have
       * its conjuncts at the top level by pushing implications inside.
@@ -88,9 +84,9 @@ class CheckBuilder(teacher: Teacher) {
         makeScope {
           // save state snapshot
           val arguments = predicate.formalArgs.map { parameter => parameter.localVar }
-          val instance = inference.getInstance(predicate.name, arguments)
+          val instance = context.getInstance(predicate.name, arguments)
           val label = saveSnapshot(instance)
-          context.addSnapshot(label, instance)
+          checkContext.addSnapshot(label, instance)
           // inhale inferred specification
           val inferred = hypothesis.getPredicateBody(instance)
           addInhales(inferred)
@@ -101,7 +97,7 @@ class CheckBuilder(teacher: Teacher) {
     // return program
     val dummy = Hypothesis(Seq.empty, Seq.empty)
     val program = buildProgram(checks, dummy)
-    (program, context)
+    (program, checkContext)
   }
 
   /**
@@ -110,13 +106,13 @@ class CheckBuilder(teacher: Teacher) {
     * @param hypothesis The hypothesis.
     * @return The program and the context object.
     */
-  def basicChecks(checks: Seq[Check], hypothesis: Hypothesis): (ast.Program, Context) = {
+  def basicChecks(checks: Seq[Check], hypothesis: Hypothesis): (ast.Program, CheckContext) = {
     // instrument checks
     clear()
     val instrumented = checks.map { check => basicCheck(check, hypothesis) }
     // return program and context
     val program = buildProgram(instrumented, hypothesis)
-    (program, context)
+    (program, checkContext)
   }
 
   /**
@@ -189,7 +185,7 @@ class CheckBuilder(teacher: Teacher) {
             unfold(body)(unfoldDepth)
             // save state snapshot
             val label = saveSnapshot(instance)
-            context.addSnapshot(label, instance)
+            checkContext.addSnapshot(label, instance)
             old = Some(label)
         }
         case ast.Exhale(expression) => expression match {
@@ -202,7 +198,7 @@ class CheckBuilder(teacher: Teacher) {
             val body = hypothesis.getPredicateBody(instance)
             // save state snapshot
             implicit val label: String = saveSnapshot(instance)
-            context.addSnapshot(label, instance)
+            checkContext.addSnapshot(label, instance)
             // save ingredients and fold predicate
             val annotations: Seq[Annotation] = Annotations.extract(statement)
             if (annotations.nonEmpty) handleAnnotations(body, annotations)(foldDepth, label)
@@ -253,7 +249,7 @@ class CheckBuilder(teacher: Teacher) {
               addUnfold(predicate)
               // recursively unfold predicates appearing in body
               if (depth < maxDepth) {
-                val instance = inference.getInstance(name, arguments)
+                val instance = context.getInstance(name, arguments)
                 val body = hypothesis.getPredicateBody(instance)
                 unfold(body)
               }
@@ -287,7 +283,7 @@ class CheckBuilder(teacher: Teacher) {
           if (depth <= maxDepth) {
             val folds = makeScope {
               // recursively fold predicates appearing in body
-              val instance = inference.getInstance(name, arguments)
+              val instance = context.getInstance(name, arguments)
               val body = hypothesis.getPredicateBody(instance)
               saveAndFold(body)
               // fold predicate
@@ -344,7 +340,7 @@ class CheckBuilder(teacher: Teacher) {
                     val instance = {
                       val previous = ast.LocalVar(s"${old.get}_${end.name}", ast.Ref)()
                       val arguments = Seq(start, previous, end)
-                      inference.getInstance(Names.appendLemma, arguments)
+                      context.getInstance(Names.appendLemma, arguments)
                     }
                     // fold lemma precondition
                     val precondition = hypothesis.getLemmaPrecondition(instance)
@@ -418,11 +414,11 @@ class CheckBuilder(teacher: Teacher) {
     val domains = original.domains
     val fields =
       if (Settings.useAnnotations) original.fields
-      else inference.magic +: original.fields
+      else context.inference.magic +: original.fields
     val functions = original.functions
     val predicates = {
       val existing = original.predicates
-      val inferred = inference.predicates(hypothesis)
+      val inferred = context.predicates(hypothesis)
       existing ++ inferred
     }
     val methods = {
@@ -480,7 +476,7 @@ class CheckBuilder(teacher: Teacher) {
 
     // create and return instance
     val name = access.predicateName
-    inference.getInstance(name, arguments)
+    context.getInstance(name, arguments)
   }
 
   /**
@@ -525,7 +521,7 @@ class CheckBuilder(teacher: Teacher) {
     def extractConditions(resource: ast.Exp): Seq[ast.Exp] =
       resource match {
         case access: ast.FieldAccess =>
-          val name = context.getName(label, access)
+          val name = checkContext.getName(label, access)
           val variable = ast.LocalVar(name, ast.Perm)()
           Seq(ast.PermGtCmp(variable, ast.NoPerm()())())
         case _ => Seq.empty
@@ -544,7 +540,7 @@ class CheckBuilder(teacher: Teacher) {
 
     // generate unique name
     val name = namespace.uniqueIdentifier(base = "p", Some(0))
-    context.addName(label, resource, name)
+    checkContext.addName(label, resource, name)
     // construct potentially conditional value
     val value = {
       val current = ast.CurrentPerm(resource)()
@@ -635,6 +631,6 @@ class CheckBuilder(teacher: Teacher) {
 
   private def clear(): Unit = {
     namespace = new Namespace
-    context = new Context
+    checkContext = new CheckContext
   }
 }

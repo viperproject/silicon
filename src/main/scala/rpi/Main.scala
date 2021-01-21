@@ -42,9 +42,9 @@ object Main {
     // run inference
     val program = Parser.parse(file)
 
-    val inference = new Inference(program)
+    val inference = new Inference()
     inference.start()
-    val annotated = inference.annotated()
+    val annotated = inference.run(program)
     inference.stop()
 
     println(annotated)

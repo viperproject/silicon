@@ -37,11 +37,11 @@ class RpiTest extends FunSuite {
         val program = Parser.parse(path)
 
         // start inference
-        val inference = new Inference(program)
+        val inference = new Inference()
         inference.start()
 
         // infer specifications
-        val annotated = inference.annotated()
+        val annotated = inference.run(program)
         println(annotated)
 
         // check specifications

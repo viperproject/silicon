@@ -5,9 +5,9 @@ import rpi.inference._
 /**
   * The learner synthesizing the hypotheses.
   *
-  * @param inference The pointer to the inference.
+  * @param context The pointer to the context.
   */
-class Learner(val inference: Inference) {
+class Learner(val context: Context) {
   /**
     * The sequence of samples.
     */
@@ -34,15 +34,6 @@ class Learner(val inference: Inference) {
     * Stops the learner and all of its subcomponents.
     */
   def stop(): Unit = {}
-
-  /**
-    * Returns the specification with the given name.
-    *
-    * @param name The name of the specification.
-    * @return The specification.
-    */
-  def getSpecification(name: String): Specification =
-    templateGenerator.getSpecification(name)
 
   /**
     * Adds the given sample.

@@ -3,7 +3,7 @@ package rpi.learner
 import rpi.{Names, Settings}
 import rpi.inference._
 import rpi.util.Expressions._
-import rpi.util.{Collections, Expressions, SetMap}
+import rpi.util.{Collections, SetMap}
 import viper.silver.ast
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -135,42 +135,9 @@ case class Truncation(condition: ast.Exp, body: TemplateExpression) extends Temp
   */
 class TemplateGenerator(learner: Learner) {
   /**
-    * The pointer to the inference.
+    * The pointer to the context.
     */
-  private val inference = learner.inference
-
-  /**
-    * The specifications introduced by this template generator.
-    */
-  private val specifications: Map[String, Specification] = {
-    val buffer: mutable.Buffer[Specification] = ListBuffer.empty
-
-    // add specification for recursive predicate
-    if (Settings.useRecursion) {
-      val names = if (Settings.useSegments) Seq("x", "y") else Seq("x")
-      val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
-      val variables = parameters.take(1).map { parameter => parameter.localVar }
-      val atoms = inference.instantiateAtoms(variables)
-      buffer.append(Specification(Names.recursive, parameters, atoms))
-    }
-
-    // add specifications for append lemma
-    if (Settings.useSegments) {
-      val names = Seq("x", "y", "z")
-      val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
-      val variables = parameters.slice(1, 2).map { parameter => parameter.localVar }
-      val atoms = inference.instantiateAtoms(variables)
-      buffer.append(Specification(Names.appendLemma, parameters, atoms))
-    }
-
-    // create map
-    buffer
-      .map { specification => specification.name -> specification }
-      .toMap
-  }
-
-  def getSpecification(name: String): Specification =
-    specifications(name)
+  private val context = learner.context
 
   /**
     * Computes templates for the given samples.
@@ -218,16 +185,17 @@ class TemplateGenerator(learner: Learner) {
             }
           }
           // compute template
-          val specification = inference.getSpecification(name)
+          val specification = context.getSpecification(name)
           createTemplate(specification, fields ++ filtered)
           // update global structure
           global.join(local)
       }
 
     // compute template for recursive predicate
-    specifications
-      .get(Names.recursive)
-      .foreach { specification => createRecursiveTemplate(specification, structure) }
+    if (Settings.useRecursion) {
+      val recursive = context.getSpecification(Names.recursive)
+      createRecursiveTemplate(recursive, structure)
+    }
 
     // return templates
     buffer.toSeq
@@ -286,7 +254,7 @@ class TemplateGenerator(learner: Learner) {
 
     if (Settings.useSegments) {
       // get lemma specification and parameter variables
-      val lemmaSpecification = getSpecification(Names.appendLemma)
+      val lemmaSpecification = context.getSpecification(Names.appendLemma)
       val Seq(from, current, next) = lemmaSpecification.variables
       // the recursive predicate instance used to adapt expressions
       val instance = Instance(specification, Seq(current, next))
@@ -486,7 +454,7 @@ class TemplateGenerator(learner: Learner) {
     }
 
     private def createRecursion(path: Seq[String]): ast.PredicateAccess = {
-      val specification = specifications(Names.recursive)
+      val specification = context.getSpecification(Names.recursive)
       val variable +: others = specification.variables
       val first = fromSeq(variable.name +: path)
       ast.PredicateAccess(first +: others, Names.recursive)()

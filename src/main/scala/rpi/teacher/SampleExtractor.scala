@@ -12,21 +12,12 @@ import scala.reflect.ClassTag
 
 /**
   * Extracts samples from verification errors.
-  *
-  * @param teacher The pointer to the teacher.
   */
-class SampleExtractor(teacher: Teacher) {
+object SampleExtractor {
   /**
     * Type shortcut for counter examples.
     */
   private type Counter = SiliconRawCounterexample
-
-  /**
-    * Returns the pointer to the inference.
-    *
-    * @return The pointer to the inference.
-    */
-  def inference: Inference = teacher.inference
 
   /**
     * Extracts a sample from the given verification error corresponding to a self-framingness check.
@@ -35,7 +26,7 @@ class SampleExtractor(teacher: Teacher) {
     * @param context The context object.
     * @return The extracted sample.
     */
-  def extractFraming(error: VerificationError, context: Context): Sample = {
+  def extractFraming(error: VerificationError, context: CheckContext): Sample = {
     println(error)
     // get counter example and offending location
     val (counter, offending, Some(info)) = extractInformation[FramingInfo](error)
@@ -71,10 +62,10 @@ class SampleExtractor(teacher: Teacher) {
     * Extracts a sample from the given verification error corresponding to a basic check.
     *
     * @param error   The verification error.
-    * @param context The context object.
+    * @param checkContext The context object.
     * @return The extracted sample.
     */
-  def extractBasic(error: VerificationError, context: Context): Sample = {
+  def extractBasic(error: VerificationError, checkContext: CheckContext): Sample = {
     println(error)
     // get counter example, offending location, and context info
     val (counter, offending, info) = extractInformation[BasicInfo](error)
@@ -86,7 +77,7 @@ class SampleExtractor(teacher: Teacher) {
     // get state snapshots
     val (currentSnapshot, otherSnapshots) = {
       // gather all encountered state snapshots
-      val encountered = context
+      val encountered = checkContext
         .allSnapshots
         .flatMap { case (label, instance) =>
           if (siliconState.oldHeaps.contains(label)) {
@@ -173,7 +164,7 @@ class SampleExtractor(teacher: Teacher) {
         // evaluate permission amount
         val permission = {
           val snapshot = currentSnapshot.get
-          val name = context.getName(snapshot.label, currentLocation)
+          val name = checkContext.getName(snapshot.label, currentLocation)
           snapshot.state.evaluatePermission(name)
         }
         // we want to require the missing permission form an upstream specification,
@@ -193,7 +184,7 @@ class SampleExtractor(teacher: Teacher) {
     * @tparam T The type of the context information.
     * @return The extracted information.
     */
-  private def extractInformation[T <: ContextInfo : ClassTag](error: VerificationError): (Counter, ast.LocationAccess, Option[T]) = {
+  private def extractInformation[T <: CheckInfo : ClassTag](error: VerificationError): (Counter, ast.LocationAccess, Option[T]) = {
     // extract counter example
     val counter = error.counterexample match {
       case Some(value: Counter) => value

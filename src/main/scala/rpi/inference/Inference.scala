@@ -10,13 +10,10 @@ import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.verifier.{VerificationResult, Verifier}
 
 import scala.annotation.tailrec
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
-/**
-  * The inference inferring the specifications for a program.
-  *
-  * @param program The program for which to infer the specifications.
-  */
-class Inference(program: ast.Program) {
+class Inference() {
   /**
     * The magic fields that enables fold / unfold heuristics
     */
@@ -38,6 +35,115 @@ class Inference(program: ast.Program) {
     instance
   }
 
+  /**
+    * Starts the inference and all of its subcomponents.
+    */
+  def start(): Unit = {
+    verifier.start()
+  }
+
+  /**
+    * Stops the inference and all of its subcomponents.
+    */
+  def stop(): Unit = {
+    verifier.stop()
+  }
+
+  def run(program: ast.Program): ast.Program = {
+
+    val context = new Context(inference = this, program)
+
+    val teacher = new Teacher(context)
+    val learner = new Learner(context)
+
+
+    teacher.start()
+    learner.start()
+
+    @tailrec
+    def infer(rounds: Int): Hypothesis = {
+      // compute hypothesis
+      val hypothesis = learner.hypothesis
+      if (rounds == 0) hypothesis
+      else {
+        println(s"----- round ${Settings.maxRounds - rounds} -----")
+        // check hypothesis
+        val samples = teacher.check(hypothesis)
+        if (samples.isEmpty) hypothesis
+        else {
+          // add samples and iterate
+          samples.foreach { sample => learner.addSample(sample) }
+          infer(rounds - 1)
+        }
+      }
+    }
+
+    val hypothesis = infer(Settings.maxRounds)
+
+    teacher.stop()
+    learner.stop()
+
+    annotate(context, hypothesis)
+  }
+
+  /**
+    * Verifies the given program.
+    *
+    * @param program The program to verify.
+    * @return The verification result.
+    */
+  def verify(program: ast.Program): VerificationResult =
+    verifier.verify(program)
+
+  private def annotate(context: Context, hypothesis: Hypothesis): ast.Program = {
+    val program = context.program
+
+    // helper method that replaces predicates with the inferred specification
+    def substitute(expression: ast.Exp): ast.Exp =
+      expression match {
+        case ast.PredicateAccessPredicate(predicate, _) =>
+          val instance = {
+            val name = predicate.predicateName
+            val arguments = predicate.args
+            context.getInstance(name, arguments)
+          }
+          hypothesis.getPredicateBody(instance)
+        case _ => expression
+      }
+
+    // create fields
+    val fields = magic +: program.fields
+    // create predicates
+    val predicates = {
+      val existing = program.predicates
+      val inferred = hypothesis.getPredicate(Names.recursive).toSeq
+      existing ++ inferred
+    }
+    // annotate methods
+    val methods = program
+      .methods
+      .map { method =>
+        val preconditions = method.pres.map { precondition => substitute(precondition) }
+        val postconditions = method.posts.map { postcondition => substitute(postcondition) }
+        val body = method.body.map { sequence =>
+          sequence.transform({
+            case ast.While(condition, invariants, body) =>
+              val substituted = invariants.map { invariant => substitute(invariant) }
+              ast.While(condition, substituted, body)()
+            case ast.MethodCall(name, _, _) if Names.isAnnotation(name) =>
+              // TODO: Handle annotations.
+              ast.Seqn(Seq.empty, Seq.empty)()
+          }, Traverse.BottomUp)
+        }
+        // create annotated method
+        ast.Method(method.name, method.formalArgs, method.formalReturns, preconditions, postconditions, body)()
+      }
+    // return annotated program
+    ast.Program(program.domains, fields, program.functions, predicates, methods, program.extensions)()
+  }
+}
+
+class Context(val inference: Inference, val program: ast.Program) {
   /**
     * The namespace used to create unique identifiers.
     */
@@ -81,7 +187,7 @@ class Inference(program: ast.Program) {
     */
   private val (_labeled, specifications) = {
     // initialize map
-    var specifications: Map[String, Specification] = Map.empty
+    val buffer: mutable.Buffer[Specification] = ListBuffer.empty
 
     // helper method to create predicate accessing a specification
     def create(prefix: String, parameters: Seq[ast.LocalVarDecl]): ast.PredicateAccessPredicate = {
@@ -98,13 +204,31 @@ class Inference(program: ast.Program) {
         .map { parameter => parameter.localVar }
       val atoms = instantiateAtoms(references)
       val specification = Specification(name, renamed, atoms)
-      specifications = specifications.updated(name, specification)
+      buffer.append(specification)
       // predicate access
       val arguments = parameters.map { parameter => parameter.localVar }
       val access = ast.PredicateAccess(arguments, name)()
       val instance = Instance(specification, arguments)
       val info = InstanceInfo(instance)
       ast.PredicateAccessPredicate(access, ast.FullPerm()())(info = info)
+    }
+
+    // add specification for recursive predicate
+    if (Settings.useRecursion) {
+      val names = if (Settings.useSegments) Seq("x", "y") else Seq("x")
+      val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
+      val variables = parameters.take(1).map { parameter => parameter.localVar }
+      val atoms = instantiateAtoms(variables)
+      buffer.append(Specification(Names.recursive, parameters, atoms))
+    }
+
+    // add specifications for append lemma
+    if (Settings.useSegments) {
+      val names = Seq("x", "y", "z")
+      val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
+      val variables = parameters.slice(1, 2).map { parameter => parameter.localVar }
+      val atoms = instantiateAtoms(variables)
+      buffer.append(Specification(Names.appendLemma, parameters, atoms))
     }
 
     // labels all positions of the program for which specifications need to be inferred
@@ -124,44 +248,21 @@ class Inference(program: ast.Program) {
         (sequence, variables ++ declarations)
     }, Seq.empty, Traverse.TopDown)
 
+    // create specification map
+    val specifications = buffer
+      .map { specification => specification.name -> specification }
+      .toMap
+
     (labeled, specifications)
-  }
-
-  /**
-    * The teacher providing the samples.
-    */
-  private val teacher = new Teacher(inference = this)
-
-  /**
-    * The learner synthesizing the hypotheses.
-    */
-  private val learner = new Learner(inference = this)
-
-  /**
-    * Starts the inference and all of its subcomponents.
-    */
-  def start(): Unit = {
-    verifier.start()
-    teacher.start()
-    learner.start()
-  }
-
-  /**
-    * Stops the inference and all of its subcomponents.
-    */
-  def stop(): Unit = {
-    verifier.stop()
-    teacher.stop()
-    learner.stop()
   }
 
   def labeled: ast.Program = _labeled
 
   def predicates(hypothesis: Hypothesis): Seq[ast.Predicate] = {
     // get all specifications
-    val nonRecursive = if (Settings.inline) Seq.empty else specifications.values
-    val recursive = if (Settings.useRecursion) Seq(learner.getSpecification(Names.recursive)) else Seq.empty
-    val all = nonRecursive ++ recursive
+    val all =
+      if (Settings.inline) specifications.get(Names.recursive).toSeq
+      else specifications.values.filter { specification => specification.name != Names.appendLemma }
     // create predicates
     all
       .map { specification => hypothesis.getPredicate(specification) }
@@ -175,7 +276,7 @@ class Inference(program: ast.Program) {
     * @return The specifications.
     */
   def getSpecification(name: String): Specification =
-    specifications.getOrElse(name, learner.getSpecification(name))
+    specifications(name)
 
   /**
     * Returns an instance of the specifications with the given name and arguments.
@@ -187,100 +288,5 @@ class Inference(program: ast.Program) {
   def getInstance(name: String, arguments: Seq[ast.Exp]): Instance = {
     val specification = getSpecification(name)
     Instance(specification, arguments)
-  }
-
-  /**
-    * Returns the annotated program.
-    *
-    * @return The annotated program.
-    */
-  def annotated(): ast.Program = {
-    val hypothesis = infer(Settings.maxRounds)
-    annotateProgram(labeled, hypothesis)
-  }
-
-  /**
-    * Verifies the given program.
-    *
-    * @param program The program to verify.
-    * @return The verification result.
-    */
-  def verify(program: ast.Program): VerificationResult =
-    verifier.verify(program)
-
-  /**
-    * Infers a specification.
-    *
-    * @param rounds The maximal number of rounds.
-    * @return The inferred specification.
-    */
-  @tailrec
-  private def infer(rounds: Int): Hypothesis = {
-    // compute hypothesis
-    val hypothesis = learner.hypothesis
-    if (rounds == 0) hypothesis
-    else {
-      println(s"----- round ${Settings.maxRounds - rounds} -----")
-      // check hypothesis
-      val samples = teacher.check(hypothesis)
-      if (samples.isEmpty) hypothesis
-      else {
-        // add samples and iterate
-        samples.foreach { sample => learner.addSample(sample) }
-        infer(rounds - 1)
-      }
-    }
-  }
-
-  /**
-    * Annotates the given program with the specifications provided by the given hypothesis.
-    *
-    * @param program    The program to annotate.
-    * @param hypothesis The hypothesis providing the specifications.
-    * @return The annotated program.
-    */
-  private def annotateProgram(program: ast.Program, hypothesis: Hypothesis): ast.Program = {
-    // helper method that replaces predicates with the inferred specification
-    def substitute(expression: ast.Exp): ast.Exp =
-      expression match {
-        case ast.PredicateAccessPredicate(predicate, _) =>
-          val instance = {
-            val name = predicate.predicateName
-            val arguments = predicate.args
-            getInstance(name, arguments)
-          }
-          hypothesis.getPredicateBody(instance)
-        case _ => expression
-      }
-
-    // create fields
-    val fields = magic +: program.fields
-    // create predicates
-    val predicates = {
-      val existing = program.predicates
-      val inferred = hypothesis.getPredicate(Names.recursive).toSeq
-      existing ++ inferred
-    }
-    // annotate methods
-    val methods = program
-      .methods
-      .map { method =>
-        val preconditions = method.pres.map { precondition => substitute(precondition) }
-        val postconditions = method.posts.map { postcondition => substitute(postcondition) }
-        val body = method.body.map { sequence =>
-          sequence.transform({
-            case ast.While(condition, invariants, body) =>
-              val substituted = invariants.map { invariant => substitute(invariant) }
-              ast.While(condition, substituted, body)()
-            case ast.MethodCall(name, _, _) if Names.isAnnotation(name) =>
-              // TODO: Handle annotations.
-              ast.Seqn(Seq.empty, Seq.empty)()
-          }, Traverse.BottomUp)
-        }
-        // create annotated method
-        ast.Method(method.name, method.formalArgs, method.formalReturns, preconditions, postconditions, body)()
-      }
-    // return annotated program
-    ast.Program(program.domains, fields, program.functions, predicates, methods, program.extensions)()
   }
 }
