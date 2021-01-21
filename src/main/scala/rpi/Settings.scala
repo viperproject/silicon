@@ -3,6 +3,7 @@ package rpi
 /**
   * The global configurations.
   */
+@deprecated
 object Settings {
   /**
     * The number of rounds after which the learner gets exhausted and gives up.

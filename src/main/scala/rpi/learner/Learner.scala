@@ -16,7 +16,7 @@ class Learner(val context: Context) {
   /**
     * The SMT solver.
     */
-  val solver = new Smt
+  val solver = new Smt(context.configuration.z3())
 
   /**
     * The template generator.

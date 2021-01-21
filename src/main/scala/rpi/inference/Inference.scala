@@ -1,6 +1,6 @@
 package rpi.inference
 
-import rpi.{Main, Names, Settings}
+import rpi.{Configuration, Main, Names, Settings}
 import rpi.learner.Learner
 import rpi.teacher.Teacher
 import rpi.util.{Collections, Expressions, Namespace}
@@ -13,7 +13,13 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-class Inference() {
+class Inference(val configuration: Configuration) {
+  /**
+    * The number of rounds after which the learner gets exhausted and gives up.
+    */
+  val maxRounds: Int =
+    configuration.maxRounds()
+
   /**
     * The magic fields that enables fold / unfold heuristics
     */
@@ -27,7 +33,7 @@ class Inference() {
     val instance = new Silicon()
     // pass arguments
     val arguments = Seq(
-      "--z3Exe", Main.z3,
+      "--z3Exe", configuration.z3(),
       "--counterexample", "raw",
       "--ignoreFile", "dummy.vpr")
     instance.parseCommandLine(arguments)
@@ -49,14 +55,19 @@ class Inference() {
     verifier.stop()
   }
 
+  /**
+    * Runs the inference on the given program.
+    *
+    * @param program The input program.
+    * @return The program annotated with the inferred specifications.
+    */
   def run(program: ast.Program): ast.Program = {
-
+    // create context, learner, teacher, and learner
     val context = new Context(inference = this, program)
-
     val teacher = new Teacher(context)
     val learner = new Learner(context)
 
-
+    // start teacher and learner
     teacher.start()
     learner.start()
 
@@ -66,7 +77,7 @@ class Inference() {
       val hypothesis = learner.hypothesis
       if (rounds == 0) hypothesis
       else {
-        println(s"----- round ${Settings.maxRounds - rounds} -----")
+        println(s"----- round ${maxRounds - rounds} -----")
         // check hypothesis
         val samples = teacher.check(hypothesis)
         if (samples.isEmpty) hypothesis
@@ -78,11 +89,14 @@ class Inference() {
       }
     }
 
-    val hypothesis = infer(Settings.maxRounds)
+    // infer specifications
+    val hypothesis = infer(maxRounds)
 
+    // stop teacher and learner
     teacher.stop()
     learner.stop()
 
+    // annotate program
     annotate(context, hypothesis)
   }
 
@@ -144,6 +158,11 @@ class Inference() {
 }
 
 class Context(val inference: Inference, val program: ast.Program) {
+  /**
+    * The configuration.
+    */
+  val configuration: Configuration = inference.configuration
+
   /**
     * The namespace used to create unique identifiers.
     */

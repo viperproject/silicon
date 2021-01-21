@@ -4,17 +4,16 @@ import fastparse.Parsed
 
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.Paths
-import rpi.Main
 import viper.silver.ast
 import viper.silver.verifier.{ModelParser, ConstantEntry}
 
-class Smt {
+class Smt(z3: String) {
   /**
     * The z3 process.
     */
   private val process: Process = {
     // check whether the z3 file exists and whether it is executable.
-    val filename = Main.z3
+    val filename = z3
     val file = Paths.get(filename).toFile
     assert(file.isFile, s"$file is not a file.")
     assert(file.canExecute, s"$file is not executable.")
