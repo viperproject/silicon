@@ -22,6 +22,11 @@ class CheckBuilder(teacher: Teacher) {
   private val context: Context = teacher.context
 
   /**
+    * The flag indicating whether the use of annotations is enabled.
+    */
+  private val useAnnotations = context.configuration.useAnnotations()
+
+  /**
     * Returns the pointer to the original program (labeled).
     *
     * @return The pointer to the original program.
@@ -126,7 +131,7 @@ class CheckBuilder(teacher: Teacher) {
 
     // compute unfold and fold depth
     val unfoldDepth: Int = check.baseDepth(hypothesis)
-    val foldDepth: Int = unfoldDepth + Settings.foldDelta
+    val foldDepth: Int = unfoldDepth + (if (useAnnotations) Settings.foldDelta else 0)
 
     // TODO: Incorporate into annotation info.
     var old: Option[String] = None
@@ -200,9 +205,10 @@ class CheckBuilder(teacher: Teacher) {
             implicit val label: String = saveSnapshot(instance)
             checkContext.addSnapshot(label, instance)
             // save ingredients and fold predicate
-            val annotations: Seq[Annotation] = Annotations.extract(statement)
-            if (annotations.nonEmpty) handleAnnotations(body, annotations)(foldDepth, label)
-            else saveAndFold(body)(foldDepth, label)
+            if (useAnnotations) {
+              val annotations: Seq[Annotation] = Annotations.extract(statement)
+              handleAnnotations(body, annotations)(foldDepth, label)
+            } else saveAndFold(body)(foldDepth, label)
             // exhale predicate
             val info = BasicInfo(label, instance)
             if (Settings.inline) {
@@ -395,7 +401,8 @@ class CheckBuilder(teacher: Teacher) {
         }
 
       // process expression
-      handleEnd(expression)
+      if (annotations.nonEmpty) handleEnd(expression)
+      else saveAndFold(expression)
     }
 
     // instrument check
@@ -413,7 +420,7 @@ class CheckBuilder(teacher: Teacher) {
   private def buildProgram(checks: Seq[ast.Seqn], hypothesis: Hypothesis): ast.Program = {
     val domains = original.domains
     val fields =
-      if (Settings.useAnnotations) original.fields
+      if (useAnnotations) original.fields
       else context.inference.magic +: original.fields
     val functions = original.functions
     val predicates = {

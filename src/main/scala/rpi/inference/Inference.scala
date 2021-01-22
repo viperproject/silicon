@@ -222,8 +222,8 @@ class Context(val inference: Inference, val program: ast.Program) {
     * The program labeled with all holes plus the map containing all holes.
     */
   private val (_labeled, specifications) = {
-    // configuration
-    val useRecursive = configuration.useRecursive()
+    // read configuration
+    val usePredicates = configuration.usePredicates()
     val useSegments = configuration.useSegments()
 
     // initialize map
@@ -254,7 +254,7 @@ class Context(val inference: Inference, val program: ast.Program) {
     }
 
     // add specification for recursive predicate
-    if (useRecursive) {
+    if (usePredicates) {
       val names = if (useSegments) Seq("x", "y") else Seq("x")
       val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
       val variables = parameters.take(1).map { parameter => parameter.localVar }

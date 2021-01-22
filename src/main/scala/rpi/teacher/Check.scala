@@ -94,13 +94,12 @@ case class Check(statements: Seq[ast.Stmt]) {
   * Helper object used to extract annotations from info fields in the ast.
   */
 object Annotations {
-  def extract(infoed: ast.Infoed): Seq[Annotation] =
-    if (Settings.useAnnotations) infoed
+  def extract(node: ast.Infoed): Seq[Annotation] =
+    node
       .info
       .getUniqueInfo[AnnotationInfo]
       .map { info => info.annotations }
       .getOrElse(Seq.empty)
-    else Seq.empty
 }
 
 /**
@@ -130,11 +129,12 @@ object Checks {
 
   /**
     * Collects checks from the given program.
-    * @param program The program.
     *
+    * @param program        The program.
+    * @param useAnnotations The flag indicating whether annotations are enabled.
     * @return The checks.
     */
-  def collect(program: ast.Program): Seq[Check] = {
+  def collect(program: ast.Program, useAnnotations: Boolean): Seq[Check] = {
     // build map used to look up methods
     val methods: Map[String, ast.Method] = program
       .methods
@@ -222,6 +222,17 @@ object Checks {
       checks = checks :+ check
     }
 
+    def trimAnnotations(statements: Seq[ast.Stmt]): (Seq[Annotation], Seq[ast.Stmt]) =
+      statements match {
+        case rest :+ ast.MethodCall(name, Seq(argument), _) if Names.isAnnotation(name) =>
+          if (useAnnotations) {
+            val (suffix, trimmed) = trimAnnotations(rest)
+            val annotation = Annotation(name, argument)
+            (suffix :+ annotation, trimmed)
+          } else trimAnnotations(rest)
+        case _ => (Seq.empty, statements)
+      }
+
     //
     program
       .methods
@@ -234,15 +245,4 @@ object Checks {
     // return checks
     checks
   }
-
-  private def trimAnnotations(statements: Seq[ast.Stmt]): (Seq[Annotation], Seq[ast.Stmt]) =
-    statements match {
-      case rest :+ ast.MethodCall(name, Seq(argument), _) if Names.isAnnotation(name) =>
-        if (Settings.useAnnotations) {
-          val (suffix, trimmed) = trimAnnotations(rest)
-          val annotation = Annotation(name, argument)
-          (suffix :+ annotation, trimmed)
-        } else trimAnnotations(rest)
-      case _ => (Seq.empty, statements)
-    }
 }

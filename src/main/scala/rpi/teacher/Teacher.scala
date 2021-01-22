@@ -20,7 +20,10 @@ class Teacher(val context: Context) {
     * The list of all checks.
     */
   private val checks = {
-    val collected = Checks.collect(context.labeled)
+    // read configuration
+    val useAnnotations = context.configuration.useAnnotations()
+    // collect checks
+    val collected = Checks.collect(context.labeled, useAnnotations)
     if (Settings.batch) Seq(collected)
     else collected.map { check => Seq(check) }
   }

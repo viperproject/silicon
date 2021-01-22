@@ -20,9 +20,26 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
       descr = "The number of rounds after which the learner gets exhausted and gives up.",
       default = Some(10))
 
-  val useRecursive: ScallopOption[Boolean] =
+  /**
+    * Note: Only there to have means to make sure annotations are disabled.
+    */
+  val useHeuristics: ScallopOption[Boolean] =
     opt[Boolean](
-      name = "useRecursive",
+      name = "useHeuristics",
+      descr = "Explicitly forbids the use of annotations.")
+
+  /**
+    * Note: The verifier uses heuristics if the use of annotations is disabled. The heuristics implemented in th silicon
+    * verifier are currently experimental and limited to folds and unfolds.
+    */
+  val useAnnotations: ScallopOption[Boolean] =
+    opt[Boolean](
+      name = "useAnnotations",
+      descr = "Enables or disables the use of annotations.")
+
+  val usePredicates: ScallopOption[Boolean] =
+    opt[Boolean](
+      name = "usePredicates",
       descr = "Enables or disables the use of recursive predicates.",
       default = Some(true))
 
@@ -37,7 +54,8 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
       name = "path",
       descr = "The path to the input file or folder.")
 
-  dependsOnAll(useSegments, List(useRecursive))
+  mutuallyExclusive(useHeuristics, useAnnotations)
+  dependsOnAll(useSegments, List(usePredicates))
 
   verify()
 }

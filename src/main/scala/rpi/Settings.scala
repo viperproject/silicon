@@ -22,22 +22,12 @@ object Settings {
   val restrictChoices = true
 
   /**
-    * The flag indicating whether the black box verifier used by the inference should use annotations or heuristics for
-    * unfolds, folds, and related lemmas.
-    *
-    * Note: The heuristics implemented in the Silicon verifier are currently experimental and limited to folds and
-    * unfolds.
-    */
-  val useAnnotations = true
-
-  /**
     * The folding delta: Since Silicon is a iso-recursive verifier, we force additional folds in positions where
     * a predicate needs to be established, such that we only have to rely on unfold heuristics (as failing fold
     * heuristics may yield incorrect samples). This parameter regulates up to which depth we statically fold
     * predicates.
     */
-  val foldDelta: Int =
-    if (useAnnotations) 0 else 1
+  val foldDelta: Int = 1
 
   /**
     * The flag indicating whether specification predicates are inlined.

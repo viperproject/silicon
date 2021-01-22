@@ -143,8 +143,8 @@ class TemplateGenerator(learner: Learner) {
   /**
     * The flag indicating whether the inference uses recursive predicates.
     */
-  private val useRecursive: Boolean =
-    context.configuration.useRecursive()
+  private val usePredicates: Boolean =
+    context.configuration.usePredicates()
 
   /**
     * The flag indicating whether the inference uses predicate segments.
@@ -206,7 +206,7 @@ class TemplateGenerator(learner: Learner) {
       }
 
     // compute template for recursive predicate
-    if (useRecursive) {
+    if (usePredicates) {
       val recursive = context.getSpecification(Names.recursive)
       createRecursiveTemplate(recursive, structure)
     }
@@ -423,7 +423,7 @@ class TemplateGenerator(learner: Learner) {
       * @return The structure.
       */
     def compute(accesses: Set[ast.FieldAccess]): (Set[ast.PredicateAccess], Structure) = {
-      if (useRecursive)
+      if (usePredicates)
         accesses
           .groupBy { access => access.field }
           .flatMap { case (field, group) =>
