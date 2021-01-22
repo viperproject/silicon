@@ -149,8 +149,7 @@ class TemplateGenerator(learner: Learner) {
   /**
     * The flag indicating whether the inference uses recursive predicates.
     */
-  private val usePredicates: Boolean =
-    context.configuration.usePredicates()
+  private val usePredicates: Boolean = context.configuration.usePredicates()
 
   /**
     * The flag indicating whether the inference uses predicate segments.

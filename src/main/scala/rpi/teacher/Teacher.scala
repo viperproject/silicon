@@ -152,7 +152,8 @@ case class FramingInfo(location: ast.LocationAccess) extends CheckInfo {
     Seq.empty
 }
 
-case class BasicInfo(label: String, instance: Instance) extends CheckInfo {
+// TODO: Use instance info?
+case class BasicInfo(instance: Instance) extends CheckInfo {
   override def comment: Seq[String] =
     Seq(instance.toString)
 }

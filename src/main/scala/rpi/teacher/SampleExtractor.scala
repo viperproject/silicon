@@ -110,7 +110,7 @@ object SampleExtractor {
 
     // get current location
     val currentLocation = info match {
-      case Some(BasicInfo(_, instance)) =>
+      case Some(BasicInfo(instance)) =>
         if (noInlining || Names.isRecursive(instance.name)) instance.toActual(offending)
         else offending
       case _ => offending

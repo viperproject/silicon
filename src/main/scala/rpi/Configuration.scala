@@ -58,17 +58,20 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
   val useAnnotations: ScallopOption[Boolean] =
     opt[Boolean](
       name = "useAnnotations",
-      descr = "Enables or disables the use of annotations.")
+      descr = "Enables the use of annotations.")
 
-  val usePredicates: ScallopOption[Boolean] =
+  val noPredicates: ScallopOption[Boolean] =
     opt[Boolean](
       name = "usePredicates",
-      descr = "Enables or disables the use of recursive predicates.")
+      descr = "Disables the use of recursive predicates.")
+
+  val usePredicates: ScallopOption[Boolean] =
+    noPredicates.map { value => !value }
 
   val useSegments: ScallopOption[Boolean] =
     opt[Boolean](
       name = "useSegments",
-      descr = "Enables or disables the use of predicate segments.")
+      descr = "Enables the use of predicate segments.")
 
   val restrictTruncation: ScallopOption[Boolean] =
     opt[Boolean](
@@ -99,7 +102,7 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
       descr = "The path to the input file or folder.")
 
   mutuallyExclusive(useHeuristics, useAnnotations)
-  dependsOnAll(useSegments, List(usePredicates))
+  mutuallyExclusive(useSegments, noPredicates)
   dependsOnAll(restrictTruncation, List(useSegments))
 
   verify()
