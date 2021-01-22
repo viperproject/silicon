@@ -56,7 +56,7 @@ class Learner(val context: Context) {
       val templates = templateGenerator.generate(samples)
 
       // encode samples
-      val encoder = new GuardEncoder(templates)
+      val encoder = new GuardEncoder(context, templates)
       val encodings = encoder.encodeSamples(samples)
 
       // build hypothesis

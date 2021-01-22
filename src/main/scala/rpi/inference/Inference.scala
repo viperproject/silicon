@@ -1,6 +1,6 @@
 package rpi.inference
 
-import rpi.{Configuration, Names, Settings}
+import rpi.{Configuration, Names}
 import rpi.learner.Learner
 import rpi.teacher.Teacher
 import rpi.util.{Collections, Expressions, Namespace}
@@ -22,8 +22,7 @@ class Inference(val configuration: Configuration) {
   /**
     * The number of rounds after which the learner gets exhausted and gives up.
     */
-  val maxRounds: Int =
-    configuration.maxRounds()
+  val maxRounds: Int = configuration.maxRounds()
 
   /**
     * The magic fields that enables fold / unfold heuristics
@@ -178,7 +177,13 @@ class Context(val inference: Inference, val program: ast.Program) {
   /**
     * The configuration.
     */
-  val configuration: Configuration = inference.configuration
+  @inline
+  def configuration: Configuration = inference.configuration
+
+  /**
+    * The flag indicating whether specification inlining is disabled.
+    */
+  val noInlining: Boolean = configuration.noInlining()
 
   /**
     * The namespace used to create unique identifiers.
@@ -231,19 +236,13 @@ class Context(val inference: Inference, val program: ast.Program) {
 
     // helper method to create predicate accessing a specification
     def create(prefix: String, parameters: Seq[ast.LocalVarDecl]): ast.PredicateAccessPredicate = {
-      // rename parameters
-      val renamed =
-        if (Settings.renameParameters) parameters
-          .zipWithIndex
-          .map { case (parameter, index) => ast.LocalVarDecl(s"x_$index", parameter.typ)() }
-        else parameters
       // create specification
       val name = namespace.uniqueIdentifier(prefix, Some(0))
-      val references = renamed
+      val references = parameters
         .filter { parameter => parameter.typ == ast.Ref }
         .map { parameter => parameter.localVar }
       val atoms = instantiateAtoms(references)
-      val specification = Specification(name, renamed, atoms)
+      val specification = Specification(name, parameters, atoms)
       buffer.append(specification)
       // predicate access
       val arguments = parameters.map { parameter => parameter.localVar }
@@ -301,8 +300,8 @@ class Context(val inference: Inference, val program: ast.Program) {
   def predicates(hypothesis: Hypothesis): Seq[ast.Predicate] = {
     // get all specifications
     val all =
-      if (Settings.inline) specifications.get(Names.recursive).toSeq
-      else specifications.values.filter { specification => specification.name != Names.appendLemma }
+      if (noInlining) specifications.values.filter { specification => specification.name != Names.appendLemma }
+      else specifications.get(Names.recursive).toSeq
     // create predicates
     all
       .map { specification => hypothesis.getPredicate(specification) }

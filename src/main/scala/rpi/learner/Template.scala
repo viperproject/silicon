@@ -1,6 +1,6 @@
 package rpi.learner
 
-import rpi.{Names, Settings}
+import rpi.Names
 import rpi.inference._
 import rpi.util.Expressions._
 import rpi.util.{Collections, SetMap}
@@ -141,6 +141,12 @@ class TemplateGenerator(learner: Learner) {
     learner.context
 
   /**
+    * The maximal length of access paths that may appear in specifications.
+    */
+  private val maxLength: Int =
+    context.configuration.maxLength()
+
+  /**
     * The flag indicating whether the inference uses recursive predicates.
     */
   private val usePredicates: Boolean =
@@ -151,6 +157,12 @@ class TemplateGenerator(learner: Learner) {
     */
   private val useSegments: Boolean =
     context.configuration.useSegments()
+
+  /**
+    * The flag indicating whether the restriction of truncation arguments to options appearing in samples is enabled.
+    */
+  private val restrictTruncation: Boolean =
+    context.configuration.restrictTruncation()
 
 
   /**
@@ -325,7 +337,7 @@ class TemplateGenerator(learner: Learner) {
     // create template expressions for fields
     val fields = resources
       .collect { case field: ast.FieldAccess => (getDepth(field), field) }
-      .filter { case (length, _) => length <= Settings.maxLength }
+      .filter { case (length, _) => length <= maxLength }
       .sortWith { case ((first, _), (second, _)) => first < second }
       .map { case (_, field) =>
         val guardId = id.getAndIncrement()
@@ -337,7 +349,7 @@ class TemplateGenerator(learner: Learner) {
       if (useSegments) {
         // map from first arguments to options for second arguments
         val arguments: Iterable[(ast.Exp, Seq[ast.Exp])] =
-          if (specification.isRecursive || Settings.restrictChoices) {
+          if (specification.isRecursive || restrictTruncation) {
             resources
               // group second arguments by first argument
               .foldLeft(Map.empty[ast.Exp, Set[ast.Exp]]) {

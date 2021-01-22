@@ -1,17 +1,20 @@
 package rpi.learner
 
 import java.util.concurrent.atomic.AtomicInteger
-import rpi.{Names, Settings}
+import rpi.Names
 import rpi.inference._
-import rpi.util.{Collections, Expressions, SeqMap}
+import rpi.util.{Collections, SeqMap}
+import rpi.util.Expressions._
 import viper.silver.ast
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-class GuardEncoder(templates: Seq[Template]) {
-
-  import Expressions._
+class GuardEncoder(context: Context, templates: Seq[Template]) {
+  /**
+    * The maximal number of clauses that may be used for a guard.
+    */
+  private val maxClauses = context.configuration.maxClauses()
 
   /**
     * Type shortcut for an effective guard.
@@ -312,7 +315,7 @@ class GuardEncoder(templates: Seq[Template]) {
     */
   private def encodeState(guardId: Int, values: Seq[Option[Boolean]], default: Boolean): ast.Exp = {
     // encode clauses
-    val clauses = for (j <- 0 until Settings.maxClauses) yield {
+    val clauses = for (j <- 0 until maxClauses) yield {
       val clauseActivation = ast.LocalVar(s"x_${guardId}_$j", ast.Bool)()
       val clauseEncoding = {
         // encode literals

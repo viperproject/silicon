@@ -1,8 +1,7 @@
 package rpi.learner
 
-import rpi.Settings
 import rpi.inference.Hypothesis
-import rpi.util.Expressions
+import rpi.util.Expressions._
 import viper.silver.ast
 
 import scala.collection.mutable
@@ -16,8 +15,10 @@ import scala.collection.mutable.ListBuffer
   * @param constraints The constraints at hand.
   */
 class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
-
-  import Expressions._
+  /**
+    * The maximal number of clauses that may be used for a guard.
+    */
+  private val maxClauses = learner.context.configuration.maxClauses()
 
   /**
     * The model returned by the solver.
@@ -139,7 +140,7 @@ class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
     * @return The guard.
     */
   private def buildGuard(guardId: Int, atoms: Seq[ast.Exp]): ast.Exp = {
-    val clauses = for (j <- 0 until Settings.maxClauses) yield {
+    val clauses = for (j <- 0 until maxClauses) yield {
       val clauseActivation = model.getOrElse(s"x_${guardId}_$j", false)
       if (clauseActivation) {
         val literals = atoms

@@ -159,8 +159,12 @@ case object ParsePhase extends Phase[String, ast.Program] {
   * A phase that infers specifications and annotates the input program.
   */
 case object InferencePhase extends Phase[ast.Program, ast.Program] {
-  override def run(input: ast.Program)(implicit inference: Inference): ast.Program =
-    inference.run(input)
+  override def run(input: ast.Program)(implicit inference: Inference): ast.Program = {
+    val annotated = inference.run(input)
+    println(annotated)
+    // return annotated program
+    annotated
+  }
 }
 
 /**

@@ -1,6 +1,6 @@
 package rpi.teacher
 
-import rpi.{Names, Settings}
+import rpi.Names
 import rpi.inference._
 import rpi.teacher.state.{Adaptor, ModelEvaluator, Snapshot, StateEvaluator}
 import viper.silicon.interfaces.SiliconRawCounterexample
@@ -66,6 +66,9 @@ object SampleExtractor {
     * @return The extracted sample.
     */
   def extractBasic(error: VerificationError, checkContext: CheckContext): Sample = {
+    // read configuration
+    val noInlining = checkContext.configuration.noInlining()
+
     println(error)
     // get counter example, offending location, and context info
     val (counter, offending, info) = extractInformation[BasicInfo](error)
@@ -108,8 +111,8 @@ object SampleExtractor {
     // get current location
     val currentLocation = info match {
       case Some(BasicInfo(_, instance)) =>
-        if (Settings.inline && !Names.isRecursive(instance.name)) offending
-        else instance.toActual(offending)
+        if (noInlining || Names.isRecursive(instance.name)) instance.toActual(offending)
+        else offending
       case _ => offending
     }
 

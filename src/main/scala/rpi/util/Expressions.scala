@@ -1,6 +1,6 @@
 package rpi.util
 
-import rpi.{Names, Settings}
+import rpi.Names
 import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
 

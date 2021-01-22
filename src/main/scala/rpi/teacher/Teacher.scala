@@ -1,6 +1,6 @@
 package rpi.teacher
 
-import rpi.Settings
+import rpi.Configuration
 import rpi.inference._
 import viper.silver.ast
 import viper.silver.verifier.{Failure, Success, VerificationError}
@@ -21,11 +21,13 @@ class Teacher(val context: Context) {
     */
   private val checks = {
     // read configuration
-    val useAnnotations = context.configuration.useAnnotations()
+    val configuration = context.configuration
+    val useAnnotations = configuration.useAnnotations()
+    val noBatching = configuration.noBranching()
     // collect checks
     val collected = Checks.collect(context.labeled, useAnnotations)
-    if (Settings.batch) Seq(collected)
-    else collected.map { check => Seq(check) }
+    if (noBatching) collected.map { check => Seq(check) }
+    else Seq(collected)
   }
 
   /**
@@ -84,7 +86,7 @@ class Teacher(val context: Context) {
 /**
   * A context object used to pass information from the check builder to the sample extractor.
   */
-class CheckContext {
+class CheckContext(val configuration: Configuration) {
   /**
     * The labels and instances of the inhaled and exhaled states.
     */

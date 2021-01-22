@@ -20,6 +20,18 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
       descr = "The number of rounds after which the learner gets exhausted and gives up.",
       default = Some(10))
 
+  val maxClauses: ScallopOption[Int] =
+    opt[Int](
+      name = "maxClauses",
+      descr = "The maximal number of clauses that may be used for a guard.",
+      default = Some(1))
+
+  val maxLength: ScallopOption[Int] =
+    opt[Int](
+      name = "maxLength",
+      descr = "The maximal length of access paths that may appear in specifications.",
+      default = Some(2))
+
   /**
     * Note: Only there to have means to make sure annotations are disabled.
     */
@@ -27,6 +39,17 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
     opt[Boolean](
       name = "useHeuristics",
       descr = "Explicitly forbids the use of annotations.")
+
+  /**
+    * Note: Since silicon is a iso-recursive verifier, we force additional folds in positions where a predicate needs
+    * to be established, such that we only have to rely on unfold heuristics (as failing fold heuristics may yield
+    * incorrect samples). This parameter regulates up to which depth the inference statically fold predicates.
+    */
+  val heuristicsFoldDepth: ScallopOption[Int] =
+    opt[Int](
+      name = "heuristicsFoldDepth",
+      descr = "The depth up to which predicates are statically folded when the heuristics is enabled.",
+      default = Some(1))
 
   /**
     * Note: The verifier uses heuristics if the use of annotations is disabled. The heuristics implemented in th silicon
@@ -47,6 +70,29 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
       name = "useSegments",
       descr = "Enables or disables the use of predicate segments.")
 
+  val restrictTruncation: ScallopOption[Boolean] =
+    opt[Boolean](
+      name = "restrictTruncation",
+      descr = "Enables the restriction of truncation arguments to options appearing in samples.")
+
+  val noInlining: ScallopOption[Boolean] =
+    opt[Boolean](
+      name = "noInlining",
+      descr = "Disables specification inlining.",
+      hidden = true)
+
+  val noBranching: ScallopOption[Boolean] =
+    opt[Boolean](
+      name = "noBranching",
+      descr = "Disables branching on atomic predicates.",
+      hidden = true)
+
+  val noBatching: ScallopOption[Boolean] =
+    opt[Boolean](
+      name = "noBatching",
+      descr = "Disables batch verification of checks.",
+      hidden = true)
+
   val path: ScallopOption[String] =
     trailArg[String](
       name = "path",
@@ -54,6 +100,7 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
 
   mutuallyExclusive(useHeuristics, useAnnotations)
   dependsOnAll(useSegments, List(usePredicates))
+  dependsOnAll(restrictTruncation, List(useSegments))
 
   verify()
 }

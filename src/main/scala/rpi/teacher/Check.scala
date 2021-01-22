@@ -2,7 +2,7 @@ package rpi.teacher
 
 import rpi.inference.{Hypothesis, Instance, InstanceInfo}
 import rpi.util.ValueInfo
-import rpi.{Names, Settings}
+import rpi.Names
 import viper.silver.ast
 
 import scala.annotation.tailrec

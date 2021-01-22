@@ -1,6 +1,6 @@
 package rpi.teacher
 
-import rpi.{Names, Settings}
+import rpi.Names
 import rpi.inference._
 import rpi.util.Expressions._
 import rpi.util.Namespace
@@ -21,10 +21,27 @@ class CheckBuilder(teacher: Teacher) {
     */
   private val context: Context = teacher.context
 
+  private def configuration = context.configuration
+
   /**
     * The flag indicating whether the use of annotations is enabled.
     */
-  private val useAnnotations = context.configuration.useAnnotations()
+  private val useAnnotations: Boolean = configuration.useAnnotations()
+
+  /**
+    * The depth up to which predicates are statically folded when the heuristics is enabled.
+    */
+  private val heuristicsFoldDepth: Int = configuration.heuristicsFoldDepth()
+
+  /**
+    * The flag indicating whether specification inlining is disabled.
+    */
+  private val noInlining: Boolean = configuration.noInlining()
+
+  /**
+    * The flag indicating whether branching on atomic predicates is disabled.
+    */
+  private val noBranching: Boolean = configuration.noBranching()
 
   /**
     * Returns the pointer to the original program (labeled).
@@ -130,8 +147,11 @@ class CheckBuilder(teacher: Teacher) {
     import Names._
 
     // compute unfold and fold depth
-    val unfoldDepth: Int = check.baseDepth(hypothesis)
-    val foldDepth: Int = unfoldDepth + (if (useAnnotations) Settings.foldDelta else 0)
+    val (unfoldDepth, foldDepth) =
+      if (useAnnotations) {
+        val baseDepth = check.baseDepth(hypothesis)
+        (baseDepth, baseDepth)
+      } else (0, heuristicsFoldDepth)
 
     // TODO: Incorporate into annotation info.
     var old: Option[String] = None
@@ -171,11 +191,7 @@ class CheckBuilder(teacher: Teacher) {
             val instance = getInstance(predicate)
             val body = hypothesis.getPredicateBody(instance)
             // inhale predicate
-            if (Settings.inline) {
-              // inhale body of specification predicate
-              val info = ast.SimpleInfo(Seq(instance.toString))
-              addInhale(body, info)
-            } else {
+            if (noInlining) {
               // inhale and unfold specification predicate
               val adapted = {
                 val name = instance.name
@@ -185,6 +201,10 @@ class CheckBuilder(teacher: Teacher) {
               }
               addInhale(adapted)
               addUnfold(adapted)
+            } else {
+              // inhale body of specification predicate
+              val info = ast.SimpleInfo(Seq(instance.toString))
+              addInhale(body, info)
             }
             // unfold predicate
             unfold(body)(unfoldDepth)
@@ -211,10 +231,7 @@ class CheckBuilder(teacher: Teacher) {
             } else saveAndFold(body)(foldDepth, label)
             // exhale predicate
             val info = BasicInfo(label, instance)
-            if (Settings.inline) {
-              // exhale body of specification
-              addExhale(body, info)
-            } else {
+            if (noInlining) {
               // fold and exhale specification predicate
               val adapted = {
                 val name = instance.name
@@ -224,6 +241,9 @@ class CheckBuilder(teacher: Teacher) {
               }
               addFold(adapted, info)
               addExhale(adapted)
+            } else {
+              // exhale body of specification
+              addExhale(body, info)
             }
         }
         case call@ast.MethodCall(name, _, _) if Names.isAnnotation(name) =>
@@ -565,14 +585,15 @@ class CheckBuilder(teacher: Teacher) {
     * @param atom The atom to save.
     */
   private def saveAtom(name: String, atom: ast.Exp): Unit =
-    if (Settings.useBranching) {
+    if (noBranching) saveValue(name, atom)
+    else {
       // create variable
       val variable = ast.LocalVar(name, ast.Bool)()
       // create conditional
       val thenBody = makeAssign(variable, makeTrue)
       val elseBody = makeAssign(variable, makeFalse)
       addConditional(atom, thenBody, elseBody)
-    } else saveValue(name, atom)
+    }
 
 
   /**
@@ -635,9 +656,8 @@ class CheckBuilder(teacher: Teacher) {
   private def addFold(predicate: ast.PredicateAccessPredicate, info: ast.Info = ast.NoInfo): Unit =
     addStatement(ast.Fold(predicate)(info = info))
 
-
   private def clear(): Unit = {
     namespace = new Namespace
-    checkContext = new CheckContext
+    checkContext = new CheckContext(configuration)
   }
 }
