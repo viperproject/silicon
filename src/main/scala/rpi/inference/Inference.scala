@@ -127,7 +127,7 @@ class Inference(val configuration: Configuration) {
     }
 
   private def annotate(context: Context, hypothesis: Hypothesis): ast.Program = {
-    val program = context.program
+    val program = context.labeled
 
     // helper method that replaces predicates with the inferred specification
     def substitute(expression: ast.Exp): ast.Exp =

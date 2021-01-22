@@ -16,19 +16,29 @@ class RpiTest extends AnyFunSuite with TestRunner {
   val baseDirectory: String = "/rpi/tests"
 
   /**
-    * The path to the test meant to be executed using heuristics.
+    * The path to the tests meant to be executed with heuristics.
     */
   val heuristicsDirectory: String = s"$baseDirectory/heuristics"
 
   /**
-    * The arguments to the inference runner shared by all tests.
+    * The path to the tests meant to be executed with annotations.
     */
-  val baseArguments: Seq[String] = Seq.empty
+  val annotationsDirectory: String = s"$baseDirectory/annotations"
 
   /**
-    * The arguments to the inference runner for the test meant to be executed using heuristics.
+    * The arguments to the inference runner shared by all tests.
+    */
+  val baseArguments: Seq[String] = Seq("--usePredicates")
+
+  /**
+    * The arguments to the inference with heuristics.
     */
   val heuristicsArguments: Seq[String] = baseArguments ++ Seq("--useHeuristics")
+
+  /**
+    * The arguments to the inference with annotations.
+    */
+  val annotationsArguments: Seq[String] = baseArguments ++ Seq("--useAnnotations")
 
   // run tests
   runTests()
@@ -37,9 +47,13 @@ class RpiTest extends AnyFunSuite with TestRunner {
     * Runs the tests.
     */
   def runTests(): Unit = {
-    // heuristics tests
-    val heuristicsFiles = getFiles(heuristicsDirectory)
-    heuristicsFiles.foreach { file => runHeuristicsTest(file) }
+    // tests with heuristics
+    getFiles(heuristicsDirectory)
+      .foreach { file => runTestWithHeuristics(file) }
+
+    // tests with annotations
+    getFiles(annotationsDirectory)
+      .foreach { file => runTestWithAnnotations(file) }
   }
 
   /**
@@ -47,18 +61,41 @@ class RpiTest extends AnyFunSuite with TestRunner {
     *
     * @param file The file to test.
     */
-  def runHeuristicsTest(file: File): Unit = {
-    val name = s"test using heuristics: $file"
-    test(name) {
-      // create arguments
-      val path = file.getPath
-      val arguments = heuristicsArguments :+ path
-      // run inference on file
-      assert(run(arguments))
-    }
+  def runTestWithHeuristics(file: File): Unit = {
+    val name = s"test with heuristics: $file"
+    val arguments = heuristicsArguments :+ file.getPath
+    runTest(name, arguments)
   }
 
-  private def getFiles(directory: String) = {
+  /**
+    * Tests the given file using the inference with annotations.
+    *
+    * @param file The file to test.
+    */
+  def runTestWithAnnotations(file: File): Unit = {
+    val name = s"test with annotations: $file"
+    val arguments = heuristicsArguments :+ file.getPath
+    runTest(name, arguments)
+  }
+
+  /**
+    * Runs a test with the given name and arguments.
+    *
+    * @param name      The name of the test.
+    * @param arguments The arguments to the inference.
+    */
+  def runTest(name: String, arguments: Seq[String]): Unit =
+    test(name) {
+      assert(run(arguments))
+    }
+
+  /**
+    * Returns all files in the given directory.
+    *
+    * @param directory The directory.
+    * @return The list of files.
+    */
+  private def getFiles(directory: String): Seq[File] = {
     val resource = getClass.getResource(directory)
     val file = new File(resource.getFile)
     Files.listFiles(file)

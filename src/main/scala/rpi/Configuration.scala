@@ -40,14 +40,12 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
   val usePredicates: ScallopOption[Boolean] =
     opt[Boolean](
       name = "usePredicates",
-      descr = "Enables or disables the use of recursive predicates.",
-      default = Some(true))
+      descr = "Enables or disables the use of recursive predicates.")
 
   val useSegments: ScallopOption[Boolean] =
     opt[Boolean](
       name = "useSegments",
-      descr = "Enables or disables the use of predicate segments.",
-      default = Some(true))
+      descr = "Enables or disables the use of predicate segments.")
 
   val path: ScallopOption[String] =
     trailArg[String](
