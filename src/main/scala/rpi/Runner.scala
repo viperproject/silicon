@@ -4,8 +4,6 @@ import rpi.inference.Inference
 import rpi.util.Parser
 import viper.silver.ast
 
-import java.io.File
-
 /**
   * A trait providing useful methods to run the inference.
   *
