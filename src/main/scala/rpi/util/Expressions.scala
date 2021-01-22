@@ -149,11 +149,6 @@ object Expressions {
   def makeCall(method: ast.Method, arguments: Seq[ast.Exp]): ast.MethodCall =
     ast.MethodCall(method, arguments, Seq.empty)()
 
-  def makeInstance(from: ast.Exp): ast.PredicateAccessPredicate = {
-    val arguments = if (Settings.useSegments) Seq(from, ast.NullLit()()) else Seq(from)
-    makeRecursive(arguments)
-  }
-
   @inline
   def makeSegment(from: ast.Exp, to: ast.Exp): ast.PredicateAccessPredicate =
     makeRecursive(Seq(from, to))

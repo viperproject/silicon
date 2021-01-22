@@ -6,11 +6,6 @@ package rpi
 @deprecated
 object Settings {
   /**
-    * The number of rounds after which the learner gets exhausted and gives up.
-    */
-  val maxRounds = 10
-
-  /**
     * The maximal length of access paths allowed to appear in specifications.
     */
   val maxLength = 2
@@ -19,22 +14,6 @@ object Settings {
     * The maximal number of clauses that may be used for a guard.
     */
   val maxClauses = 1
-
-  /**
-    * The flag indicating whether the inference should exploit silicon's framing.
-    */
-  val useFraming = true
-
-  /**
-    * The flag indicating whether the inference should use recursive predicates.
-    */
-  val useRecursion = true
-
-  /**
-    * The flag indicating whether the inference should use segmented predicates (only makes sense if recursion is
-    * enabled).
-    */
-  val useSegments = true
 
   /**
     * The flag indicating whether tha choices for predicate arguments should be restricted to the ones appearing in the

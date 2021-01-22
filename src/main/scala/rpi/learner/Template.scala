@@ -137,7 +137,21 @@ class TemplateGenerator(learner: Learner) {
   /**
     * The pointer to the context.
     */
-  private val context = learner.context
+  private val context: Context =
+    learner.context
+
+  /**
+    * The flag indicating whether the inference uses recursive predicates.
+    */
+  private val useRecursive: Boolean =
+    context.configuration.useRecursive()
+
+  /**
+    * The flag indicating whether the inference uses predicate segments.
+    */
+  private val useSegments: Boolean =
+    context.configuration.useSegments()
+
 
   /**
     * Computes templates for the given samples.
@@ -192,7 +206,7 @@ class TemplateGenerator(learner: Learner) {
       }
 
     // compute template for recursive predicate
-    if (Settings.useRecursion) {
+    if (useRecursive) {
       val recursive = context.getSpecification(Names.recursive)
       createRecursiveTemplate(recursive, structure)
     }
@@ -243,7 +257,7 @@ class TemplateGenerator(learner: Learner) {
     // create template
     val body = {
       val full = createTemplateBody(specification, resources.toSeq)
-      if (Settings.useSegments) {
+      if (useSegments) {
         val Seq(first, second) = specification.variables
         val condition = ast.NeCmp(first, second)()
         Truncation(condition, full)
@@ -252,7 +266,7 @@ class TemplateGenerator(learner: Learner) {
     val template = PredicateTemplate(specification, body)
     buffer.append(template)
 
-    if (Settings.useSegments) {
+    if (useSegments) {
       // get lemma specification and parameter variables
       val lemmaSpecification = context.getSpecification(Names.appendLemma)
       val Seq(from, current, next) = lemmaSpecification.variables
@@ -320,7 +334,7 @@ class TemplateGenerator(learner: Learner) {
 
     // create template expressions for predicates
     val predicates =
-      if (Settings.useSegments) {
+      if (useSegments) {
         // map from first arguments to options for second arguments
         val arguments: Iterable[(ast.Exp, Seq[ast.Exp])] =
           if (specification.isRecursive || Settings.restrictChoices) {
@@ -409,7 +423,7 @@ class TemplateGenerator(learner: Learner) {
       * @return The structure.
       */
     def compute(accesses: Set[ast.FieldAccess]): (Set[ast.PredicateAccess], Structure) = {
-      if (Settings.useRecursion)
+      if (useRecursive)
         accesses
           .groupBy { access => access.field }
           .flatMap { case (field, group) =>
@@ -448,7 +462,7 @@ class TemplateGenerator(learner: Learner) {
       */
     private def createInstance(path: Seq[String]): ast.PredicateAccess = {
       val arguments =
-        if (Settings.useSegments) Seq(fromSeq(path), ast.NullLit()())
+        if (useSegments) Seq(fromSeq(path), ast.NullLit()())
         else Seq(fromSeq(path))
       ast.PredicateAccess(arguments, Names.recursive)()
     }

@@ -1,69 +1,42 @@
 package rpi
 
-import rpi.inference.Inference
+import org.scalatest.funsuite.AnyFunSuite
+import rpi.util.Files
+
 import java.io.File
 
-import org.scalatest.FunSuite
-import rpi.util.Parser
-import viper.silver.verifier.{Failure, Success}
-
-class RpiTest extends FunSuite {
+/**
+  * Testing the inference.
+  */
+class RpiTest extends AnyFunSuite with TestRunner {
   /**
-    * The file to test. If the path points to a directory, all files within this directory are tested.
+    * The path to the tests.
     */
-  val path = "/rpi/tests/"
+  val testDirectory = "/rpi/tests"
 
-  /**
-    * Run all tests.
-    */
-  run()
+  // run tests
+  runTests()
 
   /**
-    * Runs all tests.
+    * Runs the tests.
     */
-  def run(): Unit = {
-    // the files to test
+  def runTests(): Unit = {
+    // get files
     val files = {
-      val resource = getClass.getResource(path)
+      val resource = getClass.getResource(testDirectory)
       val file = new File(resource.getFile)
-      getFiles(file).filter { file => file.getName.endsWith(".vpr") }
+      Files.listFiles(file)
     }
 
-    // run tests one by one
+    // run a test for each file
     files.foreach { file =>
-      test(s"testing: ${file.getName}") {
-        // parses the program
+      test(s"testing $file") {
+        // create arguments
         val path = file.getPath
-        val program = Parser.parse(path)
-
-        // start inference
-        val inference = new Inference()
-        inference.start()
-
-        // infer specifications
-        val annotated = inference.run(program)
-        println(annotated)
-
-        // check specifications
-        val result = inference.verify(annotated)
-        result match {
-          case Success => // do nothing
-          case Failure(errors) =>
-            // fail
-            assert(false)
-        }
-
-        // stop inference
-        inference.stop()
+        val arguments = Seq(path)
+        // run inference on file
+        assert(run(arguments))
       }
     }
   }
-
-  private def getFiles(path: File): Seq[File] =
-    if (path.exists && path.isDirectory)
-      path
-        .listFiles()
-        .toSeq
-        .flatMap { nested => getFiles(nested) }
-    else Seq(path)
 }

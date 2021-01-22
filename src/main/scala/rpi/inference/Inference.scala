@@ -1,18 +1,23 @@
 package rpi.inference
 
-import rpi.{Configuration, Main, Names, Settings}
+import rpi.{Configuration, Names, Settings}
 import rpi.learner.Learner
 import rpi.teacher.Teacher
 import rpi.util.{Collections, Expressions, Namespace}
 import viper.silicon.Silicon
 import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.verifier.{VerificationResult, Verifier}
+import viper.silver.verifier.{Success, VerificationResult, Verifier}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
+/**
+  * An inference with a configuration.
+  *
+  * @param configuration The configuration.
+  */
 class Inference(val configuration: Configuration) {
   /**
     * The number of rounds after which the learner gets exhausted and gives up.
@@ -108,6 +113,18 @@ class Inference(val configuration: Configuration) {
     */
   def verify(program: ast.Program): VerificationResult =
     verifier.verify(program)
+
+  /**
+    * Returns whether the given program verifies.
+    *
+    * @param program The program to verify.
+    * @return True if the program verifies.
+    */
+  def doesVerify(program: ast.Program): Boolean =
+    verify(program) match {
+      case Success => true
+      case _ => false
+    }
 
   private def annotate(context: Context, hypothesis: Hypothesis): ast.Program = {
     val program = context.program
@@ -205,6 +222,10 @@ class Context(val inference: Inference, val program: ast.Program) {
     * The program labeled with all holes plus the map containing all holes.
     */
   private val (_labeled, specifications) = {
+    // configuration
+    val useRecursive = configuration.useRecursive()
+    val useSegments = configuration.useSegments()
+
     // initialize map
     val buffer: mutable.Buffer[Specification] = ListBuffer.empty
 
@@ -233,8 +254,8 @@ class Context(val inference: Inference, val program: ast.Program) {
     }
 
     // add specification for recursive predicate
-    if (Settings.useRecursion) {
-      val names = if (Settings.useSegments) Seq("x", "y") else Seq("x")
+    if (useRecursive) {
+      val names = if (useSegments) Seq("x", "y") else Seq("x")
       val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
       val variables = parameters.take(1).map { parameter => parameter.localVar }
       val atoms = instantiateAtoms(variables)
@@ -242,7 +263,7 @@ class Context(val inference: Inference, val program: ast.Program) {
     }
 
     // add specifications for append lemma
-    if (Settings.useSegments) {
+    if (useSegments) {
       val names = Seq("x", "y", "z")
       val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
       val variables = parameters.slice(1, 2).map { parameter => parameter.localVar }
