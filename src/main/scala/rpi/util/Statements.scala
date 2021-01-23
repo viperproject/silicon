@@ -22,6 +22,10 @@ object Statements {
     ast.If(condition, makeSequence(thenBranch), makeSequence(elseBranch))()
 
   @inline
+  def makeLoop(condition: ast.Exp, body: ast.Stmt, invariants: Seq[ast.Exp] = Seq.empty): ast.While =
+    ast.While(condition, invariants, makeSequence(body))()
+
+  @inline
   def makeAssign(target: ast.LocalVar, value: ast.Exp): ast.LocalVarAssign =
     ast.LocalVarAssign(target, value)()
 }

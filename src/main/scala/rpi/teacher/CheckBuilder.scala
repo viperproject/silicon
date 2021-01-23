@@ -11,10 +11,9 @@ import viper.silver.ast
 /**
   * Builds programs used to check hypotheses.
   *
-  * @param teacher The pointer to the teacher.
+  * @param context The context.
   */
-class CheckBuilder(teacher: Teacher) extends ProgramBuilder(teacher.context) with Folding {
-
+class CheckBuilder(context: Context) extends ProgramBuilder(context) with Folding {
   private def configuration = context.configuration
 
   /**
@@ -133,8 +132,6 @@ class CheckBuilder(teacher: Teacher) extends ProgramBuilder(teacher.context) wit
     * @return The body.
     */
   private def basicCheck(check: Check, hypothesis: Hypothesis): ast.Seqn = {
-    import Names._
-
     // compute unfold and fold depth
     val (unfoldDepth, foldDepth) =
       if (useAnnotations) {
@@ -254,7 +251,7 @@ class CheckBuilder(teacher: Teacher) extends ProgramBuilder(teacher.context) wit
     val domains = original.domains
     val fields =
       if (useAnnotations) original.fields
-      else context.inference.magic +: original.fields
+      else magic +: original.fields
     val functions = original.functions
     val predicates = {
       val existing = original.predicates

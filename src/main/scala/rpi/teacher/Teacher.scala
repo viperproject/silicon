@@ -14,7 +14,7 @@ class Teacher(val context: Context) {
   /**
     * The builder used to build the programs used to check hypotheses.
     */
-  private val builder = new CheckBuilder(teacher = this)
+  private val builder = new CheckBuilder(context)
 
   /**
     * The list of all checks.

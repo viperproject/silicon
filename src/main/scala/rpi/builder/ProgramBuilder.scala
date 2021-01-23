@@ -15,6 +15,11 @@ import scala.collection.mutable.ListBuffer
   */
 abstract class ProgramBuilder(val context: Context) {
   /**
+    * The magic fields that enables fold / unfold heuristics
+    */
+  protected val magic: ast.Field = ast.Field("__CONFIG_HEURISTICS", ast.Bool)()
+
+  /**
     * The buffer used to accumulate statements for the current scope.
     */
   private var buffer: mutable.Buffer[ast.Stmt] = _
@@ -29,12 +34,12 @@ abstract class ProgramBuilder(val context: Context) {
     buffer.append(statement)
 
   /**
-    * Creates and returns a scope containing the statements produced by the given function.
+    * Collects and returns all statements produced by the given function.
     *
-    * @param generate The function generating the statements of the scope.
-    * @return The scope.
+    * @param generate The function generating the statements.
+    * @return The statements.
     */
-  protected def makeScope(generate: => Unit): ast.Seqn = {
+  protected def scoped(generate: => Unit): Seq[ast.Stmt] = {
     // save outer buffer and create and set current one
     val outer = buffer
     val current = ListBuffer.empty[ast.Stmt]
@@ -43,8 +48,17 @@ abstract class ProgramBuilder(val context: Context) {
     generate
     // restore old buffer and return generated scope
     buffer = outer
-    makeSequence(current.toSeq)
+    current.toSeq
   }
+
+  /**
+    * Creates and returns a sequence containing the statements produced by the given function.
+    *
+    * @param generate The function generating the statements.
+    * @return The sequence.
+    */
+  protected def makeScope(generate: => Unit): ast.Seqn =
+    makeSequence(scoped(generate))
 
   @inline
   protected def addConditional(condition: ast.Exp, thenBody: ast.Stmt, elseBody: ast.Stmt): Unit =
@@ -57,6 +71,9 @@ abstract class ProgramBuilder(val context: Context) {
   protected def addConditional(conditions: Seq[ast.Exp], thenBody: ast.Stmt, elseBody: ast.Stmt): Unit =
     if (conditions.isEmpty) addStatement(thenBody)
     else addConditional(makeAnd(conditions), thenBody, elseBody)
+
+  protected def addLoop(condition: ast.Exp, body: ast.Stmt, invariants: Seq[ast.Exp] = Seq.empty): Unit =
+    addStatement(makeLoop(condition, body, invariants))
 
   @inline
   protected def addAssign(target: ast.LocalVar, value: ast.Exp): Unit =

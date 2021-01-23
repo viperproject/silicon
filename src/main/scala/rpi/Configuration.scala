@@ -62,7 +62,7 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
 
   val noPredicates: ScallopOption[Boolean] =
     opt[Boolean](
-      name = "usePredicates",
+      name = "noPredicates",
       descr = "Disables the use of recursive predicates.")
 
   val usePredicates: ScallopOption[Boolean] =

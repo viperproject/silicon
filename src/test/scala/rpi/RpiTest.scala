@@ -28,7 +28,7 @@ class RpiTest extends AnyFunSuite with TestRunner {
   /**
     * The arguments to the inference runner shared by all tests.
     */
-  val baseArguments: Seq[String] = Seq("--usePredicates")
+  val baseArguments: Seq[String] = Seq()
 
   /**
     * The arguments to the inference with heuristics.

@@ -1,5 +1,6 @@
 package rpi.inference
 
+import rpi.builder.ProgramExtender
 import rpi.{Configuration, Names}
 import rpi.learner.Learner
 import rpi.teacher.Teacher
@@ -23,11 +24,6 @@ class Inference(val configuration: Configuration) {
     * The number of rounds after which the learner gets exhausted and gives up.
     */
   val maxRounds: Int = configuration.maxRounds()
-
-  /**
-    * The magic fields that enables fold / unfold heuristics
-    */
-  val magic: ast.Field = ast.Field("__CONFIG_HEURISTICS", ast.Bool)()
 
   /**
     * The instance of the silicon verifier used to generate the samples.
@@ -101,7 +97,8 @@ class Inference(val configuration: Configuration) {
     learner.stop()
 
     // annotate program
-    annotate(context, hypothesis)
+    val extender = new ProgramExtender(context)
+    extender.annotated(hypothesis)
   }
 
   /**
@@ -124,53 +121,6 @@ class Inference(val configuration: Configuration) {
       case Success => true
       case _ => false
     }
-
-  private def annotate(context: Context, hypothesis: Hypothesis): ast.Program = {
-    val program = context.labeled
-
-    // helper method that replaces predicates with the inferred specification
-    def substitute(expression: ast.Exp): ast.Exp =
-      expression match {
-        case ast.PredicateAccessPredicate(predicate, _) =>
-          val instance = {
-            val name = predicate.predicateName
-            val arguments = predicate.args
-            context.getInstance(name, arguments)
-          }
-          hypothesis.getPredicateBody(instance)
-        case _ => expression
-      }
-
-    // create fields
-    val fields = magic +: program.fields
-    // create predicates
-    val predicates = {
-      val existing = program.predicates
-      val inferred = hypothesis.getPredicate(Names.recursive).toSeq
-      existing ++ inferred
-    }
-    // annotate methods
-    val methods = program
-      .methods
-      .map { method =>
-        val preconditions = method.pres.map { precondition => substitute(precondition) }
-        val postconditions = method.posts.map { postcondition => substitute(postcondition) }
-        val body = method.body.map { sequence =>
-          sequence.transform({
-            case ast.While(condition, invariants, body) =>
-              val substituted = invariants.map { invariant => substitute(invariant) }
-              ast.While(condition, substituted, body)()
-            case ast.MethodCall(name, _, _) if Names.isAnnotation(name) =>
-              // TODO: Handle annotations.
-              ast.Seqn(Seq.empty, Seq.empty)()
-          }, Traverse.BottomUp)
-        }
-        // create annotated method
-        ast.Method(method.name, method.formalArgs, method.formalReturns, preconditions, postconditions, body)()
-      }
-    // return annotated program
-    ast.Program(program.domains, fields, program.functions, predicates, methods, program.extensions)()
-  }
 }
 
 class Context(val inference: Inference, val program: ast.Program) {
@@ -328,4 +278,7 @@ class Context(val inference: Inference, val program: ast.Program) {
     val specification = getSpecification(name)
     Instance(specification, arguments)
   }
+
+  def getInstance(access: ast.PredicateAccess): Instance =
+    getInstance(access.predicateName, access.args)
 }
