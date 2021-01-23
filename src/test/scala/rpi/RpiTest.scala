@@ -9,7 +9,6 @@ import java.io.File
   * Testing the inference.
   */
 class RpiTest extends AnyFunSuite with TestRunner {
-
   /**
     * The path to the tests.
     */
@@ -25,20 +24,6 @@ class RpiTest extends AnyFunSuite with TestRunner {
     */
   val annotationsDirectory: String = s"$baseDirectory/annotations"
 
-  /**
-    * The arguments to the inference runner shared by all tests.
-    */
-  val baseArguments: Seq[String] = Seq()
-
-  /**
-    * The arguments to the inference with heuristics.
-    */
-  val heuristicsArguments: Seq[String] = baseArguments ++ Seq("--useHeuristics")
-
-  /**
-    * The arguments to the inference with annotations.
-    */
-  val annotationsArguments: Seq[String] = baseArguments ++ Seq("--useAnnotations")
 
   // run tests
   runTests()
@@ -63,7 +48,7 @@ class RpiTest extends AnyFunSuite with TestRunner {
     */
   def runTestWithHeuristics(file: File): Unit = {
     val name = s"test with heuristics: $file"
-    val arguments = heuristicsArguments :+ file.getPath
+    val arguments = Main.heuristicsOptions :+ file.getPath
     runTest(name, arguments)
   }
 
@@ -74,7 +59,7 @@ class RpiTest extends AnyFunSuite with TestRunner {
     */
   def runTestWithAnnotations(file: File): Unit = {
     val name = s"test with annotations: $file"
-    val arguments = heuristicsArguments :+ file.getPath
+    val arguments = Main.annotationsOptions :+ file.getPath
     runTest(name, arguments)
   }
 
