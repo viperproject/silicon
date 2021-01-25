@@ -2,6 +2,7 @@ package rpi.learner
 
 import java.util.concurrent.atomic.AtomicInteger
 import rpi.Names
+import rpi.context.Context
 import rpi.inference._
 import rpi.util.{Collections, SeqMap}
 import rpi.util.Expressions._

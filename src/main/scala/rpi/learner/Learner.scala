@@ -1,5 +1,6 @@
 package rpi.learner
 
+import rpi.context.Context
 import rpi.inference._
 
 /**
@@ -21,7 +22,7 @@ class Learner(val context: Context) {
   /**
     * The template generator.
     */
-  val templateGenerator = new TemplateGenerator(learner = this)
+  val templateGenerator = new TemplateGenerator(context)
 
   /**
     * Starts the learner and all of its subcomponents.

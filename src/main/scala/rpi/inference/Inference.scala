@@ -1,18 +1,15 @@
 package rpi.inference
 
 import rpi.builder.ProgramExtender
-import rpi.{Configuration, Names}
+import rpi.context.Context
+import rpi.Configuration
 import rpi.learner.Learner
 import rpi.teacher.Teacher
-import rpi.util.{Collections, Expressions, Namespace}
 import viper.silicon.Silicon
 import viper.silver.ast
-import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.verifier.{Success, VerificationResult, Verifier}
 
 import scala.annotation.tailrec
-import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 /**
   * An inference with a configuration.
@@ -28,7 +25,7 @@ class Inference(val configuration: Configuration) {
   /**
     * The instance of the silicon verifier used to generate the samples.
     */
-  private val verifier: Verifier = {
+  val verifier: Verifier = {
     // create instance
     val instance = new Silicon()
     // pass arguments
@@ -121,164 +118,4 @@ class Inference(val configuration: Configuration) {
       case Success => true
       case _ => false
     }
-}
-
-class Context(val inference: Inference, val program: ast.Program) {
-  /**
-    * The configuration.
-    */
-  @inline
-  def configuration: Configuration = inference.configuration
-
-  /**
-    * The flag indicating whether specification inlining is disabled.
-    */
-  val noInlining: Boolean = configuration.noInlining()
-
-  /**
-    * The namespace used to create unique identifiers.
-    */
-  private val namespace = new Namespace()
-
-  /**
-    * The templates for the atomic predicates.
-    */
-  private val templates = {
-    // TODO: Implement properly.
-    val x0 = ast.LocalVarDecl("x0", ast.Ref)()
-    val x1 = ast.LocalVarDecl("x1", ast.Ref)()
-    val t0 = ast.Predicate("t0", Seq(x0), Some(ast.NeCmp(x0.localVar, ast.NullLit()())()))()
-    val t1 = ast.Predicate("t1", Seq(x0, x1), Some(ast.NeCmp(x0.localVar, x1.localVar)()))()
-    Seq(t0, t1)
-  }
-
-  /**
-    * Instantiates the atomic predicate templates with the given arguments.
-    *
-    * @param arguments The arguments.
-    * @return The instantiated atomic predicates.
-    */
-  def instantiateAtoms(arguments: Seq[ast.Exp]): Seq[ast.Exp] =
-    templates.flatMap { template =>
-      template.formalArgs.length match {
-        case 1 => arguments
-          .map { variable =>
-            Expressions.instantiate(template, Seq(variable))
-          }
-        case 2 => Collections
-          .pairs(arguments)
-          .map { case (first, second) =>
-            Expressions.instantiate(template, Seq(first, second))
-          }
-      }
-    }
-
-  /**
-    * The program labeled with all holes plus the map containing all holes.
-    */
-  private val (_labeled, specifications) = {
-    // read configuration
-    val usePredicates = configuration.usePredicates()
-    val useSegments = configuration.useSegments()
-
-    // initialize map
-    val buffer: mutable.Buffer[Specification] = ListBuffer.empty
-
-    // helper method to create predicate accessing a specification
-    def create(prefix: String, parameters: Seq[ast.LocalVarDecl]): ast.PredicateAccessPredicate = {
-      // create specification
-      val name = namespace.uniqueIdentifier(prefix, Some(0))
-      val references = parameters
-        .filter { parameter => parameter.typ == ast.Ref }
-        .map { parameter => parameter.localVar }
-      val atoms = instantiateAtoms(references)
-      val specification = Specification(name, parameters, atoms)
-      buffer.append(specification)
-      // predicate access
-      val arguments = parameters.map { parameter => parameter.localVar }
-      val access = ast.PredicateAccess(arguments, name)()
-      val instance = Instance(specification, arguments)
-      val info = InstanceInfo(instance)
-      ast.PredicateAccessPredicate(access, ast.FullPerm()())(info = info)
-    }
-
-    // add specification for recursive predicate
-    if (usePredicates) {
-      val names = if (useSegments) Seq("x", "y") else Seq("x")
-      val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
-      val variables = parameters.take(1).map { parameter => parameter.localVar }
-      val atoms = instantiateAtoms(variables)
-      buffer.append(Specification(Names.recursive, parameters, atoms))
-    }
-
-    // add specifications for append lemma
-    if (useSegments) {
-      val names = Seq("x", "y", "z")
-      val parameters = names.map { name => ast.LocalVarDecl(name, ast.Ref)() }
-      val variables = parameters.slice(1, 2).map { parameter => parameter.localVar }
-      val atoms = instantiateAtoms(variables)
-      buffer.append(Specification(Names.appendLemma, parameters, atoms))
-    }
-
-    // labels all positions of the program for which specifications need to be inferred
-    val labeled = program.transformWithContext[Seq[ast.LocalVarDecl]]({
-      case (method: ast.Method, _) =>
-        val variables = method.formalArgs
-        val preconditions = create(Names.precondition, variables) +: method.pres
-        val postconditions = create(Names.postcondition, variables) +: method.posts
-        val transformed = method.copy(pres = preconditions, posts = postconditions)(method.pos, method.info, method.errT)
-        (transformed, variables)
-      case (loop: ast.While, variables) =>
-        val invariants = create(Names.invariant, variables) +: loop.invs
-        val transformed = loop.copy(invs = invariants)(loop.pos, loop.info, loop.errT)
-        (transformed, variables)
-      case (sequence: ast.Seqn, variables) =>
-        val declarations = sequence.scopedDecls.collect { case variable: ast.LocalVarDecl => variable }
-        (sequence, variables ++ declarations)
-    }, Seq.empty, Traverse.TopDown)
-
-    // create specification map
-    val specifications = buffer
-      .map { specification => specification.name -> specification }
-      .toMap
-
-    (labeled, specifications)
-  }
-
-  def labeled: ast.Program = _labeled
-
-  def predicates(hypothesis: Hypothesis): Seq[ast.Predicate] = {
-    // get all specifications
-    val all =
-      if (noInlining) specifications.values.filter { specification => specification.name != Names.appendLemma }
-      else specifications.get(Names.recursive).toSeq
-    // create predicates
-    all
-      .map { specification => hypothesis.getPredicate(specification) }
-      .toSeq
-  }
-
-  /**
-    * Returns the specification with the given name.
-    *
-    * @param name The name of the specification.
-    * @return The specifications.
-    */
-  def getSpecification(name: String): Specification =
-    specifications(name)
-
-  /**
-    * Returns an instance of the specifications with the given name and arguments.
-    *
-    * @param name      The name of the specification.
-    * @param arguments The arguments with which the specifications should be instantiated.
-    * @return The instance.
-    */
-  def getInstance(name: String, arguments: Seq[ast.Exp]): Instance = {
-    val specification = getSpecification(name)
-    Instance(specification, arguments)
-  }
-
-  def getInstance(access: ast.PredicateAccess): Instance =
-    getInstance(access.predicateName, access.args)
 }

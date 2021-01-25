@@ -28,4 +28,16 @@ object Statements {
   @inline
   def makeAssign(target: ast.LocalVar, value: ast.Exp): ast.LocalVarAssign =
     ast.LocalVarAssign(target, value)()
+
+  @inline
+  def makeInhale(expression: ast.Exp,info: ast.Info = ast.NoInfo): ast.Inhale =
+    ast.Inhale(expression)(info = info)
+
+  @inline
+  def makeExhale(expression: ast.Exp, info: ast.Info = ast.NoInfo): ast.Exhale =
+    ast.Exhale(expression)(info = info)
+
+  @inline
+  def makeLabel(name: String): ast.Label =
+    ast.Label(name, Seq.empty)()
 }

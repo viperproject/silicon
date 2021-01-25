@@ -1,6 +1,7 @@
 package rpi.learner
 
 import rpi.Names
+import rpi.context.Context
 import rpi.inference._
 import rpi.util.Expressions._
 import rpi.util.{Collections, SetMap}
@@ -133,13 +134,7 @@ case class Truncation(condition: ast.Exp, body: TemplateExpression) extends Temp
   *
   * @param learner The pointer to the learner.
   */
-class TemplateGenerator(learner: Learner) {
-  /**
-    * The pointer to the context.
-    */
-  private val context: Context =
-    learner.context
-
+class TemplateGenerator(context: Context) {
   /**
     * The maximal length of access paths that may appear in specifications.
     */
@@ -210,7 +205,7 @@ class TemplateGenerator(learner: Learner) {
             }
           }
           // compute template
-          val specification = context.getSpecification(name)
+          val specification = context.specification(name)
           createTemplate(specification, fields ++ filtered)
           // update global structure
           global.join(local)
@@ -218,7 +213,7 @@ class TemplateGenerator(learner: Learner) {
 
     // compute template for recursive predicate
     if (usePredicates) {
-      val recursive = context.getSpecification(Names.recursive)
+      val recursive = context.specification(Names.recursive)
       createRecursiveTemplate(recursive, structure)
     }
 
@@ -251,8 +246,6 @@ class TemplateGenerator(learner: Learner) {
     */
   private def createRecursiveTemplate(specification: Specification, structure: Structure)
                                      (implicit id: AtomicInteger, buffer: mutable.Buffer[Template]): Unit = {
-
-
     // collect resources
     val resources: Set[ast.LocationAccess] = {
       // get fields and recursions
@@ -279,7 +272,7 @@ class TemplateGenerator(learner: Learner) {
 
     if (useSegments) {
       // get lemma specification and parameter variables
-      val lemmaSpecification = context.getSpecification(Names.appendLemma)
+      val lemmaSpecification = context.specification(Names.appendLemma)
       val Seq(from, current, next) = lemmaSpecification.variables
       // the recursive predicate instance used to adapt expressions
       val instance = Instance(specification, Seq(current, next))
@@ -340,7 +333,7 @@ class TemplateGenerator(learner: Learner) {
       .sortWith { case ((first, _), (second, _)) => first < second }
       .map { case (_, field) =>
         val guardId = id.getAndIncrement()
-        Guarded(guardId, Wrapped(makeAccessPredicate(field)))
+        Guarded(guardId, Wrapped(makeFieldAccess(field)))
       }
 
     // create template expressions for predicates
@@ -409,7 +402,7 @@ class TemplateGenerator(learner: Learner) {
         .collect { case predicate: ast.PredicateAccess =>
           // create resource
           val guardId = id.getAndIncrement()
-          Guarded(guardId, Wrapped(makeAccessPredicate(predicate)))
+          Guarded(guardId, Wrapped(makePredicateAccess(predicate)))
         }
 
     // return template expression
@@ -479,7 +472,7 @@ class TemplateGenerator(learner: Learner) {
     }
 
     private def createRecursion(path: Seq[String]): ast.PredicateAccess = {
-      val specification = context.getSpecification(Names.recursive)
+      val specification = context.specification(Names.recursive)
       val variable +: others = specification.variables
       val first = fromSeq(variable.name +: path)
       ast.PredicateAccess(first +: others, Names.recursive)()

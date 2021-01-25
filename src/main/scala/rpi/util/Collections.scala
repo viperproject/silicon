@@ -28,7 +28,7 @@ object SeqMap {
   def add[K, V](map: Map[K, Seq[V]], key: K, element: V): Map[K, Seq[V]] =
     map.updated(key, map.get(key).map(_ :+ element).getOrElse(Seq(element)))
 
-  def addAll[K,V](map: Map[K,Seq[V]], key: K, elements: Seq[V]): Map[K,Seq[V]] =
+  def addAll[K, V](map: Map[K, Seq[V]], key: K, elements: Seq[V]): Map[K, Seq[V]] =
     map.updated(key, map.get(key).map(_ ++ elements).getOrElse(elements))
 }
 

@@ -3,6 +3,7 @@ package rpi.teacher
 import rpi.Names
 import rpi.inference._
 import rpi.teacher.state.{Adaptor, ModelEvaluator, Snapshot, StateEvaluator}
+import rpi.util.Infos._
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silver.ast
 import viper.silver.verifier._
@@ -26,10 +27,10 @@ object SampleExtractor {
     * @param context The context object.
     * @return The extracted sample.
     */
-  def extractFraming(error: VerificationError, context: CheckContext): Sample = {
+  def extractFraming(error: VerificationError, context: QueryContext): Sample = {
     println(error)
     // get counter example and offending location
-    val (counter, offending, Some(info)) = extractInformation[FramingInfo](error)
+    val (counter, offending, Some(info)) = extractInformation[LocationInfo](error)
 
     // get label and instance
     val (label, instance) = {
@@ -65,13 +66,13 @@ object SampleExtractor {
     * @param checkContext The context object.
     * @return The extracted sample.
     */
-  def extractBasic(error: VerificationError, checkContext: CheckContext): Sample = {
+  def extractBasic(error: VerificationError, checkContext: QueryContext): Sample = {
     // read configuration
     val noInlining = checkContext.configuration.noInlining()
 
     println(error)
     // get counter example, offending location, and context info
-    val (counter, offending, info) = extractInformation[BasicInfo](error)
+    val (counter, offending, info) = extractInformation[InstanceInfo](error)
 
     // get state and model
     val siliconState = counter.state
@@ -110,7 +111,7 @@ object SampleExtractor {
 
     // get current location
     val currentLocation = info match {
-      case Some(BasicInfo(instance)) =>
+      case Some(InstanceInfo(instance)) =>
         if (noInlining || Names.isRecursive(instance.name)) instance.toActual(offending)
         else offending
       case _ => offending
@@ -187,7 +188,7 @@ object SampleExtractor {
     * @tparam T The type of the context information.
     * @return The extracted information.
     */
-  private def extractInformation[T <: CheckInfo : ClassTag](error: VerificationError): (Counter, ast.LocationAccess, Option[T]) = {
+  private def extractInformation[T <: ValueInfo[_] : ClassTag](error: VerificationError): (Counter, ast.LocationAccess, Option[T]) = {
     // extract counter example
     val counter = error.counterexample match {
       case Some(value: Counter) => value

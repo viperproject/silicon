@@ -1,6 +1,5 @@
 package rpi.builder
 
-import rpi.inference.Context
 import rpi.util.Expressions._
 import rpi.util.Statements._
 import viper.silver.ast
@@ -9,11 +8,9 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
-  * Super class for program builders.
-  *
-  * @param context The context.
+  * Super trait for all program builders.
   */
-abstract class ProgramBuilder(val context: Context) {
+trait ProgramBuilder {
   /**
     * The magic fields that enables fold / unfold heuristics
     */
@@ -81,11 +78,11 @@ abstract class ProgramBuilder(val context: Context) {
 
   @inline
   protected def addInhale(expression: ast.Exp, info: ast.Info = ast.NoInfo): Unit =
-    addStatement(ast.Inhale(expression)(info = info))
+    addStatement(makeInhale(expression, info))
 
   @inline
   protected def addExhale(expression: ast.Exp, info: ast.Info = ast.NoInfo): Unit =
-    addStatement(ast.Exhale(expression)(info = info))
+    addStatement(makeExhale(expression, info))
 
   @inline
   protected def addUnfold(predicate: ast.PredicateAccessPredicate): Unit =
@@ -94,5 +91,9 @@ abstract class ProgramBuilder(val context: Context) {
   @inline
   protected def addFold(predicate: ast.PredicateAccessPredicate, info: ast.Info = ast.NoInfo): Unit =
     addStatement(ast.Fold(predicate)(info = info))
+
+  @inline
+  protected def addLabel(name: String): Unit =
+    addStatement(makeLabel(name))
 }
 

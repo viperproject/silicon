@@ -1,7 +1,8 @@
 package rpi.inference
 
 import rpi.Names
-import rpi.util.{Expressions, ValueInfo}
+import rpi.util.Expressions._
+import rpi.util.Infos.InstanceInfo
 import viper.silver.ast
 
 /**
@@ -10,8 +11,27 @@ import viper.silver.ast
   * @param name       The name identifying the specification.
   * @param parameters The parameters for the specification.
   * @param atoms      The atomic predicates that may be used for the specification.
+  * @param existing   The existing part of the specification.
   */
-case class Specification(name: String, parameters: Seq[ast.LocalVarDecl], atoms: Seq[ast.Exp]) {
+case class Specification(name: String,
+                         parameters: Seq[ast.LocalVarDecl],
+                         atoms: Seq[ast.Exp],
+                         existing: Seq[ast.Exp] = Seq.empty) {
+
+  val instance: Instance =
+    Instance(this, variables)
+
+  /**
+    * The placeholder expression for the inferred part of the specification.
+    */
+  val placeholder: ast.PredicateAccessPredicate = {
+    val info = InstanceInfo(instance)
+    makePredciateAccess(name, variables, info)
+  }
+
+  val all: Seq[ast.Exp] =
+    placeholder +: existing
+
   /**
     * Returns the variables corresponding to the parameters.
     * @return The variables.
@@ -43,8 +63,8 @@ case class Instance(specification: Specification, arguments: Seq[ast.Exp]) {
   /**
     * The substitution map for the formal-to-actual translation.
     */
-  private lazy val toActualMap: Map[String, ast.Exp] =
-    Expressions.substitutionMap(specification.parameters, arguments)
+  private lazy val bindings: Map[String, ast.Exp] =
+    substitutionMap(specification.parameters, arguments)
 
   /**
     * Returns the name of the specification.
@@ -86,7 +106,7 @@ case class Instance(specification: Specification, arguments: Seq[ast.Exp]) {
     * @return The expression in therms of the actual arguments.
     */
   def toActual(expression: ast.Exp): ast.Exp =
-    Expressions.substitute(expression, toActualMap)
+    substitute(expression, bindings)
 
   /**
     * Replaces the formal arguments of the given location access with their corresponding actual counterparts.
@@ -122,5 +142,3 @@ case class Instance(specification: Specification, arguments: Seq[ast.Exp]) {
   override def toString: String =
     s"$name(${arguments.mkString(", ")})"
 }
-
-case class InstanceInfo(instance: Instance) extends ValueInfo

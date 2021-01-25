@@ -1,7 +1,9 @@
 package rpi.teacher
 
 import rpi.Configuration
+import rpi.context.Context
 import rpi.inference._
+import rpi.teacher.query.QueryBuilder
 import viper.silver.ast
 import viper.silver.verifier.{Failure, Success, VerificationError}
 
@@ -14,21 +16,7 @@ class Teacher(val context: Context) {
   /**
     * The builder used to build the programs used to check hypotheses.
     */
-  private val builder = new CheckBuilder(context)
-
-  /**
-    * The list of all checks.
-    */
-  private val checks = {
-    // read configuration
-    val configuration = context.configuration
-    val useAnnotations = configuration.useAnnotations()
-    val noBatching = configuration.noBranching()
-    // collect checks
-    val collected = Checks.collect(context.labeled, useAnnotations)
-    if (noBatching) collected.map { check => Seq(check) }
-    else Seq(collected)
-  }
+  private val builder = new QueryBuilder(context)
 
   /**
     * Starts the teacher and all of its subcomponents.
@@ -51,16 +39,21 @@ class Teacher(val context: Context) {
     */
   def check(hypothesis: Hypothesis): Seq[Sample] = {
     // self-framing check
-    val framing = {
-      val (check, context) = builder.framingChecks(hypothesis)
-      execute(check, error => SampleExtractor.extractFraming(error, context))
-    }
-    // other checks, if hypothesis is self-framing
-    if (framing.isEmpty) checks
-      .flatMap { group =>
-        val (check, context) = builder.basicChecks(group, hypothesis)
-        execute(check, error => SampleExtractor.extractBasic(error, context))
+    val framing =
+    // TODO: Re-enable.
+      if (true) Seq.empty
+      else {
+        val (check, context) = builder.framingQuery(hypothesis)
+        execute(check, error => SampleExtractor.extractFraming(error, context))
       }
+    // other checks, if hypothesis is self-framing
+    if (framing.isEmpty)
+      context
+        .batches
+        .flatMap { batch =>
+          val (check, context) = builder.basicQuery(batch, hypothesis)
+          execute(check, error => SampleExtractor.extractBasic(error, context))
+        }
     else framing
   }
 
@@ -73,7 +66,7 @@ class Teacher(val context: Context) {
     * @return The extracted samples.
     */
   private def execute(program: ast.Program, extract: VerificationError => Sample): Seq[Sample] =
-    context.inference.verify(program) match {
+    context.verifier.verify(program) match {
       case Success => Seq.empty
       case Failure(errors) => errors
         .map {
@@ -84,9 +77,11 @@ class Teacher(val context: Context) {
 }
 
 /**
-  * A context object used to pass information from the check builder to the sample extractor.
+  * A context object used to pass information from the query builder to the sample extractor.
   */
-class CheckContext(val configuration: Configuration) {
+// TODO: No configuration here.
+// TODO: Probably rework entirely.
+class QueryContext(val configuration: Configuration) {
   /**
     * The labels and instances of the inhaled and exhaled states.
     */
@@ -141,19 +136,4 @@ class CheckContext(val configuration: Configuration) {
       .updated(access, name)
     names = names.updated(label, updated)
   }
-}
-
-trait CheckInfo extends ast.Info {
-  override def isCached: Boolean = false
-}
-
-case class FramingInfo(location: ast.LocationAccess) extends CheckInfo {
-  override def comment: Seq[String] =
-    Seq.empty
-}
-
-// TODO: Use instance info?
-case class BasicInfo(instance: Instance) extends CheckInfo {
-  override def comment: Seq[String] =
-    Seq(instance.toString)
 }

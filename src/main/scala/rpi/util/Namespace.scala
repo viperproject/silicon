@@ -9,21 +9,21 @@ class Namespace(private var map: Map[String, Int] = Map.empty) {
   /**
     * Returns a unique identifier.
     *
-    * @param base    The base name of the identifier.
+    * @param name    The base name of the identifier.
     * @param version The optional version.
     * @return A unique identifier.
     */
-  def uniqueIdentifier(base: String, version: Option[Int]): String =
-    if (version.isDefined || map.contains(base)) {
-      var current = math.max(version.getOrElse(0), map.getOrElse(base, 0))
-      while (map.contains(s"${base}_$current")) {
+  def uniqueIdentifier(name: String, version: Option[Int] = None): String =
+    if (version.isDefined || map.contains(name)) {
+      var current = math.max(version.getOrElse(0), map.getOrElse(name, 0))
+      while (map.contains(s"${name}_$current")) {
         current = current + 1
       }
-      map = map.updated(base, current + 1)
-      s"${base}_$current"
+      map = map.updated(name, current + 1)
+      s"${name}_$current"
     } else {
-      map = map.updated(base, 0)
-      base
+      map = map.updated(name, 0)
+      name
     }
 
   /**

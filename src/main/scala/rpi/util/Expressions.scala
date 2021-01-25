@@ -47,6 +47,10 @@ object Expressions {
       case ast.LocalVar(name, _) => map(name)
     }
 
+  @inline
+  def makeDeclaration(variable: ast.LocalVar): ast.LocalVarDecl =
+    ast.LocalVarDecl(variable.name, variable.typ)()
+
   /**
     * Returns a true literal.
     *
@@ -134,6 +138,14 @@ object Expressions {
   def makeImplication(left: ast.Exp, right: ast.Exp): ast.Implies =
     ast.Implies(left, right)()
 
+  @inline
+  def makeBoolean(name: String): ast.LocalVar =
+    makeVariable(name, ast.Bool)
+
+  @inline
+  def makeVariable(name: String, typ: ast.Type): ast.LocalVar =
+    ast.LocalVar(name, typ)()
+
   /**
     * Returns an equality expression that compares the two given expressions.
     *
@@ -146,6 +158,26 @@ object Expressions {
     ast.EqCmp(left, right)()
 
   @inline
+  def makeNone: ast.NoPerm =
+    ast.NoPerm()()
+
+  @inline
+  def makeFull: ast.FullPerm =
+    ast.FullPerm()()
+
+  @inline
+  def makeCurrent(access: ast.ResourceAccess): ast.CurrentPerm =
+    ast.CurrentPerm(access)()
+
+  @inline
+  def makeTernary(condition: ast.Exp, thenBranch: ast.Exp, elseBranch: ast.Exp): ast.CondExp =
+    ast.CondExp(condition, thenBranch, elseBranch)()
+
+  def makeTernary(conditions: Seq[ast.Exp], thenBranch: ast.Exp, elseBranch: ast.Exp): ast.Exp =
+    if (conditions.isEmpty) thenBranch
+    else makeTernary(makeAnd(conditions), thenBranch, elseBranch)
+
+  @inline
   def makeCall(method: ast.Method, arguments: Seq[ast.Exp]): ast.MethodCall =
     ast.MethodCall(method, arguments, Seq.empty)()
 
@@ -155,16 +187,25 @@ object Expressions {
 
   private def makeRecursive(arguments: Seq[ast.Exp]): ast.PredicateAccessPredicate = {
     val access = ast.PredicateAccess(arguments, Names.recursive)()
-    makeAccessPredicate(access)
+    makePredicateAccess(access)
   }
 
   @inline
-  def makeAccessPredicate(access: ast.FieldAccess): ast.FieldAccessPredicate =
+  def makePredicate(name: String, arguments: Seq[ast.Exp]): ast.PredicateAccess =
+    ast.PredicateAccess(arguments, name)()
+
+  @inline
+  def makeFieldAccess(access: ast.FieldAccess): ast.FieldAccessPredicate =
     ast.FieldAccessPredicate(access, ast.FullPerm()())()
 
   @inline
-  def makeAccessPredicate(access: ast.PredicateAccess): ast.PredicateAccessPredicate =
-    ast.PredicateAccessPredicate(access, ast.FullPerm()())()
+  def makePredciateAccess(name: String, arguments: Seq[ast.Exp], info: ast.Info = ast.NoInfo): ast.PredicateAccessPredicate = {
+    makePredicateAccess(makePredicate(name, arguments), info)
+  }
+
+  @inline
+  def makePredicateAccess(access: ast.PredicateAccess, info: ast.Info = ast.NoInfo): ast.PredicateAccessPredicate =
+    ast.PredicateAccessPredicate(access, ast.FullPerm()())(info = info)
 
   /**
     * Simplifies the given expression.

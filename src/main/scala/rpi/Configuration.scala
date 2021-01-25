@@ -35,6 +35,7 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
   /**
     * Note: Only there to have means to make sure annotations are disabled.
     */
+  // TODO: make sure this is true if annotations are disabled.
   val useHeuristics: ScallopOption[Boolean] =
     opt[Boolean](
       name = "useHeuristics",
