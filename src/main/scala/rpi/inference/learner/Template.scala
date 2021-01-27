@@ -1,9 +1,9 @@
-package rpi.learner
+package rpi.inference.learner
 
 import rpi.Names
-import rpi.context.Context
+import rpi.inference.context.{BindingInstance, Context, Specification}
 import rpi.inference._
-import rpi.util.Expressions._
+import rpi.util.ast.Expressions._
 import rpi.util.{Collections, SetMap}
 import viper.silver.ast
 
@@ -111,7 +111,7 @@ case class Guarded(guardId: Int, body: TemplateExpression) extends TemplateExpre
   *
   * @param choiceId The id of the choice.
   * @param options  The available options.
-  * @param body The template expression for which the choice has to be made.
+  * @param body     The template expression for which the choice has to be made.
   */
 case class Choice(choiceId: Int, options: Seq[ast.Exp], body: TemplateExpression) extends TemplateExpression {
   override def toString: String =
@@ -122,7 +122,7 @@ case class Choice(choiceId: Int, options: Seq[ast.Exp], body: TemplateExpression
   * A truncated template expression.
   *
   * @param condition The truncation condition.
-  * @param body The truncated template expression.
+  * @param body      The truncated template expression.
   */
 case class Truncation(condition: ast.Exp, body: TemplateExpression) extends TemplateExpression {
   override def toString: String =
@@ -132,7 +132,7 @@ case class Truncation(condition: ast.Exp, body: TemplateExpression) extends Temp
 /**
   * A helper class used to compute templates.
   *
-  * @param learner The pointer to the learner.
+  * @param context The context.
   */
 class TemplateGenerator(context: Context) {
   /**
@@ -275,7 +275,7 @@ class TemplateGenerator(context: Context) {
       val lemmaSpecification = context.specification(Names.appendLemma)
       val Seq(from, current, next) = lemmaSpecification.variables
       // the recursive predicate instance used to adapt expressions
-      val instance = Instance(specification, Seq(current, next))
+      val instance = BindingInstance(specification, Seq(current, next))
 
       /**
         * Helper method that extracts the link part of the append lemma.
@@ -328,12 +328,12 @@ class TemplateGenerator(context: Context) {
                                 (implicit id: AtomicInteger): TemplateExpression = {
     // create template expressions for fields
     val fields = resources
-      .collect { case field: ast.FieldAccess => (getDepth(field), field) }
+      .collect { case field: ast.FieldAccess => (getLength(field), field) }
       .filter { case (length, _) => length <= maxLength }
       .sortWith { case ((first, _), (second, _)) => first < second }
       .map { case (_, field) =>
         val guardId = id.getAndIncrement()
-        Guarded(guardId, Wrapped(makeFieldAccess(field)))
+        Guarded(guardId, Wrapped(makeResource(field)))
       }
 
     // create template expressions for predicates
@@ -402,7 +402,7 @@ class TemplateGenerator(context: Context) {
         .collect { case predicate: ast.PredicateAccess =>
           // create resource
           val guardId = id.getAndIncrement()
-          Guarded(guardId, Wrapped(makePredicateAccess(predicate)))
+          Guarded(guardId, Wrapped(makeResource(predicate)))
         }
 
     // return template expression

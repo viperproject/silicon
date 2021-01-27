@@ -1,7 +1,7 @@
-package rpi.learner
+package rpi.inference.learner
 
 import rpi.inference.Hypothesis
-import rpi.util.Expressions._
+import rpi.util.ast.Expressions._
 import viper.silver.ast
 
 import scala.collection.mutable
@@ -70,7 +70,7 @@ class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
     * Builds the lemma corresponding to the given template.
     *
     * @param template The template.
-    * @return The lemmaa method.
+    * @return The lemma method.
     */
   private def buildLemma(template: LemmaTemplate): ast.Method = {
     val name = template.name

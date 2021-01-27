@@ -1,4 +1,4 @@
-package rpi.teacher.state
+package rpi.inference.teacher.state
 
 import viper.silicon.state.terms
 import viper.silicon.state.terms.{Term, sorts}

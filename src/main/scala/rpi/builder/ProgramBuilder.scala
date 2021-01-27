@@ -1,14 +1,14 @@
 package rpi.builder
 
-import rpi.util.Expressions._
-import rpi.util.Statements._
+import rpi.util.ast.Expressions._
+import rpi.util.ast.Statements._
 import viper.silver.ast
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
-  * Super trait for all program builders.
+  * A program builder.
   */
 trait ProgramBuilder {
   /**

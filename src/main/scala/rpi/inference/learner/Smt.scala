@@ -1,4 +1,4 @@
-package rpi.learner
+package rpi.inference.learner
 
 import fastparse.Parsed
 

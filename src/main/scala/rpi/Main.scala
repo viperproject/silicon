@@ -1,5 +1,7 @@
 package rpi
 
+import rpi.inference.PrintRunner
+
 /**
   * The main object with the main method.
   */

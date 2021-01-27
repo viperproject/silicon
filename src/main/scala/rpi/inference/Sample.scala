@@ -1,10 +1,11 @@
 package rpi.inference
 
-import rpi.util.Expressions._
+import rpi.inference.context.Specification
+import rpi.util.ast.Expressions._
 import viper.silver.ast
 
 /**
-  * The super trait for all samples..
+  * The super trait for all samples.
   */
 trait Sample
 

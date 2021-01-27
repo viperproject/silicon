@@ -1,18 +1,21 @@
 package rpi.builder
 
 import rpi.Names
-import rpi.context.{Annotation, Context}
+import rpi.inference.context.Context
 import rpi.inference.Hypothesis
-import rpi.util.Expressions._
-import rpi.util.Infos._
+import rpi.inference.annotation.Annotation
+import rpi.util.ast.Expressions._
+import rpi.util.ast.ValueInfo
 import viper.silver.ast
 
 /**
   * Mixin providing methods to unfold and fold specifications.
   */
 trait Folding extends ProgramBuilder {
-
-  protected val context: Context
+  /**
+    * The context.
+    */
+  protected def context: Context
 
   // TODO: Incorporate into annotation info.
   var old: Option[String] = None
@@ -37,16 +40,14 @@ trait Folding extends ProgramBuilder {
         unfold(guarded, guards :+ guard)
       case predicate@ast.PredicateAccessPredicate(access, _) =>
         val depth = getDepth(access.args.head)
-        if (depth <= maxDepth) {
+        if (depth < maxDepth) {
           val unfolds = makeScope {
             // unfold predicate
             addUnfold(predicate)
             // recursively unfold predicates appearing in body
-            if (depth < maxDepth) {
-              val instance = context.instance(access)
-              val body = hypothesis.getPredicateBody(instance)
-              unfold(body)
-            }
+            val instance = context.instance(predicate.loc)
+            val body = hypothesis.getPredicateBody(instance)
+            unfold(body)
           }
           addConditional(guards, unfolds)
         } else default(predicate, guards)
@@ -74,14 +75,14 @@ trait Folding extends ProgramBuilder {
         fold(guarded, guards :+ guard)
       case predicate@ast.PredicateAccessPredicate(access, _) =>
         val depth = getDepth(access.args.head)
-        if (depth <= maxDepth) {
+        if (depth < maxDepth) {
           val folds = makeScope {
             // recursively fold predicates appearing in body
-            val instance = context.instance(access)
+            val instance = context.instance(predicate.loc)
             val body = hypothesis.getPredicateBody(instance)
             fold(body)
             // fold predicate
-            val info = InstanceInfo(instance)
+            val info = ValueInfo(instance)
             addFold(predicate, info)
           }
           addConditional(guards, folds)

@@ -1,9 +1,9 @@
-package rpi.teacher
+package rpi.inference.teacher
 
 import rpi.Configuration
-import rpi.context.Context
+import rpi.inference.context.{Context, Instance}
 import rpi.inference._
-import rpi.teacher.query.QueryBuilder
+import rpi.inference.teacher.query.QueryBuilder
 import viper.silver.ast
 import viper.silver.verifier.{Failure, Success, VerificationError}
 
@@ -39,13 +39,11 @@ class Teacher(val context: Context) {
     */
   def check(hypothesis: Hypothesis): Seq[Sample] = {
     // self-framing check
-    val framing =
-    // TODO: Re-enable.
-      if (true) Seq.empty
-      else {
-        val (check, context) = builder.framingQuery(hypothesis)
-        execute(check, error => SampleExtractor.extractFraming(error, context))
-      }
+    val framing = {
+      // TODO: Only perform if syntactic structure suggests that framing might be an issue.
+      val (check, context) = builder.framingQuery(hypothesis)
+      execute(check, error => SampleExtractor.extractFraming(error, context))
+    }
     // other checks, if hypothesis is self-framing
     if (framing.isEmpty)
       context
@@ -71,7 +69,7 @@ class Teacher(val context: Context) {
       case Failure(errors) => errors
         .map {
           case error: VerificationError => extract(error)
-          case _ => ??? // TODO: Error handling.
+          case error => sys.error(s"Unexpected verification failure: $error")
         }
     }
 }

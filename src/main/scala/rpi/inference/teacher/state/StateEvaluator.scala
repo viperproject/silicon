@@ -1,4 +1,4 @@
-package rpi.teacher.state
+package rpi.inference.teacher.state
 
 import viper.silicon.resources.FieldID
 import viper.silicon.state.{BasicChunk, State, terms}

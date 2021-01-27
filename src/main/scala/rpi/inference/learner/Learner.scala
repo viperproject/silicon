@@ -1,6 +1,6 @@
-package rpi.learner
+package rpi.inference.learner
 
-import rpi.context.Context
+import rpi.inference.context.Context
 import rpi.inference._
 
 /**

@@ -1,7 +1,7 @@
-package rpi
+package rpi.inference
 
-import rpi.inference.Inference
-import rpi.util.Parser
+import rpi.Configuration
+import rpi.util.ast.Parser
 import viper.silver.ast
 
 /**

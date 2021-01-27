@@ -1,6 +1,7 @@
-package rpi.context
+package rpi.inference.context
 
-import rpi.util.{Collections, Expressions}
+import rpi.util.Collections
+import rpi.util.ast.Expressions
 import viper.silver.ast
 
 /**
@@ -22,11 +23,23 @@ class Atoms(program: ast.Program) {
     Seq(nullity, equality)
   }
 
+  /**
+    * Instantiates atoms corresponding to the given parameters.
+    *
+    * @param parameters The parameters.
+    * @return The atoms.
+    */
   def fromParameters(parameters: Seq[ast.LocalVarDecl]): Seq[ast.Exp] = {
     val variables = parameters.map { parameter => parameter.localVar }
     fromExpressions(variables)
   }
 
+  /**
+    * Instantiates atoms corresponding to the given expressions.
+    *
+    * @param expressions The expressions.
+    * @return The atoms.
+    */
   def fromExpressions(expressions: Seq[ast.Exp]): Seq[ast.Exp] = {
     // get reference-typed expressions
     val references = expressions

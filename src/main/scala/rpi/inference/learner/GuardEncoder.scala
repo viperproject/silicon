@@ -1,11 +1,11 @@
-package rpi.learner
+package rpi.inference.learner
 
 import java.util.concurrent.atomic.AtomicInteger
 import rpi.Names
-import rpi.context.Context
+import rpi.inference.context.Context
 import rpi.inference._
 import rpi.util.{Collections, SeqMap}
-import rpi.util.Expressions._
+import rpi.util.ast.Expressions._
 import viper.silver.ast
 
 import scala.collection.mutable

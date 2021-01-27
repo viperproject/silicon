@@ -12,7 +12,8 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
     opt[String](
       name = "z3",
       descr = "The path to the z3 executable",
-      default = Properties.envOrNone("Z3_EXE"))
+      default = Properties.envOrNone("Z3_EXE"),
+      required = true)
 
   val maxRounds: ScallopOption[Int] =
     opt[Int](

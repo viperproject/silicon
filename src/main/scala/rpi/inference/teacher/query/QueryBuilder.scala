@@ -1,52 +1,114 @@
-package rpi.teacher.query
+package rpi.inference.teacher.query
 
 import rpi.{Configuration, Names}
 import rpi.builder.{CheckExtender, Folding}
-import rpi.context.{Check, Context}
-import rpi.inference.{Hypothesis, Instance}
-import rpi.teacher.QueryContext
-import rpi.util.Expressions._
-import rpi.util.Infos.InstanceInfo
+import rpi.inference.context.{Check, Context, IdentityInstance, Instance}
+import rpi.inference.Hypothesis
+import rpi.inference.annotation.Annotation
+import rpi.inference.teacher.QueryContext
+import rpi.util.ast.Expressions._
 import rpi.util.Namespace
-import rpi.util.Statements._
+import rpi.util.ast.Statements._
+import rpi.util.ast.{Comment, Cut, ValueInfo}
 import viper.silver.ast
 
+/**
+  * A program builder that builds queries.
+  *
+  * @param context The context.
+  */
 class QueryBuilder(protected val context: Context) extends CheckExtender with Folding {
+  /**
+    * Returns the configuration.
+    *
+    * @return The configuration.
+    */
+  private def configuration: Configuration =
+    context.configuration
 
+  /**
+    * The namespace used to generate unique identifiers.
+    */
   private var namespace: Namespace = _
 
   private var query: QueryContext = _
 
-  private def configuration: Configuration =
-    context.configuration
-
   def framingQuery(hypothesis: Hypothesis): (ast.Program, QueryContext) = {
+    /**
+      * Helper method that inhales the given expression conjunct-wise. The expression is implicitly rewritten to have
+      * its conjuncts at the top level by pushing implications inside.
+      *
+      * @param expression The expression to inhale.
+      * @param guards     The guards collected so far.
+      */
+    def inhale(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty): Unit =
+      expression match {
+        case ast.And(left, right) =>
+          inhale(left, guards)
+          inhale(right, guards)
+        case ast.Implies(guard, guarded) =>
+          inhale(guarded, guards :+ guard)
+        case conjunct =>
+          // compute info used to extract framing sample
+          val info = conjunct match {
+            case ast.FieldAccessPredicate(location, _) => ValueInfo(location)
+            case ast.PredicateAccessPredicate(location, _) => ValueInfo(location)
+            case _ => ast.NoInfo
+          }
+          // inhale conjunct
+          val implication = makeImplication(makeAnd(guards), conjunct)
+          addInhale(implication, info)
+      }
+
+    // reset
     clear()
-    ???
-  }
-
-  def basicQuery(checks: Seq[Check], hypothesis: Hypothesis): (ast.Program, QueryContext) = {
-    clear()
-
-    val methods = checks.map { check =>
-      val body = process(check, hypothesis)
-      buildMethod(check.name, body)
-    }
-
+    // build method for each specification predicate
+    val methods = hypothesis
+      .predicates
+      .map { predicate =>
+        val body = makeScope {
+          // get specification instance
+          val specification = context.specification(predicate.name)
+          val instance = IdentityInstance(specification)
+          // save state snapshot
+          saveSnapshot(instance)
+          // inhale predicate body
+          val body = hypothesis.getPredicateBody(instance)
+          inhale(body)
+        }
+        // build method
+        val name = namespace.uniqueIdentifier(s"check_${predicate.name}")
+        buildMethod(name, body)
+      }
+    // build program
     val program = buildProgram(methods, hypothesis)
-
+    println(program)
     (program, query)
   }
 
-  protected override def instrument(instrumented: ast.Stmt, hypothesis: Hypothesis): Unit =
+  def basicQuery(checks: Seq[Check], hypothesis: Hypothesis): (ast.Program, QueryContext) = {
+    // reset
+    clear()
+    // build method for each check
+    val methods = checks.map { check =>
+      val body = processCheck(check, hypothesis)
+      buildMethod(check.name, body)
+    }
+    // build program
+    val program = buildProgram(methods, hypothesis)
+    println(program)
+    (program, query)
+  }
+
+  protected override def instrumentStatement(instrumented: ast.Stmt)(implicit hypothesis: Hypothesis, annotations: Seq[Annotation]): Unit =
     instrumented match {
       case ast.Seqn(statements, _) =>
-        statements.foreach { statement => instrument(statement, hypothesis) }
+        statements.foreach { statement => instrumentStatement(statement) }
       case ast.Inhale(expression) =>
         expression match {
           case placeholder: ast.PredicateAccessPredicate =>
             // get specification
-            val instance = context.instance(placeholder.loc)
+            val instance = ValueInfo.value[Instance](placeholder)
             val body = hypothesis.getPredicateBody(instance)
             // inhale placeholder predicate
             if (configuration.noInlining()) {
@@ -55,12 +117,12 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
               addUnfold(placeholder)
             } else {
               // inhale predicate body
-              val info = InstanceInfo(instance)
+              val info = new ValueInfo(instance) with Comment
               addInhale(body, info)
             }
             // unfold and save
-            // TODO: depth
-            unfold(body)(0, hypothesis)
+            val maxDepth = if (configuration.useAnnotations()) check.depth else 0
+            unfold(body)(maxDepth, hypothesis)
             saveSnapshot(instance)
           case _ =>
             addInhale(expression)
@@ -69,15 +131,17 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
         expression match {
           case placeholder: ast.PredicateAccessPredicate =>
             // get specification
-            val instance = context.instance(placeholder.loc)
+            val instance = ValueInfo.value[Instance](placeholder)
             val body = hypothesis.getPredicateBody(instance)
             // save and fold
-            // TODO: depth and annotations
             implicit val label: String = saveSnapshot(instance)
             if (configuration.useAnnotations()) {
-              val annotations = Seq.empty
-              foldWithAnnotations(body, annotations)(0, hypothesis, savePermission)
-            } else fold(body)(0, hypothesis, savePermission)
+              val maxDepth = check.depth
+              foldWithAnnotations(body, annotations)(maxDepth, hypothesis, savePermission)
+            } else {
+              val maxDepth = configuration.heuristicsFoldDepth()
+              fold(body)(maxDepth, hypothesis, savePermission)
+            }
             // exhale placeholder predicate
             if (configuration.noInlining()) {
               // fold and exhale predicate
@@ -85,12 +149,14 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
               addExhale(placeholder)
             } else {
               // exhale predicate body
-              val info = InstanceInfo(instance)
+              val info = new ValueInfo(instance) with Comment
               addExhale(body, info)
             }
           case _ =>
             addExhale(expression)
         }
+      case cut: Cut =>
+        addStatement(cut.havoc)
       case _ => ???
     }
 
@@ -203,16 +269,19 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
   }
 
   private def buildProgram(methods: Seq[ast.Method], hypothesis: Hypothesis): ast.Program = {
+    // get input program
     val input = context.input
-    val fields = {
+    // fields
+    val fields =
       if (configuration.useAnnotations()) input.fields
       else magic +: input.fields
-    }
+    // predicates
     val predicates = {
       val existing = input.predicates
-      val inferred = Seq.empty // TODO:
+      val inferred = hypothesis.getPredicate(Names.recursive).toSeq
       existing ++ inferred
     }
+    // create program
     ast.Program(input.domains, fields, input.functions, predicates, methods, input.extensions)()
   }
 

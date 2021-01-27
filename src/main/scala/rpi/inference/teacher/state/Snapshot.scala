@@ -1,6 +1,7 @@
-package rpi.teacher.state
+package rpi.inference.teacher.state
 
-import rpi.inference.{Abstraction, Instance, Specification}
+import rpi.inference.context.{Instance, Specification}
+import rpi.inference.Abstraction
 import rpi.util.{Collections, SetMap}
 import viper.silver.ast
 
@@ -43,7 +44,7 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
     // initial reachability map.
     val initial = instance
       .arguments
-      .zip(instance.parameters)
+      .zip(instance.specification.variables)
       .foldLeft(Map.empty[String, Set[ast.Exp]]) {
         case (result, (argument, parameter)) =>
           if (argument.typ == ast.Ref) {
@@ -91,6 +92,7 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
 
   /**
     * Returns the state abstraction in terms of the actual arguments.
+    *
     * @return The actual state abstraction.
     */
   def actualAbstraction: Abstraction = instance.toActual(abstraction)

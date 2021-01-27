@@ -1,12 +1,11 @@
-package rpi.util
+package rpi.util.ast
 
 import fastparse.Parsed
-
-import java.nio.file.{Files, Paths}
 import rpi.Names
 import viper.silver.ast
 import viper.silver.parser._
 
+import java.nio.file.{Files, Paths}
 import scala.io.Source
 
 /**

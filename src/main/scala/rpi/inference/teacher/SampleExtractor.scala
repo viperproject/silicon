@@ -1,15 +1,14 @@
-package rpi.teacher
+package rpi.inference.teacher
 
 import rpi.Names
+import rpi.inference.context.Instance
 import rpi.inference._
-import rpi.teacher.state.{Adaptor, ModelEvaluator, Snapshot, StateEvaluator}
-import rpi.util.Infos._
+import rpi.inference.teacher.state.{Adaptor, ModelEvaluator, Snapshot, StateEvaluator}
+import rpi.util.ast.ValueInfo
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silver.ast
 import viper.silver.verifier._
 import viper.silver.verifier.reasons.InsufficientPermission
-
-import scala.reflect.ClassTag
 
 /**
   * Extracts samples from verification errors.
@@ -30,7 +29,7 @@ object SampleExtractor {
   def extractFraming(error: VerificationError, context: QueryContext): Sample = {
     println(error)
     // get counter example and offending location
-    val (counter, offending, Some(info)) = extractInformation[LocationInfo](error)
+    val (counter, offending, Some(location)) = extractInformation[ast.LocationAccess](error)
 
     // get label and instance
     val (label, instance) = {
@@ -54,7 +53,7 @@ object SampleExtractor {
 
     // create and return sample
     val specification = instance.specification
-    val left = Record(specification, abstraction, Set(info.location))
+    val left = Record(specification, abstraction, Set(location))
     val right = Record(specification, abstraction, Set(offending))
     ImplicationSample(left, Seq(right))
   }
@@ -62,7 +61,7 @@ object SampleExtractor {
   /**
     * Extracts a sample from the given verification error corresponding to a basic check.
     *
-    * @param error   The verification error.
+    * @param error        The verification error.
     * @param checkContext The context object.
     * @return The extracted sample.
     */
@@ -72,7 +71,7 @@ object SampleExtractor {
 
     println(error)
     // get counter example, offending location, and context info
-    val (counter, offending, info) = extractInformation[InstanceInfo](error)
+    val (counter, offending, info) = extractInformation[Instance](error)
 
     // get state and model
     val siliconState = counter.state
@@ -111,7 +110,7 @@ object SampleExtractor {
 
     // get current location
     val currentLocation = info match {
-      case Some(InstanceInfo(instance)) =>
+      case Some(instance) =>
         if (noInlining || Names.isRecursive(instance.name)) instance.toActual(offending)
         else offending
       case _ => offending
@@ -188,7 +187,7 @@ object SampleExtractor {
     * @tparam T The type of the context information.
     * @return The extracted information.
     */
-  private def extractInformation[T <: ValueInfo[_] : ClassTag](error: VerificationError): (Counter, ast.LocationAccess, Option[T]) = {
+  private def extractInformation[T](error: VerificationError): (Counter, ast.LocationAccess, Option[T]) = {
     // extract counter example
     val counter = error.counterexample match {
       case Some(value: Counter) => value
@@ -201,7 +200,7 @@ object SampleExtractor {
     }
     // extract context info
     val info = error.offendingNode match {
-      case node: ast.Infoed => node.info.getUniqueInfo[T]
+      case node: ast.Infoed => ValueInfo.valueOption[T](node)
       case _ => None
     }
     // return information

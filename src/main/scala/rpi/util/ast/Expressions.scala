@@ -1,4 +1,4 @@
-package rpi.util
+package rpi.util.ast
 
 import rpi.Names
 import viper.silver.ast
@@ -9,15 +9,24 @@ import viper.silver.ast.utility.rewriter.Traverse
   */
 object Expressions {
   /**
+    * Returns the length of the given access path.
+    *
+    * @param path The access path.
+    * @return The length.
+    */
+  def getLength(path: ast.Exp): Int =
+    getDepth(path) + 1
+
+  /**
     * Returns the depth of the given access path.
     *
     * @param path The access path.
-    * @return The depth of the access path.
+    * @return The depth.
     */
   def getDepth(path: ast.Exp): Int =
     path match {
-      case _: ast.NullLit => 1
-      case _: ast.LocalVar => 1
+      case _: ast.NullLit => 0
+      case _: ast.LocalVar => 0
       case ast.FieldAccess(receiver, _) =>
         getDepth(receiver) + 1
       case _ => sys.error(s"Expression $path is not an access path.")
@@ -93,7 +102,7 @@ object Expressions {
   /**
     * Returns the conjunction of the two given expressions.
     *
-    * @param left   The left conjunct.
+    * @param left  The left conjunct.
     * @param right The right conjunct.
     * @return The conjunction.
     */
@@ -187,7 +196,7 @@ object Expressions {
 
   private def makeRecursive(arguments: Seq[ast.Exp]): ast.PredicateAccessPredicate = {
     val access = ast.PredicateAccess(arguments, Names.recursive)()
-    makePredicateAccess(access)
+    makeResource(access)
   }
 
   @inline
@@ -195,16 +204,11 @@ object Expressions {
     ast.PredicateAccess(arguments, name)()
 
   @inline
-  def makeFieldAccess(access: ast.FieldAccess): ast.FieldAccessPredicate =
+  def makeResource(access: ast.FieldAccess): ast.FieldAccessPredicate =
     ast.FieldAccessPredicate(access, ast.FullPerm()())()
 
   @inline
-  def makePredciateAccess(name: String, arguments: Seq[ast.Exp], info: ast.Info = ast.NoInfo): ast.PredicateAccessPredicate = {
-    makePredicateAccess(makePredicate(name, arguments), info)
-  }
-
-  @inline
-  def makePredicateAccess(access: ast.PredicateAccess, info: ast.Info = ast.NoInfo): ast.PredicateAccessPredicate =
+  def makeResource(access: ast.PredicateAccess, info: ast.Info = ast.NoInfo): ast.PredicateAccessPredicate =
     ast.PredicateAccessPredicate(access, ast.FullPerm()())(info = info)
 
   /**

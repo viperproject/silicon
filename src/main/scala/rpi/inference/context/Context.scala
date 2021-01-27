@@ -1,11 +1,9 @@
-package rpi.context
+package rpi.inference.context
 
 import rpi.builder.ProgramBuilder
-import rpi.{Configuration, Names}
+import rpi.{Configuration, Names, inference}
 import rpi.inference._
-import rpi.teacher.query._
-import rpi.util.Expressions.makeNot
-import rpi.util.Infos.CheckInfo
+import rpi.inference.annotation.Annotation
 import rpi.util.Namespace
 import viper.silver.ast
 import viper.silver.verifier.Verifier
@@ -79,9 +77,28 @@ class Context(inference: Inference, val input: ast.Program) {
   def namespace: Namespace =
     builder.namespace.copy()
 
+  /**
+    * Returns the atoms.
+    *
+    * @return The atoms.
+    */
   def atoms: Atoms =
     builder.atoms
 
+  /**
+    * Returns the check corresponding to the method with the given name.
+    *
+    * @param name The name of the method.
+    * @return The check.
+    */
+  def check(name: String): MethodCheck =
+    builder.methods(name)
+
+  /**
+    * Returns the checks as a sequence of batches that are meant to be checked together.
+    *
+    * @return The batches.
+    */
   def batches: Seq[Seq[Check]] =
     checks
 
@@ -102,23 +119,24 @@ class Context(inference: Inference, val input: ast.Program) {
     * @return The instance.
     */
   def instance(name: String, arguments: Seq[ast.Exp]): Instance = {
-    Instance(specification(name), arguments)
+    BindingInstance(specification(name), arguments)
   }
 
   /**
-    * Returns an instance of the specifications corresponding to the given placeholder predicate.
+    * Returns an instance of the specifications corresponding to the given predicate access.
     *
-    * @param placeholder The placeholder predicate.
+    * @param access The predicate access.
     * @return The instance.
     */
-  def instance(placeholder: ast.PredicateAccess): Instance =
-    instance(placeholder.predicateName, placeholder.args)
-
-  // TODO:
-  def predicates(hypothesis: Hypothesis): Seq[ast.Predicate] = ???
+  def instance(access: ast.PredicateAccess): Instance =
+    instance(access.predicateName, access.args)
 }
 
 private class CheckBuilder(program: ast.Program) extends ProgramBuilder {
+
+  import rpi.util.ast.Expressions._
+  import rpi.util.ast.Statements._
+
   /**
     * The atoms.
     */
@@ -142,6 +160,10 @@ private class CheckBuilder(program: ast.Program) extends ProgramBuilder {
       .map { method => method.name -> createCheck(method) }
       .toMap
 
+  // TODO: Implement properly.
+  val annotations: mutable.Buffer[Annotation] =
+    ListBuffer.empty
+
   process()
 
   private def process(): Unit = {
@@ -151,15 +173,20 @@ private class CheckBuilder(program: ast.Program) extends ProgramBuilder {
         val check = methods(method.name)
         createBody(check, method.body.get, method.formalArgs ++ method.formalReturns)
       }
+
+    checks.foreach { check =>
+      println(check.name)
+      println(check.body)
+    }
   }
 
-  private def createSpecification(prefix: String, parameters: Seq[ast.LocalVarDecl], existing: Seq[ast.Exp]): Specification = {
+  private def createSpecification(prefix: String, parameters: Seq[ast.LocalVarDecl], existing: Seq[ast.Exp]): Instance = {
     val name = namespace.uniqueIdentifier(prefix, Some(0))
     val atoms = this.atoms.fromParameters(parameters)
     val specification = Specification(name, parameters, atoms, existing)
     // add and return specification
     specifications.append(specification)
-    specification
+    IdentityInstance(specification)
   }
 
   private def createCheck(method: ast.Method): MethodCheck = {
@@ -176,18 +203,12 @@ private class CheckBuilder(program: ast.Program) extends ProgramBuilder {
   private def createBody(check: MethodCheck, sequence: ast.Seqn, declarations: Seq[ast.LocalVarDecl]): Unit = {
     val body = makeScope {
       // inhale method preconditions
-      addInstrumented {
-        val preconditions = check.precondition.all
-        preconditions.foreach { expression => addInhale(expression) }
-      }
+      addInstrumented(addInhale(check.precondition))
       // process body
       val processed = processSequence(sequence, declarations)
       addStatement(processed)
       // exhale method postconditions
-      addInstrumented {
-        val postconditions = check.postcondition.all
-        postconditions.foreach { expression => addExhale(expression) }
-      }
+      addInstrumented(addExhale(check.postcondition))
     }
     check.setBody(body)
   }
@@ -201,18 +222,14 @@ private class CheckBuilder(program: ast.Program) extends ProgramBuilder {
     val body = makeScope {
       // inhale loop invariants and condition
       addInstrumented {
-        val invariants = invariant.all
-        invariants.foreach { expression => addInhale(expression) }
+        addInhale(invariant)
         addInhale(loop.cond)
       }
       // process body
       val processed = processSequence(loop.body, declarations)
       addStatement(processed)
       // exhale loop invariants
-      addInstrumented {
-        val invariants = invariant.all
-        invariants.foreach { expression => addExhale(expression) }
-      }
+      addInstrumented(addExhale(invariant))
     }
     check.setBody(body)
     // add and return check
@@ -234,31 +251,46 @@ private class CheckBuilder(program: ast.Program) extends ProgramBuilder {
       case sequence: ast.Seqn =>
         val processed = processSequence(sequence, declarations)
         addStatement(processed)
-      case conditional: ast.If =>
+      case original@ast.If(_, thenBranch, elseBranch) =>
         // process both branches
-        val thenBranch = processSequence(conditional.thn, declarations)
-        val elseBranch = processSequence(conditional.els, declarations)
+        val processedThen = processSequence(thenBranch, declarations)
+        val processedElse = processSequence(elseBranch, declarations)
         // update conditional
-        val processed = conditional.copy(thn = thenBranch, els = elseBranch)(conditional.pos, conditional.info, conditional.errT)
+        val processed = original.copy(thn = processedThen, els = processedElse)(original.pos, original.info, original.errT)
         addStatement(processed)
-      case loop: ast.While =>
-        val check = createCheck(loop, declarations)
+      case original@ast.While(condition, _, _) =>
+        val check = createCheck(original, declarations)
         // loop instrumentation
         addInstrumented {
-          // TODO: Havoc
-          val invariants = check.invariant.all
-          invariants.foreach { expression => addExhale(expression) }
-          invariants.foreach { expression => addInhale(expression) }
-          addInhale(makeNot(loop.cond))
+          addExhale(check.invariant)
+          addCut(original, check)
+          addInhale(check.invariant)
+          addInhale(makeNot(condition))
         }
-      case call: ast.MethodCall => // TODO: Implement me.
+      case ast.MethodCall(name, arguments, _) =>
+        if (Names.isAnnotation(name)) {
+          val annotation = inference.annotation.Annotation(name, arguments.head)
+          annotations.append(annotation)
+        } else {
+          // TODO: Implement me.
+          ???
+        }
       case _ =>
         addStatement(statement)
     }
 
+  private def addInhale(instance: Instance): Unit =
+    instance.all.foreach { expression => addInhale(expression) }
+
+  private def addExhale(instance: Instance): Unit =
+    instance.all.foreach { expression => addExhale(expression) }
+
   private def addInstrumented(generate: => Unit): Unit = {
     val body = makeScope(generate)
-    addStatement(Instrument(body))
+    addStatement(makeInstrument(body, annotations.toSeq))
+    annotations.clear()
   }
 
+  private def addCut(statement: ast.Stmt, check: Check): Unit =
+    addStatement(makeCut(statement, check))
 }

@@ -1,6 +1,7 @@
 package rpi.inference
 
-import rpi.util.Expressions._
+import rpi.inference.context.Instance
+import rpi.util.ast.Expressions._
 import viper.silver.ast
 
 /**
@@ -84,22 +85,6 @@ case class Hypothesis(lemmas: Seq[ast.Method], predicates: Seq[ast.Predicate]) {
   @inline
   def getPredicate(name: String): Option[ast.Predicate] =
     predicateMap.get(name)
-
-  /**
-    * Returns the predicate corresponding to the given specification.
-    *
-    * @param specification The specification.
-    * @return The predicate.
-    */
-  def getPredicate(specification: Specification): ast.Predicate =
-    getPredicate(specification.name) match {
-      case Some(predicate) => predicate
-      case None =>
-        val name = specification.name
-        val parameters = specification.parameters
-        val body = Some(makeTrue)
-        ast.Predicate(name, parameters, body)()
-    }
 
   /**
     * Returns the body of given predicate instance.

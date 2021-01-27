@@ -1,10 +1,10 @@
 package rpi.inference
 
 import rpi.builder.ProgramExtender
-import rpi.context.Context
+import rpi.inference.context.Context
 import rpi.Configuration
-import rpi.learner.Learner
-import rpi.teacher.Teacher
+import rpi.inference.learner.Learner
+import rpi.inference.teacher.Teacher
 import viper.silicon.Silicon
 import viper.silver.ast
 import viper.silver.verifier.{Success, VerificationResult, Verifier}

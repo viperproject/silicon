@@ -1,6 +1,7 @@
 package rpi
 
 import org.scalatest.funsuite.AnyFunSuite
+import rpi.inference.TestRunner
 import rpi.util.Files
 
 import java.io.File
