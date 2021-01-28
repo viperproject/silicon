@@ -23,7 +23,7 @@ class Learner(val context: Context) {
   /**
     * The template generator.
     */
-  val templateGenerator = new TemplateGenerator(context)
+  val templates = new TemplateGenerator(context)
 
   /**
     * Starts the learner and all of its subcomponents.
@@ -54,8 +54,8 @@ class Learner(val context: Context) {
     if (samples.isEmpty) Hypothesis(Seq.empty, Seq.empty)
     else {
       samples.foreach { sample => println(sample) }
-      // compute templates
-      val templates = templateGenerator.generate(samples)
+      // generate templates
+      val templates = this.templates.generate(samples)
 
       // encode samples
       val encoder = new GuardEncoder(context, templates)

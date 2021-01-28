@@ -1,7 +1,7 @@
 package rpi.inference.learner.template
 
-import rpi.inference.context._
 import rpi.inference._
+import rpi.inference.context._
 import rpi.util.ast.Expressions._
 import rpi.util.{Collections, SetMap}
 import rpi.{Configuration, Names}
@@ -12,11 +12,12 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
-  * A helper class used to compute templates.
+  * A template generator.
   *
   * @param context The context.
   */
 class TemplateGenerator(context: Context) {
+
   /**
     * Returns the configuration.
     *
@@ -36,43 +37,19 @@ class TemplateGenerator(context: Context) {
     implicit val id: AtomicInteger = new AtomicInteger
     implicit val buffer: mutable.Buffer[Template] = ListBuffer.empty
 
-    // map from specifications to accesses
-    val map = {
-      // collect records from samples
-      val records = samples.flatMap {
-        case PositiveSample(records) => records
-        case NegativeSample(record) => Seq(record)
-        case ImplicationSample(left, right) => left +: right
-      }
-      // build map
-      records.foldLeft(Map.empty[String, Set[ast.LocationAccess]]) {
-        case (result, record) =>
-          val name = record.specification.name
-          SetMap.addAll(result, name, record.locations)
-      }
-    }
-
     // compute templates for specifications and structure for recursive predicate
-    val structure = map
+    val structure = collectAccesses(samples)
       .foldLeft(Structure.bottom) {
         case (global, (name, accesses)) =>
-          // separate field from predicate accesses
-          val fields = accesses.collect { case field: ast.FieldAccess => field }
-          val predicates = accesses.collect { case predicate: ast.PredicateAccess => predicate }
           // compute structure
+          val fields = accesses.collect { case field: ast.FieldAccess => field }
           val (instances, local) = Structure.compute(fields)
-          // filter unwanted instances
-          val all = predicates ++ instances
-          val filtered = all.filter { case ast.PredicateAccess(arguments, _) =>
-            arguments.zipWithIndex.forall {
-              case (_: ast.NullLit, index) => index > 0
-              case (_: ast.LocalVar, _) => true
-              case (_: ast.FieldAccess, _) => false
-            }
-          }
-          // compute template
+          // filter locations
+          val extended = extendAccesses(accesses ++ instances)
+          val filtered = filterAccesses(extended)
+          // crate template
           val specification = context.specification(name)
-          createTemplate(specification, fields ++ filtered)
+          createTemplate(specification, filtered)
           // update global structure
           global.join(local)
       }
@@ -86,6 +63,60 @@ class TemplateGenerator(context: Context) {
     // return templates
     buffer.toSeq
   }
+
+  /**
+    * Collects and returns all accesses appearing in the given samples.
+    *
+    * @param samples The samples.
+    * @return A map from specification names to accesses.
+    */
+  private def collectAccesses(samples: Seq[Sample]): Map[String, Set[ast.LocationAccess]] = {
+    // collect records from samples
+    val records = samples.flatMap {
+      case PositiveSample(records) => records
+      case NegativeSample(record) => Seq(record)
+      case ImplicationSample(left, right) => left +: right
+    }
+    // build map
+    records.foldLeft(Map.empty[String, Set[ast.LocationAccess]]) {
+      case (result, record) =>
+        val name = record.specification.name
+        SetMap.addAll(result, name, record.locations)
+    }
+  }
+
+  private def extendAccesses(accesses: Set[ast.LocationAccess]): Set[ast.LocationAccess] = {
+    def extend(access: ast.Exp): Set[ast.LocationAccess] =
+      access match {
+        case field@ast.FieldAccess(receiver, _) =>
+          extend(receiver) + field
+        case predicate@ast.PredicateAccess(arguments, name) =>
+          val parents = arguments.head match {
+            case ast.FieldAccess(receiver, _) =>
+              val parent = makePredicate(name, receiver +: arguments.tail)
+              extend(parent)
+            case _ => Set.empty[ast.LocationAccess]
+          }
+          val inner = arguments.toSet.flatMap { argument => extend(argument) }
+          parents ++ inner + predicate
+        case _ => Set.empty
+      }
+
+    accesses.flatMap { access => extend(access) }
+  }
+
+  private def filterAccesses(accesses: Set[ast.LocationAccess]): Set[ast.LocationAccess] =
+    accesses.filter {
+      case field: ast.FieldAccess =>
+        getLength(field) <= configuration.maxLength()
+      case ast.PredicateAccess(arguments, _) =>
+        arguments.zipWithIndex.forall {
+          case (_: ast.NullLit, index) => index > 0
+          case (_: ast.LocalVar, _) => true
+          case (_: ast.FieldAccess, _) => false
+        }
+    }
+
 
   /**
     * Creates a template corresponding to the given specification and resources.
@@ -117,12 +148,8 @@ class TemplateGenerator(context: Context) {
       // get fields and recursions
       val fields = structure.fields
       val recursions = structure.recursions
-      // TODO: Remove as we handled this earlier.
       // make sure there is a way to frame arguments of recursions
-      val framed = recursions.flatMap { recursion =>
-        recursion.args.collect { case field: ast.FieldAccess => field }
-      }
-      fields ++ framed ++ recursions
+      fields ++ extendAccesses(recursions.toSet)
     }
 
     // create template
@@ -194,10 +221,8 @@ class TemplateGenerator(context: Context) {
   private def createTemplateBody(specification: Specification, resources: Seq[ast.LocationAccess])
                                 (implicit id: AtomicInteger): TemplateExpression = {
     // create template expressions for fields
-    val maxLength = configuration.maxLength()
     val fields = resources
       .collect { case field: ast.FieldAccess => (getLength(field), field) }
-      .filter { case (length, _) => length <= maxLength }
       .sortWith { case ((first, _), (second, _)) => first < second }
       .map { case (_, field) =>
         val guardId = id.getAndIncrement()
@@ -280,7 +305,7 @@ class TemplateGenerator(context: Context) {
   /**
     * An object providing some structure-related utilities.
     */
-  private object Structure {
+  object Structure {
     /**
       * The empty structure.
       */
@@ -383,7 +408,7 @@ class TemplateGenerator(context: Context) {
     * @param fields     The field accesses.
     * @param recursions The recursive accesses.
     */
-  private case class Structure(fields: Set[ast.FieldAccess], recursions: Set[ast.PredicateAccess]) {
+  case class Structure(fields: Set[ast.FieldAccess], recursions: Set[ast.PredicateAccess]) {
     /**
       * Returns a structure that approximates both, this structure and the given other structure.
       *
