@@ -34,12 +34,12 @@ class RpiTest extends AnyFunSuite with TestRunner {
     */
   def runTests(): Unit = {
     // tests with heuristics
-    getFiles(heuristicsDirectory)
-      .foreach { file => runTestWithHeuristics(file) }
+    val heuristicsFiles = getFiles(heuristicsDirectory)
+    heuristicsFiles.foreach { file => runTestWithHeuristics(file) }
 
     // tests with annotations
-    getFiles(annotationsDirectory)
-      .foreach { file => runTestWithAnnotations(file) }
+    val annotationsFiles = heuristicsFiles ++ getFiles(annotationsDirectory)
+    annotationsFiles.foreach { file => runTestWithAnnotations(file) }
   }
 
   /**
