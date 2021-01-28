@@ -34,13 +34,22 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
       default = Some(2))
 
   /**
+    * Note: The verifier uses heuristics if the use of annotations is disabled. The heuristics implemented in th silicon
+    * verifier are currently experimental and limited to folds and unfolds.
+    */
+  val useAnnotations: ScallopOption[Boolean] =
+    opt[Boolean](
+      name = "useAnnotations",
+      descr = "Enables the use of annotations.")
+
+  /**
     * Note: Only there to have means to make sure annotations are disabled.
     */
-  // TODO: make sure this is true if annotations are disabled.
   val useHeuristics: ScallopOption[Boolean] =
     opt[Boolean](
       name = "useHeuristics",
-      descr = "Explicitly forbids the use of annotations.")
+      descr = "Explicitly forbids the use of annotations.",
+      default = useAnnotations.map { value => !value }.toOption)
 
   /**
     * Note: Since silicon is a iso-recursive verifier, we force additional folds in positions where a predicate needs
@@ -52,15 +61,6 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
       name = "heuristicsFoldDepth",
       descr = "The depth up to which predicates are statically folded when the heuristics is enabled.",
       default = Some(1))
-
-  /**
-    * Note: The verifier uses heuristics if the use of annotations is disabled. The heuristics implemented in th silicon
-    * verifier are currently experimental and limited to folds and unfolds.
-    */
-  val useAnnotations: ScallopOption[Boolean] =
-    opt[Boolean](
-      name = "useAnnotations",
-      descr = "Enables the use of annotations.")
 
   val noPredicates: ScallopOption[Boolean] =
     opt[Boolean](
