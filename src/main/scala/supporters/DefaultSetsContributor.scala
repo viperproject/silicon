@@ -47,6 +47,16 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
       setTypeInstances += ast.SetType(viper.silicon.utils.ast.ViperEmbedding(sorts.Snap))
     }
 
+    /* The domain of maps depend on sets, for representing the domain and codomain/range of any map.
+     * Hence, for every instance of a map type found in the program, we add the appropriate set types.
+     *
+     * TODO: It should not be the responsibility of the set contributor to add set types required for maps.
+     *       However, there currently doesn't seem to be a good way to do this elsewhere.
+     */
+    setTypeInstances ++= program.groundTypeInstances.collect {
+      case ast.MapType(keyType, valueType) => Set(ast.SetType(keyType), ast.SetType(valueType))
+    }.flatten
+
     setTypeInstances
   }
 

@@ -509,6 +509,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val mapAxiomatizationFile: ScallopOption[String] = opt[String]("mapAxiomatizationFile",
+    descr =s"Source file with map axiomatisation. If omitted, built-in one is used.",
+    default = None,
+    noshort = true
+  )
 
   val disableHavocHack407: ScallopOption[Boolean] = opt[Boolean]("disableHavocHack407",
     descr = "A Viper method call to " +

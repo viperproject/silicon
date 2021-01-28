@@ -879,6 +879,38 @@ object evaluator extends EvaluationRules {
                             .format(e0, e0.getClass.getName, e0.typ))
       }
 
+      /* Maps */
+
+      case ast.EmptyMap(keyType, valueType) =>
+        Q(s, EmptyMap(v.symbolConverter.toSort(keyType), v.symbolConverter.toSort(valueType)), v)
+      case em: ast.ExplicitMap =>
+        eval(s, em.desugared, pve, v)((s1, t0, v1) => Q(s1, t0, v1))
+      case ast.MapCardinality(base) =>
+        eval(s, base, pve, v)((s1, t0, v1) => Q(s1, MapCardinality(t0), v1))
+      case ast.MapDomain(base) =>
+        eval(s, base, pve, v)((s1, t0, v1) => Q(s1, MapDomain(t0), v1))
+      case ast.MapRange(base) =>
+        eval(s, base, pve, v)((s1, t0, v1) => Q(s1, MapRange(t0), v1))
+
+      case ast.MapLookup(base, key) =>
+        evals2(s, Seq(base, key), Nil, _ => pve, v)({
+          case (s1, Seq(baseT, keyT), v1) if s1.triggerExp => Q(s1, MapLookup(baseT, keyT), v1)
+          case (s1, Seq(baseT, keyT), v1) => v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
+            case true => Q(s1, MapLookup(baseT, keyT), v1)
+            case false => createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1)
+          }
+        })
+
+      case ast.MapUpdate(base, key, value) =>
+        evals2(s, Seq(base, key, value), Nil, _ => pve, v)({
+          case (s1, Seq(baseT, keyT, valueT), v1) => Q(s1, MapUpdate(baseT, keyT, valueT), v1)
+        })
+
+      case ast.MapContains(key, base) =>
+        evals2(s, Seq(key, base), Nil, _ => pve, v)({
+          case (s1, Seq(keyT, baseT), v1) => Q(s1, SetIn(keyT, MapDomain(baseT)), v1)
+        })
+
       /* Unexpected nodes */
 
       case _: ast.InhaleExhaleExp =>

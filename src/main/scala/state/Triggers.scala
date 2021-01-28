@@ -95,6 +95,11 @@ class TriggerGenerator
          | _: MultisetTerm
          | _: MultisetCardinality
          | _: MultisetCount
+         | _: MapLookup
+         | _: MapCardinality
+         | _: MapDomain
+         | _: MapRange
+         | _: MapUpdate
          | _: SnapshotTerm
          | _: Domain
          | _: Lookup

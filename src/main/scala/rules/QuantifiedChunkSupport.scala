@@ -1547,6 +1547,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     var hints =
       arguments.flatMap {
         case SeqAt(seq, _) => Some(seq)
+        case MapLookup(map, _) => Some(map)
         // TODO: Add a case for (domain or heap-dep.) function applications, i.e. fun(_)
         case _ => None
       }
