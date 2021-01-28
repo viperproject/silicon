@@ -22,6 +22,11 @@ object Main extends PrintRunner {
   val annotationsOptions: Seq[String] = baseOptions ++ Seq("--useAnnotations")
 
   /**
+    * The options for an inference with predicate segments.
+    */
+  val segmentsOptions: Seq[String] = annotationsOptions ++ Seq("--useSegments")
+
+  /**
     * The main method, i.e., the entry point of the inference.
     *
     * @param arguments The arguments to the inference.

@@ -25,6 +25,10 @@ class RpiTest extends AnyFunSuite with TestRunner {
     */
   val annotationsDirectory: String = s"$baseDirectory/annotations"
 
+  /**
+    * The path to the tests requiring predicate segments.
+    */
+  val segmentsDirectory: String = s"$baseDirectory/segments"
 
   // run tests
   runTests()
@@ -40,6 +44,10 @@ class RpiTest extends AnyFunSuite with TestRunner {
     // tests with annotations
     val annotationsFiles = heuristicsFiles ++ getFiles(annotationsDirectory)
     annotationsFiles.foreach { file => runTestWithAnnotations(file) }
+
+    // tests with segments
+    val segmentsFiles = annotationsFiles ++ getFiles(segmentsDirectory)
+    segmentsFiles.foreach { file => runTestWithSegments(file) }
   }
 
   /**
@@ -61,6 +69,17 @@ class RpiTest extends AnyFunSuite with TestRunner {
   def runTestWithAnnotations(file: File): Unit = {
     val name = s"test with annotations: $file"
     val arguments = Main.annotationsOptions :+ file.getPath
+    runTest(name, arguments)
+  }
+
+  /**
+    * Tests the given file using the inference with predicate segments.
+    *
+    * @param file The file to test.
+    */
+  def runTestWithSegments(file: File): Unit = {
+    val name = s"test with segments: $file"
+    val arguments = Main.segmentsOptions :+ file.getPath
     runTest(name, arguments)
   }
 
