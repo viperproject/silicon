@@ -90,11 +90,16 @@ object AccessAnalysis {
           // ignore instrumented statements
           self
         case ast.LocalVarAssign(_, value) =>
-          val d = accessDepth(value)
-          State(math.max(depth, d))
+          self.read(value)
+        case ast.FieldAssign(target, value) =>
+          if (target.typ == ast.Ref) ???
+          else self.read(target).read(value)
         case _ =>
           ???
       }
+
+    private def read(expression: ast.Exp): State =
+      State(math.max(depth, accessDepth(expression)))
   }
 
   trait AbstractState[S <: AbstractState[S]] {

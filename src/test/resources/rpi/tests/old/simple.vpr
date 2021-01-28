@@ -1,6 +1,0 @@
-field val: Int
-
-method simple(a: Ref)
-{
-   a.val := 0
-}
