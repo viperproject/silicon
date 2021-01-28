@@ -19,14 +19,6 @@ import viper.silver.ast
   */
 class QueryBuilder(protected val context: Context) extends CheckExtender with Folding {
   /**
-    * Returns the configuration.
-    *
-    * @return The configuration.
-    */
-  private def configuration: Configuration =
-    context.configuration
-
-  /**
     * The namespace used to generate unique identifiers.
     */
   private var namespace: Namespace = _
@@ -157,7 +149,8 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
         }
       case cut: Cut =>
         addStatement(cut.havoc)
-      case _ => ???
+      case other =>
+        addStatement(other)
     }
 
   private def saveSnapshot(instance: Instance): String = {
@@ -266,23 +259,6 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
   private def clear(): Unit = {
     namespace = context.namespace
     query = new QueryContext(configuration)
-  }
-
-  private def buildProgram(methods: Seq[ast.Method], hypothesis: Hypothesis): ast.Program = {
-    // get input program
-    val input = context.input
-    // fields
-    val fields =
-      if (configuration.useAnnotations()) input.fields
-      else magic +: input.fields
-    // predicates
-    val predicates = {
-      val existing = input.predicates
-      val inferred = hypothesis.getPredicate(Names.recursive).toSeq
-      existing ++ inferred
-    }
-    // create program
-    ast.Program(input.domains, fields, input.functions, predicates, methods, input.extensions)()
   }
 
   private def buildMethod(name: String, body: ast.Seqn): ast.Method = {

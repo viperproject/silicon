@@ -186,7 +186,7 @@ private class CheckBuilder(program: ast.Program) extends ProgramBuilder {
     val specification = Specification(name, parameters, atoms, existing)
     // add and return specification
     specifications.append(specification)
-    IdentityInstance(specification)
+    specification.asInstance
   }
 
   private def createCheck(method: ast.Method): MethodCheck = {
@@ -259,21 +259,40 @@ private class CheckBuilder(program: ast.Program) extends ProgramBuilder {
         val processed = original.copy(thn = processedThen, els = processedElse)(original.pos, original.info, original.errT)
         addStatement(processed)
       case original@ast.While(condition, _, _) =>
-        val check = createCheck(original, declarations)
-        // loop instrumentation
         addInstrumented {
+          // loop instrumentation
+          val check = createCheck(original, declarations)
           addExhale(check.invariant)
           addCut(original, check)
           addInhale(check.invariant)
           addInhale(makeNot(condition))
         }
-      case ast.MethodCall(name, arguments, _) =>
+      case original@ast.MethodCall(name, arguments, _) =>
         if (Names.isAnnotation(name)) {
           val annotation = inference.annotation.Annotation(name, arguments.head)
           annotations.append(annotation)
         } else {
-          // TODO: Implement me.
-          ???
+          addInstrumented {
+            // make sure all arguments are variables
+            val variables = arguments.map {
+              case variable: ast.LocalVar =>
+                variable
+              case field: ast.FieldAccess =>
+                // create auxiliary variable
+                val name = namespace.uniqueIdentifier("t", Some(0))
+                val variable = makeVariable(name, field.typ)
+                // assign to variable and return variable
+                addAssign(variable, field)
+                variable
+              case argument =>
+                sys.error(s"Unexpected argument: $argument")
+            }
+            // method call instrumentation
+            val check = methods(name)
+            addExhale(check.precondition(variables))
+            addCut(original, check)
+            addInhale(check.postcondition(variables))
+          }
         }
       case _ =>
         addStatement(statement)

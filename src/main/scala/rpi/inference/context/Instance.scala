@@ -111,6 +111,15 @@ sealed trait Instance {
     Abstraction(updated)
   }
 
+  /**
+    * Returns a copy of the instance with the given arguments.
+    *
+    * @param arguments The arguments.
+    * @return The instance.
+    */
+  def apply(arguments: Seq[ast.Exp]): Instance =
+    BindingInstance(specification, arguments)
+
   override def toString: String =
     s"$name(${arguments.mkString(", ")})"
 }

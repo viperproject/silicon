@@ -14,9 +14,6 @@ import viper.silver.ast.Stmt
   * @param context The inference context.
   */
 class ProgramExtender(protected val context: Context) extends CheckExtender with Folding {
-  private def configuration: Configuration =
-    context.configuration
-
   /**
     * Return the input program annotated with the inferred specifications provided by the given hypothesis.
     *
@@ -24,27 +21,22 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
     * @return The annotated program.
     */
   def annotated(hypothesis: Hypothesis): ast.Program = {
-    // get input program
-    val program = context.input
-    // add inferred predicates
-    val predicates = {
-      val existing = program.predicates
-      val inferred = hypothesis.getPredicate(Names.recursive).toSeq
-      existing ++ inferred
-    }
     // process methods
-    val methods = program.methods.map { method =>
-      val check = context.check(method.name)
-      // get inferred specifications
-      val preconditions = check.precondition.all(hypothesis)
-      val postconditions = check.postcondition.all(hypothesis)
-      // process body
-      val body = processCheck(check, hypothesis)
-      // update method
-      method.copy(pres = preconditions, posts = postconditions, body = Some(body))(method.pos, method.info, method.errT)
-    }
+    val methods = context
+      .input
+      .methods
+      .map { method =>
+        val check = context.check(method.name)
+        // get inferred specifications
+        val preconditions = check.precondition.all(hypothesis)
+        val postconditions = check.postcondition.all(hypothesis)
+        // process body
+        val body = processCheck(check, hypothesis)
+        // update method
+        method.copy(pres = preconditions, posts = postconditions, body = Some(body))(method.pos, method.info, method.errT)
+      }
     // update program
-    program.copy(predicates = predicates, methods = methods)(program.pos, program.info, program.errT)
+    buildProgram(methods, hypothesis)
   }
 
   override protected def instrumentStatement(instrumented: Stmt)(implicit hypothesis: Hypothesis, annotations: Seq[Annotation]): Unit =
@@ -89,7 +81,11 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
             // add updated loop
             val updated = loop.copy(invs = invariants, body = body)(loop.pos, loop.info, loop.errT)
             addStatement(updated)
+          case call: ast.MethodCall =>
+            addStatement(call)
         }
+      case assignment@ast.LocalVarAssign(_, _) =>
+        addStatement(assignment)
       case _ => // do nothing
     }
 }

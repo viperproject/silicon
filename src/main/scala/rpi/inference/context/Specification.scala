@@ -31,6 +31,14 @@ case class Specification(name: String,
   def isRecursive: Boolean =
     name == Names.recursive
 
+  /**
+    * Returns an instance of this specification.
+    *
+    * @return The instance.
+    */
+  def asInstance: Instance =
+    IdentityInstance(this)
+
   override def toString: String =
     s"$name(${parameters.map(_.name).mkString(", ")})"
 }

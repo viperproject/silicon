@@ -1,6 +1,7 @@
 package rpi.builder
 
-import rpi.inference.context.Check
+import rpi.{Configuration, Names}
+import rpi.inference.context.{Check, Context}
 import rpi.inference.Hypothesis
 import rpi.inference.annotation.Annotation
 import rpi.util.ast.Instrument
@@ -10,6 +11,21 @@ import viper.silver.ast
   * A mixin providing methods to build programs from checks.
   */
 trait CheckExtender extends ProgramBuilder {
+  /**
+    * Returns the context.
+    *
+    * @return The context.
+    */
+  protected def context: Context
+
+  /**
+    * Returns the configuration.
+    *
+    * @return The configuration.
+    */
+  protected def configuration: Configuration =
+    context.configuration
+
   /**
     * The current check.
     */
@@ -85,4 +101,28 @@ trait CheckExtender extends ProgramBuilder {
     * @param annotations  The implicitly passed annotations.
     */
   protected def instrumentStatement(instrumented: ast.Stmt)(implicit hypothesis: Hypothesis, annotations: Seq[Annotation]): Unit
+
+  /**
+    * Builds and returns a program with the given methods and inferred predicates.
+    *
+    * @param methods    The methods.
+    * @param hypothesis The hypothesis containing inferred predicates.
+    * @return Teh program.
+    */
+  protected def buildProgram(methods: Seq[ast.Method], hypothesis: Hypothesis): ast.Program = {
+    // get input program
+    val input = context.input
+    //  enable or disable heuristics
+    val fields =
+      if (configuration.useAnnotations()) input.fields
+      else magic +: input.fields
+    // add inferred predicates
+    val predicates = {
+      val existing = input.predicates
+      val inferred = hypothesis.getPredicate(Names.recursive).toSeq
+      existing ++ inferred
+    }
+    // update program
+    input.copy(fields = fields, predicates = predicates, methods = methods)(input.pos, input.info, input.errT)
+  }
 }
