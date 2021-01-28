@@ -1,0 +1,2430 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Flag_state_T(r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref): Bool
+  
+  function Join_state_T(r: Ref, lvl: Int, x: Ref): Bool
+  
+  function LevelDummy_state_T(r: Ref, lvl: Int): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Flag_interferenceReference_df($p0: Int, r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref): Bool
+  
+  function Join_interferenceReference_df($p0: Int, r: Ref, lvl: Int, x: Ref): Bool
+  
+  function LevelDummy_interferenceReference_df($p0: Int, r: Ref, lvl: Int): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Flag_interferenceSet_df($p0: Int, r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref): Set[Int]
+  
+  function Join_interferenceSet_df($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
+  
+  function LevelDummy_interferenceSet_df($p0: Int, r: Ref, lvl: Int): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function Flag_atomicity_context_df(r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref): Bool
+  
+  function Join_atomicity_context_df(r: Ref, lvl: Int, x: Ref): Bool
+  
+  function LevelDummy_atomicity_context_df(r: Ref, lvl: Int): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $memcell_$f: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function comprehension_104_220(): Set[Int]
+  ensures (forall $k: Int :: ($k in result) == true)
+
+
+function Flag_atomicity_context_hf(r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref): Set[Int]
+  requires acc(Flag_atomicity_context_fp(r, alvl, s, lvl, x, y), write)
+  ensures [Flag_atomicity_context_df(r, alvl, s, lvl, x, y), true]
+
+
+function Flag_interferenceSet_hf($p0: Int, r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref): Set[Int]
+  requires acc(Flag_interferenceContext_fp(r, alvl, s, lvl, x, y), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in Flag_interferenceSet_df($p0, r, alvl, s, lvl, x, y))), true]
+
+
+function Flag_interferenceReference_hf($p0: Int, r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref): Int
+  requires acc(Flag_interferenceContext_fp(r, alvl, s, lvl, x, y), write)
+  ensures [Flag_interferenceReference_df($p0, r, alvl, s, lvl, x, y), true]
+
+
+function Flag_state(r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref): Int
+  requires acc(Flag(r, alvl, s, lvl, x, y), write)
+  ensures [Flag_state_T(r, alvl, s, lvl, x, y), true]
+{
+  (unfolding acc(Flag(r, alvl, s, lvl, x, y), write) in x.$memcell_$f)
+}
+
+function Join_atomicity_context_hf(r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(Join_atomicity_context_fp(r, lvl, x), write)
+  ensures [Join_atomicity_context_df(r, lvl, x), true]
+
+
+function Join_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(Join_interferenceContext_fp(r, lvl, x), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in Join_interferenceSet_df($p0, r, lvl, x))), true]
+
+
+function Join_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, x: Ref): Int
+  requires acc(Join_interferenceContext_fp(r, lvl, x), write)
+  ensures [Join_interferenceReference_df($p0, r, lvl, x), true]
+
+
+function Join_state(r: Ref, lvl: Int, x: Ref): Int
+  requires acc(Join(r, lvl, x), write)
+  ensures [Join_state_T(r, lvl, x), true]
+{
+  (unfolding acc(Join(r, lvl, x), write) in x.$memcell_$f)
+}
+
+function LevelDummy_atomicity_context_hf(r: Ref, lvl: Int): Set[Int]
+  requires acc(LevelDummy_atomicity_context_fp(r, lvl), write)
+  ensures [LevelDummy_atomicity_context_df(r, lvl), true]
+
+
+function LevelDummy_interferenceSet_hf($p0: Int, r: Ref, lvl: Int): Set[Int]
+  requires acc(LevelDummy_interferenceContext_fp(r, lvl), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in LevelDummy_interferenceSet_df($p0, r, lvl))), true]
+
+
+function LevelDummy_interferenceReference_hf($p0: Int, r: Ref, lvl: Int): Int
+  requires acc(LevelDummy_interferenceContext_fp(r, lvl), write)
+  ensures [LevelDummy_interferenceReference_df($p0, r, lvl), true]
+
+
+function LevelDummy_state(r: Ref, lvl: Int): Int
+  requires acc(LevelDummy(r, lvl), write)
+  ensures [LevelDummy_state_T(r, lvl), true]
+{
+  (unfolding acc(LevelDummy(r, lvl), write) in 0)
+}
+
+predicate Flag_SFLAG($r: Ref) 
+
+predicate Flag_atomicity_context_fp(r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref) 
+
+predicate Flag_interferenceContext_fp(r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref) 
+
+predicate Flag_sk_fp() 
+
+predicate Flag(r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref) {
+  acc(x.$memcell_$f, write) && true && (x.$memcell_$f == 0 || x.$memcell_$f == 1) && (x.$memcell_$f == 0 ? acc(Join(s, lvl, y), write) && (lvl >= 0 && Join_state(s, lvl, y) == 0) && lvl < alvl && acc(Join_SET(s), write) : true) && (x.$memcell_$f == 1 ? acc(Join(s, lvl, y), write) && (lvl >= 0 && true) && lvl < alvl : true)
+}
+
+predicate Join_SET($r: Ref) 
+
+predicate Join_Z($r: Ref) 
+
+predicate Join_atomicity_context_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate Join_interferenceContext_fp(r: Ref, lvl: Int, x: Ref) 
+
+predicate Join_sk_fp() 
+
+predicate Join(r: Ref, lvl: Int, x: Ref) {
+  acc(x.$memcell_$f, write) && true && (x.$memcell_$f == 0 || x.$memcell_$f == 1)
+}
+
+predicate LevelDummy_LevelDummyG($r: Ref) 
+
+predicate LevelDummy_atomicity_context_fp(r: Ref, lvl: Int) 
+
+predicate LevelDummy_interferenceContext_fp(r: Ref, lvl: Int) 
+
+predicate LevelDummy_sk_fp() 
+
+predicate LevelDummy(r: Ref, lvl: Int) {
+  true
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method ___silicon_hack407_havoc_all_Flag()
+
+
+method ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+
+
+method ___silicon_hack407_havoc_all_Join()
+
+
+method ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+
+
+method ___silicon_hack407_havoc_all_LevelDummy()
+
+
+method ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+
+
+method thread2(r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref)
+  requires acc(Flag(r, alvl, s, lvl, x, y), write) && (alvl >= 0 && Flag_state(r, alvl, s, lvl, x, y) == 0) && acc(Flag_SFLAG(r), write)
+{
+  var $_levelVar_0: Int
+  var $_levelVar_1: Int
+  var $_levelVar_2: Int
+  inhale $_levelVar_0 >= 0 && $_levelVar_0 > alvl
+  assert $_levelVar_0 >= 0
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // Inferring interference all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(1, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_infer0](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(1, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_infer0](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_infer0](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_infer0](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(1, $r, $alvl, $s, $lvl, $x, $y) == old[pre_infer0](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Inferring interference all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(1, $r, $lvl, $x)) } none < old[pre_infer0](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(1, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer0](Join_state($r, $lvl, $x)) || 0 == old[pre_infer0](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_infer0](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(1, $r, $lvl, $x) == old[pre_infer0](Join_state($r, $lvl, $x)))
+  
+  // Inferring interference all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(1, $r, $lvl)) } none < old[pre_infer0](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(1, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_infer0](LevelDummy_state($r, $lvl)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_infer0](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(1, $r, $lvl) == old[pre_infer0](LevelDummy_state($r, $lvl)))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic0
+  assert perm(Flag_atomicity_context_fp(r, alvl, s, lvl, x, y)) == none
+  assert $_levelVar_0 > alvl
+  $_levelVar_1 := alvl
+  exhale acc(Flag_SFLAG(r), write)
+  
+  // ------- Stabilising regions Join,LevelDummy (before use-atomic@18.3) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize0](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize0](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize0](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize0](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize0](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Join,LevelDummy (before use-atomic@18.3) END 
+  
+  
+  unfold acc(Flag(r, alvl, s, lvl, x, y), write)
+  label transitionPre0
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  
+  // no additional linking required
+  
+  
+  
+  // havoc performed by other front resource
+  
+  
+  inhale x.$memcell_$f == 0 ==> Join_interferenceReference_hf(1, s, lvl, y) == old[transitionPre0](Join_state(s, lvl, y))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale x.$memcell_$f == 1 ==> Join_interferenceReference_hf(1, s, lvl, y) == old[transitionPre0](Join_state(s, lvl, y))
+  
+  // ------- Stabilising regions Flag (before use-atomic@18.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // ------- Stabilising regions Flag (before use-atomic@18.3) END 
+  
+  
+  inhale acc(Flag_SFLAG(r), write)
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(Join(s, lvl, y), write) && (lvl >= 0 && Join_state(s, lvl, y) == 0)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Join(s, lvl, y), write) && (lvl >= 0 && Join_state(s, lvl, y) == 0)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  x.$memcell_$f := 1
+  
+  // ------- heap-write END ----------
+  
+  
+  fold acc(Flag(r, alvl, s, lvl, x, y), write)
+  assert old[pre_use_atomic0](Flag_state(r, alvl, s, lvl, x, y)) == Flag_state(r, alvl, s, lvl, x, y) || 0 == old[pre_use_atomic0](Flag_state(r, alvl, s, lvl, x, y)) && 1 == Flag_state(r, alvl, s, lvl, x, y)
+  $_levelVar_2 := $_levelVar_0
+  
+  // ------- use-atomic END ----------
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after use-atomic@18.3) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(2, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_stabilize2](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(2, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_stabilize2](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize2](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  ___silicon_hack407_havoc_all_Flag()
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize2](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_interferenceSet_hf(2, $r, $alvl, $s, $lvl, $x, $y)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize2](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(2, $r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize2](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(2, $r, $lvl, $x)) } none < old[pre_stabilize2](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(2, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize2](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize2](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  ___silicon_hack407_havoc_all_Join()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize2](perm(Join($r, $lvl, $x))) ==> (Join_state($r, $lvl, $x) in Join_interferenceSet_hf(2, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize2](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(2, $r, $lvl, $x) == old[pre_stabilize2](Join_state($r, $lvl, $x)))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(2, $r, $lvl)) } none < old[pre_stabilize2](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(2, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_stabilize2](LevelDummy_state($r, $lvl)) || false))))
+  ___silicon_hack407_havoc_all_LevelDummy()
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize2](perm(LevelDummy($r, $lvl))) ==> (LevelDummy_state($r, $lvl) in LevelDummy_interferenceSet_hf(2, $r, $lvl)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize2](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(2, $r, $lvl) == old[pre_stabilize2](LevelDummy_state($r, $lvl)))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after use-atomic@18.3) END 
+  
+  
+  
+  // ------- call:set_to_one BEGIN ---
+  
+  
+  label pre_call0
+  assert $_levelVar_2 >= 0 && $_levelVar_2 > lvl
+  assert true
+  exhale acc(Join(s, lvl, y), write) && (lvl >= 0 && Join_state(s, lvl, y) == 0) && acc(Join_SET(s), write)
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (before call:set_to_one@25.3) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize3](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize3](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize3](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize3](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize3](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize3](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize3](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize3](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (before call:set_to_one@25.3) END 
+  
+  
+  inhale acc(Join(s, lvl, y), write) && (lvl >= 0 && Join_state(s, lvl, y) == 1) && acc(Join_SET(s), write)
+  
+  // ------- call:set_to_one END -----
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after call:set_to_one@25.3) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(3, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_stabilize4](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(3, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_stabilize4](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize4](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  ___silicon_hack407_havoc_all_Flag()
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize4](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_interferenceSet_hf(3, $r, $alvl, $s, $lvl, $x, $y)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize4](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(3, $r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize4](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(3, $r, $lvl, $x)) } none < old[pre_stabilize4](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(3, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize4](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize4](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  ___silicon_hack407_havoc_all_Join()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize4](perm(Join($r, $lvl, $x))) ==> (Join_state($r, $lvl, $x) in Join_interferenceSet_hf(3, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize4](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(3, $r, $lvl, $x) == old[pre_stabilize4](Join_state($r, $lvl, $x)))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(3, $r, $lvl)) } none < old[pre_stabilize4](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(3, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_stabilize4](LevelDummy_state($r, $lvl)) || false))))
+  ___silicon_hack407_havoc_all_LevelDummy()
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize4](perm(LevelDummy($r, $lvl))) ==> (LevelDummy_state($r, $lvl) in LevelDummy_interferenceSet_hf(3, $r, $lvl)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize4](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(3, $r, $lvl) == old[pre_stabilize4](LevelDummy_state($r, $lvl)))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after call:set_to_one@25.3) END 
+  
+  
+}
+
+method main(dummy: Ref, lvl: Int, alvl: Int) returns (x: Ref, y: Ref, r: Ref, s: Ref, ret: Int)
+  requires alvl > lvl && lvl >= 0 && (acc(LevelDummy(dummy, alvl), write) && (alvl >= 0 && true))
+  ensures acc(Flag(r, alvl, s, lvl, x, y), write) && (alvl >= 0 && true) && ret == 1
+{
+  var $_levelVar_3: Int
+  var $_levelVar_4: Int
+  var $_levelVar_5: Int
+  inhale $_levelVar_3 >= 0 && $_levelVar_3 > alvl
+  assert $_levelVar_3 >= 0
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // Inferring interference all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(4, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_infer](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(4, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_infer](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_infer](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_infer](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(4, $r, $alvl, $s, $lvl, $x, $y) == old[pre_infer](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Inferring interference all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(4, $r, $lvl, $x)) } none < old[pre_infer](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(4, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer](Join_state($r, $lvl, $x)) || 0 == old[pre_infer](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_infer](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(4, $r, $lvl, $x) == old[pre_infer](Join_state($r, $lvl, $x)))
+  
+  // Inferring interference all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(4, $r, $lvl)) } none < old[pre_infer](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(4, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_infer](LevelDummy_state($r, $lvl)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_infer](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(4, $r, $lvl) == old[pre_infer](LevelDummy_state($r, $lvl)))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$memcell_$f, write) && true
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  x.$memcell_$f := 0
+  
+  // ------- heap-write END ----------
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after heap-write@35.3) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(5, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_stabilize5](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(5, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_stabilize5](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize5](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  ___silicon_hack407_havoc_all_Flag()
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize5](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_interferenceSet_hf(5, $r, $alvl, $s, $lvl, $x, $y)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize5](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(5, $r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize5](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(5, $r, $lvl, $x)) } none < old[pre_stabilize5](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(5, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize5](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize5](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  ___silicon_hack407_havoc_all_Join()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize5](perm(Join($r, $lvl, $x))) ==> (Join_state($r, $lvl, $x) in Join_interferenceSet_hf(5, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize5](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(5, $r, $lvl, $x) == old[pre_stabilize5](Join_state($r, $lvl, $x)))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(5, $r, $lvl)) } none < old[pre_stabilize5](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(5, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_stabilize5](LevelDummy_state($r, $lvl)) || false))))
+  ___silicon_hack407_havoc_all_LevelDummy()
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize5](perm(LevelDummy($r, $lvl))) ==> (LevelDummy_state($r, $lvl) in LevelDummy_interferenceSet_hf(5, $r, $lvl)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize5](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(5, $r, $lvl) == old[pre_stabilize5](LevelDummy_state($r, $lvl)))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after heap-write@35.3) END 
+  
+  
+  
+  // ------- call:makeJoin BEGIN -----
+  
+  
+  assert true
+  label pre_call
+  assert $_levelVar_3 >= 0
+  assert true
+  exhale lvl >= 0
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (before call:makeJoin@37.3) BEGIN 
+  
+  
+  label pre_stabilize6
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize6](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize6](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize6](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize6](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize6](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize6](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize6](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize6](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (before call:makeJoin@37.3) END 
+  
+  
+  y := havoc_Ref()
+  s := havoc_Ref()
+  inhale acc(Join(s, lvl, y), write) && (lvl >= 0 && Join_state(s, lvl, y) == 0) && acc(Join_SET(s), write) && acc(Join_Z(s), write)
+  
+  // ------- call:makeJoin END -------
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after call:makeJoin@37.3) BEGIN 
+  
+  
+  label pre_stabilize7
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(6, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_stabilize7](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(6, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_stabilize7](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize7](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  ___silicon_hack407_havoc_all_Flag()
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize7](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_interferenceSet_hf(6, $r, $alvl, $s, $lvl, $x, $y)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize7](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(6, $r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize7](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(6, $r, $lvl, $x)) } none < old[pre_stabilize7](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(6, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize7](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize7](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  ___silicon_hack407_havoc_all_Join()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize7](perm(Join($r, $lvl, $x))) ==> (Join_state($r, $lvl, $x) in Join_interferenceSet_hf(6, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize7](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(6, $r, $lvl, $x) == old[pre_stabilize7](Join_state($r, $lvl, $x)))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(6, $r, $lvl)) } none < old[pre_stabilize7](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(6, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_stabilize7](LevelDummy_state($r, $lvl)) || false))))
+  ___silicon_hack407_havoc_all_LevelDummy()
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize7](perm(LevelDummy($r, $lvl))) ==> (LevelDummy_state($r, $lvl) in LevelDummy_interferenceSet_hf(6, $r, $lvl)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize7](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(6, $r, $lvl) == old[pre_stabilize7](LevelDummy_state($r, $lvl)))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after call:makeJoin@37.3) END 
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(Join(s, lvl, y), write) && (lvl >= 0 && true)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Join(s, lvl, y), write) && (lvl >= 0 && true)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Flag_SFLAG(r), write)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- fold BEGIN --------------
+  
+  
+  fold acc(Flag(r, alvl, s, lvl, x, y), write)
+  assert alvl >= 0 && true
+  
+  // ------- fold END ----------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(Flag(r, alvl, s, lvl, x, y), write) && (alvl >= 0 && true)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Flag(r, alvl, s, lvl, x, y), write) && (alvl >= 0 && true)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  exhale acc(Flag(r, alvl, s, lvl, x, y), write) && (alvl >= 0 && Flag_state(r, alvl, s, lvl, x, y) == 0) && acc(Flag_SFLAG(r), write)
+  
+  // ------- exhale END --------------
+  
+  
+  
+  // skip;
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after skip@53.3) BEGIN 
+  
+  
+  label pre_stabilize8
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(7, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_stabilize8](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(7, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_stabilize8](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize8](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  ___silicon_hack407_havoc_all_Flag()
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize8](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_interferenceSet_hf(7, $r, $alvl, $s, $lvl, $x, $y)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize8](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(7, $r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize8](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(7, $r, $lvl, $x)) } none < old[pre_stabilize8](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(7, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize8](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize8](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  ___silicon_hack407_havoc_all_Join()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize8](perm(Join($r, $lvl, $x))) ==> (Join_state($r, $lvl, $x) in Join_interferenceSet_hf(7, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize8](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(7, $r, $lvl, $x) == old[pre_stabilize8](Join_state($r, $lvl, $x)))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(7, $r, $lvl)) } none < old[pre_stabilize8](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(7, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_stabilize8](LevelDummy_state($r, $lvl)) || false))))
+  ___silicon_hack407_havoc_all_LevelDummy()
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize8](perm(LevelDummy($r, $lvl))) ==> (LevelDummy_state($r, $lvl) in LevelDummy_interferenceSet_hf(7, $r, $lvl)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize8](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(7, $r, $lvl) == old[pre_stabilize8](LevelDummy_state($r, $lvl)))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after skip@53.3) END 
+  
+  
+  
+  // ------- call:wait BEGIN ---------
+  
+  
+  assert (forall $_m: Int :: { ($_m in Join_interferenceSet_hf(7, s, lvl, y)) } ($_m in Join_interferenceSet_hf(7, s, lvl, y)) ==> ($_m in comprehension_104_220()))
+  label pre_call2
+  assert $_levelVar_3 >= 0 && $_levelVar_3 > lvl
+  assert true
+  exhale acc(Join(s, lvl, y), write) && (lvl >= 0 && Join_state(s, lvl, y) == Join_state(s, lvl, y)) && acc(Join_Z(s), write) && (Join_state(s, lvl, y) in comprehension_104_220())
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (before call:wait@55.3) BEGIN 
+  
+  
+  label pre_stabilize9
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize9](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize9](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize9](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize9](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize9](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize9](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize9](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize9](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (before call:wait@55.3) END 
+  
+  
+  inhale acc(Join(s, lvl, y), write) && (lvl >= 0 && Join_state(s, lvl, y) == 1) && acc(Join_Z(s), write)
+  
+  // ------- call:wait END -----------
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after call:wait@55.3) BEGIN 
+  
+  
+  label pre_stabilize10
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(8, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_stabilize10](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(8, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_stabilize10](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize10](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  ___silicon_hack407_havoc_all_Flag()
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize10](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_interferenceSet_hf(8, $r, $alvl, $s, $lvl, $x, $y)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize10](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(8, $r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize10](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(8, $r, $lvl, $x)) } none < old[pre_stabilize10](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(8, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize10](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize10](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  ___silicon_hack407_havoc_all_Join()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize10](perm(Join($r, $lvl, $x))) ==> (Join_state($r, $lvl, $x) in Join_interferenceSet_hf(8, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize10](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(8, $r, $lvl, $x) == old[pre_stabilize10](Join_state($r, $lvl, $x)))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(8, $r, $lvl)) } none < old[pre_stabilize10](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(8, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_stabilize10](LevelDummy_state($r, $lvl)) || false))))
+  ___silicon_hack407_havoc_all_LevelDummy()
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize10](perm(LevelDummy($r, $lvl))) ==> (LevelDummy_state($r, $lvl) in LevelDummy_interferenceSet_hf(8, $r, $lvl)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize10](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(8, $r, $lvl) == old[pre_stabilize10](LevelDummy_state($r, $lvl)))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after call:wait@55.3) END 
+  
+  
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region0
+  assert $_levelVar_3 > alvl
+  $_levelVar_4 := alvl
+  unfold acc(Flag(r, alvl, s, lvl, x, y), write)
+  label transitionPre
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  
+  // no additional linking required
+  
+  
+  
+  // havoc performed by other front resource
+  
+  
+  inhale x.$memcell_$f == 0 ==> Join_interferenceReference_hf(8, s, lvl, y) == old[transitionPre](Join_state(s, lvl, y))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale x.$memcell_$f == 1 ==> Join_interferenceReference_hf(8, s, lvl, y) == old[transitionPre](Join_state(s, lvl, y))
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  ret := x.$memcell_$f
+  
+  // ------- heap-read END -----------
+  
+  
+  fold acc(Flag(r, alvl, s, lvl, x, y), write)
+  assert Flag_state(r, alvl, s, lvl, x, y) == old[pre_open_region0](Flag_state(r, alvl, s, lvl, x, y))
+  $_levelVar_5 := $_levelVar_3
+  
+  // ------- open-region END ---------
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after open-region@57.3) BEGIN 
+  
+  
+  label pre_stabilize11
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(9, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_stabilize11](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(9, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_stabilize11](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize11](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  ___silicon_hack407_havoc_all_Flag()
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize11](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_interferenceSet_hf(9, $r, $alvl, $s, $lvl, $x, $y)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize11](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(9, $r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize11](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(9, $r, $lvl, $x)) } none < old[pre_stabilize11](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(9, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize11](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize11](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  ___silicon_hack407_havoc_all_Join()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize11](perm(Join($r, $lvl, $x))) ==> (Join_state($r, $lvl, $x) in Join_interferenceSet_hf(9, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize11](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(9, $r, $lvl, $x) == old[pre_stabilize11](Join_state($r, $lvl, $x)))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(9, $r, $lvl)) } none < old[pre_stabilize11](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(9, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_stabilize11](LevelDummy_state($r, $lvl)) || false))))
+  ___silicon_hack407_havoc_all_LevelDummy()
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize11](perm(LevelDummy($r, $lvl))) ==> (LevelDummy_state($r, $lvl) in LevelDummy_interferenceSet_hf(9, $r, $lvl)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize11](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(9, $r, $lvl) == old[pre_stabilize11](LevelDummy_state($r, $lvl)))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after open-region@57.3) END 
+  
+  
+}
+
+method makeJoin(lvl: Int) returns (ret: Ref, r: Ref)
+  requires lvl >= 0
+  ensures acc(Join(r, lvl, ret), write) && (lvl >= 0 && Join_state(r, lvl, ret) == 0) && acc(Join_SET(r), write) && acc(Join_Z(r), write)
+{
+  var $_levelVar_6: Int
+  inhale $_levelVar_6 >= 0
+  assert $_levelVar_6 >= 0
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer2
+  
+  // Inferring interference all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(10, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_infer2](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(10, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_infer2](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_infer2](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_infer2](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(10, $r, $alvl, $s, $lvl, $x, $y) == old[pre_infer2](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Inferring interference all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(10, $r, $lvl, $x)) } none < old[pre_infer2](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(10, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer2](Join_state($r, $lvl, $x)) || 0 == old[pre_infer2](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_infer2](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(10, $r, $lvl, $x) == old[pre_infer2](Join_state($r, $lvl, $x)))
+  
+  // Inferring interference all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(10, $r, $lvl)) } none < old[pre_infer2](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(10, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_infer2](LevelDummy_state($r, $lvl)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_infer2](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(10, $r, $lvl) == old[pre_infer2](LevelDummy_state($r, $lvl)))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(ret.$memcell_$f, write) && true
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  ret.$memcell_$f := 0
+  
+  // ------- heap-write END ----------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Join_SET(r), write) && acc(Join_Z(r), write)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- fold BEGIN --------------
+  
+  
+  fold acc(Join(r, lvl, ret), write)
+  assert lvl >= 0 && true
+  
+  // ------- fold END ----------------
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after seq-comp@84.3) BEGIN 
+  
+  
+  label pre_stabilize12
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(11, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_stabilize12](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(11, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_stabilize12](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize12](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  ___silicon_hack407_havoc_all_Flag()
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize12](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_interferenceSet_hf(11, $r, $alvl, $s, $lvl, $x, $y)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize12](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(11, $r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize12](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(11, $r, $lvl, $x)) } none < old[pre_stabilize12](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(11, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize12](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize12](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  ___silicon_hack407_havoc_all_Join()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize12](perm(Join($r, $lvl, $x))) ==> (Join_state($r, $lvl, $x) in Join_interferenceSet_hf(11, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize12](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(11, $r, $lvl, $x) == old[pre_stabilize12](Join_state($r, $lvl, $x)))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(11, $r, $lvl)) } none < old[pre_stabilize12](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(11, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_stabilize12](LevelDummy_state($r, $lvl)) || false))))
+  ___silicon_hack407_havoc_all_LevelDummy()
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize12](perm(LevelDummy($r, $lvl))) ==> (LevelDummy_state($r, $lvl) in LevelDummy_interferenceSet_hf(11, $r, $lvl)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize12](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(11, $r, $lvl) == old[pre_stabilize12](LevelDummy_state($r, $lvl)))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after seq-comp@84.3) END 
+  
+  
+}
+
+method set_to_one(r: Ref, lvl: Int, x: Ref)
+  requires acc(Join(r, lvl, x), write) && (lvl >= 0 && Join_state(r, lvl, x) == 0) && acc(Join_SET(r), write)
+  ensures acc(Join(r, lvl, x), write) && (lvl >= 0 && Join_state(r, lvl, x) == 1) && acc(Join_SET(r), write)
+{
+  var $_levelVar_7: Int
+  var $_levelVar_8: Int
+  var $_levelVar_9: Int
+  inhale $_levelVar_7 >= 0 && $_levelVar_7 > lvl
+  assert $_levelVar_7 >= 0
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic
+  assert perm(Join_atomicity_context_fp(r, lvl, x)) == none
+  assert $_levelVar_7 > lvl
+  $_levelVar_8 := lvl
+  exhale acc(Join_SET(r), write)
+  
+  // ------- Stabilising regions Flag,LevelDummy (before use-atomic@97.3) BEGIN 
+  
+  
+  label pre_stabilize13
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize13](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize13](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize13](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize13](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize13](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,LevelDummy (before use-atomic@97.3) END 
+  
+  
+  unfold acc(Join(r, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- Stabilising regions Join (before use-atomic@97.3) BEGIN 
+  
+  
+  label pre_stabilize14
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize14](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize14](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize14](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // ------- Stabilising regions Join (before use-atomic@97.3) END 
+  
+  
+  inhale acc(Join_SET(r), write)
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  x.$memcell_$f := 1
+  
+  // ------- heap-write END ----------
+  
+  
+  fold acc(Join(r, lvl, x), write)
+  assert old[pre_use_atomic](Join_state(r, lvl, x)) == Join_state(r, lvl, x) || 0 == old[pre_use_atomic](Join_state(r, lvl, x)) && 1 == Join_state(r, lvl, x)
+  $_levelVar_9 := $_levelVar_7
+  
+  // ------- use-atomic END ----------
+  
+  
+}
+
+method wait(r: Ref, lvl: Int, x: Ref)
+  requires acc(Join(r, lvl, x), write) && (lvl >= 0 && Join_state(r, lvl, x) == Join_state(r, lvl, x)) && acc(Join_Z(r), write)
+  requires (Join_state(r, lvl, x) in comprehension_104_220())
+  ensures acc(Join(r, lvl, x), write) && (lvl >= 0 && Join_state(r, lvl, x) == 1) && acc(Join_Z(r), write)
+{
+  var v: Int
+  var $_levelVar_10: Int
+  var $_levelVar_11: Int
+  var $_levelVar_12: Int
+  var $_levelVar_13: Int
+  var $_levelVar_14: Int
+  var $_levelVar_15: Int
+  var $_levelVar_16: Int
+  var $_levelVar_17: Int
+  inhale $_levelVar_10 >= 0 && $_levelVar_10 > lvl
+  assert $_levelVar_10 >= 0
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  label guard_arg_eval0
+  exhale acc(Join_Z(r), write)
+  inhale acc(r.$diamond, write)
+  inhale acc(Join_atomicity_context_fp(r, lvl, x), write)
+  inhale Join_atomicity_context_hf(r, lvl, x) == comprehension_104_220()
+  
+  // ------- Stabilising regions Join (before atomic) BEGIN 
+  
+  
+  label pre_stabilize15
+  
+  // Stabilising single instance of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(12, r, lvl, x)) } ($$_m in Join_interferenceSet_hf(12, r, lvl, x)) == ((none < perm(r.$diamond) && none < perm(Join_atomicity_context_fp(r, lvl, x)) ==> ($$_m in Join_atomicity_context_hf(r, lvl, x))) && ($$_m == old[pre_stabilize15](Join_state(r, lvl, x)) || 0 == old[pre_stabilize15](Join_state(r, lvl, x)) && 1 == $$_m && true && perm(Join_SET(r)) == none)))
+  ___silicon_hack407_havoc_all_Join()
+  inhale (Join_state(r, lvl, x) in Join_interferenceSet_hf(12, r, lvl, x))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale Join_interferenceReference_hf(12, r, lvl, x) == old[pre_stabilize15](Join_state(r, lvl, x))
+  
+  // ------- Stabilising regions Join (before atomic) END 
+  
+  
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region
+  assert $_levelVar_10 > lvl
+  $_levelVar_11 := lvl
+  unfold acc(Join(r, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  v := x.$memcell_$f
+  
+  // ------- heap-read END -----------
+  
+  
+  fold acc(Join(r, lvl, x), write)
+  assert Join_state(r, lvl, x) == old[pre_open_region](Join_state(r, lvl, x))
+  $_levelVar_12 := $_levelVar_10
+  
+  // ------- open-region END ---------
+  
+  
+  
+  // ------- if-then-else BEGIN ------
+  
+  
+  if (v == 1) {
+    
+    // ------- assert BEGIN ------------
+    
+    
+    assert acc(Join(r, lvl, x), write) && (lvl >= 0 && Join_state(r, lvl, x) == 1)
+    
+    // ------- assert END --------------
+    
+    
+    
+    // ------- exhale BEGIN ------------
+    
+    
+    exhale acc(r.$diamond, write)
+    
+    // ------- exhale END --------------
+    
+    
+    
+    // ------- inhale BEGIN ------------
+    
+    
+    inhale acc(r.$stepFrom_int, write) && r.$stepFrom_int == 1 && (acc(r.$stepTo_int, write) && r.$stepTo_int == 1)
+    
+    // ------- inhale END --------------
+    
+    
+    assert $_levelVar_12 == $_levelVar_12
+  }
+  $_levelVar_13 := $_levelVar_12
+  
+  // ------- if-then-else END --------
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after seq-comp@114.5) BEGIN 
+  
+  
+  label pre_stabilize17
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(13, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_stabilize17](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(13, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_stabilize17](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize17](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  ___silicon_hack407_havoc_all_Flag()
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize17](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_interferenceSet_hf(13, $r, $alvl, $s, $lvl, $x, $y)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize17](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(13, $r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize17](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(13, $r, $lvl, $x)) } none < old[pre_stabilize17](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(13, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize17](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize17](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  ___silicon_hack407_havoc_all_Join()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize17](perm(Join($r, $lvl, $x))) ==> (Join_state($r, $lvl, $x) in Join_interferenceSet_hf(13, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize17](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(13, $r, $lvl, $x) == old[pre_stabilize17](Join_state($r, $lvl, $x)))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(13, $r, $lvl)) } none < old[pre_stabilize17](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(13, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_stabilize17](LevelDummy_state($r, $lvl)) || false))))
+  ___silicon_hack407_havoc_all_LevelDummy()
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize17](perm(LevelDummy($r, $lvl))) ==> (LevelDummy_state($r, $lvl) in LevelDummy_interferenceSet_hf(13, $r, $lvl)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize17](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(13, $r, $lvl) == old[pre_stabilize17](LevelDummy_state($r, $lvl)))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after seq-comp@114.5) END 
+  
+  
+  
+  // ------- while BEGIN -------------
+  
+  
+  label preWhile0
+  while (v == 0)
+    invariant acc(Join(r, lvl, x), write) && (lvl >= 0 && true)
+    invariant (v == 0 ? Join_state(r, lvl, x) >= 0 && acc(r.$diamond, write) : Join_state(r, lvl, x) == 1 && (acc(r.$stepFrom_int, write) && r.$stepFrom_int == Join_state(r, lvl, x) && (acc(r.$stepTo_int, write) && r.$stepTo_int == Join_state(r, lvl, x)))) 
+  {
+    inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+    
+    // no init required
+    
+    
+    
+    // no init required
+    
+    
+    
+    // no init required
+    
+    
+    inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+    inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+    inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y), old[preWhile0](perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)))))
+    inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: { Flag_atomicity_context_df($r, $alvl, $s, $lvl, $x, $y) } none < old[preWhile0](perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y) == old[preWhile0](Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y)))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_atomicity_context_fp($r, $lvl, $x), old[preWhile0](perm(Join_atomicity_context_fp($r, $lvl, $x)))))
+    inhale (forall $r: Ref, $lvl: Int, $x: Ref :: { Join_atomicity_context_df($r, $lvl, $x) } none < old[preWhile0](perm(Join_atomicity_context_fp($r, $lvl, $x))) ==> Join_atomicity_context_hf($r, $lvl, $x) == old[preWhile0](Join_atomicity_context_hf($r, $lvl, $x)))
+    inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_atomicity_context_fp($r, $lvl), old[preWhile0](perm(LevelDummy_atomicity_context_fp($r, $lvl)))))
+    inhale (forall $r: Ref, $lvl: Int :: { LevelDummy_atomicity_context_df($r, $lvl) } none < old[preWhile0](perm(LevelDummy_atomicity_context_fp($r, $lvl))) ==> LevelDummy_atomicity_context_hf($r, $lvl) == old[preWhile0](LevelDummy_atomicity_context_hf($r, $lvl)))
+    
+    // ------- Inferring interference context Flag,Join,LevelDummy (infer context inside while) BEGIN 
+    
+    
+    label pre_infer3
+    
+    // Inferring interference all instances of region Flag
+    
+    ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+    exhale acc(Flag_sk_fp(), write)
+    inhale acc(Flag_sk_fp(), write)
+    inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(14, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_infer3](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(14, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_infer3](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_infer3](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_infer3](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(14, $r, $alvl, $s, $lvl, $x, $y) == old[pre_infer3](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+    
+    // Inferring interference all instances of region Join
+    
+    ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+    exhale acc(Join_sk_fp(), write)
+    inhale acc(Join_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(14, $r, $lvl, $x)) } none < old[pre_infer3](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(14, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer3](Join_state($r, $lvl, $x)) || 0 == old[pre_infer3](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_infer3](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(14, $r, $lvl, $x) == old[pre_infer3](Join_state($r, $lvl, $x)))
+    
+    // Inferring interference all instances of region LevelDummy
+    
+    ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+    exhale acc(LevelDummy_sk_fp(), write)
+    inhale acc(LevelDummy_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(14, $r, $lvl)) } none < old[pre_infer3](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(14, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_infer3](LevelDummy_state($r, $lvl)) || false))))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_infer3](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(14, $r, $lvl) == old[pre_infer3](LevelDummy_state($r, $lvl)))
+    
+    // ------- Inferring interference context Flag,Join,LevelDummy (infer context inside while) END 
+    
+    
+    
+    // ------- open-region BEGIN -------
+    
+    
+    label pre_open_region2
+    assert $_levelVar_13 > lvl
+    $_levelVar_14 := lvl
+    unfold acc(Join(r, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    
+    
+    // ------- heap-read BEGIN ---------
+    
+    
+    v := x.$memcell_$f
+    
+    // ------- heap-read END -----------
+    
+    
+    fold acc(Join(r, lvl, x), write)
+    assert Join_state(r, lvl, x) == old[pre_open_region2](Join_state(r, lvl, x))
+    $_levelVar_15 := $_levelVar_13
+    
+    // ------- open-region END ---------
+    
+    
+    
+    // ------- if-then-else BEGIN ------
+    
+    
+    if (v == 1) {
+      
+      // ------- assert BEGIN ------------
+      
+      
+      assert acc(Join(r, lvl, x), write) && (lvl >= 0 && Join_state(r, lvl, x) == 1)
+      
+      // ------- assert END --------------
+      
+      
+      
+      // ------- exhale BEGIN ------------
+      
+      
+      exhale acc(r.$diamond, write)
+      
+      // ------- exhale END --------------
+      
+      
+      
+      // ------- inhale BEGIN ------------
+      
+      
+      inhale acc(r.$stepFrom_int, write) && r.$stepFrom_int == 1 && (acc(r.$stepTo_int, write) && r.$stepTo_int == 1)
+      
+      // ------- inhale END --------------
+      
+      
+      assert $_levelVar_15 == $_levelVar_15
+    }
+    $_levelVar_16 := $_levelVar_15
+    
+    // ------- if-then-else END --------
+    
+    
+    
+    // ------- Stabilising regions Flag,Join,LevelDummy (after seq-comp@114.5) BEGIN 
+    
+    
+    label pre_stabilize18
+    
+    // Stabilising all instances of region Flag
+    
+    ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+    exhale acc(Flag_sk_fp(), write)
+    inhale acc(Flag_sk_fp(), write)
+    inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(15, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_stabilize18](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(15, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_stabilize18](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize18](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+    ___silicon_hack407_havoc_all_Flag()
+    inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize18](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_interferenceSet_hf(15, $r, $alvl, $s, $lvl, $x, $y)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize18](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(15, $r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize18](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+    
+    // Stabilising all instances of region Join
+    
+    ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+    exhale acc(Join_sk_fp(), write)
+    inhale acc(Join_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(15, $r, $lvl, $x)) } none < old[pre_stabilize18](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(15, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize18](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize18](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+    ___silicon_hack407_havoc_all_Join()
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize18](perm(Join($r, $lvl, $x))) ==> (Join_state($r, $lvl, $x) in Join_interferenceSet_hf(15, $r, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize18](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(15, $r, $lvl, $x) == old[pre_stabilize18](Join_state($r, $lvl, $x)))
+    
+    // Stabilising all instances of region LevelDummy
+    
+    ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+    exhale acc(LevelDummy_sk_fp(), write)
+    inhale acc(LevelDummy_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(15, $r, $lvl)) } none < old[pre_stabilize18](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(15, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_stabilize18](LevelDummy_state($r, $lvl)) || false))))
+    ___silicon_hack407_havoc_all_LevelDummy()
+    inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize18](perm(LevelDummy($r, $lvl))) ==> (LevelDummy_state($r, $lvl) in LevelDummy_interferenceSet_hf(15, $r, $lvl)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize18](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(15, $r, $lvl) == old[pre_stabilize18](LevelDummy_state($r, $lvl)))
+    
+    // ------- Stabilising regions Flag,Join,LevelDummy (after seq-comp@114.5) END 
+    
+    
+    assert $_levelVar_16 == $_levelVar_13
+  }
+  $_levelVar_17 := $_levelVar_13
+  
+  // ------- while END ---------------
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after while@110.3) BEGIN 
+  
+  
+  label pre_stabilize19
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(16, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_stabilize19](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(16, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_stabilize19](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize19](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  ___silicon_hack407_havoc_all_Flag()
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize19](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_interferenceSet_hf(16, $r, $alvl, $s, $lvl, $x, $y)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize19](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(16, $r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize19](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(16, $r, $lvl, $x)) } none < old[pre_stabilize19](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(16, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_stabilize19](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize19](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  ___silicon_hack407_havoc_all_Join()
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize19](perm(Join($r, $lvl, $x))) ==> (Join_state($r, $lvl, $x) in Join_interferenceSet_hf(16, $r, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize19](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(16, $r, $lvl, $x) == old[pre_stabilize19](Join_state($r, $lvl, $x)))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(16, $r, $lvl)) } none < old[pre_stabilize19](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(16, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_stabilize19](LevelDummy_state($r, $lvl)) || false))))
+  ___silicon_hack407_havoc_all_LevelDummy()
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize19](perm(LevelDummy($r, $lvl))) ==> (LevelDummy_state($r, $lvl) in LevelDummy_interferenceSet_hf(16, $r, $lvl)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize19](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(16, $r, $lvl) == old[pre_stabilize19](LevelDummy_state($r, $lvl)))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (after while@110.3) END 
+  
+  
+  assert (r.$stepFrom_int in Join_atomicity_context_hf(r, lvl, x))
+  assert r.$stepFrom_int == r.$stepTo_int
+  
+  // ------- Stabilising regions Join (after atomic) BEGIN 
+  
+  
+  label pre_stabilize16
+  
+  // Stabilising single instance of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (none < perm(r.$diamond) && none < perm(Join_atomicity_context_fp(r, lvl, x)) ==> (Join_state(r, lvl, x) in Join_atomicity_context_hf(r, lvl, x))) && (Join_state(r, lvl, x) == old[pre_stabilize16](Join_state(r, lvl, x)) || 0 == old[pre_stabilize16](Join_state(r, lvl, x)) && 1 == Join_state(r, lvl, x) && true && perm(Join_SET(r)) == none)
+  
+  // ------- Stabilising regions Join (after atomic) END 
+  
+  
+  
+  inhale Join_state(r, lvl, x) == r.$stepTo_int
+  inhale old(Join_state(r, lvl, x)) == r.$stepFrom_int
+  inhale acc(Join_Z(r), write)
+  exhale acc(r.$stepFrom_int, write) && acc(r.$stepTo_int, write)
+}
+
+method $_Flag_interpretation_stability_check(r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref)
+{
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  inhale acc(x.$memcell_$f, write) && true && (x.$memcell_$f == 0 || x.$memcell_$f == 1) && (x.$memcell_$f == 0 ? acc(Join(s, lvl, y), write) && (lvl >= 0 && Join_state(s, lvl, y) == 0) && lvl < alvl && acc(Join_SET(s), write) : true) && (x.$memcell_$f == 1 ? acc(Join(s, lvl, y), write) && (lvl >= 0 && true) && lvl < alvl : true)
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize20
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize20](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize20](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize20](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize20](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize20](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize20](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize20](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize20](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of region interpretation) END 
+  
+  
+  assert acc(x.$memcell_$f, write) && true && (x.$memcell_$f == 0 || x.$memcell_$f == 1) && (x.$memcell_$f == 0 ? acc(Join(s, lvl, y), write) && (lvl >= 0 && Join_state(s, lvl, y) == 0) && lvl < alvl && acc(Join_SET(s), write) : true) && (x.$memcell_$f == 1 ? acc(Join(s, lvl, y), write) && (lvl >= 0 && true) && lvl < alvl : true)
+}
+
+method $_Flag_action_transitivity_check()
+{
+  var SFLAG: Bool
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || 0 == aState && 1 == bState && true && SFLAG
+  inhale bState == cState || 0 == bState && 1 == cState && true && SFLAG
+  assert aState == cState || 0 == aState && 1 == cState && true && SFLAG
+}
+
+method $_Join_interpretation_stability_check(r: Ref, lvl: Int, x: Ref)
+{
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  inhale acc(x.$memcell_$f, write) && true && (x.$memcell_$f == 0 || x.$memcell_$f == 1)
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize21
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize21](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize21](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize21](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize21](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize21](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize21](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize21](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize21](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of region interpretation) END 
+  
+  
+  assert acc(x.$memcell_$f, write) && true && (x.$memcell_$f == 0 || x.$memcell_$f == 1)
+}
+
+method $_Join_action_transitivity_check()
+{
+  var SET: Bool
+  var Z: Bool
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || 0 == aState && 1 == bState && true && SET
+  inhale bState == cState || 0 == bState && 1 == cState && true && SET
+  assert aState == cState || 0 == aState && 1 == cState && true && SET
+}
+
+method $_LevelDummy_interpretation_stability_check(r: Ref, lvl: Int)
+{
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  inhale true
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize22
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize22](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize22](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize22](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize22](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize22](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize22](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize22](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize22](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of region interpretation) END 
+  
+  
+  assert true
+}
+
+method $_LevelDummy_action_transitivity_check()
+{
+  var LevelDummyG: Bool
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState
+  inhale bState == cState
+  assert aState == cState
+}
+
+method $_thread2_condition_stability_precondition_check(r: Ref, alvl: Int, s: Ref, lvl: Int, x: Ref, y: Ref)
+  requires acc(Flag(r, alvl, s, lvl, x, y), write) && (alvl >= 0 && Flag_state(r, alvl, s, lvl, x, y) == 0) && acc(Flag_SFLAG(r), write)
+{
+  var $_levelVar_18: Int
+  inhale $_levelVar_18 >= 0 && $_levelVar_18 > alvl
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer4
+  
+  // Inferring interference all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(17, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_infer4](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(17, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_infer4](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_infer4](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_infer4](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(17, $r, $alvl, $s, $lvl, $x, $y) == old[pre_infer4](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Inferring interference all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(17, $r, $lvl, $x)) } none < old[pre_infer4](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(17, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer4](Join_state($r, $lvl, $x)) || 0 == old[pre_infer4](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_infer4](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(17, $r, $lvl, $x) == old[pre_infer4](Join_state($r, $lvl, $x)))
+  
+  // Inferring interference all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(17, $r, $lvl)) } none < old[pre_infer4](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(17, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_infer4](LevelDummy_state($r, $lvl)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_infer4](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(17, $r, $lvl) == old[pre_infer4](LevelDummy_state($r, $lvl)))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize23
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize23](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize23](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize23](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize23](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize23](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize23](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize23](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize23](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of method condition) END 
+  
+  
+  assert acc(Flag(r, alvl, s, lvl, x, y), write) && (alvl >= 0 && Flag_state(r, alvl, s, lvl, x, y) == 0) && acc(Flag_SFLAG(r), write)
+}
+
+method $_main_condition_stability_precondition_check(dummy: Ref, lvl: Int, alvl: Int, x: Ref, y: Ref, r: Ref, s: Ref, ret: Int)
+  requires alvl > lvl && lvl >= 0 && (acc(LevelDummy(dummy, alvl), write) && (alvl >= 0 && true))
+{
+  var $_levelVar_19: Int
+  inhale $_levelVar_19 >= 0 && $_levelVar_19 > alvl
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer5
+  
+  // Inferring interference all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(18, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_infer5](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(18, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_infer5](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_infer5](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_infer5](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(18, $r, $alvl, $s, $lvl, $x, $y) == old[pre_infer5](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Inferring interference all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(18, $r, $lvl, $x)) } none < old[pre_infer5](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(18, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer5](Join_state($r, $lvl, $x)) || 0 == old[pre_infer5](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_infer5](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(18, $r, $lvl, $x) == old[pre_infer5](Join_state($r, $lvl, $x)))
+  
+  // Inferring interference all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(18, $r, $lvl)) } none < old[pre_infer5](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(18, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_infer5](LevelDummy_state($r, $lvl)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_infer5](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(18, $r, $lvl) == old[pre_infer5](LevelDummy_state($r, $lvl)))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize24
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize24](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize24](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize24](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize24](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize24](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize24](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize24](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize24](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of method condition) END 
+  
+  
+  assert alvl > lvl && lvl >= 0 && (acc(LevelDummy(dummy, alvl), write) && (alvl >= 0 && true))
+}
+
+method $_makeJoin_condition_stability_precondition_check(lvl: Int, ret: Ref, r: Ref)
+  requires lvl >= 0
+{
+  var $_levelVar_20: Int
+  inhale $_levelVar_20 >= 0
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer6
+  
+  // Inferring interference all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag_interferenceContext_fp()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: (forall $$_m: Int :: { ($$_m in Flag_interferenceSet_df(19, $r, $alvl, $s, $lvl, $x, $y)) } none < old[pre_infer6](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> ($$_m in Flag_interferenceSet_hf(19, $r, $alvl, $s, $lvl, $x, $y)) == ((none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> ($$_m in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && ($$_m == old[pre_infer6](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_infer6](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == $$_m && true && perm(Flag_SFLAG($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_infer6](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> Flag_interferenceReference_hf(19, $r, $alvl, $s, $lvl, $x, $y) == old[pre_infer6](Flag_state($r, $alvl, $s, $lvl, $x, $y)))
+  
+  // Inferring interference all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join_interferenceContext_fp()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Join_interferenceSet_df(19, $r, $lvl, $x)) } none < old[pre_infer6](perm(Join($r, $lvl, $x))) ==> ($$_m in Join_interferenceSet_hf(19, $r, $lvl, $x)) == ((none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> ($$_m in Join_atomicity_context_hf($r, $lvl, $x))) && ($$_m == old[pre_infer6](Join_state($r, $lvl, $x)) || 0 == old[pre_infer6](Join_state($r, $lvl, $x)) && 1 == $$_m && true && perm(Join_SET($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_infer6](perm(Join($r, $lvl, $x))) ==> Join_interferenceReference_hf(19, $r, $lvl, $x) == old[pre_infer6](Join_state($r, $lvl, $x)))
+  
+  // Inferring interference all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy_interferenceContext_fp()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: (forall $$_m: Int :: { ($$_m in LevelDummy_interferenceSet_df(19, $r, $lvl)) } none < old[pre_infer6](perm(LevelDummy($r, $lvl))) ==> ($$_m in LevelDummy_interferenceSet_hf(19, $r, $lvl)) == ((none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> ($$_m in LevelDummy_atomicity_context_hf($r, $lvl))) && ($$_m == old[pre_infer6](LevelDummy_state($r, $lvl)) || false))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_infer6](perm(LevelDummy($r, $lvl))) ==> LevelDummy_interferenceReference_hf(19, $r, $lvl) == old[pre_infer6](LevelDummy_state($r, $lvl)))
+  
+  // ------- Inferring interference context Flag,Join,LevelDummy (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize25
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize25](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize25](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize25](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize25](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize25](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize25](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize25](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize25](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of method condition) END 
+  
+  
+  assert lvl >= 0
+}
+
+method $_set_to_one_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
+  requires acc(Join(r, lvl, x), write) && (lvl >= 0 && Join_state(r, lvl, x) == 0) && acc(Join_SET(r), write)
+{
+  var $_levelVar_21: Int
+  inhale $_levelVar_21 >= 0 && $_levelVar_21 > lvl
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize26
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize26](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize26](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize26](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize26](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize26](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize26](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize26](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize26](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of method condition) END 
+  
+  
+  assert acc(Join(r, lvl, x), write) && (lvl >= 0 && Join_state(r, lvl, x) == 0) && acc(Join_SET(r), write)
+}
+
+method $_wait_condition_stability_precondition_check(r: Ref, lvl: Int, x: Ref)
+  requires acc(Join(r, lvl, x), write) && (lvl >= 0 && Join_state(r, lvl, x) == Join_state(r, lvl, x)) && acc(Join_Z(r), write)
+{
+  var $_levelVar_22: Int
+  var v: Int
+  inhale $_levelVar_22 >= 0 && $_levelVar_22 > lvl
+  inhale acc(Flag_sk_fp(), write) && acc(Join_sk_fp(), write) && acc(LevelDummy_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref :: acc(Flag_interferenceContext_fp($r, $alvl, $s, $lvl, $x, $y), write))
+  inhale (forall $r: Ref, $lvl: Int, $x: Ref :: acc(Join_interferenceContext_fp($r, $lvl, $x), write))
+  inhale (forall $r: Ref, $lvl: Int :: acc(LevelDummy_interferenceContext_fp($r, $lvl), write))
+  inhale Join_interferenceSet_hf(19, r, lvl, x) == comprehension_104_220()
+  inhale Join_interferenceReference_hf(19, r, lvl, x) == old(Join_state(r, lvl, x))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize27
+  
+  // Stabilising all instances of region Flag
+  
+  ___silicon_hack407_havoc_all_Flag()
+  exhale acc(Flag_sk_fp(), write)
+  inhale acc(Flag_sk_fp(), write)
+  inhale (forperm $r: Ref, $alvl: Int, $s: Ref, $lvl: Int, $x: Ref, $y: Ref [Flag($r, $alvl, $s, $lvl, $x, $y)] :: none < old[pre_stabilize27](perm(Flag($r, $alvl, $s, $lvl, $x, $y))) ==> (none < perm($r.$diamond) && none < perm(Flag_atomicity_context_fp($r, $alvl, $s, $lvl, $x, $y)) ==> (Flag_state($r, $alvl, $s, $lvl, $x, $y) in Flag_atomicity_context_hf($r, $alvl, $s, $lvl, $x, $y))) && (Flag_state($r, $alvl, $s, $lvl, $x, $y) == old[pre_stabilize27](Flag_state($r, $alvl, $s, $lvl, $x, $y)) || 0 == old[pre_stabilize27](Flag_state($r, $alvl, $s, $lvl, $x, $y)) && 1 == Flag_state($r, $alvl, $s, $lvl, $x, $y) && true && perm(Flag_SFLAG($r)) == none))
+  
+  // Stabilising all instances of region Join
+  
+  ___silicon_hack407_havoc_all_Join()
+  exhale acc(Join_sk_fp(), write)
+  inhale acc(Join_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $x: Ref [Join($r, $lvl, $x)] :: none < old[pre_stabilize27](perm(Join($r, $lvl, $x))) ==> (none < perm($r.$diamond) && none < perm(Join_atomicity_context_fp($r, $lvl, $x)) ==> (Join_state($r, $lvl, $x) in Join_atomicity_context_hf($r, $lvl, $x))) && (Join_state($r, $lvl, $x) == old[pre_stabilize27](Join_state($r, $lvl, $x)) || 0 == old[pre_stabilize27](Join_state($r, $lvl, $x)) && 1 == Join_state($r, $lvl, $x) && true && perm(Join_SET($r)) == none))
+  
+  // Stabilising all instances of region LevelDummy
+  
+  ___silicon_hack407_havoc_all_LevelDummy()
+  exhale acc(LevelDummy_sk_fp(), write)
+  inhale acc(LevelDummy_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int [LevelDummy($r, $lvl)] :: none < old[pre_stabilize27](perm(LevelDummy($r, $lvl))) ==> (none < perm($r.$diamond) && none < perm(LevelDummy_atomicity_context_fp($r, $lvl)) ==> (LevelDummy_state($r, $lvl) in LevelDummy_atomicity_context_hf($r, $lvl))) && (LevelDummy_state($r, $lvl) == old[pre_stabilize27](LevelDummy_state($r, $lvl)) || false))
+  
+  // ------- Stabilising regions Flag,Join,LevelDummy (check stability of method condition) END 
+  
+  
+  assert acc(Join(r, lvl, x), write) && (lvl >= 0 && Join_state(r, lvl, x) == Join_state(r, lvl, x)) && acc(Join_Z(r), write)
+}

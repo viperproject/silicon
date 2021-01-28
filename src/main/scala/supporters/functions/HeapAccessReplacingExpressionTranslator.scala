@@ -7,6 +7,7 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.LazyLogging
+import scala.annotation.unused
 import viper.silver.ast
 import viper.silicon.Map
 import viper.silicon.rules.functionSupporter
@@ -25,7 +26,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
        with LazyLogging {
 
   private var program: ast.Program = _
-  private var func: ast.Function = _
+  @unused private var func: ast.Function = _
   private var data: FunctionData = _
   private var ignoreAccessPredicates = false
   private var failed = false

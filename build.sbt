@@ -1,5 +1,3 @@
-import scala.sys.process.{Process, ProcessLogger}
-import scala.util.{Failure, Success, Try}
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -26,8 +24,11 @@ lazy val silicon = (project in file("."))
     // Compilation settings
     // Remove elidable method calls such as in SymbExLogger during compilation
     // scalacOptions ++= Seq("-Xelide-below", "1000"),
-    libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
-    libraryDependencies += "org.apache.commons" % "commons-pool2" % "2.6.0",
+    // scalacOptions ++= Seq("-Ypatmat-exhaust-depth", "640"),
+
+    // External dependencies
+    libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
+    libraryDependencies += "org.apache.commons" % "commons-pool2" % "2.9.0",
 
     // Only get a few compilation errors at once
     maxErrors := 5,
@@ -79,6 +80,9 @@ lazy val silicon = (project in file("."))
 
 // Pair of revision and branch information from Mercurial. Empty strings if an error occurred.
 lazy val gitInfo: Def.Initialize[(String, String)] = Def.setting {
+  import scala.sys.process.{Process, ProcessLogger}
+  import scala.util.{Failure, Success, Try}
+
   val gitCommand = "git status --porcelain=v2 --branch"
 
   Try({

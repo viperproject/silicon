@@ -1,0 +1,727 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  
+}
+
+domain interferenceReference_Domain {
+  
+  
+}
+
+domain interferenceSet_Domain {
+  
+  
+}
+
+domain atomicity_context_Domain {
+  
+  
+}
+
+field $diamond: Int
+
+field $cell_$f: Int
+
+field $tuple2_$f: Bool
+
+field $tuple2_$g: Bool
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method test02()
+{
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert 0 == 0
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert 0 == 0
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert 0 == 1
+  
+  // ------- assert END --------------
+  
+  
+}
+
+method test03(i1: Int, i2: Int, i3: Int)
+{
+  var $_levelVar_1: Int
+  inhale $_levelVar_1 >= 0
+  assert $_levelVar_1 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- assume BEGIN ------------
+  
+  
+  inhale 0 < i1
+  
+  // ------- assume END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert 1 <= i1
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- assume BEGIN ------------
+  
+  
+  inhale i1 < i2
+  
+  // ------- assume END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert 1 < i2
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- assume BEGIN ------------
+  
+  
+  inhale i2 < i3
+  
+  // ------- assume END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert i3 <= i2
+  
+  // ------- assert END --------------
+  
+  
+}
+
+method test01(x: Ref)
+{
+  var v: Int
+  var $_levelVar_2: Int
+  inhale $_levelVar_2 >= 0
+  assert $_levelVar_2 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer2
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$cell_$f, write) && true
+  v := x.$cell_$f
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  exhale acc(x.$cell_$f, write) && true
+  
+  // ------- exhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$cell_$f, write) && true
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  exhale acc(x.$cell_$f, write) && x.$cell_$f == v
+  
+  // ------- exhale END --------------
+  
+  
+}
+
+method test04(x: Ref, y: Ref)
+{
+  var $w_ravage2_1: Int
+  var $w_ravage2_3: Int
+  var $w_ravage2_5: Int
+  var $w_ravage2_7: Int
+  var v0: Int
+  var w0: Int
+  var $v_ravage2_2: Int
+  var $v_ravage2_4: Int
+  var v1: Int
+  var w1: Int
+  var $v_ravage2_6: Int
+  var $v_ravage2_8: Int
+  var $_levelVar_3: Int
+  inhale $_levelVar_3 >= 0
+  assert $_levelVar_3 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer3
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$cell_$f, write) && true && (acc(y.$cell_$f, write) && true)
+  v0 := x.$cell_$f
+  w0 := y.$cell_$f
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  $v_ravage2_2 := x.$cell_$f
+  exhale acc(x.$cell_$f, write) && true
+  
+  // ------- exhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$cell_$f, write) && x.$cell_$f == $w_ravage2_1
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  $v_ravage2_4 := y.$cell_$f
+  exhale acc(y.$cell_$f, write) && true
+  
+  // ------- exhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(y.$cell_$f, write) && y.$cell_$f == $w_ravage2_3
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(x.$cell_$f, write) && true && (acc(y.$cell_$f, write) && true)
+  v1 := x.$cell_$f
+  w1 := y.$cell_$f
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  $v_ravage2_6 := x.$cell_$f
+  exhale acc(x.$cell_$f, write) && true
+  
+  // ------- exhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$cell_$f, write) && x.$cell_$f == $w_ravage2_5
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  $v_ravage2_8 := y.$cell_$f
+  exhale acc(y.$cell_$f, write) && true
+  
+  // ------- exhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(y.$cell_$f, write) && y.$cell_$f == $w_ravage2_7
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  exhale false
+  
+  // ------- exhale END --------------
+  
+  
+}
+
+method test05(x: Ref, y: Ref)
+{
+  var v1: Int
+  var v2: Int
+  var $v0_PTEQ_9: Int
+  var $v0_PTEQ_10: Int
+  var w1: Int
+  var w2: Int
+  var $_levelVar_4: Int
+  inhale $_levelVar_4 >= 0
+  assert $_levelVar_4 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer4
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$cell_$f, write) && true && x.$cell_$f == v1
+  $v0_PTEQ_9 := x.$cell_$f
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(y.$cell_$f, write) && true && y.$cell_$f == v2
+  $v0_PTEQ_10 := y.$cell_$f
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- assume BEGIN ------------
+  
+  
+  inhale v1 < v2
+  
+  // ------- assume END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(x.$cell_$f, write) && true && (acc(y.$cell_$f, write) && true) && x.$cell_$f < y.$cell_$f
+  w1 := x.$cell_$f
+  w2 := y.$cell_$f
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  exhale false
+  
+  // ------- exhale END --------------
+  
+  
+}
+
+method test06(x: Ref, y: Ref)
+{
+  var $v0_XDotF_11: Int
+  var $v0_YDotF_12: Bool
+  var $_levelVar_5: Int
+  inhale $_levelVar_5 >= 0
+  assert $_levelVar_5 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer5
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(x.$cell_$f, write) && x.$cell_$f == 0
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(y.$tuple2_$f, write) && y.$tuple2_$f == false
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  $v0_XDotF_11 := x.$cell_$f
+  exhale acc(x.$cell_$f, write) && true
+  
+  // ------- exhale END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  $v0_YDotF_12 := y.$tuple2_$f
+  exhale acc(y.$tuple2_$f, write) && true
+  
+  // ------- exhale END --------------
+  
+  
+  
+  // ------- exhale BEGIN ------------
+  
+  
+  exhale false
+  
+  // ------- exhale END --------------
+  
+  
+}
+
+method $_test02_condition_stability_precondition_check()
+{
+  var $_levelVar_6: Int
+  inhale $_levelVar_6 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer6
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test03_condition_stability_precondition_check(i1: Int, i2: Int, i3: Int)
+{
+  var $_levelVar_7: Int
+  inhale $_levelVar_7 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer7
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test01_condition_stability_precondition_check(x: Ref)
+{
+  var $_levelVar_8: Int
+  inhale $_levelVar_8 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer8
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test04_condition_stability_precondition_check(x: Ref, y: Ref)
+{
+  var $_levelVar_9: Int
+  var $w_ravage2_1: Int
+  var $w_ravage2_3: Int
+  var $w_ravage2_5: Int
+  var $w_ravage2_7: Int
+  inhale $_levelVar_9 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer9
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test05_condition_stability_precondition_check(x: Ref, y: Ref)
+{
+  var $_levelVar_10: Int
+  var v1: Int
+  var v2: Int
+  inhale $_levelVar_10 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer10
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test06_condition_stability_precondition_check(x: Ref, y: Ref)
+{
+  var $_levelVar_11: Int
+  inhale $_levelVar_11 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer11
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert true
+}

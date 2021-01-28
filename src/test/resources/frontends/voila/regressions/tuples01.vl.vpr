@@ -1,0 +1,420 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain Tuple2[T0, T1] {
+  
+  function tuple2(t0: T0, t1: T1): Tuple2[T0, T1]
+  
+  function get0of2(p: Tuple2[T0, T1]): T0
+  
+  function get1of2(p: Tuple2[T0, T1]): T1
+  
+  axiom getter_over_tuple2 {
+    (forall t0: T0, t1: T1 :: { tuple2(t0, t1) } get0of2(tuple2(t0, t1)) == t0 && get1of2(tuple2(t0, t1)) == t1)
+  }
+  
+  axiom tuple2_over_getter {
+    (forall p: Tuple2[T0, T1] :: { get0of2(p) } { get1of2(p) } tuple2(get0of2(p), get1of2(p)) == p)
+  }
+}
+
+domain trigger_functions {
+  
+  
+}
+
+domain interferenceReference_Domain {
+  
+  
+}
+
+domain interferenceSet_Domain {
+  
+  
+}
+
+domain atomicity_context_Domain {
+  
+  
+}
+
+field $diamond: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Tuple2_Bool__Int_() returns ($r: Tuple2[Bool, Int])
+
+
+method havoc_Tuple2_Int__Bool_() returns ($r: Tuple2[Int, Bool])
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method havoc_Perm() returns ($r: Perm)
+
+
+method test01()
+{
+  var p: Tuple2[Int, Bool]
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- assign BEGIN ------------
+  
+  
+  p := tuple2(1, true)
+  
+  // ------- assign END --------------
+  
+  
+  
+  // ------- Stabilising regions  (after assign@4.3) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // ------- Stabilising regions  (after assign@4.3) END 
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert get0of2(p) == 1
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert get0of2(tuple2(1, true)) == 1
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert get1of2(tuple2(1, true)) == true
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- Stabilising regions  (after seq-comp@4.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // ------- Stabilising regions  (after seq-comp@4.3) END 
+  
+  
+}
+
+method test02(p1: Tuple2[Bool, Int], p2: Tuple2[Bool, Int])
+{
+  var $_levelVar_1: Int
+  inhale $_levelVar_1 >= 0
+  assert $_levelVar_1 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- assume BEGIN ------------
+  
+  
+  inhale p1 == p2
+  
+  // ------- assume END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert get0of2(p1) == get0of2(p2) && get1of2(p1) == get1of2(p2)
+  
+  // ------- assert END --------------
+  
+  
+}
+
+method test03(p1: Tuple2[Bool, Int], p2: Tuple2[Bool, Int])
+{
+  var $_levelVar_2: Int
+  inhale $_levelVar_2 >= 0
+  assert $_levelVar_2 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer2
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- assume BEGIN ------------
+  
+  
+  inhale get0of2(p1) == get0of2(p2) && get1of2(p1) == get1of2(p2)
+  
+  // ------- assume END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert p1 == p2
+  
+  // ------- assert END --------------
+  
+  
+}
+
+method test04(x1: Int, x2: Perm, y1: Int, y2: Perm)
+{
+  var $_levelVar_3: Int
+  inhale $_levelVar_3 >= 0
+  assert $_levelVar_3 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer3
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- assume BEGIN ------------
+  
+  
+  inhale tuple2(x1, x2) == tuple2(y1, y2)
+  
+  // ------- assume END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert x1 == y1 && x2 == y2
+  
+  // ------- assert END --------------
+  
+  
+}
+
+method $_test01_condition_stability_precondition_check()
+{
+  var $_levelVar_4: Int
+  var p: Tuple2[Int, Bool]
+  inhale $_levelVar_4 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer4
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test02_condition_stability_precondition_check(p1: Tuple2[Bool, Int], p2: Tuple2[Bool, Int])
+{
+  var $_levelVar_5: Int
+  inhale $_levelVar_5 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer5
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test03_condition_stability_precondition_check(p1: Tuple2[Bool, Int], p2: Tuple2[Bool, Int])
+{
+  var $_levelVar_6: Int
+  inhale $_levelVar_6 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer6
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test04_condition_stability_precondition_check(x1: Int, x2: Perm, y1: Int, y2: Perm)
+{
+  var $_levelVar_7: Int
+  inhale $_levelVar_7 >= 0
+  inhale true
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer7
+  
+  // ------- Inferring interference context  (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions  (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // ------- Stabilising regions  (check stability of method condition) END 
+  
+  
+  assert true
+}

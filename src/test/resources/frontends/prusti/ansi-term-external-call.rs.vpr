@@ -1,0 +1,4562 @@
+domain $SnapshotMirrors$ {
+  
+  
+}
+
+field f$is_blink: Ref
+
+field f$is_bold: Ref
+
+field f$is_dimmed: Ref
+
+field f$is_hidden: Ref
+
+field f$is_italic: Ref
+
+field f$is_reverse: Ref
+
+field f$is_strikethrough: Ref
+
+field f$is_underline: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function bool$$memory_eq$$__$TY$__bool$bool$$bool$(self: Ref, other: Ref): Bool
+  requires acc(bool(self), read$())
+  requires acc(bool(other), read$())
+{
+  (unfolding acc(bool(self), read$()) in (unfolding acc(bool(other), read$()) in self.val_bool == other.val_bool))
+}
+
+function m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_$$memory_eq$$__$TY$__m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_$m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_$$bool$(self: Ref, other: Ref): Bool
+  requires acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(self), read$())
+  requires acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(other), read$())
+{
+  (unfolding acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(self), read$()) in (unfolding acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(other), read$()) in bool$$memory_eq$$__$TY$__bool$bool$$bool$(self.f$is_bold, other.f$is_bold) && (bool$$memory_eq$$__$TY$__bool$bool$$bool$(self.f$is_dimmed, other.f$is_dimmed) && (bool$$memory_eq$$__$TY$__bool$bool$$bool$(self.f$is_italic, other.f$is_italic) && (bool$$memory_eq$$__$TY$__bool$bool$$bool$(self.f$is_underline, other.f$is_underline) && (bool$$memory_eq$$__$TY$__bool$bool$$bool$(self.f$is_blink, other.f$is_blink) && (bool$$memory_eq$$__$TY$__bool$bool$$bool$(self.f$is_reverse, other.f$is_reverse) && (bool$$memory_eq$$__$TY$__bool$bool$$bool$(self.f$is_hidden, other.f$is_hidden) && bool$$memory_eq$$__$TY$__bool$bool$$bool$(self.f$is_strikethrough, other.f$is_strikethrough)))))))))
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate isize(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$is_bold, write) && (acc(bool(self.f$is_bold), write) && (acc(self.f$is_dimmed, write) && (acc(bool(self.f$is_dimmed), write) && (acc(self.f$is_italic, write) && (acc(bool(self.f$is_italic), write) && (acc(self.f$is_underline, write) && (acc(bool(self.f$is_underline), write) && (acc(self.f$is_blink, write) && (acc(bool(self.f$is_blink), write) && (acc(self.f$is_reverse, write) && (acc(bool(self.f$is_reverse), write) && (acc(self.f$is_hidden, write) && (acc(bool(self.f$is_hidden), write) && (acc(self.f$is_strikethrough, write) && acc(bool(self.f$is_strikethrough), write)))))))))))))))
+}
+
+predicate ref$bool(self: Ref) {
+  acc(self.val_ref, write) && acc(bool(self.val_ref), write)
+}
+
+predicate ref$m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$italic$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _aux_havoc_bool: Ref
+  var _old$pre$0: Ref
+  var _1: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "ansi_term_external_call::Style::italic"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[0]::italic[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:61:5: 63:6
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = Style { is_bold: ((*_1).0: bool), is_dimmed: ((*_1).1: bool), is_italic: const true, is_underline: ((*_1).3: bool), is_blink: ((*_1).4: bool), is_reverse: ((*_1).5: bool), is_hidden: ((*_1).6: bool), is_strikethrough: ((*_1).7: bool) }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _aux_havoc_bool := builtin$havoc_ref()
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$is_bold := _aux_havoc_bool
+  inhale acc(_0.f$is_bold.val_bool, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  unfold acc(bool(_1.val_ref.f$is_bold), read$())
+  _0.f$is_bold.val_bool := _1.val_ref.f$is_bold.val_bool
+  label l0
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_dimmed := _aux_havoc_bool
+  inhale acc(_0.f$is_dimmed.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  _0.f$is_dimmed.val_bool := _1.val_ref.f$is_dimmed.val_bool
+  label l1
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_italic := _aux_havoc_bool
+  inhale acc(_0.f$is_italic.val_bool, write)
+  _0.f$is_italic.val_bool := true
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_underline := _aux_havoc_bool
+  inhale acc(_0.f$is_underline.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_underline), read$())
+  _0.f$is_underline.val_bool := _1.val_ref.f$is_underline.val_bool
+  label l2
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_blink := _aux_havoc_bool
+  inhale acc(_0.f$is_blink.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_blink), read$())
+  _0.f$is_blink.val_bool := _1.val_ref.f$is_blink.val_bool
+  label l3
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_reverse := _aux_havoc_bool
+  inhale acc(_0.f$is_reverse.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_reverse), read$())
+  _0.f$is_reverse.val_bool := _1.val_ref.f$is_reverse.val_bool
+  label l4
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_hidden := _aux_havoc_bool
+  inhale acc(_0.f$is_hidden.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_hidden), read$())
+  _0.f$is_hidden.val_bool := _1.val_ref.f$is_hidden.val_bool
+  label l5
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_strikethrough := _aux_havoc_bool
+  inhale acc(_0.f$is_strikethrough.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  _0.f$is_strikethrough.val_bool := _1.val_ref.f$is_strikethrough.val_bool
+  label l6
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(bool(_1.val_ref.f$is_underline), read$())
+  fold acc(bool(_1.val_ref.f$is_hidden), read$())
+  fold acc(bool(_1.val_ref.f$is_blink), read$())
+  fold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  fold acc(bool(_1.val_ref.f$is_bold), read$())
+  fold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  fold acc(bool(_1.val_ref.f$is_reverse), read$())
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0.f$is_blink), write)
+  fold acc(bool(_0.f$is_strikethrough), write)
+  fold acc(bool(_0.f$is_reverse), write)
+  fold acc(bool(_0.f$is_underline), write)
+  fold acc(bool(_0.f$is_hidden), write)
+  fold acc(bool(_0.f$is_dimmed), write)
+  fold acc(bool(_0.f$is_italic), write)
+  fold acc(bool(_0.f$is_bold), write)
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), read$())
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$new$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _aux_havoc_bool: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "ansi_term_external_call::Style::new"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[0]::new[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:37:5: 48:6
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = Style { is_bold: const false, is_dimmed: const false, is_italic: const false, is_underline: const false, is_blink: const false, is_reverse: const false, is_hidden: const false, is_strikethrough: const false }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _aux_havoc_bool := builtin$havoc_ref()
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$is_bold := _aux_havoc_bool
+  inhale acc(_0.f$is_bold.val_bool, write)
+  _0.f$is_bold.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_dimmed := _aux_havoc_bool
+  inhale acc(_0.f$is_dimmed.val_bool, write)
+  _0.f$is_dimmed.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_italic := _aux_havoc_bool
+  inhale acc(_0.f$is_italic.val_bool, write)
+  _0.f$is_italic.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_underline := _aux_havoc_bool
+  inhale acc(_0.f$is_underline.val_bool, write)
+  _0.f$is_underline.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_blink := _aux_havoc_bool
+  inhale acc(_0.f$is_blink.val_bool, write)
+  _0.f$is_blink.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_reverse := _aux_havoc_bool
+  inhale acc(_0.f$is_reverse.val_bool, write)
+  _0.f$is_reverse.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_hidden := _aux_havoc_bool
+  inhale acc(_0.f$is_hidden.val_bool, write)
+  _0.f$is_hidden.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_strikethrough := _aux_havoc_bool
+  inhale acc(_0.f$is_strikethrough.val_bool, write)
+  _0.f$is_strikethrough.val_bool := false
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  fold acc(bool(_0.f$is_reverse), write)
+  fold acc(bool(_0.f$is_dimmed), write)
+  fold acc(bool(_0.f$is_italic), write)
+  fold acc(bool(_0.f$is_hidden), write)
+  fold acc(bool(_0.f$is_blink), write)
+  fold acc(bool(_0.f$is_underline), write)
+  fold acc(bool(_0.f$is_strikethrough), write)
+  fold acc(bool(_0.f$is_bold), write)
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$hidden$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _aux_havoc_bool: Ref
+  var _old$pre$0: Ref
+  var _1: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "ansi_term_external_call::Style::hidden"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[0]::hidden[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:81:5: 83:6
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = Style { is_bold: ((*_1).0: bool), is_dimmed: ((*_1).1: bool), is_italic: ((*_1).2: bool), is_underline: ((*_1).3: bool), is_blink: ((*_1).4: bool), is_reverse: ((*_1).5: bool), is_hidden: const true, is_strikethrough: ((*_1).7: bool) }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _aux_havoc_bool := builtin$havoc_ref()
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$is_bold := _aux_havoc_bool
+  inhale acc(_0.f$is_bold.val_bool, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  unfold acc(bool(_1.val_ref.f$is_bold), read$())
+  _0.f$is_bold.val_bool := _1.val_ref.f$is_bold.val_bool
+  label l0
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_dimmed := _aux_havoc_bool
+  inhale acc(_0.f$is_dimmed.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  _0.f$is_dimmed.val_bool := _1.val_ref.f$is_dimmed.val_bool
+  label l1
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_italic := _aux_havoc_bool
+  inhale acc(_0.f$is_italic.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_italic), read$())
+  _0.f$is_italic.val_bool := _1.val_ref.f$is_italic.val_bool
+  label l2
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_underline := _aux_havoc_bool
+  inhale acc(_0.f$is_underline.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_underline), read$())
+  _0.f$is_underline.val_bool := _1.val_ref.f$is_underline.val_bool
+  label l3
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_blink := _aux_havoc_bool
+  inhale acc(_0.f$is_blink.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_blink), read$())
+  _0.f$is_blink.val_bool := _1.val_ref.f$is_blink.val_bool
+  label l4
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_reverse := _aux_havoc_bool
+  inhale acc(_0.f$is_reverse.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_reverse), read$())
+  _0.f$is_reverse.val_bool := _1.val_ref.f$is_reverse.val_bool
+  label l5
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_hidden := _aux_havoc_bool
+  inhale acc(_0.f$is_hidden.val_bool, write)
+  _0.f$is_hidden.val_bool := true
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_strikethrough := _aux_havoc_bool
+  inhale acc(_0.f$is_strikethrough.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  _0.f$is_strikethrough.val_bool := _1.val_ref.f$is_strikethrough.val_bool
+  label l6
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(bool(_1.val_ref.f$is_blink), read$())
+  fold acc(bool(_1.val_ref.f$is_bold), read$())
+  fold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  fold acc(bool(_1.val_ref.f$is_underline), read$())
+  fold acc(bool(_1.val_ref.f$is_reverse), read$())
+  fold acc(bool(_1.val_ref.f$is_italic), read$())
+  fold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0.f$is_blink), write)
+  fold acc(bool(_0.f$is_italic), write)
+  fold acc(bool(_0.f$is_underline), write)
+  fold acc(bool(_0.f$is_hidden), write)
+  fold acc(bool(_0.f$is_strikethrough), write)
+  fold acc(bool(_0.f$is_bold), write)
+  fold acc(bool(_0.f$is_reverse), write)
+  fold acc(bool(_0.f$is_dimmed), write)
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), read$())
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  label start
+  // ========== start ==========
+  
+  // Name: "ansi_term_external_call::main"
+  
+  // Def path: "ansi_term_external_call::main[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:117:1: 117:13
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$3$closesqu$$$clone$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "<Style as std::clone::Clone>::clone"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[3]::clone[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:7:21: 7:26
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_2)
+  
+  // [mir] _2 = (*_1)
+  
+  _2 := builtin$havoc_ref()
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_2), write)
+  inhale m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_$$memory_eq$$__$TY$__m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_$m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_$$bool$(_1.val_ref, _2)
+  label l0
+  // [mir] _0 = move _2
+  
+  _0 := _2
+  label l1
+  // [mir] StorageDead(_2)
+  
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), read$())
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$underline$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _aux_havoc_bool: Ref
+  var _old$pre$0: Ref
+  var _1: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "ansi_term_external_call::Style::underline"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[0]::underline[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:66:5: 68:6
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = Style { is_bold: ((*_1).0: bool), is_dimmed: ((*_1).1: bool), is_italic: ((*_1).2: bool), is_underline: const true, is_blink: ((*_1).4: bool), is_reverse: ((*_1).5: bool), is_hidden: ((*_1).6: bool), is_strikethrough: ((*_1).7: bool) }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _aux_havoc_bool := builtin$havoc_ref()
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$is_bold := _aux_havoc_bool
+  inhale acc(_0.f$is_bold.val_bool, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  unfold acc(bool(_1.val_ref.f$is_bold), read$())
+  _0.f$is_bold.val_bool := _1.val_ref.f$is_bold.val_bool
+  label l0
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_dimmed := _aux_havoc_bool
+  inhale acc(_0.f$is_dimmed.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  _0.f$is_dimmed.val_bool := _1.val_ref.f$is_dimmed.val_bool
+  label l1
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_italic := _aux_havoc_bool
+  inhale acc(_0.f$is_italic.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_italic), read$())
+  _0.f$is_italic.val_bool := _1.val_ref.f$is_italic.val_bool
+  label l2
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_underline := _aux_havoc_bool
+  inhale acc(_0.f$is_underline.val_bool, write)
+  _0.f$is_underline.val_bool := true
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_blink := _aux_havoc_bool
+  inhale acc(_0.f$is_blink.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_blink), read$())
+  _0.f$is_blink.val_bool := _1.val_ref.f$is_blink.val_bool
+  label l3
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_reverse := _aux_havoc_bool
+  inhale acc(_0.f$is_reverse.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_reverse), read$())
+  _0.f$is_reverse.val_bool := _1.val_ref.f$is_reverse.val_bool
+  label l4
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_hidden := _aux_havoc_bool
+  inhale acc(_0.f$is_hidden.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_hidden), read$())
+  _0.f$is_hidden.val_bool := _1.val_ref.f$is_hidden.val_bool
+  label l5
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_strikethrough := _aux_havoc_bool
+  inhale acc(_0.f$is_strikethrough.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  _0.f$is_strikethrough.val_bool := _1.val_ref.f$is_strikethrough.val_bool
+  label l6
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(bool(_1.val_ref.f$is_italic), read$())
+  fold acc(bool(_1.val_ref.f$is_reverse), read$())
+  fold acc(bool(_1.val_ref.f$is_hidden), read$())
+  fold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  fold acc(bool(_1.val_ref.f$is_bold), read$())
+  fold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  fold acc(bool(_1.val_ref.f$is_blink), read$())
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0.f$is_strikethrough), write)
+  fold acc(bool(_0.f$is_italic), write)
+  fold acc(bool(_0.f$is_underline), write)
+  fold acc(bool(_0.f$is_blink), write)
+  fold acc(bool(_0.f$is_reverse), write)
+  fold acc(bool(_0.f$is_hidden), write)
+  fold acc(bool(_0.f$is_dimmed), write)
+  fold acc(bool(_0.f$is_bold), write)
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), read$())
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$4$closesqu$$$ne$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var __t28: Bool
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var __t32: Bool
+  var __t33: Bool
+  var __t34: Bool
+  var __t35: Bool
+  var __t36: Bool
+  var __t37: Bool
+  var __t38: Bool
+  var __t39: Bool
+  var __t40: Bool
+  var __t41: Bool
+  var __t42: Bool
+  var __t43: Bool
+  var __t44: Bool
+  var _old$pre$0: Ref
+  var _old$pre$1: Ref
+  var _1: Ref
+  var _2: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  var _23: Ref
+  var _24: Ref
+  var _25: Ref
+  var _26: Ref
+  var _27: Ref
+  var _28: Ref
+  var _29: Ref
+  var _30: Ref
+  var _31: Ref
+  var _32: Ref
+  var _33: Ref
+  var _34: Ref
+  var _35: Ref
+  var _36: Ref
+  var _37: Ref
+  var _38: Ref
+  var _39: Ref
+  var _40: Ref
+  var _41: Ref
+  var _42: Ref
+  var _43: Ref
+  var _44: Ref
+  var _45: Ref
+  var _46: Ref
+  var _47: Ref
+  var _48: Ref
+  var _49: Ref
+  var _50: Ref
+  var _51: Ref
+  var _52: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "<Style as std::cmp::PartialEq>::ne"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[4]::ne[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:7:10: 7:19
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  __t24 := false
+  __t25 := false
+  __t26 := false
+  __t27 := false
+  __t28 := false
+  __t29 := false
+  __t30 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$()) && (acc(_2.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), read$())))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _3 = discriminant((*_2))
+  
+  // [mir] _4 = &'<empty> (*_2)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  _4.val_ref := _2.val_ref
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_4.val_ref), read$())
+  label l0
+  // [mir] ReadForMatch(_4)
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_4.val_ref), read$())
+  }
+  // [mir] falseEdges -> [real: bb2, imaginary: bb1]
+  
+  goto bb2
+  label bb10
+  // ========== bb10 ==========
+  
+  __t25 := true
+  // [mir] _23 = const false
+  
+  _23 := builtin$havoc_ref()
+  inhale acc(_23.val_bool, write)
+  _23.val_bool := false
+  // [mir] goto -> bb12
+  
+  goto l73
+  label bb11
+  // ========== bb11 ==========
+  
+  __t23 := true
+  // [mir] StorageLive(_47)
+  
+  // [mir] StorageLive(_48)
+  
+  // [mir] _48 = (*_21)
+  
+  _48 := builtin$havoc_ref()
+  inhale acc(_48.val_bool, write)
+  unfold acc(bool(_21.val_ref), read$())
+  _48.val_bool := _21.val_ref.val_bool
+  label l52
+  // expire_borrows ReborrowingDAG(L16,)
+
+  
+  if (__t2) {
+    // expire loan L16
+    
+    fold acc(bool(_21.val_ref), read$())
+    exhale acc(bool(_21.val_ref), read$())
+  }
+  // [mir] StorageLive(_49)
+  
+  // [mir] _49 = (*_11)
+  
+  _49 := builtin$havoc_ref()
+  inhale acc(_49.val_bool, write)
+  unfold acc(bool(_11.val_ref), read$())
+  _49.val_bool := _11.val_ref.val_bool
+  label l53
+  // expire_borrows ReborrowingDAG(L7,)
+
+  
+  if (__t1) {
+    // expire loan L7
+    
+    fold acc(bool(_11.val_ref), read$())
+    exhale acc(bool(_11.val_ref), read$())
+  }
+  // [mir] _47 = Ne(move _48, move _49)
+  
+  _47 := builtin$havoc_ref()
+  inhale acc(_47.val_bool, write)
+  _47.val_bool := !(_48.val_bool == _49.val_bool)
+  // [mir] StorageDead(_49)
+  
+  // [mir] StorageDead(_48)
+  
+  // [mir] switchInt(move _47) -> [false: bb10, otherwise: bb9]
+  
+  __t42 := _47.val_bool
+  if (!__t42) {
+    goto l55
+  }
+  goto l54
+  label bb12
+  // ========== bb12 ==========
+  
+  __t26 := true
+  // [mir] StorageDead(_47)
+  
+  // [mir] StorageDead(_24)
+  
+  // [mir] switchInt(move _23) -> [false: bb7, otherwise: bb5]
+  
+  __t43 := _23.val_bool
+  if (!__t43) {
+    goto l57
+  }
+  goto l56
+  label bb13
+  // ========== bb13 ==========
+  
+  __t20 := true
+  // [mir] _24 = const true
+  
+  _24 := builtin$havoc_ref()
+  inhale acc(_24.val_bool, write)
+  _24.val_bool := true
+  // [mir] goto -> bb16
+  
+  goto bb16
+  label bb14
+  // ========== bb14 ==========
+  
+  __t21 := true
+  // [mir] _24 = const false
+  
+  _24 := builtin$havoc_ref()
+  inhale acc(_24.val_bool, write)
+  _24.val_bool := false
+  // [mir] goto -> bb16
+  
+  goto l71
+  label bb15
+  // ========== bb15 ==========
+  
+  __t19 := true
+  // [mir] StorageLive(_44)
+  
+  // [mir] StorageLive(_45)
+  
+  // [mir] _45 = (*_20)
+  
+  _45 := builtin$havoc_ref()
+  inhale acc(_45.val_bool, write)
+  unfold acc(bool(_20.val_ref), read$())
+  _45.val_bool := _20.val_ref.val_bool
+  label l46
+  // expire_borrows ReborrowingDAG(L15,)
+
+  
+  if (__t2) {
+    // expire loan L15
+    
+    fold acc(bool(_20.val_ref), read$())
+    exhale acc(bool(_20.val_ref), read$())
+  }
+  // [mir] StorageLive(_46)
+  
+  // [mir] _46 = (*_10)
+  
+  _46 := builtin$havoc_ref()
+  inhale acc(_46.val_bool, write)
+  unfold acc(bool(_10.val_ref), read$())
+  _46.val_bool := _10.val_ref.val_bool
+  label l47
+  // expire_borrows ReborrowingDAG(L6,)
+
+  
+  if (__t1) {
+    // expire loan L6
+    
+    fold acc(bool(_10.val_ref), read$())
+    exhale acc(bool(_10.val_ref), read$())
+  }
+  // [mir] _44 = Ne(move _45, move _46)
+  
+  _44 := builtin$havoc_ref()
+  inhale acc(_44.val_bool, write)
+  _44.val_bool := !(_45.val_bool == _46.val_bool)
+  // [mir] StorageDead(_46)
+  
+  // [mir] StorageDead(_45)
+  
+  // [mir] switchInt(move _44) -> [false: bb14, otherwise: bb13]
+  
+  __t40 := _44.val_bool
+  if (!__t40) {
+    goto l49
+  }
+  goto l48
+  label bb16
+  // ========== bb16 ==========
+  
+  __t22 := true
+  // [mir] StorageDead(_44)
+  
+  // [mir] StorageDead(_25)
+  
+  // [mir] switchInt(move _24) -> [false: bb11, otherwise: bb9]
+  
+  __t41 := _24.val_bool
+  if (!__t41) {
+    goto l51
+  }
+  goto l50
+  label bb17
+  // ========== bb17 ==========
+  
+  __t16 := true
+  // [mir] _25 = const true
+  
+  _25 := builtin$havoc_ref()
+  inhale acc(_25.val_bool, write)
+  _25.val_bool := true
+  // [mir] goto -> bb20
+  
+  goto bb20
+  label bb18
+  // ========== bb18 ==========
+  
+  __t17 := true
+  // [mir] _25 = const false
+  
+  _25 := builtin$havoc_ref()
+  inhale acc(_25.val_bool, write)
+  _25.val_bool := false
+  // [mir] goto -> bb20
+  
+  goto l69
+  label bb19
+  // ========== bb19 ==========
+  
+  __t15 := true
+  // [mir] StorageLive(_41)
+  
+  // [mir] StorageLive(_42)
+  
+  // [mir] _42 = (*_19)
+  
+  _42 := builtin$havoc_ref()
+  inhale acc(_42.val_bool, write)
+  unfold acc(bool(_19.val_ref), read$())
+  _42.val_bool := _19.val_ref.val_bool
+  label l40
+  // expire_borrows ReborrowingDAG(L14,)
+
+  
+  if (__t2) {
+    // expire loan L14
+    
+    fold acc(bool(_19.val_ref), read$())
+    exhale acc(bool(_19.val_ref), read$())
+  }
+  // [mir] StorageLive(_43)
+  
+  // [mir] _43 = (*_9)
+  
+  _43 := builtin$havoc_ref()
+  inhale acc(_43.val_bool, write)
+  unfold acc(bool(_9.val_ref), read$())
+  _43.val_bool := _9.val_ref.val_bool
+  label l41
+  // expire_borrows ReborrowingDAG(L5,)
+
+  
+  if (__t1) {
+    // expire loan L5
+    
+    fold acc(bool(_9.val_ref), read$())
+    exhale acc(bool(_9.val_ref), read$())
+  }
+  // [mir] _41 = Ne(move _42, move _43)
+  
+  _41 := builtin$havoc_ref()
+  inhale acc(_41.val_bool, write)
+  _41.val_bool := !(_42.val_bool == _43.val_bool)
+  // [mir] StorageDead(_43)
+  
+  // [mir] StorageDead(_42)
+  
+  // [mir] switchInt(move _41) -> [false: bb18, otherwise: bb17]
+  
+  __t38 := _41.val_bool
+  if (!__t38) {
+    goto l43
+  }
+  goto l42
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = &'87s ((*_2).0: bool)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), read$())
+  _5.val_ref := _2.val_ref.f$is_bold
+  inhale acc(bool(_5.val_ref), read$())
+  label l1
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = &'87s ((*_2).1: bool)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_ref, write)
+  _6.val_ref := _2.val_ref.f$is_dimmed
+  inhale acc(bool(_6.val_ref), read$())
+  label l2
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = &'87s ((*_2).2: bool)
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _2.val_ref.f$is_italic
+  inhale acc(bool(_7.val_ref), read$())
+  label l3
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = &'87s ((*_2).3: bool)
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_ref, write)
+  _8.val_ref := _2.val_ref.f$is_underline
+  inhale acc(bool(_8.val_ref), read$())
+  label l4
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = &'87s ((*_2).4: bool)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _2.val_ref.f$is_blink
+  inhale acc(bool(_9.val_ref), read$())
+  label l5
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = &'87s ((*_2).5: bool)
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_ref, write)
+  _10.val_ref := _2.val_ref.f$is_reverse
+  inhale acc(bool(_10.val_ref), read$())
+  label l6
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = &'87s ((*_2).6: bool)
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_ref, write)
+  _11.val_ref := _2.val_ref.f$is_hidden
+  inhale acc(bool(_11.val_ref), read$())
+  label l7
+  // [mir] StorageLive(_12)
+  
+  // [mir] _12 = &'87s ((*_2).7: bool)
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_ref, write)
+  _12.val_ref := _2.val_ref.f$is_strikethrough
+  inhale acc(bool(_12.val_ref), read$())
+  label l8
+  // [mir] _13 = discriminant((*_1))
+  
+  // [mir] _14 = &'<empty> (*_1)
+  
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.val_ref, write)
+  _14.val_ref := _1.val_ref
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_14.val_ref), read$())
+  label l9
+  // [mir] ReadForMatch(_14)
+  
+  // expire_borrows ReborrowingDAG(L9,)
+
+  
+  if (__t1) {
+    // expire loan L9
+    
+    exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_14.val_ref), read$())
+  }
+  // [mir] falseEdges -> [real: bb4, imaginary: bb3]
+  
+  goto bb4
+  label bb20
+  // ========== bb20 ==========
+  
+  __t18 := true
+  // [mir] StorageDead(_41)
+  
+  // [mir] StorageDead(_26)
+  
+  // [mir] switchInt(move _25) -> [false: bb15, otherwise: bb13]
+  
+  __t39 := _25.val_bool
+  if (!__t39) {
+    goto l45
+  }
+  goto l44
+  label bb21
+  // ========== bb21 ==========
+  
+  __t12 := true
+  // [mir] _26 = const true
+  
+  _26 := builtin$havoc_ref()
+  inhale acc(_26.val_bool, write)
+  _26.val_bool := true
+  // [mir] goto -> bb24
+  
+  goto bb24
+  label bb22
+  // ========== bb22 ==========
+  
+  __t13 := true
+  // [mir] _26 = const false
+  
+  _26 := builtin$havoc_ref()
+  inhale acc(_26.val_bool, write)
+  _26.val_bool := false
+  // [mir] goto -> bb24
+  
+  goto l67
+  label bb23
+  // ========== bb23 ==========
+  
+  __t11 := true
+  // [mir] StorageLive(_38)
+  
+  // [mir] StorageLive(_39)
+  
+  // [mir] _39 = (*_18)
+  
+  _39 := builtin$havoc_ref()
+  inhale acc(_39.val_bool, write)
+  unfold acc(bool(_18.val_ref), read$())
+  _39.val_bool := _18.val_ref.val_bool
+  label l34
+  // expire_borrows ReborrowingDAG(L13,)
+
+  
+  if (__t2) {
+    // expire loan L13
+    
+    fold acc(bool(_18.val_ref), read$())
+    exhale acc(bool(_18.val_ref), read$())
+  }
+  // [mir] StorageLive(_40)
+  
+  // [mir] _40 = (*_8)
+  
+  _40 := builtin$havoc_ref()
+  inhale acc(_40.val_bool, write)
+  unfold acc(bool(_8.val_ref), read$())
+  _40.val_bool := _8.val_ref.val_bool
+  label l35
+  // expire_borrows ReborrowingDAG(L4,)
+
+  
+  if (__t1) {
+    // expire loan L4
+    
+    fold acc(bool(_8.val_ref), read$())
+    exhale acc(bool(_8.val_ref), read$())
+  }
+  // [mir] _38 = Ne(move _39, move _40)
+  
+  _38 := builtin$havoc_ref()
+  inhale acc(_38.val_bool, write)
+  _38.val_bool := !(_39.val_bool == _40.val_bool)
+  // [mir] StorageDead(_40)
+  
+  // [mir] StorageDead(_39)
+  
+  // [mir] switchInt(move _38) -> [false: bb22, otherwise: bb21]
+  
+  __t36 := _38.val_bool
+  if (!__t36) {
+    goto l37
+  }
+  goto l36
+  label bb24
+  // ========== bb24 ==========
+  
+  __t14 := true
+  // [mir] StorageDead(_38)
+  
+  // [mir] StorageDead(_27)
+  
+  // [mir] switchInt(move _26) -> [false: bb19, otherwise: bb17]
+  
+  __t37 := _26.val_bool
+  if (!__t37) {
+    goto l39
+  }
+  goto l38
+  label bb25
+  // ========== bb25 ==========
+  
+  __t8 := true
+  // [mir] _27 = const true
+  
+  _27 := builtin$havoc_ref()
+  inhale acc(_27.val_bool, write)
+  _27.val_bool := true
+  // [mir] goto -> bb28
+  
+  goto bb28
+  label bb26
+  // ========== bb26 ==========
+  
+  __t9 := true
+  // [mir] _27 = const false
+  
+  _27 := builtin$havoc_ref()
+  inhale acc(_27.val_bool, write)
+  _27.val_bool := false
+  // [mir] goto -> bb28
+  
+  goto l65
+  label bb27
+  // ========== bb27 ==========
+  
+  __t7 := true
+  // [mir] StorageLive(_35)
+  
+  // [mir] StorageLive(_36)
+  
+  // [mir] _36 = (*_17)
+  
+  _36 := builtin$havoc_ref()
+  inhale acc(_36.val_bool, write)
+  unfold acc(bool(_17.val_ref), read$())
+  _36.val_bool := _17.val_ref.val_bool
+  label l28
+  // expire_borrows ReborrowingDAG(L12,)
+
+  
+  if (__t2) {
+    // expire loan L12
+    
+    fold acc(bool(_17.val_ref), read$())
+    exhale acc(bool(_17.val_ref), read$())
+  }
+  // [mir] StorageLive(_37)
+  
+  // [mir] _37 = (*_7)
+  
+  _37 := builtin$havoc_ref()
+  inhale acc(_37.val_bool, write)
+  unfold acc(bool(_7.val_ref), read$())
+  _37.val_bool := _7.val_ref.val_bool
+  label l29
+  // expire_borrows ReborrowingDAG(L3,)
+
+  
+  if (__t1) {
+    // expire loan L3
+    
+    fold acc(bool(_7.val_ref), read$())
+    exhale acc(bool(_7.val_ref), read$())
+  }
+  // [mir] _35 = Ne(move _36, move _37)
+  
+  _35 := builtin$havoc_ref()
+  inhale acc(_35.val_bool, write)
+  _35.val_bool := !(_36.val_bool == _37.val_bool)
+  // [mir] StorageDead(_37)
+  
+  // [mir] StorageDead(_36)
+  
+  // [mir] switchInt(move _35) -> [false: bb26, otherwise: bb25]
+  
+  __t34 := _35.val_bool
+  if (!__t34) {
+    goto l31
+  }
+  goto l30
+  label bb28
+  // ========== bb28 ==========
+  
+  __t10 := true
+  // [mir] StorageDead(_35)
+  
+  // [mir] StorageDead(_28)
+  
+  // [mir] switchInt(move _27) -> [false: bb23, otherwise: bb21]
+  
+  __t35 := _27.val_bool
+  if (!__t35) {
+    goto l33
+  }
+  goto l32
+  label bb29
+  // ========== bb29 ==========
+  
+  __t4 := true
+  // [mir] _28 = const true
+  
+  _28 := builtin$havoc_ref()
+  inhale acc(_28.val_bool, write)
+  _28.val_bool := true
+  // [mir] goto -> bb32
+  
+  goto bb32
+  label bb30
+  // ========== bb30 ==========
+  
+  __t5 := true
+  // [mir] _28 = const false
+  
+  _28 := builtin$havoc_ref()
+  inhale acc(_28.val_bool, write)
+  _28.val_bool := false
+  // [mir] goto -> bb32
+  
+  goto l63
+  label bb31
+  // ========== bb31 ==========
+  
+  __t3 := true
+  // [mir] StorageLive(_32)
+  
+  // [mir] StorageLive(_33)
+  
+  // [mir] _33 = (*_16)
+  
+  _33 := builtin$havoc_ref()
+  inhale acc(_33.val_bool, write)
+  unfold acc(bool(_16.val_ref), read$())
+  _33.val_bool := _16.val_ref.val_bool
+  label l22
+  // expire_borrows ReborrowingDAG(L11,)
+
+  
+  if (__t2) {
+    // expire loan L11
+    
+    fold acc(bool(_16.val_ref), read$())
+    exhale acc(bool(_16.val_ref), read$())
+  }
+  // [mir] StorageLive(_34)
+  
+  // [mir] _34 = (*_6)
+  
+  _34 := builtin$havoc_ref()
+  inhale acc(_34.val_bool, write)
+  unfold acc(bool(_6.val_ref), read$())
+  _34.val_bool := _6.val_ref.val_bool
+  label l23
+  // expire_borrows ReborrowingDAG(L2,)
+
+  
+  if (__t1) {
+    // expire loan L2
+    
+    fold acc(bool(_6.val_ref), read$())
+    exhale acc(bool(_6.val_ref), read$())
+  }
+  // [mir] _32 = Ne(move _33, move _34)
+  
+  _32 := builtin$havoc_ref()
+  inhale acc(_32.val_bool, write)
+  _32.val_bool := !(_33.val_bool == _34.val_bool)
+  // [mir] StorageDead(_34)
+  
+  // [mir] StorageDead(_33)
+  
+  // [mir] switchInt(move _32) -> [false: bb30, otherwise: bb29]
+  
+  __t32 := _32.val_bool
+  if (!__t32) {
+    goto l25
+  }
+  goto l24
+  label bb32
+  // ========== bb32 ==========
+  
+  __t6 := true
+  // [mir] StorageDead(_32)
+  
+  // [mir] StorageDead(_29)
+  
+  // [mir] switchInt(move _28) -> [false: bb27, otherwise: bb25]
+  
+  __t33 := _28.val_bool
+  if (!__t33) {
+    goto l27
+  }
+  goto l26
+  label bb4
+  // ========== bb4 ==========
+  
+  __t2 := true
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = &'86s ((*_1).0: bool)
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  _15.val_ref := _1.val_ref.f$is_bold
+  inhale acc(bool(_15.val_ref), read$())
+  label l10
+  // [mir] StorageLive(_16)
+  
+  // [mir] _16 = &'86s ((*_1).1: bool)
+  
+  _16 := builtin$havoc_ref()
+  inhale acc(_16.val_ref, write)
+  _16.val_ref := _1.val_ref.f$is_dimmed
+  inhale acc(bool(_16.val_ref), read$())
+  label l11
+  // [mir] StorageLive(_17)
+  
+  // [mir] _17 = &'86s ((*_1).2: bool)
+  
+  _17 := builtin$havoc_ref()
+  inhale acc(_17.val_ref, write)
+  _17.val_ref := _1.val_ref.f$is_italic
+  inhale acc(bool(_17.val_ref), read$())
+  label l12
+  // [mir] StorageLive(_18)
+  
+  // [mir] _18 = &'86s ((*_1).3: bool)
+  
+  _18 := builtin$havoc_ref()
+  inhale acc(_18.val_ref, write)
+  _18.val_ref := _1.val_ref.f$is_underline
+  inhale acc(bool(_18.val_ref), read$())
+  label l13
+  // [mir] StorageLive(_19)
+  
+  // [mir] _19 = &'86s ((*_1).4: bool)
+  
+  _19 := builtin$havoc_ref()
+  inhale acc(_19.val_ref, write)
+  _19.val_ref := _1.val_ref.f$is_blink
+  inhale acc(bool(_19.val_ref), read$())
+  label l14
+  // [mir] StorageLive(_20)
+  
+  // [mir] _20 = &'86s ((*_1).5: bool)
+  
+  _20 := builtin$havoc_ref()
+  inhale acc(_20.val_ref, write)
+  _20.val_ref := _1.val_ref.f$is_reverse
+  inhale acc(bool(_20.val_ref), read$())
+  label l15
+  // [mir] StorageLive(_21)
+  
+  // [mir] _21 = &'86s ((*_1).6: bool)
+  
+  _21 := builtin$havoc_ref()
+  inhale acc(_21.val_ref, write)
+  _21.val_ref := _1.val_ref.f$is_hidden
+  inhale acc(bool(_21.val_ref), read$())
+  label l16
+  // [mir] StorageLive(_22)
+  
+  // [mir] _22 = &'86s ((*_1).7: bool)
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_ref, write)
+  _22.val_ref := _1.val_ref.f$is_strikethrough
+  inhale acc(bool(_22.val_ref), read$())
+  label l17
+  // [mir] StorageLive(_23)
+  
+  // [mir] StorageLive(_24)
+  
+  // [mir] StorageLive(_25)
+  
+  // [mir] StorageLive(_26)
+  
+  // [mir] StorageLive(_27)
+  
+  // [mir] StorageLive(_28)
+  
+  // [mir] StorageLive(_29)
+  
+  // [mir] StorageLive(_30)
+  
+  // [mir] _30 = (*_15)
+  
+  _30 := builtin$havoc_ref()
+  inhale acc(_30.val_bool, write)
+  unfold acc(bool(_15.val_ref), read$())
+  _30.val_bool := _15.val_ref.val_bool
+  label l18
+  // expire_borrows ReborrowingDAG(L10,)
+
+  
+  if (__t2) {
+    // expire loan L10
+    
+    fold acc(bool(_15.val_ref), read$())
+    exhale acc(bool(_15.val_ref), read$())
+  }
+  // [mir] StorageLive(_31)
+  
+  // [mir] _31 = (*_5)
+  
+  _31 := builtin$havoc_ref()
+  inhale acc(_31.val_bool, write)
+  unfold acc(bool(_5.val_ref), read$())
+  _31.val_bool := _5.val_ref.val_bool
+  label l19
+  // expire_borrows ReborrowingDAG(L1,)
+
+  
+  if (__t1) {
+    // expire loan L1
+    
+    fold acc(bool(_5.val_ref), read$())
+    exhale acc(bool(_5.val_ref), read$())
+  }
+  // [mir] _29 = Ne(move _30, move _31)
+  
+  _29 := builtin$havoc_ref()
+  inhale acc(_29.val_bool, write)
+  _29.val_bool := !(_30.val_bool == _31.val_bool)
+  // [mir] StorageDead(_31)
+  
+  // [mir] StorageDead(_30)
+  
+  // [mir] switchInt(move _29) -> [false: bb31, otherwise: bb29]
+  
+  __t31 := _29.val_bool
+  if (!__t31) {
+    goto l21
+  }
+  goto l20
+  label bb5
+  // ========== bb5 ==========
+  
+  __t28 := true
+  // [mir] _0 = const true
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_bool, write)
+  _0.val_bool := true
+  // [mir] goto -> bb8
+  
+  goto bb8
+  label bb6
+  // ========== bb6 ==========
+  
+  __t29 := true
+  // [mir] _0 = const false
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_bool, write)
+  _0.val_bool := false
+  // [mir] goto -> bb8
+  
+  goto l75
+  label bb7
+  // ========== bb7 ==========
+  
+  __t27 := true
+  // [mir] StorageLive(_50)
+  
+  // [mir] StorageLive(_51)
+  
+  // [mir] _51 = (*_22)
+  
+  _51 := builtin$havoc_ref()
+  inhale acc(_51.val_bool, write)
+  unfold acc(bool(_22.val_ref), read$())
+  _51.val_bool := _22.val_ref.val_bool
+  label l58
+  // expire_borrows ReborrowingDAG(L17,)
+
+  
+  if (__t2) {
+    // expire loan L17
+    
+    fold acc(bool(_22.val_ref), read$())
+    exhale acc(bool(_22.val_ref), read$())
+  }
+  // [mir] StorageLive(_52)
+  
+  // [mir] _52 = (*_12)
+  
+  _52 := builtin$havoc_ref()
+  inhale acc(_52.val_bool, write)
+  unfold acc(bool(_12.val_ref), read$())
+  _52.val_bool := _12.val_ref.val_bool
+  label l59
+  // expire_borrows ReborrowingDAG(L8,)
+
+  
+  if (__t1) {
+    // expire loan L8
+    
+    fold acc(bool(_12.val_ref), read$())
+    exhale acc(bool(_12.val_ref), read$())
+  }
+  // [mir] _50 = Ne(move _51, move _52)
+  
+  _50 := builtin$havoc_ref()
+  inhale acc(_50.val_bool, write)
+  _50.val_bool := !(_51.val_bool == _52.val_bool)
+  // [mir] StorageDead(_52)
+  
+  // [mir] StorageDead(_51)
+  
+  // [mir] switchInt(move _50) -> [false: bb6, otherwise: bb5]
+  
+  __t44 := _50.val_bool
+  if (!__t44) {
+    goto l61
+  }
+  goto l60
+  label bb8
+  // ========== bb8 ==========
+  
+  __t30 := true
+  // [mir] StorageDead(_50)
+  
+  // [mir] StorageDead(_23)
+  
+  // [mir] EndRegion('86s)
+  
+  // [mir] StorageDead(_22)
+  
+  // [mir] StorageDead(_21)
+  
+  // [mir] StorageDead(_20)
+  
+  // [mir] StorageDead(_19)
+  
+  // [mir] StorageDead(_18)
+  
+  // [mir] StorageDead(_17)
+  
+  // [mir] StorageDead(_16)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] EndRegion('87s)
+  
+  // [mir] StorageDead(_12)
+  
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] return
+  
+  goto return
+  label bb9
+  // ========== bb9 ==========
+  
+  __t24 := true
+  // [mir] _23 = const true
+  
+  _23 := builtin$havoc_ref()
+  inhale acc(_23.val_bool, write)
+  _23.val_bool := true
+  // [mir] goto -> bb12
+  
+  goto bb12
+  label l20
+  // ========== l20 ==========
+  
+  // MIR edge bb4 --> bb29
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L11,L2,)
+
+  
+  if (__t2) {
+    // expire loan L11
+    
+    exhale acc(bool(_16.val_ref), read$())
+    // drop Pred(_6.val_ref, read) (Pred(_6.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L2
+    
+    exhale acc(bool(_6.val_ref), read$())
+    // drop Pred(_16.val_ref, read) (Pred(_16.val_ref, read))
+    
+  }
+  goto bb29
+  label l21
+  // ========== l21 ==========
+  
+  // MIR edge bb4 --> bb31
+  
+  goto bb31
+  label l24
+  // ========== l24 ==========
+  
+  // MIR edge bb31 --> bb29
+  
+  goto l62
+  label l25
+  // ========== l25 ==========
+  
+  // MIR edge bb31 --> bb30
+  
+  goto bb30
+  label l26
+  // ========== l26 ==========
+  
+  // MIR edge bb32 --> bb25
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L12,L3,)
+
+  
+  if (__t2) {
+    // expire loan L12
+    
+    exhale acc(bool(_17.val_ref), read$())
+    // drop Pred(_7.val_ref, read) (Pred(_7.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L3
+    
+    exhale acc(bool(_7.val_ref), read$())
+    // drop Pred(_17.val_ref, read) (Pred(_17.val_ref, read))
+    
+  }
+  goto bb25
+  label l27
+  // ========== l27 ==========
+  
+  // MIR edge bb32 --> bb27
+  
+  goto bb27
+  label l30
+  // ========== l30 ==========
+  
+  // MIR edge bb27 --> bb25
+  
+  goto l64
+  label l31
+  // ========== l31 ==========
+  
+  // MIR edge bb27 --> bb26
+  
+  goto bb26
+  label l32
+  // ========== l32 ==========
+  
+  // MIR edge bb28 --> bb21
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L13,L4,)
+
+  
+  if (__t2) {
+    // expire loan L13
+    
+    exhale acc(bool(_18.val_ref), read$())
+    // drop Pred(_8.val_ref, read) (Pred(_8.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L4
+    
+    exhale acc(bool(_8.val_ref), read$())
+    // drop Pred(_18.val_ref, read) (Pred(_18.val_ref, read))
+    
+  }
+  goto bb21
+  label l33
+  // ========== l33 ==========
+  
+  // MIR edge bb28 --> bb23
+  
+  goto bb23
+  label l36
+  // ========== l36 ==========
+  
+  // MIR edge bb23 --> bb21
+  
+  goto l66
+  label l37
+  // ========== l37 ==========
+  
+  // MIR edge bb23 --> bb22
+  
+  goto bb22
+  label l38
+  // ========== l38 ==========
+  
+  // MIR edge bb24 --> bb17
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L14,L5,)
+
+  
+  if (__t2) {
+    // expire loan L14
+    
+    exhale acc(bool(_19.val_ref), read$())
+    // drop Pred(_9.val_ref, read) (Pred(_9.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L5
+    
+    exhale acc(bool(_9.val_ref), read$())
+    // drop Pred(_19.val_ref, read) (Pred(_19.val_ref, read))
+    
+  }
+  goto bb17
+  label l39
+  // ========== l39 ==========
+  
+  // MIR edge bb24 --> bb19
+  
+  goto bb19
+  label l42
+  // ========== l42 ==========
+  
+  // MIR edge bb19 --> bb17
+  
+  goto l68
+  label l43
+  // ========== l43 ==========
+  
+  // MIR edge bb19 --> bb18
+  
+  goto bb18
+  label l44
+  // ========== l44 ==========
+  
+  // MIR edge bb20 --> bb13
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L15,L6,)
+
+  
+  if (__t2) {
+    // expire loan L15
+    
+    exhale acc(bool(_20.val_ref), read$())
+    // drop Pred(_10.val_ref, read) (Pred(_10.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L6
+    
+    exhale acc(bool(_10.val_ref), read$())
+    // drop Pred(_20.val_ref, read) (Pred(_20.val_ref, read))
+    
+  }
+  goto bb13
+  label l45
+  // ========== l45 ==========
+  
+  // MIR edge bb20 --> bb15
+  
+  goto bb15
+  label l48
+  // ========== l48 ==========
+  
+  // MIR edge bb15 --> bb13
+  
+  goto l70
+  label l49
+  // ========== l49 ==========
+  
+  // MIR edge bb15 --> bb14
+  
+  goto bb14
+  label l50
+  // ========== l50 ==========
+  
+  // MIR edge bb16 --> bb9
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L16,L7,)
+
+  
+  if (__t2) {
+    // expire loan L16
+    
+    exhale acc(bool(_21.val_ref), read$())
+    // drop Pred(_11.val_ref, read) (Pred(_11.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L7
+    
+    exhale acc(bool(_11.val_ref), read$())
+    // drop Pred(_21.val_ref, read) (Pred(_21.val_ref, read))
+    
+  }
+  goto bb9
+  label l51
+  // ========== l51 ==========
+  
+  // MIR edge bb16 --> bb11
+  
+  goto bb11
+  label l54
+  // ========== l54 ==========
+  
+  // MIR edge bb11 --> bb9
+  
+  goto l72
+  label l55
+  // ========== l55 ==========
+  
+  // MIR edge bb11 --> bb10
+  
+  goto bb10
+  label l56
+  // ========== l56 ==========
+  
+  // MIR edge bb12 --> bb5
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L17,L8,)
+
+  
+  if (__t2) {
+    // expire loan L17
+    
+    exhale acc(bool(_22.val_ref), read$())
+    // drop Pred(_12.val_ref, read) (Pred(_12.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L8
+    
+    exhale acc(bool(_12.val_ref), read$())
+    // drop Pred(_22.val_ref, read) (Pred(_22.val_ref, read))
+    
+  }
+  goto bb5
+  label l57
+  // ========== l57 ==========
+  
+  // MIR edge bb12 --> bb7
+  
+  goto bb7
+  label l60
+  // ========== l60 ==========
+  
+  // MIR edge bb7 --> bb5
+  
+  goto l74
+  label l61
+  // ========== l61 ==========
+  
+  // MIR edge bb7 --> bb6
+  
+  goto bb6
+  label l62
+  // ========== l62 ==========
+  
+  // drop Acc(_33.val_bool, write) (Acc(_33.val_bool, write))
+  
+  // drop Acc(_32.val_bool, write) (Acc(_32.val_bool, write))
+  
+  // drop Acc(_34.val_bool, write) (Acc(_34.val_bool, write))
+  
+  goto bb29
+  label l63
+  // ========== l63 ==========
+  
+  // drop Acc(_34.val_bool, write) (Acc(_34.val_bool, write))
+  
+  // drop Acc(_32.val_bool, write) (Acc(_32.val_bool, write))
+  
+  // drop Acc(_33.val_bool, write) (Acc(_33.val_bool, write))
+  
+  goto bb32
+  label l64
+  // ========== l64 ==========
+  
+  // drop Acc(_35.val_bool, write) (Acc(_35.val_bool, write))
+  
+  // drop Acc(_37.val_bool, write) (Acc(_37.val_bool, write))
+  
+  // drop Acc(_36.val_bool, write) (Acc(_36.val_bool, write))
+  
+  goto bb25
+  label l65
+  // ========== l65 ==========
+  
+  // drop Acc(_36.val_bool, write) (Acc(_36.val_bool, write))
+  
+  // drop Acc(_37.val_bool, write) (Acc(_37.val_bool, write))
+  
+  // drop Acc(_35.val_bool, write) (Acc(_35.val_bool, write))
+  
+  goto bb28
+  label l66
+  // ========== l66 ==========
+  
+  // drop Acc(_39.val_bool, write) (Acc(_39.val_bool, write))
+  
+  // drop Acc(_38.val_bool, write) (Acc(_38.val_bool, write))
+  
+  // drop Acc(_40.val_bool, write) (Acc(_40.val_bool, write))
+  
+  goto bb21
+  label l67
+  // ========== l67 ==========
+  
+  // drop Acc(_38.val_bool, write) (Acc(_38.val_bool, write))
+  
+  // drop Acc(_39.val_bool, write) (Acc(_39.val_bool, write))
+  
+  // drop Acc(_40.val_bool, write) (Acc(_40.val_bool, write))
+  
+  goto bb24
+  label l68
+  // ========== l68 ==========
+  
+  // drop Acc(_43.val_bool, write) (Acc(_43.val_bool, write))
+  
+  // drop Acc(_42.val_bool, write) (Acc(_42.val_bool, write))
+  
+  // drop Acc(_41.val_bool, write) (Acc(_41.val_bool, write))
+  
+  goto bb17
+  label l69
+  // ========== l69 ==========
+  
+  // drop Acc(_42.val_bool, write) (Acc(_42.val_bool, write))
+  
+  // drop Acc(_43.val_bool, write) (Acc(_43.val_bool, write))
+  
+  // drop Acc(_41.val_bool, write) (Acc(_41.val_bool, write))
+  
+  goto bb20
+  label l70
+  // ========== l70 ==========
+  
+  // drop Acc(_46.val_bool, write) (Acc(_46.val_bool, write))
+  
+  // drop Acc(_45.val_bool, write) (Acc(_45.val_bool, write))
+  
+  // drop Acc(_44.val_bool, write) (Acc(_44.val_bool, write))
+  
+  goto bb13
+  label l71
+  // ========== l71 ==========
+  
+  // drop Acc(_44.val_bool, write) (Acc(_44.val_bool, write))
+  
+  // drop Acc(_45.val_bool, write) (Acc(_45.val_bool, write))
+  
+  // drop Acc(_46.val_bool, write) (Acc(_46.val_bool, write))
+  
+  goto bb16
+  label l72
+  // ========== l72 ==========
+  
+  // drop Acc(_48.val_bool, write) (Acc(_48.val_bool, write))
+  
+  // drop Acc(_49.val_bool, write) (Acc(_49.val_bool, write))
+  
+  // drop Acc(_47.val_bool, write) (Acc(_47.val_bool, write))
+  
+  goto bb9
+  label l73
+  // ========== l73 ==========
+  
+  // drop Acc(_47.val_bool, write) (Acc(_47.val_bool, write))
+  
+  // drop Acc(_49.val_bool, write) (Acc(_49.val_bool, write))
+  
+  // drop Acc(_48.val_bool, write) (Acc(_48.val_bool, write))
+  
+  goto bb12
+  label l74
+  // ========== l74 ==========
+  
+  // drop Acc(_52.val_bool, write) (Acc(_52.val_bool, write))
+  
+  // drop Acc(_50.val_bool, write) (Acc(_50.val_bool, write))
+  
+  // drop Acc(_51.val_bool, write) (Acc(_51.val_bool, write))
+  
+  goto bb5
+  label l75
+  // ========== l75 ==========
+  
+  // drop Acc(_52.val_bool, write) (Acc(_52.val_bool, write))
+  
+  // drop Acc(_51.val_bool, write) (Acc(_51.val_bool, write))
+  
+  // drop Acc(_50.val_bool, write) (Acc(_50.val_bool, write))
+  
+  goto bb8
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), write)
+  
+  _old$pre$1 := _2.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0), write)
+  // obtain acc(bool(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), read$()) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$1), read$())
+  exhale acc(bool(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$bold$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _aux_havoc_bool: Ref
+  var _old$pre$0: Ref
+  var _1: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "ansi_term_external_call::Style::bold"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[0]::bold[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:51:5: 53:6
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = Style { is_bold: const true, is_dimmed: ((*_1).1: bool), is_italic: ((*_1).2: bool), is_underline: ((*_1).3: bool), is_blink: ((*_1).4: bool), is_reverse: ((*_1).5: bool), is_hidden: ((*_1).6: bool), is_strikethrough: ((*_1).7: bool) }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _aux_havoc_bool := builtin$havoc_ref()
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$is_bold := _aux_havoc_bool
+  inhale acc(_0.f$is_bold.val_bool, write)
+  _0.f$is_bold.val_bool := true
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_dimmed := _aux_havoc_bool
+  inhale acc(_0.f$is_dimmed.val_bool, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  unfold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  _0.f$is_dimmed.val_bool := _1.val_ref.f$is_dimmed.val_bool
+  label l0
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_italic := _aux_havoc_bool
+  inhale acc(_0.f$is_italic.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_italic), read$())
+  _0.f$is_italic.val_bool := _1.val_ref.f$is_italic.val_bool
+  label l1
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_underline := _aux_havoc_bool
+  inhale acc(_0.f$is_underline.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_underline), read$())
+  _0.f$is_underline.val_bool := _1.val_ref.f$is_underline.val_bool
+  label l2
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_blink := _aux_havoc_bool
+  inhale acc(_0.f$is_blink.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_blink), read$())
+  _0.f$is_blink.val_bool := _1.val_ref.f$is_blink.val_bool
+  label l3
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_reverse := _aux_havoc_bool
+  inhale acc(_0.f$is_reverse.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_reverse), read$())
+  _0.f$is_reverse.val_bool := _1.val_ref.f$is_reverse.val_bool
+  label l4
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_hidden := _aux_havoc_bool
+  inhale acc(_0.f$is_hidden.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_hidden), read$())
+  _0.f$is_hidden.val_bool := _1.val_ref.f$is_hidden.val_bool
+  label l5
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_strikethrough := _aux_havoc_bool
+  inhale acc(_0.f$is_strikethrough.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  _0.f$is_strikethrough.val_bool := _1.val_ref.f$is_strikethrough.val_bool
+  label l6
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(bool(_1.val_ref.f$is_underline), read$())
+  fold acc(bool(_1.val_ref.f$is_hidden), read$())
+  fold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  fold acc(bool(_1.val_ref.f$is_blink), read$())
+  fold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  fold acc(bool(_1.val_ref.f$is_italic), read$())
+  fold acc(bool(_1.val_ref.f$is_reverse), read$())
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0.f$is_hidden), write)
+  fold acc(bool(_0.f$is_bold), write)
+  fold acc(bool(_0.f$is_reverse), write)
+  fold acc(bool(_0.f$is_underline), write)
+  fold acc(bool(_0.f$is_italic), write)
+  fold acc(bool(_0.f$is_blink), write)
+  fold acc(bool(_0.f$is_dimmed), write)
+  fold acc(bool(_0.f$is_strikethrough), write)
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), read$())
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$dimmed$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _aux_havoc_bool: Ref
+  var _old$pre$0: Ref
+  var _1: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "ansi_term_external_call::Style::dimmed"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[0]::dimmed[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:56:5: 58:6
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = Style { is_bold: ((*_1).0: bool), is_dimmed: const true, is_italic: ((*_1).2: bool), is_underline: ((*_1).3: bool), is_blink: ((*_1).4: bool), is_reverse: ((*_1).5: bool), is_hidden: ((*_1).6: bool), is_strikethrough: ((*_1).7: bool) }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _aux_havoc_bool := builtin$havoc_ref()
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$is_bold := _aux_havoc_bool
+  inhale acc(_0.f$is_bold.val_bool, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  unfold acc(bool(_1.val_ref.f$is_bold), read$())
+  _0.f$is_bold.val_bool := _1.val_ref.f$is_bold.val_bool
+  label l0
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_dimmed := _aux_havoc_bool
+  inhale acc(_0.f$is_dimmed.val_bool, write)
+  _0.f$is_dimmed.val_bool := true
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_italic := _aux_havoc_bool
+  inhale acc(_0.f$is_italic.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_italic), read$())
+  _0.f$is_italic.val_bool := _1.val_ref.f$is_italic.val_bool
+  label l1
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_underline := _aux_havoc_bool
+  inhale acc(_0.f$is_underline.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_underline), read$())
+  _0.f$is_underline.val_bool := _1.val_ref.f$is_underline.val_bool
+  label l2
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_blink := _aux_havoc_bool
+  inhale acc(_0.f$is_blink.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_blink), read$())
+  _0.f$is_blink.val_bool := _1.val_ref.f$is_blink.val_bool
+  label l3
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_reverse := _aux_havoc_bool
+  inhale acc(_0.f$is_reverse.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_reverse), read$())
+  _0.f$is_reverse.val_bool := _1.val_ref.f$is_reverse.val_bool
+  label l4
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_hidden := _aux_havoc_bool
+  inhale acc(_0.f$is_hidden.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_hidden), read$())
+  _0.f$is_hidden.val_bool := _1.val_ref.f$is_hidden.val_bool
+  label l5
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_strikethrough := _aux_havoc_bool
+  inhale acc(_0.f$is_strikethrough.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  _0.f$is_strikethrough.val_bool := _1.val_ref.f$is_strikethrough.val_bool
+  label l6
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(bool(_1.val_ref.f$is_bold), read$())
+  fold acc(bool(_1.val_ref.f$is_italic), read$())
+  fold acc(bool(_1.val_ref.f$is_hidden), read$())
+  fold acc(bool(_1.val_ref.f$is_blink), read$())
+  fold acc(bool(_1.val_ref.f$is_reverse), read$())
+  fold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  fold acc(bool(_1.val_ref.f$is_underline), read$())
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0.f$is_hidden), write)
+  fold acc(bool(_0.f$is_bold), write)
+  fold acc(bool(_0.f$is_dimmed), write)
+  fold acc(bool(_0.f$is_strikethrough), write)
+  fold acc(bool(_0.f$is_reverse), write)
+  fold acc(bool(_0.f$is_blink), write)
+  fold acc(bool(_0.f$is_italic), write)
+  fold acc(bool(_0.f$is_underline), write)
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), read$())
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$4$closesqu$$$eq$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var __t26: Bool
+  var __t27: Bool
+  var __t28: Bool
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var __t32: Bool
+  var __t33: Bool
+  var __t34: Bool
+  var __t35: Bool
+  var __t36: Bool
+  var __t37: Bool
+  var __t38: Bool
+  var __t39: Bool
+  var __t40: Bool
+  var __t41: Bool
+  var __t42: Bool
+  var __t43: Bool
+  var __t44: Bool
+  var _old$pre$0: Ref
+  var _old$pre$1: Ref
+  var _1: Ref
+  var _2: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  var _10: Ref
+  var _11: Ref
+  var _12: Ref
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  var _23: Ref
+  var _24: Ref
+  var _25: Ref
+  var _26: Ref
+  var _27: Ref
+  var _28: Ref
+  var _29: Ref
+  var _30: Ref
+  var _31: Ref
+  var _32: Ref
+  var _33: Ref
+  var _34: Ref
+  var _35: Ref
+  var _36: Ref
+  var _37: Ref
+  var _38: Ref
+  var _39: Ref
+  var _40: Ref
+  var _41: Ref
+  var _42: Ref
+  var _43: Ref
+  var _44: Ref
+  var _45: Ref
+  var _46: Ref
+  var _47: Ref
+  var _48: Ref
+  var _49: Ref
+  var _50: Ref
+  var _51: Ref
+  var _52: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "<Style as std::cmp::PartialEq>::eq"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[4]::eq[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:7:10: 7:19
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  __t24 := false
+  __t25 := false
+  __t26 := false
+  __t27 := false
+  __t28 := false
+  __t29 := false
+  __t30 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$()) && (acc(_2.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), read$())))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _3 = discriminant((*_2))
+  
+  // [mir] _4 = &'<empty> (*_2)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  _4.val_ref := _2.val_ref
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_4.val_ref), read$())
+  label l0
+  // [mir] ReadForMatch(_4)
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_4.val_ref), read$())
+  }
+  // [mir] falseEdges -> [real: bb2, imaginary: bb1]
+  
+  goto bb2
+  label bb10
+  // ========== bb10 ==========
+  
+  __t25 := true
+  // [mir] _23 = const false
+  
+  _23 := builtin$havoc_ref()
+  inhale acc(_23.val_bool, write)
+  _23.val_bool := false
+  // [mir] goto -> bb12
+  
+  goto bb12
+  label bb11
+  // ========== bb11 ==========
+  
+  __t23 := true
+  // [mir] StorageLive(_47)
+  
+  // [mir] StorageLive(_48)
+  
+  // [mir] _48 = (*_21)
+  
+  _48 := builtin$havoc_ref()
+  inhale acc(_48.val_bool, write)
+  unfold acc(bool(_21.val_ref), read$())
+  _48.val_bool := _21.val_ref.val_bool
+  label l52
+  // expire_borrows ReborrowingDAG(L16,)
+
+  
+  if (__t2) {
+    // expire loan L16
+    
+    fold acc(bool(_21.val_ref), read$())
+    exhale acc(bool(_21.val_ref), read$())
+  }
+  // [mir] StorageLive(_49)
+  
+  // [mir] _49 = (*_11)
+  
+  _49 := builtin$havoc_ref()
+  inhale acc(_49.val_bool, write)
+  unfold acc(bool(_11.val_ref), read$())
+  _49.val_bool := _11.val_ref.val_bool
+  label l53
+  // expire_borrows ReborrowingDAG(L7,)
+
+  
+  if (__t1) {
+    // expire loan L7
+    
+    fold acc(bool(_11.val_ref), read$())
+    exhale acc(bool(_11.val_ref), read$())
+  }
+  // [mir] _47 = Eq(move _48, move _49)
+  
+  _47 := builtin$havoc_ref()
+  inhale acc(_47.val_bool, write)
+  _47.val_bool := _48.val_bool == _49.val_bool
+  // [mir] StorageDead(_49)
+  
+  // [mir] StorageDead(_48)
+  
+  // [mir] switchInt(move _47) -> [false: bb10, otherwise: bb9]
+  
+  __t42 := _47.val_bool
+  if (!__t42) {
+    goto l55
+  }
+  goto l54
+  label bb12
+  // ========== bb12 ==========
+  
+  __t26 := true
+  // [mir] StorageDead(_47)
+  
+  // [mir] StorageDead(_24)
+  
+  // [mir] switchInt(move _23) -> [false: bb6, otherwise: bb7]
+  
+  __t43 := _23.val_bool
+  if (!__t43) {
+    goto l57
+  }
+  goto l56
+  label bb13
+  // ========== bb13 ==========
+  
+  __t20 := true
+  // [mir] _24 = const true
+  
+  _24 := builtin$havoc_ref()
+  inhale acc(_24.val_bool, write)
+  _24.val_bool := true
+  // [mir] goto -> bb16
+  
+  goto l71
+  label bb14
+  // ========== bb14 ==========
+  
+  __t21 := true
+  // [mir] _24 = const false
+  
+  _24 := builtin$havoc_ref()
+  inhale acc(_24.val_bool, write)
+  _24.val_bool := false
+  // [mir] goto -> bb16
+  
+  goto bb16
+  label bb15
+  // ========== bb15 ==========
+  
+  __t19 := true
+  // [mir] StorageLive(_44)
+  
+  // [mir] StorageLive(_45)
+  
+  // [mir] _45 = (*_20)
+  
+  _45 := builtin$havoc_ref()
+  inhale acc(_45.val_bool, write)
+  unfold acc(bool(_20.val_ref), read$())
+  _45.val_bool := _20.val_ref.val_bool
+  label l46
+  // expire_borrows ReborrowingDAG(L15,)
+
+  
+  if (__t2) {
+    // expire loan L15
+    
+    fold acc(bool(_20.val_ref), read$())
+    exhale acc(bool(_20.val_ref), read$())
+  }
+  // [mir] StorageLive(_46)
+  
+  // [mir] _46 = (*_10)
+  
+  _46 := builtin$havoc_ref()
+  inhale acc(_46.val_bool, write)
+  unfold acc(bool(_10.val_ref), read$())
+  _46.val_bool := _10.val_ref.val_bool
+  label l47
+  // expire_borrows ReborrowingDAG(L6,)
+
+  
+  if (__t1) {
+    // expire loan L6
+    
+    fold acc(bool(_10.val_ref), read$())
+    exhale acc(bool(_10.val_ref), read$())
+  }
+  // [mir] _44 = Eq(move _45, move _46)
+  
+  _44 := builtin$havoc_ref()
+  inhale acc(_44.val_bool, write)
+  _44.val_bool := _45.val_bool == _46.val_bool
+  // [mir] StorageDead(_46)
+  
+  // [mir] StorageDead(_45)
+  
+  // [mir] switchInt(move _44) -> [false: bb14, otherwise: bb13]
+  
+  __t40 := _44.val_bool
+  if (!__t40) {
+    goto l49
+  }
+  goto l48
+  label bb16
+  // ========== bb16 ==========
+  
+  __t22 := true
+  // [mir] StorageDead(_44)
+  
+  // [mir] StorageDead(_25)
+  
+  // [mir] switchInt(move _24) -> [false: bb10, otherwise: bb11]
+  
+  __t41 := _24.val_bool
+  if (!__t41) {
+    goto l51
+  }
+  goto l50
+  label bb17
+  // ========== bb17 ==========
+  
+  __t16 := true
+  // [mir] _25 = const true
+  
+  _25 := builtin$havoc_ref()
+  inhale acc(_25.val_bool, write)
+  _25.val_bool := true
+  // [mir] goto -> bb20
+  
+  goto l69
+  label bb18
+  // ========== bb18 ==========
+  
+  __t17 := true
+  // [mir] _25 = const false
+  
+  _25 := builtin$havoc_ref()
+  inhale acc(_25.val_bool, write)
+  _25.val_bool := false
+  // [mir] goto -> bb20
+  
+  goto bb20
+  label bb19
+  // ========== bb19 ==========
+  
+  __t15 := true
+  // [mir] StorageLive(_41)
+  
+  // [mir] StorageLive(_42)
+  
+  // [mir] _42 = (*_19)
+  
+  _42 := builtin$havoc_ref()
+  inhale acc(_42.val_bool, write)
+  unfold acc(bool(_19.val_ref), read$())
+  _42.val_bool := _19.val_ref.val_bool
+  label l40
+  // expire_borrows ReborrowingDAG(L14,)
+
+  
+  if (__t2) {
+    // expire loan L14
+    
+    fold acc(bool(_19.val_ref), read$())
+    exhale acc(bool(_19.val_ref), read$())
+  }
+  // [mir] StorageLive(_43)
+  
+  // [mir] _43 = (*_9)
+  
+  _43 := builtin$havoc_ref()
+  inhale acc(_43.val_bool, write)
+  unfold acc(bool(_9.val_ref), read$())
+  _43.val_bool := _9.val_ref.val_bool
+  label l41
+  // expire_borrows ReborrowingDAG(L5,)
+
+  
+  if (__t1) {
+    // expire loan L5
+    
+    fold acc(bool(_9.val_ref), read$())
+    exhale acc(bool(_9.val_ref), read$())
+  }
+  // [mir] _41 = Eq(move _42, move _43)
+  
+  _41 := builtin$havoc_ref()
+  inhale acc(_41.val_bool, write)
+  _41.val_bool := _42.val_bool == _43.val_bool
+  // [mir] StorageDead(_43)
+  
+  // [mir] StorageDead(_42)
+  
+  // [mir] switchInt(move _41) -> [false: bb18, otherwise: bb17]
+  
+  __t38 := _41.val_bool
+  if (!__t38) {
+    goto l43
+  }
+  goto l42
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = &'87s ((*_2).0: bool)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), read$())
+  _5.val_ref := _2.val_ref.f$is_bold
+  inhale acc(bool(_5.val_ref), read$())
+  label l1
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = &'87s ((*_2).1: bool)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_ref, write)
+  _6.val_ref := _2.val_ref.f$is_dimmed
+  inhale acc(bool(_6.val_ref), read$())
+  label l2
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = &'87s ((*_2).2: bool)
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _2.val_ref.f$is_italic
+  inhale acc(bool(_7.val_ref), read$())
+  label l3
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = &'87s ((*_2).3: bool)
+  
+  _8 := builtin$havoc_ref()
+  inhale acc(_8.val_ref, write)
+  _8.val_ref := _2.val_ref.f$is_underline
+  inhale acc(bool(_8.val_ref), read$())
+  label l4
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = &'87s ((*_2).4: bool)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _2.val_ref.f$is_blink
+  inhale acc(bool(_9.val_ref), read$())
+  label l5
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = &'87s ((*_2).5: bool)
+  
+  _10 := builtin$havoc_ref()
+  inhale acc(_10.val_ref, write)
+  _10.val_ref := _2.val_ref.f$is_reverse
+  inhale acc(bool(_10.val_ref), read$())
+  label l6
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = &'87s ((*_2).6: bool)
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.val_ref, write)
+  _11.val_ref := _2.val_ref.f$is_hidden
+  inhale acc(bool(_11.val_ref), read$())
+  label l7
+  // [mir] StorageLive(_12)
+  
+  // [mir] _12 = &'87s ((*_2).7: bool)
+  
+  _12 := builtin$havoc_ref()
+  inhale acc(_12.val_ref, write)
+  _12.val_ref := _2.val_ref.f$is_strikethrough
+  inhale acc(bool(_12.val_ref), read$())
+  label l8
+  // [mir] _13 = discriminant((*_1))
+  
+  // [mir] _14 = &'<empty> (*_1)
+  
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.val_ref, write)
+  _14.val_ref := _1.val_ref
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_14.val_ref), read$())
+  label l9
+  // [mir] ReadForMatch(_14)
+  
+  // expire_borrows ReborrowingDAG(L9,)
+
+  
+  if (__t1) {
+    // expire loan L9
+    
+    exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_14.val_ref), read$())
+  }
+  // [mir] falseEdges -> [real: bb4, imaginary: bb3]
+  
+  goto bb4
+  label bb20
+  // ========== bb20 ==========
+  
+  __t18 := true
+  // [mir] StorageDead(_41)
+  
+  // [mir] StorageDead(_26)
+  
+  // [mir] switchInt(move _25) -> [false: bb14, otherwise: bb15]
+  
+  __t39 := _25.val_bool
+  if (!__t39) {
+    goto l45
+  }
+  goto l44
+  label bb21
+  // ========== bb21 ==========
+  
+  __t12 := true
+  // [mir] _26 = const true
+  
+  _26 := builtin$havoc_ref()
+  inhale acc(_26.val_bool, write)
+  _26.val_bool := true
+  // [mir] goto -> bb24
+  
+  goto l67
+  label bb22
+  // ========== bb22 ==========
+  
+  __t13 := true
+  // [mir] _26 = const false
+  
+  _26 := builtin$havoc_ref()
+  inhale acc(_26.val_bool, write)
+  _26.val_bool := false
+  // [mir] goto -> bb24
+  
+  goto bb24
+  label bb23
+  // ========== bb23 ==========
+  
+  __t11 := true
+  // [mir] StorageLive(_38)
+  
+  // [mir] StorageLive(_39)
+  
+  // [mir] _39 = (*_18)
+  
+  _39 := builtin$havoc_ref()
+  inhale acc(_39.val_bool, write)
+  unfold acc(bool(_18.val_ref), read$())
+  _39.val_bool := _18.val_ref.val_bool
+  label l34
+  // expire_borrows ReborrowingDAG(L13,)
+
+  
+  if (__t2) {
+    // expire loan L13
+    
+    fold acc(bool(_18.val_ref), read$())
+    exhale acc(bool(_18.val_ref), read$())
+  }
+  // [mir] StorageLive(_40)
+  
+  // [mir] _40 = (*_8)
+  
+  _40 := builtin$havoc_ref()
+  inhale acc(_40.val_bool, write)
+  unfold acc(bool(_8.val_ref), read$())
+  _40.val_bool := _8.val_ref.val_bool
+  label l35
+  // expire_borrows ReborrowingDAG(L4,)
+
+  
+  if (__t1) {
+    // expire loan L4
+    
+    fold acc(bool(_8.val_ref), read$())
+    exhale acc(bool(_8.val_ref), read$())
+  }
+  // [mir] _38 = Eq(move _39, move _40)
+  
+  _38 := builtin$havoc_ref()
+  inhale acc(_38.val_bool, write)
+  _38.val_bool := _39.val_bool == _40.val_bool
+  // [mir] StorageDead(_40)
+  
+  // [mir] StorageDead(_39)
+  
+  // [mir] switchInt(move _38) -> [false: bb22, otherwise: bb21]
+  
+  __t36 := _38.val_bool
+  if (!__t36) {
+    goto l37
+  }
+  goto l36
+  label bb24
+  // ========== bb24 ==========
+  
+  __t14 := true
+  // [mir] StorageDead(_38)
+  
+  // [mir] StorageDead(_27)
+  
+  // [mir] switchInt(move _26) -> [false: bb18, otherwise: bb19]
+  
+  __t37 := _26.val_bool
+  if (!__t37) {
+    goto l39
+  }
+  goto l38
+  label bb25
+  // ========== bb25 ==========
+  
+  __t8 := true
+  // [mir] _27 = const true
+  
+  _27 := builtin$havoc_ref()
+  inhale acc(_27.val_bool, write)
+  _27.val_bool := true
+  // [mir] goto -> bb28
+  
+  goto l65
+  label bb26
+  // ========== bb26 ==========
+  
+  __t9 := true
+  // [mir] _27 = const false
+  
+  _27 := builtin$havoc_ref()
+  inhale acc(_27.val_bool, write)
+  _27.val_bool := false
+  // [mir] goto -> bb28
+  
+  goto bb28
+  label bb27
+  // ========== bb27 ==========
+  
+  __t7 := true
+  // [mir] StorageLive(_35)
+  
+  // [mir] StorageLive(_36)
+  
+  // [mir] _36 = (*_17)
+  
+  _36 := builtin$havoc_ref()
+  inhale acc(_36.val_bool, write)
+  unfold acc(bool(_17.val_ref), read$())
+  _36.val_bool := _17.val_ref.val_bool
+  label l28
+  // expire_borrows ReborrowingDAG(L12,)
+
+  
+  if (__t2) {
+    // expire loan L12
+    
+    fold acc(bool(_17.val_ref), read$())
+    exhale acc(bool(_17.val_ref), read$())
+  }
+  // [mir] StorageLive(_37)
+  
+  // [mir] _37 = (*_7)
+  
+  _37 := builtin$havoc_ref()
+  inhale acc(_37.val_bool, write)
+  unfold acc(bool(_7.val_ref), read$())
+  _37.val_bool := _7.val_ref.val_bool
+  label l29
+  // expire_borrows ReborrowingDAG(L3,)
+
+  
+  if (__t1) {
+    // expire loan L3
+    
+    fold acc(bool(_7.val_ref), read$())
+    exhale acc(bool(_7.val_ref), read$())
+  }
+  // [mir] _35 = Eq(move _36, move _37)
+  
+  _35 := builtin$havoc_ref()
+  inhale acc(_35.val_bool, write)
+  _35.val_bool := _36.val_bool == _37.val_bool
+  // [mir] StorageDead(_37)
+  
+  // [mir] StorageDead(_36)
+  
+  // [mir] switchInt(move _35) -> [false: bb26, otherwise: bb25]
+  
+  __t34 := _35.val_bool
+  if (!__t34) {
+    goto l31
+  }
+  goto l30
+  label bb28
+  // ========== bb28 ==========
+  
+  __t10 := true
+  // [mir] StorageDead(_35)
+  
+  // [mir] StorageDead(_28)
+  
+  // [mir] switchInt(move _27) -> [false: bb22, otherwise: bb23]
+  
+  __t35 := _27.val_bool
+  if (!__t35) {
+    goto l33
+  }
+  goto l32
+  label bb29
+  // ========== bb29 ==========
+  
+  __t4 := true
+  // [mir] _28 = const true
+  
+  _28 := builtin$havoc_ref()
+  inhale acc(_28.val_bool, write)
+  _28.val_bool := true
+  // [mir] goto -> bb32
+  
+  goto l63
+  label bb30
+  // ========== bb30 ==========
+  
+  __t5 := true
+  // [mir] _28 = const false
+  
+  _28 := builtin$havoc_ref()
+  inhale acc(_28.val_bool, write)
+  _28.val_bool := false
+  // [mir] goto -> bb32
+  
+  goto bb32
+  label bb31
+  // ========== bb31 ==========
+  
+  __t3 := true
+  // [mir] StorageLive(_32)
+  
+  // [mir] StorageLive(_33)
+  
+  // [mir] _33 = (*_16)
+  
+  _33 := builtin$havoc_ref()
+  inhale acc(_33.val_bool, write)
+  unfold acc(bool(_16.val_ref), read$())
+  _33.val_bool := _16.val_ref.val_bool
+  label l22
+  // expire_borrows ReborrowingDAG(L11,)
+
+  
+  if (__t2) {
+    // expire loan L11
+    
+    fold acc(bool(_16.val_ref), read$())
+    exhale acc(bool(_16.val_ref), read$())
+  }
+  // [mir] StorageLive(_34)
+  
+  // [mir] _34 = (*_6)
+  
+  _34 := builtin$havoc_ref()
+  inhale acc(_34.val_bool, write)
+  unfold acc(bool(_6.val_ref), read$())
+  _34.val_bool := _6.val_ref.val_bool
+  label l23
+  // expire_borrows ReborrowingDAG(L2,)
+
+  
+  if (__t1) {
+    // expire loan L2
+    
+    fold acc(bool(_6.val_ref), read$())
+    exhale acc(bool(_6.val_ref), read$())
+  }
+  // [mir] _32 = Eq(move _33, move _34)
+  
+  _32 := builtin$havoc_ref()
+  inhale acc(_32.val_bool, write)
+  _32.val_bool := _33.val_bool == _34.val_bool
+  // [mir] StorageDead(_34)
+  
+  // [mir] StorageDead(_33)
+  
+  // [mir] switchInt(move _32) -> [false: bb30, otherwise: bb29]
+  
+  __t32 := _32.val_bool
+  if (!__t32) {
+    goto l25
+  }
+  goto l24
+  label bb32
+  // ========== bb32 ==========
+  
+  __t6 := true
+  // [mir] StorageDead(_32)
+  
+  // [mir] StorageDead(_29)
+  
+  // [mir] switchInt(move _28) -> [false: bb26, otherwise: bb27]
+  
+  __t33 := _28.val_bool
+  if (!__t33) {
+    goto l27
+  }
+  goto l26
+  label bb4
+  // ========== bb4 ==========
+  
+  __t2 := true
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = &'86s ((*_1).0: bool)
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(_15.val_ref, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  _15.val_ref := _1.val_ref.f$is_bold
+  inhale acc(bool(_15.val_ref), read$())
+  label l10
+  // [mir] StorageLive(_16)
+  
+  // [mir] _16 = &'86s ((*_1).1: bool)
+  
+  _16 := builtin$havoc_ref()
+  inhale acc(_16.val_ref, write)
+  _16.val_ref := _1.val_ref.f$is_dimmed
+  inhale acc(bool(_16.val_ref), read$())
+  label l11
+  // [mir] StorageLive(_17)
+  
+  // [mir] _17 = &'86s ((*_1).2: bool)
+  
+  _17 := builtin$havoc_ref()
+  inhale acc(_17.val_ref, write)
+  _17.val_ref := _1.val_ref.f$is_italic
+  inhale acc(bool(_17.val_ref), read$())
+  label l12
+  // [mir] StorageLive(_18)
+  
+  // [mir] _18 = &'86s ((*_1).3: bool)
+  
+  _18 := builtin$havoc_ref()
+  inhale acc(_18.val_ref, write)
+  _18.val_ref := _1.val_ref.f$is_underline
+  inhale acc(bool(_18.val_ref), read$())
+  label l13
+  // [mir] StorageLive(_19)
+  
+  // [mir] _19 = &'86s ((*_1).4: bool)
+  
+  _19 := builtin$havoc_ref()
+  inhale acc(_19.val_ref, write)
+  _19.val_ref := _1.val_ref.f$is_blink
+  inhale acc(bool(_19.val_ref), read$())
+  label l14
+  // [mir] StorageLive(_20)
+  
+  // [mir] _20 = &'86s ((*_1).5: bool)
+  
+  _20 := builtin$havoc_ref()
+  inhale acc(_20.val_ref, write)
+  _20.val_ref := _1.val_ref.f$is_reverse
+  inhale acc(bool(_20.val_ref), read$())
+  label l15
+  // [mir] StorageLive(_21)
+  
+  // [mir] _21 = &'86s ((*_1).6: bool)
+  
+  _21 := builtin$havoc_ref()
+  inhale acc(_21.val_ref, write)
+  _21.val_ref := _1.val_ref.f$is_hidden
+  inhale acc(bool(_21.val_ref), read$())
+  label l16
+  // [mir] StorageLive(_22)
+  
+  // [mir] _22 = &'86s ((*_1).7: bool)
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(_22.val_ref, write)
+  _22.val_ref := _1.val_ref.f$is_strikethrough
+  inhale acc(bool(_22.val_ref), read$())
+  label l17
+  // [mir] StorageLive(_23)
+  
+  // [mir] StorageLive(_24)
+  
+  // [mir] StorageLive(_25)
+  
+  // [mir] StorageLive(_26)
+  
+  // [mir] StorageLive(_27)
+  
+  // [mir] StorageLive(_28)
+  
+  // [mir] StorageLive(_29)
+  
+  // [mir] StorageLive(_30)
+  
+  // [mir] _30 = (*_15)
+  
+  _30 := builtin$havoc_ref()
+  inhale acc(_30.val_bool, write)
+  unfold acc(bool(_15.val_ref), read$())
+  _30.val_bool := _15.val_ref.val_bool
+  label l18
+  // expire_borrows ReborrowingDAG(L10,)
+
+  
+  if (__t2) {
+    // expire loan L10
+    
+    fold acc(bool(_15.val_ref), read$())
+    exhale acc(bool(_15.val_ref), read$())
+  }
+  // [mir] StorageLive(_31)
+  
+  // [mir] _31 = (*_5)
+  
+  _31 := builtin$havoc_ref()
+  inhale acc(_31.val_bool, write)
+  unfold acc(bool(_5.val_ref), read$())
+  _31.val_bool := _5.val_ref.val_bool
+  label l19
+  // expire_borrows ReborrowingDAG(L1,)
+
+  
+  if (__t1) {
+    // expire loan L1
+    
+    fold acc(bool(_5.val_ref), read$())
+    exhale acc(bool(_5.val_ref), read$())
+  }
+  // [mir] _29 = Eq(move _30, move _31)
+  
+  _29 := builtin$havoc_ref()
+  inhale acc(_29.val_bool, write)
+  _29.val_bool := _30.val_bool == _31.val_bool
+  // [mir] StorageDead(_31)
+  
+  // [mir] StorageDead(_30)
+  
+  // [mir] switchInt(move _29) -> [false: bb30, otherwise: bb31]
+  
+  __t31 := _29.val_bool
+  if (!__t31) {
+    goto l21
+  }
+  goto l20
+  label bb5
+  // ========== bb5 ==========
+  
+  __t28 := true
+  // [mir] _0 = const true
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_bool, write)
+  _0.val_bool := true
+  // [mir] goto -> bb8
+  
+  goto l75
+  label bb6
+  // ========== bb6 ==========
+  
+  __t29 := true
+  // [mir] _0 = const false
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_bool, write)
+  _0.val_bool := false
+  // [mir] goto -> bb8
+  
+  goto bb8
+  label bb7
+  // ========== bb7 ==========
+  
+  __t27 := true
+  // [mir] StorageLive(_50)
+  
+  // [mir] StorageLive(_51)
+  
+  // [mir] _51 = (*_22)
+  
+  _51 := builtin$havoc_ref()
+  inhale acc(_51.val_bool, write)
+  unfold acc(bool(_22.val_ref), read$())
+  _51.val_bool := _22.val_ref.val_bool
+  label l58
+  // expire_borrows ReborrowingDAG(L17,)
+
+  
+  if (__t2) {
+    // expire loan L17
+    
+    fold acc(bool(_22.val_ref), read$())
+    exhale acc(bool(_22.val_ref), read$())
+  }
+  // [mir] StorageLive(_52)
+  
+  // [mir] _52 = (*_12)
+  
+  _52 := builtin$havoc_ref()
+  inhale acc(_52.val_bool, write)
+  unfold acc(bool(_12.val_ref), read$())
+  _52.val_bool := _12.val_ref.val_bool
+  label l59
+  // expire_borrows ReborrowingDAG(L8,)
+
+  
+  if (__t1) {
+    // expire loan L8
+    
+    fold acc(bool(_12.val_ref), read$())
+    exhale acc(bool(_12.val_ref), read$())
+  }
+  // [mir] _50 = Eq(move _51, move _52)
+  
+  _50 := builtin$havoc_ref()
+  inhale acc(_50.val_bool, write)
+  _50.val_bool := _51.val_bool == _52.val_bool
+  // [mir] StorageDead(_52)
+  
+  // [mir] StorageDead(_51)
+  
+  // [mir] switchInt(move _50) -> [false: bb6, otherwise: bb5]
+  
+  __t44 := _50.val_bool
+  if (!__t44) {
+    goto l61
+  }
+  goto l60
+  label bb8
+  // ========== bb8 ==========
+  
+  __t30 := true
+  // [mir] StorageDead(_50)
+  
+  // [mir] StorageDead(_23)
+  
+  // [mir] EndRegion('86s)
+  
+  // [mir] StorageDead(_22)
+  
+  // [mir] StorageDead(_21)
+  
+  // [mir] StorageDead(_20)
+  
+  // [mir] StorageDead(_19)
+  
+  // [mir] StorageDead(_18)
+  
+  // [mir] StorageDead(_17)
+  
+  // [mir] StorageDead(_16)
+  
+  // [mir] StorageDead(_15)
+  
+  // [mir] EndRegion('87s)
+  
+  // [mir] StorageDead(_12)
+  
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] return
+  
+  goto return
+  label bb9
+  // ========== bb9 ==========
+  
+  __t24 := true
+  // [mir] _23 = const true
+  
+  _23 := builtin$havoc_ref()
+  inhale acc(_23.val_bool, write)
+  _23.val_bool := true
+  // [mir] goto -> bb12
+  
+  goto l73
+  label l20
+  // ========== l20 ==========
+  
+  // MIR edge bb4 --> bb31
+  
+  goto bb31
+  label l21
+  // ========== l21 ==========
+  
+  // MIR edge bb4 --> bb30
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L11,L2,)
+
+  
+  if (__t2) {
+    // expire loan L11
+    
+    exhale acc(bool(_16.val_ref), read$())
+    // drop Pred(_6.val_ref, read) (Pred(_6.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L2
+    
+    exhale acc(bool(_6.val_ref), read$())
+    // drop Pred(_16.val_ref, read) (Pred(_16.val_ref, read))
+    
+  }
+  goto bb30
+  label l24
+  // ========== l24 ==========
+  
+  // MIR edge bb31 --> bb29
+  
+  goto bb29
+  label l25
+  // ========== l25 ==========
+  
+  // MIR edge bb31 --> bb30
+  
+  goto l62
+  label l26
+  // ========== l26 ==========
+  
+  // MIR edge bb32 --> bb27
+  
+  goto bb27
+  label l27
+  // ========== l27 ==========
+  
+  // MIR edge bb32 --> bb26
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L12,L3,)
+
+  
+  if (__t2) {
+    // expire loan L12
+    
+    exhale acc(bool(_17.val_ref), read$())
+    // drop Pred(_7.val_ref, read) (Pred(_7.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L3
+    
+    exhale acc(bool(_7.val_ref), read$())
+    // drop Pred(_17.val_ref, read) (Pred(_17.val_ref, read))
+    
+  }
+  goto bb26
+  label l30
+  // ========== l30 ==========
+  
+  // MIR edge bb27 --> bb25
+  
+  goto bb25
+  label l31
+  // ========== l31 ==========
+  
+  // MIR edge bb27 --> bb26
+  
+  goto l64
+  label l32
+  // ========== l32 ==========
+  
+  // MIR edge bb28 --> bb23
+  
+  goto bb23
+  label l33
+  // ========== l33 ==========
+  
+  // MIR edge bb28 --> bb22
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L13,L4,)
+
+  
+  if (__t2) {
+    // expire loan L13
+    
+    exhale acc(bool(_18.val_ref), read$())
+    // drop Pred(_8.val_ref, read) (Pred(_8.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L4
+    
+    exhale acc(bool(_8.val_ref), read$())
+    // drop Pred(_18.val_ref, read) (Pred(_18.val_ref, read))
+    
+  }
+  goto bb22
+  label l36
+  // ========== l36 ==========
+  
+  // MIR edge bb23 --> bb21
+  
+  goto bb21
+  label l37
+  // ========== l37 ==========
+  
+  // MIR edge bb23 --> bb22
+  
+  goto l66
+  label l38
+  // ========== l38 ==========
+  
+  // MIR edge bb24 --> bb19
+  
+  goto bb19
+  label l39
+  // ========== l39 ==========
+  
+  // MIR edge bb24 --> bb18
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L14,L5,)
+
+  
+  if (__t2) {
+    // expire loan L14
+    
+    exhale acc(bool(_19.val_ref), read$())
+    // drop Pred(_9.val_ref, read) (Pred(_9.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L5
+    
+    exhale acc(bool(_9.val_ref), read$())
+    // drop Pred(_19.val_ref, read) (Pred(_19.val_ref, read))
+    
+  }
+  goto bb18
+  label l42
+  // ========== l42 ==========
+  
+  // MIR edge bb19 --> bb17
+  
+  goto bb17
+  label l43
+  // ========== l43 ==========
+  
+  // MIR edge bb19 --> bb18
+  
+  goto l68
+  label l44
+  // ========== l44 ==========
+  
+  // MIR edge bb20 --> bb15
+  
+  goto bb15
+  label l45
+  // ========== l45 ==========
+  
+  // MIR edge bb20 --> bb14
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L15,L6,)
+
+  
+  if (__t2) {
+    // expire loan L15
+    
+    exhale acc(bool(_20.val_ref), read$())
+    // drop Pred(_10.val_ref, read) (Pred(_10.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L6
+    
+    exhale acc(bool(_10.val_ref), read$())
+    // drop Pred(_20.val_ref, read) (Pred(_20.val_ref, read))
+    
+  }
+  goto bb14
+  label l48
+  // ========== l48 ==========
+  
+  // MIR edge bb15 --> bb13
+  
+  goto bb13
+  label l49
+  // ========== l49 ==========
+  
+  // MIR edge bb15 --> bb14
+  
+  goto l70
+  label l50
+  // ========== l50 ==========
+  
+  // MIR edge bb16 --> bb11
+  
+  goto bb11
+  label l51
+  // ========== l51 ==========
+  
+  // MIR edge bb16 --> bb10
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L16,L7,)
+
+  
+  if (__t2) {
+    // expire loan L16
+    
+    exhale acc(bool(_21.val_ref), read$())
+    // drop Pred(_11.val_ref, read) (Pred(_11.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L7
+    
+    exhale acc(bool(_11.val_ref), read$())
+    // drop Pred(_21.val_ref, read) (Pred(_21.val_ref, read))
+    
+  }
+  goto bb10
+  label l54
+  // ========== l54 ==========
+  
+  // MIR edge bb11 --> bb9
+  
+  goto bb9
+  label l55
+  // ========== l55 ==========
+  
+  // MIR edge bb11 --> bb10
+  
+  goto l72
+  label l56
+  // ========== l56 ==========
+  
+  // MIR edge bb12 --> bb7
+  
+  goto bb7
+  label l57
+  // ========== l57 ==========
+  
+  // MIR edge bb12 --> bb6
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L17,L8,)
+
+  
+  if (__t2) {
+    // expire loan L17
+    
+    exhale acc(bool(_22.val_ref), read$())
+    // drop Pred(_12.val_ref, read) (Pred(_12.val_ref, read))
+    
+  }
+  if (__t1) {
+    // expire loan L8
+    
+    exhale acc(bool(_12.val_ref), read$())
+    // drop Pred(_22.val_ref, read) (Pred(_22.val_ref, read))
+    
+  }
+  goto bb6
+  label l60
+  // ========== l60 ==========
+  
+  // MIR edge bb7 --> bb5
+  
+  goto bb5
+  label l61
+  // ========== l61 ==========
+  
+  // MIR edge bb7 --> bb6
+  
+  goto l74
+  label l62
+  // ========== l62 ==========
+  
+  // drop Acc(_33.val_bool, write) (Acc(_33.val_bool, write))
+  
+  // drop Acc(_32.val_bool, write) (Acc(_32.val_bool, write))
+  
+  // drop Acc(_34.val_bool, write) (Acc(_34.val_bool, write))
+  
+  goto bb30
+  label l63
+  // ========== l63 ==========
+  
+  // drop Acc(_34.val_bool, write) (Acc(_34.val_bool, write))
+  
+  // drop Acc(_33.val_bool, write) (Acc(_33.val_bool, write))
+  
+  // drop Acc(_32.val_bool, write) (Acc(_32.val_bool, write))
+  
+  goto bb32
+  label l64
+  // ========== l64 ==========
+  
+  // drop Acc(_37.val_bool, write) (Acc(_37.val_bool, write))
+  
+  // drop Acc(_35.val_bool, write) (Acc(_35.val_bool, write))
+  
+  // drop Acc(_36.val_bool, write) (Acc(_36.val_bool, write))
+  
+  goto bb26
+  label l65
+  // ========== l65 ==========
+  
+  // drop Acc(_37.val_bool, write) (Acc(_37.val_bool, write))
+  
+  // drop Acc(_36.val_bool, write) (Acc(_36.val_bool, write))
+  
+  // drop Acc(_35.val_bool, write) (Acc(_35.val_bool, write))
+  
+  goto bb28
+  label l66
+  // ========== l66 ==========
+  
+  // drop Acc(_39.val_bool, write) (Acc(_39.val_bool, write))
+  
+  // drop Acc(_40.val_bool, write) (Acc(_40.val_bool, write))
+  
+  // drop Acc(_38.val_bool, write) (Acc(_38.val_bool, write))
+  
+  goto bb22
+  label l67
+  // ========== l67 ==========
+  
+  // drop Acc(_40.val_bool, write) (Acc(_40.val_bool, write))
+  
+  // drop Acc(_38.val_bool, write) (Acc(_38.val_bool, write))
+  
+  // drop Acc(_39.val_bool, write) (Acc(_39.val_bool, write))
+  
+  goto bb24
+  label l68
+  // ========== l68 ==========
+  
+  // drop Acc(_43.val_bool, write) (Acc(_43.val_bool, write))
+  
+  // drop Acc(_42.val_bool, write) (Acc(_42.val_bool, write))
+  
+  // drop Acc(_41.val_bool, write) (Acc(_41.val_bool, write))
+  
+  goto bb18
+  label l69
+  // ========== l69 ==========
+  
+  // drop Acc(_43.val_bool, write) (Acc(_43.val_bool, write))
+  
+  // drop Acc(_42.val_bool, write) (Acc(_42.val_bool, write))
+  
+  // drop Acc(_41.val_bool, write) (Acc(_41.val_bool, write))
+  
+  goto bb20
+  label l70
+  // ========== l70 ==========
+  
+  // drop Acc(_44.val_bool, write) (Acc(_44.val_bool, write))
+  
+  // drop Acc(_46.val_bool, write) (Acc(_46.val_bool, write))
+  
+  // drop Acc(_45.val_bool, write) (Acc(_45.val_bool, write))
+  
+  goto bb14
+  label l71
+  // ========== l71 ==========
+  
+  // drop Acc(_44.val_bool, write) (Acc(_44.val_bool, write))
+  
+  // drop Acc(_46.val_bool, write) (Acc(_46.val_bool, write))
+  
+  // drop Acc(_45.val_bool, write) (Acc(_45.val_bool, write))
+  
+  goto bb16
+  label l72
+  // ========== l72 ==========
+  
+  // drop Acc(_49.val_bool, write) (Acc(_49.val_bool, write))
+  
+  // drop Acc(_47.val_bool, write) (Acc(_47.val_bool, write))
+  
+  // drop Acc(_48.val_bool, write) (Acc(_48.val_bool, write))
+  
+  goto bb10
+  label l73
+  // ========== l73 ==========
+  
+  // drop Acc(_48.val_bool, write) (Acc(_48.val_bool, write))
+  
+  // drop Acc(_49.val_bool, write) (Acc(_49.val_bool, write))
+  
+  // drop Acc(_47.val_bool, write) (Acc(_47.val_bool, write))
+  
+  goto bb12
+  label l74
+  // ========== l74 ==========
+  
+  // drop Acc(_51.val_bool, write) (Acc(_51.val_bool, write))
+  
+  // drop Acc(_52.val_bool, write) (Acc(_52.val_bool, write))
+  
+  // drop Acc(_50.val_bool, write) (Acc(_50.val_bool, write))
+  
+  goto bb6
+  label l75
+  // ========== l75 ==========
+  
+  // drop Acc(_50.val_bool, write) (Acc(_50.val_bool, write))
+  
+  // drop Acc(_51.val_bool, write) (Acc(_51.val_bool, write))
+  
+  // drop Acc(_52.val_bool, write) (Acc(_52.val_bool, write))
+  
+  goto bb8
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), write)
+  
+  _old$pre$1 := _2.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0), write)
+  // obtain acc(bool(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), read$()) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$1), read$())
+  exhale acc(bool(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$reverse$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _aux_havoc_bool: Ref
+  var _old$pre$0: Ref
+  var _1: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "ansi_term_external_call::Style::reverse"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[0]::reverse[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:76:5: 78:6
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = Style { is_bold: ((*_1).0: bool), is_dimmed: ((*_1).1: bool), is_italic: ((*_1).2: bool), is_underline: ((*_1).3: bool), is_blink: ((*_1).4: bool), is_reverse: const true, is_hidden: ((*_1).6: bool), is_strikethrough: ((*_1).7: bool) }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _aux_havoc_bool := builtin$havoc_ref()
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$is_bold := _aux_havoc_bool
+  inhale acc(_0.f$is_bold.val_bool, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  unfold acc(bool(_1.val_ref.f$is_bold), read$())
+  _0.f$is_bold.val_bool := _1.val_ref.f$is_bold.val_bool
+  label l0
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_dimmed := _aux_havoc_bool
+  inhale acc(_0.f$is_dimmed.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  _0.f$is_dimmed.val_bool := _1.val_ref.f$is_dimmed.val_bool
+  label l1
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_italic := _aux_havoc_bool
+  inhale acc(_0.f$is_italic.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_italic), read$())
+  _0.f$is_italic.val_bool := _1.val_ref.f$is_italic.val_bool
+  label l2
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_underline := _aux_havoc_bool
+  inhale acc(_0.f$is_underline.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_underline), read$())
+  _0.f$is_underline.val_bool := _1.val_ref.f$is_underline.val_bool
+  label l3
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_blink := _aux_havoc_bool
+  inhale acc(_0.f$is_blink.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_blink), read$())
+  _0.f$is_blink.val_bool := _1.val_ref.f$is_blink.val_bool
+  label l4
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_reverse := _aux_havoc_bool
+  inhale acc(_0.f$is_reverse.val_bool, write)
+  _0.f$is_reverse.val_bool := true
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_hidden := _aux_havoc_bool
+  inhale acc(_0.f$is_hidden.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_hidden), read$())
+  _0.f$is_hidden.val_bool := _1.val_ref.f$is_hidden.val_bool
+  label l5
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_strikethrough := _aux_havoc_bool
+  inhale acc(_0.f$is_strikethrough.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  _0.f$is_strikethrough.val_bool := _1.val_ref.f$is_strikethrough.val_bool
+  label l6
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(bool(_1.val_ref.f$is_hidden), read$())
+  fold acc(bool(_1.val_ref.f$is_italic), read$())
+  fold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  fold acc(bool(_1.val_ref.f$is_blink), read$())
+  fold acc(bool(_1.val_ref.f$is_underline), read$())
+  fold acc(bool(_1.val_ref.f$is_bold), read$())
+  fold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0.f$is_blink), write)
+  fold acc(bool(_0.f$is_hidden), write)
+  fold acc(bool(_0.f$is_dimmed), write)
+  fold acc(bool(_0.f$is_strikethrough), write)
+  fold acc(bool(_0.f$is_bold), write)
+  fold acc(bool(_0.f$is_italic), write)
+  fold acc(bool(_0.f$is_reverse), write)
+  fold acc(bool(_0.f$is_underline), write)
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), read$())
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$blink$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _aux_havoc_bool: Ref
+  var _old$pre$0: Ref
+  var _1: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "ansi_term_external_call::Style::blink"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[0]::blink[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:71:5: 73:6
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = Style { is_bold: ((*_1).0: bool), is_dimmed: ((*_1).1: bool), is_italic: ((*_1).2: bool), is_underline: ((*_1).3: bool), is_blink: const true, is_reverse: ((*_1).5: bool), is_hidden: ((*_1).6: bool), is_strikethrough: ((*_1).7: bool) }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _aux_havoc_bool := builtin$havoc_ref()
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$is_bold := _aux_havoc_bool
+  inhale acc(_0.f$is_bold.val_bool, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  unfold acc(bool(_1.val_ref.f$is_bold), read$())
+  _0.f$is_bold.val_bool := _1.val_ref.f$is_bold.val_bool
+  label l0
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_dimmed := _aux_havoc_bool
+  inhale acc(_0.f$is_dimmed.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  _0.f$is_dimmed.val_bool := _1.val_ref.f$is_dimmed.val_bool
+  label l1
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_italic := _aux_havoc_bool
+  inhale acc(_0.f$is_italic.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_italic), read$())
+  _0.f$is_italic.val_bool := _1.val_ref.f$is_italic.val_bool
+  label l2
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_underline := _aux_havoc_bool
+  inhale acc(_0.f$is_underline.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_underline), read$())
+  _0.f$is_underline.val_bool := _1.val_ref.f$is_underline.val_bool
+  label l3
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_blink := _aux_havoc_bool
+  inhale acc(_0.f$is_blink.val_bool, write)
+  _0.f$is_blink.val_bool := true
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_reverse := _aux_havoc_bool
+  inhale acc(_0.f$is_reverse.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_reverse), read$())
+  _0.f$is_reverse.val_bool := _1.val_ref.f$is_reverse.val_bool
+  label l4
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_hidden := _aux_havoc_bool
+  inhale acc(_0.f$is_hidden.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_hidden), read$())
+  _0.f$is_hidden.val_bool := _1.val_ref.f$is_hidden.val_bool
+  label l5
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_strikethrough := _aux_havoc_bool
+  inhale acc(_0.f$is_strikethrough.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  _0.f$is_strikethrough.val_bool := _1.val_ref.f$is_strikethrough.val_bool
+  label l6
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(bool(_1.val_ref.f$is_reverse), read$())
+  fold acc(bool(_1.val_ref.f$is_italic), read$())
+  fold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  fold acc(bool(_1.val_ref.f$is_underline), read$())
+  fold acc(bool(_1.val_ref.f$is_hidden), read$())
+  fold acc(bool(_1.val_ref.f$is_bold), read$())
+  fold acc(bool(_1.val_ref.f$is_strikethrough), read$())
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0.f$is_strikethrough), write)
+  fold acc(bool(_0.f$is_italic), write)
+  fold acc(bool(_0.f$is_blink), write)
+  fold acc(bool(_0.f$is_reverse), write)
+  fold acc(bool(_0.f$is_underline), write)
+  fold acc(bool(_0.f$is_hidden), write)
+  fold acc(bool(_0.f$is_dimmed), write)
+  fold acc(bool(_0.f$is_bold), write)
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), read$())
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$default$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _aux_havoc_bool: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "<Style as std::default::Default>::default"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[1]::default[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:103:5: 114:6
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = Style { is_bold: const false, is_dimmed: const false, is_italic: const false, is_underline: const false, is_blink: const false, is_reverse: const false, is_hidden: const false, is_strikethrough: const false }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _aux_havoc_bool := builtin$havoc_ref()
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$is_bold := _aux_havoc_bool
+  inhale acc(_0.f$is_bold.val_bool, write)
+  _0.f$is_bold.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_dimmed := _aux_havoc_bool
+  inhale acc(_0.f$is_dimmed.val_bool, write)
+  _0.f$is_dimmed.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_italic := _aux_havoc_bool
+  inhale acc(_0.f$is_italic.val_bool, write)
+  _0.f$is_italic.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_underline := _aux_havoc_bool
+  inhale acc(_0.f$is_underline.val_bool, write)
+  _0.f$is_underline.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_blink := _aux_havoc_bool
+  inhale acc(_0.f$is_blink.val_bool, write)
+  _0.f$is_blink.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_reverse := _aux_havoc_bool
+  inhale acc(_0.f$is_reverse.val_bool, write)
+  _0.f$is_reverse.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_hidden := _aux_havoc_bool
+  inhale acc(_0.f$is_hidden.val_bool, write)
+  _0.f$is_hidden.val_bool := false
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_strikethrough := _aux_havoc_bool
+  inhale acc(_0.f$is_strikethrough.val_bool, write)
+  _0.f$is_strikethrough.val_bool := false
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  fold acc(bool(_0.f$is_hidden), write)
+  fold acc(bool(_0.f$is_italic), write)
+  fold acc(bool(_0.f$is_dimmed), write)
+  fold acc(bool(_0.f$is_reverse), write)
+  fold acc(bool(_0.f$is_underline), write)
+  fold acc(bool(_0.f$is_blink), write)
+  fold acc(bool(_0.f$is_strikethrough), write)
+  fold acc(bool(_0.f$is_bold), write)
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_ansi_term_external_call$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$0$closesqu$$$strikethrough$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var _aux_havoc_bool: Ref
+  var _old$pre$0: Ref
+  var _1: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "ansi_term_external_call::Style::strikethrough"
+  
+  // Def path: "ansi_term_external_call::{{impl}}[0]::strikethrough[0]"
+  
+  // Span: tests/verify/pass/crates/ansi-term-external-call.rs:86:5: 88:6
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = Style { is_bold: ((*_1).0: bool), is_dimmed: ((*_1).1: bool), is_italic: ((*_1).2: bool), is_underline: ((*_1).3: bool), is_blink: ((*_1).4: bool), is_reverse: ((*_1).5: bool), is_hidden: ((*_1).6: bool), is_strikethrough: const true }
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _aux_havoc_bool := builtin$havoc_ref()
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  _0.f$is_bold := _aux_havoc_bool
+  inhale acc(_0.f$is_bold.val_bool, write)
+  unfold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  unfold acc(bool(_1.val_ref.f$is_bold), read$())
+  _0.f$is_bold.val_bool := _1.val_ref.f$is_bold.val_bool
+  label l0
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_dimmed := _aux_havoc_bool
+  inhale acc(_0.f$is_dimmed.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  _0.f$is_dimmed.val_bool := _1.val_ref.f$is_dimmed.val_bool
+  label l1
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_italic := _aux_havoc_bool
+  inhale acc(_0.f$is_italic.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_italic), read$())
+  _0.f$is_italic.val_bool := _1.val_ref.f$is_italic.val_bool
+  label l2
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_underline := _aux_havoc_bool
+  inhale acc(_0.f$is_underline.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_underline), read$())
+  _0.f$is_underline.val_bool := _1.val_ref.f$is_underline.val_bool
+  label l3
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_blink := _aux_havoc_bool
+  inhale acc(_0.f$is_blink.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_blink), read$())
+  _0.f$is_blink.val_bool := _1.val_ref.f$is_blink.val_bool
+  label l4
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_reverse := _aux_havoc_bool
+  inhale acc(_0.f$is_reverse.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_reverse), read$())
+  _0.f$is_reverse.val_bool := _1.val_ref.f$is_reverse.val_bool
+  label l5
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_hidden := _aux_havoc_bool
+  inhale acc(_0.f$is_hidden.val_bool, write)
+  unfold acc(bool(_1.val_ref.f$is_hidden), read$())
+  _0.f$is_hidden.val_bool := _1.val_ref.f$is_hidden.val_bool
+  label l6
+  _aux_havoc_bool := builtin$havoc_ref()
+  _0.f$is_strikethrough := _aux_havoc_bool
+  inhale acc(_0.f$is_strikethrough.val_bool, write)
+  _0.f$is_strikethrough.val_bool := true
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  fold acc(bool(_1.val_ref.f$is_blink), read$())
+  fold acc(bool(_1.val_ref.f$is_bold), read$())
+  fold acc(bool(_1.val_ref.f$is_hidden), read$())
+  fold acc(bool(_1.val_ref.f$is_underline), read$())
+  fold acc(bool(_1.val_ref.f$is_dimmed), read$())
+  fold acc(bool(_1.val_ref.f$is_reverse), read$())
+  fold acc(bool(_1.val_ref.f$is_italic), read$())
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  fold acc(bool(_0.f$is_strikethrough), write)
+  fold acc(bool(_0.f$is_reverse), write)
+  fold acc(bool(_0.f$is_blink), write)
+  fold acc(bool(_0.f$is_hidden), write)
+  fold acc(bool(_0.f$is_underline), write)
+  fold acc(bool(_0.f$is_bold), write)
+  fold acc(bool(_0.f$is_dimmed), write)
+  fold acc(bool(_0.f$is_italic), write)
+  fold acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  // obtain acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  
+  assert true
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), read$())
+  exhale acc(m_ansi_term_external_call$$Style$opensqu$0$closesqu$$_beg_$_end_(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_bool() returns (ret: Bool)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)

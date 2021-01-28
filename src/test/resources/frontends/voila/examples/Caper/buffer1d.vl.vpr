@@ -1,0 +1,864 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Buffer_state_T(r: Ref, lvl: Int, buf: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Buffer_interferenceReference_df($p0: Int, r: Ref, lvl: Int, buf: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Buffer_interferenceSet_df($p0: Int, r: Ref, lvl: Int, buf: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function Buffer_atomicity_context_df(r: Ref, lvl: Int, buf: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $cell_$value: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function Buffer_atomicity_context_hf(r: Ref, lvl: Int, buf: Ref): Set[Int]
+  requires acc(Buffer_atomicity_context_fp(r, lvl, buf), write)
+  ensures [Buffer_atomicity_context_df(r, lvl, buf), true]
+
+
+function Buffer_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, buf: Ref): Set[Int]
+  requires acc(Buffer_interferenceContext_fp(r, lvl, buf), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in Buffer_interferenceSet_df($p0, r, lvl, buf))), true]
+
+
+function Buffer_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, buf: Ref): Int
+  requires acc(Buffer_interferenceContext_fp(r, lvl, buf), write)
+  ensures [Buffer_interferenceReference_df($p0, r, lvl, buf), true]
+
+
+function Buffer_sk_$_action_n(r: Ref, lvl: Int, buf: Ref): Int
+  requires acc(Buffer_sk_fp(), write)
+
+
+function Buffer_sk_$_action_m(r: Ref, lvl: Int, buf: Ref): Int
+  requires acc(Buffer_sk_fp(), write)
+
+
+function Buffer_state(r: Ref, lvl: Int, buf: Ref): Int
+  requires acc(Buffer(r, lvl, buf), write)
+  ensures [Buffer_state_T(r, lvl, buf), true]
+{
+  (unfolding acc(Buffer(r, lvl, buf), write) in buf.$cell_$value)
+}
+
+predicate Buffer_Z($r: Ref) 
+
+predicate Buffer_atomicity_context_fp(r: Ref, lvl: Int, buf: Ref) 
+
+predicate Buffer_interferenceContext_fp(r: Ref, lvl: Int, buf: Ref) 
+
+predicate Buffer_sk_fp() 
+
+predicate Buffer(r: Ref, lvl: Int, buf: Ref) {
+  acc(buf.$cell_$value, write) && true && (!(buf.$cell_$value == 0) ? acc(resource(buf.$cell_$value), write) : true)
+}
+
+predicate resource(v: Int) 
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method ___silicon_hack407_havoc_all_Buffer()
+
+
+method ___silicon_hack407_havoc_all_Buffer_interferenceContext_fp()
+
+
+method send(r: Ref, lvl: Int, buf: Ref, x: Int)
+  requires acc(Buffer(r, lvl, buf), write) && (lvl >= 0 && true) && acc(resource(x), write) && !(x == 0)
+  requires acc(Buffer_Z(r), write)
+  ensures true
+{
+  var b: Bool
+  var $_levelVar_0: Int
+  var $_levelVar_1: Int
+  var $_levelVar_2: Int
+  var $_levelVar_3: Int
+  inhale $_levelVar_0 >= 0 && $_levelVar_0 > lvl
+  assert $_levelVar_0 >= 0
+  inhale acc(Buffer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $buf: Ref :: acc(Buffer_interferenceContext_fp($r, $lvl, $buf), write))
+  
+  // ------- Inferring interference context Buffer (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // Inferring interference all instances of region Buffer
+  
+  ___silicon_hack407_havoc_all_Buffer_interferenceContext_fp()
+  exhale acc(Buffer_sk_fp(), write)
+  inhale acc(Buffer_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: (forall $$_m: Int :: { ($$_m in Buffer_interferenceSet_df(1, $r, $lvl, $buf)) } none < old[pre_infer0](perm(Buffer($r, $lvl, $buf))) ==> ($$_m in Buffer_interferenceSet_hf(1, $r, $lvl, $buf)) == ((none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> ($$_m in Buffer_atomicity_context_hf($r, $lvl, $buf))) && ($$_m == old[pre_infer0](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_infer0](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_infer0](perm(Buffer($r, $lvl, $buf))) ==> Buffer_interferenceReference_hf(1, $r, $lvl, $buf) == old[pre_infer0](Buffer_state($r, $lvl, $buf)))
+  
+  // ------- Inferring interference context Buffer (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- use-atomic BEGIN --------
+  
+  
+  label pre_use_atomic0
+  assert perm(Buffer_atomicity_context_fp(r, lvl, buf)) == none
+  assert $_levelVar_0 > lvl
+  $_levelVar_1 := lvl
+  exhale acc(Buffer_Z(r), write)
+  
+  // ------- Stabilising regions  (before use-atomic@24.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // ------- Stabilising regions  (before use-atomic@24.3) END 
+  
+  
+  unfold acc(Buffer(r, lvl, buf), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- Stabilising regions Buffer (before use-atomic@24.3) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region Buffer
+  
+  ___silicon_hack407_havoc_all_Buffer()
+  exhale acc(Buffer_sk_fp(), write)
+  inhale acc(Buffer_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize2](perm(Buffer($r, $lvl, $buf))) ==> (none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> (Buffer_state($r, $lvl, $buf) in Buffer_atomicity_context_hf($r, $lvl, $buf))) && (Buffer_state($r, $lvl, $buf) == old[pre_stabilize2](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize2](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == Buffer_state($r, $lvl, $buf) && true && true))
+  
+  // ------- Stabilising regions Buffer (before use-atomic@24.3) END 
+  
+  
+  inhale acc(Buffer_Z(r), write)
+  
+  // ------- call:CAS BEGIN ----------
+  
+  
+  assert true
+  label pre_call0
+  assert $_levelVar_1 >= 0
+  assert true
+  exhale acc(buf.$cell_$value, write) && true
+  
+  // ------- Stabilising regions Buffer (before call:CAS@27.5) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region Buffer
+  
+  ___silicon_hack407_havoc_all_Buffer()
+  exhale acc(Buffer_sk_fp(), write)
+  inhale acc(Buffer_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize0](perm(Buffer($r, $lvl, $buf))) ==> (none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> (Buffer_state($r, $lvl, $buf) in Buffer_atomicity_context_hf($r, $lvl, $buf))) && (Buffer_state($r, $lvl, $buf) == old[pre_stabilize0](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize0](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == Buffer_state($r, $lvl, $buf) && true && true))
+  
+  // ------- Stabilising regions Buffer (before call:CAS@27.5) END 
+  
+  
+  b := havoc_Bool()
+  inhale (old[pre_call0](buf.$cell_$value) == 0 ? b && (acc(buf.$cell_$value, write) && buf.$cell_$value == x) : !b && (acc(buf.$cell_$value, write) && buf.$cell_$value == old[pre_call0](buf.$cell_$value)))
+  
+  // ------- call:CAS END ------------
+  
+  
+  fold acc(Buffer(r, lvl, buf), write)
+  assert true
+  $_levelVar_2 := $_levelVar_0
+  
+  // ------- use-atomic END ----------
+  
+  
+  
+  // ------- Stabilising regions Buffer (after use-atomic@24.3) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region Buffer
+  
+  ___silicon_hack407_havoc_all_Buffer_interferenceContext_fp()
+  exhale acc(Buffer_sk_fp(), write)
+  inhale acc(Buffer_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: (forall $$_m: Int :: { ($$_m in Buffer_interferenceSet_df(2, $r, $lvl, $buf)) } none < old[pre_stabilize3](perm(Buffer($r, $lvl, $buf))) ==> ($$_m in Buffer_interferenceSet_hf(2, $r, $lvl, $buf)) == ((none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> ($$_m in Buffer_atomicity_context_hf($r, $lvl, $buf))) && ($$_m == old[pre_stabilize3](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize3](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == $$_m && true && true))))
+  ___silicon_hack407_havoc_all_Buffer()
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize3](perm(Buffer($r, $lvl, $buf))) ==> (Buffer_state($r, $lvl, $buf) in Buffer_interferenceSet_hf(2, $r, $lvl, $buf)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize3](perm(Buffer($r, $lvl, $buf))) ==> Buffer_interferenceReference_hf(2, $r, $lvl, $buf) == old[pre_stabilize3](Buffer_state($r, $lvl, $buf)))
+  
+  // ------- Stabilising regions Buffer (after use-atomic@24.3) END 
+  
+  
+  
+  // ------- if-then-else BEGIN ------
+  
+  
+  if (!b) {
+    
+    // ------- call:send BEGIN ---------
+    
+    
+    assert true
+    label pre_call
+    assert $_levelVar_2 >= 0 && $_levelVar_2 > lvl
+    assert true
+    exhale acc(Buffer(r, lvl, buf), write) && (lvl >= 0 && true) && acc(resource(x), write) && !(x == 0) && acc(Buffer_Z(r), write)
+    
+    // ------- Stabilising regions Buffer (before call:send@31.5) BEGIN 
+    
+    
+    label pre_stabilize4
+    
+    // Stabilising all instances of region Buffer
+    
+    ___silicon_hack407_havoc_all_Buffer()
+    exhale acc(Buffer_sk_fp(), write)
+    inhale acc(Buffer_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize4](perm(Buffer($r, $lvl, $buf))) ==> (none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> (Buffer_state($r, $lvl, $buf) in Buffer_atomicity_context_hf($r, $lvl, $buf))) && (Buffer_state($r, $lvl, $buf) == old[pre_stabilize4](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize4](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == Buffer_state($r, $lvl, $buf) && true && true))
+    
+    // ------- Stabilising regions Buffer (before call:send@31.5) END 
+    
+    
+    inhale true
+    
+    // ------- call:send END -----------
+    
+    
+    
+    // ------- Stabilising regions Buffer (after call:send@31.5) BEGIN 
+    
+    
+    label pre_stabilize5
+    
+    // Stabilising all instances of region Buffer
+    
+    ___silicon_hack407_havoc_all_Buffer_interferenceContext_fp()
+    exhale acc(Buffer_sk_fp(), write)
+    inhale acc(Buffer_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: (forall $$_m: Int :: { ($$_m in Buffer_interferenceSet_df(3, $r, $lvl, $buf)) } none < old[pre_stabilize5](perm(Buffer($r, $lvl, $buf))) ==> ($$_m in Buffer_interferenceSet_hf(3, $r, $lvl, $buf)) == ((none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> ($$_m in Buffer_atomicity_context_hf($r, $lvl, $buf))) && ($$_m == old[pre_stabilize5](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize5](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == $$_m && true && true))))
+    ___silicon_hack407_havoc_all_Buffer()
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize5](perm(Buffer($r, $lvl, $buf))) ==> (Buffer_state($r, $lvl, $buf) in Buffer_interferenceSet_hf(3, $r, $lvl, $buf)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize5](perm(Buffer($r, $lvl, $buf))) ==> Buffer_interferenceReference_hf(3, $r, $lvl, $buf) == old[pre_stabilize5](Buffer_state($r, $lvl, $buf)))
+    
+    // ------- Stabilising regions Buffer (after call:send@31.5) END 
+    
+    
+    assert $_levelVar_2 == $_levelVar_2
+  }
+  $_levelVar_3 := $_levelVar_2
+  
+  // ------- if-then-else END --------
+  
+  
+}
+
+method recv(r: Ref, lvl: Int, buf: Ref) returns (ret: Int)
+  requires acc(Buffer(r, lvl, buf), write) && (lvl >= 0 && true)
+  requires acc(Buffer_Z(r), write)
+  ensures acc(resource(ret), write)
+{
+  var b: Bool
+  var $_levelVar_4: Int
+  var $_levelVar_5: Int
+  var $_levelVar_6: Int
+  var $_levelVar_7: Int
+  var $_levelVar_8: Int
+  var $_levelVar_9: Int
+  var $_levelVar_10: Int
+  var $_levelVar_11: Int
+  inhale $_levelVar_4 >= 0 && $_levelVar_4 > lvl
+  assert $_levelVar_4 >= 0
+  inhale acc(Buffer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $buf: Ref :: acc(Buffer_interferenceContext_fp($r, $lvl, $buf), write))
+  
+  // ------- Inferring interference context Buffer (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // Inferring interference all instances of region Buffer
+  
+  ___silicon_hack407_havoc_all_Buffer_interferenceContext_fp()
+  exhale acc(Buffer_sk_fp(), write)
+  inhale acc(Buffer_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: (forall $$_m: Int :: { ($$_m in Buffer_interferenceSet_df(4, $r, $lvl, $buf)) } none < old[pre_infer](perm(Buffer($r, $lvl, $buf))) ==> ($$_m in Buffer_interferenceSet_hf(4, $r, $lvl, $buf)) == ((none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> ($$_m in Buffer_atomicity_context_hf($r, $lvl, $buf))) && ($$_m == old[pre_infer](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_infer](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_infer](perm(Buffer($r, $lvl, $buf))) ==> Buffer_interferenceReference_hf(4, $r, $lvl, $buf) == old[pre_infer](Buffer_state($r, $lvl, $buf)))
+  
+  // ------- Inferring interference context Buffer (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region0
+  assert $_levelVar_4 > lvl
+  $_levelVar_5 := lvl
+  unfold acc(Buffer(r, lvl, buf), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- heap-read BEGIN ---------
+  
+  
+  ret := buf.$cell_$value
+  
+  // ------- heap-read END -----------
+  
+  
+  fold acc(Buffer(r, lvl, buf), write)
+  assert Buffer_state(r, lvl, buf) == old[pre_open_region0](Buffer_state(r, lvl, buf))
+  $_levelVar_6 := $_levelVar_4
+  
+  // ------- open-region END ---------
+  
+  
+  
+  // ------- Stabilising regions Buffer (after open-region@42.3) BEGIN 
+  
+  
+  label pre_stabilize6
+  
+  // Stabilising all instances of region Buffer
+  
+  ___silicon_hack407_havoc_all_Buffer_interferenceContext_fp()
+  exhale acc(Buffer_sk_fp(), write)
+  inhale acc(Buffer_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: (forall $$_m: Int :: { ($$_m in Buffer_interferenceSet_df(5, $r, $lvl, $buf)) } none < old[pre_stabilize6](perm(Buffer($r, $lvl, $buf))) ==> ($$_m in Buffer_interferenceSet_hf(5, $r, $lvl, $buf)) == ((none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> ($$_m in Buffer_atomicity_context_hf($r, $lvl, $buf))) && ($$_m == old[pre_stabilize6](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize6](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == $$_m && true && true))))
+  ___silicon_hack407_havoc_all_Buffer()
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize6](perm(Buffer($r, $lvl, $buf))) ==> (Buffer_state($r, $lvl, $buf) in Buffer_interferenceSet_hf(5, $r, $lvl, $buf)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize6](perm(Buffer($r, $lvl, $buf))) ==> Buffer_interferenceReference_hf(5, $r, $lvl, $buf) == old[pre_stabilize6](Buffer_state($r, $lvl, $buf)))
+  
+  // ------- Stabilising regions Buffer (after open-region@42.3) END 
+  
+  
+  
+  // ------- if-then-else BEGIN ------
+  
+  
+  if (ret == 0) {
+    
+    // ------- call:recv BEGIN ---------
+    
+    
+    assert true
+    label pre_call2
+    assert $_levelVar_6 >= 0 && $_levelVar_6 > lvl
+    assert true
+    exhale acc(Buffer(r, lvl, buf), write) && (lvl >= 0 && true) && acc(Buffer_Z(r), write)
+    
+    // ------- Stabilising regions Buffer (before call:recv@49.5) BEGIN 
+    
+    
+    label pre_stabilize7
+    
+    // Stabilising all instances of region Buffer
+    
+    ___silicon_hack407_havoc_all_Buffer()
+    exhale acc(Buffer_sk_fp(), write)
+    inhale acc(Buffer_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize7](perm(Buffer($r, $lvl, $buf))) ==> (none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> (Buffer_state($r, $lvl, $buf) in Buffer_atomicity_context_hf($r, $lvl, $buf))) && (Buffer_state($r, $lvl, $buf) == old[pre_stabilize7](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize7](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == Buffer_state($r, $lvl, $buf) && true && true))
+    
+    // ------- Stabilising regions Buffer (before call:recv@49.5) END 
+    
+    
+    ret := havoc_Int()
+    inhale acc(resource(ret), write)
+    
+    // ------- call:recv END -----------
+    
+    
+    
+    // ------- Stabilising regions Buffer (after call:recv@49.5) BEGIN 
+    
+    
+    label pre_stabilize8
+    
+    // Stabilising all instances of region Buffer
+    
+    ___silicon_hack407_havoc_all_Buffer_interferenceContext_fp()
+    exhale acc(Buffer_sk_fp(), write)
+    inhale acc(Buffer_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: (forall $$_m: Int :: { ($$_m in Buffer_interferenceSet_df(6, $r, $lvl, $buf)) } none < old[pre_stabilize8](perm(Buffer($r, $lvl, $buf))) ==> ($$_m in Buffer_interferenceSet_hf(6, $r, $lvl, $buf)) == ((none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> ($$_m in Buffer_atomicity_context_hf($r, $lvl, $buf))) && ($$_m == old[pre_stabilize8](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize8](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == $$_m && true && true))))
+    ___silicon_hack407_havoc_all_Buffer()
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize8](perm(Buffer($r, $lvl, $buf))) ==> (Buffer_state($r, $lvl, $buf) in Buffer_interferenceSet_hf(6, $r, $lvl, $buf)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize8](perm(Buffer($r, $lvl, $buf))) ==> Buffer_interferenceReference_hf(6, $r, $lvl, $buf) == old[pre_stabilize8](Buffer_state($r, $lvl, $buf)))
+    
+    // ------- Stabilising regions Buffer (after call:recv@49.5) END 
+    
+    
+    assert $_levelVar_6 == $_levelVar_6
+  } else {
+    $_levelVar_7 := $_levelVar_6
+    
+    // ------- use-atomic BEGIN --------
+    
+    
+    label pre_use_atomic
+    assert perm(Buffer_atomicity_context_fp(r, lvl, buf)) == none
+    assert $_levelVar_7 > lvl
+    $_levelVar_8 := lvl
+    exhale acc(Buffer_Z(r), write)
+    
+    // ------- Stabilising regions  (before use-atomic@51.5) BEGIN 
+    
+    
+    label pre_stabilize10
+    
+    // ------- Stabilising regions  (before use-atomic@51.5) END 
+    
+    
+    unfold acc(Buffer(r, lvl, buf), write)
+    
+    // no interference context translation needed
+    
+    
+    
+    // ------- Stabilising regions Buffer (before use-atomic@51.5) BEGIN 
+    
+    
+    label pre_stabilize11
+    
+    // Stabilising all instances of region Buffer
+    
+    ___silicon_hack407_havoc_all_Buffer()
+    exhale acc(Buffer_sk_fp(), write)
+    inhale acc(Buffer_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize11](perm(Buffer($r, $lvl, $buf))) ==> (none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> (Buffer_state($r, $lvl, $buf) in Buffer_atomicity_context_hf($r, $lvl, $buf))) && (Buffer_state($r, $lvl, $buf) == old[pre_stabilize11](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize11](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == Buffer_state($r, $lvl, $buf) && true && true))
+    
+    // ------- Stabilising regions Buffer (before use-atomic@51.5) END 
+    
+    
+    inhale acc(Buffer_Z(r), write)
+    
+    // ------- call:CAS BEGIN ----------
+    
+    
+    assert true
+    label pre_call3
+    assert $_levelVar_8 >= 0
+    assert true
+    exhale acc(buf.$cell_$value, write) && true
+    
+    // ------- Stabilising regions Buffer (before call:CAS@54.7) BEGIN 
+    
+    
+    label pre_stabilize9
+    
+    // Stabilising all instances of region Buffer
+    
+    ___silicon_hack407_havoc_all_Buffer()
+    exhale acc(Buffer_sk_fp(), write)
+    inhale acc(Buffer_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize9](perm(Buffer($r, $lvl, $buf))) ==> (none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> (Buffer_state($r, $lvl, $buf) in Buffer_atomicity_context_hf($r, $lvl, $buf))) && (Buffer_state($r, $lvl, $buf) == old[pre_stabilize9](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize9](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == Buffer_state($r, $lvl, $buf) && true && true))
+    
+    // ------- Stabilising regions Buffer (before call:CAS@54.7) END 
+    
+    
+    b := havoc_Bool()
+    inhale (old[pre_call3](buf.$cell_$value) == ret ? b && (acc(buf.$cell_$value, write) && buf.$cell_$value == 0) : !b && (acc(buf.$cell_$value, write) && buf.$cell_$value == old[pre_call3](buf.$cell_$value)))
+    
+    // ------- call:CAS END ------------
+    
+    
+    fold acc(Buffer(r, lvl, buf), write)
+    assert true
+    $_levelVar_9 := $_levelVar_7
+    
+    // ------- use-atomic END ----------
+    
+    
+    
+    // ------- Stabilising regions Buffer (after use-atomic@51.5) BEGIN 
+    
+    
+    label pre_stabilize12
+    
+    // Stabilising all instances of region Buffer
+    
+    ___silicon_hack407_havoc_all_Buffer_interferenceContext_fp()
+    exhale acc(Buffer_sk_fp(), write)
+    inhale acc(Buffer_sk_fp(), write)
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: (forall $$_m: Int :: { ($$_m in Buffer_interferenceSet_df(7, $r, $lvl, $buf)) } none < old[pre_stabilize12](perm(Buffer($r, $lvl, $buf))) ==> ($$_m in Buffer_interferenceSet_hf(7, $r, $lvl, $buf)) == ((none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> ($$_m in Buffer_atomicity_context_hf($r, $lvl, $buf))) && ($$_m == old[pre_stabilize12](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize12](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == $$_m && true && true))))
+    ___silicon_hack407_havoc_all_Buffer()
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize12](perm(Buffer($r, $lvl, $buf))) ==> (Buffer_state($r, $lvl, $buf) in Buffer_interferenceSet_hf(7, $r, $lvl, $buf)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize12](perm(Buffer($r, $lvl, $buf))) ==> Buffer_interferenceReference_hf(7, $r, $lvl, $buf) == old[pre_stabilize12](Buffer_state($r, $lvl, $buf)))
+    
+    // ------- Stabilising regions Buffer (after use-atomic@51.5) END 
+    
+    
+    
+    // ------- if-then-else BEGIN ------
+    
+    
+    if (!b) {
+      
+      // ------- call:recv BEGIN ---------
+      
+      
+      assert true
+      label pre_call4
+      assert $_levelVar_9 >= 0 && $_levelVar_9 > lvl
+      assert true
+      exhale acc(Buffer(r, lvl, buf), write) && (lvl >= 0 && true) && acc(Buffer_Z(r), write)
+      
+      // ------- Stabilising regions Buffer (before call:recv@58.7) BEGIN 
+      
+      
+      label pre_stabilize13
+      
+      // Stabilising all instances of region Buffer
+      
+      ___silicon_hack407_havoc_all_Buffer()
+      exhale acc(Buffer_sk_fp(), write)
+      inhale acc(Buffer_sk_fp(), write)
+      inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize13](perm(Buffer($r, $lvl, $buf))) ==> (none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> (Buffer_state($r, $lvl, $buf) in Buffer_atomicity_context_hf($r, $lvl, $buf))) && (Buffer_state($r, $lvl, $buf) == old[pre_stabilize13](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize13](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == Buffer_state($r, $lvl, $buf) && true && true))
+      
+      // ------- Stabilising regions Buffer (before call:recv@58.7) END 
+      
+      
+      ret := havoc_Int()
+      inhale acc(resource(ret), write)
+      
+      // ------- call:recv END -----------
+      
+      
+      
+      // ------- Stabilising regions Buffer (after call:recv@58.7) BEGIN 
+      
+      
+      label pre_stabilize14
+      
+      // Stabilising all instances of region Buffer
+      
+      ___silicon_hack407_havoc_all_Buffer_interferenceContext_fp()
+      exhale acc(Buffer_sk_fp(), write)
+      inhale acc(Buffer_sk_fp(), write)
+      inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: (forall $$_m: Int :: { ($$_m in Buffer_interferenceSet_df(8, $r, $lvl, $buf)) } none < old[pre_stabilize14](perm(Buffer($r, $lvl, $buf))) ==> ($$_m in Buffer_interferenceSet_hf(8, $r, $lvl, $buf)) == ((none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> ($$_m in Buffer_atomicity_context_hf($r, $lvl, $buf))) && ($$_m == old[pre_stabilize14](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize14](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == $$_m && true && true))))
+      ___silicon_hack407_havoc_all_Buffer()
+      inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize14](perm(Buffer($r, $lvl, $buf))) ==> (Buffer_state($r, $lvl, $buf) in Buffer_interferenceSet_hf(8, $r, $lvl, $buf)))
+      
+      // havoc performed by other front resource
+      
+      
+      inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize14](perm(Buffer($r, $lvl, $buf))) ==> Buffer_interferenceReference_hf(8, $r, $lvl, $buf) == old[pre_stabilize14](Buffer_state($r, $lvl, $buf)))
+      
+      // ------- Stabilising regions Buffer (after call:recv@58.7) END 
+      
+      
+      assert $_levelVar_9 == $_levelVar_9
+    }
+    $_levelVar_10 := $_levelVar_9
+    
+    // ------- if-then-else END --------
+    
+    
+    assert $_levelVar_10 == $_levelVar_6
+  }
+  $_levelVar_11 := $_levelVar_6
+  
+  // ------- if-then-else END --------
+  
+  
+}
+
+method CAS(x: Ref, now: Int, thn: Int) returns (ret: Bool)
+  requires acc(x.$cell_$value, write) && true
+  ensures (old(x.$cell_$value) == now ? ret && (acc(x.$cell_$value, write) && x.$cell_$value == thn) : !ret && (acc(x.$cell_$value, write) && x.$cell_$value == old(x.$cell_$value)))
+
+
+method $_Buffer_interpretation_stability_check(r: Ref, lvl: Int, buf: Ref)
+{
+  inhale acc(Buffer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $buf: Ref :: acc(Buffer_interferenceContext_fp($r, $lvl, $buf), write))
+  inhale acc(buf.$cell_$value, write) && true && (!(buf.$cell_$value == 0) ? acc(resource(buf.$cell_$value), write) : true)
+  
+  // ------- Stabilising regions Buffer (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize15
+  
+  // Stabilising all instances of region Buffer
+  
+  ___silicon_hack407_havoc_all_Buffer()
+  exhale acc(Buffer_sk_fp(), write)
+  inhale acc(Buffer_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize15](perm(Buffer($r, $lvl, $buf))) ==> (none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> (Buffer_state($r, $lvl, $buf) in Buffer_atomicity_context_hf($r, $lvl, $buf))) && (Buffer_state($r, $lvl, $buf) == old[pre_stabilize15](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize15](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == Buffer_state($r, $lvl, $buf) && true && true))
+  
+  // ------- Stabilising regions Buffer (check stability of region interpretation) END 
+  
+  
+  assert acc(buf.$cell_$value, write) && true && (!(buf.$cell_$value == 0) ? acc(resource(buf.$cell_$value), write) : true)
+}
+
+method $_Buffer_action_transitivity_check()
+{
+  var Z: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && true && Z
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && true && Z
+  assert aState == cState || aState == aState && cState == cState && true && Z
+}
+
+method $_send_condition_stability_precondition_check(r: Ref, lvl: Int, buf: Ref, x: Int)
+  requires acc(Buffer(r, lvl, buf), write) && (lvl >= 0 && true) && acc(resource(x), write) && !(x == 0)
+  requires acc(Buffer_Z(r), write)
+{
+  var $_levelVar_13: Int
+  var b: Bool
+  inhale $_levelVar_13 >= 0 && $_levelVar_13 > lvl
+  inhale acc(Buffer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $buf: Ref :: acc(Buffer_interferenceContext_fp($r, $lvl, $buf), write))
+  
+  // ------- Inferring interference context Buffer (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer3
+  
+  // Inferring interference all instances of region Buffer
+  
+  ___silicon_hack407_havoc_all_Buffer_interferenceContext_fp()
+  exhale acc(Buffer_sk_fp(), write)
+  inhale acc(Buffer_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: (forall $$_m: Int :: { ($$_m in Buffer_interferenceSet_df(10, $r, $lvl, $buf)) } none < old[pre_infer3](perm(Buffer($r, $lvl, $buf))) ==> ($$_m in Buffer_interferenceSet_hf(10, $r, $lvl, $buf)) == ((none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> ($$_m in Buffer_atomicity_context_hf($r, $lvl, $buf))) && ($$_m == old[pre_infer3](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_infer3](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_infer3](perm(Buffer($r, $lvl, $buf))) ==> Buffer_interferenceReference_hf(10, $r, $lvl, $buf) == old[pre_infer3](Buffer_state($r, $lvl, $buf)))
+  
+  // ------- Inferring interference context Buffer (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Buffer (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize16
+  
+  // Stabilising all instances of region Buffer
+  
+  ___silicon_hack407_havoc_all_Buffer()
+  exhale acc(Buffer_sk_fp(), write)
+  inhale acc(Buffer_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize16](perm(Buffer($r, $lvl, $buf))) ==> (none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> (Buffer_state($r, $lvl, $buf) in Buffer_atomicity_context_hf($r, $lvl, $buf))) && (Buffer_state($r, $lvl, $buf) == old[pre_stabilize16](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize16](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == Buffer_state($r, $lvl, $buf) && true && true))
+  
+  // ------- Stabilising regions Buffer (check stability of method condition) END 
+  
+  
+  assert acc(Buffer(r, lvl, buf), write) && (lvl >= 0 && true) && acc(resource(x), write) && !(x == 0) && acc(Buffer_Z(r), write)
+}
+
+method $_recv_condition_stability_precondition_check(r: Ref, lvl: Int, buf: Ref, ret: Int)
+  requires acc(Buffer(r, lvl, buf), write) && (lvl >= 0 && true)
+  requires acc(Buffer_Z(r), write)
+{
+  var $_levelVar_14: Int
+  var b: Bool
+  inhale $_levelVar_14 >= 0 && $_levelVar_14 > lvl
+  inhale acc(Buffer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $buf: Ref :: acc(Buffer_interferenceContext_fp($r, $lvl, $buf), write))
+  
+  // ------- Inferring interference context Buffer (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer4
+  
+  // Inferring interference all instances of region Buffer
+  
+  ___silicon_hack407_havoc_all_Buffer_interferenceContext_fp()
+  exhale acc(Buffer_sk_fp(), write)
+  inhale acc(Buffer_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: (forall $$_m: Int :: { ($$_m in Buffer_interferenceSet_df(11, $r, $lvl, $buf)) } none < old[pre_infer4](perm(Buffer($r, $lvl, $buf))) ==> ($$_m in Buffer_interferenceSet_hf(11, $r, $lvl, $buf)) == ((none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> ($$_m in Buffer_atomicity_context_hf($r, $lvl, $buf))) && ($$_m == old[pre_infer4](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_infer4](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == $$_m && true && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_infer4](perm(Buffer($r, $lvl, $buf))) ==> Buffer_interferenceReference_hf(11, $r, $lvl, $buf) == old[pre_infer4](Buffer_state($r, $lvl, $buf)))
+  
+  // ------- Inferring interference context Buffer (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Buffer (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize17
+  
+  // Stabilising all instances of region Buffer
+  
+  ___silicon_hack407_havoc_all_Buffer()
+  exhale acc(Buffer_sk_fp(), write)
+  inhale acc(Buffer_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $buf: Ref [Buffer($r, $lvl, $buf)] :: none < old[pre_stabilize17](perm(Buffer($r, $lvl, $buf))) ==> (none < perm($r.$diamond) && none < perm(Buffer_atomicity_context_fp($r, $lvl, $buf)) ==> (Buffer_state($r, $lvl, $buf) in Buffer_atomicity_context_hf($r, $lvl, $buf))) && (Buffer_state($r, $lvl, $buf) == old[pre_stabilize17](Buffer_state($r, $lvl, $buf)) || Buffer_sk_$_action_n($r, $lvl, $buf) == old[pre_stabilize17](Buffer_state($r, $lvl, $buf)) && Buffer_sk_$_action_m($r, $lvl, $buf) == Buffer_state($r, $lvl, $buf) && true && true))
+  
+  // ------- Stabilising regions Buffer (check stability of method condition) END 
+  
+  
+  assert acc(Buffer(r, lvl, buf), write) && (lvl >= 0 && true) && acc(Buffer_Z(r), write)
+}

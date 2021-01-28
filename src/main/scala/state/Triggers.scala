@@ -26,8 +26,7 @@ object Trigger extends (Seq[Term] => Trigger) {
   * (see, e.g. [[GenericTriggerGenerator.setCustomIsForbiddenInTrigger]]).
   */
 class TriggerGenerator
-    extends GenericTriggerGenerator[Term, Sort, Term, Var, Quantification]
-       with Mutable {
+    extends GenericTriggerGenerator[Term, Sort, Term, Var, Quantification] {
 
   protected def hasSubnode(root: Term, child: Term) = root.hasSubterm(child)
   protected def visit[A](root: Term)(f: PartialFunction[Term, A]) = root.visit(f)
@@ -156,7 +155,6 @@ class AxiomRewriter(counter: Counter/*, logger: MultiRunLogger*/,
 
   private type Type = Sort
   private type Exp = Term
-  private type Eq = Equals
 
   def rewrite(quantification: Quantification): Option[Quantification] =
     rewrite(quantification, quantification.triggers.map(trigger => TriggerSet(trigger.p)))
@@ -202,11 +200,11 @@ class AxiomRewriter(counter: Counter/*, logger: MultiRunLogger*/,
 //    logger.println(message)
   }
 
-  protected def log(key: String, item: Any) {
+  protected def log(key: String, item: Any): Unit = {
     log(key, item :: Nil)
   }
 
-  protected def log(key: String, items: Iterable[Any]) {
+  protected def log(key: String, items: Iterable[Any]): Unit = {
 //    if (items.size <= 1)
 //      logger.println(s"  $key: $items")
 //    else {
@@ -224,7 +222,6 @@ object SimpleArithmeticSolver extends GenericArithmeticSolver[Sort, Term, Var, P
 
   private type Type = Sort
   private type Exp = Term
-  private type Eq = Equals
 
   /*
    * Abstract members - type arguments

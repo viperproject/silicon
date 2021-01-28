@@ -1,0 +1,2256 @@
+domain $SnapshotMirrors$ {
+  
+  
+}
+
+field closure_0: Ref
+
+field closure_1: Ref
+
+field closure_2: Ref
+
+field discriminant: Int
+
+field enum_None: Ref
+
+field enum_Some: Ref
+
+field f$0: Ref
+
+field f$next: Ref
+
+field f$value: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field tuple_2: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$undef_int__$TY$__$int$(): Int
+
+
+function builtin$unreach_bool__$TY$__$bool$(): Bool
+  requires false
+
+
+function builtin$unreach_int__$TY$__$int$(): Int
+  requires false
+
+
+function m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$int$(self: Ref): Int
+  requires acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(self), read$())
+  ensures 0 <= result && result <= 1
+{
+  (unfolding acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(self), read$()) in self.discriminant)
+}
+
+function m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1: Ref): Int
+  requires acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires true
+  ensures result >= 1
+  ensures 0 <= result
+{
+  (unfolding acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in (unfolding acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_pure_1.f$next), read$()) in (_pure_1.f$next.discriminant == 0 ? 1 : (unfolding acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(_pure_1.f$next.enum_Some), read$()) in (unfolding acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(_pure_1.f$next.enum_Some.f$0), read$()) in 1 + m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1.f$next.enum_Some.f$0.val_ref))))))
+}
+
+function m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_pure_1: Ref, _pure_2: Int): Int
+  requires acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$())
+  requires 0 <= _pure_2 && _pure_2 < m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_pure_1)
+  requires 0 <= _pure_2
+  ensures true
+  ensures 0 <= result
+{
+  (unfolding acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_pure_1), read$()) in (unfolding acc(u32(_pure_1.f$value), read$()) in (unfolding acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_pure_1.f$next), read$()) in (_pure_2 != 0 ? (_pure_1.f$next.discriminant == 0 ? builtin$unreach_int__$TY$__$int$() : (unfolding acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(_pure_1.f$next.enum_Some), read$()) in (unfolding acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(_pure_1.f$next.enum_Some.f$0), read$()) in m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_pure_1.f$next.enum_Some.f$0.val_ref, _pure_2 - 1)))) : _pure_1.f$value.val_int))))
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_11$3$6048453251681692753(self: Ref) 
+
+predicate closure$0_1_12$4$15433571588578969277(self: Ref) 
+
+predicate closure$0_1_13$3$6048453251681692753(self: Ref) 
+
+predicate closure$0_1_14$3$13975949514038886568(self: Ref) 
+
+predicate closure$0_1_15$4$2952983713457801412(self: Ref) 
+
+predicate closure$0_1_16$2$17594571614411288061(self: Ref) 
+
+predicate closure$0_1_17$4$16090098422535487163(self: Ref) 
+
+predicate closure$0_1_18$3$1202681228461013729(self: Ref) 
+
+predicate closure$0_1_19$4$6735861495888034110(self: Ref) 
+
+predicate closure$0_1_20$4$13307663194303330624(self: Ref) 
+
+predicate closure$0_1_21$4$16282311844852457841(self: Ref) 
+
+predicate closure$0_1_22$4$15741557760740275965(self: Ref) 
+
+predicate closure$0_1_23$5$11320661118297643255(self: Ref) 
+
+predicate closure$0_1_24$3$5466623966242038374(self: Ref) 
+
+predicate closure$0_1_25$4$15644558098441397431(self: Ref) 
+
+predicate closure$0_1_26$3$10875789347701609947(self: Ref) 
+
+predicate closure$0_1_27$4$11699544721711912046(self: Ref) 
+
+predicate closure$0_1_28$3$15270475892340684342(self: Ref) 
+
+predicate closure$0_1_29$4$13928121873174387199(self: Ref) 
+
+predicate closure$0_1_30$4$14094773989219586661(self: Ref) 
+
+predicate isize(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(self: Ref) {
+  acc(self.discriminant, write) && (0 <= self.discriminant && self.discriminant <= 1 && (acc(self.enum_Some, write) && (self.discriminant == 1 ==> acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(self.enum_Some), write))))
+}
+
+predicate m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(self: Ref) {
+  acc(self.f$0, write) && acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(self.f$0), write)
+}
+
+predicate m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.f$value, write) && (acc(u32(self.f$value), write) && (acc(self.f$next, write) && acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(self.f$next), write)))
+}
+
+predicate never(self: Ref) 
+
+predicate ref$closure$0_1_11$3$6048453251681692753(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_11$3$6048453251681692753(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_12$4$15433571588578969277(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_12$4$15433571588578969277(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_13$3$6048453251681692753(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_13$3$6048453251681692753(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_14$3$13975949514038886568(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_14$3$13975949514038886568(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_15$4$2952983713457801412(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_15$4$2952983713457801412(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_16$2$17594571614411288061(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_16$2$17594571614411288061(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_17$4$16090098422535487163(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_17$4$16090098422535487163(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_18$3$1202681228461013729(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_18$3$1202681228461013729(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_19$4$6735861495888034110(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_19$4$6735861495888034110(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_20$4$13307663194303330624(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_20$4$13307663194303330624(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_21$4$16282311844852457841(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_21$4$16282311844852457841(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_22$4$15741557760740275965(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_22$4$15741557760740275965(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_23$5$11320661118297643255(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_23$5$11320661118297643255(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_24$3$5466623966242038374(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_24$3$5466623966242038374(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_25$4$15644558098441397431(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_25$4$15644558098441397431(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_26$3$10875789347701609947(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_26$3$10875789347701609947(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_27$4$11699544721711912046(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_27$4$11699544721711912046(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_28$3$15270475892340684342(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_28$3$15270475892340684342(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_29$4$13928121873174387199(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_29$4$13928121873174387199(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_30$4$14094773989219586661(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_30$4$14094773989219586661(self.val_ref), write)
+}
+
+predicate ref$m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(self.val_ref), write)
+}
+
+predicate ref$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$ref$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(self: Ref) {
+  acc(self.val_ref, write) && acc(ref$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(self.val_ref), write)
+}
+
+predicate ref$str(self: Ref) {
+  acc(self.val_ref, write) && acc(str(self.val_ref), write)
+}
+
+predicate ref$tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.val_ref, write) && acc(tuple3$ref$str$u32$u32(self.val_ref), write)
+}
+
+predicate ref$u32(self: Ref) {
+  acc(self.val_ref, write) && acc(u32(self.val_ref), write)
+}
+
+predicate ref$usize(self: Ref) {
+  acc(self.val_ref, write) && acc(usize(self.val_ref), write)
+}
+
+predicate str(self: Ref) 
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$usize$bool(self: Ref) {
+  acc(self.tuple_0, write) && (acc(usize(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(bool(self.tuple_1), write)))
+}
+
+predicate tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(ref$str(self.tuple_0), write) && (acc(self.tuple_1, write) && (acc(u32(self.tuple_1), write) && (acc(self.tuple_2, write) && acc(u32(self.tuple_2), write)))))
+}
+
+predicate u32(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+predicate usize(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+method m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$append$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var __t22: Bool
+  var __t23: Bool
+  var __t24: Bool
+  var __t25: Bool
+  var _old$l5$0: Ref
+  var __t26: Int
+  var _aux_havoc_m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_: Ref
+  var __t27: Bool
+  var __t28: Bool
+  var __t29: Bool
+  var __t30: Bool
+  var __t31: Bool
+  var _old$pre$0: Ref
+  var _1: Ref
+  var _2: Ref
+  var _3: Int
+  var _4: Ref
+  var _5: Ref
+  var _6: Ref
+  var _7: Ref
+  var _8: Int
+  var _9: Ref
+  var _10: Int
+  var _15: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Ref
+  var _19: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  var _23: Ref
+  var _24: Ref
+  var _25: Ref
+  var _26: Ref
+  var _27: Int
+  var _32: Ref
+  var _33: Ref
+  var _34: Ref
+  var _35: Ref
+  var _36: Ref
+  var _37: Int
+  var _42: Ref
+  var _43: Ref
+  var _44: Ref
+  var _45: Ref
+  var _46: Ref
+  var _47: Ref
+  var _48: Int
+  var _49: Ref
+  var _50: Int
+  var _55: Ref
+  var _56: Ref
+  var _57: Ref
+  var _58: Ref
+  var _59: Ref
+  var _60: Int
+  var _61: Int
+  label start
+  // ========== start ==========
+  
+  // Name: "with_spec_list::List::append"
+  
+  // Def path: "with_spec_list::{{impl}}[1]::append[0]"
+  
+  // Span: tests/verify/pass/quick/with-spec-list.rs:73:5: 89:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  __t16 := false
+  __t17 := false
+  __t18 := false
+  __t19 := false
+  __t20 := false
+  __t21 := false
+  __t22 := false
+  __t23 := false
+  __t24 := false
+  __t25 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && (acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write) && acc(u32(_2), write))
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = &'4s (*_1)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  _4.val_ref := _1.val_ref
+  exhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_4.val_ref), read$())
+  label l0
+  // [mir] _3 = const List::len(move _4) -> [return: bb2, unwind: bb1]
+  
+  label l1
+  _3 := builtin$havoc_int()
+  inhale _3 >= 0
+  inhale _3 >= 0
+  inhale _3 == m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_4.val_ref)
+  // transfer perm _4.val_ref --> old[l1](_4.val_ref) // unchecked: false
+  
+  goto l2
+  label bb12
+  // ========== bb12 ==========
+  
+  __t8 := true
+  // [mir] StorageDead(_18)
+  
+  // [mir] _16 = move _17
+  
+  _16 := _17
+  label l13
+  // [mir] drop(_17) -> [return: bb14, unwind: bb13]
+  
+  goto bb14
+  label bb14
+  // ========== bb14 ==========
+  
+  __t9 := true
+  // [mir] StorageDead(_17)
+  
+  // [mir] _15 = std::option::Option<std::boxed::Box<List>>::Some(move _16,)
+  
+  _15 := builtin$havoc_ref()
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_15), write)
+  inhale m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$int$(_15) == 1
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_15), write)
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(_15.enum_Some), write)
+  _15.enum_Some.f$0 := _16
+  label l14
+  // [mir] drop(_16) -> [return: bb16, unwind: bb15]
+  
+  goto bb16
+  label bb16
+  // ========== bb16 ==========
+  
+  __t10 := true
+  // [mir] StorageDead(_16)
+  
+  // [mir] replace(((*_5).1: std::option::Option<std::boxed::Box<List>>) <- move _15) -> [return: bb17, unwind: bb15]
+  
+  _5.val_ref.f$next := _15
+  label l15
+  goto bb17
+  label bb17
+  // ========== bb17 ==========
+  
+  __t11 := true
+  // [mir] drop(_15) -> [return: bb18, unwind: bb1]
+  
+  goto bb18
+  label bb18
+  // ========== bb18 ==========
+  
+  __t12 := true
+  // [mir] StorageDead(_15)
+  
+  // [mir] StorageLive(_20)
+  
+  // [mir] StorageLive(_21)
+  
+  // [mir] _21 = ((*_5).0: u32)
+  
+  _21 := builtin$havoc_ref()
+  inhale acc(_21.val_int, write)
+  unfold acc(u32(_5.val_ref.f$value), write)
+  _21.val_int := _5.val_ref.f$value.val_int
+  label l16
+  // [mir] _20 = move _21
+  
+  _20 := _21
+  label l17
+  // [mir] StorageDead(_21)
+  
+  // [mir] StorageLive(_23)
+  
+  // [mir] StorageLive(_24)
+  
+  // [mir] StorageLive(_25)
+  
+  // [mir] StorageLive(_26)
+  
+  // [mir] _26 = &'63s (*_5)
+  
+  _26 := builtin$havoc_ref()
+  inhale acc(_26.val_ref, write)
+  _26.val_ref := _5.val_ref
+  exhale acc(_5.val_ref.f$next, write - read$())
+  inhale acc(_26.val_ref.f$next, read$())
+  exhale acc(_5.val_ref.f$value, write - read$())
+  inhale acc(_26.val_ref.f$value, read$())
+  exhale acc(_5.val_ref.f$value.val_int, write - read$())
+  inhale acc(_26.val_ref.f$value.val_int, read$())
+  exhale acc(_5.val_ref.f$next.discriminant, write - read$())
+  inhale acc(_26.val_ref.f$next.discriminant, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some, write - read$())
+  inhale acc(_26.val_ref.f$next.enum_Some, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some.f$0, write - read$())
+  inhale acc(_26.val_ref.f$next.enum_Some.f$0, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref, write - read$())
+  inhale acc(_26.val_ref.f$next.enum_Some.f$0.val_ref, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$value, write - read$())
+  inhale acc(_26.val_ref.f$next.enum_Some.f$0.val_ref.f$value, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$next, write - read$())
+  inhale acc(_26.val_ref.f$next.enum_Some.f$0.val_ref.f$next, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$value.val_int, write - read$())
+  inhale acc(_26.val_ref.f$next.enum_Some.f$0.val_ref.f$value.val_int, read$())
+  exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$next), write - read$())
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_26.val_ref.f$next.enum_Some.f$0.val_ref.f$next), read$())
+  label l18
+  // [mir] _25 = const List::lookup(move _26, const 1usize) -> [return: bb19, unwind: bb1]
+  
+  label l19
+  _25 := builtin$havoc_ref()
+  inhale acc(u32(_25), write)
+  unfold acc(u32(_25), write)
+  fold acc(u32(_26.val_ref.f$next.enum_Some.f$0.val_ref.f$value), read$())
+  fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_26.val_ref.f$next.enum_Some.f$0.val_ref), read$())
+  fold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(_26.val_ref.f$next.enum_Some.f$0), read$())
+  fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(_26.val_ref.f$next.enum_Some), read$())
+  fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_26.val_ref.f$next), read$())
+  fold acc(u32(_26.val_ref.f$value), read$())
+  fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_26.val_ref), read$())
+  inhale _25.val_int == m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_26.val_ref, 1)
+  // transfer perm _26.val_ref --> old[l19](_26.val_ref) // unchecked: false
+  
+  goto l20
+  label bb19
+  // ========== bb19 ==========
+  
+  __t13 := true
+  // [mir] EndRegion('63s)
+  
+  // [mir] StorageDead(_26)
+  
+  // [mir] StorageLive(_27)
+  
+  // [mir] _27 = _2
+  
+  _27 := builtin$havoc_int()
+  inhale true
+  _27 := _2.val_int
+  label l21
+  // [mir] _24 = Eq(move _25, move _27)
+  
+  _24 := builtin$havoc_ref()
+  inhale acc(_24.val_bool, write)
+  _24.val_bool := _25.val_int == _27
+  // [mir] StorageDead(_27)
+  
+  // [mir] StorageDead(_25)
+  
+  // [mir] _23 = Not(move _24)
+  
+  _23 := builtin$havoc_ref()
+  inhale acc(_23.val_bool, write)
+  _23.val_bool := !_24.val_bool
+  // [mir] StorageDead(_24)
+  
+  // [mir] switchInt(move _23) -> [false: bb21, otherwise: bb20]
+  
+  __t27 := _23.val_bool
+  if (!__t27) {
+    goto l23
+  }
+  goto l22
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] EndRegion('4s)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = &'131_1rs mut (*_1)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_ref, write)
+  _6.val_ref := _1.val_ref
+  label l3
+  // [mir] _5 = const List::recursive_get_last_mut(move _6) -> [return: bb3, unwind: bb1]
+  
+  label l4
+  assert true
+  exhale acc(_6.val_ref, write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_6.val_ref), write)
+  _5 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_5.val_ref, write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_5.val_ref), write)
+  inhale true
+  inhale m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_5.val_ref) == 1 && (unfolding acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_5.val_ref), write) in (unfolding acc(u32(_5.val_ref.f$value), write) in _5.val_ref.f$value.val_int == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_6.val_ref, m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref) - 1))))
+  label l5
+  goto bb3
+  label bb20
+  // ========== bb20 ==========
+  
+  __t14 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: last.lookup(1) == value", move _29) -> bb1
+  
+  // Rust panic - const "assertion failed: last.lookup(1) == value"
+  
+  assert false
+  goto end_of_method
+  label bb21
+  // ========== bb21 ==========
+  
+  __t15 := true
+  // [mir] _22 = ()
+  
+  _22 := builtin$havoc_ref()
+  inhale acc(tuple0$(_22), write)
+  // [mir] StorageDead(_23)
+  
+  // [mir] StorageLive(_33)
+  
+  // [mir] StorageLive(_34)
+  
+  // [mir] StorageLive(_35)
+  
+  // [mir] StorageLive(_36)
+  
+  // [mir] _36 = &'83s (*_5)
+  
+  _36 := builtin$havoc_ref()
+  inhale acc(_36.val_ref, write)
+  _36.val_ref := _5.val_ref
+  exhale acc(_5.val_ref.f$next, write - read$())
+  inhale acc(_36.val_ref.f$next, read$())
+  exhale acc(_5.val_ref.f$value, write - read$())
+  inhale acc(_36.val_ref.f$value, read$())
+  exhale acc(_5.val_ref.f$value.val_int, write - read$())
+  inhale acc(_36.val_ref.f$value.val_int, read$())
+  exhale acc(_5.val_ref.f$next.discriminant, write - read$())
+  inhale acc(_36.val_ref.f$next.discriminant, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some, write - read$())
+  inhale acc(_36.val_ref.f$next.enum_Some, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some.f$0, write - read$())
+  inhale acc(_36.val_ref.f$next.enum_Some.f$0, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref, write - read$())
+  inhale acc(_36.val_ref.f$next.enum_Some.f$0.val_ref, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$value, write - read$())
+  inhale acc(_36.val_ref.f$next.enum_Some.f$0.val_ref.f$value, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$next, write - read$())
+  inhale acc(_36.val_ref.f$next.enum_Some.f$0.val_ref.f$next, read$())
+  exhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$value.val_int, write - read$())
+  inhale acc(_36.val_ref.f$next.enum_Some.f$0.val_ref.f$value.val_int, read$())
+  exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$next), write - read$())
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_36.val_ref.f$next.enum_Some.f$0.val_ref.f$next), read$())
+  label l24
+  // [mir] _35 = const List::lookup(move _36, const 0usize) -> [return: bb22, unwind: bb1]
+  
+  label l25
+  _35 := builtin$havoc_ref()
+  inhale acc(u32(_35), write)
+  unfold acc(u32(_35), write)
+  fold acc(u32(_36.val_ref.f$next.enum_Some.f$0.val_ref.f$value), read$())
+  fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_36.val_ref.f$next.enum_Some.f$0.val_ref), read$())
+  fold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(_36.val_ref.f$next.enum_Some.f$0), read$())
+  fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(_36.val_ref.f$next.enum_Some), read$())
+  fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_36.val_ref.f$next), read$())
+  fold acc(u32(_36.val_ref.f$value), read$())
+  fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_36.val_ref), read$())
+  inhale _35.val_int == m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_36.val_ref, 0)
+  // transfer perm _36.val_ref --> old[l25](_36.val_ref) // unchecked: false
+  
+  goto l26
+  label bb22
+  // ========== bb22 ==========
+  
+  __t16 := true
+  // [mir] EndRegion('83s)
+  
+  // [mir] StorageDead(_36)
+  
+  // [mir] StorageLive(_37)
+  
+  // [mir] _37 = _20
+  
+  _37 := builtin$havoc_int()
+  inhale true
+  _37 := _20.val_int
+  label l27
+  // [mir] _34 = Eq(move _35, move _37)
+  
+  _34 := builtin$havoc_ref()
+  inhale acc(_34.val_bool, write)
+  _34.val_bool := _35.val_int == _37
+  // [mir] StorageDead(_37)
+  
+  // [mir] StorageDead(_35)
+  
+  // [mir] _33 = Not(move _34)
+  
+  _33 := builtin$havoc_ref()
+  inhale acc(_33.val_bool, write)
+  _33.val_bool := !_34.val_bool
+  // [mir] StorageDead(_34)
+  
+  // [mir] switchInt(move _33) -> [false: bb24, otherwise: bb23]
+  
+  __t28 := _33.val_bool
+  if (!__t28) {
+    goto l29
+  }
+  goto l28
+  label bb23
+  // ========== bb23 ==========
+  
+  __t17 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: last.lookup(0) == old_last_value", move _39) -> bb1
+  
+  // Rust panic - const "assertion failed: last.lookup(0) == old_last_value"
+  
+  assert false
+  goto end_of_method
+  label bb24
+  // ========== bb24 ==========
+  
+  __t18 := true
+  // [mir] _32 = ()
+  
+  _32 := builtin$havoc_ref()
+  inhale acc(tuple0$(_32), write)
+  // [mir] StorageDead(_33)
+  
+  // [mir] StorageLive(_43)
+  
+  // [mir] StorageLive(_44)
+  
+  // [mir] StorageLive(_45)
+  
+  // [mir] StorageLive(_46)
+  
+  // [mir] _46 = &'105s (*_1)
+  
+  _46 := builtin$havoc_ref()
+  inhale acc(_46.val_ref, write)
+  _46.val_ref := _1.val_ref
+  exhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_46.val_ref), read$())
+  label l30
+  // [mir] StorageLive(_47)
+  
+  // [mir] StorageLive(_48)
+  
+  // [mir] _48 = _3
+  
+  _48 := builtin$havoc_int()
+  inhale true
+  _48 := _3
+  label l31
+  // [mir] _49 = CheckedSub(move _48, const 1usize)
+  
+  _49 := builtin$havoc_ref()
+  inhale acc(_49.tuple_0, write)
+  inhale acc(_49.tuple_0.val_int, write)
+  inhale acc(_49.tuple_1, write)
+  inhale acc(_49.tuple_1.val_bool, write)
+  _49.tuple_0.val_int := _48 - 1
+  _49.tuple_1.val_bool := false
+  // [mir] assert(!move (_49.1: bool), "attempt to subtract with overflow") -> [success: bb25, unwind: bb1]
+  
+  __t29 := _49.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t29
+  goto bb25
+  label bb25
+  // ========== bb25 ==========
+  
+  __t19 := true
+  // [mir] _47 = move (_49.0: usize)
+  
+  _47 := _49.tuple_0
+  label l32
+  // [mir] StorageDead(_48)
+  
+  // [mir] _45 = const List::lookup(move _46, move _47) -> [return: bb26, unwind: bb1]
+  
+  label l33
+  _45 := builtin$havoc_ref()
+  inhale acc(u32(_45), write)
+  unfold acc(u32(_45), write)
+  inhale _45.val_int == m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_46.val_ref, _47.val_int)
+  // transfer perm _46.val_ref --> old[l33](_46.val_ref) // unchecked: false
+  
+  goto l34
+  label bb26
+  // ========== bb26 ==========
+  
+  __t20 := true
+  // [mir] EndRegion('105s)
+  
+  // [mir] StorageDead(_47)
+  
+  // [mir] StorageDead(_46)
+  
+  // [mir] StorageLive(_50)
+  
+  // [mir] _50 = _20
+  
+  _50 := builtin$havoc_int()
+  inhale true
+  _50 := _20.val_int
+  label l35
+  // [mir] _44 = Eq(move _45, move _50)
+  
+  _44 := builtin$havoc_ref()
+  inhale acc(_44.val_bool, write)
+  _44.val_bool := _45.val_int == _50
+  // [mir] StorageDead(_50)
+  
+  // [mir] StorageDead(_45)
+  
+  // [mir] _43 = Not(move _44)
+  
+  _43 := builtin$havoc_ref()
+  inhale acc(_43.val_bool, write)
+  _43.val_bool := !_44.val_bool
+  // [mir] StorageDead(_44)
+  
+  // [mir] switchInt(move _43) -> [false: bb28, otherwise: bb27]
+  
+  __t30 := _43.val_bool
+  if (!__t30) {
+    goto l37
+  }
+  goto l36
+  label bb27
+  // ========== bb27 ==========
+  
+  __t21 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: self.lookup(len - 1) == old_last_value", move _52) -> bb1
+  
+  // Rust panic - const "assertion failed: self.lookup(len - 1) == old_last_value"
+  
+  assert false
+  goto end_of_method
+  label bb28
+  // ========== bb28 ==========
+  
+  __t22 := true
+  // [mir] _42 = ()
+  
+  _42 := builtin$havoc_ref()
+  inhale acc(tuple0$(_42), write)
+  // [mir] StorageDead(_43)
+  
+  // [mir] StorageLive(_56)
+  
+  // [mir] StorageLive(_57)
+  
+  // [mir] StorageLive(_58)
+  
+  // [mir] StorageLive(_59)
+  
+  // [mir] _59 = &'125s (*_1)
+  
+  _59 := builtin$havoc_ref()
+  inhale acc(_59.val_ref, write)
+  _59.val_ref := _1.val_ref
+  exhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_59.val_ref), read$())
+  label l38
+  // [mir] StorageLive(_60)
+  
+  // [mir] _60 = _3
+  
+  _60 := builtin$havoc_int()
+  inhale true
+  _60 := _3
+  label l39
+  // [mir] _58 = const List::lookup(move _59, move _60) -> [return: bb29, unwind: bb1]
+  
+  label l40
+  _58 := builtin$havoc_ref()
+  inhale acc(u32(_58), write)
+  unfold acc(u32(_58), write)
+  inhale _58.val_int == m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_59.val_ref, _60)
+  // transfer perm _59.val_ref --> old[l40](_59.val_ref) // unchecked: false
+  
+  goto l41
+  label bb29
+  // ========== bb29 ==========
+  
+  __t23 := true
+  // [mir] EndRegion('125s)
+  
+  // [mir] StorageDead(_60)
+  
+  // [mir] StorageDead(_59)
+  
+  // [mir] StorageLive(_61)
+  
+  // [mir] _61 = _2
+  
+  _61 := builtin$havoc_int()
+  inhale true
+  _61 := _2.val_int
+  label l42
+  // [mir] _57 = Eq(move _58, move _61)
+  
+  _57 := builtin$havoc_ref()
+  inhale acc(_57.val_bool, write)
+  _57.val_bool := _58.val_int == _61
+  // [mir] StorageDead(_61)
+  
+  // [mir] StorageDead(_58)
+  
+  // [mir] _56 = Not(move _57)
+  
+  _56 := builtin$havoc_ref()
+  inhale acc(_56.val_bool, write)
+  _56.val_bool := !_57.val_bool
+  // [mir] StorageDead(_57)
+  
+  // [mir] switchInt(move _56) -> [false: bb31, otherwise: bb30]
+  
+  __t31 := _56.val_bool
+  if (!__t31) {
+    goto l44
+  }
+  goto l43
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] StorageDead(_6)
+  
+  // [mir] _8 = discriminant(((*_5).1: std::option::Option<std::boxed::Box<List>>))
+  
+  _8 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_5.val_ref), write)
+  _8 := m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$int$(_5.val_ref.f$next)
+  // [mir] _9 = &'<empty> ((*_5).1: std::option::Option<std::boxed::Box<List>>)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _5.val_ref.f$next
+  exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_5.val_ref.f$next), write - read$())
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_9.val_ref), read$())
+  label l6
+  // [mir] _10 = discriminant(((*_5).1: std::option::Option<std::boxed::Box<List>>))
+  
+  _10 := builtin$havoc_int()
+  inhale true
+  _10 := m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$int$(_9.val_ref)
+  // [mir] switchInt(move _10) -> [0isize: bb7, 1isize: bb6, otherwise: bb9]
+  
+  __t26 := _10
+  // Ignore default target bb9, as the compiler marked it as unreachable.
+  
+  if (__t26 == 0) {
+    goto l8
+  }
+  goto l7
+  label bb30
+  // ========== bb30 ==========
+  
+  __t24 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: self.lookup(len) == value", move _63) -> bb1
+  
+  // Rust panic - const "assertion failed: self.lookup(len) == value"
+  
+  assert false
+  goto end_of_method
+  label bb31
+  // ========== bb31 ==========
+  
+  __t25 := true
+  // [mir] _55 = ()
+  
+  _55 := builtin$havoc_ref()
+  inhale acc(tuple0$(_55), write)
+  // [mir] StorageDead(_56)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] StorageDead(_20)
+  
+  // [mir] EndRegion('131_1rs)
+  
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] return
+  
+  goto return
+  label bb4
+  // ========== bb4 ==========
+  
+  __t5 := true
+  // [mir] const std::rt::begin_panic(const "internal error: entered unreachable code", move _12) -> bb1
+  
+  // Rust panic - const "internal error: entered unreachable code"
+  
+  assert false
+  goto end_of_method
+  label bb5
+  // ========== bb5 ==========
+  
+  __t7 := true
+  // [mir] _7 = ()
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(tuple0$(_7), write)
+  // [mir] StorageLive(_15)
+  
+  // [mir] StorageLive(_16)
+  
+  // [mir] StorageLive(_17)
+  
+  // [mir] _17 = Box(List)
+  
+  _17 := builtin$havoc_ref()
+  inhale acc(_17.val_ref, write)
+  _aux_havoc_m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_ := builtin$havoc_ref()
+  _17.val_ref := _aux_havoc_m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_
+  inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_17.val_ref), write)
+  // [mir] StorageLive(_18)
+  
+  // [mir] _18 = std::option::Option<std::boxed::Box<List>>::None
+  
+  _18 := builtin$havoc_ref()
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_18), write)
+  inhale m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$int$(_18) == 0
+  // [mir] StorageLive(_19)
+  
+  // [mir] _19 = _2
+  
+  _19 := builtin$havoc_ref()
+  inhale acc(_19.val_int, write)
+  unfold acc(u32(_2), write)
+  _19.val_int := _2.val_int
+  label l10
+  // [mir] (*_17) = List { value: move _19, next: move _18 }
+  
+  _aux_havoc_m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_ := builtin$havoc_ref()
+  _17.val_ref := _aux_havoc_m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_
+  inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_17.val_ref), write)
+  unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_17.val_ref), write)
+  _17.val_ref.f$value := _19
+  label l11
+  _17.val_ref.f$next := _18
+  label l12
+  // [mir] StorageDead(_19)
+  
+  // [mir] drop(_18) -> [return: bb12, unwind: bb11]
+  
+  goto bb12
+  label bb6
+  // ========== bb6 ==========
+  
+  __t4 := true
+  // [mir] ReadForMatch(_9)
+  
+  // [mir] falseEdges -> [real: bb4, imaginary: bb7]
+  
+  goto l9
+  label bb7
+  // ========== bb7 ==========
+  
+  __t6 := true
+  // [mir] ReadForMatch(_9)
+  
+  // expire_borrows ReborrowingDAG(L2,)
+
+  
+  if (__t2) {
+    // expire loan L2
+    
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_9.val_ref), read$())
+    inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_5.val_ref.f$next), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb5, imaginary: bb8]
+  
+  goto bb5
+  label bb9
+  // ========== bb9 ==========
+  
+  __t3 := true
+  // [mir] unreachable
+  
+  goto end_of_method
+  label l2
+  // ========== l2 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L20,L0,)
+
+  
+  if (__t0 && __t0) {
+    // expire loan L0
+    
+    // transfer perm old[l1](_4.val_ref) --> old[l0](_4.val_ref) // unchecked: false
+    
+    exhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l0](_4.val_ref)), read$())
+    inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  goto bb2
+  label l20
+  // ========== l20 ==========
+  
+  // MIR edge bb18 --> bb19
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L25,L3,)
+
+  
+  if (__t12 && __t12) {
+    // expire loan L3
+    
+    // transfer perm old[l19](_26.val_ref) --> old[l18](_26.val_ref) // unchecked: false
+    
+    unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l18](_26.val_ref)), read$())
+    unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(old[l18](_26.val_ref).f$next), read$())
+    unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(old[l18](_26.val_ref).f$next.enum_Some), read$())
+    unfold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(old[l18](_26.val_ref).f$next.enum_Some.f$0), read$())
+    unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l18](_26.val_ref).f$next.enum_Some.f$0.val_ref), read$())
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(old[l18](_26.val_ref).f$next.enum_Some.f$0.val_ref.f$next), read$())
+    unfold acc(u32(old[l18](_26.val_ref).f$next.enum_Some.f$0.val_ref.f$value), read$())
+    exhale acc(old[l18](_26.val_ref).f$next.enum_Some.f$0.val_ref.f$value.val_int, read$())
+    exhale acc(old[l18](_26.val_ref).f$next.enum_Some.f$0.val_ref.f$next, read$())
+    exhale acc(old[l18](_26.val_ref).f$next.enum_Some.f$0.val_ref.f$value, read$())
+    exhale acc(old[l18](_26.val_ref).f$next.enum_Some.f$0.val_ref, read$())
+    exhale acc(old[l18](_26.val_ref).f$next.enum_Some.f$0, read$())
+    exhale acc(old[l18](_26.val_ref).f$next.enum_Some, read$())
+    exhale acc(old[l18](_26.val_ref).f$next.discriminant, read$())
+    unfold acc(u32(old[l18](_26.val_ref).f$value), read$())
+    exhale acc(old[l18](_26.val_ref).f$value.val_int, read$())
+    exhale acc(old[l18](_26.val_ref).f$value, read$())
+    exhale acc(old[l18](_26.val_ref).f$next, read$())
+    inhale acc(_5.val_ref.f$next, write - read$())
+    inhale acc(_5.val_ref.f$value, write - read$())
+    inhale acc(_5.val_ref.f$value.val_int, write - read$())
+    inhale acc(_5.val_ref.f$next.discriminant, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some.f$0, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$value, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$next, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$value.val_int, write - read$())
+    inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$next), write - read$())
+  }
+  goto bb19
+  label l22
+  // ========== l22 ==========
+  
+  // MIR edge bb19 --> bb20
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L32,L33,L1,)
+
+  
+  if (__t1) {
+    // expire loan L32
+    
+    _old$l5$0 := _5.val_ref
+    inhale acc(DeadBorrowToken$(32), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l5$0), write) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l4](_6.val_ref)), write) && (m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l4](_6.val_ref)) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) && ((forall i: Int :: 0 <= i && i < old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), i) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_6.val_ref, i))) && (forall i: Int :: 0 <= i && i < old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + i) == old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$l5$0, i)))))
+    fold acc(u32(_old$l5$0.f$next.enum_Some.f$0.val_ref.f$value), write)
+    fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l5$0.f$next.enum_Some.f$0.val_ref), write)
+    fold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(_old$l5$0.f$next.enum_Some.f$0), write)
+    fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(_old$l5$0.f$next.enum_Some), write)
+    fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_old$l5$0.f$next), write)
+    fold acc(u32(_old$l5$0.f$value), write)
+    fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l5$0), write)
+    inhale acc(DeadBorrowToken$(32), write)
+    apply acc(DeadBorrowToken$(32), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l5$0), write) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l4](_6.val_ref)), write) && (m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l4](_6.val_ref)) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) && ((forall i: Int :: 0 <= i && i < old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), i) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_6.val_ref, i))) && (forall i: Int :: 0 <= i && i < old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + i) == old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$l5$0, i)))))
+  }
+  goto bb20
+  label l23
+  // ========== l23 ==========
+  
+  // MIR edge bb19 --> bb21
+  
+  goto bb21
+  label l26
+  // ========== l26 ==========
+  
+  // MIR edge bb21 --> bb22
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L29,L6,L32,L33,L1,)
+
+  
+  if (__t15 && __t15) {
+    // expire loan L6
+    
+    // transfer perm old[l25](_36.val_ref) --> old[l24](_36.val_ref) // unchecked: false
+    
+    unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l24](_36.val_ref)), read$())
+    unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(old[l24](_36.val_ref).f$next), read$())
+    unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(old[l24](_36.val_ref).f$next.enum_Some), read$())
+    unfold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(old[l24](_36.val_ref).f$next.enum_Some.f$0), read$())
+    unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l24](_36.val_ref).f$next.enum_Some.f$0.val_ref), read$())
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(old[l24](_36.val_ref).f$next.enum_Some.f$0.val_ref.f$next), read$())
+    unfold acc(u32(old[l24](_36.val_ref).f$next.enum_Some.f$0.val_ref.f$value), read$())
+    exhale acc(old[l24](_36.val_ref).f$next.enum_Some.f$0.val_ref.f$value.val_int, read$())
+    exhale acc(old[l24](_36.val_ref).f$next.enum_Some.f$0.val_ref.f$next, read$())
+    exhale acc(old[l24](_36.val_ref).f$next.enum_Some.f$0.val_ref.f$value, read$())
+    exhale acc(old[l24](_36.val_ref).f$next.enum_Some.f$0.val_ref, read$())
+    exhale acc(old[l24](_36.val_ref).f$next.enum_Some.f$0, read$())
+    exhale acc(old[l24](_36.val_ref).f$next.enum_Some, read$())
+    exhale acc(old[l24](_36.val_ref).f$next.discriminant, read$())
+    unfold acc(u32(old[l24](_36.val_ref).f$value), read$())
+    exhale acc(old[l24](_36.val_ref).f$value.val_int, read$())
+    exhale acc(old[l24](_36.val_ref).f$value, read$())
+    exhale acc(old[l24](_36.val_ref).f$next, read$())
+    inhale acc(_5.val_ref.f$next, write - read$())
+    inhale acc(_5.val_ref.f$value, write - read$())
+    inhale acc(_5.val_ref.f$value.val_int, write - read$())
+    inhale acc(_5.val_ref.f$next.discriminant, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some.f$0, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$value, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$next, write - read$())
+    inhale acc(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$value.val_int, write - read$())
+    inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_5.val_ref.f$next.enum_Some.f$0.val_ref.f$next), write - read$())
+  }
+  if (__t1 && (__t15 && __t15)) {
+    // expire loan L32
+    
+    _old$l5$0 := _5.val_ref
+    inhale acc(DeadBorrowToken$(32), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l5$0), write) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l4](_6.val_ref)), write) && (m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l4](_6.val_ref)) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) && ((forall i: Int :: 0 <= i && i < old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), i) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_6.val_ref, i))) && (forall i: Int :: 0 <= i && i < old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + i) == old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$l5$0, i)))))
+    fold acc(u32(_old$l5$0.f$value), write)
+    fold acc(u32(_old$l5$0.f$next.enum_Some.f$0.val_ref.f$value), write)
+    fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l5$0.f$next.enum_Some.f$0.val_ref), write)
+    fold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(_old$l5$0.f$next.enum_Some.f$0), write)
+    fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(_old$l5$0.f$next.enum_Some), write)
+    fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_old$l5$0.f$next), write)
+    fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l5$0), write)
+    inhale acc(DeadBorrowToken$(32), write)
+    apply acc(DeadBorrowToken$(32), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l5$0), write) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l4](_6.val_ref)), write) && (m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l4](_6.val_ref)) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) && ((forall i: Int :: 0 <= i && i < old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), i) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_6.val_ref, i))) && (forall i: Int :: 0 <= i && i < old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + i) == old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$l5$0, i)))))
+  }
+  goto bb22
+  label l28
+  // ========== l28 ==========
+  
+  // MIR edge bb22 --> bb23
+  
+  goto bb23
+  label l29
+  // ========== l29 ==========
+  
+  // MIR edge bb22 --> bb24
+  
+  goto bb24
+  label l34
+  // ========== l34 ==========
+  
+  // MIR edge bb25 --> bb26
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L26,L9,)
+
+  
+  if (__t18 && __t19) {
+    // expire loan L9
+    
+    // transfer perm old[l33](_46.val_ref) --> old[l30](_46.val_ref) // unchecked: false
+    
+    exhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l30](_46.val_ref)), read$())
+    inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  goto bb26
+  label l36
+  // ========== l36 ==========
+  
+  // MIR edge bb26 --> bb27
+  
+  goto bb27
+  label l37
+  // ========== l37 ==========
+  
+  // MIR edge bb26 --> bb28
+  
+  goto bb28
+  label l41
+  // ========== l41 ==========
+  
+  // MIR edge bb28 --> bb29
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L30,L12,)
+
+  
+  if (__t22 && __t22) {
+    // expire loan L12
+    
+    // transfer perm old[l40](_59.val_ref) --> old[l38](_59.val_ref) // unchecked: false
+    
+    exhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l38](_59.val_ref)), read$())
+    inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write - read$())
+  }
+  goto bb29
+  label l43
+  // ========== l43 ==========
+  
+  // MIR edge bb29 --> bb30
+  
+  goto bb30
+  label l44
+  // ========== l44 ==========
+  
+  // MIR edge bb29 --> bb31
+  
+  goto bb31
+  label l7
+  // ========== l7 ==========
+  
+  // MIR edge bb3 --> bb6
+  
+  goto bb6
+  label l8
+  // ========== l8 ==========
+  
+  // MIR edge bb3 --> bb7
+  
+  goto bb7
+  label l9
+  // ========== l9 ==========
+  
+  // MIR edge bb6 --> bb4
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L2,L32,L33,L1,)
+
+  
+  if (__t2) {
+    // expire loan L2
+    
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_9.val_ref), read$())
+    inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_5.val_ref.f$next), write - read$())
+  }
+  if (__t1 && __t2) {
+    // expire loan L32
+    
+    _old$l5$0 := _5.val_ref
+    inhale acc(DeadBorrowToken$(32), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l5$0), write) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l4](_6.val_ref)), write) && (m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l4](_6.val_ref)) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) && ((forall i: Int :: 0 <= i && i < old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), i) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_6.val_ref, i))) && (forall i: Int :: 0 <= i && i < old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + i) == old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$l5$0, i)))))
+    fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l5$0), write)
+    inhale acc(DeadBorrowToken$(32), write)
+    apply acc(DeadBorrowToken$(32), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l5$0), write) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l4](_6.val_ref)), write) && (m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l4](_6.val_ref)) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) && ((forall i: Int :: 0 <= i && i < old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), i) == old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_6.val_ref, i))) && (forall i: Int :: 0 <= i && i < old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l5$0)) ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l4](_6.val_ref), old[l4](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_6.val_ref)) - 1 + i) == old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$l5$0, i)))))
+  }
+  goto bb4
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // obtain acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  
+  _old$pre$0 := _1.val_ref
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) == old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) + 1 && (old[pre]((unfolding acc(u32(_2), write) in _2.val_int)) == m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$pre$0) - 1) && (forall i: Int :: 0 <= i && i < old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$pre$0, i) == old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, i))))
+  assert true
+  exhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$pre$0), write)
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$recursive_get_last_mut$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Int
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Int
+  var _5: Ref
+  var _6: Ref
+  var _7: Int
+  var _8: Ref
+  var _9: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "with_spec_list::List::recursive_get_last_mut"
+  
+  // Def path: "with_spec_list::{{impl}}[1]::recursive_get_last_mut[0]"
+  
+  // Span: tests/verify/pass/quick/with-spec-list.rs:50:5: 55:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_2)
+  
+  // [mir] StorageLive(_3)
+  
+  // [mir] _4 = discriminant(((*_1).1: std::option::Option<std::boxed::Box<List>>))
+  
+  _4 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), write)
+  _4 := m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$int$(_1.val_ref.f$next)
+  // [mir] _5 = &'<empty> ((*_1).1: std::option::Option<std::boxed::Box<List>>)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  _5.val_ref := _1.val_ref.f$next
+  exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_1.val_ref.f$next), write - read$())
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_5.val_ref), read$())
+  label l0
+  // [mir] _7 = discriminant(((*_1).1: std::option::Option<std::boxed::Box<List>>))
+  
+  _7 := builtin$havoc_int()
+  inhale true
+  _7 := m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$int$(_5.val_ref)
+  // [mir] switchInt(move _7) -> [0isize: bb3, 1isize: bb4, otherwise: bb6]
+  
+  __t8 := _7
+  // Ignore default target bb6, as the compiler marked it as unreachable.
+  
+  if (__t8 == 0) {
+    goto l2
+  }
+  goto l1
+  label bb2
+  // ========== bb2 ==========
+  
+  __t6 := true
+  // [mir] _3 = &mut (*_1)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_ref, write)
+  _3.val_ref := _1.val_ref
+  label l9
+  // [mir] goto -> bb8
+  
+  goto bb8
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] ReadForMatch(_5)
+  
+  // [mir] falseEdges -> [real: bb2, imaginary: bb4]
+  
+  goto l3
+  label bb4
+  // ========== bb4 ==========
+  
+  __t3 := true
+  // [mir] ReadForMatch(_5)
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_5.val_ref), read$())
+    inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_1.val_ref.f$next), write - read$())
+  }
+  // [mir] falseEdges -> [real: bb7, imaginary: bb5]
+  
+  goto bb7
+  label bb6
+  // ========== bb6 ==========
+  
+  __t1 := true
+  // [mir] unreachable
+  
+  goto end_of_method
+  label bb7
+  // ========== bb7 ==========
+  
+  __t4 := true
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = &mut (*((((*_1).1: std::option::Option<std::boxed::Box<List>>) as Some).0: std::boxed::Box<List>))
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.val_ref, write)
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_1.val_ref.f$next), write)
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(_1.val_ref.f$next.enum_Some), write)
+  unfold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(_1.val_ref.f$next.enum_Some.f$0), write)
+  _6.val_ref := _1.val_ref.f$next.enum_Some.f$0.val_ref
+  label l4
+  // [mir] StorageLive(_8)
+  
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = &mut (*_6)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _6.val_ref
+  label l5
+  // [mir] _8 = const List::recursive_get_last_mut(move _9) -> [return: bb9, unwind: bb1]
+  
+  label l6
+  assert true
+  exhale acc(_9.val_ref, write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_9.val_ref), write)
+  _8 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_8.val_ref, write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_8.val_ref), write)
+  inhale true
+  inhale m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_8.val_ref) == 1 && (unfolding acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_8.val_ref), write) in (unfolding acc(u32(_8.val_ref.f$value), write) in _8.val_ref.f$value.val_int == old[l6](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_9.val_ref, m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref) - 1))))
+  label l7
+  goto bb9
+  label bb8
+  // ========== bb8 ==========
+  
+  __t7 := true
+  // [mir] _2 = &mut (*_3)
+  
+  _2 := builtin$havoc_ref()
+  inhale acc(_2.val_ref, write)
+  _2.val_ref := _3.val_ref
+  label l10
+  // [mir] StorageDead(_6)
+  
+  // [mir] _0 = &mut (*_2)
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_ref, write)
+  _0.val_ref := _2.val_ref
+  label l11
+  // [mir] StorageDead(_2)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] return
+  
+  fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_0.val_ref), write)
+  // obtain ((acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_0.val_ref), write)) && (true)) && ((true) && (true))
+  
+  label post
+  package acc(DeadBorrowToken$(-1), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[post](_0.val_ref)), write) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[pre](_1.val_ref)), write) && (m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[pre](_1.val_ref)) == old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) - 1 + old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[post](_0.val_ref))) && ((forall i: Int :: 0 <= i && i < old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) - 1 ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[pre](_1.val_ref), i) == old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, i))) && (forall i: Int :: 0 <= i && i < old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[post](_0.val_ref))) ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[pre](_1.val_ref), old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) - 1 + i) == old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[post](_0.val_ref), i))))) {
+    var _old$l7$0$p0: Ref
+    // expire_borrows ReborrowingDAG(L5,L4,L6,L3,L7,L8,L2,L1,)
+
+    
+    if (__t7) {
+      // expire loan L5
+      
+      // transfer perm _0.val_ref --> _2.val_ref // unchecked: false
+      
+    }
+    if (__t7 && __t7) {
+      // expire loan L4
+      
+      // transfer perm _2.val_ref --> _3.val_ref // unchecked: false
+      
+    }
+    if (__t7 && __t7 && __t5) {
+      // restored (from log): Acc(_8.val_ref, write)
+      
+      // restored (from log): Acc(_6.val_ref, write)
+      
+      // restored (from log): Pred(_1.val_ref.f$value, write)
+      
+      // restored (from log): Acc(_1.val_ref.f$next[enum_Some], write)
+      
+      // restored (from log): Acc(_1.val_ref.f$next[enum_Some].f$0.val_ref, write)
+      
+      // restored (from log): Acc(_1.val_ref.f$next[enum_Some].f$0, write)
+      
+      // restored (from log): Acc(_1.val_ref.f$next.discriminant, write)
+      
+      // restored (from log): Acc(_1.val_ref.f$next, write)
+      
+      // restored (from log): Acc(_1.val_ref.f$value, write)
+      
+    }
+    if (__t6 && (__t7 && __t7)) {
+      // expire loan L6
+      
+      // transfer perm _3.val_ref --> _1.val_ref // unchecked: false
+      
+      unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[post](_1.val_ref)), write)
+    }
+    if (__t5 && (__t7 && __t7)) {
+      // expire loan L3
+      
+      // transfer perm _3.val_ref --> _8.val_ref // unchecked: false
+      
+    }
+    if (__t4 && (__t5 && (__t7 && __t7))) {
+      // expire loan L7
+      
+      assert acc(_8.val_ref, read$())
+      _old$l7$0$p0 := _8.val_ref
+      inhale acc(DeadBorrowToken$(7), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l7$0$p0), write) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l6](_9.val_ref)), write) && (m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l6](_9.val_ref)) == old[l6](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref)) - 1 + old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l7$0$p0)) && ((forall i: Int :: 0 <= i && i < old[l6](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref)) - 1 ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l6](_9.val_ref), i) == old[l6](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_9.val_ref, i))) && (forall i: Int :: 0 <= i && i < old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l7$0$p0)) ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l6](_9.val_ref), old[l6](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref)) - 1 + i) == old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$l7$0$p0, i)))))
+      inhale acc(DeadBorrowToken$(7), write)
+      apply acc(DeadBorrowToken$(7), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l7$0$p0), write) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l6](_9.val_ref)), write) && (m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[l6](_9.val_ref)) == old[l6](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref)) - 1 + old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l7$0$p0)) && ((forall i: Int :: 0 <= i && i < old[l6](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref)) - 1 ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l6](_9.val_ref), i) == old[l6](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_9.val_ref, i))) && (forall i: Int :: 0 <= i && i < old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_old$l7$0$p0)) ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[l6](_9.val_ref), old[l6](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref)) - 1 + i) == old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_old$l7$0$p0, i)))))
+    }
+    if (__t4 && (__t4 && (__t5 && (__t7 && __t7)))) {
+      // expire loan L8
+      
+    }
+    if (__t4 && (__t4 && (__t4 && (__t5 && (__t7 && __t7))))) {
+      // expire loan L2
+      
+      // transfer perm old[l6](_9.val_ref) --> old[l5](_9.val_ref) // unchecked: false
+      
+      // transfer perm old[l5](_9.val_ref) --> _6.val_ref // unchecked: false
+      
+    }
+    if (__t4 && (__t4 && (__t4 && (__t4 && (__t5 && (__t7 && __t7)))))) {
+      // expire loan L1
+      
+      // transfer perm _6.val_ref --> _1.val_ref.f$next[enum_Some].f$0.val_ref // unchecked: false
+      
+      assert acc(old[post](_1.val_ref).f$next, read$())
+      assert acc(old[post](_1.val_ref).f$next.enum_Some, read$())
+      assert acc(old[post](_1.val_ref).f$next.enum_Some.f$0, read$())
+      fold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(old[post](_1.val_ref).f$next.enum_Some.f$0), write)
+      assert acc(old[post](_1.val_ref).f$next, read$())
+      assert acc(old[post](_1.val_ref).f$next.enum_Some, read$())
+      fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(old[post](_1.val_ref).f$next.enum_Some), write)
+      assert acc(old[post](_1.val_ref).f$next, read$())
+      fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(old[post](_1.val_ref).f$next), write)
+      // drop Acc(_8.val_ref, write) (Acc(_8.val_ref, write))
+      
+      // restored (in branch merge): Acc(_8.val_ref, write) (Acc(_8.val_ref, write))
+      
+      // drop Acc(_6.val_ref, write) (Acc(_6.val_ref, write))
+      
+      // restored (in branch merge): Acc(_6.val_ref, write) (Acc(_6.val_ref, write))
+      
+    }
+    // Fold predicates for &mut args
+    
+    // transfer perm _1.val_ref --> old[pre](_1.val_ref) // unchecked: false
+    
+    fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[pre](_1.val_ref)), write)
+    // obtain acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[pre](_1.val_ref)), write)
+    
+  }
+  // transfer perm old[post](_0.val_ref) --> _0.val_ref // unchecked: false
+  
+  goto return
+  label bb9
+  // ========== bb9 ==========
+  
+  __t5 := true
+  // [mir] _3 = &mut (*_8)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_ref, write)
+  _3.val_ref := _8.val_ref
+  label l8
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] goto -> bb8
+  
+  goto l12
+  label l1
+  // ========== l1 ==========
+  
+  // MIR edge bb0 --> bb4
+  
+  goto bb4
+  label l12
+  // ========== l12 ==========
+  
+  unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_3.val_ref), write)
+  // drop Acc(_8.val_ref, write) (Acc(_8.val_ref, write))
+  
+  // drop Acc(_6.val_ref, write) (Acc(_6.val_ref, write))
+  
+  // drop Pred(_1.val_ref.f$value, write) (Pred(_1.val_ref.f$value, write))
+  
+  // drop Acc(_1.val_ref.f$next[enum_Some], write) (Acc(_1.val_ref.f$next[enum_Some], write))
+  
+  // drop Acc(_1.val_ref.f$next[enum_Some].f$0.val_ref, write) (Acc(_1.val_ref.f$next[enum_Some].f$0.val_ref, write))
+  
+  // drop Acc(_1.val_ref.f$next[enum_Some].f$0, write) (Acc(_1.val_ref.f$next[enum_Some].f$0, write))
+  
+  // drop Acc(_1.val_ref.f$next.discriminant, write) (Acc(_1.val_ref.f$next.discriminant, write))
+  
+  // drop Acc(_1.val_ref.f$next, write) (Acc(_1.val_ref.f$next, write))
+  
+  // drop Acc(_1.val_ref.f$value, write) (Acc(_1.val_ref.f$value, write))
+  
+  goto bb8
+  label l2
+  // ========== l2 ==========
+  
+  // MIR edge bb0 --> bb3
+  
+  goto bb3
+  label l3
+  // ========== l3 ==========
+  
+  // MIR edge bb3 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_5.val_ref), read$())
+    inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_1.val_ref.f$next), write - read$())
+  }
+  goto bb2
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_0.val_ref), write)
+  
+  assert m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_0.val_ref) == 1 && (unfolding acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_0.val_ref), write) in (unfolding acc(u32(_0.val_ref.f$value), write) in _0.val_ref.f$value.val_int)) == old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) - 1))
+  assert true
+  exhale acc(_0.val_ref, write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_0.val_ref), write)
+  exhale acc(DeadBorrowToken$(-1), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[post](_0.val_ref)), write) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[pre](_1.val_ref)), write) && (m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[pre](_1.val_ref)) == old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) - 1 + old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[post](_0.val_ref))) && ((forall i: Int :: 0 <= i && i < old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) - 1 ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[pre](_1.val_ref), i) == old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, i))) && (forall i: Int :: 0 <= i && i < old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(old[post](_0.val_ref))) ==> m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[pre](_1.val_ref), old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref)) - 1 + i) == old[lhs](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(old[post](_0.val_ref), i)))))
+  goto end_of_method
+  label end_of_method
+}
+
+method m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$recursive_get_last$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Int
+  var _1: Ref
+  var _2: Ref
+  var _3: Int
+  var _4: Ref
+  var _5: Ref
+  var _6: Int
+  var _7: Ref
+  var _8: Ref
+  var _9: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "with_spec_list::List::recursive_get_last"
+  
+  // Def path: "with_spec_list::{{impl}}[1]::recursive_get_last[0]"
+  
+  // Span: tests/verify/pass/quick/with-spec-list.rs:60:5: 65:6
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  // Preconditions:
+  
+  inhale acc(_1.val_ref, write)
+  inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_2)
+  
+  // [mir] _3 = discriminant(((*_1).1: std::option::Option<std::boxed::Box<List>>))
+  
+  _3 := builtin$havoc_int()
+  inhale true
+  unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_1.val_ref), read$())
+  _3 := m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$int$(_1.val_ref.f$next)
+  // [mir] _4 = &'<empty> ((*_1).1: std::option::Option<std::boxed::Box<List>>)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_ref, write)
+  _4.val_ref := _1.val_ref.f$next
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_4.val_ref), read$())
+  label l0
+  // [mir] _6 = discriminant(((*_1).1: std::option::Option<std::boxed::Box<List>>))
+  
+  _6 := builtin$havoc_int()
+  inhale true
+  _6 := m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$discriminant$$__$TY$__m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_$$int$(_4.val_ref)
+  // [mir] switchInt(move _6) -> [0isize: bb3, 1isize: bb4, otherwise: bb6]
+  
+  __t8 := _6
+  // Ignore default target bb6, as the compiler marked it as unreachable.
+  
+  if (__t8 == 0) {
+    goto l2
+  }
+  goto l1
+  label bb2
+  // ========== bb2 ==========
+  
+  __t6 := true
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _1
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _1.val_ref
+  inhale acc(_7.val_ref.f$next, read$())
+  inhale acc(_7.val_ref.f$value, read$())
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_7.val_ref.f$next), read$())
+  inhale acc(u32(_7.val_ref.f$value), read$())
+  label l9
+  // [mir] _2 = move _7
+  
+  _2 := builtin$havoc_ref()
+  inhale acc(_2.val_ref, write)
+  _2.val_ref := _7.val_ref
+  label l10
+  // [mir] StorageDead(_7)
+  
+  // [mir] goto -> bb8
+  
+  goto l13
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] ReadForMatch(_4)
+  
+  // [mir] falseEdges -> [real: bb2, imaginary: bb4]
+  
+  goto l3
+  label bb4
+  // ========== bb4 ==========
+  
+  __t3 := true
+  // [mir] ReadForMatch(_4)
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_4.val_ref), read$())
+  }
+  // [mir] falseEdges -> [real: bb7, imaginary: bb5]
+  
+  goto bb7
+  label bb6
+  // ========== bb6 ==========
+  
+  __t1 := true
+  // [mir] unreachable
+  
+  goto end_of_method
+  label bb7
+  // ========== bb7 ==========
+  
+  __t4 := true
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = &(*((((*_1).1: std::option::Option<std::boxed::Box<List>>) as Some).0: std::boxed::Box<List>))
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_ref, write)
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_1.val_ref.f$next), read$())
+  unfold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(_1.val_ref.f$next.enum_Some), read$())
+  unfold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(_1.val_ref.f$next.enum_Some.f$0), read$())
+  _5.val_ref := _1.val_ref.f$next.enum_Some.f$0.val_ref
+  inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_5.val_ref), read$())
+  label l4
+  // [mir] StorageLive(_8)
+  
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = &(*_5)
+  
+  _9 := builtin$havoc_ref()
+  inhale acc(_9.val_ref, write)
+  _9.val_ref := _5.val_ref
+  inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_9.val_ref), read$())
+  label l5
+  // [mir] _8 = const List::recursive_get_last(move _9) -> [return: bb9, unwind: bb1]
+  
+  label l6
+  assert true
+  exhale acc(_9.val_ref, write)
+  // transfer perm _9.val_ref --> old[l6](_9.val_ref) // unchecked: true
+  
+  _8 := builtin$havoc_ref()
+  inhale true
+  inhale acc(_8.val_ref, write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_8.val_ref), read$())
+  inhale true
+  inhale m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_8.val_ref) == 1 && (unfolding acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_8.val_ref), read$()) in (unfolding acc(u32(_8.val_ref.f$value), read$()) in _8.val_ref.f$value.val_int == old[l6](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_9.val_ref, m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_9.val_ref) - 1))))
+  exhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l6](_9.val_ref)), read$())
+  label l7
+  goto bb9
+  label bb8
+  // ========== bb8 ==========
+  
+  __t7 := true
+  // [mir] _0 = &(*_2)
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(_0.val_ref, write)
+  _0.val_ref := _2.val_ref
+  inhale acc(_0.val_ref.f$value, read$())
+  inhale acc(_0.val_ref.f$next, read$())
+  inhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_0.val_ref.f$next), read$())
+  inhale acc(u32(_0.val_ref.f$value), read$())
+  label l11
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageDead(_2)
+  
+  // [mir] return
+  
+  fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_0.val_ref), read$())
+  // obtain ((acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_0.val_ref), read)) && (true)) && (true)
+  
+  label post
+  package acc(DeadBorrowToken$(-1), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[post](_0.val_ref)), read$()) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[pre](_1.val_ref)), read$()) {
+    var _old$l7$0$p0: Ref
+    // expire_borrows ReborrowingDAG(L4,L7,L8,L3,L5,L6,L2,L1,)
+
+    
+    if (__t7) {
+      // expire loan L4
+      
+      unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[post](_0.val_ref)), read$())
+      assert acc(old[post](_0.val_ref).f$next, read$())
+      exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(old[post](_0.val_ref).f$next), read$())
+      assert acc(old[post](_0.val_ref).f$value, read$())
+      exhale acc(u32(old[post](_0.val_ref).f$value), read$())
+      assert acc(old[post](_0.val_ref).f$next, read$())
+      exhale acc(old[post](_0.val_ref).f$next, read$())
+      assert acc(old[post](_0.val_ref).f$value, read$())
+      exhale acc(old[post](_0.val_ref).f$value, read$())
+    }
+    if (__t7 && __t6) {
+      // restored (from log): Acc(_7.val_ref, write)
+      
+    }
+    if (__t7 && __t5) {
+      // restored (from log): Acc(_8.val_ref, write)
+      
+      // restored (from log): Acc(_5.val_ref, write)
+      
+      // restored (from log): Pred(_5.val_ref, read)
+      
+      // restored (from log): Pred(_8.val_ref, read)
+      
+    }
+    if (__t6 && __t7) {
+      // expire loan L7
+      
+      // transfer perm _2.val_ref --> old[l10](_7.val_ref) // unchecked: false
+      
+    }
+    if (__t6 && (__t6 && __t7)) {
+      // expire loan L8
+      
+      // transfer perm old[l10](_7.val_ref) --> old[l9](_7.val_ref) // unchecked: false
+      
+      assert acc(old[l9](_7.val_ref).f$next, read$())
+      exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(old[l9](_7.val_ref).f$next), read$())
+      assert acc(old[l9](_7.val_ref).f$value, read$())
+      exhale acc(u32(old[l9](_7.val_ref).f$value), read$())
+      assert acc(old[l9](_7.val_ref).f$value, read$())
+      exhale acc(old[l9](_7.val_ref).f$value, read$())
+      assert acc(old[l9](_7.val_ref).f$next, read$())
+      exhale acc(old[l9](_7.val_ref).f$next, read$())
+      // drop Acc(_7.val_ref, write) (Acc(_7.val_ref, write))
+      
+      // restored (in branch merge): Acc(_7.val_ref, write) (Acc(_7.val_ref, write))
+      
+      // drop Acc(old[l9](_7.val_ref), write) (Acc(old[l9](_7.val_ref), write))
+      
+    }
+    if (__t5 && __t7) {
+      // expire loan L3
+      
+      fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[post](_2.val_ref)), read$())
+      exhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[post](_2.val_ref)), read$())
+    }
+    if (__t4 && (__t5 && __t7)) {
+      // expire loan L5
+      
+      assert acc(_8.val_ref, read$())
+      _old$l7$0$p0 := _8.val_ref
+      inhale acc(DeadBorrowToken$(5), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l7$0$p0), read$()) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l6](_9.val_ref)), read$())
+      inhale acc(DeadBorrowToken$(5), write)
+      apply acc(DeadBorrowToken$(5), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_old$l7$0$p0), read$()) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l6](_9.val_ref)), read$())
+    }
+    if (__t4 && (__t4 && (__t5 && __t7))) {
+      // expire loan L6
+      
+    }
+    if (__t4 && (__t4 && (__t4 && (__t5 && __t7)))) {
+      // expire loan L2
+      
+      // transfer perm old[l6](_9.val_ref) --> old[l5](_9.val_ref) // unchecked: false
+      
+      exhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[l5](_9.val_ref)), read$())
+    }
+    if (__t4 && (__t4 && (__t4 && (__t4 && (__t5 && __t7))))) {
+      // expire loan L1
+      
+      exhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[post](_5.val_ref)), read$())
+      // drop Acc(_8.val_ref, write) (Acc(_8.val_ref, write))
+      
+      // restored (in branch merge): Acc(_8.val_ref, write) (Acc(_8.val_ref, write))
+      
+      // drop Acc(_5.val_ref, write) (Acc(_5.val_ref, write))
+      
+      // restored (in branch merge): Acc(_5.val_ref, write) (Acc(_5.val_ref, write))
+      
+    }
+    // Fold predicates for &mut args
+    
+    // transfer perm _1.val_ref --> old[pre](_1.val_ref) // unchecked: false
+    
+    fold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[pre](_1.val_ref)), read$())
+    // obtain acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[pre](_1.val_ref)), write)
+    
+  }
+  // transfer perm old[post](_0.val_ref) --> _0.val_ref // unchecked: false
+  
+  goto return
+  label bb9
+  // ========== bb9 ==========
+  
+  __t5 := true
+  // [mir] _2 = &(*_8)
+  
+  _2 := builtin$havoc_ref()
+  inhale acc(_2.val_ref, write)
+  _2.val_ref := _8.val_ref
+  inhale acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), read$())
+  label l8
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] goto -> bb8
+  
+  goto l12
+  label l1
+  // ========== l1 ==========
+  
+  // MIR edge bb0 --> bb4
+  
+  goto bb4
+  label l12
+  // ========== l12 ==========
+  
+  fold acc(m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_(_1.val_ref.f$next.enum_Some.f$0), read$())
+  fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_Some(_1.val_ref.f$next.enum_Some), read$())
+  fold acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_1.val_ref.f$next), read$())
+  // drop Acc(_8.val_ref, write) (Acc(_8.val_ref, write))
+  
+  unfold acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_2.val_ref), read$())
+  // drop Acc(_5.val_ref, write) (Acc(_5.val_ref, write))
+  
+  // drop Pred(_5.val_ref, read) (Pred(_5.val_ref, read))
+  
+  // drop Pred(_8.val_ref, read) (Pred(_8.val_ref, read))
+  
+  goto bb8
+  label l13
+  // ========== l13 ==========
+  
+  // drop Acc(_7.val_ref, write) (Acc(_7.val_ref, write))
+  
+  goto bb8
+  label l2
+  // ========== l2 ==========
+  
+  // MIR edge bb0 --> bb3
+  
+  goto bb3
+  label l3
+  // ========== l3 ==========
+  
+  // MIR edge bb3 --> bb2
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(m_core$$option$opensqu$0$closesqu$$$Option$opensqu$0$closesqu$$_beg_$m_alloc$$boxed$opensqu$0$closesqu$$$Box$opensqu$0$closesqu$$_beg_$m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$_end_$_end_(_4.val_ref), read$())
+  }
+  goto bb2
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_0.val_ref), write)
+  
+  assert m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_0.val_ref) == 1 && (unfolding acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_0.val_ref), read$()) in (unfolding acc(u32(_0.val_ref.f$value), read$()) in _0.val_ref.f$value.val_int)) == old[pre](m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$lookup$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$$$int$(_1.val_ref, m_with_spec_list$$$opencur$$opencur$impl$closecur$$closecur$$opensqu$1$closesqu$$$len$opensqu$0$closesqu$__$TY$__m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_$$int$(_1.val_ref) - 1))
+  assert true
+  exhale acc(_0.val_ref, write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(_0.val_ref), read$())
+  exhale acc(DeadBorrowToken$(-1), write) && acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[post](_0.val_ref)), read$()) --* acc(m_with_spec_list$$List$opensqu$0$closesqu$$_beg_$_end_(old[pre](_1.val_ref)), read$())
+  goto end_of_method
+  label end_of_method
+}
+
+method m_with_spec_list$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  label start
+  // ========== start ==========
+  
+  // Name: "with_spec_list::main"
+  
+  // Def path: "with_spec_list::main[0]"
+  
+  // Span: tests/verify/pass/quick/with-spec-list.rs:93:1: 93:13
+  
+  __t0 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] return
+  
+  goto return
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_ref() returns (ret: Ref)
+
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_bool() returns (ret: Bool)

@@ -31,17 +31,20 @@ class TermToSMTLib2Converter
     super.pretty(defaultWidth, render(s))
   }
 
-  protected def render(sort: Sort): Cont = sort match {
+  protected def render(sort: Sort) = doRender(sort, false)
+
+  protected def doRender(sort: Sort, alwaysSanitize: Boolean = false): Cont = sort match {
     case sorts.Int => "Int"
     case sorts.Bool => "Bool"
     case sorts.Perm => "$Perm"
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
-    case sorts.Seq(elementSort) => text("Seq<") <> render(elementSort) <> ">"
-    case sorts.Set(elementSort) => text("Set<") <> render(elementSort) <> ">"
-    case sorts.Multiset(elementSort) => text("Multiset<") <> render(elementSort) <> ">"
-    case sorts.Map(keySort, valueSort) => text("Map") <> "<" <> render(keySort) <> "~_" <> render(valueSort) <> ">"
+    case sorts.Map(keySort, valueSort) => text("Map") <> "<" <> doRender(keySort, true) <> "~_" <> doRender(valueSort, true) <> ">"
+    case sorts.Seq(elementSort) => text("Seq<") <> doRender(elementSort, true) <> ">"
+    case sorts.Set(elementSort) => text("Set<") <> doRender(elementSort, true) <> ">"
+    case sorts.Multiset(elementSort) => text("Multiset<") <> doRender(elementSort, true) <> ">"
     case sorts.UserSort(id) => render(id)
+    case sorts.SMTSort(id) => if (alwaysSanitize) render(id) else id.name
 
     case sorts.Unit =>
       /* Sort Unit corresponds to Scala's Unit type and is used, e.g., as the
@@ -49,8 +52,8 @@ class TermToSMTLib2Converter
        */
       ""
 
-    case sorts.FieldValueFunction(codomainSort) => text("$FVF<") <> render(codomainSort) <> ">"
-    case sorts.PredicateSnapFunction(codomainSort) => text("$PSF<") <> render(codomainSort) <> ">"
+    case sorts.FieldValueFunction(codomainSort) => text("$FVF<") <> doRender(codomainSort, true) <> ">"
+    case sorts.PredicateSnapFunction(codomainSort) => text("$PSF<") <> doRender(codomainSort, true) <> ">"
 
     case sorts.FieldPermFunction() => text("$FPM")
     case sorts.PredicatePermFunction() => text("$PPM")
@@ -72,7 +75,7 @@ class TermToSMTLib2Converter
       if (argSortsDoc.isEmpty)
         parens(text("declare-const") <+> idDoc <+> resultSortDoc)
       else
-        parens(text("declare-fun") <+> idDoc <+> parens(ssep(argSortsDoc.to[collection.immutable.Seq], space)) <+> resultSortDoc)
+        parens(text("declare-fun") <+> idDoc <+> parens(ssep(argSortsDoc.to(collection.immutable.Seq), space)) <+> resultSortDoc)
 
     case swd @ SortWrapperDecl(from, to) =>
 //      val id = Identifier(sortWrapperName(from, to))
@@ -83,7 +86,7 @@ class TermToSMTLib2Converter
 
     case MacroDecl(id, args, body) =>
       val idDoc = render(id)
-      val argDocs = (args map (v => parens(text(render(v.id)) <+> render(v.sort)))).to[collection.immutable.Seq]
+      val argDocs = (args map (v => parens(text(render(v.id)) <+> render(v.sort)))).to(collection.immutable.Seq)
       val bodySortDoc = render(body.sort)
       val bodyDoc = render(body)
 
@@ -103,20 +106,25 @@ class TermToSMTLib2Converter
     case x: Var =>
       render(x.id)
 
-    case fapp: Application[_] =>
-      renderApp(fapp.applicable.id.name, fapp.args, fapp.sort)
+    case fapp: Application[_] => {
+      fapp.applicable match {
+        case _: SMTFun => renderSMTApp(fapp.applicable.id.name, fapp.args, fapp.sort)
+        case _ => renderApp(fapp.applicable.id.name, fapp.args, fapp.sort)
+      }
+    }
+
 
     /* Handle quantifiers that have at most one trigger set */
     case Quantification(quant, vars, body, triggers, name, _) =>
       val docBody = render(body)
 
       if (vars.nonEmpty) {
-        val docVars = ssep((vars map (v => parens(text(render(v.id)) <+> render(v.sort)))).to[collection.immutable.Seq], space)
+        val docVars = ssep((vars map (v => parens(text(render(v.id)) <+> render(v.sort)))).to(collection.immutable.Seq), space)
         val docQuant = render(quant)
 
         val docTriggers =
-          ssep(triggers.map(trigger => ssep((trigger.p map render).to[collection.immutable.Seq], space))
-            .map(d => text(":pattern") <+> parens(d)).to[collection.immutable.Seq],
+          ssep(triggers.map(trigger => ssep((trigger.p map render).to(collection.immutable.Seq), space))
+            .map(d => text(":pattern") <+> parens(d)).to(collection.immutable.Seq),
             line)
 
         val docQid: Cont =
@@ -272,13 +280,14 @@ class TermToSMTLib2Converter
       parens(text(render(SortWrapperId(t.sort, to))) <+> render(t))
 
     case Distinct(symbols) =>
-      parens(text("distinct") <+> ssep((symbols.toSeq map (s => render(s.id): Cont)).to[collection.immutable.Seq], space))
+      parens(text("distinct") <+> ssep((symbols.toSeq map (s => render(s.id): Cont)).to(collection.immutable.Seq), space))
 
     case Let(bindings, body) =>
-      val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to[collection.immutable.Seq], space)
+      val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to(collection.immutable.Seq), space)
       parens(text("let") <+> parens(docBindings) <+> render(body))
 
-    case _: MagicWandChunkTerm =>
+    case _: MagicWandChunkTerm
+       | _: Quantification =>
       sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
   }
 
@@ -300,12 +309,23 @@ class TermToSMTLib2Converter
 
   @inline
   protected def renderNAryOp(op: String, terms: Term*): Cont =
-    parens(text(op) <> nest(defaultIndent, group(line <> ssep((terms map render).to[collection.immutable.Seq], line))))
+    parens(text(op) <> nest(defaultIndent, group(line <> ssep((terms map render).to(collection.immutable.Seq), line))))
 
   @inline
   protected def renderApp(functionName: String, args: Seq[Term], outSort: Sort): Cont = {
     val docAppNoParens =
-      text(sanitize(functionName)) <+> ssep((args map render).to[collection.immutable.Seq], space)
+      text(sanitize(functionName)) <+> ssep((args map render).to(collection.immutable.Seq), space)
+
+    if (args.nonEmpty)
+      parens(docAppNoParens)
+    else
+      parens(text("as") <+> docAppNoParens <+> render(outSort))
+  }
+
+  @inline
+  protected def renderSMTApp(functionName: String, args: Seq[Term], outSort: Sort) = {
+    val docAppNoParens =
+      text(functionName) <+> ssep((args map render).to(collection.immutable.Seq), space)
 
     if (args.nonEmpty)
       parens(docAppNoParens)

@@ -1,0 +1,378 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Cell_state_T(r: Ref, lvl: Int, c: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Cell_interferenceReference_df($p0: Int, r: Ref, lvl: Int, c: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Cell_interferenceSet_df($p0: Int, r: Ref, lvl: Int, c: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function Cell_atomicity_context_df(r: Ref, lvl: Int, c: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $Cell_$_copy: Int
+
+field $cell_$val: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function Cell_atomicity_context_hf(r: Ref, lvl: Int, c: Ref): Set[Int]
+  requires acc(Cell_atomicity_context_fp(r, lvl, c), write)
+  ensures [Cell_atomicity_context_df(r, lvl, c), true]
+
+
+function Cell_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, c: Ref): Set[Int]
+  requires acc(Cell_interferenceContext_fp(r, lvl, c), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in Cell_interferenceSet_df($p0, r, lvl, c))), true]
+
+
+function Cell_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, c: Ref): Int
+  requires acc(Cell_interferenceContext_fp(r, lvl, c), write)
+  ensures [Cell_interferenceReference_df($p0, r, lvl, c), true]
+
+
+function Cell_sk_$_action_n(r: Ref, lvl: Int, c: Ref): Int
+  requires acc(Cell_sk_fp(), write)
+
+
+function Cell_sk_$_action_m(r: Ref, lvl: Int, c: Ref): Int
+  requires acc(Cell_sk_fp(), write)
+
+
+function Cell_state(r: Ref, lvl: Int, c: Ref): Int
+  requires acc(Cell(r, lvl, c), write)
+  ensures [Cell_state_T(r, lvl, c), true]
+{
+  (unfolding acc(Cell(r, lvl, c), write) in c.$cell_$val)
+}
+
+predicate Cell_Z($r: Ref) 
+
+predicate Cell_atomicity_context_fp(r: Ref, lvl: Int, c: Ref) 
+
+predicate Cell_interferenceContext_fp(r: Ref, lvl: Int, c: Ref) 
+
+predicate Cell_sk_fp() 
+
+predicate Cell(r: Ref, lvl: Int, c: Ref) {
+  acc(c.$cell_$val, write) && true && (acc(r.$Cell_$_copy, write) && true) && c.$cell_$val == r.$Cell_$_copy
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method ___silicon_hack407_havoc_all_Cell()
+
+
+method ___silicon_hack407_havoc_all_Cell_interferenceContext_fp()
+
+
+method test02()
+{
+  var r: Ref
+  var c: Ref
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale acc(Cell_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(Cell_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context Cell (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // Inferring interference all instances of region Cell
+  
+  ___silicon_hack407_havoc_all_Cell_interferenceContext_fp()
+  exhale acc(Cell_sk_fp(), write)
+  inhale acc(Cell_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Cell_interferenceSet_df(1, $r, $lvl, $c)) } none < old[pre_infer0](perm(Cell($r, $lvl, $c))) ==> ($$_m in Cell_interferenceSet_hf(1, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Cell_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Cell_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer0](Cell_state($r, $lvl, $c)) || Cell_sk_$_action_n($r, $lvl, $c) == old[pre_infer0](Cell_state($r, $lvl, $c)) && Cell_sk_$_action_m($r, $lvl, $c) == $$_m && Cell_sk_$_action_n($r, $lvl, $c) <= Cell_sk_$_action_m($r, $lvl, $c) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: none < old[pre_infer0](perm(Cell($r, $lvl, $c))) ==> Cell_interferenceReference_hf(1, $r, $lvl, $c) == old[pre_infer0](Cell_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context Cell (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- new:cell BEGIN ----------
+  
+  
+  c := new($cell_$val)
+  c.$cell_$val := 12
+  
+  // ------- new:cell END ------------
+  
+  
+  
+  // ------- Stabilising regions Cell (after new:cell@16.3) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region Cell
+  
+  ___silicon_hack407_havoc_all_Cell_interferenceContext_fp()
+  exhale acc(Cell_sk_fp(), write)
+  inhale acc(Cell_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Cell_interferenceSet_df(2, $r, $lvl, $c)) } none < old[pre_stabilize0](perm(Cell($r, $lvl, $c))) ==> ($$_m in Cell_interferenceSet_hf(2, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Cell_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Cell_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_stabilize0](Cell_state($r, $lvl, $c)) || Cell_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize0](Cell_state($r, $lvl, $c)) && Cell_sk_$_action_m($r, $lvl, $c) == $$_m && Cell_sk_$_action_n($r, $lvl, $c) <= Cell_sk_$_action_m($r, $lvl, $c) && true))))
+  ___silicon_hack407_havoc_all_Cell()
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: none < old[pre_stabilize0](perm(Cell($r, $lvl, $c))) ==> (Cell_state($r, $lvl, $c) in Cell_interferenceSet_hf(2, $r, $lvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: none < old[pre_stabilize0](perm(Cell($r, $lvl, $c))) ==> Cell_interferenceReference_hf(2, $r, $lvl, $c) == old[pre_stabilize0](Cell_state($r, $lvl, $c)))
+  
+  // ------- Stabilising regions Cell (after new:cell@16.3) END 
+  
+  
+  
+  // ------- new:Cell BEGIN ----------
+  
+  
+  r := new($Cell_$_copy)
+  inhale true
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  r.$Cell_$_copy := 12
+  
+  // ------- heap-write END ----------
+  
+  
+  fold acc(Cell(r, 1, c), write)
+  
+  // ------- new:Cell END ------------
+  
+  
+  
+  // ------- Stabilising regions Cell (after seq-comp@16.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region Cell
+  
+  ___silicon_hack407_havoc_all_Cell_interferenceContext_fp()
+  exhale acc(Cell_sk_fp(), write)
+  inhale acc(Cell_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Cell_interferenceSet_df(3, $r, $lvl, $c)) } none < old[pre_stabilize](perm(Cell($r, $lvl, $c))) ==> ($$_m in Cell_interferenceSet_hf(3, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Cell_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Cell_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_stabilize](Cell_state($r, $lvl, $c)) || Cell_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize](Cell_state($r, $lvl, $c)) && Cell_sk_$_action_m($r, $lvl, $c) == $$_m && Cell_sk_$_action_n($r, $lvl, $c) <= Cell_sk_$_action_m($r, $lvl, $c) && true))))
+  ___silicon_hack407_havoc_all_Cell()
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: none < old[pre_stabilize](perm(Cell($r, $lvl, $c))) ==> (Cell_state($r, $lvl, $c) in Cell_interferenceSet_hf(3, $r, $lvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: none < old[pre_stabilize](perm(Cell($r, $lvl, $c))) ==> Cell_interferenceReference_hf(3, $r, $lvl, $c) == old[pre_stabilize](Cell_state($r, $lvl, $c)))
+  
+  // ------- Stabilising regions Cell (after seq-comp@16.3) END 
+  
+  
+}
+
+method $_Cell_interpretation_stability_check(r: Ref, lvl: Int, c: Ref)
+{
+  inhale acc(Cell_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(Cell_interferenceContext_fp($r, $lvl, $c), write))
+  inhale acc(c.$cell_$val, write) && true && (acc(r.$Cell_$_copy, write) && true) && c.$cell_$val == r.$Cell_$_copy
+  
+  // ------- Stabilising regions Cell (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region Cell
+  
+  ___silicon_hack407_havoc_all_Cell()
+  exhale acc(Cell_sk_fp(), write)
+  inhale acc(Cell_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: none < old[pre_stabilize2](perm(Cell($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(Cell_atomicity_context_fp($r, $lvl, $c)) ==> (Cell_state($r, $lvl, $c) in Cell_atomicity_context_hf($r, $lvl, $c))) && (Cell_state($r, $lvl, $c) == old[pre_stabilize2](Cell_state($r, $lvl, $c)) || Cell_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize2](Cell_state($r, $lvl, $c)) && Cell_sk_$_action_m($r, $lvl, $c) == Cell_state($r, $lvl, $c) && Cell_sk_$_action_n($r, $lvl, $c) <= Cell_sk_$_action_m($r, $lvl, $c) && true))
+  
+  // ------- Stabilising regions Cell (check stability of region interpretation) END 
+  
+  
+  assert acc(c.$cell_$val, write) && true && (acc(r.$Cell_$_copy, write) && true) && c.$cell_$val == r.$Cell_$_copy
+}
+
+method $_Cell_action_transitivity_check()
+{
+  var Z: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && $_action_n_0_x <= $_action_m_0_x && Z
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && $_action_n_0_y <= $_action_m_0_y && Z
+  assert aState == cState || aState == aState && cState == cState && aState <= cState && Z
+}
+
+method $_test02_condition_stability_precondition_check()
+{
+  var $_levelVar_1: Int
+  var r: Ref
+  var c: Ref
+  inhale $_levelVar_1 >= 0
+  inhale acc(Cell_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(Cell_interferenceContext_fp($r, $lvl, $c), write))
+  
+  // ------- Inferring interference context Cell (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // Inferring interference all instances of region Cell
+  
+  ___silicon_hack407_havoc_all_Cell_interferenceContext_fp()
+  exhale acc(Cell_sk_fp(), write)
+  inhale acc(Cell_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Cell_interferenceSet_df(4, $r, $lvl, $c)) } none < old[pre_infer](perm(Cell($r, $lvl, $c))) ==> ($$_m in Cell_interferenceSet_hf(4, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Cell_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Cell_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer](Cell_state($r, $lvl, $c)) || Cell_sk_$_action_n($r, $lvl, $c) == old[pre_infer](Cell_state($r, $lvl, $c)) && Cell_sk_$_action_m($r, $lvl, $c) == $$_m && Cell_sk_$_action_n($r, $lvl, $c) <= Cell_sk_$_action_m($r, $lvl, $c) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: none < old[pre_infer](perm(Cell($r, $lvl, $c))) ==> Cell_interferenceReference_hf(4, $r, $lvl, $c) == old[pre_infer](Cell_state($r, $lvl, $c)))
+  
+  // ------- Inferring interference context Cell (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Cell (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region Cell
+  
+  ___silicon_hack407_havoc_all_Cell()
+  exhale acc(Cell_sk_fp(), write)
+  inhale acc(Cell_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Cell($r, $lvl, $c)] :: none < old[pre_stabilize3](perm(Cell($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(Cell_atomicity_context_fp($r, $lvl, $c)) ==> (Cell_state($r, $lvl, $c) in Cell_atomicity_context_hf($r, $lvl, $c))) && (Cell_state($r, $lvl, $c) == old[pre_stabilize3](Cell_state($r, $lvl, $c)) || Cell_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize3](Cell_state($r, $lvl, $c)) && Cell_sk_$_action_m($r, $lvl, $c) == Cell_state($r, $lvl, $c) && Cell_sk_$_action_n($r, $lvl, $c) <= Cell_sk_$_action_m($r, $lvl, $c) && true))
+  
+  // ------- Stabilising regions Cell (check stability of method condition) END 
+  
+  
+  assert true
+}

@@ -20,13 +20,12 @@ import viper.silicon.state.terms.{MagicWandSnapshot, _}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 
-object magicWandSupporter extends SymbolicExecutionRules with Immutable {
+object magicWandSupporter extends SymbolicExecutionRules {
   import consumer._
   import evaluator._
   import producer._
 
-  def checkWandsAreSelfFraming(s: State, g: Store, oldHeap: Heap, root: ast.Member, v: Verifier): VerificationResult =
-    sys.error("Implementation missing")
+//  def checkWandsAreSelfFraming(s: State, g: Store, oldHeap: Heap, root: ast.Member, v: Verifier): VerificationResult =
 //  {
 //    val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
 //    var result: VerificationResult = Success()

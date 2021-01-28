@@ -1,0 +1,3648 @@
+domain PyType {
+  
+  function extends_(sub: PyType, super: PyType): Bool
+  
+  function issubtype(sub: PyType, super: PyType): Bool
+  
+  function isnotsubtype(sub: PyType, super: PyType): Bool
+  
+  function tuple_args(t: PyType): Seq[PyType]
+  
+  function typeof(obj: Ref): PyType
+  
+  function get_basic(t: PyType): PyType
+  
+  function union_type_1(arg_1: PyType): PyType
+  
+  function union_type_2(arg_1: PyType, arg_2: PyType): PyType
+  
+  function union_type_3(arg_1: PyType, arg_2: PyType, arg_3: PyType): PyType
+  
+  function union_type_4(arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType): PyType
+  
+  unique function object(): PyType
+  
+  unique function list_basic(): PyType
+  
+  function list(arg0: PyType): PyType
+  
+  function list_arg(typ: PyType, index: Int): PyType
+  
+  unique function set_basic(): PyType
+  
+  function set(arg0: PyType): PyType
+  
+  function set_arg(typ: PyType, index: Int): PyType
+  
+  unique function dict_basic(): PyType
+  
+  function dict(arg0: PyType, arg1: PyType): PyType
+  
+  function dict_arg(typ: PyType, index: Int): PyType
+  
+  unique function int(): PyType
+  
+  unique function float(): PyType
+  
+  unique function bool(): PyType
+  
+  unique function NoneType(): PyType
+  
+  unique function Exception(): PyType
+  
+  unique function ConnectionRefusedError(): PyType
+  
+  unique function traceback(): PyType
+  
+  unique function str(): PyType
+  
+  unique function bytes(): PyType
+  
+  unique function tuple_basic(): PyType
+  
+  function tuple(args: Seq[PyType]): PyType
+  
+  function tuple_arg(typ: PyType, index: Int): PyType
+  
+  unique function PSeq_basic(): PyType
+  
+  function PSeq(arg0: PyType): PyType
+  
+  function PSeq_arg(typ: PyType, index: Int): PyType
+  
+  unique function PSet_basic(): PyType
+  
+  function PSet(arg0: PyType): PyType
+  
+  function PSet_arg(typ: PyType, index: Int): PyType
+  
+  unique function PMultiset_basic(): PyType
+  
+  function PMultiset(arg0: PyType): PyType
+  
+  function PMultiset_arg(typ: PyType, index: Int): PyType
+  
+  unique function slice(): PyType
+  
+  unique function range(): PyType
+  
+  unique function Iterator_basic(): PyType
+  
+  function Iterator(arg0: PyType): PyType
+  
+  function Iterator_arg(typ: PyType, index: Int): PyType
+  
+  unique function Thread_0(): PyType
+  
+  unique function LevelType(): PyType
+  
+  unique function type(): PyType
+  
+  unique function Place(): PyType
+  
+  unique function __prim__Seq_type(): PyType
+  
+  unique function MyException(): PyType
+  
+  unique function MyException2(): PyType
+  
+  unique function Container(): PyType
+  
+  axiom issubtype_transitivity {
+    (forall sub: PyType, middle: PyType, super: PyType :: { issubtype(sub, middle),issubtype(middle, super) } issubtype(sub, middle) && issubtype(middle, super) ==> issubtype(sub, super))
+  }
+  
+  axiom issubtype_reflexivity {
+    (forall type_: PyType :: { issubtype(type_, type_) } issubtype(type_, type_))
+  }
+  
+  axiom extends_implies_subtype {
+    (forall sub: PyType, sub2: PyType :: { extends_(sub, sub2) } extends_(sub, sub2) ==> issubtype(sub, sub2))
+  }
+  
+  axiom null_nonetype {
+    (forall r: Ref :: { typeof(r) } issubtype(typeof(r), NoneType()) == (r == null))
+  }
+  
+  axiom issubtype_object {
+    (forall type_: PyType :: { issubtype(type_, object()) } issubtype(type_, object()))
+  }
+  
+  axiom issubtype_exclusion {
+    (forall sub: PyType, sub2: PyType, super: PyType :: { extends_(sub, super),extends_(sub2, super) } extends_(sub, super) && extends_(sub2, super) && sub != sub2 ==> isnotsubtype(sub, sub2) && isnotsubtype(sub2, sub))
+  }
+  
+  axiom issubtype_exclusion_2 {
+    (forall sub: PyType, super: PyType :: { issubtype(sub, super) } { issubtype(super, sub) } issubtype(sub, super) && sub != super ==> !issubtype(super, sub))
+  }
+  
+  axiom issubtype_exclusion_propagation {
+    (forall sub: PyType, middle: PyType, super: PyType :: { issubtype(sub, middle),isnotsubtype(middle, super) } issubtype(sub, middle) && isnotsubtype(middle, super) ==> !issubtype(sub, super))
+  }
+  
+  axiom tuple_arg_def {
+    (forall seq: Seq[PyType], i: Int, Z: PyType :: { tuple(seq),tuple_arg(Z, i) } issubtype(Z, tuple(seq)) ==> issubtype(tuple_arg(Z, i), seq[i]))
+  }
+  
+  axiom tuple_args_def {
+    (forall seq: Seq[PyType], Z: PyType :: { issubtype(Z, tuple(seq)) } issubtype(Z, tuple(seq)) ==> |tuple_args(Z)| == |seq|)
+  }
+  
+  axiom tuple_self_subtype {
+    (forall seq1: Seq[PyType], seq2: Seq[PyType] :: seq1 != seq2 && |seq1| == |seq2| && (forall i: Int :: i >= 0 && i < |seq1| ==> issubtype(seq1[i], seq2[i])) ==> issubtype(tuple(seq1), tuple(seq2)))
+  }
+  
+  axiom union_subtype_1 {
+    (forall arg_1: PyType, X: PyType :: { issubtype(X, union_type_1(arg_1)) } issubtype(X, union_type_1(arg_1)) == (false || issubtype(X, arg_1)))
+  }
+  
+  axiom union_subtype_2 {
+    (forall arg_1: PyType, arg_2: PyType, X: PyType :: { issubtype(X, union_type_2(arg_1, arg_2)) } issubtype(X, union_type_2(arg_1, arg_2)) == (false || issubtype(X, arg_1) || issubtype(X, arg_2)))
+  }
+  
+  axiom union_subtype_3 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, X: PyType :: { issubtype(X, union_type_3(arg_1, arg_2, arg_3)) } issubtype(X, union_type_3(arg_1, arg_2, arg_3)) == (false || issubtype(X, arg_1) || issubtype(X, arg_2) || issubtype(X, arg_3)))
+  }
+  
+  axiom union_subtype_4 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType, X: PyType :: { issubtype(X, union_type_4(arg_1, arg_2, arg_3, arg_4)) } issubtype(X, union_type_4(arg_1, arg_2, arg_3, arg_4)) == (false || issubtype(X, arg_1) || issubtype(X, arg_2) || issubtype(X, arg_3) || issubtype(X, arg_4)))
+  }
+  
+  axiom subtype_union_1 {
+    (forall arg_1: PyType, X: PyType :: { issubtype(union_type_1(arg_1), X) } issubtype(union_type_1(arg_1), X) == (true && issubtype(arg_1, X)))
+  }
+  
+  axiom subtype_union_2 {
+    (forall arg_1: PyType, arg_2: PyType, X: PyType :: { issubtype(union_type_2(arg_1, arg_2), X) } issubtype(union_type_2(arg_1, arg_2), X) == (true && issubtype(arg_1, X) && issubtype(arg_2, X)))
+  }
+  
+  axiom subtype_union_3 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, X: PyType :: { issubtype(union_type_3(arg_1, arg_2, arg_3), X) } issubtype(union_type_3(arg_1, arg_2, arg_3), X) == (true && issubtype(arg_1, X) && issubtype(arg_2, X) && issubtype(arg_3, X)))
+  }
+  
+  axiom subtype_union_4 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType, X: PyType :: { issubtype(union_type_4(arg_1, arg_2, arg_3, arg_4), X) } issubtype(union_type_4(arg_1, arg_2, arg_3, arg_4), X) == (true && issubtype(arg_1, X) && issubtype(arg_2, X) && issubtype(arg_3, X) && issubtype(arg_4, X)))
+  }
+  
+  axiom subtype_list {
+    (forall var0: PyType :: { list(var0) } extends_(list(var0), object()) && get_basic(list(var0)) == list_basic())
+  }
+  
+  axiom list_args0 {
+    (forall Z: PyType, arg0: PyType :: { list(arg0),list_arg(Z, 0) } issubtype(Z, list(arg0)) ==> list_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_set {
+    (forall var0: PyType :: { set(var0) } extends_(set(var0), object()) && get_basic(set(var0)) == set_basic())
+  }
+  
+  axiom set_args0 {
+    (forall Z: PyType, arg0: PyType :: { set(arg0),set_arg(Z, 0) } issubtype(Z, set(arg0)) ==> set_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_dict {
+    (forall var0: PyType, var1: PyType :: { dict(var0, var1) } extends_(dict(var0, var1), object()) && get_basic(dict(var0, var1)) == dict_basic())
+  }
+  
+  axiom dict_args0 {
+    (forall Z: PyType, arg0: PyType, arg1: PyType :: { dict(arg0, arg1),dict_arg(Z, 0) } issubtype(Z, dict(arg0, arg1)) ==> dict_arg(Z, 0) == arg0)
+  }
+  
+  axiom dict_args1 {
+    (forall Z: PyType, arg0: PyType, arg1: PyType :: { dict(arg0, arg1),dict_arg(Z, 1) } issubtype(Z, dict(arg0, arg1)) ==> dict_arg(Z, 1) == arg1)
+  }
+  
+  axiom subtype_int {
+    extends_(int(), float()) && get_basic(int()) == int()
+  }
+  
+  axiom subtype_float {
+    extends_(float(), object()) && get_basic(float()) == float()
+  }
+  
+  axiom subtype_bool {
+    extends_(bool(), int()) && get_basic(bool()) == bool()
+  }
+  
+  axiom subtype_NoneType {
+    extends_(NoneType(), object()) && get_basic(NoneType()) == NoneType()
+  }
+  
+  axiom subtype_Exception {
+    extends_(Exception(), object()) && get_basic(Exception()) == Exception()
+  }
+  
+  axiom subtype_ConnectionRefusedError {
+    extends_(ConnectionRefusedError(), Exception()) && get_basic(ConnectionRefusedError()) == ConnectionRefusedError()
+  }
+  
+  axiom subtype_traceback {
+    extends_(traceback(), object()) && get_basic(traceback()) == traceback()
+  }
+  
+  axiom subtype_str {
+    extends_(str(), object()) && get_basic(str()) == str()
+  }
+  
+  axiom subtype_bytes {
+    extends_(bytes(), object()) && get_basic(bytes()) == bytes()
+  }
+  
+  axiom subtype_tuple {
+    (forall args: Seq[PyType] :: { tuple(args) } ((forall e: PyType :: (e in args) ==> e == object()) ==> extends_(tuple(args), object())) && get_basic(tuple(args)) == tuple_basic())
+  }
+  
+  axiom subtype_PSeq {
+    (forall var0: PyType :: { PSeq(var0) } extends_(PSeq(var0), object()) && get_basic(PSeq(var0)) == PSeq_basic())
+  }
+  
+  axiom PSeq_args0 {
+    (forall Z: PyType, arg0: PyType :: { PSeq(arg0),PSeq_arg(Z, 0) } issubtype(Z, PSeq(arg0)) ==> PSeq_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_PSet {
+    (forall var0: PyType :: { PSet(var0) } extends_(PSet(var0), object()) && get_basic(PSet(var0)) == PSet_basic())
+  }
+  
+  axiom PSet_args0 {
+    (forall Z: PyType, arg0: PyType :: { PSet(arg0),PSet_arg(Z, 0) } issubtype(Z, PSet(arg0)) ==> PSet_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_PMultiset {
+    (forall var0: PyType :: { PMultiset(var0) } extends_(PMultiset(var0), object()) && get_basic(PMultiset(var0)) == PMultiset_basic())
+  }
+  
+  axiom PMultiset_args0 {
+    (forall Z: PyType, arg0: PyType :: { PMultiset(arg0),PMultiset_arg(Z, 0) } issubtype(Z, PMultiset(arg0)) ==> PMultiset_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_slice {
+    extends_(slice(), object()) && get_basic(slice()) == slice()
+  }
+  
+  axiom subtype_range {
+    extends_(range(), object()) && get_basic(range()) == range()
+  }
+  
+  axiom subtype_Iterator {
+    (forall var0: PyType :: { Iterator(var0) } extends_(Iterator(var0), object()) && get_basic(Iterator(var0)) == Iterator_basic())
+  }
+  
+  axiom Iterator_args0 {
+    (forall Z: PyType, arg0: PyType :: { Iterator(arg0),Iterator_arg(Z, 0) } issubtype(Z, Iterator(arg0)) ==> Iterator_arg(Z, 0) == arg0)
+  }
+  
+  axiom subtype_Thread_0 {
+    extends_(Thread_0(), object()) && get_basic(Thread_0()) == Thread_0()
+  }
+  
+  axiom subtype_LevelType {
+    extends_(LevelType(), object()) && get_basic(LevelType()) == LevelType()
+  }
+  
+  axiom subtype_type {
+    extends_(type(), object()) && get_basic(type()) == type()
+  }
+  
+  axiom subtype_Place {
+    extends_(Place(), object()) && get_basic(Place()) == Place()
+  }
+  
+  axiom subtype___prim__Seq_type {
+    extends_(__prim__Seq_type(), object()) && get_basic(__prim__Seq_type()) == __prim__Seq_type()
+  }
+  
+  axiom subtype_MyException {
+    extends_(MyException(), Exception()) && get_basic(MyException()) == MyException()
+  }
+  
+  axiom subtype_MyException2 {
+    extends_(MyException2(), Exception()) && get_basic(MyException2()) == MyException2()
+  }
+  
+  axiom subtype_Container {
+    extends_(Container(), object()) && get_basic(Container()) == Container()
+  }
+}
+
+domain SIFDomain[T] {
+  
+  function Low(x: T): Bool
+}
+
+domain _list_ce_helper {
+  
+  function seq_ref_length(___s: Seq[Ref]): Int
+  
+  function seq_ref_index(___s: Seq[Ref], i: Int): Ref
+  
+  axiom relate_length {
+    (forall ___s: Seq[Ref] :: { |___s| } |___s| == seq_ref_length(___s))
+  }
+  
+  axiom relate_index {
+    (forall ___s: Seq[Ref], ___i: Int :: { ___s[___i] } ___s[___i] == seq_ref_index(___s, ___i))
+  }
+}
+
+domain Measure$ {
+  
+  function Measure$create(guard: Bool, key: Ref, value: Int): Measure$
+  
+  function Measure$guard(m: Measure$): Bool
+  
+  function Measure$key(m: Measure$): Ref
+  
+  function Measure$value(m: Measure$): Int
+  
+  axiom Measure$A0 {
+    (forall g: Bool, k: Ref, v: Int :: { Measure$guard(Measure$create(g, k, v)) } Measure$guard(Measure$create(g, k, v)) == g)
+  }
+  
+  axiom Measure$A1 {
+    (forall g: Bool, k: Ref, v: Int :: { Measure$key(Measure$create(g, k, v)) } Measure$key(Measure$create(g, k, v)) == k)
+  }
+  
+  axiom Measure$A2 {
+    (forall g: Bool, k: Ref, v: Int :: { Measure$value(Measure$create(g, k, v)) } Measure$value(Measure$create(g, k, v)) == v)
+  }
+}
+
+domain _dict_ce_helper {
+  
+  function dict_get_helper(___s: Set[Ref], ___s2: Ref, ___s3: Ref): Ref
+}
+
+domain _Name {
+  
+  function _combine(n1: _Name, n2: _Name): _Name
+  
+  function _single(n: Int): _Name
+  
+  function _get_combined_prefix(n: _Name): _Name
+  
+  function _get_combined_name(n: _Name): _Name
+  
+  function _get_value(n: _Name): Int
+  
+  function _name_type(n: _Name): Bool
+  
+  function _is_single(n: _Name): Bool
+  
+  function _is_combined(n: _Name): Bool
+  
+  axiom decompose_single {
+    (forall i: Int :: { _single(i) } _get_value(_single(i)) == i)
+  }
+  
+  axiom compose_single {
+    (forall n: _Name :: { _get_value(n) } _is_single(n) ==> n == _single(_get_value(n)))
+  }
+  
+  axiom type_of_single {
+    (forall i: Int :: { _single(i) } _name_type(_single(i)))
+  }
+  
+  axiom decompose_combined {
+    (forall n1: _Name, n2: _Name :: { _combine(n1, n2) } _get_combined_prefix(_combine(n1, n2)) == n1 && _get_combined_name(_combine(n1, n2)) == n2)
+  }
+  
+  axiom compose_combined {
+    (forall n: _Name :: { _get_combined_prefix(n) } { _get_combined_name(n) } _is_combined(n) ==> n == _combine(_get_combined_prefix(n), _get_combined_name(n)))
+  }
+  
+  axiom type_of_composed {
+    (forall n1: _Name, n2: _Name :: { _combine(n1, n2) } !_name_type(_combine(n1, n2)))
+  }
+  
+  axiom type_is_single {
+    (forall n: _Name :: { _name_type(n) } _name_type(n) == _is_single(n))
+  }
+  
+  axiom type_is_combined {
+    (forall n: _Name :: { _name_type(n) } !_name_type(n) == _is_combined(n))
+  }
+}
+
+field _val: Ref
+
+field _valp: Ref
+
+field __container: Ref
+
+field __containerp: Ref
+
+field __iter_index: Int
+
+field __iter_indexp: Int
+
+field __previous: Seq[Ref]
+
+field __previousp: Seq[Ref]
+
+field list_acc: Seq[Ref]
+
+field list_accp: Seq[Ref]
+
+field set_acc: Set[Ref]
+
+field set_accp: Set[Ref]
+
+field dict_acc: Set[Ref]
+
+field dict_accp: Set[Ref]
+
+field dict_acc2: Ref
+
+field dict_acc2p: Ref
+
+field Measure$acc: Seq[Ref]
+
+field Measure$accp: Seq[Ref]
+
+field MustReleaseBounded: Int
+
+field MustReleaseBoundedp: Int
+
+field MustReleaseUnbounded: Int
+
+field MustReleaseUnboundedp: Int
+
+field Container_value: Ref
+
+field Container_valuep: Ref
+
+function _isDefined(id: Int): Bool
+
+
+function _checkDefined(val: Ref, id: Int): Ref
+  requires _isDefined(id)
+{
+  val
+}
+
+function __file__(): Ref
+
+
+function __name__(): Ref
+
+
+function __prim__int___box__(prim: Int): Ref
+  ensures typeof(result) == int()
+  ensures int___unbox__(result) == prim
+
+
+function int___unbox__(box: Ref): Int
+  requires issubtype(typeof(box), int())
+  ensures !issubtype(typeof(box), bool()) ==> __prim__int___box__(result) == box
+  ensures issubtype(typeof(box), bool()) ==> __prim__bool___box__(result != 0) == box
+
+
+function __prim__bool___box__(prim: Bool): Ref
+  ensures typeof(result) == bool()
+  ensures bool___unbox__(result) == prim
+  ensures int___unbox__(result) == (prim ? 1 : 0)
+
+
+function bool___unbox__(box: Ref): Bool
+  requires issubtype(typeof(box), bool())
+  ensures __prim__bool___box__(result) == box
+
+
+function int___eq__(self: Ref, other: Ref): Bool
+  requires issubtype(typeof(self), int())
+  requires issubtype(typeof(other), int())
+{
+  int___unbox__(self) == int___unbox__(other)
+}
+
+function int___ge__(self: Int, other: Int): Bool
+{
+  self >= other
+}
+
+function int___gt__(self: Int, other: Int): Bool
+{
+  self > other
+}
+
+function int___le__(self: Int, other: Int): Bool
+{
+  self <= other
+}
+
+function int___lt__(self: Int, other: Int): Bool
+{
+  self < other
+}
+
+function int___add__(self: Int, other: Int): Int
+{
+  self + other
+}
+
+function int___mul__(self: Int, other: Int): Int
+{
+  self * other
+}
+
+function int___mod__(self: Int, other: Int): Int
+  requires other != 0
+{
+  self % other
+}
+
+function Level(r: Ref): Perm
+
+
+function str___len__(self: Ref): Int
+  ensures result >= 0
+
+
+function str___val__(self: Ref): Int
+
+
+function str___create__(len: Int, value: Int): Ref
+  ensures str___len__(result) == len
+  ensures str___val__(result) == value
+  ensures typeof(result) == str()
+
+
+function str___eq__(self: Ref, other: Ref): Bool
+  requires issubtype(typeof(self), str())
+  ensures (str___val__(self) == str___val__(other)) == result
+  ensures result ==> str___len__(self) == str___len__(other)
+
+
+predicate MustTerminate(r: Ref) 
+
+predicate MustTerminate_0(r: Ref) 
+
+predicate MustInvokeBounded(r: Ref) 
+
+predicate MustInvokeBounded_0(r: Ref) 
+
+predicate MustInvokeUnbounded(r: Ref) 
+
+predicate MustInvokeUnbounded_0(r: Ref) 
+
+predicate _MaySet(rec: Ref, id: Int) 
+
+predicate _MaySet_0(rec: Ref, id: Int) 
+
+method m1(p1: Bool, p2: Bool, _cthread_157: Ref, _cthread_157_0: Ref, _caller_measures_157: Seq[Measure$], _caller_measures_157_0: Seq[Measure$], _residue_157: Perm, _residue_157_0: Perm, b: Ref, b_9: Ref) returns (_current_wait_level_157: Perm, _current_wait_level_157_0: Perm, _res: Ref, _res_0: Ref)
+  requires (p1 ==> _cthread_157 != null) && (p2 ==> _cthread_157_0 != null)
+  requires (p1 ==> issubtype(typeof(_cthread_157), Thread_0())) && (p2 ==> issubtype(typeof(_cthread_157_0), Thread_0()))
+  requires (p1 ==> issubtype(typeof(b), bool())) && (p2 ==> issubtype(typeof(b_9), bool()))
+  requires (p1 ==> [true, perm(MustTerminate(_cthread_157)) == none && ((forperm _r_1: Ref [MustInvokeBounded(_r_1)] :: false) && ((forperm _r_1: Ref [MustInvokeUnbounded(_r_1)] :: false) && ((forperm _r_1: Ref [_r_1.MustReleaseBounded] :: false) && (forperm _r_1: Ref [_r_1.MustReleaseUnbounded] :: false))))]) && (p2 ==> [true, perm(MustTerminate_0(_cthread_157_0)) == none && ((forperm _r_1: Ref [MustInvokeBounded_0(_r_1)] :: false) && ((forperm _r_1: Ref [MustInvokeUnbounded_0(_r_1)] :: false) && ((forperm _r_1: Ref [_r_1.MustReleaseBoundedp] :: false) && (forperm _r_1: Ref [_r_1.MustReleaseUnboundedp] :: false))))])
+  ensures (p1 ==> [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _current_wait_level_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _current_wait_level_157) && _residue_157 <= _current_wait_level_157), true]) && (p2 ==> [(forperm _r: Ref [_r.MustReleaseBoundedp] :: Level(_r) <= _current_wait_level_157_0) && ((forperm _r: Ref [_r.MustReleaseUnboundedp] :: Level(_r) <= _current_wait_level_157_0) && _residue_157_0 <= _current_wait_level_157_0), true])
+  ensures (p1 ==> issubtype(typeof(_res), int())) && (p2 ==> issubtype(typeof(_res_0), int()))
+  ensures (p1 ==> bool___unbox__(b) ==> int___eq__(_res, __prim__int___box__(-2))) && (p2 ==> bool___unbox__(b_9) ==> int___eq__(_res_0, __prim__int___box__(-2)))
+  ensures (p1 ==> !bool___unbox__(b) ==> int___eq__(_res, __prim__int___box__(2))) && (p2 ==> !bool___unbox__(b_9) ==> int___eq__(_res_0, __prim__int___box__(2)))
+  ensures (p1 ==> [true, (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]) && (p2 ==> [true, (forperm _r_0: Ref [MustInvokeBounded_0(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded_0(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBoundedp] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnboundedp] :: false)))])
+{
+  var ret1: Bool
+  var ret2: Bool
+  var except1: Bool
+  var except2: Bool
+  inhale p1
+  ret1 := false
+  ret2 := false
+  except1 := false
+  except2 := false
+  var _err: Ref
+  var _err_0: Ref
+  var x_0: Ref
+  var x_0_0: Ref
+  var error: Ref
+  var error_11: Ref
+  var try_finally_7: Int
+  var try_finally_7_0: Int
+  var b_4: Ref
+  var b_4_0: Ref
+  var MyException_res: Ref
+  var MyException_res_9: Ref
+  var _cwl_157: Perm
+  var _cwl_157_0: Perm
+  var _method_measures_157: Seq[Measure$]
+  var _method_measures_157_0: Seq[Measure$]
+  if (p1 && (!ret1 && !except1)) {
+    _method_measures_157 := Seq[Measure$]()
+    _res := null
+    _err := null
+    b_4 := b
+  }
+  if (p2 && (!ret2 && !except2)) {
+    _method_measures_157_0 := Seq[Measure$]()
+    _res_0 := null
+    _err_0 := null
+    b_4_0 := b_9
+  }
+  // Try/catch block
+  
+  var bypass1: Bool
+  var bypass2: Bool
+  var oldret1: Bool
+  var oldret2: Bool
+  var oldexcept1: Bool
+  var oldexcept2: Bool
+  var thisexcept1: Bool
+  var thisexcept2: Bool
+  var p1_1: Bool
+  var p2_1: Bool
+  var p1_2: Bool
+  var p2_2: Bool
+  var tmp_ret1: Bool
+  var tmp_ret2: Bool
+  var tmp_break1: Bool
+  var tmp_break2: Bool
+  var tmp_cont1: Bool
+  var tmp_cont2: Bool
+  var tmp_except1: Bool
+  var tmp_except2: Bool
+  bypass1 := !(p1 && (!ret1 && !except1))
+  bypass2 := !(p2 && (!ret2 && !except2))
+  oldret1 := ret1
+  oldret2 := ret2
+  oldexcept1 := except1
+  oldexcept2 := except2
+  var p1_0: Bool
+  var p2_0: Bool
+  var p3: Bool
+  var p4: Bool
+  p1_0 := p1 && (!ret1 && !except1) && bool___unbox__(b_4)
+  p2_0 := p2 && (!ret2 && !except2) && bool___unbox__(b_4_0)
+  p3 := p1 && (!ret1 && !except1) && !bool___unbox__(b_4)
+  p4 := p2 && (!ret2 && !except2) && !bool___unbox__(b_4_0)
+  var tmp: Ref
+  tmp := new()
+  if (p1_0 && (!ret1 && !except1)) {
+    MyException_res := tmp
+  }
+  if (p2_0 && (!ret2 && !except2)) {
+    MyException_res_9 := tmp
+  }
+  if (p1_0 && (!ret1 && !except1)) {
+    inhale typeof(MyException_res) == MyException()
+  }
+  if (p2_0 && (!ret2 && !except2)) {
+    inhale typeof(MyException_res_9) == MyException()
+  }
+  if (p1_0 && (!ret1 && !except1)) {
+    _err := MyException_res
+    except1 := true
+  }
+  if (p2_0 && (!ret2 && !except2)) {
+    _err_0 := MyException_res_9
+    except2 := true
+  }
+  thisexcept1 := except1 && !bypass1
+  thisexcept2 := except2 && !bypass2
+  p1_1 := p1 && (thisexcept1 && issubtype(typeof(_err), MyException()))
+  p2_1 := p2 && (thisexcept2 && issubtype(typeof(_err_0), MyException()))
+  if (p1_1) {
+    except1 := false
+  }
+  if (p2_1) {
+    except2 := false
+  }
+  if (p1_1 && (!ret1 && !except1)) {
+    x_0 := __prim__int___box__(-1)
+    inhale _isDefined(3170168)
+  }
+  if (p2_1 && (!ret2 && !except2)) {
+    x_0_0 := __prim__int___box__(-1)
+    inhale true
+  }
+  if (p1 && (!ret1 && !except1)) {
+    _err := null
+  }
+  if (p2 && (!ret2 && !except2)) {
+    _err_0 := null
+  }
+  p1_2 := p1 && !thisexcept1
+  p2_2 := p2 && !thisexcept2
+  if (p1_2 && (!ret1 && !except1)) {
+    x_0 := __prim__int___box__(1)
+    inhale _isDefined(3170168)
+  }
+  if (p2_2 && (!ret2 && !except2)) {
+    x_0_0 := __prim__int___box__(1)
+    inhale true
+  }
+  if (p1) {
+    tmp_ret1 := ret1
+    ret1 := oldret1
+    tmp_except1 := except1
+    except1 := oldexcept1
+  }
+  if (p2) {
+    tmp_ret2 := ret2
+    ret2 := oldret2
+    tmp_except2 := except2
+    except2 := oldexcept2
+  }
+  if (p1 && (!ret1 && !except1)) {
+    x_0 := __prim__int___box__(int___mul__(2, int___unbox__(_checkDefined(x_0, 3170168))))
+    inhale _isDefined(3170168)
+  }
+  if (p2 && (!ret2 && !except2)) {
+    x_0_0 := __prim__int___box__(int___mul__(2, int___unbox__(x_0_0)))
+    inhale true
+  }
+  if (p1) {
+    ret1 := ret1 || tmp_ret1
+    except1 := except1 || tmp_except1
+  }
+  if (p2) {
+    ret2 := ret2 || tmp_ret2
+    except2 := except2 || tmp_except2
+  }
+  if (p1 && (!ret1 && !except1)) {
+    _res := _checkDefined(x_0, 3170168)
+    ret1 := true
+  }
+  if (p2 && (!ret2 && !except2)) {
+    _res_0 := x_0_0
+    ret2 := true
+  }
+  assert (p1 ==> !except1) && (p2 ==> !except2)
+}
+
+method m2(p1_3: Bool, p2_3: Bool, _cthread_158: Ref, _cthread_158_0: Ref, _caller_measures_158: Seq[Measure$], _caller_measures_158_0: Seq[Measure$], _residue_158: Perm, _residue_158_0: Perm, b_0: Ref, b_0_0: Ref) returns (_current_wait_level_158: Perm, _current_wait_level_158_0: Perm, _res: Ref, _res_1: Ref)
+  requires (p1_3 ==> _cthread_158 != null) && (p2_3 ==> _cthread_158_0 != null)
+  requires (p1_3 ==> issubtype(typeof(_cthread_158), Thread_0())) && (p2_3 ==> issubtype(typeof(_cthread_158_0), Thread_0()))
+  requires (p1_3 ==> issubtype(typeof(b_0), bool())) && (p2_3 ==> issubtype(typeof(b_0_0), bool()))
+  requires (p1_3 ==> [true, perm(MustTerminate(_cthread_158)) == none && ((forperm _r_4: Ref [MustInvokeBounded(_r_4)] :: false) && ((forperm _r_4: Ref [MustInvokeUnbounded(_r_4)] :: false) && ((forperm _r_4: Ref [_r_4.MustReleaseBounded] :: false) && (forperm _r_4: Ref [_r_4.MustReleaseUnbounded] :: false))))]) && (p2_3 ==> [true, perm(MustTerminate_0(_cthread_158_0)) == none && ((forperm _r_4: Ref [MustInvokeBounded_0(_r_4)] :: false) && ((forperm _r_4: Ref [MustInvokeUnbounded_0(_r_4)] :: false) && ((forperm _r_4: Ref [_r_4.MustReleaseBoundedp] :: false) && (forperm _r_4: Ref [_r_4.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_3 ==> [(forperm _r_2: Ref [_r_2.MustReleaseBounded] :: Level(_r_2) <= _current_wait_level_158) && ((forperm _r_2: Ref [_r_2.MustReleaseUnbounded] :: Level(_r_2) <= _current_wait_level_158) && _residue_158 <= _current_wait_level_158), true]) && (p2_3 ==> [(forperm _r_2: Ref [_r_2.MustReleaseBoundedp] :: Level(_r_2) <= _current_wait_level_158_0) && ((forperm _r_2: Ref [_r_2.MustReleaseUnboundedp] :: Level(_r_2) <= _current_wait_level_158_0) && _residue_158_0 <= _current_wait_level_158_0), true])
+  ensures (p1_3 ==> issubtype(typeof(_res), int())) && (p2_3 ==> issubtype(typeof(_res_1), int()))
+  ensures (p1_3 ==> bool___unbox__(b_0) ==> int___eq__(_res, __prim__int___box__(-2))) && (p2_3 ==> bool___unbox__(b_0_0) ==> int___eq__(_res_1, __prim__int___box__(-2)))
+  ensures (p1_3 ==> !bool___unbox__(b_0) ==> int___eq__(_res, __prim__int___box__(2))) && (p2_3 ==> !bool___unbox__(b_0_0) ==> int___eq__(_res_1, __prim__int___box__(2)))
+  ensures (p1_3 ==> [true, (forperm _r_3: Ref [MustInvokeBounded(_r_3)] :: false) && ((forperm _r_3: Ref [MustInvokeUnbounded(_r_3)] :: false) && ((forperm _r_3: Ref [_r_3.MustReleaseBounded] :: false) && (forperm _r_3: Ref [_r_3.MustReleaseUnbounded] :: false)))]) && (p2_3 ==> [true, (forperm _r_3: Ref [MustInvokeBounded_0(_r_3)] :: false) && ((forperm _r_3: Ref [MustInvokeUnbounded_0(_r_3)] :: false) && ((forperm _r_3: Ref [_r_3.MustReleaseBoundedp] :: false) && (forperm _r_3: Ref [_r_3.MustReleaseUnboundedp] :: false)))])
+{
+  var ret1_0: Bool
+  var ret2_0: Bool
+  var except1_0: Bool
+  var except2_0: Bool
+  inhale p1_3
+  ret1_0 := false
+  ret2_0 := false
+  except1_0 := false
+  except2_0 := false
+  var _err: Ref
+  var _err_1: Ref
+  var x_1: Ref
+  var x_1_0: Ref
+  var error_0: Ref
+  var error_0_0: Ref
+  var try_finally_8: Int
+  var try_finally_8_0: Int
+  var b_5: Ref
+  var b_5_0: Ref
+  var MyException_res_0: Ref
+  var MyException_res_0_0: Ref
+  var _cwl_158: Perm
+  var _cwl_158_0: Perm
+  var _method_measures_158: Seq[Measure$]
+  var _method_measures_158_0: Seq[Measure$]
+  if (p1_3 && (!ret1_0 && !except1_0)) {
+    _method_measures_158 := Seq[Measure$]()
+    _res := null
+    _err := null
+    b_5 := b_0
+  }
+  if (p2_3 && (!ret2_0 && !except2_0)) {
+    _method_measures_158_0 := Seq[Measure$]()
+    _res_1 := null
+    _err_1 := null
+    b_5_0 := b_0_0
+  }
+  // Try/catch block
+  
+  var bypass1_0: Bool
+  var bypass2_0: Bool
+  var oldret1_0: Bool
+  var oldret2_0: Bool
+  var oldexcept1_0: Bool
+  var oldexcept2_0: Bool
+  var thisexcept1_0: Bool
+  var thisexcept2_0: Bool
+  var p1_5: Bool
+  var p2_5: Bool
+  var p1_6: Bool
+  var p2_6: Bool
+  var tmp_ret1_0: Bool
+  var tmp_ret2_0: Bool
+  var tmp_break1_0: Bool
+  var tmp_break2_0: Bool
+  var tmp_cont1_0: Bool
+  var tmp_cont2_0: Bool
+  var tmp_except1_0: Bool
+  var tmp_except2_0: Bool
+  bypass1_0 := !(p1_3 && (!ret1_0 && !except1_0))
+  bypass2_0 := !(p2_3 && (!ret2_0 && !except2_0))
+  oldret1_0 := ret1_0
+  oldret2_0 := ret2_0
+  oldexcept1_0 := except1_0
+  oldexcept2_0 := except2_0
+  var p1_4: Bool
+  var p2_4: Bool
+  var p3_0: Bool
+  var p4_0: Bool
+  p1_4 := p1_3 && (!ret1_0 && !except1_0) && bool___unbox__(b_5)
+  p2_4 := p2_3 && (!ret2_0 && !except2_0) && bool___unbox__(b_5_0)
+  p3_0 := p1_3 && (!ret1_0 && !except1_0) && !bool___unbox__(b_5)
+  p4_0 := p2_3 && (!ret2_0 && !except2_0) && !bool___unbox__(b_5_0)
+  var tmp_0: Ref
+  tmp_0 := new()
+  if (p1_4 && (!ret1_0 && !except1_0)) {
+    MyException_res_0 := tmp_0
+  }
+  if (p2_4 && (!ret2_0 && !except2_0)) {
+    MyException_res_0_0 := tmp_0
+  }
+  if (p1_4 && (!ret1_0 && !except1_0)) {
+    inhale typeof(MyException_res_0) == MyException()
+  }
+  if (p2_4 && (!ret2_0 && !except2_0)) {
+    inhale typeof(MyException_res_0_0) == MyException()
+  }
+  if (p1_4 && (!ret1_0 && !except1_0)) {
+    _err := MyException_res_0
+    except1_0 := true
+  }
+  if (p2_4 && (!ret2_0 && !except2_0)) {
+    _err_1 := MyException_res_0_0
+    except2_0 := true
+  }
+  thisexcept1_0 := except1_0 && !bypass1_0
+  thisexcept2_0 := except2_0 && !bypass2_0
+  p1_5 := p1_3 && (thisexcept1_0 && issubtype(typeof(_err), MyException()))
+  p2_5 := p2_3 && (thisexcept2_0 && issubtype(typeof(_err_1), MyException()))
+  if (p1_5) {
+    except1_0 := false
+  }
+  if (p2_5) {
+    except2_0 := false
+  }
+  if (p1_5 && (!ret1_0 && !except1_0)) {
+    x_1 := __prim__int___box__(-2)
+    inhale _isDefined(3235704)
+  }
+  if (p2_5 && (!ret2_0 && !except2_0)) {
+    x_1_0 := __prim__int___box__(-2)
+    inhale true
+  }
+  if (p1_3 && (!ret1_0 && !except1_0)) {
+    _err := null
+  }
+  if (p2_3 && (!ret2_0 && !except2_0)) {
+    _err_1 := null
+  }
+  p1_6 := p1_3 && !thisexcept1_0
+  p2_6 := p2_3 && !thisexcept2_0
+  if (p1_6 && (!ret1_0 && !except1_0)) {
+    x_1 := __prim__int___box__(1)
+    inhale _isDefined(3235704)
+  }
+  if (p2_6 && (!ret2_0 && !except2_0)) {
+    x_1_0 := __prim__int___box__(1)
+    inhale true
+  }
+  if (p1_3) {
+    tmp_ret1_0 := ret1_0
+    ret1_0 := oldret1_0
+    tmp_except1_0 := except1_0
+    except1_0 := oldexcept1_0
+  }
+  if (p2_3) {
+    tmp_ret2_0 := ret2_0
+    ret2_0 := oldret2_0
+    tmp_except2_0 := except2_0
+    except2_0 := oldexcept2_0
+  }
+  if (p1_3 && (!ret1_0 && !except1_0)) {
+    x_1 := __prim__int___box__(int___mul__(2, int___unbox__(_checkDefined(x_1, 3235704))))
+    inhale _isDefined(3235704)
+  }
+  if (p2_3 && (!ret2_0 && !except2_0)) {
+    x_1_0 := __prim__int___box__(int___mul__(2, int___unbox__(x_1_0)))
+    inhale true
+  }
+  if (p1_3) {
+    ret1_0 := ret1_0 || tmp_ret1_0
+    except1_0 := except1_0 || tmp_except1_0
+  }
+  if (p2_3) {
+    ret2_0 := ret2_0 || tmp_ret2_0
+    except2_0 := except2_0 || tmp_except2_0
+  }
+  if (p1_3 && (!ret1_0 && !except1_0)) {
+    _res := _checkDefined(x_1, 3235704)
+    ret1_0 := true
+  }
+  if (p2_3 && (!ret2_0 && !except2_0)) {
+    _res_1 := x_1_0
+    ret2_0 := true
+  }
+  assert (p1_3 ==> !except1_0) && (p2_3 ==> !except2_0)
+}
+
+method m3(p1_7: Bool, p2_7: Bool, _cthread_159: Ref, _cthread_159_0: Ref, _caller_measures_159: Seq[Measure$], _caller_measures_159_0: Seq[Measure$], _residue_159: Perm, _residue_159_0: Perm, b_1: Ref, b_1_0: Ref) returns (_current_wait_level_159: Perm, _current_wait_level_159_0: Perm, _res: Ref, _res_2: Ref)
+  requires (p1_7 ==> _cthread_159 != null) && (p2_7 ==> _cthread_159_0 != null)
+  requires (p1_7 ==> issubtype(typeof(_cthread_159), Thread_0())) && (p2_7 ==> issubtype(typeof(_cthread_159_0), Thread_0()))
+  requires (p1_7 ==> issubtype(typeof(b_1), bool())) && (p2_7 ==> issubtype(typeof(b_1_0), bool()))
+  requires (p1_7 ==> [true, perm(MustTerminate(_cthread_159)) == none && ((forperm _r_7: Ref [MustInvokeBounded(_r_7)] :: false) && ((forperm _r_7: Ref [MustInvokeUnbounded(_r_7)] :: false) && ((forperm _r_7: Ref [_r_7.MustReleaseBounded] :: false) && (forperm _r_7: Ref [_r_7.MustReleaseUnbounded] :: false))))]) && (p2_7 ==> [true, perm(MustTerminate_0(_cthread_159_0)) == none && ((forperm _r_7: Ref [MustInvokeBounded_0(_r_7)] :: false) && ((forperm _r_7: Ref [MustInvokeUnbounded_0(_r_7)] :: false) && ((forperm _r_7: Ref [_r_7.MustReleaseBoundedp] :: false) && (forperm _r_7: Ref [_r_7.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_7 ==> [(forperm _r_5: Ref [_r_5.MustReleaseBounded] :: Level(_r_5) <= _current_wait_level_159) && ((forperm _r_5: Ref [_r_5.MustReleaseUnbounded] :: Level(_r_5) <= _current_wait_level_159) && _residue_159 <= _current_wait_level_159), true]) && (p2_7 ==> [(forperm _r_5: Ref [_r_5.MustReleaseBoundedp] :: Level(_r_5) <= _current_wait_level_159_0) && ((forperm _r_5: Ref [_r_5.MustReleaseUnboundedp] :: Level(_r_5) <= _current_wait_level_159_0) && _residue_159_0 <= _current_wait_level_159_0), true])
+  ensures (p1_7 ==> issubtype(typeof(_res), int())) && (p2_7 ==> issubtype(typeof(_res_2), int()))
+  ensures (p1_7 ==> bool___unbox__(b_1) ==> int___eq__(_res, __prim__int___box__(-2))) && (p2_7 ==> bool___unbox__(b_1_0) ==> int___eq__(_res_2, __prim__int___box__(-2)))
+  ensures (p1_7 ==> !bool___unbox__(b_1) ==> int___eq__(_res, __prim__int___box__(0))) && (p2_7 ==> !bool___unbox__(b_1_0) ==> int___eq__(_res_2, __prim__int___box__(0)))
+  ensures (p1_7 ==> [true, (forperm _r_6: Ref [MustInvokeBounded(_r_6)] :: false) && ((forperm _r_6: Ref [MustInvokeUnbounded(_r_6)] :: false) && ((forperm _r_6: Ref [_r_6.MustReleaseBounded] :: false) && (forperm _r_6: Ref [_r_6.MustReleaseUnbounded] :: false)))]) && (p2_7 ==> [true, (forperm _r_6: Ref [MustInvokeBounded_0(_r_6)] :: false) && ((forperm _r_6: Ref [MustInvokeUnbounded_0(_r_6)] :: false) && ((forperm _r_6: Ref [_r_6.MustReleaseBoundedp] :: false) && (forperm _r_6: Ref [_r_6.MustReleaseUnboundedp] :: false)))])
+{
+  var ret1_1: Bool
+  var ret2_1: Bool
+  var except1_1: Bool
+  var except2_1: Bool
+  inhale p1_7
+  ret1_1 := false
+  ret2_1 := false
+  except1_1 := false
+  except2_1 := false
+  var _err: Ref
+  var _err_2: Ref
+  var x_2: Ref
+  var x_2_0: Ref
+  var error_1: Ref
+  var error_1_0: Ref
+  var try_finally_9: Int
+  var try_finally_9_0: Int
+  var b_6: Ref
+  var b_6_0: Ref
+  var MyException_res_1: Ref
+  var MyException_res_1_0: Ref
+  var _cwl_159: Perm
+  var _cwl_159_0: Perm
+  var _method_measures_159: Seq[Measure$]
+  var _method_measures_159_0: Seq[Measure$]
+  if (p1_7 && (!ret1_1 && !except1_1)) {
+    _method_measures_159 := Seq[Measure$]()
+    _res := null
+    _err := null
+    b_6 := b_1
+    x_2 := __prim__int___box__(0)
+    inhale _isDefined(3301240)
+  }
+  if (p2_7 && (!ret2_1 && !except2_1)) {
+    _method_measures_159_0 := Seq[Measure$]()
+    _res_2 := null
+    _err_2 := null
+    b_6_0 := b_1_0
+    x_2_0 := __prim__int___box__(0)
+    inhale true
+  }
+  // Try/catch block
+  
+  var bypass1_1: Bool
+  var bypass2_1: Bool
+  var oldret1_1: Bool
+  var oldret2_1: Bool
+  var oldexcept1_1: Bool
+  var oldexcept2_1: Bool
+  var thisexcept1_1: Bool
+  var thisexcept2_1: Bool
+  var p1_9: Bool
+  var p2_9: Bool
+  var tmp_ret1_1: Bool
+  var tmp_ret2_1: Bool
+  var tmp_break1_1: Bool
+  var tmp_break2_1: Bool
+  var tmp_cont1_1: Bool
+  var tmp_cont2_1: Bool
+  var tmp_except1_1: Bool
+  var tmp_except2_1: Bool
+  bypass1_1 := !(p1_7 && (!ret1_1 && !except1_1))
+  bypass2_1 := !(p2_7 && (!ret2_1 && !except2_1))
+  oldret1_1 := ret1_1
+  oldret2_1 := ret2_1
+  oldexcept1_1 := except1_1
+  oldexcept2_1 := except2_1
+  var p1_8: Bool
+  var p2_8: Bool
+  var p3_1: Bool
+  var p4_1: Bool
+  p1_8 := p1_7 && (!ret1_1 && !except1_1) && bool___unbox__(b_6)
+  p2_8 := p2_7 && (!ret2_1 && !except2_1) && bool___unbox__(b_6_0)
+  p3_1 := p1_7 && (!ret1_1 && !except1_1) && !bool___unbox__(b_6)
+  p4_1 := p2_7 && (!ret2_1 && !except2_1) && !bool___unbox__(b_6_0)
+  var tmp_1: Ref
+  tmp_1 := new()
+  if (p1_8 && (!ret1_1 && !except1_1)) {
+    MyException_res_1 := tmp_1
+  }
+  if (p2_8 && (!ret2_1 && !except2_1)) {
+    MyException_res_1_0 := tmp_1
+  }
+  if (p1_8 && (!ret1_1 && !except1_1)) {
+    inhale typeof(MyException_res_1) == MyException()
+  }
+  if (p2_8 && (!ret2_1 && !except2_1)) {
+    inhale typeof(MyException_res_1_0) == MyException()
+  }
+  if (p1_8 && (!ret1_1 && !except1_1)) {
+    _err := MyException_res_1
+    except1_1 := true
+  }
+  if (p2_8 && (!ret2_1 && !except2_1)) {
+    _err_2 := MyException_res_1_0
+    except2_1 := true
+  }
+  thisexcept1_1 := except1_1 && !bypass1_1
+  thisexcept2_1 := except2_1 && !bypass2_1
+  p1_9 := p1_7 && (thisexcept1_1 && issubtype(typeof(_err), MyException()))
+  p2_9 := p2_7 && (thisexcept2_1 && issubtype(typeof(_err_2), MyException()))
+  if (p1_9) {
+    except1_1 := false
+  }
+  if (p2_9) {
+    except2_1 := false
+  }
+  if (p1_9 && (!ret1_1 && !except1_1)) {
+    x_2 := __prim__int___box__(-1)
+    inhale _isDefined(3301240)
+  }
+  if (p2_9 && (!ret2_1 && !except2_1)) {
+    x_2_0 := __prim__int___box__(-1)
+    inhale true
+  }
+  if (p1_7 && (!ret1_1 && !except1_1)) {
+    _err := null
+  }
+  if (p2_7 && (!ret2_1 && !except2_1)) {
+    _err_2 := null
+  }
+  if (p1_7) {
+    tmp_ret1_1 := ret1_1
+    ret1_1 := oldret1_1
+    tmp_except1_1 := except1_1
+    except1_1 := oldexcept1_1
+  }
+  if (p2_7) {
+    tmp_ret2_1 := ret2_1
+    ret2_1 := oldret2_1
+    tmp_except2_1 := except2_1
+    except2_1 := oldexcept2_1
+  }
+  if (p1_7 && (!ret1_1 && !except1_1)) {
+    x_2 := __prim__int___box__(int___mul__(2, int___unbox__(_checkDefined(x_2, 3301240))))
+    inhale _isDefined(3301240)
+  }
+  if (p2_7 && (!ret2_1 && !except2_1)) {
+    x_2_0 := __prim__int___box__(int___mul__(2, int___unbox__(x_2_0)))
+    inhale true
+  }
+  if (p1_7) {
+    ret1_1 := ret1_1 || tmp_ret1_1
+    except1_1 := except1_1 || tmp_except1_1
+  }
+  if (p2_7) {
+    ret2_1 := ret2_1 || tmp_ret2_1
+    except2_1 := except2_1 || tmp_except2_1
+  }
+  if (p1_7 && (!ret1_1 && !except1_1)) {
+    _res := _checkDefined(x_2, 3301240)
+    ret1_1 := true
+  }
+  if (p2_7 && (!ret2_1 && !except2_1)) {
+    _res_2 := x_2_0
+    ret2_1 := true
+  }
+  assert (p1_7 ==> !except1_1) && (p2_7 ==> !except2_1)
+}
+
+method m4(p1_10: Bool, p2_10: Bool, _cthread_160: Ref, _cthread_160_0: Ref, _caller_measures_160: Seq[Measure$], _caller_measures_160_0: Seq[Measure$], _residue_160: Perm, _residue_160_0: Perm, b_2: Ref, b_2_0: Ref, c: Ref, c_7: Ref) returns (_current_wait_level_160: Perm, _current_wait_level_160_0: Perm, _err: Ref, _err_3: Ref)
+  requires (p1_10 ==> _cthread_160 != null) && (p2_10 ==> _cthread_160_0 != null)
+  requires (p1_10 ==> issubtype(typeof(_cthread_160), Thread_0())) && (p2_10 ==> issubtype(typeof(_cthread_160_0), Thread_0()))
+  requires (p1_10 ==> issubtype(typeof(b_2), bool())) && (p2_10 ==> issubtype(typeof(b_2_0), bool()))
+  requires (p1_10 ==> issubtype(typeof(c), Container())) && (p2_10 ==> issubtype(typeof(c_7), Container()))
+  requires (p1_10 ==> acc(c.Container_value, write)) && (p2_10 ==> acc(c_7.Container_valuep, write)) && ((p1_10 ==> issubtype(typeof(c.Container_value), int())) && (p2_10 ==> issubtype(typeof(c_7.Container_valuep), int())))
+  requires (p1_10 ==> [true, perm(MustTerminate(_cthread_160)) == none && ((forperm _r_10: Ref [MustInvokeBounded(_r_10)] :: false) && ((forperm _r_10: Ref [MustInvokeUnbounded(_r_10)] :: false) && ((forperm _r_10: Ref [_r_10.MustReleaseBounded] :: false) && (forperm _r_10: Ref [_r_10.MustReleaseUnbounded] :: false))))]) && (p2_10 ==> [true, perm(MustTerminate_0(_cthread_160_0)) == none && ((forperm _r_10: Ref [MustInvokeBounded_0(_r_10)] :: false) && ((forperm _r_10: Ref [MustInvokeUnbounded_0(_r_10)] :: false) && ((forperm _r_10: Ref [_r_10.MustReleaseBoundedp] :: false) && (forperm _r_10: Ref [_r_10.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_10 ==> [(forperm _r_8: Ref [_r_8.MustReleaseBounded] :: Level(_r_8) <= _current_wait_level_160) && ((forperm _r_8: Ref [_r_8.MustReleaseUnbounded] :: Level(_r_8) <= _current_wait_level_160) && _residue_160 <= _current_wait_level_160), true]) && (p2_10 ==> [(forperm _r_8: Ref [_r_8.MustReleaseBoundedp] :: Level(_r_8) <= _current_wait_level_160_0) && ((forperm _r_8: Ref [_r_8.MustReleaseUnboundedp] :: Level(_r_8) <= _current_wait_level_160_0) && _residue_160_0 <= _current_wait_level_160_0), true])
+  ensures (p1_10 ==> _err == null ==> acc(c.Container_value, write) && issubtype(typeof(c.Container_value), int()) && int___eq__(c.Container_value, __prim__int___box__(0))) && (p2_10 ==> _err_3 == null ==> acc(c_7.Container_valuep, write) && issubtype(typeof(c_7.Container_valuep), int()) && int___eq__(c_7.Container_valuep, __prim__int___box__(0)))
+  ensures (p1_10 ==> _err != null && issubtype(typeof(_err), MyException()) ==> acc(c.Container_value, write) && issubtype(typeof(c.Container_value), int()) && int___eq__(c.Container_value, __prim__int___box__(-1))) && (p2_10 ==> _err_3 != null && issubtype(typeof(_err_3), MyException()) ==> acc(c_7.Container_valuep, write) && issubtype(typeof(c_7.Container_valuep), int()) && int___eq__(c_7.Container_valuep, __prim__int___box__(-1)))
+  ensures (p1_10 ==> _err != null ==> issubtype(typeof(_err), MyException())) && (p2_10 ==> _err_3 != null ==> issubtype(typeof(_err_3), MyException()))
+  ensures (p1_10 ==> [true, (forperm _r_9: Ref [MustInvokeBounded(_r_9)] :: false) && ((forperm _r_9: Ref [MustInvokeUnbounded(_r_9)] :: false) && ((forperm _r_9: Ref [_r_9.MustReleaseBounded] :: false) && (forperm _r_9: Ref [_r_9.MustReleaseUnbounded] :: false)))]) && (p2_10 ==> [true, (forperm _r_9: Ref [MustInvokeBounded_0(_r_9)] :: false) && ((forperm _r_9: Ref [MustInvokeUnbounded_0(_r_9)] :: false) && ((forperm _r_9: Ref [_r_9.MustReleaseBoundedp] :: false) && (forperm _r_9: Ref [_r_9.MustReleaseUnboundedp] :: false)))])
+{
+  var except1_2: Bool
+  var except2_2: Bool
+  inhale p1_10
+  except1_2 := false
+  except2_2 := false
+  var error_2: Ref
+  var error_2_0: Ref
+  var try_finally_10: Int
+  var try_finally_10_0: Int
+  var b_7: Ref
+  var b_7_0: Ref
+  var c_3: Ref
+  var c_3_0: Ref
+  var MyException_res_2: Ref
+  var MyException_res_2_0: Ref
+  var MyException_res_3: Ref
+  var MyException_res_3_0: Ref
+  var _cwl_160: Perm
+  var _cwl_160_0: Perm
+  var _method_measures_160: Seq[Measure$]
+  var _method_measures_160_0: Seq[Measure$]
+  if (p1_10 && !except1_2) {
+    _method_measures_160 := Seq[Measure$]()
+    _err := null
+    b_7 := b_2
+    c_3 := c
+  }
+  if (p2_10 && !except2_2) {
+    _method_measures_160_0 := Seq[Measure$]()
+    _err_3 := null
+    b_7_0 := b_2_0
+    c_3_0 := c_7
+  }
+  // Try/catch block
+  
+  var bypass1_2: Bool
+  var bypass2_2: Bool
+  var thisexcept1_2: Bool
+  var thisexcept2_2: Bool
+  var p1_12: Bool
+  var p2_12: Bool
+  bypass1_2 := !(p1_10 && !except1_2)
+  bypass2_2 := !(p2_10 && !except2_2)
+  var p1_11: Bool
+  var p2_11: Bool
+  var p3_2: Bool
+  var p4_2: Bool
+  p1_11 := p1_10 && !except1_2 && bool___unbox__(b_7)
+  p2_11 := p2_10 && !except2_2 && bool___unbox__(b_7_0)
+  p3_2 := p1_10 && !except1_2 && !bool___unbox__(b_7)
+  p4_2 := p2_10 && !except2_2 && !bool___unbox__(b_7_0)
+  var tmp_2: Ref
+  tmp_2 := new()
+  if (p1_11 && !except1_2) {
+    MyException_res_2 := tmp_2
+  }
+  if (p2_11 && !except2_2) {
+    MyException_res_2_0 := tmp_2
+  }
+  if (p1_11 && !except1_2) {
+    inhale typeof(MyException_res_2) == MyException()
+  }
+  if (p2_11 && !except2_2) {
+    inhale typeof(MyException_res_2_0) == MyException()
+  }
+  if (p1_11 && !except1_2) {
+    _err := MyException_res_2
+    except1_2 := true
+  }
+  if (p2_11 && !except2_2) {
+    _err_3 := MyException_res_2_0
+    except2_2 := true
+  }
+  thisexcept1_2 := except1_2 && !bypass1_2
+  thisexcept2_2 := except2_2 && !bypass2_2
+  p1_12 := p1_10 && (thisexcept1_2 && issubtype(typeof(_err), MyException()))
+  p2_12 := p2_10 && (thisexcept2_2 && issubtype(typeof(_err_3), MyException()))
+  if (p1_12) {
+    except1_2 := false
+  }
+  if (p2_12) {
+    except2_2 := false
+  }
+  var p1_13: Bool
+  var p2_13: Bool
+  var p3_3: Bool
+  var p4_3: Bool
+  p1_13 := p1_12 && !except1_2 && perm(_MaySet(c_3, 526803611440346310908232101056638787)) > none
+  p2_13 := p2_12 && !except2_2 && perm(_MaySet_0(c_3_0, 526803611440346310908232101056638787)) > none
+  p3_3 := p1_12 && !except1_2 && !(perm(_MaySet(c_3, 526803611440346310908232101056638787)) > none)
+  p4_3 := p2_12 && !except2_2 && !(perm(_MaySet_0(c_3_0, 526803611440346310908232101056638787)) > none)
+  if (p1_13 && !except1_2) {
+    exhale acc(_MaySet(c_3, 526803611440346310908232101056638787), write)
+    inhale acc(c_3.Container_value, write)
+  }
+  if (p2_13 && !except2_2) {
+    exhale acc(_MaySet_0(c_3_0, 526803611440346310908232101056638787), write)
+    inhale acc(c_3_0.Container_valuep, write)
+  }
+  if (p1_12 && !except1_2) {
+    c_3.Container_value := __prim__int___box__(-1)
+  }
+  if (p2_12 && !except2_2) {
+    c_3_0.Container_valuep := __prim__int___box__(-1)
+  }
+  var tmp_3: Ref
+  tmp_3 := new()
+  if (p1_12 && !except1_2) {
+    MyException_res_3 := tmp_3
+  }
+  if (p2_12 && !except2_2) {
+    MyException_res_3_0 := tmp_3
+  }
+  if (p1_12 && !except1_2) {
+    inhale typeof(MyException_res_3) == MyException()
+  }
+  if (p2_12 && !except2_2) {
+    inhale typeof(MyException_res_3_0) == MyException()
+  }
+  if (p1_12 && !except1_2) {
+    _err := MyException_res_3
+    except1_2 := true
+  }
+  if (p2_12 && !except2_2) {
+    _err_3 := MyException_res_3_0
+    except2_2 := true
+  }
+  if (p1_10 && !except1_2) {
+    _err := null
+  }
+  if (p2_10 && !except2_2) {
+    _err_3 := null
+  }
+  var p1_14: Bool
+  var p2_14: Bool
+  var p3_4: Bool
+  var p4_4: Bool
+  p1_14 := p1_10 && !except1_2 && perm(_MaySet(c_3, 526803611440346310908232101056638787)) > none
+  p2_14 := p2_10 && !except2_2 && perm(_MaySet_0(c_3_0, 526803611440346310908232101056638787)) > none
+  p3_4 := p1_10 && !except1_2 && !(perm(_MaySet(c_3, 526803611440346310908232101056638787)) > none)
+  p4_4 := p2_10 && !except2_2 && !(perm(_MaySet_0(c_3_0, 526803611440346310908232101056638787)) > none)
+  if (p1_14 && !except1_2) {
+    exhale acc(_MaySet(c_3, 526803611440346310908232101056638787), write)
+    inhale acc(c_3.Container_value, write)
+  }
+  if (p2_14 && !except2_2) {
+    exhale acc(_MaySet_0(c_3_0, 526803611440346310908232101056638787), write)
+    inhale acc(c_3_0.Container_valuep, write)
+  }
+  if (p1_10 && !except1_2) {
+    c_3.Container_value := __prim__int___box__(0)
+  }
+  if (p2_10 && !except2_2) {
+    c_3_0.Container_valuep := __prim__int___box__(0)
+  }
+}
+
+method m5(p1_15: Bool, p2_15: Bool, _cthread_161: Ref, _cthread_161_0: Ref, _caller_measures_161: Seq[Measure$], _caller_measures_161_0: Seq[Measure$], _residue_161: Perm, _residue_161_0: Perm, b_3: Ref, b_3_0: Ref, c_0: Ref, c_0_0: Ref) returns (_current_wait_level_161: Perm, _current_wait_level_161_0: Perm, _err: Ref, _err_4: Ref)
+  requires (p1_15 ==> _cthread_161 != null) && (p2_15 ==> _cthread_161_0 != null)
+  requires (p1_15 ==> issubtype(typeof(_cthread_161), Thread_0())) && (p2_15 ==> issubtype(typeof(_cthread_161_0), Thread_0()))
+  requires (p1_15 ==> issubtype(typeof(b_3), bool())) && (p2_15 ==> issubtype(typeof(b_3_0), bool()))
+  requires (p1_15 ==> issubtype(typeof(c_0), Container())) && (p2_15 ==> issubtype(typeof(c_0_0), Container()))
+  requires (p1_15 ==> acc(c_0.Container_value, write)) && (p2_15 ==> acc(c_0_0.Container_valuep, write)) && ((p1_15 ==> issubtype(typeof(c_0.Container_value), int())) && (p2_15 ==> issubtype(typeof(c_0_0.Container_valuep), int())))
+  requires (p1_15 ==> [true, perm(MustTerminate(_cthread_161)) == none && ((forperm _r_13: Ref [MustInvokeBounded(_r_13)] :: false) && ((forperm _r_13: Ref [MustInvokeUnbounded(_r_13)] :: false) && ((forperm _r_13: Ref [_r_13.MustReleaseBounded] :: false) && (forperm _r_13: Ref [_r_13.MustReleaseUnbounded] :: false))))]) && (p2_15 ==> [true, perm(MustTerminate_0(_cthread_161_0)) == none && ((forperm _r_13: Ref [MustInvokeBounded_0(_r_13)] :: false) && ((forperm _r_13: Ref [MustInvokeUnbounded_0(_r_13)] :: false) && ((forperm _r_13: Ref [_r_13.MustReleaseBoundedp] :: false) && (forperm _r_13: Ref [_r_13.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_15 ==> [(forperm _r_11: Ref [_r_11.MustReleaseBounded] :: Level(_r_11) <= _current_wait_level_161) && ((forperm _r_11: Ref [_r_11.MustReleaseUnbounded] :: Level(_r_11) <= _current_wait_level_161) && _residue_161 <= _current_wait_level_161), true]) && (p2_15 ==> [(forperm _r_11: Ref [_r_11.MustReleaseBoundedp] :: Level(_r_11) <= _current_wait_level_161_0) && ((forperm _r_11: Ref [_r_11.MustReleaseUnboundedp] :: Level(_r_11) <= _current_wait_level_161_0) && _residue_161_0 <= _current_wait_level_161_0), true])
+  ensures (p1_15 ==> _err == null ==> acc(c_0.Container_value, write) && issubtype(typeof(c_0.Container_value), int()) && int___eq__(c_0.Container_value, __prim__int___box__(0))) && (p2_15 ==> _err_4 == null ==> acc(c_0_0.Container_valuep, write) && issubtype(typeof(c_0_0.Container_valuep), int()) && int___eq__(c_0_0.Container_valuep, __prim__int___box__(0)))
+  ensures (p1_15 ==> _err != null && issubtype(typeof(_err), MyException()) ==> acc(c_0.Container_value, write) && issubtype(typeof(c_0.Container_value), int()) && int___eq__(c_0.Container_value, __prim__int___box__(-1))) && (p2_15 ==> _err_4 != null && issubtype(typeof(_err_4), MyException()) ==> acc(c_0_0.Container_valuep, write) && issubtype(typeof(c_0_0.Container_valuep), int()) && int___eq__(c_0_0.Container_valuep, __prim__int___box__(-1)))
+  ensures (p1_15 ==> _err != null ==> issubtype(typeof(_err), MyException())) && (p2_15 ==> _err_4 != null ==> issubtype(typeof(_err_4), MyException()))
+  ensures (p1_15 ==> [true, (forperm _r_12: Ref [MustInvokeBounded(_r_12)] :: false) && ((forperm _r_12: Ref [MustInvokeUnbounded(_r_12)] :: false) && ((forperm _r_12: Ref [_r_12.MustReleaseBounded] :: false) && (forperm _r_12: Ref [_r_12.MustReleaseUnbounded] :: false)))]) && (p2_15 ==> [true, (forperm _r_12: Ref [MustInvokeBounded_0(_r_12)] :: false) && ((forperm _r_12: Ref [MustInvokeUnbounded_0(_r_12)] :: false) && ((forperm _r_12: Ref [_r_12.MustReleaseBoundedp] :: false) && (forperm _r_12: Ref [_r_12.MustReleaseUnboundedp] :: false)))])
+{
+  var except1_3: Bool
+  var except2_3: Bool
+  inhale p1_15
+  except1_3 := false
+  except2_3 := false
+  var error_3: Ref
+  var error_3_0: Ref
+  var try_finally_11: Int
+  var try_finally_11_0: Int
+  var b_8: Ref
+  var b_8_0: Ref
+  var c_4: Ref
+  var c_4_0: Ref
+  var MyException_res_4: Ref
+  var MyException_res_4_0: Ref
+  var MyException_res_5: Ref
+  var MyException_res_5_0: Ref
+  var _cwl_161: Perm
+  var _cwl_161_0: Perm
+  var _method_measures_161: Seq[Measure$]
+  var _method_measures_161_0: Seq[Measure$]
+  if (p1_15 && !except1_3) {
+    _method_measures_161 := Seq[Measure$]()
+    _err := null
+    b_8 := b_3
+    c_4 := c_0
+  }
+  if (p2_15 && !except2_3) {
+    _method_measures_161_0 := Seq[Measure$]()
+    _err_4 := null
+    b_8_0 := b_3_0
+    c_4_0 := c_0_0
+  }
+  // Try/catch block
+  
+  var bypass1_3: Bool
+  var bypass2_3: Bool
+  var thisexcept1_3: Bool
+  var thisexcept2_3: Bool
+  var p1_17: Bool
+  var p2_17: Bool
+  var p1_19: Bool
+  var p2_19: Bool
+  bypass1_3 := !(p1_15 && !except1_3)
+  bypass2_3 := !(p2_15 && !except2_3)
+  var p1_16: Bool
+  var p2_16: Bool
+  var p3_5: Bool
+  var p4_5: Bool
+  p1_16 := p1_15 && !except1_3 && bool___unbox__(b_8)
+  p2_16 := p2_15 && !except2_3 && bool___unbox__(b_8_0)
+  p3_5 := p1_15 && !except1_3 && !bool___unbox__(b_8)
+  p4_5 := p2_15 && !except2_3 && !bool___unbox__(b_8_0)
+  var tmp_4: Ref
+  tmp_4 := new()
+  if (p1_16 && !except1_3) {
+    MyException_res_4 := tmp_4
+  }
+  if (p2_16 && !except2_3) {
+    MyException_res_4_0 := tmp_4
+  }
+  if (p1_16 && !except1_3) {
+    inhale typeof(MyException_res_4) == MyException()
+  }
+  if (p2_16 && !except2_3) {
+    inhale typeof(MyException_res_4_0) == MyException()
+  }
+  if (p1_16 && !except1_3) {
+    _err := MyException_res_4
+    except1_3 := true
+  }
+  if (p2_16 && !except2_3) {
+    _err_4 := MyException_res_4_0
+    except2_3 := true
+  }
+  thisexcept1_3 := except1_3 && !bypass1_3
+  thisexcept2_3 := except2_3 && !bypass2_3
+  p1_17 := p1_15 && (thisexcept1_3 && issubtype(typeof(_err), MyException()))
+  p2_17 := p2_15 && (thisexcept2_3 && issubtype(typeof(_err_4), MyException()))
+  if (p1_17) {
+    except1_3 := false
+  }
+  if (p2_17) {
+    except2_3 := false
+  }
+  var p1_18: Bool
+  var p2_18: Bool
+  var p3_6: Bool
+  var p4_6: Bool
+  p1_18 := p1_17 && !except1_3 && perm(_MaySet(c_4, 526803611440346310908232101056638787)) > none
+  p2_18 := p2_17 && !except2_3 && perm(_MaySet_0(c_4_0, 526803611440346310908232101056638787)) > none
+  p3_6 := p1_17 && !except1_3 && !(perm(_MaySet(c_4, 526803611440346310908232101056638787)) > none)
+  p4_6 := p2_17 && !except2_3 && !(perm(_MaySet_0(c_4_0, 526803611440346310908232101056638787)) > none)
+  if (p1_18 && !except1_3) {
+    exhale acc(_MaySet(c_4, 526803611440346310908232101056638787), write)
+    inhale acc(c_4.Container_value, write)
+  }
+  if (p2_18 && !except2_3) {
+    exhale acc(_MaySet_0(c_4_0, 526803611440346310908232101056638787), write)
+    inhale acc(c_4_0.Container_valuep, write)
+  }
+  if (p1_17 && !except1_3) {
+    c_4.Container_value := __prim__int___box__(0)
+  }
+  if (p2_17 && !except2_3) {
+    c_4_0.Container_valuep := __prim__int___box__(0)
+  }
+  if (p1_15 && !except1_3) {
+    _err := null
+  }
+  if (p2_15 && !except2_3) {
+    _err_4 := null
+  }
+  p1_19 := p1_15 && !thisexcept1_3
+  p2_19 := p2_15 && !thisexcept2_3
+  var p1_20: Bool
+  var p2_20: Bool
+  var p3_7: Bool
+  var p4_7: Bool
+  p1_20 := p1_19 && !except1_3 && perm(_MaySet(c_4, 526803611440346310908232101056638787)) > none
+  p2_20 := p2_19 && !except2_3 && perm(_MaySet_0(c_4_0, 526803611440346310908232101056638787)) > none
+  p3_7 := p1_19 && !except1_3 && !(perm(_MaySet(c_4, 526803611440346310908232101056638787)) > none)
+  p4_7 := p2_19 && !except2_3 && !(perm(_MaySet_0(c_4_0, 526803611440346310908232101056638787)) > none)
+  if (p1_20 && !except1_3) {
+    exhale acc(_MaySet(c_4, 526803611440346310908232101056638787), write)
+    inhale acc(c_4.Container_value, write)
+  }
+  if (p2_20 && !except2_3) {
+    exhale acc(_MaySet_0(c_4_0, 526803611440346310908232101056638787), write)
+    inhale acc(c_4_0.Container_valuep, write)
+  }
+  if (p1_19 && !except1_3) {
+    c_4.Container_value := __prim__int___box__(-1)
+  }
+  if (p2_19 && !except2_3) {
+    c_4_0.Container_valuep := __prim__int___box__(-1)
+  }
+  var tmp_5: Ref
+  tmp_5 := new()
+  if (p1_19 && !except1_3) {
+    MyException_res_5 := tmp_5
+  }
+  if (p2_19 && !except2_3) {
+    MyException_res_5_0 := tmp_5
+  }
+  if (p1_19 && !except1_3) {
+    inhale typeof(MyException_res_5) == MyException()
+  }
+  if (p2_19 && !except2_3) {
+    inhale typeof(MyException_res_5_0) == MyException()
+  }
+  if (p1_19 && !except1_3) {
+    _err := MyException_res_5
+    except1_3 := true
+  }
+  if (p2_19 && !except2_3) {
+    _err_4 := MyException_res_5_0
+    except2_3 := true
+  }
+}
+
+method m6(p1_21: Bool, p2_21: Bool, _cthread_162: Ref, _cthread_162_0: Ref, _caller_measures_162: Seq[Measure$], _caller_measures_162_0: Seq[Measure$], _residue_162: Perm, _residue_162_0: Perm, i: Ref, i_7: Ref, c_1: Ref, c_1_0: Ref) returns (_current_wait_level_162: Perm, _current_wait_level_162_0: Perm)
+  requires (p1_21 ==> _cthread_162 != null) && (p2_21 ==> _cthread_162_0 != null)
+  requires (p1_21 ==> issubtype(typeof(_cthread_162), Thread_0())) && (p2_21 ==> issubtype(typeof(_cthread_162_0), Thread_0()))
+  requires (p1_21 ==> issubtype(typeof(i), int())) && (p2_21 ==> issubtype(typeof(i_7), int()))
+  requires (p1_21 ==> issubtype(typeof(c_1), Container())) && (p2_21 ==> issubtype(typeof(c_1_0), Container()))
+  requires p1_21 && p2_21 ==> i == i_7
+  requires (p1_21 ==> acc(c_1.Container_value, write)) && (p2_21 ==> acc(c_1_0.Container_valuep, write)) && ((p1_21 ==> issubtype(typeof(c_1.Container_value), int())) && (p2_21 ==> issubtype(typeof(c_1_0.Container_valuep), int())))
+  requires (p1_21 ==> [true, perm(MustTerminate(_cthread_162)) == none && ((forperm _r_16: Ref [MustInvokeBounded(_r_16)] :: false) && ((forperm _r_16: Ref [MustInvokeUnbounded(_r_16)] :: false) && ((forperm _r_16: Ref [_r_16.MustReleaseBounded] :: false) && (forperm _r_16: Ref [_r_16.MustReleaseUnbounded] :: false))))]) && (p2_21 ==> [true, perm(MustTerminate_0(_cthread_162_0)) == none && ((forperm _r_16: Ref [MustInvokeBounded_0(_r_16)] :: false) && ((forperm _r_16: Ref [MustInvokeUnbounded_0(_r_16)] :: false) && ((forperm _r_16: Ref [_r_16.MustReleaseBoundedp] :: false) && (forperm _r_16: Ref [_r_16.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_21 ==> [(forperm _r_14: Ref [_r_14.MustReleaseBounded] :: Level(_r_14) <= _current_wait_level_162) && ((forperm _r_14: Ref [_r_14.MustReleaseUnbounded] :: Level(_r_14) <= _current_wait_level_162) && _residue_162 <= _current_wait_level_162), true]) && (p2_21 ==> [(forperm _r_14: Ref [_r_14.MustReleaseBoundedp] :: Level(_r_14) <= _current_wait_level_162_0) && ((forperm _r_14: Ref [_r_14.MustReleaseUnboundedp] :: Level(_r_14) <= _current_wait_level_162_0) && _residue_162_0 <= _current_wait_level_162_0), true])
+  ensures (p1_21 ==> acc(c_1.Container_value, write)) && (p2_21 ==> acc(c_1_0.Container_valuep, write)) && ((p1_21 ==> issubtype(typeof(c_1.Container_value), int())) && (p2_21 ==> issubtype(typeof(c_1_0.Container_valuep), int())))
+  ensures p1_21 && p2_21 ==> c_1.Container_value == c_1_0.Container_valuep
+  ensures (p1_21 ==> int___eq__(i, __prim__int___box__(0)) ==> int___eq__(c_1.Container_value, __prim__int___box__(0))) && (p2_21 ==> int___eq__(i_7, __prim__int___box__(0)) ==> int___eq__(c_1_0.Container_valuep, __prim__int___box__(0)))
+  ensures (p1_21 ==> int___lt__(int___unbox__(i), 0) ==> int___eq__(c_1.Container_value, __prim__int___box__(-1))) && (p2_21 ==> int___lt__(int___unbox__(i_7), 0) ==> int___eq__(c_1_0.Container_valuep, __prim__int___box__(-1)))
+  ensures (p1_21 ==> int___gt__(int___unbox__(i), 0) ==> int___eq__(c_1.Container_value, __prim__int___box__(1))) && (p2_21 ==> int___gt__(int___unbox__(i_7), 0) ==> int___eq__(c_1_0.Container_valuep, __prim__int___box__(1)))
+  ensures (p1_21 ==> [true, (forperm _r_15: Ref [MustInvokeBounded(_r_15)] :: false) && ((forperm _r_15: Ref [MustInvokeUnbounded(_r_15)] :: false) && ((forperm _r_15: Ref [_r_15.MustReleaseBounded] :: false) && (forperm _r_15: Ref [_r_15.MustReleaseUnbounded] :: false)))]) && (p2_21 ==> [true, (forperm _r_15: Ref [MustInvokeBounded_0(_r_15)] :: false) && ((forperm _r_15: Ref [MustInvokeUnbounded_0(_r_15)] :: false) && ((forperm _r_15: Ref [_r_15.MustReleaseBoundedp] :: false) && (forperm _r_15: Ref [_r_15.MustReleaseUnboundedp] :: false)))])
+{
+  var except1_4: Bool
+  var except2_4: Bool
+  inhale p1_21
+  except1_4 := false
+  except2_4 := false
+  var _err: Ref
+  var _err_5: Ref
+  var error_4: Ref
+  var error_4_0: Ref
+  var try_finally_12: Int
+  var try_finally_12_0: Int
+  var i_5: Ref
+  var i_5_0: Ref
+  var c_5: Ref
+  var c_5_0: Ref
+  var MyException_res_6: Ref
+  var MyException_res_6_0: Ref
+  var MyException2_res: Ref
+  var MyException2_res_1: Ref
+  var _cwl_162: Perm
+  var _cwl_162_0: Perm
+  var _method_measures_162: Seq[Measure$]
+  var _method_measures_162_0: Seq[Measure$]
+  if (p1_21 && !except1_4) {
+    _method_measures_162 := Seq[Measure$]()
+    _err := null
+    i_5 := i
+    c_5 := c_1
+  }
+  if (p2_21 && !except2_4) {
+    _method_measures_162_0 := Seq[Measure$]()
+    _err_5 := null
+    i_5_0 := i_7
+    c_5_0 := c_1_0
+  }
+  // Try/catch block
+  
+  var bypass1_4: Bool
+  var bypass2_4: Bool
+  var thisexcept1_4: Bool
+  var thisexcept2_4: Bool
+  var p1_25: Bool
+  var p2_25: Bool
+  var p1_27: Bool
+  var p2_27: Bool
+  bypass1_4 := !(p1_21 && !except1_4)
+  bypass2_4 := !(p2_21 && !except2_4)
+  var p1_22: Bool
+  var p2_22: Bool
+  var p3_8: Bool
+  var p4_8: Bool
+  p1_22 := p1_21 && !except1_4 && int___lt__(int___unbox__(i_5), 0)
+  p2_22 := p2_21 && !except2_4 && int___lt__(int___unbox__(i_5_0), 0)
+  p3_8 := p1_21 && !except1_4 && !int___lt__(int___unbox__(i_5), 0)
+  p4_8 := p2_21 && !except2_4 && !int___lt__(int___unbox__(i_5_0), 0)
+  var tmp_6: Ref
+  tmp_6 := new()
+  if (p1_22 && !except1_4) {
+    MyException_res_6 := tmp_6
+  }
+  if (p2_22 && !except2_4) {
+    MyException_res_6_0 := tmp_6
+  }
+  if (p1_22 && !except1_4) {
+    inhale typeof(MyException_res_6) == MyException()
+  }
+  if (p2_22 && !except2_4) {
+    inhale typeof(MyException_res_6_0) == MyException()
+  }
+  if (p1_22 && !except1_4) {
+    _err := MyException_res_6
+    except1_4 := true
+  }
+  if (p2_22 && !except2_4) {
+    _err_5 := MyException_res_6_0
+    except2_4 := true
+  }
+  var p1_23: Bool
+  var p2_23: Bool
+  var p3_9: Bool
+  var p4_9: Bool
+  p1_23 := p3_8 && !except1_4 && int___gt__(int___unbox__(i_5), 0)
+  p2_23 := p4_8 && !except2_4 && int___gt__(int___unbox__(i_5_0), 0)
+  p3_9 := p3_8 && !except1_4 && !int___gt__(int___unbox__(i_5), 0)
+  p4_9 := p4_8 && !except2_4 && !int___gt__(int___unbox__(i_5_0), 0)
+  var tmp_7: Ref
+  tmp_7 := new()
+  if (p1_23 && !except1_4) {
+    MyException2_res := tmp_7
+  }
+  if (p2_23 && !except2_4) {
+    MyException2_res_1 := tmp_7
+  }
+  if (p1_23 && !except1_4) {
+    inhale typeof(MyException2_res) == MyException2()
+  }
+  if (p2_23 && !except2_4) {
+    inhale typeof(MyException2_res_1) == MyException2()
+  }
+  if (p1_23 && !except1_4) {
+    _err := MyException2_res
+    except1_4 := true
+  }
+  if (p2_23 && !except2_4) {
+    _err_5 := MyException2_res_1
+    except2_4 := true
+  }
+  var p1_24: Bool
+  var p2_24: Bool
+  var p3_10: Bool
+  var p4_10: Bool
+  p1_24 := p3_9 && !except1_4 && perm(_MaySet(c_5, 526803611440346310908232101056638787)) > none
+  p2_24 := p4_9 && !except2_4 && perm(_MaySet_0(c_5_0, 526803611440346310908232101056638787)) > none
+  p3_10 := p3_9 && !except1_4 && !(perm(_MaySet(c_5, 526803611440346310908232101056638787)) > none)
+  p4_10 := p4_9 && !except2_4 && !(perm(_MaySet_0(c_5_0, 526803611440346310908232101056638787)) > none)
+  if (p1_24 && !except1_4) {
+    exhale acc(_MaySet(c_5, 526803611440346310908232101056638787), write)
+    inhale acc(c_5.Container_value, write)
+  }
+  if (p2_24 && !except2_4) {
+    exhale acc(_MaySet_0(c_5_0, 526803611440346310908232101056638787), write)
+    inhale acc(c_5_0.Container_valuep, write)
+  }
+  if (p3_9 && !except1_4) {
+    c_5.Container_value := __prim__int___box__(0)
+  }
+  if (p4_9 && !except2_4) {
+    c_5_0.Container_valuep := __prim__int___box__(0)
+  }
+  thisexcept1_4 := except1_4 && !bypass1_4
+  thisexcept2_4 := except2_4 && !bypass2_4
+  p1_25 := p1_21 && (thisexcept1_4 && issubtype(typeof(_err), MyException()))
+  p2_25 := p2_21 && (thisexcept2_4 && issubtype(typeof(_err_5), MyException()))
+  if (p1_25) {
+    except1_4 := false
+  }
+  if (p2_25) {
+    except2_4 := false
+  }
+  var p1_26: Bool
+  var p2_26: Bool
+  var p3_11: Bool
+  var p4_11: Bool
+  p1_26 := p1_25 && !except1_4 && perm(_MaySet(c_5, 526803611440346310908232101056638787)) > none
+  p2_26 := p2_25 && !except2_4 && perm(_MaySet_0(c_5_0, 526803611440346310908232101056638787)) > none
+  p3_11 := p1_25 && !except1_4 && !(perm(_MaySet(c_5, 526803611440346310908232101056638787)) > none)
+  p4_11 := p2_25 && !except2_4 && !(perm(_MaySet_0(c_5_0, 526803611440346310908232101056638787)) > none)
+  if (p1_26 && !except1_4) {
+    exhale acc(_MaySet(c_5, 526803611440346310908232101056638787), write)
+    inhale acc(c_5.Container_value, write)
+  }
+  if (p2_26 && !except2_4) {
+    exhale acc(_MaySet_0(c_5_0, 526803611440346310908232101056638787), write)
+    inhale acc(c_5_0.Container_valuep, write)
+  }
+  if (p1_25 && !except1_4) {
+    c_5.Container_value := __prim__int___box__(-1)
+  }
+  if (p2_25 && !except2_4) {
+    c_5_0.Container_valuep := __prim__int___box__(-1)
+  }
+  if (p1_21 && !except1_4) {
+    _err := null
+  }
+  if (p2_21 && !except2_4) {
+    _err_5 := null
+  }
+  p1_27 := p1_21 && (thisexcept1_4 && issubtype(typeof(_err), MyException2()))
+  p2_27 := p2_21 && (thisexcept2_4 && issubtype(typeof(_err_5), MyException2()))
+  if (p1_27) {
+    except1_4 := false
+  }
+  if (p2_27) {
+    except2_4 := false
+  }
+  var p1_28: Bool
+  var p2_28: Bool
+  var p3_12: Bool
+  var p4_12: Bool
+  p1_28 := p1_27 && !except1_4 && perm(_MaySet(c_5, 526803611440346310908232101056638787)) > none
+  p2_28 := p2_27 && !except2_4 && perm(_MaySet_0(c_5_0, 526803611440346310908232101056638787)) > none
+  p3_12 := p1_27 && !except1_4 && !(perm(_MaySet(c_5, 526803611440346310908232101056638787)) > none)
+  p4_12 := p2_27 && !except2_4 && !(perm(_MaySet_0(c_5_0, 526803611440346310908232101056638787)) > none)
+  if (p1_28 && !except1_4) {
+    exhale acc(_MaySet(c_5, 526803611440346310908232101056638787), write)
+    inhale acc(c_5.Container_value, write)
+  }
+  if (p2_28 && !except2_4) {
+    exhale acc(_MaySet_0(c_5_0, 526803611440346310908232101056638787), write)
+    inhale acc(c_5_0.Container_valuep, write)
+  }
+  if (p1_27 && !except1_4) {
+    c_5.Container_value := __prim__int___box__(1)
+  }
+  if (p2_27 && !except2_4) {
+    c_5_0.Container_valuep := __prim__int___box__(1)
+  }
+  if (p1_21 && !except1_4) {
+    _err := null
+  }
+  if (p2_21 && !except2_4) {
+    _err_5 := null
+  }
+  assert (p1_21 ==> !except1_4) && (p2_21 ==> !except2_4)
+}
+
+method m7(p1_29: Bool, p2_29: Bool, _cthread_163: Ref, _cthread_163_0: Ref, _caller_measures_163: Seq[Measure$], _caller_measures_163_0: Seq[Measure$], _residue_163: Perm, _residue_163_0: Perm, i_0: Ref, i_0_0: Ref, c_2: Ref, c_2_0: Ref) returns (_current_wait_level_163: Perm, _current_wait_level_163_0: Perm)
+  requires (p1_29 ==> _cthread_163 != null) && (p2_29 ==> _cthread_163_0 != null)
+  requires (p1_29 ==> issubtype(typeof(_cthread_163), Thread_0())) && (p2_29 ==> issubtype(typeof(_cthread_163_0), Thread_0()))
+  requires (p1_29 ==> issubtype(typeof(i_0), int())) && (p2_29 ==> issubtype(typeof(i_0_0), int()))
+  requires (p1_29 ==> issubtype(typeof(c_2), Container())) && (p2_29 ==> issubtype(typeof(c_2_0), Container()))
+  requires (p1_29 ==> acc(c_2.Container_value, write)) && (p2_29 ==> acc(c_2_0.Container_valuep, write)) && ((p1_29 ==> issubtype(typeof(c_2.Container_value), int())) && (p2_29 ==> issubtype(typeof(c_2_0.Container_valuep), int())))
+  requires (p1_29 ==> [true, perm(MustTerminate(_cthread_163)) == none && ((forperm _r_19: Ref [MustInvokeBounded(_r_19)] :: false) && ((forperm _r_19: Ref [MustInvokeUnbounded(_r_19)] :: false) && ((forperm _r_19: Ref [_r_19.MustReleaseBounded] :: false) && (forperm _r_19: Ref [_r_19.MustReleaseUnbounded] :: false))))]) && (p2_29 ==> [true, perm(MustTerminate_0(_cthread_163_0)) == none && ((forperm _r_19: Ref [MustInvokeBounded_0(_r_19)] :: false) && ((forperm _r_19: Ref [MustInvokeUnbounded_0(_r_19)] :: false) && ((forperm _r_19: Ref [_r_19.MustReleaseBoundedp] :: false) && (forperm _r_19: Ref [_r_19.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_29 ==> [(forperm _r_17: Ref [_r_17.MustReleaseBounded] :: Level(_r_17) <= _current_wait_level_163) && ((forperm _r_17: Ref [_r_17.MustReleaseUnbounded] :: Level(_r_17) <= _current_wait_level_163) && _residue_163 <= _current_wait_level_163), true]) && (p2_29 ==> [(forperm _r_17: Ref [_r_17.MustReleaseBoundedp] :: Level(_r_17) <= _current_wait_level_163_0) && ((forperm _r_17: Ref [_r_17.MustReleaseUnboundedp] :: Level(_r_17) <= _current_wait_level_163_0) && _residue_163_0 <= _current_wait_level_163_0), true])
+  ensures (p1_29 ==> acc(c_2.Container_value, write)) && (p2_29 ==> acc(c_2_0.Container_valuep, write)) && ((p1_29 ==> issubtype(typeof(c_2.Container_value), int())) && (p2_29 ==> issubtype(typeof(c_2_0.Container_valuep), int())))
+  ensures (p1_29 ==> int___eq__(i_0, __prim__int___box__(0)) ==> int___eq__(c_2.Container_value, __prim__int___box__(20))) && (p2_29 ==> int___eq__(i_0_0, __prim__int___box__(0)) ==> int___eq__(c_2_0.Container_valuep, __prim__int___box__(20)))
+  ensures (p1_29 ==> !int___eq__(i_0, __prim__int___box__(0)) ==> int___eq__(c_2.Container_value, __prim__int___box__(30))) && (p2_29 ==> !int___eq__(i_0_0, __prim__int___box__(0)) ==> int___eq__(c_2_0.Container_valuep, __prim__int___box__(30)))
+  ensures (p1_29 ==> [true, (forperm _r_18: Ref [MustInvokeBounded(_r_18)] :: false) && ((forperm _r_18: Ref [MustInvokeUnbounded(_r_18)] :: false) && ((forperm _r_18: Ref [_r_18.MustReleaseBounded] :: false) && (forperm _r_18: Ref [_r_18.MustReleaseUnbounded] :: false)))]) && (p2_29 ==> [true, (forperm _r_18: Ref [MustInvokeBounded_0(_r_18)] :: false) && ((forperm _r_18: Ref [MustInvokeUnbounded_0(_r_18)] :: false) && ((forperm _r_18: Ref [_r_18.MustReleaseBoundedp] :: false) && (forperm _r_18: Ref [_r_18.MustReleaseUnboundedp] :: false)))])
+{
+  var except1_5: Bool
+  var except2_5: Bool
+  inhale p1_29
+  except1_5 := false
+  except2_5 := false
+  var _err: Ref
+  var _err_6: Ref
+  var cl: Ref
+  var cl_0: Ref
+  var error_5: Ref
+  var error_5_0: Ref
+  var try_finally_13: Int
+  var try_finally_13_0: Int
+  var error_6: Ref
+  var error_6_0: Ref
+  var try_finally_14: Int
+  var try_finally_14_0: Int
+  var i_6: Ref
+  var i_6_0: Ref
+  var c_6: Ref
+  var c_6_0: Ref
+  var MyException_res_7: Ref
+  var MyException_res_7_0: Ref
+  var MyException2_res_0: Ref
+  var MyException2_res_0_0: Ref
+  var _cwl_163: Perm
+  var _cwl_163_0: Perm
+  var _method_measures_163: Seq[Measure$]
+  var _method_measures_163_0: Seq[Measure$]
+  if (p1_29 && !except1_5) {
+    _method_measures_163 := Seq[Measure$]()
+    _err := null
+    i_6 := i_0
+    c_6 := c_2
+  }
+  if (p2_29 && !except2_5) {
+    _method_measures_163_0 := Seq[Measure$]()
+    _err_6 := null
+    i_6_0 := i_0_0
+    c_6_0 := c_2_0
+  }
+  var p1_30: Bool
+  var p2_30: Bool
+  var p3_13: Bool
+  var p4_13: Bool
+  p1_30 := p1_29 && !except1_5 && perm(_MaySet(c_6, 526803611440346310908232101056638787)) > none
+  p2_30 := p2_29 && !except2_5 && perm(_MaySet_0(c_6_0, 526803611440346310908232101056638787)) > none
+  p3_13 := p1_29 && !except1_5 && !(perm(_MaySet(c_6, 526803611440346310908232101056638787)) > none)
+  p4_13 := p2_29 && !except2_5 && !(perm(_MaySet_0(c_6_0, 526803611440346310908232101056638787)) > none)
+  if (p1_30 && !except1_5) {
+    exhale acc(_MaySet(c_6, 526803611440346310908232101056638787), write)
+    inhale acc(c_6.Container_value, write)
+  }
+  if (p2_30 && !except2_5) {
+    exhale acc(_MaySet_0(c_6_0, 526803611440346310908232101056638787), write)
+    inhale acc(c_6_0.Container_valuep, write)
+  }
+  if (p1_29 && !except1_5) {
+    c_6.Container_value := __prim__int___box__(12)
+  }
+  if (p2_29 && !except2_5) {
+    c_6_0.Container_valuep := __prim__int___box__(12)
+  }
+  // Try/catch block
+  
+  var bypass1_5: Bool
+  var bypass2_5: Bool
+  var thisexcept1_6: Bool
+  var thisexcept2_6: Bool
+  var p1_32: Bool
+  var p2_32: Bool
+  var p1_34: Bool
+  var p2_34: Bool
+  bypass1_5 := !(p1_29 && !except1_5)
+  bypass2_5 := !(p2_29 && !except2_5)
+  // Try/catch block
+  
+  var bypass1_6: Bool
+  var bypass2_6: Bool
+  var oldexcept1_2: Bool
+  var oldexcept2_2: Bool
+  var thisexcept1_5: Bool
+  var thisexcept2_5: Bool
+  var tmp_ret1_2: Bool
+  var tmp_ret2_2: Bool
+  var tmp_break1_2: Bool
+  var tmp_break2_2: Bool
+  var tmp_cont1_2: Bool
+  var tmp_cont2_2: Bool
+  var tmp_except1_2: Bool
+  var tmp_except2_2: Bool
+  bypass1_6 := !(p1_29 && !except1_5)
+  bypass2_6 := !(p2_29 && !except2_5)
+  oldexcept1_2 := except1_5
+  oldexcept2_2 := except2_5
+  var p1_31: Bool
+  var p2_31: Bool
+  var p3_14: Bool
+  var p4_14: Bool
+  p1_31 := p1_29 && !except1_5 && int___eq__(i_6, __prim__int___box__(0))
+  p2_31 := p2_29 && !except2_5 && int___eq__(i_6_0, __prim__int___box__(0))
+  p3_14 := p1_29 && !except1_5 && !int___eq__(i_6, __prim__int___box__(0))
+  p4_14 := p2_29 && !except2_5 && !int___eq__(i_6_0, __prim__int___box__(0))
+  var tmp_8: Ref
+  tmp_8 := new()
+  if (p1_31 && !except1_5) {
+    MyException_res_7 := tmp_8
+  }
+  if (p2_31 && !except2_5) {
+    MyException_res_7_0 := tmp_8
+  }
+  if (p1_31 && !except1_5) {
+    inhale typeof(MyException_res_7) == MyException()
+  }
+  if (p2_31 && !except2_5) {
+    inhale typeof(MyException_res_7_0) == MyException()
+  }
+  if (p1_31 && !except1_5) {
+    _err := MyException_res_7
+    except1_5 := true
+  }
+  if (p2_31 && !except2_5) {
+    _err_6 := MyException_res_7_0
+    except2_5 := true
+  }
+  var tmp_9: Ref
+  tmp_9 := new()
+  if (p3_14 && !except1_5) {
+    MyException2_res_0 := tmp_9
+  }
+  if (p4_14 && !except2_5) {
+    MyException2_res_0_0 := tmp_9
+  }
+  if (p3_14 && !except1_5) {
+    inhale typeof(MyException2_res_0) == MyException2()
+  }
+  if (p4_14 && !except2_5) {
+    inhale typeof(MyException2_res_0_0) == MyException2()
+  }
+  if (p3_14 && !except1_5) {
+    _err := MyException2_res_0
+    except1_5 := true
+  }
+  if (p4_14 && !except2_5) {
+    _err_6 := MyException2_res_0_0
+    except2_5 := true
+  }
+  thisexcept1_5 := except1_5 && !bypass1_6
+  thisexcept2_5 := except2_5 && !bypass2_6
+  if (p1_29) {
+    tmp_except1_2 := except1_5
+    except1_5 := oldexcept1_2
+  }
+  if (p2_29) {
+    tmp_except2_2 := except2_5
+    except2_5 := oldexcept2_2
+  }
+  if (p1_29 && !except1_5) {
+    cl := __prim__int___box__(12)
+    inhale _isDefined(27747)
+  }
+  if (p2_29 && !except2_5) {
+    cl_0 := __prim__int___box__(12)
+    inhale true
+  }
+  if (p1_29) {
+    except1_5 := except1_5 || tmp_except1_2
+  }
+  if (p2_29) {
+    except2_5 := except2_5 || tmp_except2_2
+  }
+  thisexcept1_6 := except1_5 && !bypass1_5
+  thisexcept2_6 := except2_5 && !bypass2_5
+  p1_32 := p1_29 && (thisexcept1_6 && issubtype(typeof(_err), MyException()))
+  p2_32 := p2_29 && (thisexcept2_6 && issubtype(typeof(_err_6), MyException()))
+  if (p1_32) {
+    except1_5 := false
+  }
+  if (p2_32) {
+    except2_5 := false
+  }
+  var p1_33: Bool
+  var p2_33: Bool
+  var p3_15: Bool
+  var p4_15: Bool
+  p1_33 := p1_32 && !except1_5 && perm(_MaySet(c_6, 526803611440346310908232101056638787)) > none
+  p2_33 := p2_32 && !except2_5 && perm(_MaySet_0(c_6_0, 526803611440346310908232101056638787)) > none
+  p3_15 := p1_32 && !except1_5 && !(perm(_MaySet(c_6, 526803611440346310908232101056638787)) > none)
+  p4_15 := p2_32 && !except2_5 && !(perm(_MaySet_0(c_6_0, 526803611440346310908232101056638787)) > none)
+  if (p1_33 && !except1_5) {
+    exhale acc(_MaySet(c_6, 526803611440346310908232101056638787), write)
+    inhale acc(c_6.Container_value, write)
+  }
+  if (p2_33 && !except2_5) {
+    exhale acc(_MaySet_0(c_6_0, 526803611440346310908232101056638787), write)
+    inhale acc(c_6_0.Container_valuep, write)
+  }
+  if (p1_32 && !except1_5) {
+    c_6.Container_value := __prim__int___box__(int___add__(int___unbox__(c_6.Container_value), 8))
+  }
+  if (p2_32 && !except2_5) {
+    c_6_0.Container_valuep := __prim__int___box__(int___add__(int___unbox__(c_6_0.Container_valuep), 8))
+  }
+  if (p1_29 && !except1_5) {
+    _err := null
+  }
+  if (p2_29 && !except2_5) {
+    _err_6 := null
+  }
+  p1_34 := p1_29 && (thisexcept1_6 && issubtype(typeof(_err), MyException2()))
+  p2_34 := p2_29 && (thisexcept2_6 && issubtype(typeof(_err_6), MyException2()))
+  if (p1_34) {
+    except1_5 := false
+  }
+  if (p2_34) {
+    except2_5 := false
+  }
+  var p1_35: Bool
+  var p2_35: Bool
+  var p3_16: Bool
+  var p4_16: Bool
+  p1_35 := p1_34 && !except1_5 && perm(_MaySet(c_6, 526803611440346310908232101056638787)) > none
+  p2_35 := p2_34 && !except2_5 && perm(_MaySet_0(c_6_0, 526803611440346310908232101056638787)) > none
+  p3_16 := p1_34 && !except1_5 && !(perm(_MaySet(c_6, 526803611440346310908232101056638787)) > none)
+  p4_16 := p2_34 && !except2_5 && !(perm(_MaySet_0(c_6_0, 526803611440346310908232101056638787)) > none)
+  if (p1_35 && !except1_5) {
+    exhale acc(_MaySet(c_6, 526803611440346310908232101056638787), write)
+    inhale acc(c_6.Container_value, write)
+  }
+  if (p2_35 && !except2_5) {
+    exhale acc(_MaySet_0(c_6_0, 526803611440346310908232101056638787), write)
+    inhale acc(c_6_0.Container_valuep, write)
+  }
+  if (p1_34 && !except1_5) {
+    c_6.Container_value := __prim__int___box__(int___add__(int___unbox__(c_6.Container_value), 18))
+  }
+  if (p2_34 && !except2_5) {
+    c_6_0.Container_valuep := __prim__int___box__(int___add__(int___unbox__(c_6_0.Container_valuep), 18))
+  }
+  if (p1_29 && !except1_5) {
+    _err := null
+  }
+  if (p2_29 && !except2_5) {
+    _err_6 := null
+  }
+  assert (p1_29 ==> !except1_5) && (p2_29 ==> !except2_5)
+}
+
+method m8(p1_36: Bool, p2_36: Bool, _cthread_164: Ref, _cthread_164_0: Ref, _caller_measures_164: Seq[Measure$], _caller_measures_164_0: Seq[Measure$], _residue_164: Perm, _residue_164_0: Perm) returns (_current_wait_level_164: Perm, _current_wait_level_164_0: Perm, _res: Ref, _res_3: Ref)
+  requires (p1_36 ==> _cthread_164 != null) && (p2_36 ==> _cthread_164_0 != null)
+  requires (p1_36 ==> issubtype(typeof(_cthread_164), Thread_0())) && (p2_36 ==> issubtype(typeof(_cthread_164_0), Thread_0()))
+  requires (p1_36 ==> [true, perm(MustTerminate(_cthread_164)) == none && ((forperm _r_24: Ref [MustInvokeBounded(_r_24)] :: false) && ((forperm _r_24: Ref [MustInvokeUnbounded(_r_24)] :: false) && ((forperm _r_24: Ref [_r_24.MustReleaseBounded] :: false) && (forperm _r_24: Ref [_r_24.MustReleaseUnbounded] :: false))))]) && (p2_36 ==> [true, perm(MustTerminate_0(_cthread_164_0)) == none && ((forperm _r_24: Ref [MustInvokeBounded_0(_r_24)] :: false) && ((forperm _r_24: Ref [MustInvokeUnbounded_0(_r_24)] :: false) && ((forperm _r_24: Ref [_r_24.MustReleaseBoundedp] :: false) && (forperm _r_24: Ref [_r_24.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_36 ==> [(forperm _r_22: Ref [_r_22.MustReleaseBounded] :: Level(_r_22) <= _current_wait_level_164) && ((forperm _r_22: Ref [_r_22.MustReleaseUnbounded] :: Level(_r_22) <= _current_wait_level_164) && _residue_164 <= _current_wait_level_164), true]) && (p2_36 ==> [(forperm _r_22: Ref [_r_22.MustReleaseBoundedp] :: Level(_r_22) <= _current_wait_level_164_0) && ((forperm _r_22: Ref [_r_22.MustReleaseUnboundedp] :: Level(_r_22) <= _current_wait_level_164_0) && _residue_164_0 <= _current_wait_level_164_0), true])
+  ensures (p1_36 ==> issubtype(typeof(_res), int())) && (p2_36 ==> issubtype(typeof(_res_3), int()))
+  ensures (p1_36 ==> int___eq__(_res, __prim__int___box__(6))) && (p2_36 ==> int___eq__(_res_3, __prim__int___box__(6)))
+  ensures (p1_36 ==> [true, (forperm _r_23: Ref [MustInvokeBounded(_r_23)] :: false) && ((forperm _r_23: Ref [MustInvokeUnbounded(_r_23)] :: false) && ((forperm _r_23: Ref [_r_23.MustReleaseBounded] :: false) && (forperm _r_23: Ref [_r_23.MustReleaseUnbounded] :: false)))]) && (p2_36 ==> [true, (forperm _r_23: Ref [MustInvokeBounded_0(_r_23)] :: false) && ((forperm _r_23: Ref [MustInvokeUnbounded_0(_r_23)] :: false) && ((forperm _r_23: Ref [_r_23.MustReleaseBoundedp] :: false) && (forperm _r_23: Ref [_r_23.MustReleaseUnboundedp] :: false)))])
+{
+  var ret1_2: Bool
+  var ret2_2: Bool
+  var break1: Bool
+  var break2: Bool
+  var except1_6: Bool
+  var except2_6: Bool
+  inhale p1_36
+  ret1_2 := false
+  ret2_2 := false
+  break1 := false
+  break2 := false
+  except1_6 := false
+  except2_6 := false
+  var _err: Ref
+  var _err_7: Ref
+  var i_1: Ref
+  var i_1_0: Ref
+  var error_7: Ref
+  var error_7_0: Ref
+  var try_finally_15: Int
+  var try_finally_15_0: Int
+  var _loop_measures: Seq[Measure$]
+  var _loop_measures_3: Seq[Measure$]
+  var _loop_check_before: Bool
+  var _loop_check_before_3: Bool
+  var _loop_termination_flag: Bool
+  var _loop_termination_flag_3: Bool
+  var _loop_original_must_terminate: Perm
+  var _loop_original_must_terminate_3: Perm
+  var _residue_168: Perm
+  var _residue_168_0: Perm
+  var _cwl_164: Perm
+  var _cwl_164_0: Perm
+  var _method_measures_164: Seq[Measure$]
+  var _method_measures_164_0: Seq[Measure$]
+  if (p1_36 && (!ret1_2 && (!break1 && !except1_6))) {
+    _method_measures_164 := Seq[Measure$]()
+    _res := null
+    _err := null
+    i_1 := __prim__int___box__(0)
+    inhale _isDefined(3235689)
+    // Save current MustTerminate amount.
+    _loop_original_must_terminate := perm(MustTerminate(_cthread_164))
+    // Save loop termination promise.
+    _loop_termination_flag := false
+    // We are before loop.
+    _loop_check_before := true
+  }
+  if (p2_36 && (!ret2_2 && (!break2 && !except2_6))) {
+    _method_measures_164_0 := Seq[Measure$]()
+    _res_3 := null
+    _err_7 := null
+    i_1_0 := __prim__int___box__(0)
+    inhale true
+    // Save current MustTerminate amount.
+    _loop_original_must_terminate_3 := perm(MustTerminate_0(_cthread_164_0))
+    // Save loop termination promise.
+    _loop_termination_flag_3 := false
+    // We are before loop.
+    _loop_check_before_3 := true
+  }
+  var bypass1_7: Bool
+  var bypass2_7: Bool
+  var tmp1: Seq[Measure$]
+  var tmp2: Seq[Measure$]
+  var tmp1_0: Ref
+  var tmp2_0: Ref
+  var tmp1_1: Bool
+  var tmp2_1: Bool
+  var tmp1_2: Bool
+  var tmp2_2: Bool
+  var oldret1_2: Bool
+  var oldret2_2: Bool
+  var oldbreak1: Bool
+  var oldbreak2: Bool
+  var oldexcept1_6: Bool
+  var oldexcept2_6: Bool
+  var p1_37: Bool
+  var p2_37: Bool
+  var idle1: Bool
+  var idle2: Bool
+  bypass1_7 := !(p1_36 && (!ret1_2 && (!break1 && !except1_6)))
+  bypass2_7 := !(p2_36 && (!ret2_2 && (!break2 && !except2_6)))
+  if (bypass1_7) {
+    tmp1 := _loop_measures
+    tmp1_0 := i_1
+    tmp1_1 := _loop_check_before
+    tmp1_2 := break1
+  }
+  if (bypass2_7) {
+    tmp2 := _loop_measures_3
+    tmp2_0 := i_1_0
+    tmp2_1 := _loop_check_before_3
+    tmp2_2 := break2
+  }
+  oldret1_2 := ret1_2
+  oldret2_2 := ret2_2
+  oldbreak1 := break1
+  oldbreak2 := break2
+  oldexcept1_6 := except1_6
+  oldexcept2_6 := except2_6
+  idle1 := false
+  idle2 := false
+  while (p1_36 && (!ret1_2 && (!break1 && !except1_6)) && !bypass1_7 && true || p2_36 && (!ret2_2 && (!break2 && !except2_6)) && !bypass2_7 && true)
+    invariant (p1_36 && !bypass1_7 ==> [(forperm _r_20: Ref [_r_20.MustReleaseBounded] :: Level(_r_20) <= _residue_168) && ((forperm _r_20: Ref [_r_20.MustReleaseUnbounded] :: Level(_r_20) <= _residue_168) && _residue_164 <= _residue_168), true]) && (p2_36 && !bypass2_7 ==> [(forperm _r_20: Ref [_r_20.MustReleaseBoundedp] :: Level(_r_20) <= _residue_168_0) && ((forperm _r_20: Ref [_r_20.MustReleaseUnboundedp] :: Level(_r_20) <= _residue_168_0) && _residue_164_0 <= _residue_168_0), true])
+    invariant (p1_36 && !bypass1_7 ==> issubtype(typeof(i_1), int())) && (p2_36 && !bypass2_7 ==> issubtype(typeof(i_1_0), int()))
+    invariant (p1_36 && !bypass1_7 ==> int___ge__(int___unbox__(_checkDefined(i_1, 3235689)), 0)) && (p2_36 && !bypass2_7 ==> int___ge__(int___unbox__(i_1_0), 0)) && ((p1_36 && !bypass1_7 ==> int___le__(int___unbox__(_checkDefined(i_1, 3235689)), 7)) && (p2_36 && !bypass2_7 ==> int___le__(int___unbox__(i_1_0), 7)) && ((p1_36 && !bypass1_7 ==> int___eq__(__prim__int___box__(int___mod__(int___unbox__(_checkDefined(i_1, 3235689)), 2)), __prim__int___box__(0))) && (p2_36 && !bypass2_7 ==> int___eq__(__prim__int___box__(int___mod__(int___unbox__(i_1_0), 2)), __prim__int___box__(0)))))
+    invariant (p1_36 && !bypass1_7 ==> [true, !idle1 ==> _loop_check_before ==> _loop_termination_flag || perm(MustTerminate(_cthread_164)) == none && ((forperm _r_21: Ref [MustInvokeBounded(_r_21)] :: false) && ((forperm _r_21: Ref [MustInvokeUnbounded(_r_21)] :: false) && ((forperm _r_21: Ref [_r_21.MustReleaseBounded] :: false) && (forperm _r_21: Ref [_r_21.MustReleaseUnbounded] :: false))))]) && (p2_36 && !bypass2_7 ==> [true, !idle2 ==> _loop_check_before_3 ==> _loop_termination_flag_3 || perm(MustTerminate_0(_cthread_164_0)) == none && ((forperm _r_21: Ref [MustInvokeBounded_0(_r_21)] :: false) && ((forperm _r_21: Ref [MustInvokeUnbounded_0(_r_21)] :: false) && ((forperm _r_21: Ref [_r_21.MustReleaseBoundedp] :: false) && (forperm _r_21: Ref [_r_21.MustReleaseUnboundedp] :: false))))])
+    invariant (p1_36 && !bypass1_7 ==> [true, !idle1 ==> !_loop_check_before ==> (forperm _r_21: Ref [MustInvokeBounded(_r_21)] :: false) && ((forperm _r_21: Ref [MustInvokeUnbounded(_r_21)] :: false) && ((forperm _r_21: Ref [_r_21.MustReleaseBounded] :: false) && (forperm _r_21: Ref [_r_21.MustReleaseUnbounded] :: false)))]) && (p2_36 && !bypass2_7 ==> [true, !idle2 ==> !_loop_check_before_3 ==> (forperm _r_21: Ref [MustInvokeBounded_0(_r_21)] :: false) && ((forperm _r_21: Ref [MustInvokeUnbounded_0(_r_21)] :: false) && ((forperm _r_21: Ref [_r_21.MustReleaseBoundedp] :: false) && (forperm _r_21: Ref [_r_21.MustReleaseUnboundedp] :: false)))])
+    invariant bypass1_7 ==> tmp1 == _loop_measures
+    invariant bypass1_7 ==> tmp1_0 == i_1
+    invariant bypass1_7 ==> tmp1_1 == _loop_check_before
+    invariant bypass1_7 ==> tmp1_2 == break1
+    invariant bypass2_7 ==> tmp2 == _loop_measures_3
+    invariant bypass2_7 ==> tmp2_0 == i_1_0
+    invariant bypass2_7 ==> tmp2_1 == _loop_check_before_3
+    invariant bypass2_7 ==> tmp2_2 == break2 
+  {
+    p1_37 := p1_36 && (!ret1_2 && (!break1 && !except1_6)) && true
+    p2_37 := p2_36 && (!ret2_2 && (!break2 && !except2_6)) && true
+    idle1 := p1_36 && (!ret1_2 && (!break1 && !except1_6)) && !true
+    idle2 := p2_36 && (!ret2_2 && (!break2 && !except2_6)) && !true
+    if (p1_37 && (!ret1_2 && (!break1 && !except1_6))) {
+      _loop_measures := Seq[Measure$]()
+    }
+    if (p2_37 && (!ret2_2 && (!break2 && !except2_6))) {
+      _loop_measures_3 := Seq[Measure$]()
+    }
+    var p1_38: Bool
+    var p2_38: Bool
+    var p3_17: Bool
+    var p4_17: Bool
+    p1_38 := p1_37 && (!ret1_2 && (!break1 && !except1_6)) && int___gt__(int___unbox__(_checkDefined(i_1, 3235689)), 5)
+    p2_38 := p2_37 && (!ret2_2 && (!break2 && !except2_6)) && int___gt__(int___unbox__(i_1_0), 5)
+    p3_17 := p1_37 && (!ret1_2 && (!break1 && !except1_6)) && !int___gt__(int___unbox__(_checkDefined(i_1, 3235689)), 5)
+    p4_17 := p2_37 && (!ret2_2 && (!break2 && !except2_6)) && !int___gt__(int___unbox__(i_1_0), 5)
+    if (p1_38 && (!ret1_2 && (!break1 && !except1_6))) {
+      break1 := true
+    }
+    if (p2_38 && (!ret2_2 && (!break2 && !except2_6))) {
+      break2 := true
+    }
+    // Try/catch block
+  
+    var bypass1_8: Bool
+    var bypass2_8: Bool
+    var oldret1_3: Bool
+    var oldret2_3: Bool
+    var oldbreak1_0: Bool
+    var oldbreak2_0: Bool
+    var oldexcept1_3: Bool
+    var oldexcept2_3: Bool
+    var thisexcept1_7: Bool
+    var thisexcept2_7: Bool
+    var tmp_ret1_3: Bool
+    var tmp_ret2_3: Bool
+    var tmp_break1_3: Bool
+    var tmp_break2_3: Bool
+    var tmp_cont1_3: Bool
+    var tmp_cont2_3: Bool
+    var tmp_except1_3: Bool
+    var tmp_except2_3: Bool
+    bypass1_8 := !(p1_37 && (!ret1_2 && (!break1 && !except1_6)))
+    bypass2_8 := !(p2_37 && (!ret2_2 && (!break2 && !except2_6)))
+    oldret1_3 := ret1_2
+    oldret2_3 := ret2_2
+    oldbreak1_0 := break1
+    oldbreak2_0 := break2
+    oldexcept1_3 := except1_6
+    oldexcept2_3 := except2_6
+    if (p1_37 && (!ret1_2 && (!break1 && !except1_6))) {
+      i_1 := __prim__int___box__(int___add__(int___unbox__(i_1), 1))
+      inhale _isDefined(3235689)
+    }
+    if (p2_37 && (!ret2_2 && (!break2 && !except2_6))) {
+      i_1_0 := __prim__int___box__(int___add__(int___unbox__(i_1_0), 1))
+      inhale true
+    }
+    thisexcept1_7 := except1_6 && !bypass1_8
+    thisexcept2_7 := except2_6 && !bypass2_8
+    if (p1_37) {
+      tmp_ret1_3 := ret1_2
+      ret1_2 := oldret1_3
+      tmp_break1_3 := break1
+      break1 := oldbreak1_0
+      tmp_except1_3 := except1_6
+      except1_6 := oldexcept1_3
+    }
+    if (p2_37) {
+      tmp_ret2_3 := ret2_2
+      ret2_2 := oldret2_3
+      tmp_break2_3 := break2
+      break2 := oldbreak2_0
+      tmp_except2_3 := except2_6
+      except2_6 := oldexcept2_3
+    }
+    if (p1_37 && (!ret1_2 && (!break1 && !except1_6))) {
+      i_1 := __prim__int___box__(int___add__(int___unbox__(i_1), 1))
+      inhale _isDefined(3235689)
+    }
+    if (p2_37 && (!ret2_2 && (!break2 && !except2_6))) {
+      i_1_0 := __prim__int___box__(int___add__(int___unbox__(i_1_0), 1))
+      inhale true
+    }
+    if (p1_37) {
+      ret1_2 := ret1_2 || tmp_ret1_3
+      break1 := break1 || tmp_break1_3
+      except1_6 := except1_6 || tmp_except1_3
+    }
+    if (p2_37) {
+      ret2_2 := ret2_2 || tmp_ret2_3
+      break2 := break2 || tmp_break2_3
+      except2_6 := except2_6 || tmp_except2_3
+    }
+    if (p1_37 && (!ret1_2 && (!break1 && !except1_6))) {
+      // We are after loop body.
+      _loop_check_before := false
+    }
+    if (p2_37 && (!ret2_2 && (!break2 && !except2_6))) {
+      // We are after loop body.
+      _loop_check_before_3 := false
+    }
+    assert (p1_37 && (!ret1_2 && (!break1 && !except1_6)) ==> _loop_termination_flag ==> !true) && (p2_37 && (!ret2_2 && (!break2 && !except2_6)) ==> _loop_termination_flag_3 ==> !true)
+  }
+  // Loop Reconstruction.
+  
+  if (!bypass1_7 && (ret1_2 || (break1 || except1_6)) || !bypass2_7 && (ret2_2 || (break2 || except2_6))) {
+    ret1_2 := oldret1_2
+    ret2_2 := oldret2_2
+    break1 := oldbreak1
+    break2 := oldbreak2
+    except1_6 := oldexcept1_6
+    except2_6 := oldexcept2_6
+    inhale p1_36 && (!ret1_2 && (!break1 && !except1_6)) ==> true
+    inhale p2_36 && (!ret1_2 && (!break1 && !except1_6)) ==> true
+    p1_37 := p1_36 && (!ret1_2 && (!break1 && !except1_6)) && true
+    p2_37 := p2_36 && (!ret2_2 && (!break2 && !except2_6)) && true
+    idle1 := p1_36 && (!ret1_2 && (!break1 && !except1_6)) && !true
+    idle2 := p2_36 && (!ret2_2 && (!break2 && !except2_6)) && !true
+    if (p1_37 && (!ret1_2 && (!break1 && !except1_6))) {
+      _loop_measures := Seq[Measure$]()
+    }
+    if (p2_37 && (!ret2_2 && (!break2 && !except2_6))) {
+      _loop_measures_3 := Seq[Measure$]()
+    }
+    var p1_38: Bool
+    var p2_38: Bool
+    var p3_17: Bool
+    var p4_17: Bool
+    p1_38 := p1_37 && (!ret1_2 && (!break1 && !except1_6)) && int___gt__(int___unbox__(_checkDefined(i_1, 3235689)), 5)
+    p2_38 := p2_37 && (!ret2_2 && (!break2 && !except2_6)) && int___gt__(int___unbox__(i_1_0), 5)
+    p3_17 := p1_37 && (!ret1_2 && (!break1 && !except1_6)) && !int___gt__(int___unbox__(_checkDefined(i_1, 3235689)), 5)
+    p4_17 := p2_37 && (!ret2_2 && (!break2 && !except2_6)) && !int___gt__(int___unbox__(i_1_0), 5)
+    if (p1_38 && (!ret1_2 && (!break1 && !except1_6))) {
+      break1 := true
+    }
+    if (p2_38 && (!ret2_2 && (!break2 && !except2_6))) {
+      break2 := true
+    }
+    // Try/catch block
+  
+    var bypass1_8: Bool
+    var bypass2_8: Bool
+    var oldret1_3: Bool
+    var oldret2_3: Bool
+    var oldbreak1_0: Bool
+    var oldbreak2_0: Bool
+    var oldexcept1_3: Bool
+    var oldexcept2_3: Bool
+    var thisexcept1_7: Bool
+    var thisexcept2_7: Bool
+    var tmp_ret1_3: Bool
+    var tmp_ret2_3: Bool
+    var tmp_break1_3: Bool
+    var tmp_break2_3: Bool
+    var tmp_cont1_3: Bool
+    var tmp_cont2_3: Bool
+    var tmp_except1_3: Bool
+    var tmp_except2_3: Bool
+    bypass1_8 := !(p1_37 && (!ret1_2 && (!break1 && !except1_6)))
+    bypass2_8 := !(p2_37 && (!ret2_2 && (!break2 && !except2_6)))
+    oldret1_3 := ret1_2
+    oldret2_3 := ret2_2
+    oldbreak1_0 := break1
+    oldbreak2_0 := break2
+    oldexcept1_3 := except1_6
+    oldexcept2_3 := except2_6
+    if (p1_37 && (!ret1_2 && (!break1 && !except1_6))) {
+      i_1 := __prim__int___box__(int___add__(int___unbox__(i_1), 1))
+      inhale _isDefined(3235689)
+    }
+    if (p2_37 && (!ret2_2 && (!break2 && !except2_6))) {
+      i_1_0 := __prim__int___box__(int___add__(int___unbox__(i_1_0), 1))
+      inhale true
+    }
+    thisexcept1_7 := except1_6 && !bypass1_8
+    thisexcept2_7 := except2_6 && !bypass2_8
+    if (p1_37) {
+      tmp_ret1_3 := ret1_2
+      ret1_2 := oldret1_3
+      tmp_break1_3 := break1
+      break1 := oldbreak1_0
+      tmp_except1_3 := except1_6
+      except1_6 := oldexcept1_3
+    }
+    if (p2_37) {
+      tmp_ret2_3 := ret2_2
+      ret2_2 := oldret2_3
+      tmp_break2_3 := break2
+      break2 := oldbreak2_0
+      tmp_except2_3 := except2_6
+      except2_6 := oldexcept2_3
+    }
+    if (p1_37 && (!ret1_2 && (!break1 && !except1_6))) {
+      i_1 := __prim__int___box__(int___add__(int___unbox__(i_1), 1))
+      inhale _isDefined(3235689)
+    }
+    if (p2_37 && (!ret2_2 && (!break2 && !except2_6))) {
+      i_1_0 := __prim__int___box__(int___add__(int___unbox__(i_1_0), 1))
+      inhale true
+    }
+    if (p1_37) {
+      ret1_2 := ret1_2 || tmp_ret1_3
+      break1 := break1 || tmp_break1_3
+      except1_6 := except1_6 || tmp_except1_3
+    }
+    if (p2_37) {
+      ret2_2 := ret2_2 || tmp_ret2_3
+      break2 := break2 || tmp_break2_3
+      except2_6 := except2_6 || tmp_except2_3
+    }
+    if (p1_37 && (!ret1_2 && (!break1 && !except1_6))) {
+      // We are after loop body.
+      _loop_check_before := false
+    }
+    if (p2_37 && (!ret2_2 && (!break2 && !except2_6))) {
+      // We are after loop body.
+      _loop_check_before_3 := false
+    }
+    assert (p1_37 && (!ret1_2 && (!break1 && !except1_6)) ==> _loop_termination_flag ==> !true) && (p2_37 && (!ret2_2 && (!break2 && !except2_6)) ==> _loop_termination_flag_3 ==> !true)
+    inhale !p1_37 || !(!ret1_2 && (!break1 && !except1_6))
+    inhale !p2_37 || !(!ret2_2 && (!break2 && !except2_6))
+  }
+  if (!bypass1_7) {
+    break1 := false
+  }
+  if (!bypass2_7) {
+    break2 := false
+  }
+  if (p1_36 && (!ret1_2 && (!break1 && !except1_6))) {
+    // Reset MustTerminate amount to original level.
+    exhale perm(MustTerminate(_cthread_164)) > none ==> acc(MustTerminate(_cthread_164), perm(MustTerminate(_cthread_164)) - _loop_original_must_terminate)
+    _res := null
+    _res := _checkDefined(i_1, 3235689)
+    ret1_2 := true
+  }
+  if (p2_36 && (!ret2_2 && (!break2 && !except2_6))) {
+    // Reset MustTerminate amount to original level.
+    exhale perm(MustTerminate_0(_cthread_164_0)) > none ==> acc(MustTerminate_0(_cthread_164_0), perm(MustTerminate_0(_cthread_164_0)) - _loop_original_must_terminate_3)
+    _res_3 := null
+    _res_3 := i_1_0
+    ret2_2 := true
+  }
+  assert (p1_36 ==> !except1_6) && (p2_36 ==> !except2_6)
+}
+
+method m9(p1_39: Bool, p2_39: Bool, _cthread_165: Ref, _cthread_165_0: Ref, _caller_measures_165: Seq[Measure$], _caller_measures_165_0: Seq[Measure$], _residue_165: Perm, _residue_165_0: Perm) returns (_current_wait_level_165: Perm, _current_wait_level_165_0: Perm, _res: Ref, _res_4: Ref)
+  requires (p1_39 ==> _cthread_165 != null) && (p2_39 ==> _cthread_165_0 != null)
+  requires (p1_39 ==> issubtype(typeof(_cthread_165), Thread_0())) && (p2_39 ==> issubtype(typeof(_cthread_165_0), Thread_0()))
+  requires (p1_39 ==> [true, perm(MustTerminate(_cthread_165)) == none && ((forperm _r_29: Ref [MustInvokeBounded(_r_29)] :: false) && ((forperm _r_29: Ref [MustInvokeUnbounded(_r_29)] :: false) && ((forperm _r_29: Ref [_r_29.MustReleaseBounded] :: false) && (forperm _r_29: Ref [_r_29.MustReleaseUnbounded] :: false))))]) && (p2_39 ==> [true, perm(MustTerminate_0(_cthread_165_0)) == none && ((forperm _r_29: Ref [MustInvokeBounded_0(_r_29)] :: false) && ((forperm _r_29: Ref [MustInvokeUnbounded_0(_r_29)] :: false) && ((forperm _r_29: Ref [_r_29.MustReleaseBoundedp] :: false) && (forperm _r_29: Ref [_r_29.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_39 ==> [(forperm _r_27: Ref [_r_27.MustReleaseBounded] :: Level(_r_27) <= _current_wait_level_165) && ((forperm _r_27: Ref [_r_27.MustReleaseUnbounded] :: Level(_r_27) <= _current_wait_level_165) && _residue_165 <= _current_wait_level_165), true]) && (p2_39 ==> [(forperm _r_27: Ref [_r_27.MustReleaseBoundedp] :: Level(_r_27) <= _current_wait_level_165_0) && ((forperm _r_27: Ref [_r_27.MustReleaseUnboundedp] :: Level(_r_27) <= _current_wait_level_165_0) && _residue_165_0 <= _current_wait_level_165_0), true])
+  ensures (p1_39 ==> issubtype(typeof(_res), int())) && (p2_39 ==> issubtype(typeof(_res_4), int()))
+  ensures (p1_39 ==> int___eq__(_res, __prim__int___box__(5))) && (p2_39 ==> int___eq__(_res_4, __prim__int___box__(5)))
+  ensures (p1_39 ==> [true, (forperm _r_28: Ref [MustInvokeBounded(_r_28)] :: false) && ((forperm _r_28: Ref [MustInvokeUnbounded(_r_28)] :: false) && ((forperm _r_28: Ref [_r_28.MustReleaseBounded] :: false) && (forperm _r_28: Ref [_r_28.MustReleaseUnbounded] :: false)))]) && (p2_39 ==> [true, (forperm _r_28: Ref [MustInvokeBounded_0(_r_28)] :: false) && ((forperm _r_28: Ref [MustInvokeUnbounded_0(_r_28)] :: false) && ((forperm _r_28: Ref [_r_28.MustReleaseBoundedp] :: false) && (forperm _r_28: Ref [_r_28.MustReleaseUnboundedp] :: false)))])
+{
+  var ret1_3: Bool
+  var ret2_3: Bool
+  var cont1: Bool
+  var cont2: Bool
+  var except1_7: Bool
+  var except2_7: Bool
+  inhale p1_39
+  ret1_3 := false
+  ret2_3 := false
+  cont1 := false
+  cont2 := false
+  except1_7 := false
+  except2_7 := false
+  var _err: Ref
+  var _err_8: Ref
+  var i_2: Ref
+  var i_2_0: Ref
+  var error_8: Ref
+  var error_8_0: Ref
+  var try_finally_16: Int
+  var try_finally_16_0: Int
+  var _loop_measures_0: Seq[Measure$]
+  var _loop_measures_0_0: Seq[Measure$]
+  var _loop_check_before_0: Bool
+  var _loop_check_before_0_0: Bool
+  var _loop_termination_flag_0: Bool
+  var _loop_termination_flag_0_0: Bool
+  var _loop_original_must_terminate_0: Perm
+  var _loop_original_must_terminate_0_0: Perm
+  var _residue_169: Perm
+  var _residue_169_0: Perm
+  var _cwl_165: Perm
+  var _cwl_165_0: Perm
+  var _method_measures_165: Seq[Measure$]
+  var _method_measures_165_0: Seq[Measure$]
+  if (p1_39 && (!ret1_3 && (!cont1 && !except1_7))) {
+    _method_measures_165 := Seq[Measure$]()
+    _res := null
+    _err := null
+    i_2 := __prim__int___box__(0)
+    inhale _isDefined(3301225)
+    // Save current MustTerminate amount.
+    _loop_original_must_terminate_0 := perm(MustTerminate(_cthread_165))
+    // Save loop termination promise.
+    _loop_termination_flag_0 := false
+    // We are before loop.
+    _loop_check_before_0 := true
+  }
+  if (p2_39 && (!ret2_3 && (!cont2 && !except2_7))) {
+    _method_measures_165_0 := Seq[Measure$]()
+    _res_4 := null
+    _err_8 := null
+    i_2_0 := __prim__int___box__(0)
+    inhale true
+    // Save current MustTerminate amount.
+    _loop_original_must_terminate_0_0 := perm(MustTerminate_0(_cthread_165_0))
+    // Save loop termination promise.
+    _loop_termination_flag_0_0 := false
+    // We are before loop.
+    _loop_check_before_0_0 := true
+  }
+  var bypass1_9: Bool
+  var bypass2_9: Bool
+  var tmp1_3: Seq[Measure$]
+  var tmp2_3: Seq[Measure$]
+  var tmp1_4: Ref
+  var tmp2_4: Ref
+  var tmp1_5: Bool
+  var tmp2_5: Bool
+  var tmp1_6: Bool
+  var tmp2_6: Bool
+  var oldret1_3_0: Bool
+  var oldret2_3_0: Bool
+  var oldcont1: Bool
+  var oldcont2: Bool
+  var oldexcept1_7: Bool
+  var oldexcept2_7: Bool
+  var p1_40: Bool
+  var p2_40: Bool
+  var idle1_0: Bool
+  var idle2_0: Bool
+  bypass1_9 := !(p1_39 && (!ret1_3 && (!cont1 && !except1_7)))
+  bypass2_9 := !(p2_39 && (!ret2_3 && (!cont2 && !except2_7)))
+  if (bypass1_9) {
+    tmp1_3 := _loop_measures_0
+    tmp1_4 := i_2
+    tmp1_5 := _loop_check_before_0
+    tmp1_6 := cont1
+  }
+  if (bypass2_9) {
+    tmp2_3 := _loop_measures_0_0
+    tmp2_4 := i_2_0
+    tmp2_5 := _loop_check_before_0_0
+    tmp2_6 := cont2
+  }
+  oldret1_3_0 := ret1_3
+  oldret2_3_0 := ret2_3
+  oldcont1 := cont1
+  oldcont2 := cont2
+  oldexcept1_7 := except1_7
+  oldexcept2_7 := except2_7
+  idle1_0 := false
+  idle2_0 := false
+  while (p1_39 && (!ret1_3 && !except1_7) && !bypass1_9 && int___lt__(int___unbox__(_checkDefined(i_2, 3301225)), 5) || p2_39 && (!ret2_3 && !except2_7) && !bypass2_9 && int___lt__(int___unbox__(i_2_0), 5))
+    invariant (p1_39 && !bypass1_9 ==> [(forperm _r_25: Ref [_r_25.MustReleaseBounded] :: Level(_r_25) <= _residue_169) && ((forperm _r_25: Ref [_r_25.MustReleaseUnbounded] :: Level(_r_25) <= _residue_169) && _residue_165 <= _residue_169), true]) && (p2_39 && !bypass2_9 ==> [(forperm _r_25: Ref [_r_25.MustReleaseBoundedp] :: Level(_r_25) <= _residue_169_0) && ((forperm _r_25: Ref [_r_25.MustReleaseUnboundedp] :: Level(_r_25) <= _residue_169_0) && _residue_165_0 <= _residue_169_0), true])
+    invariant (p1_39 && !bypass1_9 ==> issubtype(typeof(i_2), int())) && (p2_39 && !bypass2_9 ==> issubtype(typeof(i_2_0), int()))
+    invariant (p1_39 && !bypass1_9 ==> int___ge__(int___unbox__(_checkDefined(i_2, 3301225)), 0)) && (p2_39 && !bypass2_9 ==> int___ge__(int___unbox__(i_2_0), 0)) && ((p1_39 && !bypass1_9 ==> int___le__(int___unbox__(_checkDefined(i_2, 3301225)), 5)) && (p2_39 && !bypass2_9 ==> int___le__(int___unbox__(i_2_0), 5)))
+    invariant (p1_39 && !bypass1_9 ==> [true, !idle1_0 ==> _loop_check_before_0 ==> _loop_termination_flag_0 || (!int___lt__(int___unbox__(_checkDefined(i_2, 3301225)), 5) || perm(MustTerminate(_cthread_165)) == none && ((forperm _r_26: Ref [MustInvokeBounded(_r_26)] :: false) && ((forperm _r_26: Ref [MustInvokeUnbounded(_r_26)] :: false) && ((forperm _r_26: Ref [_r_26.MustReleaseBounded] :: false) && (forperm _r_26: Ref [_r_26.MustReleaseUnbounded] :: false)))))]) && (p2_39 && !bypass2_9 ==> [true, !idle2_0 ==> _loop_check_before_0_0 ==> _loop_termination_flag_0_0 || (!int___lt__(int___unbox__(i_2_0), 5) || perm(MustTerminate_0(_cthread_165_0)) == none && ((forperm _r_26: Ref [MustInvokeBounded_0(_r_26)] :: false) && ((forperm _r_26: Ref [MustInvokeUnbounded_0(_r_26)] :: false) && ((forperm _r_26: Ref [_r_26.MustReleaseBoundedp] :: false) && (forperm _r_26: Ref [_r_26.MustReleaseUnboundedp] :: false)))))])
+    invariant (p1_39 && !bypass1_9 ==> [true, !idle1_0 ==> !_loop_check_before_0 ==> (forperm _r_26: Ref [MustInvokeBounded(_r_26)] :: false) && ((forperm _r_26: Ref [MustInvokeUnbounded(_r_26)] :: false) && ((forperm _r_26: Ref [_r_26.MustReleaseBounded] :: false) && (forperm _r_26: Ref [_r_26.MustReleaseUnbounded] :: false)))]) && (p2_39 && !bypass2_9 ==> [true, !idle2_0 ==> !_loop_check_before_0_0 ==> (forperm _r_26: Ref [MustInvokeBounded_0(_r_26)] :: false) && ((forperm _r_26: Ref [MustInvokeUnbounded_0(_r_26)] :: false) && ((forperm _r_26: Ref [_r_26.MustReleaseBoundedp] :: false) && (forperm _r_26: Ref [_r_26.MustReleaseUnboundedp] :: false)))])
+    invariant bypass1_9 ==> tmp1_3 == _loop_measures_0
+    invariant bypass1_9 ==> tmp1_4 == i_2
+    invariant bypass1_9 ==> tmp1_5 == _loop_check_before_0
+    invariant bypass1_9 ==> tmp1_6 == cont1
+    invariant bypass2_9 ==> tmp2_3 == _loop_measures_0_0
+    invariant bypass2_9 ==> tmp2_4 == i_2_0
+    invariant bypass2_9 ==> tmp2_5 == _loop_check_before_0_0
+    invariant bypass2_9 ==> tmp2_6 == cont2 
+  {
+    cont1 := false
+    cont2 := false
+    p1_40 := p1_39 && (!ret1_3 && (!cont1 && !except1_7)) && int___lt__(int___unbox__(_checkDefined(i_2, 3301225)), 5)
+    p2_40 := p2_39 && (!ret2_3 && (!cont2 && !except2_7)) && int___lt__(int___unbox__(i_2_0), 5)
+    idle1_0 := p1_39 && (!ret1_3 && (!cont1 && !except1_7)) && !int___lt__(int___unbox__(_checkDefined(i_2, 3301225)), 5)
+    idle2_0 := p2_39 && (!ret2_3 && (!cont2 && !except2_7)) && !int___lt__(int___unbox__(i_2_0), 5)
+    if (p1_40 && (!ret1_3 && (!cont1 && !except1_7))) {
+      _loop_measures_0 := Seq[Measure$]()
+    }
+    if (p2_40 && (!ret2_3 && (!cont2 && !except2_7))) {
+      _loop_measures_0_0 := Seq[Measure$]()
+    }
+    // Try/catch block
+  
+    var bypass1_10: Bool
+    var bypass2_10: Bool
+    var oldret1_4: Bool
+    var oldret2_4: Bool
+    var oldcont1_0: Bool
+    var oldcont2_0: Bool
+    var oldexcept1_4: Bool
+    var oldexcept2_4: Bool
+    var thisexcept1_8: Bool
+    var thisexcept2_8: Bool
+    var tmp_ret1_4: Bool
+    var tmp_ret2_4: Bool
+    var tmp_break1_4: Bool
+    var tmp_break2_4: Bool
+    var tmp_cont1_4: Bool
+    var tmp_cont2_4: Bool
+    var tmp_except1_4: Bool
+    var tmp_except2_4: Bool
+    bypass1_10 := !(p1_40 && (!ret1_3 && (!cont1 && !except1_7)))
+    bypass2_10 := !(p2_40 && (!ret2_3 && (!cont2 && !except2_7)))
+    oldret1_4 := ret1_3
+    oldret2_4 := ret2_3
+    oldcont1_0 := cont1
+    oldcont2_0 := cont2
+    oldexcept1_4 := except1_7
+    oldexcept2_4 := except2_7
+    if (p1_40 && (!ret1_3 && (!cont1 && !except1_7))) {
+      cont1 := true
+    }
+    if (p2_40 && (!ret2_3 && (!cont2 && !except2_7))) {
+      cont2 := true
+    }
+    thisexcept1_8 := except1_7 && !bypass1_10
+    thisexcept2_8 := except2_7 && !bypass2_10
+    if (p1_40) {
+      tmp_ret1_4 := ret1_3
+      ret1_3 := oldret1_4
+      tmp_cont1_4 := cont1
+      cont1 := oldcont1_0
+      tmp_except1_4 := except1_7
+      except1_7 := oldexcept1_4
+    }
+    if (p2_40) {
+      tmp_ret2_4 := ret2_3
+      ret2_3 := oldret2_4
+      tmp_cont2_4 := cont2
+      cont2 := oldcont2_0
+      tmp_except2_4 := except2_7
+      except2_7 := oldexcept2_4
+    }
+    if (p1_40 && (!ret1_3 && (!cont1 && !except1_7))) {
+      i_2 := __prim__int___box__(int___add__(int___unbox__(i_2), 1))
+      inhale _isDefined(3301225)
+    }
+    if (p2_40 && (!ret2_3 && (!cont2 && !except2_7))) {
+      i_2_0 := __prim__int___box__(int___add__(int___unbox__(i_2_0), 1))
+      inhale true
+    }
+    if (p1_40) {
+      ret1_3 := ret1_3 || tmp_ret1_4
+      cont1 := cont1 || tmp_cont1_4
+      except1_7 := except1_7 || tmp_except1_4
+    }
+    if (p2_40) {
+      ret2_3 := ret2_3 || tmp_ret2_4
+      cont2 := cont2 || tmp_cont2_4
+      except2_7 := except2_7 || tmp_except2_4
+    }
+    if (p1_40 && (!ret1_3 && (!cont1 && !except1_7))) {
+      // We are after loop body.
+      _loop_check_before_0 := false
+    }
+    if (p2_40 && (!ret2_3 && (!cont2 && !except2_7))) {
+      // We are after loop body.
+      _loop_check_before_0_0 := false
+    }
+    assert (p1_40 && (!ret1_3 && !except1_7) ==> _loop_termination_flag_0 ==> !int___lt__(int___unbox__(_checkDefined(i_2, 3301225)), 5)) && (p2_40 && (!ret2_3 && !except2_7) ==> _loop_termination_flag_0_0 ==> !int___lt__(int___unbox__(i_2_0), 5))
+  }
+  // Loop Reconstruction.
+  
+  if (!bypass1_9 && (ret1_3 || except1_7) || !bypass2_9 && (ret2_3 || except2_7)) {
+    ret1_3 := oldret1_3_0
+    ret2_3 := oldret2_3_0
+    cont1 := oldcont1
+    cont2 := oldcont2
+    except1_7 := oldexcept1_7
+    except2_7 := oldexcept2_7
+    inhale p1_39 && (!ret1_3 && !except1_7) ==> int___lt__(int___unbox__(_checkDefined(i_2, 3301225)), 5)
+    inhale p2_39 && (!ret1_3 && !except1_7) ==> int___lt__(int___unbox__(i_2_0), 5)
+    cont1 := false
+    cont2 := false
+    p1_40 := p1_39 && (!ret1_3 && (!cont1 && !except1_7)) && int___lt__(int___unbox__(_checkDefined(i_2, 3301225)), 5)
+    p2_40 := p2_39 && (!ret2_3 && (!cont2 && !except2_7)) && int___lt__(int___unbox__(i_2_0), 5)
+    idle1_0 := p1_39 && (!ret1_3 && (!cont1 && !except1_7)) && !int___lt__(int___unbox__(_checkDefined(i_2, 3301225)), 5)
+    idle2_0 := p2_39 && (!ret2_3 && (!cont2 && !except2_7)) && !int___lt__(int___unbox__(i_2_0), 5)
+    if (p1_40 && (!ret1_3 && (!cont1 && !except1_7))) {
+      _loop_measures_0 := Seq[Measure$]()
+    }
+    if (p2_40 && (!ret2_3 && (!cont2 && !except2_7))) {
+      _loop_measures_0_0 := Seq[Measure$]()
+    }
+    // Try/catch block
+  
+    var bypass1_10: Bool
+    var bypass2_10: Bool
+    var oldret1_4: Bool
+    var oldret2_4: Bool
+    var oldcont1_0: Bool
+    var oldcont2_0: Bool
+    var oldexcept1_4: Bool
+    var oldexcept2_4: Bool
+    var thisexcept1_8: Bool
+    var thisexcept2_8: Bool
+    var tmp_ret1_4: Bool
+    var tmp_ret2_4: Bool
+    var tmp_break1_4: Bool
+    var tmp_break2_4: Bool
+    var tmp_cont1_4: Bool
+    var tmp_cont2_4: Bool
+    var tmp_except1_4: Bool
+    var tmp_except2_4: Bool
+    bypass1_10 := !(p1_40 && (!ret1_3 && (!cont1 && !except1_7)))
+    bypass2_10 := !(p2_40 && (!ret2_3 && (!cont2 && !except2_7)))
+    oldret1_4 := ret1_3
+    oldret2_4 := ret2_3
+    oldcont1_0 := cont1
+    oldcont2_0 := cont2
+    oldexcept1_4 := except1_7
+    oldexcept2_4 := except2_7
+    if (p1_40 && (!ret1_3 && (!cont1 && !except1_7))) {
+      cont1 := true
+    }
+    if (p2_40 && (!ret2_3 && (!cont2 && !except2_7))) {
+      cont2 := true
+    }
+    thisexcept1_8 := except1_7 && !bypass1_10
+    thisexcept2_8 := except2_7 && !bypass2_10
+    if (p1_40) {
+      tmp_ret1_4 := ret1_3
+      ret1_3 := oldret1_4
+      tmp_cont1_4 := cont1
+      cont1 := oldcont1_0
+      tmp_except1_4 := except1_7
+      except1_7 := oldexcept1_4
+    }
+    if (p2_40) {
+      tmp_ret2_4 := ret2_3
+      ret2_3 := oldret2_4
+      tmp_cont2_4 := cont2
+      cont2 := oldcont2_0
+      tmp_except2_4 := except2_7
+      except2_7 := oldexcept2_4
+    }
+    if (p1_40 && (!ret1_3 && (!cont1 && !except1_7))) {
+      i_2 := __prim__int___box__(int___add__(int___unbox__(i_2), 1))
+      inhale _isDefined(3301225)
+    }
+    if (p2_40 && (!ret2_3 && (!cont2 && !except2_7))) {
+      i_2_0 := __prim__int___box__(int___add__(int___unbox__(i_2_0), 1))
+      inhale true
+    }
+    if (p1_40) {
+      ret1_3 := ret1_3 || tmp_ret1_4
+      cont1 := cont1 || tmp_cont1_4
+      except1_7 := except1_7 || tmp_except1_4
+    }
+    if (p2_40) {
+      ret2_3 := ret2_3 || tmp_ret2_4
+      cont2 := cont2 || tmp_cont2_4
+      except2_7 := except2_7 || tmp_except2_4
+    }
+    if (p1_40 && (!ret1_3 && (!cont1 && !except1_7))) {
+      // We are after loop body.
+      _loop_check_before_0 := false
+    }
+    if (p2_40 && (!ret2_3 && (!cont2 && !except2_7))) {
+      // We are after loop body.
+      _loop_check_before_0_0 := false
+    }
+    assert (p1_40 && (!ret1_3 && !except1_7) ==> _loop_termination_flag_0 ==> !int___lt__(int___unbox__(_checkDefined(i_2, 3301225)), 5)) && (p2_40 && (!ret2_3 && !except2_7) ==> _loop_termination_flag_0_0 ==> !int___lt__(int___unbox__(i_2_0), 5))
+    inhale !p1_40 || !(!ret1_3 && !except1_7)
+    inhale !p2_40 || !(!ret2_3 && !except2_7)
+  }
+  if (!bypass1_9) {
+    cont1 := false
+  }
+  if (!bypass2_9) {
+    cont2 := false
+  }
+  if (p1_39 && (!ret1_3 && (!cont1 && !except1_7))) {
+    // Reset MustTerminate amount to original level.
+    exhale perm(MustTerminate(_cthread_165)) > none ==> acc(MustTerminate(_cthread_165), perm(MustTerminate(_cthread_165)) - _loop_original_must_terminate_0)
+    _res := null
+    _res := _checkDefined(i_2, 3301225)
+    ret1_3 := true
+  }
+  if (p2_39 && (!ret2_3 && (!cont2 && !except2_7))) {
+    // Reset MustTerminate amount to original level.
+    exhale perm(MustTerminate_0(_cthread_165_0)) > none ==> acc(MustTerminate_0(_cthread_165_0), perm(MustTerminate_0(_cthread_165_0)) - _loop_original_must_terminate_0_0)
+    _res_4 := null
+    _res_4 := i_2_0
+    ret2_3 := true
+  }
+  assert (p1_39 ==> !except1_7) && (p2_39 ==> !except2_7)
+}
+
+method m10(p1_41: Bool, p2_41: Bool, _cthread_166: Ref, _cthread_166_0: Ref, _caller_measures_166: Seq[Measure$], _caller_measures_166_0: Seq[Measure$], _residue_166: Perm, _residue_166_0: Perm) returns (_current_wait_level_166: Perm, _current_wait_level_166_0: Perm, _res: Ref, _res_5: Ref)
+  requires (p1_41 ==> _cthread_166 != null) && (p2_41 ==> _cthread_166_0 != null)
+  requires (p1_41 ==> issubtype(typeof(_cthread_166), Thread_0())) && (p2_41 ==> issubtype(typeof(_cthread_166_0), Thread_0()))
+  requires (p1_41 ==> [true, perm(MustTerminate(_cthread_166)) == none && ((forperm _r_34: Ref [MustInvokeBounded(_r_34)] :: false) && ((forperm _r_34: Ref [MustInvokeUnbounded(_r_34)] :: false) && ((forperm _r_34: Ref [_r_34.MustReleaseBounded] :: false) && (forperm _r_34: Ref [_r_34.MustReleaseUnbounded] :: false))))]) && (p2_41 ==> [true, perm(MustTerminate_0(_cthread_166_0)) == none && ((forperm _r_34: Ref [MustInvokeBounded_0(_r_34)] :: false) && ((forperm _r_34: Ref [MustInvokeUnbounded_0(_r_34)] :: false) && ((forperm _r_34: Ref [_r_34.MustReleaseBoundedp] :: false) && (forperm _r_34: Ref [_r_34.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_41 ==> [(forperm _r_32: Ref [_r_32.MustReleaseBounded] :: Level(_r_32) <= _current_wait_level_166) && ((forperm _r_32: Ref [_r_32.MustReleaseUnbounded] :: Level(_r_32) <= _current_wait_level_166) && _residue_166 <= _current_wait_level_166), true]) && (p2_41 ==> [(forperm _r_32: Ref [_r_32.MustReleaseBoundedp] :: Level(_r_32) <= _current_wait_level_166_0) && ((forperm _r_32: Ref [_r_32.MustReleaseUnboundedp] :: Level(_r_32) <= _current_wait_level_166_0) && _residue_166_0 <= _current_wait_level_166_0), true])
+  ensures (p1_41 ==> issubtype(typeof(_res), int())) && (p2_41 ==> issubtype(typeof(_res_5), int()))
+  ensures (p1_41 ==> int___eq__(_res, __prim__int___box__(5))) && (p2_41 ==> int___eq__(_res_5, __prim__int___box__(5)))
+  ensures (p1_41 ==> [true, (forperm _r_33: Ref [MustInvokeBounded(_r_33)] :: false) && ((forperm _r_33: Ref [MustInvokeUnbounded(_r_33)] :: false) && ((forperm _r_33: Ref [_r_33.MustReleaseBounded] :: false) && (forperm _r_33: Ref [_r_33.MustReleaseUnbounded] :: false)))]) && (p2_41 ==> [true, (forperm _r_33: Ref [MustInvokeBounded_0(_r_33)] :: false) && ((forperm _r_33: Ref [MustInvokeUnbounded_0(_r_33)] :: false) && ((forperm _r_33: Ref [_r_33.MustReleaseBoundedp] :: false) && (forperm _r_33: Ref [_r_33.MustReleaseUnboundedp] :: false)))])
+{
+  var ret1_4: Bool
+  var ret2_4: Bool
+  var cont1_0: Bool
+  var cont2_0: Bool
+  var except1_8: Bool
+  var except2_8: Bool
+  inhale p1_41
+  ret1_4 := false
+  ret2_4 := false
+  cont1_0 := false
+  cont2_0 := false
+  except1_8 := false
+  except2_8 := false
+  var _err: Ref
+  var _err_9: Ref
+  var i_3: Ref
+  var i_3_0: Ref
+  var error_9: Ref
+  var error_9_0: Ref
+  var try_finally_17: Int
+  var try_finally_17_0: Int
+  var _loop_measures_1: Seq[Measure$]
+  var _loop_measures_1_0: Seq[Measure$]
+  var _loop_check_before_1: Bool
+  var _loop_check_before_1_0: Bool
+  var _loop_termination_flag_1: Bool
+  var _loop_termination_flag_1_0: Bool
+  var _loop_original_must_terminate_1: Perm
+  var _loop_original_must_terminate_1_0: Perm
+  var _residue_170: Perm
+  var _residue_170_0: Perm
+  var _cwl_166: Perm
+  var _cwl_166_0: Perm
+  var _method_measures_166: Seq[Measure$]
+  var _method_measures_166_0: Seq[Measure$]
+  if (p1_41 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+    _method_measures_166 := Seq[Measure$]()
+    _res := null
+    _err := null
+    i_3 := __prim__int___box__(0)
+    inhale _isDefined(3366761)
+    // Save current MustTerminate amount.
+    _loop_original_must_terminate_1 := perm(MustTerminate(_cthread_166))
+    // Save loop termination promise.
+    _loop_termination_flag_1 := false
+    // We are before loop.
+    _loop_check_before_1 := true
+  }
+  if (p2_41 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+    _method_measures_166_0 := Seq[Measure$]()
+    _res_5 := null
+    _err_9 := null
+    i_3_0 := __prim__int___box__(0)
+    inhale true
+    // Save current MustTerminate amount.
+    _loop_original_must_terminate_1_0 := perm(MustTerminate_0(_cthread_166_0))
+    // Save loop termination promise.
+    _loop_termination_flag_1_0 := false
+    // We are before loop.
+    _loop_check_before_1_0 := true
+  }
+  var bypass1_11: Bool
+  var bypass2_11: Bool
+  var tmp1_7: Seq[Measure$]
+  var tmp2_7: Seq[Measure$]
+  var tmp1_8: Ref
+  var tmp2_8: Ref
+  var tmp1_9: Bool
+  var tmp2_9: Bool
+  var tmp1_10: Bool
+  var tmp2_10: Bool
+  var oldret1_4_0: Bool
+  var oldret2_4_0: Bool
+  var oldcont1_0_0: Bool
+  var oldcont2_0_0: Bool
+  var oldexcept1_8: Bool
+  var oldexcept2_8: Bool
+  var p1_42: Bool
+  var p2_42: Bool
+  var idle1_1: Bool
+  var idle2_1: Bool
+  bypass1_11 := !(p1_41 && (!ret1_4 && (!cont1_0 && !except1_8)))
+  bypass2_11 := !(p2_41 && (!ret2_4 && (!cont2_0 && !except2_8)))
+  if (bypass1_11) {
+    tmp1_7 := _loop_measures_1
+    tmp1_8 := i_3
+    tmp1_9 := _loop_check_before_1
+    tmp1_10 := cont1_0
+  }
+  if (bypass2_11) {
+    tmp2_7 := _loop_measures_1_0
+    tmp2_8 := i_3_0
+    tmp2_9 := _loop_check_before_1_0
+    tmp2_10 := cont2_0
+  }
+  oldret1_4_0 := ret1_4
+  oldret2_4_0 := ret2_4
+  oldcont1_0_0 := cont1_0
+  oldcont2_0_0 := cont2_0
+  oldexcept1_8 := except1_8
+  oldexcept2_8 := except2_8
+  idle1_1 := false
+  idle2_1 := false
+  while (p1_41 && (!ret1_4 && !except1_8) && !bypass1_11 && int___lt__(int___unbox__(_checkDefined(i_3, 3366761)), 5) || p2_41 && (!ret2_4 && !except2_8) && !bypass2_11 && int___lt__(int___unbox__(i_3_0), 5))
+    invariant (p1_41 && !bypass1_11 ==> [(forperm _r_30: Ref [_r_30.MustReleaseBounded] :: Level(_r_30) <= _residue_170) && ((forperm _r_30: Ref [_r_30.MustReleaseUnbounded] :: Level(_r_30) <= _residue_170) && _residue_166 <= _residue_170), true]) && (p2_41 && !bypass2_11 ==> [(forperm _r_30: Ref [_r_30.MustReleaseBoundedp] :: Level(_r_30) <= _residue_170_0) && ((forperm _r_30: Ref [_r_30.MustReleaseUnboundedp] :: Level(_r_30) <= _residue_170_0) && _residue_166_0 <= _residue_170_0), true])
+    invariant (p1_41 && !bypass1_11 ==> issubtype(typeof(i_3), int())) && (p2_41 && !bypass2_11 ==> issubtype(typeof(i_3_0), int()))
+    invariant (p1_41 && !bypass1_11 ==> int___ge__(int___unbox__(_checkDefined(i_3, 3366761)), 0)) && (p2_41 && !bypass2_11 ==> int___ge__(int___unbox__(i_3_0), 0)) && ((p1_41 && !bypass1_11 ==> int___le__(int___unbox__(_checkDefined(i_3, 3366761)), 5)) && (p2_41 && !bypass2_11 ==> int___le__(int___unbox__(i_3_0), 5)))
+    invariant (p1_41 && !bypass1_11 ==> [true, !idle1_1 ==> _loop_check_before_1 ==> _loop_termination_flag_1 || (!int___lt__(int___unbox__(_checkDefined(i_3, 3366761)), 5) || perm(MustTerminate(_cthread_166)) == none && ((forperm _r_31: Ref [MustInvokeBounded(_r_31)] :: false) && ((forperm _r_31: Ref [MustInvokeUnbounded(_r_31)] :: false) && ((forperm _r_31: Ref [_r_31.MustReleaseBounded] :: false) && (forperm _r_31: Ref [_r_31.MustReleaseUnbounded] :: false)))))]) && (p2_41 && !bypass2_11 ==> [true, !idle2_1 ==> _loop_check_before_1_0 ==> _loop_termination_flag_1_0 || (!int___lt__(int___unbox__(i_3_0), 5) || perm(MustTerminate_0(_cthread_166_0)) == none && ((forperm _r_31: Ref [MustInvokeBounded_0(_r_31)] :: false) && ((forperm _r_31: Ref [MustInvokeUnbounded_0(_r_31)] :: false) && ((forperm _r_31: Ref [_r_31.MustReleaseBoundedp] :: false) && (forperm _r_31: Ref [_r_31.MustReleaseUnboundedp] :: false)))))])
+    invariant (p1_41 && !bypass1_11 ==> [true, !idle1_1 ==> !_loop_check_before_1 ==> (forperm _r_31: Ref [MustInvokeBounded(_r_31)] :: false) && ((forperm _r_31: Ref [MustInvokeUnbounded(_r_31)] :: false) && ((forperm _r_31: Ref [_r_31.MustReleaseBounded] :: false) && (forperm _r_31: Ref [_r_31.MustReleaseUnbounded] :: false)))]) && (p2_41 && !bypass2_11 ==> [true, !idle2_1 ==> !_loop_check_before_1_0 ==> (forperm _r_31: Ref [MustInvokeBounded_0(_r_31)] :: false) && ((forperm _r_31: Ref [MustInvokeUnbounded_0(_r_31)] :: false) && ((forperm _r_31: Ref [_r_31.MustReleaseBoundedp] :: false) && (forperm _r_31: Ref [_r_31.MustReleaseUnboundedp] :: false)))])
+    invariant bypass1_11 ==> tmp1_7 == _loop_measures_1
+    invariant bypass1_11 ==> tmp1_8 == i_3
+    invariant bypass1_11 ==> tmp1_9 == _loop_check_before_1
+    invariant bypass1_11 ==> tmp1_10 == cont1_0
+    invariant bypass2_11 ==> tmp2_7 == _loop_measures_1_0
+    invariant bypass2_11 ==> tmp2_8 == i_3_0
+    invariant bypass2_11 ==> tmp2_9 == _loop_check_before_1_0
+    invariant bypass2_11 ==> tmp2_10 == cont2_0 
+  {
+    cont1_0 := false
+    cont2_0 := false
+    p1_42 := p1_41 && (!ret1_4 && (!cont1_0 && !except1_8)) && int___lt__(int___unbox__(_checkDefined(i_3, 3366761)), 5)
+    p2_42 := p2_41 && (!ret2_4 && (!cont2_0 && !except2_8)) && int___lt__(int___unbox__(i_3_0), 5)
+    idle1_1 := p1_41 && (!ret1_4 && (!cont1_0 && !except1_8)) && !int___lt__(int___unbox__(_checkDefined(i_3, 3366761)), 5)
+    idle2_1 := p2_41 && (!ret2_4 && (!cont2_0 && !except2_8)) && !int___lt__(int___unbox__(i_3_0), 5)
+    if (p1_42 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+      _loop_measures_1 := Seq[Measure$]()
+    }
+    if (p2_42 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+      _loop_measures_1_0 := Seq[Measure$]()
+    }
+    // Try/catch block
+  
+    var bypass1_12: Bool
+    var bypass2_12: Bool
+    var oldret1_5: Bool
+    var oldret2_5: Bool
+    var oldcont1_1: Bool
+    var oldcont2_1: Bool
+    var oldexcept1_5: Bool
+    var oldexcept2_5: Bool
+    var thisexcept1_9: Bool
+    var thisexcept2_9: Bool
+    var p1_43: Bool
+    var p2_43: Bool
+    var p1_44: Bool
+    var p2_44: Bool
+    var tmp_ret1_5: Bool
+    var tmp_ret2_5: Bool
+    var tmp_break1_5: Bool
+    var tmp_break2_5: Bool
+    var tmp_cont1_5: Bool
+    var tmp_cont2_5: Bool
+    var tmp_except1_5: Bool
+    var tmp_except2_5: Bool
+    bypass1_12 := !(p1_42 && (!ret1_4 && (!cont1_0 && !except1_8)))
+    bypass2_12 := !(p2_42 && (!ret2_4 && (!cont2_0 && !except2_8)))
+    oldret1_5 := ret1_4
+    oldret2_5 := ret2_4
+    oldcont1_1 := cont1_0
+    oldcont2_1 := cont2_0
+    oldexcept1_5 := except1_8
+    oldexcept2_5 := except2_8
+    thisexcept1_9 := except1_8 && !bypass1_12
+    thisexcept2_9 := except2_8 && !bypass2_12
+    p1_43 := p1_42 && (thisexcept1_9 && issubtype(typeof(_err), Exception()))
+    p2_43 := p2_42 && (thisexcept2_9 && issubtype(typeof(_err_9), Exception()))
+    if (p1_43) {
+      except1_8 := false
+    }
+    if (p2_43) {
+      except2_8 := false
+    }
+    if (p1_42 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+      _err := null
+    }
+    if (p2_42 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+      _err_9 := null
+    }
+    p1_44 := p1_42 && !thisexcept1_9
+    p2_44 := p2_42 && !thisexcept2_9
+    if (p1_44 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+      cont1_0 := true
+    }
+    if (p2_44 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+      cont2_0 := true
+    }
+    if (p1_42) {
+      tmp_ret1_5 := ret1_4
+      ret1_4 := oldret1_5
+      tmp_cont1_5 := cont1_0
+      cont1_0 := oldcont1_1
+      tmp_except1_5 := except1_8
+      except1_8 := oldexcept1_5
+    }
+    if (p2_42) {
+      tmp_ret2_5 := ret2_4
+      ret2_4 := oldret2_5
+      tmp_cont2_5 := cont2_0
+      cont2_0 := oldcont2_1
+      tmp_except2_5 := except2_8
+      except2_8 := oldexcept2_5
+    }
+    if (p1_42 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+      i_3 := __prim__int___box__(int___add__(int___unbox__(i_3), 1))
+      inhale _isDefined(3366761)
+    }
+    if (p2_42 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+      i_3_0 := __prim__int___box__(int___add__(int___unbox__(i_3_0), 1))
+      inhale true
+    }
+    if (p1_42) {
+      ret1_4 := ret1_4 || tmp_ret1_5
+      cont1_0 := cont1_0 || tmp_cont1_5
+      except1_8 := except1_8 || tmp_except1_5
+    }
+    if (p2_42) {
+      ret2_4 := ret2_4 || tmp_ret2_5
+      cont2_0 := cont2_0 || tmp_cont2_5
+      except2_8 := except2_8 || tmp_except2_5
+    }
+    if (p1_42 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+      // We are after loop body.
+      _loop_check_before_1 := false
+    }
+    if (p2_42 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+      // We are after loop body.
+      _loop_check_before_1_0 := false
+    }
+    assert (p1_42 && (!ret1_4 && !except1_8) ==> _loop_termination_flag_1 ==> !int___lt__(int___unbox__(_checkDefined(i_3, 3366761)), 5)) && (p2_42 && (!ret2_4 && !except2_8) ==> _loop_termination_flag_1_0 ==> !int___lt__(int___unbox__(i_3_0), 5))
+  }
+  // Loop Reconstruction.
+  
+  if (!bypass1_11 && (ret1_4 || except1_8) || !bypass2_11 && (ret2_4 || except2_8)) {
+    ret1_4 := oldret1_4_0
+    ret2_4 := oldret2_4_0
+    cont1_0 := oldcont1_0_0
+    cont2_0 := oldcont2_0_0
+    except1_8 := oldexcept1_8
+    except2_8 := oldexcept2_8
+    inhale p1_41 && (!ret1_4 && !except1_8) ==> int___lt__(int___unbox__(_checkDefined(i_3, 3366761)), 5)
+    inhale p2_41 && (!ret1_4 && !except1_8) ==> int___lt__(int___unbox__(i_3_0), 5)
+    cont1_0 := false
+    cont2_0 := false
+    p1_42 := p1_41 && (!ret1_4 && (!cont1_0 && !except1_8)) && int___lt__(int___unbox__(_checkDefined(i_3, 3366761)), 5)
+    p2_42 := p2_41 && (!ret2_4 && (!cont2_0 && !except2_8)) && int___lt__(int___unbox__(i_3_0), 5)
+    idle1_1 := p1_41 && (!ret1_4 && (!cont1_0 && !except1_8)) && !int___lt__(int___unbox__(_checkDefined(i_3, 3366761)), 5)
+    idle2_1 := p2_41 && (!ret2_4 && (!cont2_0 && !except2_8)) && !int___lt__(int___unbox__(i_3_0), 5)
+    if (p1_42 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+      _loop_measures_1 := Seq[Measure$]()
+    }
+    if (p2_42 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+      _loop_measures_1_0 := Seq[Measure$]()
+    }
+    // Try/catch block
+  
+    var bypass1_12: Bool
+    var bypass2_12: Bool
+    var oldret1_5: Bool
+    var oldret2_5: Bool
+    var oldcont1_1: Bool
+    var oldcont2_1: Bool
+    var oldexcept1_5: Bool
+    var oldexcept2_5: Bool
+    var thisexcept1_9: Bool
+    var thisexcept2_9: Bool
+    var p1_43: Bool
+    var p2_43: Bool
+    var p1_44: Bool
+    var p2_44: Bool
+    var tmp_ret1_5: Bool
+    var tmp_ret2_5: Bool
+    var tmp_break1_5: Bool
+    var tmp_break2_5: Bool
+    var tmp_cont1_5: Bool
+    var tmp_cont2_5: Bool
+    var tmp_except1_5: Bool
+    var tmp_except2_5: Bool
+    bypass1_12 := !(p1_42 && (!ret1_4 && (!cont1_0 && !except1_8)))
+    bypass2_12 := !(p2_42 && (!ret2_4 && (!cont2_0 && !except2_8)))
+    oldret1_5 := ret1_4
+    oldret2_5 := ret2_4
+    oldcont1_1 := cont1_0
+    oldcont2_1 := cont2_0
+    oldexcept1_5 := except1_8
+    oldexcept2_5 := except2_8
+    thisexcept1_9 := except1_8 && !bypass1_12
+    thisexcept2_9 := except2_8 && !bypass2_12
+    p1_43 := p1_42 && (thisexcept1_9 && issubtype(typeof(_err), Exception()))
+    p2_43 := p2_42 && (thisexcept2_9 && issubtype(typeof(_err_9), Exception()))
+    if (p1_43) {
+      except1_8 := false
+    }
+    if (p2_43) {
+      except2_8 := false
+    }
+    if (p1_42 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+      _err := null
+    }
+    if (p2_42 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+      _err_9 := null
+    }
+    p1_44 := p1_42 && !thisexcept1_9
+    p2_44 := p2_42 && !thisexcept2_9
+    if (p1_44 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+      cont1_0 := true
+    }
+    if (p2_44 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+      cont2_0 := true
+    }
+    if (p1_42) {
+      tmp_ret1_5 := ret1_4
+      ret1_4 := oldret1_5
+      tmp_cont1_5 := cont1_0
+      cont1_0 := oldcont1_1
+      tmp_except1_5 := except1_8
+      except1_8 := oldexcept1_5
+    }
+    if (p2_42) {
+      tmp_ret2_5 := ret2_4
+      ret2_4 := oldret2_5
+      tmp_cont2_5 := cont2_0
+      cont2_0 := oldcont2_1
+      tmp_except2_5 := except2_8
+      except2_8 := oldexcept2_5
+    }
+    if (p1_42 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+      i_3 := __prim__int___box__(int___add__(int___unbox__(i_3), 1))
+      inhale _isDefined(3366761)
+    }
+    if (p2_42 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+      i_3_0 := __prim__int___box__(int___add__(int___unbox__(i_3_0), 1))
+      inhale true
+    }
+    if (p1_42) {
+      ret1_4 := ret1_4 || tmp_ret1_5
+      cont1_0 := cont1_0 || tmp_cont1_5
+      except1_8 := except1_8 || tmp_except1_5
+    }
+    if (p2_42) {
+      ret2_4 := ret2_4 || tmp_ret2_5
+      cont2_0 := cont2_0 || tmp_cont2_5
+      except2_8 := except2_8 || tmp_except2_5
+    }
+    if (p1_42 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+      // We are after loop body.
+      _loop_check_before_1 := false
+    }
+    if (p2_42 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+      // We are after loop body.
+      _loop_check_before_1_0 := false
+    }
+    assert (p1_42 && (!ret1_4 && !except1_8) ==> _loop_termination_flag_1 ==> !int___lt__(int___unbox__(_checkDefined(i_3, 3366761)), 5)) && (p2_42 && (!ret2_4 && !except2_8) ==> _loop_termination_flag_1_0 ==> !int___lt__(int___unbox__(i_3_0), 5))
+    inhale !p1_42 || !(!ret1_4 && !except1_8)
+    inhale !p2_42 || !(!ret2_4 && !except2_8)
+  }
+  if (!bypass1_11) {
+    cont1_0 := false
+  }
+  if (!bypass2_11) {
+    cont2_0 := false
+  }
+  if (p1_41 && (!ret1_4 && (!cont1_0 && !except1_8))) {
+    // Reset MustTerminate amount to original level.
+    exhale perm(MustTerminate(_cthread_166)) > none ==> acc(MustTerminate(_cthread_166), perm(MustTerminate(_cthread_166)) - _loop_original_must_terminate_1)
+    _res := null
+    _res := _checkDefined(i_3, 3366761)
+    ret1_4 := true
+  }
+  if (p2_41 && (!ret2_4 && (!cont2_0 && !except2_8))) {
+    // Reset MustTerminate amount to original level.
+    exhale perm(MustTerminate_0(_cthread_166_0)) > none ==> acc(MustTerminate_0(_cthread_166_0), perm(MustTerminate_0(_cthread_166_0)) - _loop_original_must_terminate_1_0)
+    _res_5 := null
+    _res_5 := i_3_0
+    ret2_4 := true
+  }
+  assert (p1_41 ==> !except1_8) && (p2_41 ==> !except2_8)
+}
+
+method m11(p1_45: Bool, p2_45: Bool, _cthread_167: Ref, _cthread_167_0: Ref, _caller_measures_167: Seq[Measure$], _caller_measures_167_0: Seq[Measure$], _residue_167: Perm, _residue_167_0: Perm) returns (_current_wait_level_167: Perm, _current_wait_level_167_0: Perm, _res: Ref, _res_6: Ref)
+  requires (p1_45 ==> _cthread_167 != null) && (p2_45 ==> _cthread_167_0 != null)
+  requires (p1_45 ==> issubtype(typeof(_cthread_167), Thread_0())) && (p2_45 ==> issubtype(typeof(_cthread_167_0), Thread_0()))
+  requires (p1_45 ==> [true, perm(MustTerminate(_cthread_167)) == none && ((forperm _r_39: Ref [MustInvokeBounded(_r_39)] :: false) && ((forperm _r_39: Ref [MustInvokeUnbounded(_r_39)] :: false) && ((forperm _r_39: Ref [_r_39.MustReleaseBounded] :: false) && (forperm _r_39: Ref [_r_39.MustReleaseUnbounded] :: false))))]) && (p2_45 ==> [true, perm(MustTerminate_0(_cthread_167_0)) == none && ((forperm _r_39: Ref [MustInvokeBounded_0(_r_39)] :: false) && ((forperm _r_39: Ref [MustInvokeUnbounded_0(_r_39)] :: false) && ((forperm _r_39: Ref [_r_39.MustReleaseBoundedp] :: false) && (forperm _r_39: Ref [_r_39.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_45 ==> [(forperm _r_37: Ref [_r_37.MustReleaseBounded] :: Level(_r_37) <= _current_wait_level_167) && ((forperm _r_37: Ref [_r_37.MustReleaseUnbounded] :: Level(_r_37) <= _current_wait_level_167) && _residue_167 <= _current_wait_level_167), true]) && (p2_45 ==> [(forperm _r_37: Ref [_r_37.MustReleaseBoundedp] :: Level(_r_37) <= _current_wait_level_167_0) && ((forperm _r_37: Ref [_r_37.MustReleaseUnboundedp] :: Level(_r_37) <= _current_wait_level_167_0) && _residue_167_0 <= _current_wait_level_167_0), true])
+  ensures (p1_45 ==> issubtype(typeof(_res), int())) && (p2_45 ==> issubtype(typeof(_res_6), int()))
+  ensures (p1_45 ==> int___eq__(_res, __prim__int___box__(5))) && (p2_45 ==> int___eq__(_res_6, __prim__int___box__(5)))
+  ensures (p1_45 ==> [true, (forperm _r_38: Ref [MustInvokeBounded(_r_38)] :: false) && ((forperm _r_38: Ref [MustInvokeUnbounded(_r_38)] :: false) && ((forperm _r_38: Ref [_r_38.MustReleaseBounded] :: false) && (forperm _r_38: Ref [_r_38.MustReleaseUnbounded] :: false)))]) && (p2_45 ==> [true, (forperm _r_38: Ref [MustInvokeBounded_0(_r_38)] :: false) && ((forperm _r_38: Ref [MustInvokeUnbounded_0(_r_38)] :: false) && ((forperm _r_38: Ref [_r_38.MustReleaseBoundedp] :: false) && (forperm _r_38: Ref [_r_38.MustReleaseUnboundedp] :: false)))])
+{
+  var ret1_5: Bool
+  var ret2_5: Bool
+  var cont1_1: Bool
+  var cont2_1: Bool
+  var except1_9: Bool
+  var except2_9: Bool
+  inhale p1_45
+  ret1_5 := false
+  ret2_5 := false
+  cont1_1 := false
+  cont2_1 := false
+  except1_9 := false
+  except2_9 := false
+  var _err: Ref
+  var _err_10: Ref
+  var i_4: Ref
+  var i_4_0: Ref
+  var error_10: Ref
+  var error_10_0: Ref
+  var try_finally_18: Int
+  var try_finally_18_0: Int
+  var _loop_measures_2: Seq[Measure$]
+  var _loop_measures_2_0: Seq[Measure$]
+  var _loop_check_before_2: Bool
+  var _loop_check_before_2_0: Bool
+  var _loop_termination_flag_2: Bool
+  var _loop_termination_flag_2_0: Bool
+  var _loop_original_must_terminate_2: Perm
+  var _loop_original_must_terminate_2_0: Perm
+  var _residue_171: Perm
+  var _residue_171_0: Perm
+  var MyException_res_8: Ref
+  var MyException_res_8_0: Ref
+  var _cwl_167: Perm
+  var _cwl_167_0: Perm
+  var _method_measures_167: Seq[Measure$]
+  var _method_measures_167_0: Seq[Measure$]
+  if (p1_45 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+    _method_measures_167 := Seq[Measure$]()
+    _res := null
+    _err := null
+    i_4 := __prim__int___box__(0)
+    inhale _isDefined(3432297)
+    // Save current MustTerminate amount.
+    _loop_original_must_terminate_2 := perm(MustTerminate(_cthread_167))
+    // Save loop termination promise.
+    _loop_termination_flag_2 := false
+    // We are before loop.
+    _loop_check_before_2 := true
+  }
+  if (p2_45 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+    _method_measures_167_0 := Seq[Measure$]()
+    _res_6 := null
+    _err_10 := null
+    i_4_0 := __prim__int___box__(0)
+    inhale true
+    // Save current MustTerminate amount.
+    _loop_original_must_terminate_2_0 := perm(MustTerminate_0(_cthread_167_0))
+    // Save loop termination promise.
+    _loop_termination_flag_2_0 := false
+    // We are before loop.
+    _loop_check_before_2_0 := true
+  }
+  var bypass1_13: Bool
+  var bypass2_13: Bool
+  var tmp1_11: Seq[Measure$]
+  var tmp2_11: Seq[Measure$]
+  var tmp1_12: Ref
+  var tmp2_12: Ref
+  var tmp1_13: Bool
+  var tmp2_13: Bool
+  var tmp1_14: Ref
+  var tmp2_14: Ref
+  var tmp1_15: Ref
+  var tmp2_15: Ref
+  var tmp1_16: Bool
+  var tmp2_16: Bool
+  var tmp1_17: Bool
+  var tmp2_17: Bool
+  var oldret1_5_0: Bool
+  var oldret2_5_0: Bool
+  var oldcont1_1_0: Bool
+  var oldcont2_1_0: Bool
+  var oldexcept1_9: Bool
+  var oldexcept2_9: Bool
+  var p1_46: Bool
+  var p2_46: Bool
+  var idle1_2: Bool
+  var idle2_2: Bool
+  bypass1_13 := !(p1_45 && (!ret1_5 && (!cont1_1 && !except1_9)))
+  bypass2_13 := !(p2_45 && (!ret2_5 && (!cont2_1 && !except2_9)))
+  if (bypass1_13) {
+    tmp1_11 := _loop_measures_2
+    tmp1_12 := MyException_res_8
+    tmp1_13 := except1_9
+    tmp1_14 := _err
+    tmp1_15 := i_4
+    tmp1_16 := _loop_check_before_2
+    tmp1_17 := cont1_1
+  }
+  if (bypass2_13) {
+    tmp2_11 := _loop_measures_2_0
+    tmp2_12 := MyException_res_8_0
+    tmp2_13 := except2_9
+    tmp2_14 := _err_10
+    tmp2_15 := i_4_0
+    tmp2_16 := _loop_check_before_2_0
+    tmp2_17 := cont2_1
+  }
+  oldret1_5_0 := ret1_5
+  oldret2_5_0 := ret2_5
+  oldcont1_1_0 := cont1_1
+  oldcont2_1_0 := cont2_1
+  oldexcept1_9 := except1_9
+  oldexcept2_9 := except2_9
+  idle1_2 := false
+  idle2_2 := false
+  while (p1_45 && (!ret1_5 && !except1_9) && !bypass1_13 && int___lt__(int___unbox__(_checkDefined(i_4, 3432297)), 5) || p2_45 && (!ret2_5 && !except2_9) && !bypass2_13 && int___lt__(int___unbox__(i_4_0), 5))
+    invariant (p1_45 && !bypass1_13 ==> [(forperm _r_35: Ref [_r_35.MustReleaseBounded] :: Level(_r_35) <= _residue_171) && ((forperm _r_35: Ref [_r_35.MustReleaseUnbounded] :: Level(_r_35) <= _residue_171) && _residue_167 <= _residue_171), true]) && (p2_45 && !bypass2_13 ==> [(forperm _r_35: Ref [_r_35.MustReleaseBoundedp] :: Level(_r_35) <= _residue_171_0) && ((forperm _r_35: Ref [_r_35.MustReleaseUnboundedp] :: Level(_r_35) <= _residue_171_0) && _residue_167_0 <= _residue_171_0), true])
+    invariant (p1_45 && !bypass1_13 ==> issubtype(typeof(i_4), int())) && (p2_45 && !bypass2_13 ==> issubtype(typeof(i_4_0), int()))
+    invariant (p1_45 && !bypass1_13 ==> int___ge__(int___unbox__(_checkDefined(i_4, 3432297)), 0)) && (p2_45 && !bypass2_13 ==> int___ge__(int___unbox__(i_4_0), 0)) && ((p1_45 && !bypass1_13 ==> int___le__(int___unbox__(_checkDefined(i_4, 3432297)), 5)) && (p2_45 && !bypass2_13 ==> int___le__(int___unbox__(i_4_0), 5)))
+    invariant (p1_45 && !bypass1_13 ==> [true, !idle1_2 ==> _loop_check_before_2 ==> _loop_termination_flag_2 || (!int___lt__(int___unbox__(_checkDefined(i_4, 3432297)), 5) || perm(MustTerminate(_cthread_167)) == none && ((forperm _r_36: Ref [MustInvokeBounded(_r_36)] :: false) && ((forperm _r_36: Ref [MustInvokeUnbounded(_r_36)] :: false) && ((forperm _r_36: Ref [_r_36.MustReleaseBounded] :: false) && (forperm _r_36: Ref [_r_36.MustReleaseUnbounded] :: false)))))]) && (p2_45 && !bypass2_13 ==> [true, !idle2_2 ==> _loop_check_before_2_0 ==> _loop_termination_flag_2_0 || (!int___lt__(int___unbox__(i_4_0), 5) || perm(MustTerminate_0(_cthread_167_0)) == none && ((forperm _r_36: Ref [MustInvokeBounded_0(_r_36)] :: false) && ((forperm _r_36: Ref [MustInvokeUnbounded_0(_r_36)] :: false) && ((forperm _r_36: Ref [_r_36.MustReleaseBoundedp] :: false) && (forperm _r_36: Ref [_r_36.MustReleaseUnboundedp] :: false)))))])
+    invariant (p1_45 && !bypass1_13 ==> [true, !idle1_2 ==> !_loop_check_before_2 ==> (forperm _r_36: Ref [MustInvokeBounded(_r_36)] :: false) && ((forperm _r_36: Ref [MustInvokeUnbounded(_r_36)] :: false) && ((forperm _r_36: Ref [_r_36.MustReleaseBounded] :: false) && (forperm _r_36: Ref [_r_36.MustReleaseUnbounded] :: false)))]) && (p2_45 && !bypass2_13 ==> [true, !idle2_2 ==> !_loop_check_before_2_0 ==> (forperm _r_36: Ref [MustInvokeBounded_0(_r_36)] :: false) && ((forperm _r_36: Ref [MustInvokeUnbounded_0(_r_36)] :: false) && ((forperm _r_36: Ref [_r_36.MustReleaseBoundedp] :: false) && (forperm _r_36: Ref [_r_36.MustReleaseUnboundedp] :: false)))])
+    invariant bypass1_13 ==> tmp1_14 == _err
+    invariant bypass1_13 ==> tmp1_11 == _loop_measures_2
+    invariant bypass1_13 ==> tmp1_16 == _loop_check_before_2
+    invariant bypass1_13 ==> tmp1_12 == MyException_res_8
+    invariant bypass1_13 ==> tmp1_17 == cont1_1
+    invariant bypass1_13 ==> tmp1_13 == except1_9
+    invariant bypass1_13 ==> tmp1_15 == i_4
+    invariant bypass2_13 ==> tmp2_16 == _loop_check_before_2_0
+    invariant bypass2_13 ==> tmp2_14 == _err_10
+    invariant bypass2_13 ==> tmp2_13 == except2_9
+    invariant bypass2_13 ==> tmp2_15 == i_4_0
+    invariant bypass2_13 ==> tmp2_11 == _loop_measures_2_0
+    invariant bypass2_13 ==> tmp2_12 == MyException_res_8_0
+    invariant bypass2_13 ==> tmp2_17 == cont2_1 
+  {
+    cont1_1 := false
+    cont2_1 := false
+    p1_46 := p1_45 && (!ret1_5 && (!cont1_1 && !except1_9)) && int___lt__(int___unbox__(_checkDefined(i_4, 3432297)), 5)
+    p2_46 := p2_45 && (!ret2_5 && (!cont2_1 && !except2_9)) && int___lt__(int___unbox__(i_4_0), 5)
+    idle1_2 := p1_45 && (!ret1_5 && (!cont1_1 && !except1_9)) && !int___lt__(int___unbox__(_checkDefined(i_4, 3432297)), 5)
+    idle2_2 := p2_45 && (!ret2_5 && (!cont2_1 && !except2_9)) && !int___lt__(int___unbox__(i_4_0), 5)
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      _loop_measures_2 := Seq[Measure$]()
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      _loop_measures_2_0 := Seq[Measure$]()
+    }
+    // Try/catch block
+  
+    var bypass1_14: Bool
+    var bypass2_14: Bool
+    var oldret1_6: Bool
+    var oldret2_6: Bool
+    var oldcont1_2: Bool
+    var oldcont2_2: Bool
+    var oldexcept1_10: Bool
+    var oldexcept2_10: Bool
+    var thisexcept1_10: Bool
+    var thisexcept2_10: Bool
+    var p1_47: Bool
+    var p2_47: Bool
+    var tmp_ret1_6: Bool
+    var tmp_ret2_6: Bool
+    var tmp_break1_6: Bool
+    var tmp_break2_6: Bool
+    var tmp_cont1_6: Bool
+    var tmp_cont2_6: Bool
+    var tmp_except1_6: Bool
+    var tmp_except2_6: Bool
+    bypass1_14 := !(p1_46 && (!ret1_5 && (!cont1_1 && !except1_9)))
+    bypass2_14 := !(p2_46 && (!ret2_5 && (!cont2_1 && !except2_9)))
+    oldret1_6 := ret1_5
+    oldret2_6 := ret2_5
+    oldcont1_2 := cont1_1
+    oldcont2_2 := cont2_1
+    oldexcept1_10 := except1_9
+    oldexcept2_10 := except2_9
+    var tmp_10: Ref
+    tmp_10 := new()
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      MyException_res_8 := tmp_10
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      MyException_res_8_0 := tmp_10
+    }
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      inhale typeof(MyException_res_8) == MyException()
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      inhale typeof(MyException_res_8_0) == MyException()
+    }
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      _err := MyException_res_8
+      except1_9 := true
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      _err_10 := MyException_res_8_0
+      except2_9 := true
+    }
+    thisexcept1_10 := except1_9 && !bypass1_14
+    thisexcept2_10 := except2_9 && !bypass2_14
+    p1_47 := p1_46 && (thisexcept1_10 && issubtype(typeof(_err), MyException()))
+    p2_47 := p2_46 && (thisexcept2_10 && issubtype(typeof(_err_10), MyException()))
+    if (p1_47) {
+      except1_9 := false
+    }
+    if (p2_47) {
+      except2_9 := false
+    }
+    if (p1_47 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      cont1_1 := true
+    }
+    if (p2_47 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      cont2_1 := true
+    }
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      _err := null
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      _err_10 := null
+    }
+    if (p1_46) {
+      tmp_ret1_6 := ret1_5
+      ret1_5 := oldret1_6
+      tmp_cont1_6 := cont1_1
+      cont1_1 := oldcont1_2
+      tmp_except1_6 := except1_9
+      except1_9 := oldexcept1_10
+    }
+    if (p2_46) {
+      tmp_ret2_6 := ret2_5
+      ret2_5 := oldret2_6
+      tmp_cont2_6 := cont2_1
+      cont2_1 := oldcont2_2
+      tmp_except2_6 := except2_9
+      except2_9 := oldexcept2_10
+    }
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      i_4 := __prim__int___box__(int___add__(int___unbox__(i_4), 1))
+      inhale _isDefined(3432297)
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      i_4_0 := __prim__int___box__(int___add__(int___unbox__(i_4_0), 1))
+      inhale true
+    }
+    if (p1_46) {
+      ret1_5 := ret1_5 || tmp_ret1_6
+      cont1_1 := cont1_1 || tmp_cont1_6
+      except1_9 := except1_9 || tmp_except1_6
+    }
+    if (p2_46) {
+      ret2_5 := ret2_5 || tmp_ret2_6
+      cont2_1 := cont2_1 || tmp_cont2_6
+      except2_9 := except2_9 || tmp_except2_6
+    }
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      // We are after loop body.
+      _loop_check_before_2 := false
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      // We are after loop body.
+      _loop_check_before_2_0 := false
+    }
+    assert (p1_46 && (!ret1_5 && !except1_9) ==> _loop_termination_flag_2 ==> !int___lt__(int___unbox__(_checkDefined(i_4, 3432297)), 5)) && (p2_46 && (!ret2_5 && !except2_9) ==> _loop_termination_flag_2_0 ==> !int___lt__(int___unbox__(i_4_0), 5))
+  }
+  // Loop Reconstruction.
+  
+  if (!bypass1_13 && (ret1_5 || except1_9) || !bypass2_13 && (ret2_5 || except2_9)) {
+    ret1_5 := oldret1_5_0
+    ret2_5 := oldret2_5_0
+    cont1_1 := oldcont1_1_0
+    cont2_1 := oldcont2_1_0
+    except1_9 := oldexcept1_9
+    except2_9 := oldexcept2_9
+    inhale p1_45 && (!ret1_5 && !except1_9) ==> int___lt__(int___unbox__(_checkDefined(i_4, 3432297)), 5)
+    inhale p2_45 && (!ret1_5 && !except1_9) ==> int___lt__(int___unbox__(i_4_0), 5)
+    cont1_1 := false
+    cont2_1 := false
+    p1_46 := p1_45 && (!ret1_5 && (!cont1_1 && !except1_9)) && int___lt__(int___unbox__(_checkDefined(i_4, 3432297)), 5)
+    p2_46 := p2_45 && (!ret2_5 && (!cont2_1 && !except2_9)) && int___lt__(int___unbox__(i_4_0), 5)
+    idle1_2 := p1_45 && (!ret1_5 && (!cont1_1 && !except1_9)) && !int___lt__(int___unbox__(_checkDefined(i_4, 3432297)), 5)
+    idle2_2 := p2_45 && (!ret2_5 && (!cont2_1 && !except2_9)) && !int___lt__(int___unbox__(i_4_0), 5)
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      _loop_measures_2 := Seq[Measure$]()
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      _loop_measures_2_0 := Seq[Measure$]()
+    }
+    // Try/catch block
+  
+    var bypass1_14: Bool
+    var bypass2_14: Bool
+    var oldret1_6: Bool
+    var oldret2_6: Bool
+    var oldcont1_2: Bool
+    var oldcont2_2: Bool
+    var oldexcept1_10: Bool
+    var oldexcept2_10: Bool
+    var thisexcept1_10: Bool
+    var thisexcept2_10: Bool
+    var p1_47: Bool
+    var p2_47: Bool
+    var tmp_ret1_6: Bool
+    var tmp_ret2_6: Bool
+    var tmp_break1_6: Bool
+    var tmp_break2_6: Bool
+    var tmp_cont1_6: Bool
+    var tmp_cont2_6: Bool
+    var tmp_except1_6: Bool
+    var tmp_except2_6: Bool
+    bypass1_14 := !(p1_46 && (!ret1_5 && (!cont1_1 && !except1_9)))
+    bypass2_14 := !(p2_46 && (!ret2_5 && (!cont2_1 && !except2_9)))
+    oldret1_6 := ret1_5
+    oldret2_6 := ret2_5
+    oldcont1_2 := cont1_1
+    oldcont2_2 := cont2_1
+    oldexcept1_10 := except1_9
+    oldexcept2_10 := except2_9
+    var tmp_10: Ref
+    tmp_10 := new()
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      MyException_res_8 := tmp_10
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      MyException_res_8_0 := tmp_10
+    }
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      inhale typeof(MyException_res_8) == MyException()
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      inhale typeof(MyException_res_8_0) == MyException()
+    }
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      _err := MyException_res_8
+      except1_9 := true
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      _err_10 := MyException_res_8_0
+      except2_9 := true
+    }
+    thisexcept1_10 := except1_9 && !bypass1_14
+    thisexcept2_10 := except2_9 && !bypass2_14
+    p1_47 := p1_46 && (thisexcept1_10 && issubtype(typeof(_err), MyException()))
+    p2_47 := p2_46 && (thisexcept2_10 && issubtype(typeof(_err_10), MyException()))
+    if (p1_47) {
+      except1_9 := false
+    }
+    if (p2_47) {
+      except2_9 := false
+    }
+    if (p1_47 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      cont1_1 := true
+    }
+    if (p2_47 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      cont2_1 := true
+    }
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      _err := null
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      _err_10 := null
+    }
+    if (p1_46) {
+      tmp_ret1_6 := ret1_5
+      ret1_5 := oldret1_6
+      tmp_cont1_6 := cont1_1
+      cont1_1 := oldcont1_2
+      tmp_except1_6 := except1_9
+      except1_9 := oldexcept1_10
+    }
+    if (p2_46) {
+      tmp_ret2_6 := ret2_5
+      ret2_5 := oldret2_6
+      tmp_cont2_6 := cont2_1
+      cont2_1 := oldcont2_2
+      tmp_except2_6 := except2_9
+      except2_9 := oldexcept2_10
+    }
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      i_4 := __prim__int___box__(int___add__(int___unbox__(i_4), 1))
+      inhale _isDefined(3432297)
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      i_4_0 := __prim__int___box__(int___add__(int___unbox__(i_4_0), 1))
+      inhale true
+    }
+    if (p1_46) {
+      ret1_5 := ret1_5 || tmp_ret1_6
+      cont1_1 := cont1_1 || tmp_cont1_6
+      except1_9 := except1_9 || tmp_except1_6
+    }
+    if (p2_46) {
+      ret2_5 := ret2_5 || tmp_ret2_6
+      cont2_1 := cont2_1 || tmp_cont2_6
+      except2_9 := except2_9 || tmp_except2_6
+    }
+    if (p1_46 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+      // We are after loop body.
+      _loop_check_before_2 := false
+    }
+    if (p2_46 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+      // We are after loop body.
+      _loop_check_before_2_0 := false
+    }
+    assert (p1_46 && (!ret1_5 && !except1_9) ==> _loop_termination_flag_2 ==> !int___lt__(int___unbox__(_checkDefined(i_4, 3432297)), 5)) && (p2_46 && (!ret2_5 && !except2_9) ==> _loop_termination_flag_2_0 ==> !int___lt__(int___unbox__(i_4_0), 5))
+    inhale !p1_46 || !(!ret1_5 && !except1_9)
+    inhale !p2_46 || !(!ret2_5 && !except2_9)
+  }
+  if (!bypass1_13) {
+    cont1_1 := false
+  }
+  if (!bypass2_13) {
+    cont2_1 := false
+  }
+  if (p1_45 && (!ret1_5 && (!cont1_1 && !except1_9))) {
+    // Reset MustTerminate amount to original level.
+    exhale perm(MustTerminate(_cthread_167)) > none ==> acc(MustTerminate(_cthread_167), perm(MustTerminate(_cthread_167)) - _loop_original_must_terminate_2)
+    _res := null
+    _res := _checkDefined(i_4, 3432297)
+    ret1_5 := true
+  }
+  if (p2_45 && (!ret2_5 && (!cont2_1 && !except2_9))) {
+    // Reset MustTerminate amount to original level.
+    exhale perm(MustTerminate_0(_cthread_167_0)) > none ==> acc(MustTerminate_0(_cthread_167_0), perm(MustTerminate_0(_cthread_167_0)) - _loop_original_must_terminate_2_0)
+    _res_6 := null
+    _res_6 := i_4_0
+    ret2_5 := true
+  }
+  assert (p1_45 ==> !except1_9) && (p2_45 ==> !except2_9)
+}
+
+method Container___init__(p1_48: Bool, p2_48: Bool, _cthread_156: Ref, _cthread_156_0: Ref, _caller_measures_156: Seq[Measure$], _caller_measures_156_0: Seq[Measure$], _residue_156: Perm, _residue_156_0: Perm, self: Ref, self_1: Ref) returns (_current_wait_level_156: Perm, _current_wait_level_156_0: Perm)
+  requires (p1_48 ==> _cthread_156 != null) && (p2_48 ==> _cthread_156_0 != null)
+  requires (p1_48 ==> issubtype(typeof(_cthread_156), Thread_0())) && (p2_48 ==> issubtype(typeof(_cthread_156_0), Thread_0()))
+  requires (p1_48 ==> self != null) && (p2_48 ==> self_1 != null)
+  requires (p1_48 ==> acc(_MaySet(self, 526803611440346310908232101056638787), write)) && (p2_48 ==> acc(_MaySet_0(self_1, 526803611440346310908232101056638787), write))
+  requires (p1_48 ==> issubtype(typeof(self), Container())) && (p2_48 ==> issubtype(typeof(self_1), Container()))
+  requires (p1_48 ==> self != null) && (p2_48 ==> self_1 != null)
+  requires (p1_48 ==> [true, perm(MustTerminate(_cthread_156)) == none && ((forperm _r_42: Ref [MustInvokeBounded(_r_42)] :: false) && ((forperm _r_42: Ref [MustInvokeUnbounded(_r_42)] :: false) && ((forperm _r_42: Ref [_r_42.MustReleaseBounded] :: false) && (forperm _r_42: Ref [_r_42.MustReleaseUnbounded] :: false))))]) && (p2_48 ==> [true, perm(MustTerminate_0(_cthread_156_0)) == none && ((forperm _r_42: Ref [MustInvokeBounded_0(_r_42)] :: false) && ((forperm _r_42: Ref [MustInvokeUnbounded_0(_r_42)] :: false) && ((forperm _r_42: Ref [_r_42.MustReleaseBoundedp] :: false) && (forperm _r_42: Ref [_r_42.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_48 ==> [(forperm _r_40: Ref [_r_40.MustReleaseBounded] :: Level(_r_40) <= _current_wait_level_156) && ((forperm _r_40: Ref [_r_40.MustReleaseUnbounded] :: Level(_r_40) <= _current_wait_level_156) && _residue_156 <= _current_wait_level_156), true]) && (p2_48 ==> [(forperm _r_40: Ref [_r_40.MustReleaseBoundedp] :: Level(_r_40) <= _current_wait_level_156_0) && ((forperm _r_40: Ref [_r_40.MustReleaseUnboundedp] :: Level(_r_40) <= _current_wait_level_156_0) && _residue_156_0 <= _current_wait_level_156_0), true])
+  ensures (p1_48 ==> acc(self.Container_value, write)) && (p2_48 ==> acc(self_1.Container_valuep, write)) && ((p1_48 ==> issubtype(typeof(self.Container_value), int())) && (p2_48 ==> issubtype(typeof(self_1.Container_valuep), int())))
+  ensures (p1_48 ==> [true, (forperm _r_41: Ref [MustInvokeBounded(_r_41)] :: false) && ((forperm _r_41: Ref [MustInvokeUnbounded(_r_41)] :: false) && ((forperm _r_41: Ref [_r_41.MustReleaseBounded] :: false) && (forperm _r_41: Ref [_r_41.MustReleaseUnbounded] :: false)))]) && (p2_48 ==> [true, (forperm _r_41: Ref [MustInvokeBounded_0(_r_41)] :: false) && ((forperm _r_41: Ref [MustInvokeUnbounded_0(_r_41)] :: false) && ((forperm _r_41: Ref [_r_41.MustReleaseBoundedp] :: false) && (forperm _r_41: Ref [_r_41.MustReleaseUnboundedp] :: false)))])
+{
+  inhale p1_48
+  var _err: Ref
+  var _err_11: Ref
+  var self_0: Ref
+  var self_0_0: Ref
+  var _cwl_156: Perm
+  var _cwl_156_0: Perm
+  var _method_measures_156: Seq[Measure$]
+  var _method_measures_156_0: Seq[Measure$]
+  if (p1_48) {
+    _method_measures_156 := Seq[Measure$]()
+    inhale typeof(self) == Container()
+    _err := null
+    self_0 := self
+  }
+  if (p2_48) {
+    _method_measures_156_0 := Seq[Measure$]()
+    inhale typeof(self_1) == Container()
+    _err_11 := null
+    self_0_0 := self_1
+  }
+  var p1_49: Bool
+  var p2_49: Bool
+  var p3_18: Bool
+  var p4_18: Bool
+  p1_49 := p1_48 && perm(_MaySet(self_0, 526803611440346310908232101056638787)) > none
+  p2_49 := p2_48 && perm(_MaySet_0(self_0_0, 526803611440346310908232101056638787)) > none
+  p3_18 := p1_48 && !(perm(_MaySet(self_0, 526803611440346310908232101056638787)) > none)
+  p4_18 := p2_48 && !(perm(_MaySet_0(self_0_0, 526803611440346310908232101056638787)) > none)
+  if (p1_49) {
+    exhale acc(_MaySet(self_0, 526803611440346310908232101056638787), write)
+    inhale acc(self_0.Container_value, write)
+  }
+  if (p2_49) {
+    exhale acc(_MaySet_0(self_0_0, 526803611440346310908232101056638787), write)
+    inhale acc(self_0_0.Container_valuep, write)
+  }
+  if (p1_48) {
+    self_0.Container_value := __prim__int___box__(0)
+  }
+  if (p2_48) {
+    self_0_0.Container_valuep := __prim__int___box__(0)
+  }
+  assert true
+}
+
+method main(p1_50: Bool, p2_50: Bool, _cthread_168: Ref, _cthread_168_0: Ref, _caller_measures_168: Seq[Measure$], _caller_measures_168_0: Seq[Measure$], _residue_172: Perm, _residue_172_0: Perm) returns (_current_wait_level_168: Perm, _current_wait_level_168_0: Perm)
+  requires (p1_50 ==> _cthread_168 != null) && (p2_50 ==> _cthread_168_0 != null)
+  requires (p1_50 ==> issubtype(typeof(_cthread_168), Thread_0())) && (p2_50 ==> issubtype(typeof(_cthread_168_0), Thread_0()))
+  requires (p1_50 ==> [true, perm(MustTerminate(_cthread_168)) == none && ((forperm _r_45: Ref [MustInvokeBounded(_r_45)] :: false) && ((forperm _r_45: Ref [MustInvokeUnbounded(_r_45)] :: false) && ((forperm _r_45: Ref [_r_45.MustReleaseBounded] :: false) && (forperm _r_45: Ref [_r_45.MustReleaseUnbounded] :: false))))]) && (p2_50 ==> [true, perm(MustTerminate_0(_cthread_168_0)) == none && ((forperm _r_45: Ref [MustInvokeBounded_0(_r_45)] :: false) && ((forperm _r_45: Ref [MustInvokeUnbounded_0(_r_45)] :: false) && ((forperm _r_45: Ref [_r_45.MustReleaseBoundedp] :: false) && (forperm _r_45: Ref [_r_45.MustReleaseUnboundedp] :: false))))])
+  ensures (p1_50 ==> [(forperm _r_43: Ref [_r_43.MustReleaseBounded] :: Level(_r_43) <= _current_wait_level_168) && ((forperm _r_43: Ref [_r_43.MustReleaseUnbounded] :: Level(_r_43) <= _current_wait_level_168) && _residue_172 <= _current_wait_level_168), true]) && (p2_50 ==> [(forperm _r_43: Ref [_r_43.MustReleaseBoundedp] :: Level(_r_43) <= _current_wait_level_168_0) && ((forperm _r_43: Ref [_r_43.MustReleaseUnboundedp] :: Level(_r_43) <= _current_wait_level_168_0) && _residue_172_0 <= _current_wait_level_168_0), true])
+  ensures (p1_50 ==> [true, (forperm _r_44: Ref [MustInvokeBounded(_r_44)] :: false) && ((forperm _r_44: Ref [MustInvokeUnbounded(_r_44)] :: false) && ((forperm _r_44: Ref [_r_44.MustReleaseBounded] :: false) && (forperm _r_44: Ref [_r_44.MustReleaseUnbounded] :: false)))]) && (p2_50 ==> [true, (forperm _r_44: Ref [MustInvokeBounded_0(_r_44)] :: false) && ((forperm _r_44: Ref [MustInvokeUnbounded_0(_r_44)] :: false) && ((forperm _r_44: Ref [_r_44.MustReleaseBoundedp] :: false) && (forperm _r_44: Ref [_r_44.MustReleaseUnboundedp] :: false)))])
+{
+  inhale p1_50
+  var module_defined_0: Bool
+  var module_defined_0_0: Bool
+  var module_names_0: Set[_Name]
+  var module_names_0_0: Set[_Name]
+  var _err: Ref
+  var _err_12: Ref
+  var _cwl_168: Perm
+  var _cwl_168_0: Perm
+  var _method_measures_168: Seq[Measure$]
+  var _method_measures_168_0: Seq[Measure$]
+  if (p1_50) {
+    _method_measures_168 := Seq[Measure$]()
+    module_defined_0 := true
+    module_names_0 := Set[_Name]()
+    module_names_0 := (module_names_0 union Set(_single(6872323072689856351)))
+    inhale acc(__file__()._val, 99 / 100) && issubtype(typeof(__file__()._val), str()) && issubtype(typeof(__file__()._val), str())
+    module_names_0 := (module_names_0 union Set(_single(6872323076851130207)))
+    inhale acc(__name__()._val, 99 / 100) && issubtype(typeof(__name__()._val), str()) && issubtype(typeof(__name__()._val), str()) && str___eq__(str___create__(8, 6872332955275845471), __name__()._val)
+    _err := null
+    module_names_0 := (module_names_0 union Set(_single(133507968135653063024539981)))
+    module_names_0 := (module_names_0 union Set(_single(15607758459202906499263592781)))
+    module_names_0 := (module_names_0 union Set(_single(12653)))
+    module_names_0 := (module_names_0 union Set(_single(12909)))
+    module_names_0 := (module_names_0 union Set(_single(13165)))
+    module_names_0 := (module_names_0 union Set(_single(6872339552563453791)))
+    module_names_0 := (module_names_0 union Set(_single(2110237719515443916611)))
+  }
+  if (p2_50) {
+    _method_measures_168_0 := Seq[Measure$]()
+    module_defined_0_0 := true
+    module_names_0_0 := Set[_Name]()
+    module_names_0_0 := (module_names_0_0 union Set(_single(6872323072689856351)))
+    inhale acc(__file__()._valp, 99 / 100) && issubtype(typeof(__file__()._valp), str()) && issubtype(typeof(__file__()._valp), str())
+    module_names_0_0 := (module_names_0_0 union Set(_single(6872323076851130207)))
+    inhale acc(__name__()._valp, 99 / 100) && issubtype(typeof(__name__()._valp), str()) && issubtype(typeof(__name__()._valp), str()) && str___eq__(str___create__(8, 6872332955275845471), __name__()._valp)
+    _err_12 := null
+    module_names_0_0 := (module_names_0_0 union Set(_single(133507968135653063024539981)))
+    module_names_0_0 := (module_names_0_0 union Set(_single(15607758459202906499263592781)))
+    module_names_0_0 := (module_names_0_0 union Set(_single(12653)))
+    module_names_0_0 := (module_names_0_0 union Set(_single(12909)))
+    module_names_0_0 := (module_names_0_0 union Set(_single(13165)))
+    module_names_0_0 := (module_names_0_0 union Set(_single(6872339552563453791)))
+    module_names_0_0 := (module_names_0_0 union Set(_single(2110237719515443916611)))
+  }
+  assert (p1_50 ==> true) && (p2_50 ==> true) && ((p1_50 ==> (_single(2110237719515443916611) in module_names_0)) && (p2_50 ==> (_single(2110237719515443916611) in module_names_0_0)))
+  if (p1_50) {
+    module_names_0 := (module_names_0 union Set(_single(13421)))
+  }
+  if (p2_50) {
+    module_names_0_0 := (module_names_0_0 union Set(_single(13421)))
+  }
+  assert (p1_50 ==> true) && (p2_50 ==> true) && ((p1_50 ==> (_single(2110237719515443916611) in module_names_0)) && (p2_50 ==> (_single(2110237719515443916611) in module_names_0_0)))
+  if (p1_50) {
+    module_names_0 := (module_names_0 union Set(_single(13677)))
+  }
+  if (p2_50) {
+    module_names_0_0 := (module_names_0_0 union Set(_single(13677)))
+  }
+  assert (p1_50 ==> true) && (p2_50 ==> true) && ((p1_50 ==> (_single(2110237719515443916611) in module_names_0)) && (p2_50 ==> (_single(2110237719515443916611) in module_names_0_0)))
+  if (p1_50) {
+    module_names_0 := (module_names_0 union Set(_single(13933)))
+  }
+  if (p2_50) {
+    module_names_0_0 := (module_names_0_0 union Set(_single(13933)))
+  }
+  assert (p1_50 ==> true) && (p2_50 ==> true) && ((p1_50 ==> (_single(2110237719515443916611) in module_names_0)) && (p2_50 ==> (_single(2110237719515443916611) in module_names_0_0)))
+  if (p1_50) {
+    module_names_0 := (module_names_0 union Set(_single(14189)))
+    module_names_0 := (module_names_0 union Set(_single(14445)))
+    module_names_0 := (module_names_0 union Set(_single(14701)))
+    module_names_0 := (module_names_0 union Set(_single(3158381)))
+    module_names_0 := (module_names_0 union Set(_single(3223917)))
+  }
+  if (p2_50) {
+    module_names_0_0 := (module_names_0_0 union Set(_single(14189)))
+    module_names_0_0 := (module_names_0_0 union Set(_single(14445)))
+    module_names_0_0 := (module_names_0_0 union Set(_single(14701)))
+    module_names_0_0 := (module_names_0_0 union Set(_single(3158381)))
+    module_names_0_0 := (module_names_0_0 union Set(_single(3223917)))
+  }
+  assert true
+}

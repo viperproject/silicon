@@ -32,19 +32,19 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
   /* Lifetime */
 
-  def reset() {
+  def reset(): Unit = {
     collectedSorts = collectedSorts.empty
     collectedFunctions = collectedFunctions.empty
     collectedAxioms = collectedAxioms.empty
     uniqueSymbols = MultiMap.empty
   }
 
-  def start() {}
-  def stop() {}
+  def start(): Unit = {}
+  def stop(): Unit = {}
 
   /* Functionality */
 
-  def analyze(program: ast.Program) {
+  def analyze(program: ast.Program): Unit = {
     /* Compute necessary instances of all user-declared Viper domains */
     val necessaryDomainTypes = program.groundTypeInstances.collect{case d: ast.DomainType => d}
 
@@ -59,7 +59,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
     collectDomainMembers(instantiatedDomains)
   }
 
-  private def collectDomainSorts(domainTypes: Iterable[ast.DomainType]) {
+  private def collectDomainSorts(domainTypes: Iterable[ast.DomainType]): Unit = {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")
 
     domainTypes.foreach(domainType => {
@@ -68,7 +68,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
     })
   }
 
-  private def collectDomainMembers(instantiatedDomains: Set[ast.Domain]) {
+  private def collectDomainMembers(instantiatedDomains: Set[ast.Domain]): Unit = {
     /* Since domain member instances come with Silver types, but the corresponding prover
      * declarations work with Silicon sorts, it can happen that two instances with different types
      * result in the same function declaration because the types are mapped to the same sort(s).

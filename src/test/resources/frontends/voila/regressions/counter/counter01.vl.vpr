@@ -1,0 +1,288 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Counter_state_T(c: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Counter_interferenceReference_df($p0: Int, c: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Counter_interferenceSet_df($p0: Int, c: Ref, lvl: Int, x: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function Counter_atomicity_context_df(c: Ref, lvl: Int, x: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $memcell_$f: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function Counter_atomicity_context_hf(c: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(Counter_atomicity_context_fp(c, lvl, x), write)
+  ensures [Counter_atomicity_context_df(c, lvl, x), true]
+
+
+function Counter_interferenceSet_hf($p0: Int, c: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(Counter_interferenceContext_fp(c, lvl, x), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in Counter_interferenceSet_df($p0, c, lvl, x))), true]
+
+
+function Counter_interferenceReference_hf($p0: Int, c: Ref, lvl: Int, x: Ref): Int
+  requires acc(Counter_interferenceContext_fp(c, lvl, x), write)
+  ensures [Counter_interferenceReference_df($p0, c, lvl, x), true]
+
+
+function Counter_sk_$_action_n(c: Ref, lvl: Int, x: Ref): Int
+  requires acc(Counter_sk_fp(), write)
+
+
+function Counter_sk_$_action_m(c: Ref, lvl: Int, x: Ref): Int
+  requires acc(Counter_sk_fp(), write)
+
+
+function Counter_state(c: Ref, lvl: Int, x: Ref): Int
+  requires acc(Counter(c, lvl, x), write)
+  ensures [Counter_state_T(c, lvl, x), true]
+{
+  (unfolding acc(Counter(c, lvl, x), write) in x.$memcell_$f)
+}
+
+predicate Counter_G($r: Ref) 
+
+predicate Counter_atomicity_context_fp(c: Ref, lvl: Int, x: Ref) 
+
+predicate Counter_interferenceContext_fp(c: Ref, lvl: Int, x: Ref) 
+
+predicate Counter_sk_fp() 
+
+predicate Counter(c: Ref, lvl: Int, x: Ref) {
+  acc(x.$memcell_$f, write) && true
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method ___silicon_hack407_havoc_all_Counter()
+
+
+method ___silicon_hack407_havoc_all_Counter_interferenceContext_fp()
+
+
+method read01(c: Ref, lvl: Int, x: Ref) returns (ret: Int)
+  requires acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_G(c), write)
+  requires (Counter_state(c, lvl, x) in IntSet())
+  ensures acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == old(Counter_state(c, lvl, x))) && acc(Counter_G(c), write)
+  ensures ret == old(Counter_state(c, lvl, x))
+{
+  var $_levelVar_0: Int
+  var $_levelVar_1: Int
+  var $_levelVar_2: Int
+  inhale $_levelVar_0 >= 0 && $_levelVar_0 > lvl
+  assert $_levelVar_0 >= 0
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $c: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($c, $lvl, $x), write))
+  inhale Counter_interferenceSet_hf(0, c, lvl, x) == IntSet()
+  inhale Counter_interferenceReference_hf(0, c, lvl, x) == old(Counter_state(c, lvl, x))
+  
+  // ------- open-region BEGIN -------
+  
+  
+  label pre_open_region0
+  assert $_levelVar_0 > lvl
+  $_levelVar_1 := lvl
+  unfold acc(Counter(c, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // skip;
+  
+  
+  fold acc(Counter(c, lvl, x), write)
+  assert Counter_state(c, lvl, x) == old[pre_open_region0](Counter_state(c, lvl, x))
+  $_levelVar_2 := $_levelVar_0
+  
+  // ------- open-region END ---------
+  
+  
+}
+
+method $_Counter_interpretation_stability_check(c: Ref, lvl: Int, x: Ref)
+{
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $c: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($c, $lvl, $x), write))
+  inhale acc(x.$memcell_$f, write) && true
+  
+  // ------- Stabilising regions Counter (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $c: Ref, $lvl: Int, $x: Ref [Counter($c, $lvl, $x)] :: none < old[pre_stabilize0](perm(Counter($c, $lvl, $x))) ==> (none < perm($c.$diamond) && none < perm(Counter_atomicity_context_fp($c, $lvl, $x)) ==> (Counter_state($c, $lvl, $x) in Counter_atomicity_context_hf($c, $lvl, $x))) && (Counter_state($c, $lvl, $x) == old[pre_stabilize0](Counter_state($c, $lvl, $x)) || Counter_sk_$_action_n($c, $lvl, $x) == old[pre_stabilize0](Counter_state($c, $lvl, $x)) && Counter_sk_$_action_m($c, $lvl, $x) == Counter_state($c, $lvl, $x) && true && true))
+  
+  // ------- Stabilising regions Counter (check stability of region interpretation) END 
+  
+  
+  assert acc(x.$memcell_$f, write) && true
+}
+
+method $_Counter_action_transitivity_check()
+{
+  var G: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && true && G
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && true && G
+  assert aState == cState || aState == aState && cState == cState && true && G
+}
+
+method $_read01_condition_stability_precondition_check(c: Ref, lvl: Int, x: Ref, ret: Int)
+  requires acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_G(c), write)
+{
+  var $_levelVar_3: Int
+  inhale $_levelVar_3 >= 0 && $_levelVar_3 > lvl
+  inhale acc(Counter_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $c: Ref, $lvl: Int, $x: Ref :: acc(Counter_interferenceContext_fp($c, $lvl, $x), write))
+  inhale Counter_interferenceSet_hf(0, c, lvl, x) == IntSet()
+  inhale Counter_interferenceReference_hf(0, c, lvl, x) == old(Counter_state(c, lvl, x))
+  
+  // ------- Stabilising regions Counter (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region Counter
+  
+  ___silicon_hack407_havoc_all_Counter()
+  exhale acc(Counter_sk_fp(), write)
+  inhale acc(Counter_sk_fp(), write)
+  inhale (forperm $c: Ref, $lvl: Int, $x: Ref [Counter($c, $lvl, $x)] :: none < old[pre_stabilize](perm(Counter($c, $lvl, $x))) ==> (none < perm($c.$diamond) && none < perm(Counter_atomicity_context_fp($c, $lvl, $x)) ==> (Counter_state($c, $lvl, $x) in Counter_atomicity_context_hf($c, $lvl, $x))) && (Counter_state($c, $lvl, $x) == old[pre_stabilize](Counter_state($c, $lvl, $x)) || Counter_sk_$_action_n($c, $lvl, $x) == old[pre_stabilize](Counter_state($c, $lvl, $x)) && Counter_sk_$_action_m($c, $lvl, $x) == Counter_state($c, $lvl, $x) && true && true))
+  
+  // ------- Stabilising regions Counter (check stability of method condition) END 
+  
+  
+  assert acc(Counter(c, lvl, x), write) && (lvl >= 0 && Counter_state(c, lvl, x) == Counter_state(c, lvl, x)) && acc(Counter_G(c), write)
+}

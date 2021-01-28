@@ -63,12 +63,12 @@ trait DefaultCfgVerificationUnitProvider extends VerifierComponent { v: Verifier
 
     /* Lifetime */
 
-    def start() {}
+    def start(): Unit = {}
 
     def reset(): Unit = {
       _units = Seq.empty
     }
 
-    def stop() {}
+    def stop(): Unit = {}
   }
 }

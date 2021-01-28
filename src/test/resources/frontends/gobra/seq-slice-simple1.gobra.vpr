@@ -1,0 +1,286 @@
+method example1_pkg_F(xs_pkg_V0: Seq[Int])
+  requires true
+{
+  
+  // decl xs_pkg_V0_CN0
+  
+  var xs_pkg_V0_CN0: Seq[Int]
+  xs_pkg_V0_CN0 := Seq[Int]()
+  
+  // xs_pkg_V0_CN0 = xs_pkg_V0
+  
+  xs_pkg_V0_CN0 := xs_pkg_V0
+  
+  // decl ys_pkg_V1
+  
+  var ys_pkg_V1: Seq[Int]
+  ys_pkg_V1 := Seq[Int]()
+  
+  // ys_pkg_V1 = xs_pkg_V0_CN0[1:][:14 - 1]
+  
+  ys_pkg_V1 := xs_pkg_V0_CN0[1..][..14 - 1]
+  label returnLabel
+}
+
+method example2_pkg_F()
+{
+  
+  // decl 
+  
+  
+  // decl 
+  
+  
+  // assert seq[0 .. 10][5:] == seq[5 .. 10]
+  
+  assert true && [0..10)[5..] == [5..10)
+  
+  // assert seq[0 .. 10][:5] == seq[0 .. 5]
+  
+  assert true && [0..10)[..5] == [0..5)
+  label returnLabel
+}
+
+method example3_pkg_F()
+{
+  
+  // decl 
+  
+  
+  // decl 
+  
+  
+  // assert seq[0 .. 10][1:][2:][3:] == seq[6 .. 10]
+  
+  assert true && [0..10)[1..][2..][3..] == [6..10)
+  
+  // assert seq[0 .. 10][:5][:3] == seq[0 .. 3]
+  
+  assert true && [0..10)[..5][..3] == [0..3)
+  label returnLabel
+}
+
+method example4_pkg_F(xs_pkg_V2: Seq[Int])
+  requires true
+{
+  
+  // decl xs_pkg_V2_CN1
+  
+  var xs_pkg_V2_CN1: Seq[Int]
+  xs_pkg_V2_CN1 := Seq[Int]()
+  
+  // xs_pkg_V2_CN1 = xs_pkg_V2
+  
+  xs_pkg_V2_CN1 := xs_pkg_V2
+  
+  // decl 
+  
+  
+  // assert xs_pkg_V2_CN1[0:] == xs_pkg_V2_CN1
+  
+  assert true && xs_pkg_V2_CN1[0..] == xs_pkg_V2_CN1
+  
+  // assert xs_pkg_V2_CN1[:|xs_pkg_V2_CN1|] == xs_pkg_V2_CN1
+  
+  assert true && xs_pkg_V2_CN1[..|xs_pkg_V2_CN1|] == xs_pkg_V2_CN1
+  
+  // assert xs_pkg_V2_CN1 == xs_pkg_V2_CN1
+  
+  assert true && xs_pkg_V2_CN1 == xs_pkg_V2_CN1
+  
+  // assert xs_pkg_V2_CN1[0:][:|xs_pkg_V2_CN1| - 0] == xs_pkg_V2_CN1
+  
+  assert true && xs_pkg_V2_CN1[0..][..|xs_pkg_V2_CN1| - 0] == xs_pkg_V2_CN1
+  label returnLabel
+}
+
+method example5_pkg_F()
+{
+  
+  // decl 
+  
+  
+  // decl 
+  
+  
+  // assert seq[int] { 1, 2, 4, 8 }[2:] == seq[int] { 4, 8 }
+  
+  assert true && Seq(1, 2, 4, 8)[2..] == Seq(4, 8)
+  
+  // assert seq[int] { 1, 2, 4, 8 }[:2] == seq[int] { 1, 2 }
+  
+  assert true && Seq(1, 2, 4, 8)[..2] == Seq(1, 2)
+  
+  // assert seq[int] { 1, 2, 4, 8 }[1:][:3 - 1] == seq[int] { 2, 4 }
+  
+  assert true && Seq(1, 2, 4, 8)[1..][..3 - 1] == Seq(2, 4)
+  label returnLabel
+}
+
+method example6_pkg_F()
+{
+  
+  // decl 
+  
+  
+  // decl 
+  
+  
+  // assert seq[0 .. 9][0 - 10:] == seq[0 .. 9]
+  
+  assert true && [0..9)[0 - 10..] == [0..9)
+  
+  // assert seq[0 .. 9][:1000] == seq[0 .. 9]
+  
+  assert true && [0..9)[..1000] == [0..9)
+  
+  // assert seq[0 .. 9][0 - 100:][:100 - 0 - 100] == seq[0 .. 9]
+  
+  assert true && [0..9)[0 - 100..][..100 - (0 - 100)] == [0..9)
+  
+  // assert seq[0 .. 9][100:][:0 - 100 - 100] == seq[int] { }
+  
+  assert true && [0..9)[100..][..0 - 100 - 100] == Seq[Int]()
+  label returnLabel
+}
+
+method example7_pkg_F()
+{
+  
+  // decl 
+  
+  
+  // decl 
+  
+  
+  // assert |seq[0 .. 9][5:]| == 4
+  
+  assert true && |[0..9)[5..]| == 4
+  
+  // assert |seq[0 .. 9][:5]| == 5
+  
+  assert true && |[0..9)[..5]| == 5
+  
+  // assert |seq[0 .. 9][2:][:8 - 2]| == 6
+  
+  assert true && |[0..9)[2..][..8 - 2]| == 6
+  label returnLabel
+}
+
+method example8_pkg_F(xs_pkg_V3: Seq[Int], x_pkg_V3: Int)
+  requires true
+  requires true
+  requires (x_pkg_V3 in xs_pkg_V3[4..])
+{
+  
+  // decl xs_pkg_V3_CN2, x_pkg_V3_CN3
+  
+  var x_pkg_V3_CN3: Int
+  var xs_pkg_V3_CN2: Seq[Int]
+  xs_pkg_V3_CN2 := Seq[Int]()
+  x_pkg_V3_CN3 := 0
+  
+  // xs_pkg_V3_CN2 = xs_pkg_V3
+  
+  xs_pkg_V3_CN2 := xs_pkg_V3
+  
+  // x_pkg_V3_CN3 = x_pkg_V3
+  
+  x_pkg_V3_CN3 := x_pkg_V3
+  
+  // decl 
+  
+  
+  // assert x_pkg_V3_CN3 in xs_pkg_V3_CN2
+  
+  assert (x_pkg_V3_CN3 in xs_pkg_V3_CN2)
+  label returnLabel
+}
+
+method example9_pkg_F(xs_pkg_V4: Seq[Int], x_pkg_V4: Int)
+  requires true
+  requires true
+  requires (x_pkg_V4 in xs_pkg_V4[..7])
+{
+  
+  // decl xs_pkg_V4_CN4, x_pkg_V4_CN5
+  
+  var x_pkg_V4_CN5: Int
+  var xs_pkg_V4_CN4: Seq[Int]
+  xs_pkg_V4_CN4 := Seq[Int]()
+  x_pkg_V4_CN5 := 0
+  
+  // xs_pkg_V4_CN4 = xs_pkg_V4
+  
+  xs_pkg_V4_CN4 := xs_pkg_V4
+  
+  // x_pkg_V4_CN5 = x_pkg_V4
+  
+  x_pkg_V4_CN5 := x_pkg_V4
+  
+  // decl 
+  
+  
+  // assert x_pkg_V4_CN5 in xs_pkg_V4_CN4
+  
+  assert (x_pkg_V4_CN5 in xs_pkg_V4_CN4)
+  label returnLabel
+}
+
+method example10_pkg_F(xs_pkg_V5: Seq[Int], x_pkg_V5: Int)
+  requires true
+  requires true
+  requires !((x_pkg_V5 in xs_pkg_V5[5..]))
+  requires !((x_pkg_V5 in xs_pkg_V5[..5]))
+{
+  
+  // decl xs_pkg_V5_CN6, x_pkg_V5_CN7
+  
+  var x_pkg_V5_CN7: Int
+  var xs_pkg_V5_CN6: Seq[Int]
+  xs_pkg_V5_CN6 := Seq[Int]()
+  x_pkg_V5_CN7 := 0
+  
+  // xs_pkg_V5_CN6 = xs_pkg_V5
+  
+  xs_pkg_V5_CN6 := xs_pkg_V5
+  
+  // x_pkg_V5_CN7 = x_pkg_V5
+  
+  x_pkg_V5_CN7 := x_pkg_V5
+  
+  // decl 
+  
+  
+  // assert !x_pkg_V5_CN7 in xs_pkg_V5_CN6
+  
+  assert !((x_pkg_V5_CN7 in xs_pkg_V5_CN6))
+  label returnLabel
+}
+
+method example11_pkg_F(xs_pkg_V6: Seq[Int], n_pkg_V6: Int)
+  requires true
+  requires true
+  ensures true && xs_pkg_V6 == xs_pkg_V6[..n_pkg_V6] ++ xs_pkg_V6[n_pkg_V6..]
+{
+  
+  // decl xs_pkg_V6_CN8, n_pkg_V6_CN9
+  
+  var n_pkg_V6_CN9: Int
+  var xs_pkg_V6_CN8: Seq[Int]
+  xs_pkg_V6_CN8 := Seq[Int]()
+  n_pkg_V6_CN9 := 0
+  
+  // xs_pkg_V6_CN8 = xs_pkg_V6
+  
+  xs_pkg_V6_CN8 := xs_pkg_V6
+  
+  // n_pkg_V6_CN9 = n_pkg_V6
+  
+  n_pkg_V6_CN9 := n_pkg_V6
+  
+  // decl 
+  
+  
+  label returnLabel
+}

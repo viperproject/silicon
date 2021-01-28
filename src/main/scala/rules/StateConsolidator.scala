@@ -25,7 +25,7 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
   def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State
 }
 
-object stateConsolidator extends StateConsolidationRules with Immutable {
+object stateConsolidator extends StateConsolidationRules {
   def consolidate(s: State, v: Verifier): State = {
     if (Verifier.config.disableMostStateConsolidations() || Verifier.config.enableMoreCompleteExhale()) {
       // TODO: Skipping most of what the regular state consolidation performs results in
@@ -39,7 +39,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       if (s.retrying) {
         // TODO: apply to all heaps (s.h +: s.reserveHeaps, as done below)
         // NOTE: Doing this regardless of s.retrying might improve completeness in certain (rare) cases
-        moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds(s, s.h, v)
+        moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds(s.h, v)
       }
 
       return s
@@ -199,7 +199,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State = {
     heaps.foldLeft(s) { case (si, heap) =>
       val chunks: Seq[QuantifiedFieldChunk] =
-        heap.values.collect({ case ch: QuantifiedFieldChunk => ch })(collection.breakOut)
+        heap.values.collect({ case ch: QuantifiedFieldChunk => ch }).to(Seq)
 
       val receiver = `?r`
       val args = Seq(receiver)

@@ -1,0 +1,1521 @@
+domain $SnapshotMirrors$ {
+  
+  function mirror$m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$__$TY$__$int$$$int$$$int$(_pure_1: Int, _pure_2: Int): Int
+}
+
+field closure_0: Ref
+
+field closure_1: Ref
+
+field closure_2: Ref
+
+field tuple_0: Ref
+
+field tuple_1: Ref
+
+field tuple_2: Ref
+
+field val_bool: Bool
+
+field val_int: Int
+
+field val_ref: Ref
+
+function builtin$unreach_bool__$TY$__$bool$(): Bool
+  requires false
+
+
+function builtin$unreach_int__$TY$__$int$(): Int
+  requires false
+
+
+function m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(_pure_1: Int, _pure_2: Int): Int
+  requires true
+  requires 0 <= _pure_1 && 0 <= _pure_2
+  ensures result >= 0
+  ensures [result == mirror$m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$__$TY$__$int$$$int$$$int$(_pure_1, _pure_2), true]
+{
+  (_pure_1 != 0 ? (_pure_2 != 0 ? m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(_pure_1 - 1, m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(_pure_1, _pure_2 - 1)) : m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(_pure_1 - 1, 1)) : _pure_2 + 1)
+}
+
+function read$(): Perm
+  ensures none < result
+  ensures result < write
+
+
+predicate DeadBorrowToken$(borrow: Int) 
+
+predicate bool(self: Ref) {
+  acc(self.val_bool, write)
+}
+
+predicate closure$0_1_10$3$2268015934926044161(self: Ref) 
+
+predicate closure$0_1_11$3$9568486731263008501(self: Ref) 
+
+predicate closure$0_1_12$3$9568486731263008501(self: Ref) 
+
+predicate closure$0_1_13$3$2268015934926044161(self: Ref) 
+
+predicate closure$0_1_14$5$6439304244919222146(self: Ref) 
+
+predicate closure$0_1_15$3$4923916023205180932(self: Ref) 
+
+predicate closure$0_1_16$3$9568486731263008501(self: Ref) 
+
+predicate closure$0_1_17$3$2268015934926044161(self: Ref) 
+
+predicate closure$0_1_18$5$6439304244919222146(self: Ref) 
+
+predicate closure$0_1_19$3$4923916023205180932(self: Ref) 
+
+predicate closure$0_1_9$3$9568486731263008501(self: Ref) 
+
+predicate isize(self: Ref) {
+  acc(self.val_int, write)
+}
+
+predicate never(self: Ref) 
+
+predicate ref$closure$0_1_10$3$2268015934926044161(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_10$3$2268015934926044161(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_11$3$9568486731263008501(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_11$3$9568486731263008501(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_12$3$9568486731263008501(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_12$3$9568486731263008501(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_13$3$2268015934926044161(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_13$3$2268015934926044161(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_14$5$6439304244919222146(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_14$5$6439304244919222146(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_15$3$4923916023205180932(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_15$3$4923916023205180932(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_16$3$9568486731263008501(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_16$3$9568486731263008501(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_17$3$2268015934926044161(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_17$3$2268015934926044161(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_18$5$6439304244919222146(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_18$5$6439304244919222146(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_19$3$4923916023205180932(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_19$3$4923916023205180932(self.val_ref), write)
+}
+
+predicate ref$closure$0_1_9$3$9568486731263008501(self: Ref) {
+  acc(self.val_ref, write) && acc(closure$0_1_9$3$9568486731263008501(self.val_ref), write)
+}
+
+predicate ref$isize(self: Ref) {
+  acc(self.val_ref, write) && acc(isize(self.val_ref), write)
+}
+
+predicate ref$str(self: Ref) {
+  acc(self.val_ref, write) && acc(str(self.val_ref), write)
+}
+
+predicate ref$tuple2$isize$isize(self: Ref) {
+  acc(self.val_ref, write) && acc(tuple2$isize$isize(self.val_ref), write)
+}
+
+predicate ref$tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.val_ref, write) && acc(tuple3$ref$str$u32$u32(self.val_ref), write)
+}
+
+predicate str(self: Ref) 
+
+predicate tuple0$(self: Ref) {
+  true
+}
+
+predicate tuple2$isize$bool(self: Ref) {
+  acc(self.tuple_0, write) && (acc(isize(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(bool(self.tuple_1), write)))
+}
+
+predicate tuple2$isize$isize(self: Ref) {
+  acc(self.tuple_0, write) && (acc(isize(self.tuple_0), write) && (acc(self.tuple_1, write) && acc(isize(self.tuple_1), write)))
+}
+
+predicate tuple3$ref$str$u32$u32(self: Ref) {
+  acc(self.tuple_0, write) && (acc(ref$str(self.tuple_0), write) && (acc(self.tuple_1, write) && (acc(u32(self.tuple_1), write) && (acc(self.tuple_2, write) && acc(u32(self.tuple_2), write)))))
+}
+
+predicate u32(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+predicate u8(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}
+
+method m_Ackermann_function$$ack1$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Bool
+  var __t17: Bool
+  var __t18: Bool
+  var __t19: Bool
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Int
+  var _5: Int
+  var _6: Ref
+  var _7: Ref
+  var _8: Int
+  var _9: Ref
+  var _10: Int
+  var _11: Ref
+  var _12: Ref
+  var _13: Int
+  var _14: Ref
+  var _15: Ref
+  var _16: Ref
+  var _17: Ref
+  var _18: Int
+  var _19: Ref
+  var _t21: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Ackermann_function::ack1"
+  
+  // Def path: "Ackermann_function::ack1[0]"
+  
+  // Span: tests/verify/pass/rosetta/Ackermann_function.rs:35:1: 43:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  // Preconditions:
+  
+  inhale acc(isize(_1), write) && acc(isize(_2), write)
+  inhale true
+  inhale true
+  inhale (unfolding acc(isize(_2), write) in (unfolding acc(isize(_1), write) in 0 <= _1.val_int && 0 <= _2.val_int))
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = _1
+  
+  _4 := builtin$havoc_int()
+  inhale true
+  unfold acc(isize(_1), write)
+  _4 := _1.val_int
+  label l0
+  // [mir] _3 = Eq(move _4, const 0isize)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(_3.val_bool, write)
+  _3.val_bool := _4 == 0
+  // [mir] StorageDead(_4)
+  
+  // [mir] switchInt(move _3) -> [false: bb3, otherwise: bb2]
+  
+  __t14 := _3.val_bool
+  if (__t14) {
+    goto l2
+  }
+  goto l1
+  label bb10
+  // ========== bb10 ==========
+  
+  __t9 := true
+  // [mir] _17 = move (_19.0: isize)
+  
+  _17 := _19.tuple_0
+  label l16
+  // [mir] StorageDead(_18)
+  
+  // [mir] _15 = const ack1(move _16, move _17) -> [return: bb11, unwind: bb1]
+  
+  label l17
+  assert 0 <= _16.val_int && 0 <= _17.val_int
+  fold acc(isize(_17), write)
+  fold acc(isize(_16), write)
+  assert true
+  exhale acc(isize(_16), write) && acc(isize(_17), write)
+  _15 := builtin$havoc_ref()
+  inhale true
+  inhale acc(isize(_15), write)
+  inhale true
+  inhale (unfolding acc(isize(_15), write) in _15.val_int == m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(old[l17](_16.val_int), old[l17](_17.val_int)) && _15.val_int >= 0)
+  label l18
+  goto bb11
+  label bb11
+  // ========== bb11 ==========
+  
+  __t10 := true
+  // [mir] StorageDead(_17)
+  
+  // [mir] StorageDead(_16)
+  
+  // [mir] _0 = const ack1(move _12, move _15) -> [return: bb12, unwind: bb1]
+  
+  label l19
+  unfold acc(isize(_15), write)
+  assert 0 <= _12.val_int && 0 <= _15.val_int
+  fold acc(isize(_15), write)
+  fold acc(isize(_12), write)
+  assert true
+  exhale acc(isize(_12), write) && acc(isize(_15), write)
+  _0 := builtin$havoc_ref()
+  inhale true
+  inhale acc(isize(_0), write)
+  inhale true
+  inhale (unfolding acc(isize(_0), write) in _0.val_int == m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(old[l19](_12.val_int), old[l19]((unfolding acc(isize(_15), write) in _15.val_int))) && _0.val_int >= 0)
+  label l20
+  goto bb12
+  label bb12
+  // ========== bb12 ==========
+  
+  __t11 := true
+  // [mir] StorageDead(_15)
+  
+  // [mir] StorageDead(_12)
+  
+  // [mir] goto -> bb13
+  
+  goto l22
+  label bb13
+  // ========== bb13 ==========
+  
+  __t12 := true
+  // [mir] StorageDead(_7)
+  
+  // [mir] goto -> bb14
+  
+  goto l24
+  label bb14
+  // ========== bb14 ==========
+  
+  __t13 := true
+  // [mir] StorageDead(_3)
+  
+  // [mir] return
+  
+  goto return
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = _2
+  
+  _5 := builtin$havoc_int()
+  inhale true
+  unfold acc(isize(_2), write)
+  _5 := _2.val_int
+  label l3
+  // [mir] _6 = CheckedAdd(move _5, const 1isize)
+  
+  _6 := builtin$havoc_ref()
+  inhale acc(_6.tuple_0, write)
+  inhale acc(_6.tuple_0.val_int, write)
+  inhale acc(_6.tuple_1, write)
+  inhale acc(_6.tuple_1.val_bool, write)
+  _6.tuple_0.val_int := _5 + 1
+  _6.tuple_1.val_bool := false
+  // [mir] assert(!move (_6.1: bool), "attempt to add with overflow") -> [success: bb4, unwind: bb1]
+  
+  __t15 := _6.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t15
+  goto bb4
+  label bb3
+  // ========== bb3 ==========
+  
+  __t3 := true
+  // [mir] StorageLive(_7)
+  
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = _2
+  
+  _8 := builtin$havoc_int()
+  inhale true
+  unfold acc(isize(_2), write)
+  _8 := _2.val_int
+  label l5
+  // [mir] _7 = Eq(move _8, const 0isize)
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_bool, write)
+  _7.val_bool := _8 == 0
+  // [mir] StorageDead(_8)
+  
+  // [mir] switchInt(move _7) -> [false: bb6, otherwise: bb5]
+  
+  __t16 := _7.val_bool
+  if (__t16) {
+    goto l7
+  }
+  goto l6
+  label bb4
+  // ========== bb4 ==========
+  
+  __t2 := true
+  // [mir] _0 = move (_6.0: isize)
+  
+  _0 := _6.tuple_0
+  label l4
+  // [mir] StorageDead(_5)
+  
+  // [mir] goto -> bb14
+  
+  goto l23
+  label bb5
+  // ========== bb5 ==========
+  
+  __t4 := true
+  // [mir] StorageLive(_9)
+  
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = _1
+  
+  _10 := builtin$havoc_int()
+  inhale true
+  _10 := _1.val_int
+  label l8
+  // [mir] _11 = CheckedSub(move _10, const 1isize)
+  
+  _11 := builtin$havoc_ref()
+  inhale acc(_11.tuple_0, write)
+  inhale acc(_11.tuple_0.val_int, write)
+  inhale acc(_11.tuple_1, write)
+  inhale acc(_11.tuple_1.val_bool, write)
+  _11.tuple_0.val_int := _10 - 1
+  _11.tuple_1.val_bool := false
+  // [mir] assert(!move (_11.1: bool), "attempt to subtract with overflow") -> [success: bb7, unwind: bb1]
+  
+  __t17 := _11.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t17
+  goto bb7
+  label bb6
+  // ========== bb6 ==========
+  
+  __t7 := true
+  // [mir] StorageLive(_12)
+  
+  // [mir] StorageLive(_13)
+  
+  // [mir] _13 = _1
+  
+  _13 := builtin$havoc_int()
+  inhale true
+  _13 := _1.val_int
+  label l12
+  // [mir] _14 = CheckedSub(move _13, const 1isize)
+  
+  _14 := builtin$havoc_ref()
+  inhale acc(_14.tuple_0, write)
+  inhale acc(_14.tuple_0.val_int, write)
+  inhale acc(_14.tuple_1, write)
+  inhale acc(_14.tuple_1.val_bool, write)
+  _14.tuple_0.val_int := _13 - 1
+  _14.tuple_1.val_bool := false
+  // [mir] assert(!move (_14.1: bool), "attempt to subtract with overflow") -> [success: bb9, unwind: bb1]
+  
+  __t18 := _14.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t18
+  goto bb9
+  label bb7
+  // ========== bb7 ==========
+  
+  __t5 := true
+  // [mir] _9 = move (_11.0: isize)
+  
+  _9 := _11.tuple_0
+  label l9
+  // [mir] StorageDead(_10)
+  
+  // [mir] _0 = const ack1(move _9, const 1isize) -> [return: bb8, unwind: bb1]
+  
+  label l10
+  _t21 := builtin$havoc_ref()
+  inhale acc(isize(_t21), write)
+  assert 0 <= _9.val_int
+  fold acc(isize(_9), write)
+  assert true
+  exhale acc(isize(_9), write) && acc(isize(_t21), write)
+  _0 := builtin$havoc_ref()
+  inhale true
+  inhale acc(isize(_0), write)
+  inhale true
+  inhale (unfolding acc(isize(_0), write) in _0.val_int == m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(old[l10](_9.val_int), old[l10](1)) && _0.val_int >= 0)
+  label l11
+  goto bb8
+  label bb8
+  // ========== bb8 ==========
+  
+  __t6 := true
+  // [mir] StorageDead(_9)
+  
+  // [mir] goto -> bb13
+  
+  goto l21
+  label bb9
+  // ========== bb9 ==========
+  
+  __t8 := true
+  // [mir] _12 = move (_14.0: isize)
+  
+  _12 := _14.tuple_0
+  label l13
+  // [mir] StorageDead(_13)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] StorageLive(_16)
+  
+  // [mir] _16 = _1
+  
+  _16 := builtin$havoc_ref()
+  inhale acc(_16.val_int, write)
+  _16.val_int := _1.val_int
+  label l14
+  // [mir] StorageLive(_17)
+  
+  // [mir] StorageLive(_18)
+  
+  // [mir] _18 = _2
+  
+  _18 := builtin$havoc_int()
+  inhale true
+  _18 := _2.val_int
+  label l15
+  // [mir] _19 = CheckedSub(move _18, const 1isize)
+  
+  _19 := builtin$havoc_ref()
+  inhale acc(_19.tuple_0, write)
+  inhale acc(_19.tuple_0.val_int, write)
+  inhale acc(_19.tuple_1, write)
+  inhale acc(_19.tuple_1.val_bool, write)
+  _19.tuple_0.val_int := _18 - 1
+  _19.tuple_1.val_bool := false
+  // [mir] assert(!move (_19.1: bool), "attempt to subtract with overflow") -> [success: bb10, unwind: bb1]
+  
+  __t19 := _19.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t19
+  goto bb10
+  label l1
+  // ========== l1 ==========
+  
+  // MIR edge bb0 --> bb3
+  
+  goto bb3
+  label l2
+  // ========== l2 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  goto bb2
+  label l21
+  // ========== l21 ==========
+  
+  // drop Acc(_11.tuple_1.val_bool, write) (Acc(_11.tuple_1.val_bool, write))
+  
+  // drop Acc(_10.val_int, write) (Acc(_10.val_int, write))
+  
+  // drop Acc(_11.tuple_0, write) (Acc(_11.tuple_0, write))
+  
+  // drop Acc(_11.tuple_1, write) (Acc(_11.tuple_1, write))
+  
+  goto bb13
+  label l22
+  // ========== l22 ==========
+  
+  // drop Acc(_19.tuple_1.val_bool, write) (Acc(_19.tuple_1.val_bool, write))
+  
+  // drop Acc(_19.tuple_0, write) (Acc(_19.tuple_0, write))
+  
+  // drop Acc(_18.val_int, write) (Acc(_18.val_int, write))
+  
+  // drop Acc(_14.tuple_1.val_bool, write) (Acc(_14.tuple_1.val_bool, write))
+  
+  // drop Acc(_13.val_int, write) (Acc(_13.val_int, write))
+  
+  // drop Acc(_14.tuple_0, write) (Acc(_14.tuple_0, write))
+  
+  // drop Acc(_14.tuple_1, write) (Acc(_14.tuple_1, write))
+  
+  // drop Acc(_19.tuple_1, write) (Acc(_19.tuple_1, write))
+  
+  goto bb13
+  label l23
+  // ========== l23 ==========
+  
+  // drop Acc(_6.tuple_0, write) (Acc(_6.tuple_0, write))
+  
+  // drop Acc(_6.tuple_1.val_bool, write) (Acc(_6.tuple_1.val_bool, write))
+  
+  // drop Acc(_5.val_int, write) (Acc(_5.val_int, write))
+  
+  // drop Acc(_6.tuple_1, write) (Acc(_6.tuple_1, write))
+  
+  goto bb14
+  label l24
+  // ========== l24 ==========
+  
+  // drop Acc(_7.val_bool, write) (Acc(_7.val_bool, write))
+  
+  unfold acc(isize(_0), write)
+  // drop Acc(_8.val_int, write) (Acc(_8.val_int, write))
+  
+  goto bb14
+  label l6
+  // ========== l6 ==========
+  
+  // MIR edge bb3 --> bb6
+  
+  goto bb6
+  label l7
+  // ========== l7 ==========
+  
+  // MIR edge bb3 --> bb5
+  
+  goto bb5
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  fold acc(isize(_0), write)
+  // obtain acc(isize(_0), write)
+  
+  assert (unfolding acc(isize(_0), write) in _0.val_int) == m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(old[pre]((unfolding acc(isize(_1), write) in _1.val_int)), old[pre]((unfolding acc(isize(_2), write) in _2.val_int))) && (unfolding acc(isize(_0), write) in _0.val_int) >= 0
+  assert true
+  exhale acc(isize(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Ackermann_function$$ack2$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var __t7: Bool
+  var __t8: Bool
+  var __t9: Bool
+  var __t10: Bool
+  var __t11: Bool
+  var __t12: Bool
+  var __t13: Bool
+  var __t14: Bool
+  var __t15: Bool
+  var __t16: Int
+  var __t17: Int
+  var __t18: Bool
+  var __t19: Bool
+  var __t20: Bool
+  var __t21: Bool
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _7: Ref
+  var _8: Int
+  var _9: Int
+  var _10: Int
+  var _11: Int
+  var _12: Int
+  var _13: Ref
+  var _14: Ref
+  var _15: Int
+  var _16: Ref
+  var _17: Ref
+  var _18: Int
+  var _19: Ref
+  var _20: Ref
+  var _21: Ref
+  var _22: Ref
+  var _23: Int
+  var _24: Ref
+  var _t32: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Ackermann_function::ack2"
+  
+  // Def path: "Ackermann_function::ack2[0]"
+  
+  // Span: tests/verify/pass/rosetta/Ackermann_function.rs:48:1: 54:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  __t6 := false
+  __t7 := false
+  __t8 := false
+  __t9 := false
+  __t10 := false
+  __t11 := false
+  __t12 := false
+  __t13 := false
+  __t14 := false
+  __t15 := false
+  // Preconditions:
+  
+  inhale acc(isize(_1), write) && acc(isize(_2), write)
+  inhale true
+  inhale true
+  inhale (unfolding acc(isize(_2), write) in (unfolding acc(isize(_1), write) in 0 <= _1.val_int && 0 <= _2.val_int))
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_3)
+  
+  // [mir] StorageLive(_4)
+  
+  // [mir] _4 = _1
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_int, write)
+  unfold acc(isize(_1), write)
+  _4.val_int := _1.val_int
+  label l0
+  // [mir] StorageLive(_5)
+  
+  // [mir] _5 = _2
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_int, write)
+  unfold acc(isize(_2), write)
+  _5.val_int := _2.val_int
+  label l1
+  // [mir] _3 = (move _4, move _5)
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(tuple2$isize$isize(_3), write)
+  unfold acc(tuple2$isize$isize(_3), write)
+  _3.tuple_0 := _4
+  label l2
+  _3.tuple_1 := _5
+  label l3
+  // [mir] StorageDead(_5)
+  
+  // [mir] StorageDead(_4)
+  
+  // [mir] _6 = discriminant(_3)
+  
+  // [mir] _7 = &'<empty> _3
+  
+  _7 := builtin$havoc_ref()
+  inhale acc(_7.val_ref, write)
+  _7.val_ref := _3
+  exhale acc(_3.tuple_1, write - read$())
+  inhale acc(_7.val_ref.tuple_1, read$())
+  exhale acc(_3.tuple_0, write - read$())
+  inhale acc(_7.val_ref.tuple_0, read$())
+  exhale acc(_3.tuple_1.val_int, write - read$())
+  inhale acc(_7.val_ref.tuple_1.val_int, read$())
+  exhale acc(_3.tuple_0.val_int, write - read$())
+  inhale acc(_7.val_ref.tuple_0.val_int, read$())
+  label l4
+  // [mir] switchInt((_3.0: isize)) -> [0isize: bb2, otherwise: bb6]
+  
+  __t16 := _7.val_ref.tuple_0.val_int
+  if (__t16 == 0) {
+    goto l6
+  }
+  goto l5
+  label bb10
+  // ========== bb10 ==========
+  
+  __t15 := true
+  // [mir] StorageDead(_11)
+  
+  // [mir] StorageDead(_10)
+  
+  // [mir] StorageDead(_9)
+  
+  // [mir] StorageDead(_8)
+  
+  // [mir] StorageDead(_3)
+  
+  // [mir] return
+  
+  goto return
+  label bb11
+  // ========== bb11 ==========
+  
+  __t14 := true
+  // [mir] _0 = move (_13.0: isize)
+  
+  _0 := _13.tuple_0
+  label l29
+  // [mir] StorageDead(_12)
+  
+  // [mir] goto -> bb10
+  
+  goto l32
+  label bb12
+  // ========== bb12 ==========
+  
+  __t11 := true
+  // [mir] _14 = move (_16.0: isize)
+  
+  _14 := _16.tuple_0
+  label l24
+  // [mir] StorageDead(_15)
+  
+  // [mir] _0 = const ack2(move _14, const 1isize) -> [return: bb13, unwind: bb1]
+  
+  label l25
+  _t32 := builtin$havoc_ref()
+  inhale acc(isize(_t32), write)
+  assert 0 <= _14.val_int
+  fold acc(isize(_14), write)
+  assert true
+  exhale acc(isize(_14), write) && acc(isize(_t32), write)
+  _0 := builtin$havoc_ref()
+  inhale true
+  inhale acc(isize(_0), write)
+  inhale true
+  inhale (unfolding acc(isize(_0), write) in _0.val_int == m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(old[l25](_14.val_int), old[l25](1)) && _0.val_int >= 0)
+  label l26
+  goto bb13
+  label bb13
+  // ========== bb13 ==========
+  
+  __t12 := true
+  // [mir] StorageDead(_14)
+  
+  // [mir] goto -> bb10
+  
+  goto l31
+  label bb14
+  // ========== bb14 ==========
+  
+  __t6 := true
+  // [mir] _17 = move (_19.0: isize)
+  
+  _17 := _19.tuple_0
+  label l14
+  // [mir] StorageDead(_18)
+  
+  // [mir] StorageLive(_20)
+  
+  // [mir] StorageLive(_21)
+  
+  // [mir] _21 = _10
+  
+  _21 := builtin$havoc_ref()
+  inhale acc(_21.val_int, write)
+  _21.val_int := _10
+  label l15
+  // [mir] StorageLive(_22)
+  
+  // [mir] StorageLive(_23)
+  
+  // [mir] _23 = _11
+  
+  _23 := builtin$havoc_int()
+  inhale true
+  _23 := _11
+  label l16
+  // [mir] _24 = CheckedSub(move _23, const 1isize)
+  
+  _24 := builtin$havoc_ref()
+  inhale acc(_24.tuple_0, write)
+  inhale acc(_24.tuple_0.val_int, write)
+  inhale acc(_24.tuple_1, write)
+  inhale acc(_24.tuple_1.val_bool, write)
+  _24.tuple_0.val_int := _23 - 1
+  _24.tuple_1.val_bool := false
+  // [mir] assert(!move (_24.1: bool), "attempt to subtract with overflow") -> [success: bb15, unwind: bb1]
+  
+  __t19 := _24.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t19
+  goto bb15
+  label bb15
+  // ========== bb15 ==========
+  
+  __t7 := true
+  // [mir] _22 = move (_24.0: isize)
+  
+  _22 := _24.tuple_0
+  label l17
+  // [mir] StorageDead(_23)
+  
+  // [mir] _20 = const ack2(move _21, move _22) -> [return: bb16, unwind: bb1]
+  
+  label l18
+  assert 0 <= _21.val_int && 0 <= _22.val_int
+  fold acc(isize(_22), write)
+  fold acc(isize(_21), write)
+  assert true
+  exhale acc(isize(_21), write) && acc(isize(_22), write)
+  _20 := builtin$havoc_ref()
+  inhale true
+  inhale acc(isize(_20), write)
+  inhale true
+  inhale (unfolding acc(isize(_20), write) in _20.val_int == m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(old[l18](_21.val_int), old[l18](_22.val_int)) && _20.val_int >= 0)
+  label l19
+  goto bb16
+  label bb16
+  // ========== bb16 ==========
+  
+  __t8 := true
+  // [mir] StorageDead(_22)
+  
+  // [mir] StorageDead(_21)
+  
+  // [mir] _0 = const ack2(move _17, move _20) -> [return: bb17, unwind: bb1]
+  
+  label l20
+  unfold acc(isize(_20), write)
+  assert 0 <= _17.val_int && 0 <= _20.val_int
+  fold acc(isize(_17), write)
+  fold acc(isize(_20), write)
+  assert true
+  exhale acc(isize(_17), write) && acc(isize(_20), write)
+  _0 := builtin$havoc_ref()
+  inhale true
+  inhale acc(isize(_0), write)
+  inhale true
+  inhale (unfolding acc(isize(_0), write) in _0.val_int == m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(old[l20](_17.val_int), old[l20]((unfolding acc(isize(_20), write) in _20.val_int))) && _0.val_int >= 0)
+  label l21
+  goto bb17
+  label bb17
+  // ========== bb17 ==========
+  
+  __t9 := true
+  // [mir] StorageDead(_20)
+  
+  // [mir] StorageDead(_17)
+  
+  // [mir] goto -> bb10
+  
+  goto l30
+  label bb2
+  // ========== bb2 ==========
+  
+  __t2 := true
+  // [mir] ReadForMatch(_7)
+  
+  // [mir] falseEdges -> [real: bb7, imaginary: bb3]
+  
+  goto l9
+  label bb3
+  // ========== bb3 ==========
+  
+  __t3 := true
+  // [mir] ReadForMatch(_7)
+  
+  // [mir] falseEdges -> [real: bb8, imaginary: bb4]
+  
+  goto l10
+  label bb4
+  // ========== bb4 ==========
+  
+  __t4 := true
+  // [mir] ReadForMatch(_7)
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(_7.val_ref.tuple_0.val_int, read$())
+    exhale acc(_7.val_ref.tuple_1.val_int, read$())
+    exhale acc(_7.val_ref.tuple_0, read$())
+    exhale acc(_7.val_ref.tuple_1, read$())
+    inhale acc(_3.tuple_1, write - read$())
+    inhale acc(_3.tuple_0, write - read$())
+    inhale acc(_3.tuple_1.val_int, write - read$())
+    inhale acc(_3.tuple_0.val_int, write - read$())
+  }
+  // [mir] falseEdges -> [real: bb9, imaginary: bb5]
+  
+  goto bb9
+  label bb6
+  // ========== bb6 ==========
+  
+  __t1 := true
+  // [mir] switchInt((_3.1: isize)) -> [0isize: bb3, otherwise: bb4]
+  
+  __t17 := _7.val_ref.tuple_1.val_int
+  if (__t17 == 0) {
+    goto l8
+  }
+  goto l7
+  label bb7
+  // ========== bb7 ==========
+  
+  __t13 := true
+  // [mir] StorageLive(_8)
+  
+  // [mir] _8 = (_3.1: isize)
+  
+  _8 := builtin$havoc_int()
+  inhale true
+  _8 := _3.tuple_1.val_int
+  label l27
+  // [mir] StorageLive(_12)
+  
+  // [mir] _12 = _8
+  
+  _12 := builtin$havoc_int()
+  inhale true
+  _12 := _8
+  label l28
+  // [mir] _13 = CheckedAdd(move _12, const 1isize)
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.tuple_0, write)
+  inhale acc(_13.tuple_0.val_int, write)
+  inhale acc(_13.tuple_1, write)
+  inhale acc(_13.tuple_1.val_bool, write)
+  _13.tuple_0.val_int := _12 + 1
+  _13.tuple_1.val_bool := false
+  // [mir] assert(!move (_13.1: bool), "attempt to add with overflow") -> [success: bb11, unwind: bb1]
+  
+  __t21 := _13.tuple_1.val_bool
+  // Rust assertion: attempt to add with overflow
+  
+  assert !__t21
+  goto bb11
+  label bb8
+  // ========== bb8 ==========
+  
+  __t10 := true
+  // [mir] StorageLive(_9)
+  
+  // [mir] _9 = (_3.0: isize)
+  
+  _9 := builtin$havoc_int()
+  inhale true
+  _9 := _3.tuple_0.val_int
+  label l22
+  // [mir] StorageLive(_14)
+  
+  // [mir] StorageLive(_15)
+  
+  // [mir] _15 = _9
+  
+  _15 := builtin$havoc_int()
+  inhale true
+  _15 := _9
+  label l23
+  // [mir] _16 = CheckedSub(move _15, const 1isize)
+  
+  _16 := builtin$havoc_ref()
+  inhale acc(_16.tuple_0, write)
+  inhale acc(_16.tuple_0.val_int, write)
+  inhale acc(_16.tuple_1, write)
+  inhale acc(_16.tuple_1.val_bool, write)
+  _16.tuple_0.val_int := _15 - 1
+  _16.tuple_1.val_bool := false
+  // [mir] assert(!move (_16.1: bool), "attempt to subtract with overflow") -> [success: bb12, unwind: bb1]
+  
+  __t20 := _16.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t20
+  goto bb12
+  label bb9
+  // ========== bb9 ==========
+  
+  __t5 := true
+  // [mir] StorageLive(_10)
+  
+  // [mir] _10 = (_3.0: isize)
+  
+  _10 := builtin$havoc_int()
+  inhale true
+  _10 := _3.tuple_0.val_int
+  label l11
+  // [mir] StorageLive(_11)
+  
+  // [mir] _11 = (_3.1: isize)
+  
+  _11 := builtin$havoc_int()
+  inhale true
+  _11 := _3.tuple_1.val_int
+  label l12
+  // [mir] StorageLive(_17)
+  
+  // [mir] StorageLive(_18)
+  
+  // [mir] _18 = _10
+  
+  _18 := builtin$havoc_int()
+  inhale true
+  _18 := _10
+  label l13
+  // [mir] _19 = CheckedSub(move _18, const 1isize)
+  
+  _19 := builtin$havoc_ref()
+  inhale acc(_19.tuple_0, write)
+  inhale acc(_19.tuple_0.val_int, write)
+  inhale acc(_19.tuple_1, write)
+  inhale acc(_19.tuple_1.val_bool, write)
+  _19.tuple_0.val_int := _18 - 1
+  _19.tuple_1.val_bool := false
+  // [mir] assert(!move (_19.1: bool), "attempt to subtract with overflow") -> [success: bb14, unwind: bb1]
+  
+  __t18 := _19.tuple_1.val_bool
+  // Rust assertion: attempt to subtract with overflow
+  
+  assert !__t18
+  goto bb14
+  label l10
+  // ========== l10 ==========
+  
+  // MIR edge bb3 --> bb8
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(_7.val_ref.tuple_0.val_int, read$())
+    exhale acc(_7.val_ref.tuple_1.val_int, read$())
+    exhale acc(_7.val_ref.tuple_0, read$())
+    exhale acc(_7.val_ref.tuple_1, read$())
+    inhale acc(_3.tuple_1, write - read$())
+    inhale acc(_3.tuple_0, write - read$())
+    inhale acc(_3.tuple_1.val_int, write - read$())
+    inhale acc(_3.tuple_0.val_int, write - read$())
+  }
+  goto bb8
+  label l30
+  // ========== l30 ==========
+  
+  // drop Acc(_23.val_int, write) (Acc(_23.val_int, write))
+  
+  // drop Acc(_11.val_int, write) (Acc(_11.val_int, write))
+  
+  // drop Acc(_24.tuple_1.val_bool, write) (Acc(_24.tuple_1.val_bool, write))
+  
+  // drop Acc(_19.tuple_0, write) (Acc(_19.tuple_0, write))
+  
+  unfold acc(isize(_0), write)
+  // drop Acc(_10.val_int, write) (Acc(_10.val_int, write))
+  
+  // drop Acc(_24.tuple_0, write) (Acc(_24.tuple_0, write))
+  
+  // drop Acc(_18.val_int, write) (Acc(_18.val_int, write))
+  
+  // drop Acc(_19.tuple_1.val_bool, write) (Acc(_19.tuple_1.val_bool, write))
+  
+  // drop Acc(_19.tuple_1, write) (Acc(_19.tuple_1, write))
+  
+  // drop Acc(_24.tuple_1, write) (Acc(_24.tuple_1, write))
+  
+  goto bb10
+  label l31
+  // ========== l31 ==========
+  
+  // drop Acc(_16.tuple_0, write) (Acc(_16.tuple_0, write))
+  
+  // drop Acc(_9.val_int, write) (Acc(_9.val_int, write))
+  
+  // drop Acc(_15.val_int, write) (Acc(_15.val_int, write))
+  
+  // drop Acc(_16.tuple_1.val_bool, write) (Acc(_16.tuple_1.val_bool, write))
+  
+  unfold acc(isize(_0), write)
+  // drop Acc(_16.tuple_1, write) (Acc(_16.tuple_1, write))
+  
+  goto bb10
+  label l32
+  // ========== l32 ==========
+  
+  // drop Acc(_13.tuple_0, write) (Acc(_13.tuple_0, write))
+  
+  // drop Acc(_8.val_int, write) (Acc(_8.val_int, write))
+  
+  // drop Acc(_13.tuple_1.val_bool, write) (Acc(_13.tuple_1.val_bool, write))
+  
+  // drop Acc(_12.val_int, write) (Acc(_12.val_int, write))
+  
+  // drop Acc(_13.tuple_1, write) (Acc(_13.tuple_1, write))
+  
+  goto bb10
+  label l5
+  // ========== l5 ==========
+  
+  // MIR edge bb0 --> bb6
+  
+  goto bb6
+  label l6
+  // ========== l6 ==========
+  
+  // MIR edge bb0 --> bb2
+  
+  goto bb2
+  label l7
+  // ========== l7 ==========
+  
+  // MIR edge bb6 --> bb4
+  
+  goto bb4
+  label l8
+  // ========== l8 ==========
+  
+  // MIR edge bb6 --> bb3
+  
+  goto bb3
+  label l9
+  // ========== l9 ==========
+  
+  // MIR edge bb2 --> bb7
+  
+  // Expire borrows
+  
+  // expire_borrows ReborrowingDAG(L0,)
+
+  
+  if (__t0) {
+    // expire loan L0
+    
+    exhale acc(_7.val_ref.tuple_0.val_int, read$())
+    exhale acc(_7.val_ref.tuple_1.val_int, read$())
+    exhale acc(_7.val_ref.tuple_0, read$())
+    exhale acc(_7.val_ref.tuple_1, read$())
+    inhale acc(_3.tuple_1, write - read$())
+    inhale acc(_3.tuple_0, write - read$())
+    inhale acc(_3.tuple_1.val_int, write - read$())
+    inhale acc(_3.tuple_0.val_int, write - read$())
+  }
+  goto bb7
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  fold acc(isize(_0), write)
+  // obtain acc(isize(_0), write)
+  
+  assert (unfolding acc(isize(_0), write) in _0.val_int) == m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(old[pre]((unfolding acc(isize(_1), write) in _1.val_int)), old[pre]((unfolding acc(isize(_2), write) in _2.val_int))) && (unfolding acc(isize(_0), write) in _0.val_int) >= 0
+  assert true
+  exhale acc(isize(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method m_Ackermann_function$$main$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  var __t0: Bool
+  var __t1: Bool
+  var __t2: Bool
+  var __t3: Bool
+  var __t4: Bool
+  var __t5: Bool
+  var __t6: Bool
+  var _1: Ref
+  var _2: Ref
+  var _3: Ref
+  var _4: Ref
+  var _5: Ref
+  var _6: Int
+  var _7: Int
+  var _12: Ref
+  var _13: Ref
+  var _t15: Ref
+  var _t16: Ref
+  var _t18: Ref
+  var _t19: Ref
+  label start
+  // ========== start ==========
+  
+  // Name: "Ackermann_function::main"
+  
+  // Def path: "Ackermann_function::main[0]"
+  
+  // Span: tests/verify/pass/rosetta/Ackermann_function.rs:61:1: 66:2
+  
+  __t0 := false
+  __t1 := false
+  __t2 := false
+  __t3 := false
+  __t4 := false
+  __t5 := false
+  // Preconditions:
+  
+  inhale true
+  inhale true
+  inhale true
+  inhale true
+  label pre
+  goto bb0
+  label bb0
+  // ========== bb0 ==========
+  
+  __t0 := true
+  // [mir] StorageLive(_1)
+  
+  // [mir] _1 = const ack1(const 3isize, const 4isize) -> [return: bb2, unwind: bb1]
+  
+  label l0
+  _t15 := builtin$havoc_ref()
+  inhale acc(isize(_t15), write)
+  _t16 := builtin$havoc_ref()
+  inhale acc(isize(_t16), write)
+  assert true
+  assert true
+  exhale acc(isize(_t15), write) && acc(isize(_t16), write)
+  _1 := builtin$havoc_ref()
+  inhale true
+  inhale acc(isize(_1), write)
+  inhale true
+  inhale (unfolding acc(isize(_1), write) in _1.val_int == m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(old[l0](3), old[l0](4)) && _1.val_int >= 0)
+  label l1
+  goto bb2
+  label bb2
+  // ========== bb2 ==========
+  
+  __t1 := true
+  // [mir] StorageLive(_2)
+  
+  // [mir] _2 = const ack2(const 3isize, const 4isize) -> [return: bb3, unwind: bb1]
+  
+  label l2
+  _t18 := builtin$havoc_ref()
+  inhale acc(isize(_t18), write)
+  _t19 := builtin$havoc_ref()
+  inhale acc(isize(_t19), write)
+  assert true
+  assert true
+  exhale acc(isize(_t18), write) && acc(isize(_t19), write)
+  _2 := builtin$havoc_ref()
+  inhale true
+  inhale acc(isize(_2), write)
+  inhale true
+  inhale (unfolding acc(isize(_2), write) in _2.val_int == m_Ackermann_function$$ack_pure$opensqu$0$closesqu$__$TY$__$int$$$int$$$int$(old[l2](3), old[l2](4)) && _2.val_int >= 0)
+  label l3
+  goto bb3
+  label bb3
+  // ========== bb3 ==========
+  
+  __t2 := true
+  // [mir] StorageLive(_4)
+  
+  // [mir] StorageLive(_5)
+  
+  // [mir] StorageLive(_6)
+  
+  // [mir] _6 = _1
+  
+  _6 := builtin$havoc_int()
+  inhale true
+  unfold acc(isize(_1), write)
+  _6 := _1.val_int
+  label l4
+  // [mir] StorageLive(_7)
+  
+  // [mir] _7 = _2
+  
+  _7 := builtin$havoc_int()
+  inhale true
+  unfold acc(isize(_2), write)
+  _7 := _2.val_int
+  label l5
+  // [mir] _5 = Eq(move _6, move _7)
+  
+  _5 := builtin$havoc_ref()
+  inhale acc(_5.val_bool, write)
+  _5.val_bool := _6 == _7
+  // [mir] StorageDead(_7)
+  
+  // [mir] StorageDead(_6)
+  
+  // [mir] _4 = Not(move _5)
+  
+  _4 := builtin$havoc_ref()
+  inhale acc(_4.val_bool, write)
+  _4.val_bool := !_5.val_bool
+  // [mir] StorageDead(_5)
+  
+  // [mir] switchInt(move _4) -> [false: bb5, otherwise: bb4]
+  
+  __t6 := _4.val_bool
+  if (!__t6) {
+    goto l7
+  }
+  goto l6
+  label bb4
+  // ========== bb4 ==========
+  
+  __t3 := true
+  // [mir] const std::rt::begin_panic(const "assertion failed: a1 == a2", move _9) -> bb1
+  
+  // Rust panic - const "assertion failed: a1 == a2"
+  
+  assert false
+  goto end_of_method
+  label bb5
+  // ========== bb5 ==========
+  
+  __t4 := true
+  // [mir] _3 = ()
+  
+  _3 := builtin$havoc_ref()
+  inhale acc(tuple0$(_3), write)
+  // [mir] StorageDead(_4)
+  
+  // [mir] StorageLive(_13)
+  
+  // [mir] _13 = _1
+  
+  _13 := builtin$havoc_ref()
+  inhale acc(_13.val_int, write)
+  _13.val_int := _1.val_int
+  label l8
+  // [mir] _12 = const print_isize(move _13) -> [return: bb6, unwind: bb1]
+  
+  label l9
+  fold acc(isize(_13), write)
+  assert true
+  exhale acc(isize(_13), write)
+  _12 := builtin$havoc_ref()
+  inhale true
+  inhale acc(tuple0$(_12), write)
+  inhale true
+  inhale true
+  label l10
+  goto bb6
+  label bb6
+  // ========== bb6 ==========
+  
+  __t5 := true
+  // [mir] StorageDead(_13)
+  
+  // [mir] _0 = ()
+  
+  _0 := builtin$havoc_ref()
+  inhale acc(tuple0$(_0), write)
+  // [mir] StorageDead(_2)
+  
+  // [mir] StorageDead(_1)
+  
+  // [mir] return
+  
+  goto return
+  label l6
+  // ========== l6 ==========
+  
+  // MIR edge bb3 --> bb4
+  
+  goto bb4
+  label l7
+  // ========== l7 ==========
+  
+  // MIR edge bb3 --> bb5
+  
+  goto bb5
+  label return
+  // ========== return ==========
+  
+  // Target of any 'return' statement.
+  
+  // Exhale postcondition
+  
+  // Fold predicates for &mut args and transfer borrow permissions to old
+  
+  // Fold the result
+  
+  // obtain acc(tuple0$(_0), write)
+  
+  assert true
+  exhale acc(tuple0$(_0), write)
+  goto end_of_method
+  label end_of_method
+}
+
+method builtin$havoc_int() returns (ret: Int)
+
+
+method builtin$havoc_ref() returns (ret: Ref)
+
+
+method builtin$havoc_bool() returns (ret: Bool)

@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.state._
 import viper.silicon.state.terms._
 
-object functionSupporter extends Immutable {
+object functionSupporter {
   def limitedVersion(function: HeapDepFun): HeapDepFun = {
     val id = function.id.withSuffix("%", "limited")
     HeapDepFun(id, function.argSorts, function.resultSort)

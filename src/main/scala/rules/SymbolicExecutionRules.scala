@@ -12,14 +12,13 @@ import viper.silicon.verifier.Verifier
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
 import viper.silver.verifier.{Counterexample, CounterexampleTransformer, Model, VerificationError}
 
-trait SymbolicExecutionRules extends Immutable {
+trait SymbolicExecutionRules {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
     var ceTrafo: Option[CounterexampleTransformer] = None
     val res = ve match {
-      case ErrorWrapperWithExampleTransformer(wrapped, trafo) => {
+      case ErrorWrapperWithExampleTransformer(wrapped, trafo) =>
         ceTrafo = Some(trafo)
         wrapped
-      }
       case _ => ve
     }
     if (v != null && Verifier.config.counterexample.toOption.isDefined) {
@@ -29,7 +28,7 @@ trait SymbolicExecutionRules extends Immutable {
       val model = v.decider.getModel()
       if (model != null && !model.contains("model is not available")){
         val nativeModel = Model(model)
-        var ce: Counterexample = if (Verifier.config.counterexample.toOption.get == "native") {
+        val ce: Counterexample = if (Verifier.config.counterexample.toOption.get == "native") {
           val oldHeap = if (s.oldHeaps.contains(Verifier.PRE_STATE_LABEL))
             Some(s.oldHeaps(Verifier.PRE_STATE_LABEL).values)
           else None

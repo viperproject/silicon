@@ -34,7 +34,7 @@ object Store extends StoreFactory[MapBackedStore] {
 }
 
 final class MapBackedStore private[state] (map: Map[ast.AbstractLocalVar, Term])
-    extends Store with Immutable {
+    extends Store {
 
   val values = map
   def apply(key: ast.AbstractLocalVar) = map(key)

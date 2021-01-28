@@ -75,12 +75,17 @@ case class False() extends BooleanLiteral
 
 case class PermissionLiteral(numerator: BigInt, denominator: BigInt) extends PropertyExpression[kinds.Permission]
 
-sealed abstract class ChunkPlaceholder(name: String) extends PropertyExpression[kinds.Chunk]
+sealed abstract class ChunkPlaceholder extends PropertyExpression[kinds.Chunk] {
+  def name: String
+}
 
-case class ChunkVariable(name: String) extends ChunkPlaceholder(name) {
+case class ChunkVariable(name: String) extends ChunkPlaceholder {
   require(name != "this")
 }
-case class This() extends ChunkPlaceholder(name = "this")
+
+case class This() extends ChunkPlaceholder {
+  val name = "this"
+}
 
 case class ArgumentAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Argument]
 case class PermissionAccess(chunk: ChunkPlaceholder) extends PropertyExpression[kinds.Permission]

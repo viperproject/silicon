@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import scala.annotation.unused
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
@@ -40,7 +41,7 @@ trait ExecutionRules extends SymbolicExecutionRules {
            : VerificationResult
 }
 
-object executor extends ExecutionRules with Immutable {
+object executor extends ExecutionRules {
   import consumer._
   import evaluator._
   import producer._
@@ -77,7 +78,7 @@ object executor extends ExecutionRules with Immutable {
 
   private def follows(s: State,
                       edges: Seq[SilverEdge],
-                      pvef: ast.Exp => PartialVerificationError,
+                      @unused pvef: ast.Exp => PartialVerificationError,
                       v: Verifier)
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult = {
@@ -116,7 +117,7 @@ object executor extends ExecutionRules with Immutable {
          */
         sys.error(s"Unexpected block: $block")
 
-      case block @ cfg.LoopHeadBlock(invs, stmts,_) =>
+      case block @ cfg.LoopHeadBlock(invs, stmts, _) =>
         incomingEdgeKind match {
           case cfg.Kind.In =>
             /* We've reached a loop head block via an in-edge. Steps to perform:
@@ -166,7 +167,7 @@ object executor extends ExecutionRules with Immutable {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (fatalResult: FatalResult, _) => fatalResult
-                    case (intermediateResult, (s1, pcs, ff1)) => /* [BRANCH-PARALLELISATION] ff1 */
+                    case (intermediateResult, (s1, pcs, _)) => /* [BRANCH-PARALLELISATION] ff1 */
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
                       intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
   //                    v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
@@ -204,6 +205,7 @@ object executor extends ExecutionRules with Immutable {
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
+
     val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
       SymbExLogger.currentLog().collapse(stmt, sepIdentifier)
@@ -214,7 +216,7 @@ object executor extends ExecutionRules with Immutable {
            (continuation: (State, Verifier) => VerificationResult)
            : VerificationResult = {
 
-    val s = state.copy(h=magicWandSupporter.getExecutionHeap(state))
+    val s = state.copy(h = magicWandSupporter.getExecutionHeap(state))
     val Q: (State, Verifier) => VerificationResult = (s, v) => {
       continuation(magicWandSupporter.moveToReserveHeap(s, v), v)}
 
@@ -411,7 +413,7 @@ object executor extends ExecutionRules with Immutable {
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = Verifier.program.findMethod(methodName)
         val fargs = meth.formalArgs.map(_.localVar)
-        val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs)(collection.breakOut)
+        val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
         val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
         val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
 
@@ -530,11 +532,22 @@ object executor extends ExecutionRules with Immutable {
         val pve = ApplyFailed(apply)
         magicWandSupporter.applyWand(s, e, pve, v)(Q)
 
+      case viper.silicon.extensions.TryBlock(body) =>
+        var bodySucceeded = false
+        val bodyResult = exec(s, body, v)((s1, v2) => {
+          bodySucceeded = true
+          Q(s1, v2)
+        })
+        if (bodySucceeded) bodyResult
+        else Q(s, v)
+
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: ast.Goto
            | _: ast.If
            | _: ast.Label
            | _: ast.Seqn
+           | _: ast.Assume
+           | _: ast.ExtensionStmt
            | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
     }
 

@@ -103,9 +103,9 @@ case class SiliconNativeCounterexample(internalStore: Store, heap: Iterable[Chun
 case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Model) extends SiliconCounterexample {
   override val model: Model = {
     Model(internalStore.values.filter{
-      case (k,v) => nativeModel.entries.contains(v.toString)
+      case (_,v) => nativeModel.entries.contains(v.toString)
     }.map{
-      case (k, v) => k.name -> nativeModel.entries.get(v.toString).get
+      case (k, v) => k.name -> nativeModel.entries(v.toString)
     })
   }
   override def withStore(s: Store): SiliconCounterexample = {

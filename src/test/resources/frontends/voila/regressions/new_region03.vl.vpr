@@ -1,0 +1,1087 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Inner_state_T(r: Ref, lvl: Int, c: Ref): Bool
+  
+  function Outer_state_T(s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Inner_interferenceReference_df($p0: Int, r: Ref, lvl: Int, c: Ref): Bool
+  
+  function Outer_interferenceReference_df($p0: Int, s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Inner_interferenceSet_df($p0: Int, r: Ref, lvl: Int, c: Ref): Set[Int]
+  
+  function Outer_interferenceSet_df($p0: Int, s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function Inner_atomicity_context_df(r: Ref, lvl: Int, c: Ref): Bool
+  
+  function Outer_atomicity_context_df(s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $cell_$val: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function Inner_atomicity_context_hf(r: Ref, lvl: Int, c: Ref): Set[Int]
+  requires acc(Inner_atomicity_context_fp(r, lvl, c), write)
+  ensures [Inner_atomicity_context_df(r, lvl, c), true]
+
+
+function Inner_interferenceSet_hf($p0: Int, r: Ref, lvl: Int, c: Ref): Set[Int]
+  requires acc(Inner_interferenceContext_fp(r, lvl, c), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in Inner_interferenceSet_df($p0, r, lvl, c))), true]
+
+
+function Inner_interferenceReference_hf($p0: Int, r: Ref, lvl: Int, c: Ref): Int
+  requires acc(Inner_interferenceContext_fp(r, lvl, c), write)
+  ensures [Inner_interferenceReference_df($p0, r, lvl, c), true]
+
+
+function Inner_sk_$_action_n(r: Ref, lvl: Int, c: Ref): Int
+  requires acc(Inner_sk_fp(), write)
+
+
+function Inner_sk_$_action_m(r: Ref, lvl: Int, c: Ref): Int
+  requires acc(Inner_sk_fp(), write)
+
+
+function Inner_state(r: Ref, lvl: Int, c: Ref): Int
+  requires acc(Inner(r, lvl, c), write)
+  ensures [Inner_state_T(r, lvl, c), true]
+{
+  (unfolding acc(Inner(r, lvl, c), write) in c.$cell_$val)
+}
+
+function Outer_atomicity_context_hf(s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref): Set[Int]
+  requires acc(Outer_atomicity_context_fp(s, lvl, r, rlvl, c), write)
+  ensures [Outer_atomicity_context_df(s, lvl, r, rlvl, c), true]
+
+
+function Outer_interferenceSet_hf($p0: Int, s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref): Set[Int]
+  requires acc(Outer_interferenceContext_fp(s, lvl, r, rlvl, c), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in Outer_interferenceSet_df($p0, s, lvl, r, rlvl, c))), true]
+
+
+function Outer_interferenceReference_hf($p0: Int, s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref): Int
+  requires acc(Outer_interferenceContext_fp(s, lvl, r, rlvl, c), write)
+  ensures [Outer_interferenceReference_df($p0, s, lvl, r, rlvl, c), true]
+
+
+function Outer_sk_$_action_n(s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref): Int
+  requires acc(Outer_sk_fp(), write)
+
+
+function Outer_sk_$_action_m(s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref): Int
+  requires acc(Outer_sk_fp(), write)
+
+
+function Outer_state(s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref): Int
+  requires acc(Outer(s, lvl, r, rlvl, c), write)
+  ensures [Outer_state_T(s, lvl, r, rlvl, c), true]
+{
+  (unfolding acc(Outer(s, lvl, r, rlvl, c), write) in Inner_state(r, rlvl, c))
+}
+
+predicate Inner_I($r: Ref) 
+
+predicate Inner_atomicity_context_fp(r: Ref, lvl: Int, c: Ref) 
+
+predicate Inner_interferenceContext_fp(r: Ref, lvl: Int, c: Ref) 
+
+predicate Inner_sk_fp() 
+
+predicate Inner(r: Ref, lvl: Int, c: Ref) {
+  acc(c.$cell_$val, write) && true
+}
+
+predicate Outer_O($r: Ref) 
+
+predicate Outer_atomicity_context_fp(s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref) 
+
+predicate Outer_interferenceContext_fp(s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref) 
+
+predicate Outer_sk_fp() 
+
+predicate Outer(s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref) {
+  acc(Inner(r, rlvl, c), write) && (rlvl >= 0 && true) && rlvl < lvl && acc(Inner_I(r), write)
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method ___silicon_hack407_havoc_all_Inner()
+
+
+method ___silicon_hack407_havoc_all_Inner_interferenceContext_fp()
+
+
+method ___silicon_hack407_havoc_all_Outer()
+
+
+method ___silicon_hack407_havoc_all_Outer_interferenceContext_fp()
+
+
+method test01()
+{
+  var c: Ref
+  var r: Ref
+  var s: Ref
+  var rlvl: Int
+  var slvl: Int
+  var $_levelVar_0: Int
+  inhale $_levelVar_0 >= 0
+  assert $_levelVar_0 >= 0
+  inhale acc(Inner_sk_fp(), write) && acc(Outer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(Inner_interferenceContext_fp($r, $lvl, $c), write))
+  inhale (forall $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref :: acc(Outer_interferenceContext_fp($s, $lvl, $r, $rlvl, $c), write))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer0
+  
+  // Inferring interference all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner_interferenceContext_fp()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Inner_interferenceSet_df(1, $r, $lvl, $c)) } none < old[pre_infer0](perm(Inner($r, $lvl, $c))) ==> ($$_m in Inner_interferenceSet_hf(1, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Inner_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer0](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_infer0](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == $$_m && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_infer0](perm(Inner($r, $lvl, $c))) ==> Inner_interferenceReference_hf(1, $r, $lvl, $c) == old[pre_infer0](Inner_state($r, $lvl, $c)))
+  
+  // Inferring interference all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer_interferenceContext_fp()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: (forall $$_m: Int :: { ($$_m in Outer_interferenceSet_df(1, $s, $lvl, $r, $rlvl, $c)) } none < old[pre_infer0](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> ($$_m in Outer_interferenceSet_hf(1, $s, $lvl, $r, $rlvl, $c)) == ((none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> ($$_m in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && ($$_m == old[pre_infer0](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_infer0](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == $$_m && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_infer0](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> Outer_interferenceReference_hf(1, $s, $lvl, $r, $rlvl, $c) == old[pre_infer0](Outer_state($s, $lvl, $r, $rlvl, $c)))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale rlvl < slvl
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Inner(r, rlvl, c), write) && (rlvl >= 0 && Inner_state(r, rlvl, c) == 0) && acc(Inner_I(r), write)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Outer_O(s), write)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- fold BEGIN --------------
+  
+  
+  fold acc(Outer(s, slvl, r, rlvl, c), write)
+  assert slvl >= 0 && Outer_state(s, slvl, r, rlvl, c) == 0
+  
+  // ------- fold END ----------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert false
+  
+  // ------- assert END --------------
+  
+  
+}
+
+method test02()
+{
+  var c: Ref
+  var r: Ref
+  var s: Ref
+  var rlvl: Int
+  var slvl: Int
+  var $_levelVar_1: Int
+  inhale $_levelVar_1 >= 0
+  assert $_levelVar_1 >= 0
+  inhale acc(Inner_sk_fp(), write) && acc(Outer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(Inner_interferenceContext_fp($r, $lvl, $c), write))
+  inhale (forall $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref :: acc(Outer_interferenceContext_fp($s, $lvl, $r, $rlvl, $c), write))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer
+  
+  // Inferring interference all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner_interferenceContext_fp()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Inner_interferenceSet_df(2, $r, $lvl, $c)) } none < old[pre_infer](perm(Inner($r, $lvl, $c))) ==> ($$_m in Inner_interferenceSet_hf(2, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Inner_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_infer](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == $$_m && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_infer](perm(Inner($r, $lvl, $c))) ==> Inner_interferenceReference_hf(2, $r, $lvl, $c) == old[pre_infer](Inner_state($r, $lvl, $c)))
+  
+  // Inferring interference all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer_interferenceContext_fp()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: (forall $$_m: Int :: { ($$_m in Outer_interferenceSet_df(2, $s, $lvl, $r, $rlvl, $c)) } none < old[pre_infer](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> ($$_m in Outer_interferenceSet_hf(2, $s, $lvl, $r, $rlvl, $c)) == ((none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> ($$_m in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && ($$_m == old[pre_infer](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_infer](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == $$_m && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_infer](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> Outer_interferenceReference_hf(2, $s, $lvl, $r, $rlvl, $c) == old[pre_infer](Outer_state($s, $lvl, $r, $rlvl, $c)))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale 0 <= rlvl && rlvl < slvl
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- new:cell BEGIN ----------
+  
+  
+  c := new($cell_$val)
+  c.$cell_$val := 0
+  
+  // ------- new:cell END ------------
+  
+  
+  
+  // ------- Stabilising regions Inner,Outer (after new:cell@38.3) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner_interferenceContext_fp()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Inner_interferenceSet_df(3, $r, $lvl, $c)) } none < old[pre_stabilize0](perm(Inner($r, $lvl, $c))) ==> ($$_m in Inner_interferenceSet_hf(3, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Inner_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_stabilize0](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize0](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == $$_m && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))))
+  ___silicon_hack407_havoc_all_Inner()
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize0](perm(Inner($r, $lvl, $c))) ==> (Inner_state($r, $lvl, $c) in Inner_interferenceSet_hf(3, $r, $lvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize0](perm(Inner($r, $lvl, $c))) ==> Inner_interferenceReference_hf(3, $r, $lvl, $c) == old[pre_stabilize0](Inner_state($r, $lvl, $c)))
+  
+  // Stabilising all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer_interferenceContext_fp()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: (forall $$_m: Int :: { ($$_m in Outer_interferenceSet_df(3, $s, $lvl, $r, $rlvl, $c)) } none < old[pre_stabilize0](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> ($$_m in Outer_interferenceSet_hf(3, $s, $lvl, $r, $rlvl, $c)) == ((none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> ($$_m in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && ($$_m == old[pre_stabilize0](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize0](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == $$_m && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))))
+  ___silicon_hack407_havoc_all_Outer()
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize0](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> (Outer_state($s, $lvl, $r, $rlvl, $c) in Outer_interferenceSet_hf(3, $s, $lvl, $r, $rlvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize0](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> Outer_interferenceReference_hf(3, $s, $lvl, $r, $rlvl, $c) == old[pre_stabilize0](Outer_state($s, $lvl, $r, $rlvl, $c)))
+  
+  // ------- Stabilising regions Inner,Outer (after new:cell@38.3) END 
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(c.$cell_$val, write) && c.$cell_$val == 0
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- new:Inner BEGIN ---------
+  
+  
+  r := new()
+  inhale acc(Inner_I(r), write)
+  fold acc(Inner(r, rlvl, c), write)
+  
+  // ------- new:Inner END -----------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(Inner(r, rlvl, c), write) && (rlvl >= 0 && Inner_state(r, rlvl, c) == 0) && acc(Inner_I(r), write)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale acc(Outer_O(s), write)
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- fold BEGIN --------------
+  
+  
+  fold acc(Outer(s, slvl, r, rlvl, c), write)
+  assert slvl >= 0 && Outer_state(s, slvl, r, rlvl, c) == 0
+  
+  // ------- fold END ----------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert false
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- Stabilising regions Inner,Outer (after seq-comp@38.3) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner_interferenceContext_fp()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Inner_interferenceSet_df(4, $r, $lvl, $c)) } none < old[pre_stabilize](perm(Inner($r, $lvl, $c))) ==> ($$_m in Inner_interferenceSet_hf(4, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Inner_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_stabilize](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == $$_m && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))))
+  ___silicon_hack407_havoc_all_Inner()
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize](perm(Inner($r, $lvl, $c))) ==> (Inner_state($r, $lvl, $c) in Inner_interferenceSet_hf(4, $r, $lvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize](perm(Inner($r, $lvl, $c))) ==> Inner_interferenceReference_hf(4, $r, $lvl, $c) == old[pre_stabilize](Inner_state($r, $lvl, $c)))
+  
+  // Stabilising all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer_interferenceContext_fp()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: (forall $$_m: Int :: { ($$_m in Outer_interferenceSet_df(4, $s, $lvl, $r, $rlvl, $c)) } none < old[pre_stabilize](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> ($$_m in Outer_interferenceSet_hf(4, $s, $lvl, $r, $rlvl, $c)) == ((none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> ($$_m in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && ($$_m == old[pre_stabilize](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == $$_m && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))))
+  ___silicon_hack407_havoc_all_Outer()
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> (Outer_state($s, $lvl, $r, $rlvl, $c) in Outer_interferenceSet_hf(4, $s, $lvl, $r, $rlvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> Outer_interferenceReference_hf(4, $s, $lvl, $r, $rlvl, $c) == old[pre_stabilize](Outer_state($s, $lvl, $r, $rlvl, $c)))
+  
+  // ------- Stabilising regions Inner,Outer (after seq-comp@38.3) END 
+  
+  
+}
+
+method test03()
+{
+  var c: Ref
+  var r: Ref
+  var s: Ref
+  var rlvl: Int
+  var slvl: Int
+  var $_levelVar_2: Int
+  inhale $_levelVar_2 >= 0
+  assert $_levelVar_2 >= 0
+  inhale acc(Inner_sk_fp(), write) && acc(Outer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(Inner_interferenceContext_fp($r, $lvl, $c), write))
+  inhale (forall $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref :: acc(Outer_interferenceContext_fp($s, $lvl, $r, $rlvl, $c), write))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer2
+  
+  // Inferring interference all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner_interferenceContext_fp()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Inner_interferenceSet_df(5, $r, $lvl, $c)) } none < old[pre_infer2](perm(Inner($r, $lvl, $c))) ==> ($$_m in Inner_interferenceSet_hf(5, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Inner_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer2](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_infer2](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == $$_m && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_infer2](perm(Inner($r, $lvl, $c))) ==> Inner_interferenceReference_hf(5, $r, $lvl, $c) == old[pre_infer2](Inner_state($r, $lvl, $c)))
+  
+  // Inferring interference all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer_interferenceContext_fp()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: (forall $$_m: Int :: { ($$_m in Outer_interferenceSet_df(5, $s, $lvl, $r, $rlvl, $c)) } none < old[pre_infer2](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> ($$_m in Outer_interferenceSet_hf(5, $s, $lvl, $r, $rlvl, $c)) == ((none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> ($$_m in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && ($$_m == old[pre_infer2](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_infer2](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == $$_m && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_infer2](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> Outer_interferenceReference_hf(5, $s, $lvl, $r, $rlvl, $c) == old[pre_infer2](Outer_state($s, $lvl, $r, $rlvl, $c)))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale 0 <= rlvl && rlvl < slvl
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- new:cell BEGIN ----------
+  
+  
+  c := new($cell_$val)
+  c.$cell_$val := 0
+  
+  // ------- new:cell END ------------
+  
+  
+  
+  // ------- Stabilising regions Inner,Outer (after new:cell@56.3) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner_interferenceContext_fp()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Inner_interferenceSet_df(6, $r, $lvl, $c)) } none < old[pre_stabilize2](perm(Inner($r, $lvl, $c))) ==> ($$_m in Inner_interferenceSet_hf(6, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Inner_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_stabilize2](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize2](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == $$_m && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))))
+  ___silicon_hack407_havoc_all_Inner()
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize2](perm(Inner($r, $lvl, $c))) ==> (Inner_state($r, $lvl, $c) in Inner_interferenceSet_hf(6, $r, $lvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize2](perm(Inner($r, $lvl, $c))) ==> Inner_interferenceReference_hf(6, $r, $lvl, $c) == old[pre_stabilize2](Inner_state($r, $lvl, $c)))
+  
+  // Stabilising all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer_interferenceContext_fp()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: (forall $$_m: Int :: { ($$_m in Outer_interferenceSet_df(6, $s, $lvl, $r, $rlvl, $c)) } none < old[pre_stabilize2](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> ($$_m in Outer_interferenceSet_hf(6, $s, $lvl, $r, $rlvl, $c)) == ((none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> ($$_m in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && ($$_m == old[pre_stabilize2](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize2](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == $$_m && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))))
+  ___silicon_hack407_havoc_all_Outer()
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize2](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> (Outer_state($s, $lvl, $r, $rlvl, $c) in Outer_interferenceSet_hf(6, $s, $lvl, $r, $rlvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize2](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> Outer_interferenceReference_hf(6, $s, $lvl, $r, $rlvl, $c) == old[pre_stabilize2](Outer_state($s, $lvl, $r, $rlvl, $c)))
+  
+  // ------- Stabilising regions Inner,Outer (after new:cell@56.3) END 
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(c.$cell_$val, write) && c.$cell_$val == 0
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- new:Inner BEGIN ---------
+  
+  
+  r := new()
+  inhale acc(Inner_I(r), write)
+  fold acc(Inner(r, rlvl, c), write)
+  
+  // ------- new:Inner END -----------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(Inner(r, rlvl, c), write) && (rlvl >= 0 && Inner_state(r, rlvl, c) == 0) && acc(Inner_I(r), write)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- new:Outer BEGIN ---------
+  
+  
+  s := new()
+  inhale acc(Outer_O(s), write)
+  fold acc(Outer(s, slvl, r, rlvl, c), write)
+  
+  // ------- new:Outer END -----------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert acc(Outer(s, slvl, r, rlvl, c), write) && (slvl >= 0 && Outer_state(s, slvl, r, rlvl, c) == 0) && acc(Outer_O(s), write)
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- assert BEGIN ------------
+  
+  
+  assert false
+  
+  // ------- assert END --------------
+  
+  
+  
+  // ------- Stabilising regions Inner,Outer (after seq-comp@56.3) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner_interferenceContext_fp()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Inner_interferenceSet_df(7, $r, $lvl, $c)) } none < old[pre_stabilize3](perm(Inner($r, $lvl, $c))) ==> ($$_m in Inner_interferenceSet_hf(7, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Inner_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_stabilize3](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize3](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == $$_m && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))))
+  ___silicon_hack407_havoc_all_Inner()
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize3](perm(Inner($r, $lvl, $c))) ==> (Inner_state($r, $lvl, $c) in Inner_interferenceSet_hf(7, $r, $lvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize3](perm(Inner($r, $lvl, $c))) ==> Inner_interferenceReference_hf(7, $r, $lvl, $c) == old[pre_stabilize3](Inner_state($r, $lvl, $c)))
+  
+  // Stabilising all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer_interferenceContext_fp()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: (forall $$_m: Int :: { ($$_m in Outer_interferenceSet_df(7, $s, $lvl, $r, $rlvl, $c)) } none < old[pre_stabilize3](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> ($$_m in Outer_interferenceSet_hf(7, $s, $lvl, $r, $rlvl, $c)) == ((none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> ($$_m in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && ($$_m == old[pre_stabilize3](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize3](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == $$_m && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))))
+  ___silicon_hack407_havoc_all_Outer()
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize3](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> (Outer_state($s, $lvl, $r, $rlvl, $c) in Outer_interferenceSet_hf(7, $s, $lvl, $r, $rlvl, $c)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize3](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> Outer_interferenceReference_hf(7, $s, $lvl, $r, $rlvl, $c) == old[pre_stabilize3](Outer_state($s, $lvl, $r, $rlvl, $c)))
+  
+  // ------- Stabilising regions Inner,Outer (after seq-comp@56.3) END 
+  
+  
+}
+
+method $_Inner_interpretation_stability_check(r: Ref, lvl: Int, c: Ref)
+{
+  inhale acc(Inner_sk_fp(), write) && acc(Outer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(Inner_interferenceContext_fp($r, $lvl, $c), write))
+  inhale (forall $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref :: acc(Outer_interferenceContext_fp($s, $lvl, $r, $rlvl, $c), write))
+  inhale acc(c.$cell_$val, write) && true
+  
+  // ------- Stabilising regions Inner,Outer (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // Stabilising all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize4](perm(Inner($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> (Inner_state($r, $lvl, $c) in Inner_atomicity_context_hf($r, $lvl, $c))) && (Inner_state($r, $lvl, $c) == old[pre_stabilize4](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize4](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == Inner_state($r, $lvl, $c) && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))
+  
+  // Stabilising all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize4](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> (none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> (Outer_state($s, $lvl, $r, $rlvl, $c) in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && (Outer_state($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize4](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize4](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == Outer_state($s, $lvl, $r, $rlvl, $c) && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))
+  
+  // ------- Stabilising regions Inner,Outer (check stability of region interpretation) END 
+  
+  
+  assert acc(c.$cell_$val, write) && true
+}
+
+method $_Inner_action_transitivity_check()
+{
+  var I: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && $_action_n_0_x <= $_action_m_0_x && I
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && $_action_n_0_y <= $_action_m_0_y && I
+  assert aState == cState || aState == aState && cState == cState && aState <= cState && I
+}
+
+method $_Outer_interpretation_stability_check(s: Ref, lvl: Int, r: Ref, rlvl: Int, c: Ref)
+{
+  inhale acc(Inner_sk_fp(), write) && acc(Outer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(Inner_interferenceContext_fp($r, $lvl, $c), write))
+  inhale (forall $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref :: acc(Outer_interferenceContext_fp($s, $lvl, $r, $rlvl, $c), write))
+  inhale acc(Inner(r, rlvl, c), write) && (rlvl >= 0 && true) && rlvl < lvl && acc(Inner_I(r), write)
+  
+  // ------- Stabilising regions Inner,Outer (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // Stabilising all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize5](perm(Inner($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> (Inner_state($r, $lvl, $c) in Inner_atomicity_context_hf($r, $lvl, $c))) && (Inner_state($r, $lvl, $c) == old[pre_stabilize5](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize5](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == Inner_state($r, $lvl, $c) && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))
+  
+  // Stabilising all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize5](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> (none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> (Outer_state($s, $lvl, $r, $rlvl, $c) in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && (Outer_state($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize5](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize5](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == Outer_state($s, $lvl, $r, $rlvl, $c) && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))
+  
+  // ------- Stabilising regions Inner,Outer (check stability of region interpretation) END 
+  
+  
+  assert acc(Inner(r, rlvl, c), write) && (rlvl >= 0 && true) && rlvl < lvl && acc(Inner_I(r), write)
+}
+
+method $_Outer_action_transitivity_check()
+{
+  var O: Bool
+  var $_action_n_0_x: Int
+  var $_action_m_0_x: Int
+  var $_action_n_0_y: Int
+  var $_action_m_0_y: Int
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || $_action_n_0_x == aState && $_action_m_0_x == bState && $_action_n_0_x <= $_action_m_0_x && O
+  inhale bState == cState || $_action_n_0_y == bState && $_action_m_0_y == cState && $_action_n_0_y <= $_action_m_0_y && O
+  assert aState == cState || aState == aState && cState == cState && aState <= cState && O
+}
+
+method $_test01_condition_stability_precondition_check()
+{
+  var $_levelVar_3: Int
+  var c: Ref
+  var r: Ref
+  var s: Ref
+  var rlvl: Int
+  var slvl: Int
+  inhale $_levelVar_3 >= 0
+  inhale acc(Inner_sk_fp(), write) && acc(Outer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(Inner_interferenceContext_fp($r, $lvl, $c), write))
+  inhale (forall $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref :: acc(Outer_interferenceContext_fp($s, $lvl, $r, $rlvl, $c), write))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer3
+  
+  // Inferring interference all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner_interferenceContext_fp()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Inner_interferenceSet_df(8, $r, $lvl, $c)) } none < old[pre_infer3](perm(Inner($r, $lvl, $c))) ==> ($$_m in Inner_interferenceSet_hf(8, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Inner_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer3](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_infer3](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == $$_m && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_infer3](perm(Inner($r, $lvl, $c))) ==> Inner_interferenceReference_hf(8, $r, $lvl, $c) == old[pre_infer3](Inner_state($r, $lvl, $c)))
+  
+  // Inferring interference all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer_interferenceContext_fp()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: (forall $$_m: Int :: { ($$_m in Outer_interferenceSet_df(8, $s, $lvl, $r, $rlvl, $c)) } none < old[pre_infer3](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> ($$_m in Outer_interferenceSet_hf(8, $s, $lvl, $r, $rlvl, $c)) == ((none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> ($$_m in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && ($$_m == old[pre_infer3](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_infer3](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == $$_m && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_infer3](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> Outer_interferenceReference_hf(8, $s, $lvl, $r, $rlvl, $c) == old[pre_infer3](Outer_state($s, $lvl, $r, $rlvl, $c)))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Inner,Outer (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize6
+  
+  // Stabilising all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize6](perm(Inner($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> (Inner_state($r, $lvl, $c) in Inner_atomicity_context_hf($r, $lvl, $c))) && (Inner_state($r, $lvl, $c) == old[pre_stabilize6](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize6](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == Inner_state($r, $lvl, $c) && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))
+  
+  // Stabilising all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize6](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> (none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> (Outer_state($s, $lvl, $r, $rlvl, $c) in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && (Outer_state($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize6](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize6](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == Outer_state($s, $lvl, $r, $rlvl, $c) && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))
+  
+  // ------- Stabilising regions Inner,Outer (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test02_condition_stability_precondition_check()
+{
+  var $_levelVar_4: Int
+  var c: Ref
+  var r: Ref
+  var s: Ref
+  var rlvl: Int
+  var slvl: Int
+  inhale $_levelVar_4 >= 0
+  inhale acc(Inner_sk_fp(), write) && acc(Outer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(Inner_interferenceContext_fp($r, $lvl, $c), write))
+  inhale (forall $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref :: acc(Outer_interferenceContext_fp($s, $lvl, $r, $rlvl, $c), write))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer4
+  
+  // Inferring interference all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner_interferenceContext_fp()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Inner_interferenceSet_df(9, $r, $lvl, $c)) } none < old[pre_infer4](perm(Inner($r, $lvl, $c))) ==> ($$_m in Inner_interferenceSet_hf(9, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Inner_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer4](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_infer4](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == $$_m && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_infer4](perm(Inner($r, $lvl, $c))) ==> Inner_interferenceReference_hf(9, $r, $lvl, $c) == old[pre_infer4](Inner_state($r, $lvl, $c)))
+  
+  // Inferring interference all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer_interferenceContext_fp()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: (forall $$_m: Int :: { ($$_m in Outer_interferenceSet_df(9, $s, $lvl, $r, $rlvl, $c)) } none < old[pre_infer4](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> ($$_m in Outer_interferenceSet_hf(9, $s, $lvl, $r, $rlvl, $c)) == ((none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> ($$_m in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && ($$_m == old[pre_infer4](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_infer4](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == $$_m && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_infer4](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> Outer_interferenceReference_hf(9, $s, $lvl, $r, $rlvl, $c) == old[pre_infer4](Outer_state($s, $lvl, $r, $rlvl, $c)))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Inner,Outer (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize7
+  
+  // Stabilising all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize7](perm(Inner($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> (Inner_state($r, $lvl, $c) in Inner_atomicity_context_hf($r, $lvl, $c))) && (Inner_state($r, $lvl, $c) == old[pre_stabilize7](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize7](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == Inner_state($r, $lvl, $c) && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))
+  
+  // Stabilising all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize7](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> (none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> (Outer_state($s, $lvl, $r, $rlvl, $c) in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && (Outer_state($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize7](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize7](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == Outer_state($s, $lvl, $r, $rlvl, $c) && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))
+  
+  // ------- Stabilising regions Inner,Outer (check stability of method condition) END 
+  
+  
+  assert true
+}
+
+method $_test03_condition_stability_precondition_check()
+{
+  var $_levelVar_5: Int
+  var c: Ref
+  var r: Ref
+  var s: Ref
+  var rlvl: Int
+  var slvl: Int
+  inhale $_levelVar_5 >= 0
+  inhale acc(Inner_sk_fp(), write) && acc(Outer_sk_fp(), write)
+  
+  // no init required
+  
+  
+  
+  // no init required
+  
+  
+  inhale (forall $r: Ref, $lvl: Int, $c: Ref :: acc(Inner_interferenceContext_fp($r, $lvl, $c), write))
+  inhale (forall $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref :: acc(Outer_interferenceContext_fp($s, $lvl, $r, $rlvl, $c), write))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) BEGIN 
+  
+  
+  label pre_infer5
+  
+  // Inferring interference all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner_interferenceContext_fp()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: (forall $$_m: Int :: { ($$_m in Inner_interferenceSet_df(10, $r, $lvl, $c)) } none < old[pre_infer5](perm(Inner($r, $lvl, $c))) ==> ($$_m in Inner_interferenceSet_hf(10, $r, $lvl, $c)) == ((none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> ($$_m in Inner_atomicity_context_hf($r, $lvl, $c))) && ($$_m == old[pre_infer5](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_infer5](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == $$_m && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_infer5](perm(Inner($r, $lvl, $c))) ==> Inner_interferenceReference_hf(10, $r, $lvl, $c) == old[pre_infer5](Inner_state($r, $lvl, $c)))
+  
+  // Inferring interference all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer_interferenceContext_fp()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: (forall $$_m: Int :: { ($$_m in Outer_interferenceSet_df(10, $s, $lvl, $r, $rlvl, $c)) } none < old[pre_infer5](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> ($$_m in Outer_interferenceSet_hf(10, $s, $lvl, $r, $rlvl, $c)) == ((none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> ($$_m in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && ($$_m == old[pre_infer5](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_infer5](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == $$_m && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_infer5](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> Outer_interferenceReference_hf(10, $s, $lvl, $r, $rlvl, $c) == old[pre_infer5](Outer_state($s, $lvl, $r, $rlvl, $c)))
+  
+  // ------- Inferring interference context Inner,Outer (beginning of non atomic procedure) END 
+  
+  
+  
+  // ------- Stabilising regions Inner,Outer (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize8
+  
+  // Stabilising all instances of region Inner
+  
+  ___silicon_hack407_havoc_all_Inner()
+  exhale acc(Inner_sk_fp(), write)
+  inhale acc(Inner_sk_fp(), write)
+  inhale (forperm $r: Ref, $lvl: Int, $c: Ref [Inner($r, $lvl, $c)] :: none < old[pre_stabilize8](perm(Inner($r, $lvl, $c))) ==> (none < perm($r.$diamond) && none < perm(Inner_atomicity_context_fp($r, $lvl, $c)) ==> (Inner_state($r, $lvl, $c) in Inner_atomicity_context_hf($r, $lvl, $c))) && (Inner_state($r, $lvl, $c) == old[pre_stabilize8](Inner_state($r, $lvl, $c)) || Inner_sk_$_action_n($r, $lvl, $c) == old[pre_stabilize8](Inner_state($r, $lvl, $c)) && Inner_sk_$_action_m($r, $lvl, $c) == Inner_state($r, $lvl, $c) && Inner_sk_$_action_n($r, $lvl, $c) <= Inner_sk_$_action_m($r, $lvl, $c) && perm(Inner_I($r)) == none))
+  
+  // Stabilising all instances of region Outer
+  
+  ___silicon_hack407_havoc_all_Outer()
+  exhale acc(Outer_sk_fp(), write)
+  inhale acc(Outer_sk_fp(), write)
+  inhale (forperm $s: Ref, $lvl: Int, $r: Ref, $rlvl: Int, $c: Ref [Outer($s, $lvl, $r, $rlvl, $c)] :: none < old[pre_stabilize8](perm(Outer($s, $lvl, $r, $rlvl, $c))) ==> (none < perm($s.$diamond) && none < perm(Outer_atomicity_context_fp($s, $lvl, $r, $rlvl, $c)) ==> (Outer_state($s, $lvl, $r, $rlvl, $c) in Outer_atomicity_context_hf($s, $lvl, $r, $rlvl, $c))) && (Outer_state($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize8](Outer_state($s, $lvl, $r, $rlvl, $c)) || Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) == old[pre_stabilize8](Outer_state($s, $lvl, $r, $rlvl, $c)) && Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) == Outer_state($s, $lvl, $r, $rlvl, $c) && Outer_sk_$_action_n($s, $lvl, $r, $rlvl, $c) <= Outer_sk_$_action_m($s, $lvl, $r, $rlvl, $c) && true))
+  
+  // ------- Stabilising regions Inner,Outer (check stability of method condition) END 
+  
+  
+  assert true
+}

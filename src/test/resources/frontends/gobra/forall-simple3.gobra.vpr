@@ -1,0 +1,16 @@
+function foo_pkg_F(n_pkg_V0: Int): Bool
+  requires true
+
+
+method bar_pkg_F()
+  requires (forall k_pkg_V1: Int :: { foo_pkg_F(k_pkg_V1) } foo_pkg_F(k_pkg_V1))
+{
+  
+  // decl 
+  
+  
+  // decl 
+  
+  
+  label returnLabel
+}

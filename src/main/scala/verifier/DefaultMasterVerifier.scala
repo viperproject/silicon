@@ -8,6 +8,7 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
+import scala.annotation.unused
 import scala.util.Random
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
@@ -75,17 +76,17 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
 
   /* Lifetime */
 
-  override def start() {
+  override def start(): Unit = {
     super.start()
     statefulSubcomponents foreach (_.start())
   }
 
-  override def reset() {
+  override def reset(): Unit = {
     super.reset()
     statefulSubcomponents foreach (_.reset())
   }
 
-  override def stop() {
+  override def stop(): Unit = {
     super.stop()
     statefulSubcomponents foreach (_.stop())
   }
@@ -263,7 +264,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
           isMethodVerification = member.isInstanceOf[ast.Member])
   }
 
-  private def createInitialState(cfg: SilverCfg, program: ast.Program): State = {
+  private def createInitialState(@unused cfg: SilverCfg, program: ast.Program): State = {
     val quantifiedFields = InsertionOrderedSet(program.fields)
     val quantifiedPredicates = InsertionOrderedSet(program.predicates)
     val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.
@@ -283,7 +284,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
 
   /* Prover preamble: Static preamble */
 
-  private def emitStaticPreamble(sink: ProverLike) {
+  private def emitStaticPreamble(sink: ProverLike): Unit = {
     sink.comment("\n; /z3config.smt2")
     preambleReader.emitPreamble("/z3config.smt2", sink)
 
@@ -378,7 +379,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     predicateSupporter
   )
 
-  private def analyzeProgramAndEmitPreambleContributions(program: ast.Program, sink: ProverLike) {
+  private def analyzeProgramAndEmitPreambleContributions(program: ast.Program, sink: ProverLike): Unit = {
     analysisOrder foreach (component => {
       component.analyze(program)
       component.updateGlobalStateAfterAnalysis()
@@ -411,7 +412,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
       component.emitAxiomsAfterAnalysis(sink))
   }
 
-  private def emitSortWrappers(ss: Iterable[Sort], sink: ProverLike) {
+  private def emitSortWrappers(ss: Iterable[Sort], sink: ProverLike): Unit = {
     if (ss.nonEmpty) {
       sink.comment("Declaring additional sort wrappers")
 

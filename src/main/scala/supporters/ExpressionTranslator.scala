@@ -29,7 +29,7 @@ trait ExpressionTranslator {
     def translateAnySetUnExp(exp: ast.AnySetUnExp,
                              setTerm: Term => Term,
                              multisetTerm: Term => Term,
-                             anysetTypedExp: ast.Exp = exp) =
+                             anysetTypedExp: ast.Exp) =
 
       anysetTypedExp.typ match {
         case _: ast.SetType => setTerm(f(exp.exp))
@@ -129,6 +129,14 @@ trait ExpressionTranslator {
         val id = if (domainFunc.isEmpty) Identifier(funcName) else Identifier(funcName + Seq(outSort).mkString("[",",","]"))
         val df = Fun(id, inSorts, outSort)
         App(df, tArgs)
+
+      case ast.BackendFuncApp(func, args) =>
+        val tArgs = args map f
+        val inSorts = tArgs map (_.sort)
+        val outSort = toSort(func.typ)
+        val id = Identifier(func.smtName)
+        val sf = SMTFun(id, inSorts, outSort)
+        App(sf, tArgs)
 
       /* Permissions */
 

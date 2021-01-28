@@ -1,0 +1,869 @@
+domain Map[U, V] {
+  
+  function Map_keys(m: Map[U, V]): Set[U]
+  
+  function Map_card(m: Map[U, V]): Int
+  
+  function Map_lookup(m: Map[U, V], u: U): V
+  
+  function Map_values(m: Map[U, V]): Set[V]
+  
+  function Map_empty(): Map[U, V]
+  
+  function Map_build(m: Map[U, V], u: U, v: V): Map[U, V]
+  
+  function Map_equal(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_disjoint(m1: Map[U, V], m2: Map[U, V]): Bool
+  
+  function Map_union(m1: Map[U, V], m2: Map[U, V]): Map[U, V]
+  
+  axiom Map_card_non_neg {
+    (forall m: Map[U, V] :: { Map_card(m) } 0 <= Map_card(m))
+  }
+  
+  axiom Map_card_domain {
+    (forall m: Map[U, V] :: { |Map_keys(m)| } |Map_keys(m)| == Map_card(m))
+  }
+  
+  axiom Map_values_def {
+    (forall m: Map[U, V], v: V :: { (v in Map_values(m)) } (v in Map_values(m)) == (exists u: U :: (u in Map_keys(m)) && v == Map_lookup(m, u)))
+  }
+  
+  axiom Map_empty_1 {
+    (forall u: U :: { (u in Map_keys(Map_empty())) } !((u in Map_keys(Map_empty()))))
+  }
+  
+  axiom Map_empty_2 {
+    (forall m: Map[U, V] :: { Map_card(m) } (Map_card(m) == 0) == (m == Map_empty()) && (Map_card(m) != 0 ==> (exists u: U :: (u in Map_keys(m)))))
+  }
+  
+  axiom Map_build_1 {
+    (forall m: Map[U, V], u1: U, u2: U, v: V :: { (u2 in Map_keys(Map_build(m, u1, v))) } (u2 == u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) && Map_lookup(Map_build(m, u1, v), u1) == v) && (u2 != u1 ==> (u2 in Map_keys(Map_build(m, u1, v))) == (u2 in Map_keys(m)) && Map_lookup(Map_build(m, u1, v), u2) == Map_lookup(m, u2)))
+  }
+  
+  axiom Map_build_2 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } (u in Map_keys(m)) ==> Map_card(Map_build(m, u, v)) == Map_card(m))
+  }
+  
+  axiom Map_build_3 {
+    (forall m: Map[U, V], u: U, v: V :: { Map_card(Map_build(m, u, v)) } !((u in Map_keys(m))) ==> Map_card(Map_build(m, u, v)) == Map_card(m) + 1)
+  }
+  
+  axiom Map_equality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } (u in Map_keys(m1)) == (u in Map_keys(m2))))
+  }
+  
+  axiom Map_extensionality {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_equal(m1, m2) } Map_equal(m1, m2) ==> m1 == m2)
+  }
+  
+  axiom Map_disjoint_def {
+    (forall m1: Map[U, V], m2: Map[U, V] :: { Map_disjoint(m1, m2) } Map_disjoint(m1, m2) == (forall u: U :: { (u in Map_keys(m1)) } { (u in Map_keys(m2)) } !((u in Map_keys(m1))) || !((u in Map_keys(m2)))))
+  }
+  
+  axiom Map_union_1 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { (u in Map_keys(Map_union(m1, m2))) } { (u in (Map_keys(m1) union Map_keys(m2))) } Map_disjoint(m1, m2) ==> (u in Map_keys(Map_union(m1, m2))) == (u in (Map_keys(m1) union Map_keys(m2))))
+  }
+  
+  axiom Map_union_2 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m1)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m1, u))
+  }
+  
+  axiom Map_union_3 {
+    (forall m1: Map[U, V], m2: Map[U, V], u: U :: { Map_lookup(Map_union(m1, m2), u) } Map_disjoint(m1, m2) && (u in Map_keys(m2)) ==> Map_lookup(Map_union(m1, m2), u) == Map_lookup(m2, u))
+  }
+}
+
+domain trigger_functions {
+  
+  function Lock_state_T(a: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceReference_Domain {
+  
+  function Lock_interferenceReference_df($p0: Int, a: Ref, lvl: Int, x: Ref): Bool
+}
+
+domain interferenceSet_Domain {
+  
+  function Lock_interferenceSet_df($p0: Int, a: Ref, lvl: Int, x: Ref): Set[Int]
+}
+
+domain atomicity_context_Domain {
+  
+  function Lock_atomicity_context_df(a: Ref, lvl: Int, x: Ref): Bool
+}
+
+field $diamond: Int
+
+field $stepFrom_int: Int
+
+field $stepTo_int: Int
+
+field $memcell_$f: Int
+
+function IntSet(): Set[Int]
+  ensures (forall n: Int :: (n in result))
+
+
+function NatSet(): Set[Int]
+  ensures (forall n: Int :: 0 <= n == (n in result))
+
+
+function Lock_atomicity_context_hf(a: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(Lock_atomicity_context_fp(a, lvl, x), write)
+  ensures [Lock_atomicity_context_df(a, lvl, x), true]
+
+
+function Lock_interferenceSet_hf($p0: Int, a: Ref, lvl: Int, x: Ref): Set[Int]
+  requires acc(Lock_interferenceContext_fp(a, lvl, x), write)
+  ensures [(forall $_m: Int :: { ($_m in result) } ($_m in result) ==> ($_m in Lock_interferenceSet_df($p0, a, lvl, x))), true]
+
+
+function Lock_interferenceReference_hf($p0: Int, a: Ref, lvl: Int, x: Ref): Int
+  requires acc(Lock_interferenceContext_fp(a, lvl, x), write)
+  ensures [Lock_interferenceReference_df($p0, a, lvl, x), true]
+
+
+function Lock_state(a: Ref, lvl: Int, x: Ref): Int
+  requires acc(Lock(a, lvl, x), write)
+  ensures [Lock_state_T(a, lvl, x), true]
+{
+  (unfolding acc(Lock(a, lvl, x), write) in (x.$memcell_$f < 0 ? 0 : 1))
+}
+
+predicate Lock_G($r: Ref) 
+
+predicate Lock_atomicity_context_fp(a: Ref, lvl: Int, x: Ref) 
+
+predicate Lock_interferenceContext_fp(a: Ref, lvl: Int, x: Ref) 
+
+predicate Lock_sk_fp() 
+
+predicate Lock(a: Ref, lvl: Int, x: Ref) {
+  acc(x.$memcell_$f, write) && true && !(x.$memcell_$f == 0)
+}
+
+method havoc_Bool() returns ($r: Bool)
+
+
+method havoc_Ref() returns ($r: Ref)
+
+
+method havoc_Int() returns ($r: Int)
+
+
+method ___silicon_hack407_havoc_all_Lock()
+
+
+method ___silicon_hack407_havoc_all_Lock_interferenceContext_fp()
+
+
+method unlock(a: Ref, lvl: Int, x: Ref)
+  requires acc(Lock(a, lvl, x), write) && (lvl >= 0 && Lock_state(a, lvl, x) == Lock_state(a, lvl, x)) && acc(Lock_G(a), write)
+  requires (Lock_state(a, lvl, x) in Set(1))
+  ensures acc(Lock(a, lvl, x), write) && (lvl >= 0 && Lock_state(a, lvl, x) == 0) && acc(Lock_G(a), write)
+{
+  var nonDetNeg: Int
+  var $_levelVar_0: Int
+  var $_levelVar_1: Int
+  var $_levelVar_2: Int
+  var $_levelVar_3: Int
+  inhale $_levelVar_0 >= 0 && $_levelVar_0 > lvl
+  assert $_levelVar_0 >= 0
+  inhale acc(Lock_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $lvl: Int, $x: Ref :: acc(Lock_interferenceContext_fp($a, $lvl, $x), write))
+  inhale Lock_interferenceSet_hf(0, a, lvl, x) == Set(1)
+  inhale Lock_interferenceReference_hf(0, a, lvl, x) == old(Lock_state(a, lvl, x))
+  
+  // ------- havoc BEGIN -------------
+  
+  
+  nonDetNeg := havoc_Int()
+  
+  // ------- havoc END ---------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale nonDetNeg < 0
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- make-atomic BEGIN -------
+  
+  
+  label guard_arg_eval0
+  exhale acc(Lock_G(a), write)
+  exhale acc(Lock(a, lvl, x), write)
+  label preFrame0
+  
+  // ------- Stabilising regions Lock (stabelizing the frame) BEGIN 
+  
+  
+  label pre_stabilize0
+  
+  // Stabilising all instances of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize0](perm(Lock($a, $lvl, $x))) ==> (none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> (Lock_state($a, $lvl, $x) in Lock_atomicity_context_hf($a, $lvl, $x))) && (Lock_state($a, $lvl, $x) == old[pre_stabilize0](Lock_state($a, $lvl, $x)) || (0 == old[pre_stabilize0](Lock_state($a, $lvl, $x)) && 1 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none || 1 == old[pre_stabilize0](Lock_state($a, $lvl, $x)) && 0 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none)))
+  
+  // ------- Stabilising regions Lock (stabelizing the frame) END 
+  
+  
+  exhale (forall $a: Ref, $lvl: Int, $x: Ref :: acc(Lock($a, $lvl, $x), old[preFrame0](perm(Lock($a, $lvl, $x)))))
+  exhale (forall $$r: Ref :: acc(Lock_G($$r), old[preFrame0](perm(Lock_G($$r)))))
+  exhale (forall $$_r: Ref :: acc($$_r.$memcell_$f, old[preFrame0](perm($$_r.$memcell_$f))))
+  inhale acc(Lock(a, lvl, x), write)
+  inhale acc(a.$diamond, write)
+  $_levelVar_1 := lvl
+  assert perm(Lock_atomicity_context_fp(a, lvl, x)) == none
+  inhale acc(Lock_atomicity_context_fp(a, lvl, x), write)
+  inhale Lock_atomicity_context_hf(a, lvl, x) == Lock_interferenceSet_hf(0, a, lvl, x)
+  
+  // ------- Stabilising regions Lock (before atomic) BEGIN 
+  
+  
+  label pre_stabilize
+  
+  // Stabilising single instance of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock_interferenceContext_fp()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (forall $$_m: Int :: { ($$_m in Lock_interferenceSet_df(1, a, lvl, x)) } ($$_m in Lock_interferenceSet_hf(1, a, lvl, x)) == ((none < perm(a.$diamond) && none < perm(Lock_atomicity_context_fp(a, lvl, x)) ==> ($$_m in Lock_atomicity_context_hf(a, lvl, x))) && ($$_m == old[pre_stabilize](Lock_state(a, lvl, x)) || (0 == old[pre_stabilize](Lock_state(a, lvl, x)) && 1 == $$_m && true && perm(Lock_G(a)) == none || 1 == old[pre_stabilize](Lock_state(a, lvl, x)) && 0 == $$_m && true && perm(Lock_G(a)) == none))))
+  ___silicon_hack407_havoc_all_Lock()
+  inhale (Lock_state(a, lvl, x) in Lock_interferenceSet_hf(1, a, lvl, x))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale Lock_interferenceReference_hf(1, a, lvl, x) == old[pre_stabilize](Lock_state(a, lvl, x))
+  
+  // ------- Stabilising regions Lock (before atomic) END 
+  
+  
+  
+  // ------- update-region BEGIN -----
+  
+  
+  exhale acc(a.$diamond, write)
+  label pre_region_update0
+  assert $_levelVar_0 > lvl
+  $_levelVar_2 := lvl
+  exhale acc(Lock_atomicity_context_fp(a, lvl, x), write)
+  unfold acc(Lock(a, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- Havocking regions Lock (before update-region@32.5) BEGIN 
+  
+  
+  label pre_havoc0
+  
+  // Havocking single instance of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock()
+  
+  // ------- Havocking regions Lock (before update-region@32.5) END 
+  
+  
+  
+  // ------- heap-write BEGIN --------
+  
+  
+  x.$memcell_$f := nonDetNeg
+  
+  // ------- heap-write END ----------
+  
+  
+  fold acc(Lock(a, lvl, x), write)
+  if (Lock_state(a, lvl, x) != old[pre_region_update0](Lock_state(a, lvl, x))) {
+    inhale acc(a.$stepFrom_int, write) && acc(a.$stepTo_int, write)
+    a.$stepFrom_int := old[pre_region_update0](Lock_state(a, lvl, x))
+    a.$stepTo_int := Lock_state(a, lvl, x)
+  } else {
+    inhale acc(a.$diamond, write)
+  }
+  inhale acc(Lock_atomicity_context_fp(a, lvl, x), write)
+  inhale Lock_atomicity_context_hf(a, lvl, x) == old[pre_region_update0](Lock_atomicity_context_hf(a, lvl, x))
+  $_levelVar_3 := $_levelVar_0
+  
+  // ------- update-region END -------
+  
+  
+  
+  // ------- Stabilising regions Lock (after update-region@32.5) BEGIN 
+  
+  
+  label pre_stabilize3
+  
+  // Stabilising all instances of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock_interferenceContext_fp()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Lock_interferenceSet_df(2, $a, $lvl, $x)) } none < old[pre_stabilize3](perm(Lock($a, $lvl, $x))) ==> ($$_m in Lock_interferenceSet_hf(2, $a, $lvl, $x)) == ((none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> ($$_m in Lock_atomicity_context_hf($a, $lvl, $x))) && ($$_m == old[pre_stabilize3](Lock_state($a, $lvl, $x)) || (0 == old[pre_stabilize3](Lock_state($a, $lvl, $x)) && 1 == $$_m && true && perm(Lock_G($a)) == none || 1 == old[pre_stabilize3](Lock_state($a, $lvl, $x)) && 0 == $$_m && true && perm(Lock_G($a)) == none)))))
+  ___silicon_hack407_havoc_all_Lock()
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize3](perm(Lock($a, $lvl, $x))) ==> (Lock_state($a, $lvl, $x) in Lock_interferenceSet_hf(2, $a, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize3](perm(Lock($a, $lvl, $x))) ==> Lock_interferenceReference_hf(2, $a, $lvl, $x) == old[pre_stabilize3](Lock_state($a, $lvl, $x)))
+  
+  // ------- Stabilising regions Lock (after update-region@32.5) END 
+  
+  
+  assert (a.$stepFrom_int in Lock_atomicity_context_hf(a, lvl, x))
+  assert a.$stepFrom_int == a.$stepTo_int || 0 == a.$stepFrom_int && 1 == a.$stepTo_int || 1 == a.$stepFrom_int && 0 == a.$stepTo_int
+  
+  // ------- Stabilising regions Lock (after atomic) BEGIN 
+  
+  
+  label pre_stabilize2
+  
+  // Stabilising single instance of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (none < perm(a.$diamond) && none < perm(Lock_atomicity_context_fp(a, lvl, x)) ==> (Lock_state(a, lvl, x) in Lock_atomicity_context_hf(a, lvl, x))) && (Lock_state(a, lvl, x) == old[pre_stabilize2](Lock_state(a, lvl, x)) || (0 == old[pre_stabilize2](Lock_state(a, lvl, x)) && 1 == Lock_state(a, lvl, x) && true && perm(Lock_G(a)) == none || 1 == old[pre_stabilize2](Lock_state(a, lvl, x)) && 0 == Lock_state(a, lvl, x) && true && perm(Lock_G(a)) == none))
+  
+  // ------- Stabilising regions Lock (after atomic) END 
+  
+  
+  
+  inhale Lock_state(a, lvl, x) == a.$stepTo_int
+  inhale old(Lock_state(a, lvl, x)) == a.$stepFrom_int
+  inhale acc(Lock_G(a), write)
+  exhale acc(a.$stepFrom_int, write) && acc(a.$stepTo_int, write)
+  exhale acc(Lock_atomicity_context_fp(a, lvl, x), write)
+  inhale (forall $a: Ref, $lvl: Int, $x: Ref :: acc(Lock($a, $lvl, $x), old[preFrame0](perm(Lock($a, $lvl, $x)))))
+  inhale (forall $a: Ref, $lvl: Int, $x: Ref :: { Lock_state_T($a, $lvl, $x) } none < old[preFrame0](perm(Lock($a, $lvl, $x))) ==> Lock_state($a, $lvl, $x) == old[preFrame0](Lock_state($a, $lvl, $x)))
+  inhale (forall $$r: Ref :: acc(Lock_G($$r), old[preFrame0](perm(Lock_G($$r)))))
+  inhale (forall $$_r: Ref :: acc($$_r.$memcell_$f, old[preFrame0](perm($$_r.$memcell_$f))))
+  inhale (forall $$_r: Ref :: { $$_r.$memcell_$f } none < old[preFrame0](perm($$_r.$memcell_$f)) ==> $$_r.$memcell_$f == old[preFrame0]($$_r.$memcell_$f))
+  
+  // ------- make-atomic END ---------
+  
+  
+}
+
+method lock(a: Ref, lvl: Int, x: Ref)
+  requires acc(Lock(a, lvl, x), write) && (lvl >= 0 && Lock_state(a, lvl, x) == Lock_state(a, lvl, x)) && acc(Lock_G(a), write)
+  requires (Lock_state(a, lvl, x) in Set(0, 1))
+  ensures acc(Lock(a, lvl, x), write) && (lvl >= 0 && Lock_state(a, lvl, x) == 1) && acc(Lock_G(a), write) && old(Lock_state(a, lvl, x)) == 0
+{
+  var b: Bool
+  var nonDetPos: Int
+  var $_levelVar_4: Int
+  var $_levelVar_5: Int
+  var $_levelVar_6: Int
+  var $_levelVar_7: Int
+  var $_levelVar_8: Int
+  var $_levelVar_9: Int
+  var $_levelVar_10: Int
+  inhale $_levelVar_4 >= 0 && $_levelVar_4 > lvl
+  assert $_levelVar_4 >= 0
+  inhale acc(Lock_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $lvl: Int, $x: Ref :: acc(Lock_interferenceContext_fp($a, $lvl, $x), write))
+  inhale Lock_interferenceSet_hf(2, a, lvl, x) == Set(0, 1)
+  inhale Lock_interferenceReference_hf(2, a, lvl, x) == old(Lock_state(a, lvl, x))
+  
+  // ------- havoc BEGIN -------------
+  
+  
+  nonDetPos := havoc_Int()
+  
+  // ------- havoc END ---------------
+  
+  
+  
+  // ------- inhale BEGIN ------------
+  
+  
+  inhale 0 < nonDetPos
+  
+  // ------- inhale END --------------
+  
+  
+  
+  // ------- make-atomic BEGIN -------
+  
+  
+  label guard_arg_eval
+  exhale acc(Lock_G(a), write)
+  exhale acc(Lock(a, lvl, x), write)
+  label preFrame
+  
+  // ------- Stabilising regions Lock (stabelizing the frame) BEGIN 
+  
+  
+  label pre_stabilize4
+  
+  // Stabilising all instances of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize4](perm(Lock($a, $lvl, $x))) ==> (none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> (Lock_state($a, $lvl, $x) in Lock_atomicity_context_hf($a, $lvl, $x))) && (Lock_state($a, $lvl, $x) == old[pre_stabilize4](Lock_state($a, $lvl, $x)) || (0 == old[pre_stabilize4](Lock_state($a, $lvl, $x)) && 1 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none || 1 == old[pre_stabilize4](Lock_state($a, $lvl, $x)) && 0 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none)))
+  
+  // ------- Stabilising regions Lock (stabelizing the frame) END 
+  
+  
+  exhale (forall $a: Ref, $lvl: Int, $x: Ref :: acc(Lock($a, $lvl, $x), old[preFrame](perm(Lock($a, $lvl, $x)))))
+  exhale (forall $$r: Ref :: acc(Lock_G($$r), old[preFrame](perm(Lock_G($$r)))))
+  exhale (forall $$_r: Ref :: acc($$_r.$memcell_$f, old[preFrame](perm($$_r.$memcell_$f))))
+  inhale acc(Lock(a, lvl, x), write)
+  inhale acc(a.$diamond, write)
+  $_levelVar_5 := lvl
+  assert perm(Lock_atomicity_context_fp(a, lvl, x)) == none
+  inhale acc(Lock_atomicity_context_fp(a, lvl, x), write)
+  inhale Lock_atomicity_context_hf(a, lvl, x) == Lock_interferenceSet_hf(2, a, lvl, x)
+  
+  // ------- Stabilising regions Lock (before atomic) BEGIN 
+  
+  
+  label pre_stabilize5
+  
+  // Stabilising single instance of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock_interferenceContext_fp()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (forall $$_m: Int :: { ($$_m in Lock_interferenceSet_df(3, a, lvl, x)) } ($$_m in Lock_interferenceSet_hf(3, a, lvl, x)) == ((none < perm(a.$diamond) && none < perm(Lock_atomicity_context_fp(a, lvl, x)) ==> ($$_m in Lock_atomicity_context_hf(a, lvl, x))) && ($$_m == old[pre_stabilize5](Lock_state(a, lvl, x)) || (0 == old[pre_stabilize5](Lock_state(a, lvl, x)) && 1 == $$_m && true && perm(Lock_G(a)) == none || 1 == old[pre_stabilize5](Lock_state(a, lvl, x)) && 0 == $$_m && true && perm(Lock_G(a)) == none))))
+  ___silicon_hack407_havoc_all_Lock()
+  inhale (Lock_state(a, lvl, x) in Lock_interferenceSet_hf(3, a, lvl, x))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale Lock_interferenceReference_hf(3, a, lvl, x) == old[pre_stabilize5](Lock_state(a, lvl, x))
+  
+  // ------- Stabilising regions Lock (before atomic) END 
+  
+  
+  
+  // ------- update-region BEGIN -----
+  
+  
+  exhale acc(a.$diamond, write)
+  label pre_region_update
+  assert $_levelVar_4 > lvl
+  $_levelVar_6 := lvl
+  exhale acc(Lock_atomicity_context_fp(a, lvl, x), write)
+  unfold acc(Lock(a, lvl, x), write)
+  
+  // no interference context translation needed
+  
+  
+  
+  // ------- Havocking regions Lock (before update-region@59.7) BEGIN 
+  
+  
+  label pre_havoc
+  
+  // Havocking single instance of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock()
+  
+  // ------- Havocking regions Lock (before update-region@59.7) END 
+  
+  
+  
+  // ------- call:CASifNeg BEGIN -----
+  
+  
+  assert true
+  label pre_call0
+  assert $_levelVar_6 >= 0
+  assert true
+  exhale acc(x.$memcell_$f, write) && true
+  
+  // ------- Stabilising regions Lock (before call:CASifNeg@62.9) BEGIN 
+  
+  
+  label pre_stabilize7
+  
+  // Stabilising all instances of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize7](perm(Lock($a, $lvl, $x))) ==> (none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> (Lock_state($a, $lvl, $x) in Lock_atomicity_context_hf($a, $lvl, $x))) && (Lock_state($a, $lvl, $x) == old[pre_stabilize7](Lock_state($a, $lvl, $x)) || (0 == old[pre_stabilize7](Lock_state($a, $lvl, $x)) && 1 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none || 1 == old[pre_stabilize7](Lock_state($a, $lvl, $x)) && 0 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none)))
+  
+  // ------- Stabilising regions Lock (before call:CASifNeg@62.9) END 
+  
+  
+  b := havoc_Bool()
+  inhale (old[pre_call0](x.$memcell_$f) < 0 ? b && (acc(x.$memcell_$f, write) && x.$memcell_$f == nonDetPos) : !b && (acc(x.$memcell_$f, write) && x.$memcell_$f == old[pre_call0](x.$memcell_$f)))
+  
+  // ------- call:CASifNeg END -------
+  
+  
+  fold acc(Lock(a, lvl, x), write)
+  if (Lock_state(a, lvl, x) != old[pre_region_update](Lock_state(a, lvl, x))) {
+    inhale acc(a.$stepFrom_int, write) && acc(a.$stepTo_int, write)
+    a.$stepFrom_int := old[pre_region_update](Lock_state(a, lvl, x))
+    a.$stepTo_int := Lock_state(a, lvl, x)
+  } else {
+    inhale acc(a.$diamond, write)
+  }
+  inhale acc(Lock_atomicity_context_fp(a, lvl, x), write)
+  inhale Lock_atomicity_context_hf(a, lvl, x) == old[pre_region_update](Lock_atomicity_context_hf(a, lvl, x))
+  $_levelVar_7 := $_levelVar_4
+  
+  // ------- update-region END -------
+  
+  
+  
+  // ------- Stabilising regions Lock (after update-region@59.7) BEGIN 
+  
+  
+  label pre_stabilize8
+  
+  // Stabilising all instances of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock_interferenceContext_fp()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Lock_interferenceSet_df(4, $a, $lvl, $x)) } none < old[pre_stabilize8](perm(Lock($a, $lvl, $x))) ==> ($$_m in Lock_interferenceSet_hf(4, $a, $lvl, $x)) == ((none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> ($$_m in Lock_atomicity_context_hf($a, $lvl, $x))) && ($$_m == old[pre_stabilize8](Lock_state($a, $lvl, $x)) || (0 == old[pre_stabilize8](Lock_state($a, $lvl, $x)) && 1 == $$_m && true && perm(Lock_G($a)) == none || 1 == old[pre_stabilize8](Lock_state($a, $lvl, $x)) && 0 == $$_m && true && perm(Lock_G($a)) == none)))))
+  ___silicon_hack407_havoc_all_Lock()
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize8](perm(Lock($a, $lvl, $x))) ==> (Lock_state($a, $lvl, $x) in Lock_interferenceSet_hf(4, $a, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize8](perm(Lock($a, $lvl, $x))) ==> Lock_interferenceReference_hf(4, $a, $lvl, $x) == old[pre_stabilize8](Lock_state($a, $lvl, $x)))
+  
+  // ------- Stabilising regions Lock (after update-region@59.7) END 
+  
+  
+  
+  // ------- while BEGIN -------------
+  
+  
+  label preWhile0
+  while (!b)
+    invariant acc(Lock(a, lvl, x), write) && (lvl >= 0 && true)
+    invariant (!b ? acc(a.$diamond, write) : true)
+    invariant (b ? acc(a.$stepFrom_int, write) && a.$stepFrom_int == 0 && (acc(a.$stepTo_int, write) && a.$stepTo_int == 1) : true) 
+  {
+    inhale acc(Lock_sk_fp(), write)
+    
+    // no init required
+    
+    
+    inhale (forall $a: Ref, $lvl: Int, $x: Ref :: acc(Lock_interferenceContext_fp($a, $lvl, $x), write))
+    inhale (forall $a: Ref, $lvl: Int, $x: Ref :: acc(Lock_atomicity_context_fp($a, $lvl, $x), old[preWhile0](perm(Lock_atomicity_context_fp($a, $lvl, $x)))))
+    inhale (forall $a: Ref, $lvl: Int, $x: Ref :: { Lock_atomicity_context_df($a, $lvl, $x) } none < old[preWhile0](perm(Lock_atomicity_context_fp($a, $lvl, $x))) ==> Lock_atomicity_context_hf($a, $lvl, $x) == old[preWhile0](Lock_atomicity_context_hf($a, $lvl, $x)))
+    
+    // ------- Inferring interference context Lock (infer context inside while) BEGIN 
+    
+    
+    label pre_infer0
+    
+    // Inferring interference all instances of region Lock
+    
+    ___silicon_hack407_havoc_all_Lock_interferenceContext_fp()
+    exhale acc(Lock_sk_fp(), write)
+    inhale acc(Lock_sk_fp(), write)
+    inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Lock_interferenceSet_df(5, $a, $lvl, $x)) } none < old[pre_infer0](perm(Lock($a, $lvl, $x))) ==> ($$_m in Lock_interferenceSet_hf(5, $a, $lvl, $x)) == ((none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> ($$_m in Lock_atomicity_context_hf($a, $lvl, $x))) && ($$_m == old[pre_infer0](Lock_state($a, $lvl, $x)) || (0 == old[pre_infer0](Lock_state($a, $lvl, $x)) && 1 == $$_m && true && perm(Lock_G($a)) == none || 1 == old[pre_infer0](Lock_state($a, $lvl, $x)) && 0 == $$_m && true && perm(Lock_G($a)) == none)))))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_infer0](perm(Lock($a, $lvl, $x))) ==> Lock_interferenceReference_hf(5, $a, $lvl, $x) == old[pre_infer0](Lock_state($a, $lvl, $x)))
+    
+    // ------- Inferring interference context Lock (infer context inside while) END 
+    
+    
+    
+    // ------- update-region BEGIN -----
+    
+    
+    exhale acc(a.$diamond, write)
+    label pre_region_update2
+    assert $_levelVar_7 > lvl
+    $_levelVar_8 := lvl
+    exhale acc(Lock_atomicity_context_fp(a, lvl, x), write)
+    unfold acc(Lock(a, lvl, x), write)
+    
+    // no interference context translation needed
+    
+    
+    
+    // ------- Havocking regions Lock (before update-region@59.7) BEGIN 
+    
+    
+    label pre_havoc2
+    
+    // Havocking single instance of region Lock
+    
+    ___silicon_hack407_havoc_all_Lock()
+    
+    // ------- Havocking regions Lock (before update-region@59.7) END 
+    
+    
+    
+    // ------- call:CASifNeg BEGIN -----
+    
+    
+    assert true
+    label pre_call
+    assert $_levelVar_8 >= 0
+    assert true
+    exhale acc(x.$memcell_$f, write) && true
+    
+    // ------- Stabilising regions Lock (before call:CASifNeg@62.9) BEGIN 
+    
+    
+    label pre_stabilize9
+    
+    // Stabilising all instances of region Lock
+    
+    ___silicon_hack407_havoc_all_Lock()
+    exhale acc(Lock_sk_fp(), write)
+    inhale acc(Lock_sk_fp(), write)
+    inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize9](perm(Lock($a, $lvl, $x))) ==> (none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> (Lock_state($a, $lvl, $x) in Lock_atomicity_context_hf($a, $lvl, $x))) && (Lock_state($a, $lvl, $x) == old[pre_stabilize9](Lock_state($a, $lvl, $x)) || (0 == old[pre_stabilize9](Lock_state($a, $lvl, $x)) && 1 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none || 1 == old[pre_stabilize9](Lock_state($a, $lvl, $x)) && 0 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none)))
+    
+    // ------- Stabilising regions Lock (before call:CASifNeg@62.9) END 
+    
+    
+    b := havoc_Bool()
+    inhale (old[pre_call](x.$memcell_$f) < 0 ? b && (acc(x.$memcell_$f, write) && x.$memcell_$f == nonDetPos) : !b && (acc(x.$memcell_$f, write) && x.$memcell_$f == old[pre_call](x.$memcell_$f)))
+    
+    // ------- call:CASifNeg END -------
+    
+    
+    fold acc(Lock(a, lvl, x), write)
+    if (Lock_state(a, lvl, x) != old[pre_region_update2](Lock_state(a, lvl, x))) {
+      inhale acc(a.$stepFrom_int, write) && acc(a.$stepTo_int, write)
+      a.$stepFrom_int := old[pre_region_update2](Lock_state(a, lvl, x))
+      a.$stepTo_int := Lock_state(a, lvl, x)
+    } else {
+      inhale acc(a.$diamond, write)
+    }
+    inhale acc(Lock_atomicity_context_fp(a, lvl, x), write)
+    inhale Lock_atomicity_context_hf(a, lvl, x) == old[pre_region_update2](Lock_atomicity_context_hf(a, lvl, x))
+    $_levelVar_9 := $_levelVar_7
+    
+    // ------- update-region END -------
+    
+    
+    
+    // ------- Stabilising regions Lock (after update-region@59.7) BEGIN 
+    
+    
+    label pre_stabilize10
+    
+    // Stabilising all instances of region Lock
+    
+    ___silicon_hack407_havoc_all_Lock_interferenceContext_fp()
+    exhale acc(Lock_sk_fp(), write)
+    inhale acc(Lock_sk_fp(), write)
+    inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Lock_interferenceSet_df(6, $a, $lvl, $x)) } none < old[pre_stabilize10](perm(Lock($a, $lvl, $x))) ==> ($$_m in Lock_interferenceSet_hf(6, $a, $lvl, $x)) == ((none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> ($$_m in Lock_atomicity_context_hf($a, $lvl, $x))) && ($$_m == old[pre_stabilize10](Lock_state($a, $lvl, $x)) || (0 == old[pre_stabilize10](Lock_state($a, $lvl, $x)) && 1 == $$_m && true && perm(Lock_G($a)) == none || 1 == old[pre_stabilize10](Lock_state($a, $lvl, $x)) && 0 == $$_m && true && perm(Lock_G($a)) == none)))))
+    ___silicon_hack407_havoc_all_Lock()
+    inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize10](perm(Lock($a, $lvl, $x))) ==> (Lock_state($a, $lvl, $x) in Lock_interferenceSet_hf(6, $a, $lvl, $x)))
+    
+    // havoc performed by other front resource
+    
+    
+    inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize10](perm(Lock($a, $lvl, $x))) ==> Lock_interferenceReference_hf(6, $a, $lvl, $x) == old[pre_stabilize10](Lock_state($a, $lvl, $x)))
+    
+    // ------- Stabilising regions Lock (after update-region@59.7) END 
+    
+    
+    assert $_levelVar_9 == $_levelVar_7
+  }
+  $_levelVar_10 := $_levelVar_7
+  
+  // ------- while END ---------------
+  
+  
+  
+  // ------- Stabilising regions Lock (after while@54.5) BEGIN 
+  
+  
+  label pre_stabilize11
+  
+  // Stabilising all instances of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock_interferenceContext_fp()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: (forall $$_m: Int :: { ($$_m in Lock_interferenceSet_df(7, $a, $lvl, $x)) } none < old[pre_stabilize11](perm(Lock($a, $lvl, $x))) ==> ($$_m in Lock_interferenceSet_hf(7, $a, $lvl, $x)) == ((none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> ($$_m in Lock_atomicity_context_hf($a, $lvl, $x))) && ($$_m == old[pre_stabilize11](Lock_state($a, $lvl, $x)) || (0 == old[pre_stabilize11](Lock_state($a, $lvl, $x)) && 1 == $$_m && true && perm(Lock_G($a)) == none || 1 == old[pre_stabilize11](Lock_state($a, $lvl, $x)) && 0 == $$_m && true && perm(Lock_G($a)) == none)))))
+  ___silicon_hack407_havoc_all_Lock()
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize11](perm(Lock($a, $lvl, $x))) ==> (Lock_state($a, $lvl, $x) in Lock_interferenceSet_hf(7, $a, $lvl, $x)))
+  
+  // havoc performed by other front resource
+  
+  
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize11](perm(Lock($a, $lvl, $x))) ==> Lock_interferenceReference_hf(7, $a, $lvl, $x) == old[pre_stabilize11](Lock_state($a, $lvl, $x)))
+  
+  // ------- Stabilising regions Lock (after while@54.5) END 
+  
+  
+  assert (a.$stepFrom_int in Lock_atomicity_context_hf(a, lvl, x))
+  assert a.$stepFrom_int == a.$stepTo_int || 0 == a.$stepFrom_int && 1 == a.$stepTo_int || 1 == a.$stepFrom_int && 0 == a.$stepTo_int
+  
+  // ------- Stabilising regions Lock (after atomic) BEGIN 
+  
+  
+  label pre_stabilize6
+  
+  // Stabilising single instance of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (none < perm(a.$diamond) && none < perm(Lock_atomicity_context_fp(a, lvl, x)) ==> (Lock_state(a, lvl, x) in Lock_atomicity_context_hf(a, lvl, x))) && (Lock_state(a, lvl, x) == old[pre_stabilize6](Lock_state(a, lvl, x)) || (0 == old[pre_stabilize6](Lock_state(a, lvl, x)) && 1 == Lock_state(a, lvl, x) && true && perm(Lock_G(a)) == none || 1 == old[pre_stabilize6](Lock_state(a, lvl, x)) && 0 == Lock_state(a, lvl, x) && true && perm(Lock_G(a)) == none))
+  
+  // ------- Stabilising regions Lock (after atomic) END 
+  
+  
+  
+  inhale Lock_state(a, lvl, x) == a.$stepTo_int
+  inhale old(Lock_state(a, lvl, x)) == a.$stepFrom_int
+  inhale acc(Lock_G(a), write)
+  exhale acc(a.$stepFrom_int, write) && acc(a.$stepTo_int, write)
+  exhale acc(Lock_atomicity_context_fp(a, lvl, x), write)
+  inhale (forall $a: Ref, $lvl: Int, $x: Ref :: acc(Lock($a, $lvl, $x), old[preFrame](perm(Lock($a, $lvl, $x)))))
+  inhale (forall $a: Ref, $lvl: Int, $x: Ref :: { Lock_state_T($a, $lvl, $x) } none < old[preFrame](perm(Lock($a, $lvl, $x))) ==> Lock_state($a, $lvl, $x) == old[preFrame](Lock_state($a, $lvl, $x)))
+  inhale (forall $$r: Ref :: acc(Lock_G($$r), old[preFrame](perm(Lock_G($$r)))))
+  inhale (forall $$_r: Ref :: acc($$_r.$memcell_$f, old[preFrame](perm($$_r.$memcell_$f))))
+  inhale (forall $$_r: Ref :: { $$_r.$memcell_$f } none < old[preFrame](perm($$_r.$memcell_$f)) ==> $$_r.$memcell_$f == old[preFrame]($$_r.$memcell_$f))
+  
+  // ------- make-atomic END ---------
+  
+  
+}
+
+method CASifNeg(x: Ref, thn: Int) returns (ret: Bool)
+  requires acc(x.$memcell_$f, write) && true
+  ensures (old(x.$memcell_$f) < 0 ? ret && (acc(x.$memcell_$f, write) && x.$memcell_$f == thn) : !ret && (acc(x.$memcell_$f, write) && x.$memcell_$f == old(x.$memcell_$f)))
+
+
+method $_Lock_interpretation_stability_check(a: Ref, lvl: Int, x: Ref)
+{
+  inhale acc(Lock_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $lvl: Int, $x: Ref :: acc(Lock_interferenceContext_fp($a, $lvl, $x), write))
+  inhale acc(x.$memcell_$f, write) && true && !(x.$memcell_$f == 0)
+  
+  // ------- Stabilising regions Lock (check stability of region interpretation) BEGIN 
+  
+  
+  label pre_stabilize12
+  
+  // Stabilising all instances of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize12](perm(Lock($a, $lvl, $x))) ==> (none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> (Lock_state($a, $lvl, $x) in Lock_atomicity_context_hf($a, $lvl, $x))) && (Lock_state($a, $lvl, $x) == old[pre_stabilize12](Lock_state($a, $lvl, $x)) || (0 == old[pre_stabilize12](Lock_state($a, $lvl, $x)) && 1 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none || 1 == old[pre_stabilize12](Lock_state($a, $lvl, $x)) && 0 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none)))
+  
+  // ------- Stabilising regions Lock (check stability of region interpretation) END 
+  
+  
+  assert acc(x.$memcell_$f, write) && true && !(x.$memcell_$f == 0)
+}
+
+method $_Lock_action_transitivity_check()
+{
+  var G: Bool
+  var aState: Int
+  var bState: Int
+  var cState: Int
+  inhale aState == bState || 0 == aState && 1 == bState && true && G || 1 == aState && 0 == bState && true && G
+  inhale bState == cState || 0 == bState && 1 == cState && true && G || 1 == bState && 0 == cState && true && G
+  assert aState == cState || 0 == aState && 1 == cState && true && G || 1 == aState && 0 == cState && true && G
+}
+
+method $_unlock_condition_stability_precondition_check(a: Ref, lvl: Int, x: Ref)
+  requires acc(Lock(a, lvl, x), write) && (lvl >= 0 && Lock_state(a, lvl, x) == Lock_state(a, lvl, x)) && acc(Lock_G(a), write)
+{
+  var $_levelVar_12: Int
+  var nonDetNeg: Int
+  inhale $_levelVar_12 >= 0 && $_levelVar_12 > lvl
+  inhale acc(Lock_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $lvl: Int, $x: Ref :: acc(Lock_interferenceContext_fp($a, $lvl, $x), write))
+  inhale Lock_interferenceSet_hf(8, a, lvl, x) == Set(1)
+  inhale Lock_interferenceReference_hf(8, a, lvl, x) == old(Lock_state(a, lvl, x))
+  
+  // ------- Stabilising regions Lock (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize13
+  
+  // Stabilising all instances of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize13](perm(Lock($a, $lvl, $x))) ==> (none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> (Lock_state($a, $lvl, $x) in Lock_atomicity_context_hf($a, $lvl, $x))) && (Lock_state($a, $lvl, $x) == old[pre_stabilize13](Lock_state($a, $lvl, $x)) || (0 == old[pre_stabilize13](Lock_state($a, $lvl, $x)) && 1 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none || 1 == old[pre_stabilize13](Lock_state($a, $lvl, $x)) && 0 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none)))
+  
+  // ------- Stabilising regions Lock (check stability of method condition) END 
+  
+  
+  assert acc(Lock(a, lvl, x), write) && (lvl >= 0 && Lock_state(a, lvl, x) == Lock_state(a, lvl, x)) && acc(Lock_G(a), write)
+}
+
+method $_lock_condition_stability_precondition_check(a: Ref, lvl: Int, x: Ref)
+  requires acc(Lock(a, lvl, x), write) && (lvl >= 0 && Lock_state(a, lvl, x) == Lock_state(a, lvl, x)) && acc(Lock_G(a), write)
+{
+  var $_levelVar_13: Int
+  var b: Bool
+  var nonDetPos: Int
+  inhale $_levelVar_13 >= 0 && $_levelVar_13 > lvl
+  inhale acc(Lock_sk_fp(), write)
+  
+  // no init required
+  
+  
+  inhale (forall $a: Ref, $lvl: Int, $x: Ref :: acc(Lock_interferenceContext_fp($a, $lvl, $x), write))
+  inhale Lock_interferenceSet_hf(8, a, lvl, x) == Set(0, 1)
+  inhale Lock_interferenceReference_hf(8, a, lvl, x) == old(Lock_state(a, lvl, x))
+  
+  // ------- Stabilising regions Lock (check stability of method condition) BEGIN 
+  
+  
+  label pre_stabilize14
+  
+  // Stabilising all instances of region Lock
+  
+  ___silicon_hack407_havoc_all_Lock()
+  exhale acc(Lock_sk_fp(), write)
+  inhale acc(Lock_sk_fp(), write)
+  inhale (forperm $a: Ref, $lvl: Int, $x: Ref [Lock($a, $lvl, $x)] :: none < old[pre_stabilize14](perm(Lock($a, $lvl, $x))) ==> (none < perm($a.$diamond) && none < perm(Lock_atomicity_context_fp($a, $lvl, $x)) ==> (Lock_state($a, $lvl, $x) in Lock_atomicity_context_hf($a, $lvl, $x))) && (Lock_state($a, $lvl, $x) == old[pre_stabilize14](Lock_state($a, $lvl, $x)) || (0 == old[pre_stabilize14](Lock_state($a, $lvl, $x)) && 1 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none || 1 == old[pre_stabilize14](Lock_state($a, $lvl, $x)) && 0 == Lock_state($a, $lvl, $x) && true && perm(Lock_G($a)) == none)))
+  
+  // ------- Stabilising regions Lock (check stability of method condition) END 
+  
+  
+  assert acc(Lock(a, lvl, x), write) && (lvl >= 0 && Lock_state(a, lvl, x) == Lock_state(a, lvl, x)) && acc(Lock_G(a), write)
+}
