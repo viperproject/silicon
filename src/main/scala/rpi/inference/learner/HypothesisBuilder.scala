@@ -1,6 +1,7 @@
 package rpi.inference.learner
 
 import rpi.inference.Hypothesis
+import rpi.inference.learner.template._
 import rpi.util.ast.Expressions._
 import viper.silver.ast
 

@@ -1,133 +1,15 @@
-package rpi.inference.learner
+package rpi.inference.learner.template
 
-import rpi.Names
-import rpi.inference.context.{BindingInstance, Context, Specification}
+import rpi.inference.context._
 import rpi.inference._
 import rpi.util.ast.Expressions._
 import rpi.util.{Collections, SetMap}
+import rpi.{Configuration, Names}
 import viper.silver.ast
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-
-/**
-  * A template for some specification that needs to be inferred.
-  */
-sealed trait Template {
-  /**
-    * Returns the name of the template.
-    *
-    * @return The name.
-    */
-  def name: String =
-    specification.name
-
-  /**
-    * The specification corresponding to this template.
-    */
-  val specification: Specification
-
-  /**
-    * Returns the parameters of the specification.
-    *
-    * @return The parameters.
-    */
-  def parameters: Seq[ast.LocalVarDecl] =
-    specification.parameters
-
-  /**
-    * Returns the atoms of the specification.
-    *
-    * @return The atoms.
-    */
-  def atoms: Seq[ast.Exp] =
-    specification.atoms
-}
-
-/**
-  * A template for a specification predicate that needs to be inferred.
-  *
-  * @param specification The specification corresponding to the template.
-  * @param body          The body representing the structure allowed by the template.
-  */
-case class PredicateTemplate(specification: Specification, body: TemplateExpression) extends Template {
-  override def toString: String =
-    s"$specification = $body"
-}
-
-/**
-  * A template for a lemma method.
-  *
-  * @param specification The specification corresponding to the template.
-  * @param precondition  The expression representing the structure of the precondition.
-  * @param postcondition The expression representing the structure of the postcondition.
-  */
-case class LemmaTemplate(specification: Specification, precondition: TemplateExpression, postcondition: TemplateExpression) extends Template {
-  override def toString: String =
-    s"$specification\n" +
-      s"   requires $precondition\n" +
-      s"   ensures $postcondition"
-}
-
-/**
-  * The super trait for all template expressions.
-  */
-sealed trait TemplateExpression
-
-/**
-  * A template expression representing a conjunction of some conjuncts.
-  *
-  * @param conjuncts The conjuncts.
-  */
-case class Conjunction(conjuncts: Seq[TemplateExpression]) extends TemplateExpression {
-  override def toString: String =
-    conjuncts.mkString("(", " * ", ")")
-}
-
-/**
-  * A template expression wrapping an expression.
-  *
-  * @param expression The wrapped expression.
-  */
-case class Wrapped(expression: ast.Exp) extends TemplateExpression {
-  override def toString: String =
-    expression.toString()
-}
-
-/**
-  * A template expression representing a guarded expression.
-  *
-  * @param guardId The id of the guard.
-  * @param body    The guarded expression.
-  */
-case class Guarded(guardId: Int, body: TemplateExpression) extends TemplateExpression {
-  override def toString: String =
-    s"(phi_$guardId -> $body)"
-}
-
-/**
-  * A template expression representing a choice.
-  *
-  * @param choiceId The id of the choice.
-  * @param options  The available options.
-  * @param body     The template expression for which the choice has to be made.
-  */
-case class Choice(choiceId: Int, options: Seq[ast.Exp], body: TemplateExpression) extends TemplateExpression {
-  override def toString: String =
-    s"(choose t_$choiceId from {${options.mkString(", ")}} in $body)"
-}
-
-/**
-  * A truncated template expression.
-  *
-  * @param condition The truncation condition.
-  * @param body      The truncated template expression.
-  */
-case class Truncation(condition: ast.Exp, body: TemplateExpression) extends TemplateExpression {
-  override def toString: String =
-    s"($condition -> $body)"
-}
 
 /**
   * A helper class used to compute templates.
@@ -136,28 +18,12 @@ case class Truncation(condition: ast.Exp, body: TemplateExpression) extends Temp
   */
 class TemplateGenerator(context: Context) {
   /**
-    * The maximal length of access paths that may appear in specifications.
+    * Returns the configuration.
+    *
+    * @return The configuration.
     */
-  private val maxLength: Int =
-    context.configuration.maxLength()
-
-  /**
-    * The flag indicating whether the inference uses recursive predicates.
-    */
-  private val usePredicates: Boolean = context.configuration.usePredicates()
-
-  /**
-    * The flag indicating whether the inference uses predicate segments.
-    */
-  private val useSegments: Boolean =
-    context.configuration.useSegments()
-
-  /**
-    * The flag indicating whether the restriction of truncation arguments to options appearing in samples is enabled.
-    */
-  private val restrictTruncation: Boolean =
-    context.configuration.restrictTruncation()
-
+  private def configuration: Configuration =
+    context.configuration
 
   /**
     * Computes templates for the given samples.
@@ -212,7 +78,7 @@ class TemplateGenerator(context: Context) {
       }
 
     // compute template for recursive predicate
-    if (usePredicates) {
+    if (configuration.usePredicates()) {
       val recursive = context.specification(Names.recursive)
       createRecursiveTemplate(recursive, structure)
     }
@@ -222,7 +88,7 @@ class TemplateGenerator(context: Context) {
   }
 
   /**
-    * Creates a template corresponding to the given specification and resoruces.
+    * Creates a template corresponding to the given specification and resources.
     *
     * @param specification The specification.
     * @param resources     The resources.
@@ -251,6 +117,7 @@ class TemplateGenerator(context: Context) {
       // get fields and recursions
       val fields = structure.fields
       val recursions = structure.recursions
+      // TODO: Remove as we handled this earlier.
       // make sure there is a way to frame arguments of recursions
       val framed = recursions.flatMap { recursion =>
         recursion.args.collect { case field: ast.FieldAccess => field }
@@ -261,7 +128,7 @@ class TemplateGenerator(context: Context) {
     // create template
     val body = {
       val full = createTemplateBody(specification, resources.toSeq)
-      if (useSegments) {
+      if (configuration.useSegments()) {
         val Seq(first, second) = specification.variables
         val condition = ast.NeCmp(first, second)()
         Truncation(condition, full)
@@ -270,7 +137,7 @@ class TemplateGenerator(context: Context) {
     val template = PredicateTemplate(specification, body)
     buffer.append(template)
 
-    if (useSegments) {
+    if (configuration.useSegments()) {
       // get lemma specification and parameter variables
       val lemmaSpecification = context.specification(Names.appendLemma)
       val Seq(from, current, next) = lemmaSpecification.variables
@@ -327,6 +194,7 @@ class TemplateGenerator(context: Context) {
   private def createTemplateBody(specification: Specification, resources: Seq[ast.LocationAccess])
                                 (implicit id: AtomicInteger): TemplateExpression = {
     // create template expressions for fields
+    val maxLength = configuration.maxLength()
     val fields = resources
       .collect { case field: ast.FieldAccess => (getLength(field), field) }
       .filter { case (length, _) => length <= maxLength }
@@ -338,10 +206,10 @@ class TemplateGenerator(context: Context) {
 
     // create template expressions for predicates
     val predicates =
-      if (useSegments) {
+      if (configuration.useSegments()) {
         // map from first arguments to options for second arguments
         val arguments: Iterable[(ast.Exp, Seq[ast.Exp])] =
-          if (specification.isRecursive || restrictTruncation) {
+          if (specification.isRecursive || configuration.restrictTruncation()) {
             resources
               // group second arguments by first argument
               .foldLeft(Map.empty[ast.Exp, Set[ast.Exp]]) {
@@ -427,7 +295,7 @@ class TemplateGenerator(context: Context) {
       * @return The structure.
       */
     def compute(accesses: Set[ast.FieldAccess]): (Set[ast.PredicateAccess], Structure) = {
-      if (usePredicates)
+      if (configuration.usePredicates())
         accesses
           .groupBy { access => access.field }
           .flatMap { case (field, group) =>
@@ -466,7 +334,7 @@ class TemplateGenerator(context: Context) {
       */
     private def createInstance(path: Seq[String]): ast.PredicateAccess = {
       val arguments =
-        if (useSegments) Seq(fromSeq(path), ast.NullLit()())
+        if (configuration.useSegments()) Seq(fromSeq(path), ast.NullLit()())
         else Seq(fromSeq(path))
       ast.PredicateAccess(arguments, Names.recursive)()
     }

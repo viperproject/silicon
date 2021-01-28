@@ -2,6 +2,7 @@ package rpi.inference.learner
 
 import rpi.inference.context.Context
 import rpi.inference._
+import rpi.inference.learner.template.TemplateGenerator
 
 /**
   * The learner synthesizing the hypotheses.

@@ -1,13 +1,14 @@
 package rpi.inference.learner
 
-import java.util.concurrent.atomic.AtomicInteger
 import rpi.Names
 import rpi.inference.context.Context
 import rpi.inference._
+import rpi.inference.learner.template._
 import rpi.util.{Collections, SeqMap}
 import rpi.util.ast.Expressions._
 import viper.silver.ast
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
@@ -218,6 +219,7 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
 
   /**
     * Encodes the given records.
+    *
     * @param records The records to encode.
     * @param default The default value used to approximate unknown atoms.
     * @param buffer  The implicitly passed buffer that accumulates global constraints.
@@ -317,17 +319,16 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
   private def encodeState(guardId: Int, values: Seq[Option[Boolean]], default: Boolean): ast.Exp = {
     // encode clauses
     val clauses = for (j <- 0 until maxClauses) yield {
-      val clauseActivation = ast.LocalVar(s"x_${guardId}_$j", ast.Bool)()
+      val clauseActivation = makeBoolean(s"x_${guardId}_$j")
       val clauseEncoding = {
         // encode literals
         val literals = values
           .zipWithIndex
           .map { case (value, i) =>
-            val literalActivation = ast.LocalVar(s"y_${guardId}_${i}_$j", ast.Bool)()
+            val literalActivation = makeBoolean(s"y_${guardId}_${i}_$j")
             val literalEncoding = value match {
               case Some(sign) =>
-
-                val variable = ast.LocalVar(s"s_${guardId}_${i}_$j", ast.Bool)()
+                val variable = makeBoolean(s"s_${guardId}_${i}_$j")
                 if (sign) variable else makeNot(variable)
               case None =>
                 makeLiteral(default)
@@ -351,7 +352,7 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
     * @return The encoding.
     */
   private def encodeChoice(choiceId: Int, index: Int): ast.Exp =
-    ast.LocalVar(s"c_${choiceId}_$index", ast.Bool)()
+    makeBoolean(s"c_${choiceId}_$index")
 
   /**
     * Introduces an auxiliary variable for the given expression.
@@ -362,15 +363,15 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
     */
   private def auxiliary(expression: ast.Exp)(implicit buffer: mutable.Buffer[ast.Exp]): ast.LocalVar = {
     // create auxiliary variable
-    val name = s"t_${unique.getAndIncrement}"
-    val variable = ast.LocalVar(name, ast.Bool)()
+    val variable = makeBoolean(s"t_${unique.getAndIncrement}")
     // add equality constraint and return variable
-    addConstraint(ast.EqCmp(variable, expression)())
+    addConstraint(makeEquality(variable, expression))
     variable
   }
 
   /**
     * Adds the given expression to the list of constraints.
+    *
     * @param expression The expression.
     * @param buffer     The implicitly passed buffer that accumulates global constraints.
     */
