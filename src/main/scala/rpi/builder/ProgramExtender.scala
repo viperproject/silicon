@@ -1,6 +1,5 @@
 package rpi.builder
 
-import rpi.{Configuration, Names}
 import rpi.inference.context.{Context, Instance, LoopCheck}
 import rpi.inference.Hypothesis
 import rpi.inference.annotation.Annotation
@@ -46,12 +45,12 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
       case ast.Inhale(expression) =>
         expression match {
           case placeholder: ast.PredicateAccessPredicate =>
-            if (configuration.useAnnotations()) {
+            if (configuration.useAnnotations() || configuration.verifyWithAnnotations()) {
               // get specification
               val instance = ValueInfo.value[Instance](placeholder)
               val body = hypothesis.getPredicateBody(instance)
               // unfold
-              val maxDepth = if (configuration.useAnnotations()) check.depth else 0
+              val maxDepth = check.depth
               unfold(body)(maxDepth, hypothesis)
             }
           case _ => // do nothing
@@ -63,7 +62,7 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
             val instance = ValueInfo.value[Instance](placeholder)
             val body = hypothesis.getPredicateBody(instance)
             // fold
-            if (configuration.useAnnotations()) {
+            if (configuration.useAnnotations() || configuration.verifyWithAnnotations()) {
               val maxDepth = check.depth
               foldWithAnnotations(body, annotations)(maxDepth, hypothesis)
             } else {

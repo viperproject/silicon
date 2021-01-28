@@ -98,6 +98,11 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
       descr = "Disables batch verification of checks.",
       hidden = true)
 
+  val verifyWithAnnotations: ScallopOption[Boolean] =
+    opt[Boolean](
+      name = "verifyWithAnnotations",
+      hidden = true)
+
   val path: ScallopOption[String] =
     trailArg[String](
       name = "path",

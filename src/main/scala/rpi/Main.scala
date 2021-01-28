@@ -9,7 +9,7 @@ object Main extends PrintRunner {
   /**
     * The base options for any kind of inference.
     */
-  val baseOptions: Seq[String] = Seq.empty
+  val baseOptions: Seq[String] = Seq("--verifyWithAnnotations")
 
   /**
     * The options for an inference with heuristics.
@@ -32,6 +32,6 @@ object Main extends PrintRunner {
     * @param arguments The arguments to the inference.
     */
   def main(arguments: Array[String]): Unit = {
-    run(annotationsOptions ++ arguments)
+    run(baseOptions ++ arguments)
   }
 }
