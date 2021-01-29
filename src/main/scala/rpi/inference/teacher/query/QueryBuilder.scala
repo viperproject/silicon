@@ -113,7 +113,7 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
               addInhale(body, info)
             }
             // unfold and save
-            val maxDepth = if (configuration.useAnnotations()) check.depth else 0
+            val maxDepth = if (configuration.useAnnotations()) check.depth(hypothesis) else 0
             unfold(body)(maxDepth, hypothesis)
             saveSnapshot(instance)
           case _ =>
@@ -128,7 +128,7 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
             // save and fold
             implicit val label: String = saveSnapshot(instance)
             if (configuration.useAnnotations()) {
-              val maxDepth = check.depth
+              val maxDepth = check.depth(hypothesis)
               foldWithAnnotations(body, annotations)(maxDepth, hypothesis, savePermission)
             } else {
               val maxDepth = configuration.heuristicsFoldDepth()

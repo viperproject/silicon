@@ -1,5 +1,6 @@
 package rpi.inference.context
 
+import rpi.inference.annotation.AccessAnalysis.Depth
 import rpi.inference.annotation.AccessAnalysis
 import viper.silver.ast
 
@@ -19,7 +20,7 @@ abstract class Check(val name: String) {
   def body: ast.Seqn =
     self.body
 
-  def depth: Int =
+  def depth: Depth =
     self.depth
 
   /**
@@ -34,8 +35,7 @@ abstract class Check(val name: String) {
     name
 
   private class CheckBody(val body: ast.Seqn) {
-    // TODO: Take into account specification.
-    lazy val depth: Int =
+    lazy val depth: Depth =
       AccessAnalysis.accessDepth(body)
   }
 
