@@ -1,9 +1,0 @@
-field next: Ref
-
-method traverse(x: Ref)
-{
-   if (x != null)
-   {
-      traverse(x.next)
-   }
-}

@@ -103,6 +103,8 @@ class RpiTest extends AnyFunSuite with TestRunner {
   private def getFiles(directory: String): Seq[File] = {
     val resource = getClass.getResource(directory)
     val file = new File(resource.getFile)
-    Files.listFiles(file)
+    Files
+      .listFiles(file)
+      .sortBy { file => file.getName }
   }
 }

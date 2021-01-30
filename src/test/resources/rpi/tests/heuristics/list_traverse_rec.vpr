@@ -3,8 +3,7 @@ field v: Int
 
 method traverse(a: Ref)
 {
-    if (a != null)
-    {
+    if (a != null) {
         traverse(a.n)
     }
 }

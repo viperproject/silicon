@@ -32,6 +32,6 @@ object Main extends PrintRunner {
     * @param arguments The arguments to the inference.
     */
   def main(arguments: Array[String]): Unit = {
-    run(baseOptions ++ arguments)
+    run(segmentsOptions ++ arguments)
   }
 }
