@@ -20,7 +20,7 @@ object SampleExtractor {
   private type Counter = SiliconRawCounterexample
 
   /**
-    * Extracts a sample from the given verification error corresponding to a self-framingness check.
+    * Extracts a sample from the given verification error corresponding to a self-framing check.
     *
     * @param error   The verification error.
     * @param context The context object.

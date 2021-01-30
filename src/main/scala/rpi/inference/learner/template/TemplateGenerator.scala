@@ -1,422 +1,268 @@
 package rpi.inference.learner.template
 
+import rpi.Names
 import rpi.inference._
-import rpi.inference.context._
+import rpi.inference.context.Specification
+import rpi.inference.learner.AbstractLearner
+import rpi.util.SetMap
 import rpi.util.ast.Expressions._
-import rpi.util.{Collections, SetMap}
-import rpi.{Configuration, Names}
 import viper.silver.ast
 
 import java.util.concurrent.atomic.AtomicInteger
-import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 /**
-  * A template generator.
-  *
-  * @param context The context.
+  * A trait providing methods to generate templates.
   */
-class TemplateGenerator(context: Context) {
+trait TemplateGenerator extends AbstractLearner {
+  /**
+    * The map from specification names to sets of location accesses.
+    */
+  private var locations: Map[String, Set[ast.LocationAccess]] =
+    Map.empty
 
   /**
-    * Returns the configuration.
+    * Adds the given sample.
     *
-    * @return The configuration.
+    * @param sample The sample to add.
     */
-  private def configuration: Configuration =
-    context.configuration
-
-  /**
-    * Computes templates for the given samples.
-    *
-    * @param samples The samples.
-    * @return The templates.
-    */
-  def generate(samples: Seq[Sample]): Seq[Template] = {
-    // used to generate unique ids for guards
-    implicit val id: AtomicInteger = new AtomicInteger
-    implicit val buffer: mutable.Buffer[Template] = ListBuffer.empty
-
-    // compute templates for specifications and structure for recursive predicate
-    val structure = collectAccesses(samples)
-      .foldLeft(Structure.bottom) {
-        case (global, (name, accesses)) =>
-          // compute structure
-          val fields = accesses.collect { case field: ast.FieldAccess => field }
-          val (instances, local) = Structure.compute(fields)
-          // filter locations
-          val extended = extendAccesses(accesses ++ instances)
-          val filtered = filterAccesses(extended)
-          // crate template
-          val specification = context.specification(name)
-          createTemplate(specification, filtered)
-          // update global structure
-          global.join(local)
-      }
-
-    // compute template for recursive predicate
-    if (configuration.usePredicates()) {
-      val recursive = context.specification(Names.recursive)
-      createRecursiveTemplate(recursive, structure)
-    }
-
-    // return templates
-    buffer.toSeq
+  override def addSample(sample: Sample): Unit = {
+    // forward call to other components
+    super.addSample(sample)
+    // update state of template generator
+    addAccesses(sample)
   }
 
   /**
-    * Collects and returns all accesses appearing in the given samples.
+    * Adds all location accesses appearing in the given sample.
     *
-    * @param samples The samples.
-    * @return A map from specification names to accesses.
+    * @param sample The sample.
     */
-  private def collectAccesses(samples: Seq[Sample]): Map[String, Set[ast.LocationAccess]] = {
-    // collect records from samples
-    val records = samples.flatMap {
+  private def addAccesses(sample: Sample): Unit = {
+    // get records
+    val records = sample match {
       case PositiveSample(records) => records
       case NegativeSample(record) => Seq(record)
       case ImplicationSample(left, right) => left +: right
     }
-    // build map
-    records.foldLeft(Map.empty[String, Set[ast.LocationAccess]]) {
-      case (result, record) =>
-        val name = record.specification.name
-        SetMap.addAll(result, name, record.locations)
+    // process records
+    records.foreach { record =>
+      val specification = record.specification
+      val locations = record.locations
+      locations.foreach { location => addLocation(specification, location) }
     }
   }
 
-  private def extendAccesses(accesses: Set[ast.LocationAccess]): Set[ast.LocationAccess] = {
-    def extend(access: ast.Exp): Set[ast.LocationAccess] =
-      access match {
-        case field@ast.FieldAccess(receiver, _) =>
-          extend(receiver) + field
-        case predicate@ast.PredicateAccess(arguments, name) =>
-          val parents = arguments.head match {
-            case ast.FieldAccess(receiver, _) =>
-              val parent = makePredicate(name, receiver +: arguments.tail)
-              extend(parent)
-            case _ => Set.empty[ast.LocationAccess]
-          }
-          val inner = arguments.toSet.flatMap { argument => extend(argument) }
-          parents ++ inner + predicate
-        case _ => Set.empty
-      }
+  // TODO: Input to set.
+  private def addLocation(specification: Specification, location: ast.LocationAccess): Unit = {
+    def add(specification: Specification, location: ast.LocationAccess): Unit =
+      locations = SetMap.add(locations, specification.name, location)
 
-    accesses.flatMap { access => extend(access) }
-  }
+    // process location access
+    location match {
+      case ast.FieldAccess(receiver, field) =>
+        receiver match {
+          case nested@ast.FieldAccess(root, next) =>
+            // add potential recursion
+            if (configuration.usePredicates()) {
+              // get parameter variables of recursive predicate
+              val recursive = context.specification(Names.recursive)
+              val from +: rest = recursive.variables
+              // add field access to recursive predicate
+              val access = makeField(from, field)
+              add(recursive, access)
+              // add recursion to recursive predicate
+              val recursion = makeRecursive(makeField(from, next) +: rest)
+              add(recursive, recursion)
+              // add instance to current specification
+              val instance = makeInstance(root)
+              add(specification, instance)
+            }
+            // add nested location
+            addLocation(specification, nested)
+          case _ => // do nothing
+        }
+      case ast.PredicateAccess(first +: rest, name) =>
+        first match {
+          case ast.FieldAccess(receiver, _) =>
+            // add parent predicate
+            val parent = makePredicate(name, receiver +: rest)
+            addLocation(specification, parent)
+            if (specification.isRecursive) ???
+          case _ => // do nothing
+        }
+    }
 
-  private def filterAccesses(accesses: Set[ast.LocationAccess]): Set[ast.LocationAccess] =
-    accesses.filter {
-      case field: ast.FieldAccess =>
-        getLength(field) <= configuration.maxLength()
+    // filter location access
+    val allowed = location match {
+      case path: ast.FieldAccess =>
+        getLength(path) <= configuration.maxLength()
       case ast.PredicateAccess(arguments, _) =>
         arguments.zipWithIndex.forall {
           case (_: ast.NullLit, index) => index > 0
           case (_: ast.LocalVar, _) => true
-          case (_: ast.FieldAccess, _) => false
+          case _ => false
         }
     }
-
-
-  /**
-    * Creates a template corresponding to the given specification and resources.
-    *
-    * @param specification The specification.
-    * @param resources     The resources.
-    * @param id            The implicitly passed atomic integer used to generate unique ids.
-    * @param buffer        The implicitly passed buffer used to accumulate templates.
-    */
-  private def createTemplate(specification: Specification, resources: Set[ast.LocationAccess])
-                            (implicit id: AtomicInteger, buffer: mutable.Buffer[Template]): Unit = {
-    val body = createTemplateBody(specification, resources.toSeq)
-    val template = PredicateTemplate(specification, body)
-    buffer.append(template)
+    if (allowed) add(specification, location)
   }
 
   /**
-    * Creates a template for a recursive predicate corresponding to the given specification and structure.
+    * Returns the templates corresponding to the current sequence of samples.
     *
-    * @param specification The specification.
-    * @param structure     The structure.
-    * @param id            The implicitly passed atomic integer used to generate unique ids.
-    * @param buffer        The implicitly passed buffer used to accumulate templates.
+    * @return The templates.
     */
-  private def createRecursiveTemplate(specification: Specification, structure: Structure)
-                                     (implicit id: AtomicInteger, buffer: mutable.Buffer[Template]): Unit = {
-    // collect resources
-    val resources: Set[ast.LocationAccess] = {
-      // get fields and recursions
-      val fields = structure.fields
-      val recursions = structure.recursions
-      // make sure there is a way to frame arguments of recursions
-      fields ++ extendAccesses(recursions.toSet)
-    }
+  def createTemplates(): Seq[Template] = {
+    // used to generate unique ids
+    implicit val id: AtomicInteger = new AtomicInteger
 
-    // create template
+    // create templates
+    locations
+      .toSeq
+      .map { case (name, locations) =>
+        createTemplate(name, locations)
+      }
+  }
+
+  /**
+    * Creates a template with the given name and location accesses.
+    *
+    * @param name      The name.
+    * @param locations The location accesses.
+    * @param id        The implicitly passed id to generate unique ids.
+    * @return The template.
+    */
+  private def createTemplate(name: String, locations: Set[ast.LocationAccess])
+                            (implicit id: AtomicInteger): Template = {
+    // get specification and create body
+    val specification = context.specification(name)
     val body = {
-      val full = createTemplateBody(specification, resources.toSeq)
-      if (configuration.useSegments()) {
-        val Seq(first, second) = specification.variables
-        val condition = ast.NeCmp(first, second)()
+      val full = createBody(locations)(specification, id)
+      if (specification.isRecursive && configuration.useSegments()) {
+        val first +: second +: _ = specification.variables
+        val condition = makeInequality(first, second)
         Truncation(condition, full)
       } else full
     }
-    val template = PredicateTemplate(specification, body)
-    buffer.append(template)
-
-    if (configuration.useSegments()) {
-      // get lemma specification and parameter variables
-      val lemmaSpecification = context.specification(Names.appendLemma)
-      val Seq(from, current, next) = lemmaSpecification.variables
-      // the recursive predicate instance used to adapt expressions
-      val instance = BindingInstance(specification, Seq(current, next))
-
-      /**
-        * Helper method that extracts the link part of the append lemma.
-        *
-        * @param expression The expression to process.
-        * @return The extracted link expression.
-        */
-      def linkExpression(expression: TemplateExpression): TemplateExpression =
-        expression match {
-          case Conjunction(conjuncts) =>
-            val results = conjuncts.map { conjunct => linkExpression(conjunct) }
-            Conjunction(results)
-          case Wrapped(expression) => expression match {
-            case ast.PredicateAccessPredicate(ast.PredicateAccess(recursion +: _, _), _) =>
-              val adaptedRecursion = instance.toActual(recursion)
-              val equality = ast.EqCmp(adaptedRecursion, next)()
-              Wrapped(equality)
-            case _ =>
-              val adapted = instance.toActual(expression)
-              Wrapped(adapted)
-          }
-          case Guarded(guardId, body) =>
-            val bodyResult = linkExpression(body)
-            Guarded(guardId, bodyResult)
-          case Truncation(condition, body) =>
-            val adaptedCondition = instance.toActual(condition)
-            val bodyResult = linkExpression(body)
-            Truncation(adaptedCondition, bodyResult)
-        }
-
-      // create precondition and postcondition
-      val link = linkExpression(body)
-      val precondition = Conjunction(Seq(Wrapped(makeSegment(from, current)), link))
-      val postcondition = Wrapped(makeSegment(from, next))
-      // create and add lemma template
-      val lemmaTemplate = LemmaTemplate(lemmaSpecification, precondition, postcondition)
-      buffer.append(lemmaTemplate)
-    }
+    // create template
+    PredicateTemplate(specification, body)
   }
 
   /**
-    * Creates template expressions for the given specification and resources.
+    * Creates a template expression corresponding to a template with the given location accesses.
     *
-    * @param specification The specification.
-    * @param resources     The resources.
-    * @param id            The implicitly passed atomic integer used to generate unique ids.
-    * @return A tuple holding the template expressions for field accesses and predicate accesses.
+    * @param locations     The location accesses.
+    * @param specification The implicitly passed specification.
+    * @param id            The implicitly passed id to generate unique ids.
+    * @return The template body.
     */
-  private def createTemplateBody(specification: Specification, resources: Seq[ast.LocationAccess])
-                                (implicit id: AtomicInteger): TemplateExpression = {
-    // create template expressions for fields
-    val fields = resources
-      .collect { case field: ast.FieldAccess => (getLength(field), field) }
-      .sortWith { case ((first, _), (second, _)) => first < second }
-      .map { case (_, field) =>
-        val guardId = id.getAndIncrement()
-        Guarded(guardId, Wrapped(makeResource(field)))
-      }
+  private def createBody(locations: Set[ast.LocationAccess])
+                        (implicit specification: Specification, id: AtomicInteger): TemplateExpression = {
+    // create resources
+    val resources = {
+      val fields = locations.collect { case field: ast.FieldAccess => field }
+      val predicates = locations.collect { case predicate: ast.PredicateAccess => predicate }
+      createResources(fields) ++ createResources(predicates)
+    }
+    // return body
+    Conjunction(resources)
+  }
 
-    // create template expressions for predicates
-    val predicates =
-      if (configuration.useSegments()) {
-        // map from first arguments to options for second arguments
-        val arguments: Iterable[(ast.Exp, Seq[ast.Exp])] =
-          if (specification.isRecursive || configuration.restrictTruncation()) {
-            resources
-              // group second arguments by first argument
-              .foldLeft(Map.empty[ast.Exp, Set[ast.Exp]]) {
-                case (result, access) => access match {
-                  case ast.PredicateAccess(arguments, name) =>
-                    assert(name == Names.recursive)
-                    assert(arguments.length == 2)
-                    val Seq(first, second) = arguments
-                    SetMap.add(result, first, second)
-                  case _ => result
-                }
-              }
-              .view
-              .mapValues { values => values.toSeq }
-          } else {
-            // get reference-typed variables
-            val variables = specification
-              .variables
-              .filter { variable => variable.isSubtype(ast.Ref) }
-            // build map that always returns all possible options
-            val options = variables :+ ast.NullLit()()
-            resources
-              .collect { case ast.PredicateAccess(first +: _, name) =>
-                assert(name == Names.recursive)
-                first
-              }
-              .distinct
-              .map { first => first -> options }
-          }
-        // create resources with choices
-        arguments
-          .flatMap {
-            case (first, options) => options match {
-              case Seq() => None
+  private def createResources(fields: Set[ast.FieldAccess])
+                             (implicit id: AtomicInteger): Seq[TemplateExpression] = {
+    // sort fields
+    val sorted =
+      if (configuration.maxLength() <= 2) fields.toSeq
+      else ???
+    // create resources
+    sorted.map { field => createResource(field) }
+  }
+
+  private def createResources(predicates: Set[ast.PredicateAccess])
+                             (implicit specification: Specification, id: AtomicInteger): Seq[TemplateExpression] =
+    if (configuration.useSegments() && !specification.isRecursive) {
+      // map from first arguments to options for second argument
+      val map =
+        if (configuration.restrictTruncation()) {
+          // group second arguments by first argument
+          predicates
+            .foldLeft(Map.empty[ast.Exp, Set[ast.Exp]]) {
+              case (result, predicate) =>
+                assert(predicate.predicateName == Names.recursive)
+                val Seq(from, to) = predicate.args
+                SetMap.add(result, from, to)
+            }
+            .view
+            .mapValues {
+              set => set.toSeq
+            }
+        } else {
+          // get reference-typed variables
+          val variables = specification
+            .variables
+            .filter {
+              variable => variable.isSubtype(ast.Ref)
+            }
+          // map all first arguments to all options
+          val options = variables :+ makeNull
+          predicates
+            .map {
+              predicate =>
+                assert(predicate.predicateName == Names.recursive)
+                predicate.args.head
+            }
+            .map {
+              from => from -> options
+            }
+        }
+      // create choices
+      map
+        .map {
+          case (from, options) =>
+            options match {
               case Seq(only) =>
-                // create id
-                val guardId = id.getAndIncrement()
-                // create guarded resource
-                val guarded = Guarded(guardId, Wrapped(makeSegment(first, only)))
-                Some(guarded)
+                val segment = makeSegment(from, only)
+                createResource(segment)
               case _ =>
-                // create ids
-                val guardId = id.getAndIncrement()
+                // create variable
+                // TODO: Unique name to avoid capturing.
                 val choiceId = id.getAndIncrement()
-                // create predicate segment with choice placeholder
-                val segment = {
-                  val second = ast.LocalVar(s"t_$choiceId", ast.Ref)()
-                  makeSegment(first, second)
-                }
-                // create guarded resource with choice
-                val guarded = Guarded(guardId, Wrapped(segment))
-                val choice = Choice(choiceId, options, guarded)
-                Some(choice)
+                val variable = makeVariable(s"t_$choiceId", ast.Ref)
+                // create resource
+                val segment = makeSegment(from, variable)
+                val resource = createResource(segment)
+                // create choice
+                Choice(choiceId, variable, options, resource)
             }
-          }
-          .toSeq
-      } else resources
-        .collect { case predicate: ast.PredicateAccess =>
-          // create resource
-          val guardId = id.getAndIncrement()
-          Guarded(guardId, Wrapped(makeResource(predicate)))
         }
+        .toSeq
+    } else {
+      // create resources
+      predicates.toSeq.map { predicate => createResource(predicate) }
+    }
 
-    // return template expression
-    Conjunction(fields ++ predicates)
+  private def createResource(location: ast.LocationAccess)(implicit id: AtomicInteger): TemplateExpression = {
+    // create resource
+    val resource = location match {
+      case field: ast.FieldAccess => makeResource(field)
+      case predicate: ast.PredicateAccess => makeResource(predicate)
+    }
+    // wrap and introduce guard
+    val guardId = id.getAndIncrement()
+    Guarded(guardId, Wrapped(resource))
   }
 
-  /**
-    * An object providing some structure-related utilities.
-    */
-  object Structure {
-    /**
-      * The empty structure.
-      */
-    val bottom: Structure =
-      Structure(Set.empty, Set.empty)
 
-    /**
-      * Returns a structure of a recursive template that captures possible recursions that could describe the given
-      * field accesses.
-      *
-      * @param accesses The field accesses.
-      * @return The structure.
-      */
-    def compute(accesses: Set[ast.FieldAccess]): (Set[ast.PredicateAccess], Structure) = {
-      if (configuration.usePredicates())
-        accesses
-          .groupBy { access => access.field }
-          .flatMap { case (field, group) =>
-            // the resource to add to the structure in case there is a potential recursion
-            lazy val resource = {
-              val variable = ast.LocalVar("x", ast.Ref)()
-              ast.FieldAccess(variable, field)()
-            }
-            // iterate over all pairs of receivers in order to detect potential recursions
-            val receivers = group.map { access => toSeq(access.rcv) }
-            Collections
-              .pairs(receivers)
-              .flatMap { case (path1, path2) =>
-                commonPrefix(path1, path2) match {
-                  case (prefix, suffix1, suffix2) if suffix1.isEmpty || suffix2.isEmpty =>
-                    val instance = createInstance(prefix)
-                    val recursion = createRecursion(suffix1 ++ suffix2)
-                    val structure = Structure(Set(resource), Set(recursion))
-                    Some(instance, structure)
-                  case _ => None
-                }
-              }
-          }
-          .foldLeft((Set.empty[ast.PredicateAccess], bottom)) {
-            case ((instances, global), (instance, local)) =>
-              (instances + instance, global.join(local))
-          }
-      else (Set.empty, bottom)
-    }
-
-    /**
-      * Creates an instance of the recursive predicate starting at the given access path.
-      *
-      * @param path The access path.
-      * @return The instance.
-      */
-    private def createInstance(path: Seq[String]): ast.PredicateAccess = {
-      val arguments =
-        if (configuration.useSegments()) Seq(fromSeq(path), ast.NullLit()())
-        else Seq(fromSeq(path))
-      ast.PredicateAccess(arguments, Names.recursive)()
-    }
-
-    private def createRecursion(path: Seq[String]): ast.PredicateAccess = {
-      val specification = context.specification(Names.recursive)
-      val variable +: others = specification.variables
-      val first = fromSeq(variable.name +: path)
-      ast.PredicateAccess(first +: others, Names.recursive)()
-    }
-
-    private def toSeq(path: ast.Exp): Seq[String] =
-      path match {
-        case ast.LocalVar(name, _) => Seq(name)
-        case ast.FieldAccess(receiver, field) => toSeq(receiver) :+ field.name
-      }
-
-    private def fromSeq(path: Seq[String]): ast.Exp = {
-      val variable: ast.Exp = ast.LocalVar(path.head, ast.Ref)()
-      path.tail.foldLeft(variable) {
-        case (result, name) =>
-          val field = ast.Field(name, ast.Ref)()
-          ast.FieldAccess(result, field)()
-      }
-    }
-
-    /**
-      * Fins the common prefix of the two given paths.
-      *
-      * @param path1 The first path.
-      * @param path2 The second path.
-      * @return The common prefix and the left over suffixes.
-      */
-    private def commonPrefix(path1: Seq[String], path2: Seq[String]): (Seq[String], Seq[String], Seq[String]) =
-      (path1, path2) match {
-        case (head1 +: tail1, head2 +: tail2) if head1 == head2 =>
-          val (prefix, suffix1, suffix2) = commonPrefix(tail1, tail2)
-          (head1 +: prefix, suffix1, suffix2)
-        case _ => (Seq.empty, path1, path2)
-      }
+  private def makeInstance(from: ast.Exp): ast.PredicateAccess = {
+    val arguments = if (configuration.useSegments()) Seq(from, makeNull) else Seq(from)
+    makeRecursive(arguments)
   }
 
-  /**
-    * A helper class used to represent the structure of a recursive predicate.
-    *
-    * @param fields     The field accesses.
-    * @param recursions The recursive accesses.
-    */
-  case class Structure(fields: Set[ast.FieldAccess], recursions: Set[ast.PredicateAccess]) {
-    /**
-      * Returns a structure that approximates both, this structure and the given other structure.
-      *
-      * @param other The other structure.
-      * @return The approximation of this and the given other structure.
-      */
-    def join(other: Structure): Structure =
-      Structure(fields ++ other.fields, recursions ++ other.recursions)
+  private def makeSegment(from: ast.Exp, to: ast.Exp): ast.PredicateAccess = {
+    val arguments = Seq(from, to)
+    makeRecursive(arguments)
   }
 
+  @inline
+  private def makeRecursive(arguments: Seq[ast.Exp]): ast.PredicateAccess =
+    makePredicate(Names.recursive, arguments)
 }

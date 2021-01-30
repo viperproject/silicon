@@ -33,6 +33,7 @@ case class ImplicationSample(left: Record, right: Seq[Record]) extends Sample
 
 /**
   * A record representing a data pont.
+  *
   * @param specification The specification.
   * @param abstraction   The state abstraction.
   * @param locations     The (under-approximate) set of location accesses that can be used to represent the resource for

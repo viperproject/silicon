@@ -1,29 +1,51 @@
 package rpi.inference.learner
 
+import rpi.Configuration
 import rpi.inference.context.Context
 import rpi.inference._
 import rpi.inference.learner.template.TemplateGenerator
+
+trait AbstractLearner {
+  /**
+    * Returns the context.
+    *
+    * @return The context.
+    */
+  def context: Context
+
+  /**
+    * Returns the configuration.
+    *
+    * @return The configuration.
+    */
+  def configuration: Configuration =
+    context.configuration
+
+  /**
+    * The sequence of samples.
+    */
+  protected var samples: Seq[Sample] =
+    Seq.empty
+
+  /**
+    * Adds the given sample.
+    *
+    * @param sample The sample to add.
+    */
+  def addSample(sample: Sample): Unit =
+    samples = samples :+ sample
+}
 
 /**
   * The learner synthesizing the hypotheses.
   *
   * @param context The pointer to the context.
   */
-class Learner(val context: Context) {
-  /**
-    * The sequence of samples.
-    */
-  private var samples: Seq[Sample] = Seq.empty
-
+class Learner(val context: Context) extends AbstractLearner with TemplateGenerator {
   /**
     * The SMT solver.
     */
   val solver = new Smt(context.configuration.z3())
-
-  /**
-    * The template generator.
-    */
-  val templates = new TemplateGenerator(context)
 
   /**
     * Starts the learner and all of its subcomponents.
@@ -38,14 +60,6 @@ class Learner(val context: Context) {
   def stop(): Unit = {}
 
   /**
-    * Adds the given sample.
-    *
-    * @param sample The sample to add.
-    */
-  def addSample(sample: Sample): Unit =
-    samples = samples :+ sample
-
-  /**
     * Returns a hypothesis that is consistent with all samples.
     *
     * @return The hypothesis.
@@ -55,7 +69,7 @@ class Learner(val context: Context) {
     else {
       samples.foreach { sample => println(sample) }
       // generate templates
-      val templates = this.templates.generate(samples)
+      val templates = createTemplates()
 
       // encode samples
       val encoder = new GuardEncoder(context, templates)

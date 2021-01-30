@@ -58,7 +58,11 @@ object Expressions {
 
   @inline
   def makeDeclaration(variable: ast.LocalVar): ast.LocalVarDecl =
-    ast.LocalVarDecl(variable.name, variable.typ)()
+    makeDeclaration(variable.name, variable.typ)
+
+  @inline
+  def makeDeclaration(name: String, typ: ast.Type): ast.LocalVarDecl =
+    ast.LocalVarDecl(name, typ)()
 
   /**
     * Returns a true literal.
@@ -167,6 +171,10 @@ object Expressions {
     ast.EqCmp(left, right)()
 
   @inline
+  def makeInequality(left: ast.Exp, right: ast.Exp): ast.NeCmp =
+    ast.NeCmp(left, right)()
+
+  @inline
   def makeNone: ast.NoPerm =
     ast.NoPerm()()
 
@@ -187,29 +195,39 @@ object Expressions {
     else makeTernary(makeAnd(conditions), thenBranch, elseBranch)
 
   @inline
+  def makeNull: ast.NullLit =
+    ast.NullLit()()
+
+  @inline
   def makeCall(method: ast.Method, arguments: Seq[ast.Exp]): ast.MethodCall =
     ast.MethodCall(method, arguments, Seq.empty)()
 
   @inline
-  def makeSegment(from: ast.Exp, to: ast.Exp): ast.PredicateAccessPredicate =
+  @deprecated
+  def ms(from: ast.Exp, to: ast.Exp): ast.PredicateAccessPredicate =
     makeRecursive(Seq(from, to))
 
+  @deprecated
   private def makeRecursive(arguments: Seq[ast.Exp]): ast.PredicateAccessPredicate = {
     val access = ast.PredicateAccess(arguments, Names.recursive)()
     makeResource(access)
   }
 
   @inline
+  def makeField(receiver: ast.Exp, field: ast.Field): ast.FieldAccess =
+    ast.FieldAccess(receiver, field)()
+
+  @inline
   def makePredicate(name: String, arguments: Seq[ast.Exp]): ast.PredicateAccess =
     ast.PredicateAccess(arguments, name)()
 
   @inline
-  def makeResource(access: ast.FieldAccess): ast.FieldAccessPredicate =
-    ast.FieldAccessPredicate(access, ast.FullPerm()())()
+  def makeResource(field: ast.FieldAccess): ast.FieldAccessPredicate =
+    ast.FieldAccessPredicate(field, ast.FullPerm()())()
 
   @inline
-  def makeResource(access: ast.PredicateAccess, info: ast.Info = ast.NoInfo): ast.PredicateAccessPredicate =
-    ast.PredicateAccessPredicate(access, ast.FullPerm()())(info = info)
+  def makeResource(predicate: ast.PredicateAccess, info: ast.Info = ast.NoInfo): ast.PredicateAccessPredicate =
+    ast.PredicateAccessPredicate(predicate, ast.FullPerm()())(info = info)
 
   /**
     * Simplifies the given expression.

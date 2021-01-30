@@ -48,7 +48,7 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
       expression match {
         case Conjunction(conjuncts) =>
           conjuncts.flatMap { conjunct => collectChoices(conjunct) }
-        case choice@Choice(_, _, body) =>
+        case choice@Choice(_, _, _, body) =>
           choice +: collectChoices(body)
         case Truncation(_, body) =>
           collectChoices(body)
@@ -123,12 +123,12 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
         case Guarded(guardId, body) =>
           val resourceGuard = ResourceGuard(guardId, atoms)
           processExpression(body, view, guards :+ resourceGuard)
-        case Choice(choiceId, choices, body) =>
+        case Choice(choiceId, variable, choices, body) =>
           choices
             .zipWithIndex
             .foreach { case (choice, index) =>
               val choiceGuard = ChoiceGuard(choiceId, index)
-              val adaptedView = view.updated(name = s"t_$choiceId", view.adapt(choice))
+              val adaptedView = view.updated(variable.name, view.adapt(choice))
               processExpression(body, adaptedView, guards :+ choiceGuard)
             }
         case Truncation(condition, body) =>
@@ -186,7 +186,7 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
 
     // encode that only one option per choice can be picked
     choices.foreach {
-      case Choice(choiceId, options, _) =>
+      case Choice(choiceId, _, options, _) =>
         val variables = options
           .indices
           .map { index => ast.LocalVar(s"c_${choiceId}_$index", ast.Bool)() }

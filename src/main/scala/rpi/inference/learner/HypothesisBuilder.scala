@@ -97,7 +97,7 @@ class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
     * Builds the expression corresponding to the given template expression.
     *
     * @param expression The template expression to build.
-    * @param atoms    The atoms used to build the guard.
+    * @param atoms      The atoms used to build the guard.
     * @return The resource.
     */
   private def buildExpression(expression: TemplateExpression, atoms: Seq[ast.Exp]): ast.Exp =
@@ -111,13 +111,13 @@ class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
         val builtGuard = buildGuard(guardId, atoms)
         val builtBody = buildExpression(body, atoms)
         makeImplication(builtGuard, builtBody)
-      case Choice(choiceId, options, body) =>
+      case Choice(choiceId, variable, options, body) =>
         // build body
         val builtBody = buildExpression(body, atoms)
         // get option
-        val name = s"t_$choiceId"
         val option = getOption(choiceId, options)
         // adapt body according to picked option
+        val name = variable.name
         builtBody.transform {
           case ast.LocalVar(`name`, _) => option
         }

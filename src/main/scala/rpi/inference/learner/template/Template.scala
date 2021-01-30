@@ -1,6 +1,6 @@
 package rpi.inference.learner.template
 
-import rpi.inference.context. Specification
+import rpi.inference.context.Specification
 import viper.silver.ast
 
 /**
@@ -79,8 +79,6 @@ case class Conjunction(conjuncts: Seq[TemplateExpression]) extends TemplateExpre
 
 /**
   * A template expression wrapping an expression.
-  *
-  * @param expression The wrapped expression.
   */
 case class Wrapped(expression: ast.Exp) extends TemplateExpression {
   override def toString: String =
@@ -99,15 +97,16 @@ case class Guarded(guardId: Int, body: TemplateExpression) extends TemplateExpre
 }
 
 /**
-  * A template expression representing a choice.
+  * A template expression representing a choice for a variable.
   *
   * @param choiceId The id of the choice.
+  * @param variable The variable.
   * @param options  The available options.
   * @param body     The template expression for which the choice has to be made.
   */
-case class Choice(choiceId: Int, options: Seq[ast.Exp], body: TemplateExpression) extends TemplateExpression {
+case class Choice(choiceId: Int, variable: ast.LocalVar, options: Seq[ast.Exp], body: TemplateExpression) extends TemplateExpression {
   override def toString: String =
-    s"(choose t_$choiceId from {${options.mkString(", ")}} in $body)"
+    s"(choose $variable from {${options.mkString(", ")}} in $body)"
 }
 
 /**
