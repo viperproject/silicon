@@ -191,6 +191,18 @@ trait ExpressionTranslator {
       case as: ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
       case as: ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality, as.exp)
 
+      /* Maps */
+
+      case as: ast.ExplicitMap => f(as.desugared)
+      case as: ast.Maplet => f(as.desugared)
+      case ast.EmptyMap(keyType, valueType) => EmptyMap(toSort(keyType), toSort(valueType))
+      case ast.MapContains(key, base) => SetIn(f(key), MapDomain(f(base)))
+      case ast.MapUpdate(base, key, value) => MapUpdate(f(base), f(key), f(value))
+      case ast.MapCardinality(base) => MapCardinality(f(base))
+      case ast.MapLookup(base, key) => MapLookup(f(base), f(key))
+      case ast.MapDomain(base) => MapDomain(f(base))
+      case ast.MapRange(base) => MapRange(f(base))
+
       /* Other expressions */
 
       case ast.Let(lvd, e, body) => Let(f(lvd.localVar).asInstanceOf[Var], f(e), f(body))

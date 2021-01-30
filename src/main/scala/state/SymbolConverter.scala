@@ -33,6 +33,7 @@ class DefaultSymbolConverter extends SymbolConverter {
     case ast.SeqType(elementType) => sorts.Seq(toSort(elementType))
     case ast.SetType(elementType) => sorts.Set(toSort(elementType))
     case ast.MultisetType(elementType) => sorts.Multiset(toSort(elementType))
+    case ast.MapType(keyType, valueType) => sorts.Map(toSort(keyType), toSort(valueType))
 
     case dt: ast.DomainType =>
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
