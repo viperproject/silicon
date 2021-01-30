@@ -52,8 +52,19 @@ trait TemplateGenerator extends AbstractLearner {
     }
   }
 
-  // TODO: Input to set.
+  /**
+    * Adds the given location access to the given specification.
+    *
+    * @param specification The specification.
+    * @param location      The location access.
+    */
   private def addLocation(specification: Specification, location: ast.LocationAccess): Unit = {
+    /**
+      * Helper method that does the actual adding of the location access.
+      *
+      * @param specification The specification.
+      * @param location      The location access.
+      */
     def add(specification: Specification, location: ast.LocationAccess): Unit =
       locations = SetMap.add(locations, specification.name, location)
 
@@ -128,7 +139,7 @@ trait TemplateGenerator extends AbstractLearner {
     *
     * @param name      The name.
     * @param locations The location accesses.
-    * @param id        The implicitly passed id to generate unique ids.
+    * @param id        The implicitly passed id used to generate unique ids.
     * @return The template.
     */
   private def createTemplate(name: String, locations: Set[ast.LocationAccess])
@@ -152,7 +163,7 @@ trait TemplateGenerator extends AbstractLearner {
     *
     * @param locations     The location accesses.
     * @param specification The implicitly passed specification.
-    * @param id            The implicitly passed id to generate unique ids.
+    * @param id            The implicitly passed id used to generate unique ids.
     * @return The template body.
     */
   private def createBody(locations: Set[ast.LocationAccess])
@@ -167,6 +178,13 @@ trait TemplateGenerator extends AbstractLearner {
     Conjunction(resources)
   }
 
+  /**
+    * Creates template expressions representing resources corresponding to the given field accesses.
+    *
+    * @param fields The field accesses.
+    * @param id     The implicitly passed id used to generate unique ids.
+    * @return The resources.
+    */
   private def createResources(fields: Set[ast.FieldAccess])
                              (implicit id: AtomicInteger): Seq[TemplateExpression] = {
     // sort fields
@@ -177,6 +195,14 @@ trait TemplateGenerator extends AbstractLearner {
     sorted.map { field => createResource(field) }
   }
 
+  /**
+    * Creates template expressions representing resources corresponding to the given predicate accesses.
+    *
+    * @param predicates    The predicate accesses.
+    * @param specification The implicitly passed specification.
+    * @param id            The implicitly passed id used to generate unique ids.
+    * @return The resources.
+    */
   private def createResources(predicates: Set[ast.PredicateAccess])
                              (implicit specification: Specification, id: AtomicInteger): Seq[TemplateExpression] =
     if (configuration.useSegments() && !specification.isRecursive) {
@@ -240,6 +266,13 @@ trait TemplateGenerator extends AbstractLearner {
       predicates.toSeq.map { predicate => createResource(predicate) }
     }
 
+  /**
+    * Creates a template expression representing a resource corresponding to the given location access.
+    *
+    * @param location The location access.
+    * @param id       The implicitly passed id used to generate unique ids.
+    * @return The resource.
+    */
   private def createResource(location: ast.LocationAccess)(implicit id: AtomicInteger): TemplateExpression = {
     // create resource
     val resource = location match {
@@ -251,17 +284,35 @@ trait TemplateGenerator extends AbstractLearner {
     Guarded(guardId, Wrapped(resource))
   }
 
-
-  private def makeInstance(from: ast.Exp): ast.PredicateAccess = {
-    val arguments = if (configuration.useSegments()) Seq(from, makeNull) else Seq(from)
+  /**
+    * Returns a recursive predicate instance rooted at the given expression.
+    *
+    * @param root The root.
+    * @return The instance.
+    */
+  private def makeInstance(root: ast.Exp): ast.PredicateAccess = {
+    val arguments = if (configuration.useSegments()) Seq(root, makeNull) else Seq(root)
     makeRecursive(arguments)
   }
 
-  private def makeSegment(from: ast.Exp, to: ast.Exp): ast.PredicateAccess = {
-    val arguments = Seq(from, to)
+  /**
+    * Returns a recursive predicate segment rooted and truncated at the given expressions.
+    *
+    * @param root The root.
+    * @param end  The truncation point.
+    * @return The segment.
+    */
+  private def makeSegment(root: ast.Exp, end: ast.Exp): ast.PredicateAccess = {
+    val arguments = Seq(root, end)
     makeRecursive(arguments)
   }
 
+  /**
+    * Returns a recursive predicate instance with the given arguments.
+    *
+    * @param arguments The arguments.
+    * @return The instance.
+    */
   @inline
   private def makeRecursive(arguments: Seq[ast.Exp]): ast.PredicateAccess =
     makePredicate(Names.recursive, arguments)
