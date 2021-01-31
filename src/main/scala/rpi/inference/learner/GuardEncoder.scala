@@ -139,7 +139,7 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
     // compute effective guards for all predicate templates
     templates
       .flatMap {
-        case template: PredicateTemplate if !Names.isRecursive(template.name) =>
+        case template: PredicateTemplate =>
           println(template)
           // process template
           buffer.clear()

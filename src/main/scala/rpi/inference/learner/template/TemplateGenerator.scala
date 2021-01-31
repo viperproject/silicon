@@ -94,11 +94,10 @@ trait TemplateGenerator extends AbstractLearner {
         }
       case ast.PredicateAccess(first +: rest, name) =>
         first match {
-          case ast.FieldAccess(receiver, _) =>
+          case ast.FieldAccess(receiver, _) if !specification.isRecursive =>
             // add parent predicate
             val parent = makePredicate(name, receiver +: rest)
             addLocation(specification, parent)
-            if (specification.isRecursive) ???
           case _ => // do nothing
         }
     }
