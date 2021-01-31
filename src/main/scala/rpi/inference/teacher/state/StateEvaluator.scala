@@ -2,6 +2,7 @@ package rpi.inference.teacher.state
 
 import viper.silicon.resources.FieldID
 import viper.silicon.state.{BasicChunk, State, terms}
+import viper.silicon.state.terms.sorts
 import viper.silver.ast
 
 /**
@@ -37,16 +38,22 @@ case class StateEvaluator(label: Option[String], state: State, model: ModelEvalu
     .values
     .foldLeft(Map.empty[String, Map[String, String]]) {
       case (result, chunk: BasicChunk) if chunk.resourceID == FieldID =>
-        // TODO: Ignore non-ref
-        val receiver = model.evaluateReference(chunk.args.head)
-        val field = chunk.id.name
-        val value = model.evaluateReference(chunk.snap)
-        // update field map
-        val fields = result
-          .getOrElse(receiver, Map.empty)
-          .updated(field, value)
-        // update heap
-        result.updated(receiver, fields)
+        val term = chunk.snap
+        term.sort match {
+          case sorts.Ref =>
+            val receiver = model.evaluateReference(chunk.args.head)
+            val field = chunk.id.name
+            val value = model.evaluateReference(term)
+            // update field map
+            val fields = result
+              .getOrElse(receiver, Map.empty)
+              .updated(field, value)
+            // update heap
+            result.updated(receiver, fields)
+          case _ =>
+            // do nothing
+            result
+        }
       case (result, _) =>
         result
     }
