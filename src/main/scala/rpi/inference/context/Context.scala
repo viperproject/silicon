@@ -267,7 +267,7 @@ private class CheckBuilder(program: ast.Program) extends ProgramBuilder {
           addInhale(check.invariant)
           addInhale(makeNot(condition))
         }
-      case original@ast.MethodCall(name, arguments, _) =>
+      case original@ast.MethodCall(name, arguments, returns) =>
         if (Names.isAnnotation(name)) {
           val annotation = Annotation(name, arguments.head)
           annotations.append(annotation)
@@ -295,7 +295,7 @@ private class CheckBuilder(program: ast.Program) extends ProgramBuilder {
             val check = methods(name)
             addExhale(check.precondition(variables))
             addCut(adapted, check)
-            addInhale(check.postcondition(variables))
+            addInhale(check.postcondition(variables ++ returns))
           }
         }
       case _ =>
