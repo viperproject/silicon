@@ -72,8 +72,28 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
         val name = namespace.uniqueIdentifier(s"check_${predicate.name}")
         buildMethod(name, body)
       }
+
+    // dummy hypothesis
+    val dummy = {
+      // process predicates
+      val predicates = hypothesis
+        .predicates
+        .flatMap { predicate =>
+          if (Names.isRecursive(predicate.name)) {
+            // remove predicate body
+            val empty = predicate.copy(body = None)(ast.NoPosition, ast.NoInfo, ast.NoTrafos)
+            Some(empty)
+          } else {
+            // ignore specification predicates
+            None
+          }
+        }
+      // create hypothesis
+      Hypothesis(predicates)
+    }
+
     // build program
-    val program = buildProgram(methods, hypothesis)
+    val program = buildProgram(methods, dummy)
     println(program)
     (program, query)
   }

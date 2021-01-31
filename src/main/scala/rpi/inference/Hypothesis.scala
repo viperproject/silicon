@@ -4,6 +4,23 @@ import rpi.inference.context.Instance
 import rpi.util.ast.Expressions._
 import viper.silver.ast
 
+object Hypothesis {
+  /**
+    * The empty hypothesis.
+    */
+  val empty: Hypothesis =
+    Hypothesis(Seq.empty, Seq.empty)
+
+  /**
+    * Returns a hypothesis with the given predicates.
+    *
+    * @param predicates The predicates.
+    * @return The hypothesis.
+    */
+  def apply(predicates: Seq[ast.Predicate]): Hypothesis =
+    Hypothesis(Seq.empty, predicates)
+}
+
 /**
   * A hypothesis.
   */
