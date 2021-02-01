@@ -1,21 +1,23 @@
 field n: Ref
+field v: Int
 
-method main()
+method main(l: Int)
 {
     var c: Ref
     var i: Int
 
     c := null
-    i := 10
+    i := 0
 
     __up__(c)
-    while (i > 0)
+    while (i < l)
     {
         var t: Ref
-        t := new(n)
+        t := new(n, v)
         t.n := c
+        t.v := 0
         c := t
-        i := i - 1
+        i := i + 1
         __up__(c)
     }
 

@@ -49,7 +49,7 @@ trait Folding extends ProgramBuilder {
             val body = hypothesis.getPredicateBody(instance)
             unfold(body)
           }
-          addConditional(guards, unfolds)
+          addConditionalAnd(guards, unfolds)
         } else default(predicate, guards)
       case other =>
         default(other, guards)
@@ -85,7 +85,7 @@ trait Folding extends ProgramBuilder {
             val info = ValueInfo(instance)
             addFold(predicate, info)
           }
-          addConditional(guards, folds)
+          addConditionalAnd(guards, folds)
         } else default(predicate, guards)
       case other =>
         default(other, guards)
@@ -104,19 +104,21 @@ trait Folding extends ProgramBuilder {
                                    (implicit maxDepth: Int, hypothesis: Hypothesis,
                                     default: (ast.Exp, Seq[ast.Exp]) => Unit = (_, _) => ()): Unit = {
     /**
-      * Returns the condition that the given current argument is relevant for an annotation with the given name.
+      * Returns the conditions under any of which the current argument is relevant for an annotation with the given
+      * name.
       *
       * @param name    The name of the annotation.
       * @param current The current argument.
-      * @return The condition.
+      * @return The conditions.
       */
-    def getCondition(name: String, current: ast.Exp): ast.Exp = {
-      val equalities = annotations.map {
+    def getConditions(name: String, current: ast.Exp): Seq[ast.Exp] =
+      annotations.flatMap {
         case Annotation(`name`, argument) =>
-          makeEquality(current, argument)
+          val equality = makeEquality(current, argument)
+          Some(equality)
+        case _ =>
+          None
       }
-      makeOr(equalities)
-    }
 
     /**
       * Handles the end argument of predicate instances appearing of the given expression.
@@ -137,7 +139,7 @@ trait Folding extends ProgramBuilder {
             case Seq(start, end: ast.LocalVar) =>
               val body = makeScope {
                 // down condition
-                val condition = getCondition(Names.downAnnotation, end)
+                val down = getConditions(Names.downAnnotation, end)
                 // conditionally apply lemma
                 val thenBody = makeScope {
                   // get lemma instance
@@ -154,9 +156,9 @@ trait Folding extends ProgramBuilder {
                   addStatement(lemmaApplication)
                 }
                 val elseBody = makeScope(handleStart(predicate))
-                addConditional(condition, thenBody, elseBody)
+                addConditionalOr(down, thenBody, elseBody)
               }
-              addConditional(guards, body)
+              addConditionalAnd(guards, body)
             case _ =>
               handleStart(predicate, guards)
           }
@@ -181,13 +183,16 @@ trait Folding extends ProgramBuilder {
           val body = makeScope {
             // down condition
             val start = predicate.loc.args.head
-            val condition = getCondition(Names.downAnnotation, start)
-            // conditionally decrease the maximal fold depth
-            val thenBranch = makeScope(fold(predicate)(maxDepth - 1, hypothesis, default))
-            val elseBranch = makeScope(fold(predicate))
-            addConditional(condition, thenBranch, elseBranch)
+            val down = getConditions(Names.downAnnotation, start)
+            val up = getConditions(Names.upAnnotation, start)
+            // helper method that folds the predicate up to the given depth
+            val go: Int => ast.Seqn = depth => makeScope(fold(predicate)(depth, hypothesis, default))
+            // conditionally increase or decrease fold depth
+            addConditionalOr(down,
+              makeScope(addConditionalOr(up, go(maxDepth), go(maxDepth - 1))),
+              makeScope(addConditionalOr(up, go(maxDepth + 1), go(maxDepth))))
           }
-          addConditional(guards, body)
+          addConditionalAnd(guards, body)
         case other =>
           fold(other, guards)
       }

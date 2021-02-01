@@ -57,17 +57,17 @@ trait ProgramBuilder {
   protected def makeScope(generate: => Unit): ast.Seqn =
     makeSequence(scoped(generate))
 
+  protected def addConditionalOr(conditions: Seq[ast.Exp], thenBody: => ast.Stmt, elseBody: ast.Stmt = makeSkip): Unit =
+    if (conditions.isEmpty) addStatement(elseBody)
+    else addConditional(makeOr(conditions), thenBody, elseBody)
+
+  protected def addConditionalAnd(conditions: Seq[ast.Exp], thenBody: ast.Stmt, elseBody: => ast.Stmt = makeSkip): Unit =
+    if (conditions.isEmpty) addStatement(thenBody)
+    else addConditional(makeAnd(conditions), thenBody, elseBody)
+
   @inline
   protected def addConditional(condition: ast.Exp, thenBody: ast.Stmt, elseBody: ast.Stmt): Unit =
     addStatement(makeConditional(condition, thenBody, elseBody))
-
-  @inline
-  protected def addConditional(conditions: Seq[ast.Exp], thenBody: ast.Stmt): Unit =
-    addConditional(conditions, thenBody, makeSkip)
-
-  protected def addConditional(conditions: Seq[ast.Exp], thenBody: ast.Stmt, elseBody: ast.Stmt): Unit =
-    if (conditions.isEmpty) addStatement(thenBody)
-    else addConditional(makeAnd(conditions), thenBody, elseBody)
 
   protected def addLoop(condition: ast.Exp, body: ast.Stmt, invariants: Seq[ast.Exp] = Seq.empty): Unit =
     addStatement(makeLoop(condition, body, invariants))
