@@ -309,11 +309,17 @@ private class CheckBuilder(program: ast.Program) extends ProgramBuilder {
     instance.all.foreach { expression => addExhale(expression) }
 
   private def addInstrumented(generate: => Unit): Unit = {
+    val consumed = consumeAnnotations()
     val body = makeScope(generate)
-    addStatement(makeInstrument(body, annotations.toSeq))
-    annotations.clear()
+    addStatement(makeInstrument(body, consumed))
   }
 
   private def addCut(statement: ast.Stmt, check: Check): Unit =
     addStatement(makeCut(statement, check))
+
+  private def consumeAnnotations(): Seq[Annotation] = {
+    val consumed = annotations.toSeq
+    annotations.clear()
+    consumed
+  }
 }
