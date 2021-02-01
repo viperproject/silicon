@@ -147,8 +147,18 @@ object AccessAnalysis {
         case ast.LocalVarAssign(_, value) =>
           self.read(value)
         case ast.FieldAssign(target, value) =>
-          if (target.typ == ast.Ref) ???
-          else self.read(target).read(value)
+          if (target.typ == ast.Ref) {
+            val targetDepth = accessDepth(target)
+            val valueDepth = accessDepth(value)
+            val maximum = math.max(targetDepth, valueDepth)
+            val delta = targetDepth - valueDepth
+            self.increase(delta).bound(maximum)
+          } else {
+            // read target and value
+            self.read(target).read(value)
+          }
+        case ast.NewStmt(_, _) =>
+          self
         case ast.Inhale(_) =>
           self
         case ast.Exhale(expression) =>
@@ -169,11 +179,28 @@ object AccessAnalysis {
         accessDepth(body)
       })
 
-    private def read(expression: ast.Exp): FunctionState = {
-      val depth = accessDepth(expression)
+    private def read(expression: ast.Exp): FunctionState =
+      bound(accessDepth(expression))
+
+    /**
+      * Bounds the depth from below by the given amount.
+      *
+      * @param depth The depth bound.
+      * @return The resulting state.
+      */
+    private def bound(depth: Int): FunctionState =
       if (depth == 0) self
       else self join FunctionState(depth)
-    }
+
+    /**
+      * Increases the depth by the given amount.
+      *
+      * @param delta The depth increase.
+      * @return The resulting state.
+      */
+    private def increase(delta: Int): FunctionState =
+      if (delta <= 0) self
+      else FunctionState(hypothesis => value(hypothesis) + delta)
   }
 
   /**
