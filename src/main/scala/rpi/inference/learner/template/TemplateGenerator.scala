@@ -2,7 +2,7 @@ package rpi.inference.learner.template
 
 import rpi.Names
 import rpi.inference._
-import rpi.inference.context.Specification
+import rpi.inference.context.{BindingInstance, Specification}
 import rpi.inference.learner.AbstractLearner
 import rpi.util.SetMap
 import rpi.util.ast.Expressions._
@@ -128,33 +128,43 @@ trait TemplateGenerator extends AbstractLearner {
     // create templates
     locations
       .toSeq
-      .map { case (name, locations) =>
+      .flatMap { case (name, locations) =>
         createTemplate(name, locations)
       }
   }
 
   /**
+    * Creates a template with the given name and location.
+    *
+    * If the template is for the recursive predicate and predicate segments are enabled, a template for the append lemma
+    * is returned along with the template for the predicate.
+    *
     * Creates a template with the given name and location accesses.
     *
     * @param name      The name.
     * @param locations The location accesses.
     * @param id        The implicitly passed id used to generate unique ids.
-    * @return The template.
+    * @return The templates.
     */
   private def createTemplate(name: String, locations: Set[ast.LocationAccess])
-                            (implicit id: AtomicInteger): Template = {
+                            (implicit id: AtomicInteger): Seq[Template] = {
     // get specification and create body
     val specification = context.specification(name)
-    val body = {
-      val full = createBody(locations)(specification, id)
-      if (specification.isRecursive && configuration.useSegments()) {
-        val first +: second +: _ = specification.variables
-        val condition = makeInequality(first, second)
-        Truncation(condition, full)
-      } else full
-    }
+    val body = createBody(locations)(specification, id)
     // create template
-    PredicateTemplate(specification, body)
+    if (specification.isRecursive && configuration.useSegments()) {
+      val first +: second +: _ = specification.variables
+      val condition = makeInequality(first, second)
+      val truncated = Truncation(condition, body)
+      // create predicate and lemma template
+      val predicate = PredicateTemplate(specification, truncated)
+      val lemma = createAppendLemma(truncated)
+      Seq(predicate, lemma)
+    } else {
+      // create template
+      val template = PredicateTemplate(specification, body)
+      Seq(template)
+    }
   }
 
   /**
@@ -281,6 +291,48 @@ trait TemplateGenerator extends AbstractLearner {
     // wrap and introduce guard
     val guardId = id.getAndIncrement()
     Guarded(guardId, Wrapped(resource))
+  }
+
+  /**
+    * Returns a template for the append lemma corresponding to a recursive predicate with the given body.
+    *
+    * @param body The body of the recursive predicate.
+    * @return The template for the append lemma.
+    */
+  private def createAppendLemma(body: TemplateExpression): Template = {
+    val specification = context.specification(Names.appendLemma)
+    val Seq(from, to, next) = specification.variables
+    val instance = BindingInstance(specification, Seq(to, next))
+
+    def makeLink(expression: TemplateExpression): TemplateExpression =
+      expression match {
+        case Conjunction(conjuncts) =>
+          val linked = conjuncts.map { conjunct => makeLink(conjunct) }
+          Conjunction(linked)
+        case Wrapped(expression) =>
+          expression match {
+            case ast.PredicateAccessPredicate(predicate, _) =>
+              val recursion = predicate.args.head
+              val adapted = instance.toActual(recursion)
+              val equality = makeEquality(adapted, next)
+              Wrapped(equality)
+            case _ =>
+              val adapted = instance.toActual(expression)
+              Wrapped(adapted)
+          }
+        case Guarded(guardId, body) =>
+          Guarded(guardId, makeLink(body))
+        case Truncation(condition, body) =>
+          val adapted = instance.toActual(condition)
+          Truncation(adapted, makeLink(body))
+      }
+
+    // lemma precondition and postcondition
+    val link = makeLink(body)
+    val precondition = Conjunction(Seq(Wrapped(makeSegment(from, to)), link))
+    val postcondition = Wrapped(makeSegment(from, next))
+    // create lemma template
+    LemmaTemplate(specification, precondition, postcondition)
   }
 
   /**

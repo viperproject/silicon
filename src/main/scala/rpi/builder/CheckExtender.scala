@@ -103,13 +103,13 @@ trait CheckExtender extends ProgramBuilder {
   protected def instrumentStatement(instrumented: ast.Stmt)(implicit hypothesis: Hypothesis, annotations: Seq[Annotation]): Unit
 
   /**
-    * Builds and returns a program with the given methods and inferred predicates.
+    * Builds and returns a program with the given extended methods and inferred predicates.
     *
-    * @param methods    The methods.
+    * @param extended   The extended methods.
     * @param hypothesis The hypothesis containing inferred predicates.
     * @return Teh program.
     */
-  protected def buildProgram(methods: Seq[ast.Method], hypothesis: Hypothesis): ast.Program = {
+  protected def buildProgram(extended: Seq[ast.Method], hypothesis: Hypothesis): ast.Program = {
     // get input program
     val input = context.input
     //  enable or disable heuristics
@@ -121,6 +121,11 @@ trait CheckExtender extends ProgramBuilder {
       val existing = input.predicates
       val inferred = hypothesis.getPredicate(Names.recursive).toSeq
       existing ++ inferred
+    }
+    // add lemmas
+    val methods = {
+      val lemmas = hypothesis.getLemma(Names.appendLemma).toSeq
+      lemmas ++ extended
     }
     // update program
     input.copy(fields = fields, predicates = predicates, methods = methods)(input.pos, input.info, input.errT)
