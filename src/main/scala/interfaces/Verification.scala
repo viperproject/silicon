@@ -126,7 +126,7 @@ case class SiliconMappedCounterexample(internalStore: Store, heap: Iterable[Chun
   val model : Model = nativeModel
   
   override def toString = {
-    val buf = converter.modelAtLabel.map(x => s"model at label: ${x._1}\n${x._2.toString}").mkString("\n")
+    val buf = converter.modelAtLabel.map(x => s"model at label: ${x._1}\n${x._2.toString}\n").mkString("\n")
     s"$buf\non return: \n${converter.extractedModel.toString}"
   } 
   
