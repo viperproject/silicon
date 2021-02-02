@@ -1,5 +1,6 @@
 package viper.silicon.reporting
 
+import scala.util.{Try, Success}
 import viper.silver.verifier.{
   Model,
   ModelEntry,
@@ -82,9 +83,10 @@ case class NullRefEntry(name: String) extends ExtractedModelEntry {
   override def toString = s"Null($name)"
 }
 case class OtherEntry(value: String) extends ExtractedModelEntry {
-  override def toString = s"$value (unhandled type)"
+  override def toString = s"$value"
 }
-case class SeqEntry(name: String, values: List[ExtractedModelEntry]) extends ExtractedModelEntry{
+case class SeqEntry(name: String, values: List[ExtractedModelEntry])
+    extends ExtractedModelEntry {
   //counterexample sequences are often very long. Does it make sense to print
   //all of their entries?
   override def toString = s"($name): [${values.map(_.toString).mkString(", ")}]"
@@ -95,37 +97,49 @@ case class UnprocessedModelEntry(entry: ValueEntry) extends ExtractedModelEntry
 // processed Heap representation:
 sealed trait HeapEntry
 
+case class ExtractedHeap(entries: List[HeapEntry])
+
 case class PredHeapEntry(name: String, args: Array[Term]) extends HeapEntry {
   override def toString = s"$name(${args.mkString(", ")})"
 }
 case class FieldHeapEntry(
     recv: VarEntry,
     field: String,
-    perm: Rational,
-    sort: Sort
+    perm: Option[Rational],
+    sort: Sort,
+    entry: ExtractedModelEntry
 ) extends HeapEntry {
   override def toString = s"$recv.$field"
 }
 
+case class UnresolvedHeapEntry(chunk: Chunk, reason: String) extends HeapEntry {
+  override def toString = s"$chunk (not further processed because: $reason)"
+}
+
 /* basically a 1 to 1 copy of nagini code */
 object Converter {
-  type ExtractedHeap = Map[HeapEntry, ExtractedModelEntry]
-
   def getFunctionValue(
       model: Model,
       fname: String,
       args: Seq[ValueEntry],
       toSort: Sort
   ): ExtractedModelEntry = {
-    val entry: ModelEntry = model.entries(fname)
-    val result: ValueEntry = entry match {
-      case t: ConstantEntry => t
-      case MapEntry(m: Map[Seq[ValueEntry], ValueEntry], els: ValueEntry) =>
-        m.get(args).getOrElse(els)
+    val entry: Option[ModelEntry] = model.entries.get(fname)
+    val result: Option[ValueEntry] = entry match {
+      case Some(t: ConstantEntry) => Some(t)
+      case Some(
+            MapEntry(m: Map[Seq[ValueEntry], ValueEntry], els: ValueEntry)
+          ) =>
+        Some(m.get(args).getOrElse(els))
+      case _ => None
     }
     result match {
-      case ConstantEntry(x)  => getConstantEntry(toSort, x)
-      case entry: ValueEntry => UnprocessedModelEntry(entry)
+      case Some(ConstantEntry(x))  => getConstantEntry(toSort, x)
+      case Some(entry: ValueEntry) => UnprocessedModelEntry(entry)
+      case None =>
+        OtherEntry(
+          s"$fname application but function not found in model (unexpected)"
+        )
     }
   }
 
@@ -140,8 +154,6 @@ object Converter {
     }
   }
 
-  def getSeqEntry(name: String, els: Sort, model: Model) {}
-
   def getConstantEntry(s: Sort, t: String): ExtractedModelEntry = {
     s match {
       case sorts.Ref => VarEntry(t, sorts.Ref)
@@ -151,13 +163,11 @@ object Converter {
           case "true"  => LitBoolEntry(true)
           case "false" => LitBoolEntry(false)
           case x =>
-            println(s"error mapping counterexample : $x not a boolean")
-            OtherEntry(t)
+            OtherEntry(s"expected Boolean but found $x (unexpected)")
         }
-      case sorts.Seq(elementsSort) => VarEntry(t, s) // handle this later
+      case sorts.Seq(_) => VarEntry(t, s) // handle this later
       case _ =>
-        println(s"${t.toString} of sort ${s.toString} not a constant")
-        OtherEntry(t)
+        OtherEntry(s"$t instead of constant (unexpected)")
     }
   }
 
@@ -166,20 +176,21 @@ object Converter {
       case Unit              => OtherEntry("$Snap.unit")
       case IntLiteral(x)     => LitIntEntry(x)
       case t: BooleanLiteral => LitBoolEntry(t.value)
-      //can null() even occur? because null references on heap are always represented by a variable
-      //and from the model we can derive that this variable corresponds to the null reference
-      case Null() => VarEntry(model.entries("$Ref.null").toString, sorts.Ref)
-      case Var(id @ _, sort) =>
+      case Null()            => VarEntry(model.entries("$Ref.null").toString, sorts.Ref)
+      case Var(id, sort) =>
         val key = term.toString
         //this can fail : TODO throw and catch exception
-        val entry = model.entries(key)
+        val entry: Option[ModelEntry] = model.entries.get(key)
         entry match {
-          case t: ApplicationEntry  => UnprocessedModelEntry(t)
-          case ConstantEntry(value) => getConstantEntry(sort, value)
+          case Some(t: ApplicationEntry)  => UnprocessedModelEntry(t)
+          case Some(ConstantEntry(value)) => getConstantEntry(sort, value)
+          case Some(MapEntry(_, _)) =>
+            OtherEntry(s"$id stores a function (unexpected)")
+          case None => OtherEntry(s"Variable $id (not found in model)")
         }
       case App(app, args) =>
         /* not tested yet, not sure for which examples this occurs on heap*/
-        var fname = app.id + "%limited"
+        var fname = s"${app.id}%limited"
         if (!model.entries.contains(fname)) {
           fname = app.id.toString
           if (!model.entries.contains(fname)) {
@@ -192,86 +203,106 @@ object Converter {
           .map(_.asInstanceOf[UnprocessedModelEntry])
           .map(_.entry)
         getFunctionValue(model, fname, argEntries, toSort)
-      case Combine(p0, p1) =>
+      case Combine(_, _) =>
         /* where does this actually occur? usually snap.combines
-      are only found in model not as terms */
+        are only found in model not as terms
+        This is a left-over from nagini, not sure if this needs to be
+        reimplemented
         val p0eval = evaluateTerm(p0, model)
         val p1eval = evaluateTerm(p1, model)
-        s"($$Snap.combine $p0eval $p1eval)"
-        OtherEntry("") //TODO
+         */
+        println("DEBUG: Combine-Term encountered")
+        OtherEntry("Combine-Term (unhandled)") //TODO
       case First(p) =>
         val sub = evaluateTerm(p, model)
         sub match {
           case UnprocessedModelEntry(ApplicationEntry(name, args)) =>
-            assert(name == "$Snap.combine")
-            UnprocessedModelEntry(args(0))
+            if (name == "$Snap.combine") {
+              UnprocessedModelEntry(args(0))
+            } else {
+              OtherEntry(s"First($p) unapplicable (unexpected)")
+            }
+          case _ => OtherEntry(s"First($p) unapplicable (unexpected)")
         }
       case Second(p) =>
         val sub = evaluateTerm(p, model)
         sub match {
           case UnprocessedModelEntry(ApplicationEntry(name, args)) =>
-            assert(name == "$Snap.combine")
-            UnprocessedModelEntry(args(1))
+            if (name == "$Snap.combine") {
+              UnprocessedModelEntry(args(1))
+            } else {
+              OtherEntry("Term where Second() is not applicable")
+            }
+          case _ => OtherEntry("Term where First() is not applicable")
         }
       case SortWrapper(t, to) =>
         val sub = evaluateTerm(t, model)
         val arg = sub match {
-          case UnprocessedModelEntry(p) => p
+          case UnprocessedModelEntry(p) => Some(p)
+          case _                        => None
         }
         val fromSortName: String = translateSort(t.sort)
         val toSortName: String = translateSort(to)
         val fname = s"$$SortWrappers.${fromSortName}To$toSortName"
-        getFunctionValue(model, fname, Seq(arg), to)
+        if (arg == None) {
+          OtherEntry("Sortwrapper(sub) unapplicable (unexpected)")
+        } else {
+          getFunctionValue(model, fname, Seq(arg.get), to)
+        }
 
-      case PredicateLookup(predname, psf, args) =>
+      case PredicateLookup(predname, _, _) =>
         /* not tested! did never occurr in considered examples */
         /* val lookupFuncName: String = s"$$PSF.lookup_$predname"
         val snap = toSnapTree.apply(args)
         val psfVal = evaluateTerm(psf, model)
         val snapVal = evaluateTerm(snap, model) */
         //getFunctionValue(model, lookupFuncName, arg)
-        OtherEntry("PredicateLookup")
+        OtherEntry(s"PredicateLookup $predname (unhandled)")
       case _ =>
-        println("of unhandled type")
         OtherEntry("unhandled Term")
     }
   }
 
   def extractHeap(h: Iterable[Chunk], model: Model): ExtractedHeap = {
-    var target: ExtractedHeap = Map()
+    var entries: List[HeapEntry] = List()
     h foreach {
       case c @ BasicChunk(FieldID, _, _, _, _) =>
-        val (entry, value) = extractField(c, model)
-        target += (entry -> value)
-        println(s"${entry.toString} <- ${value.toString}")
+        val entry = extractField(c, model)
+        entries = entries :+ entry
+        println(s"DEBUG: $entry")
       case c @ BasicChunk(PredicateID, _, _, _, _) =>
         val entry = extractPredicate(c)
         println(entry)
-        target += (entry -> OtherEntry(""))
-      case _ => println("WARNING: not handling non-basic chunks")
+        entries = entries :+ entry
+      case c: BasicChunk =>
+        entries = entries :+ UnresolvedHeapEntry(c, "Magic Wands not supported")
+      case c =>
+        entries =
+          entries :+ UnresolvedHeapEntry(c, "Non-basic chunks not supported")
     }
-    target
+    ExtractedHeap(entries)
   }
 
-  def extractField(
-      chunk: BasicChunk,
-      model: Model
-  ): (HeapEntry, ExtractedModelEntry) = {
+  def extractField(chunk: BasicChunk, model: Model): HeapEntry = {
     val fieldname = chunk.id.name
-    val recvVar = evaluateTerm(chunk.args.head, model).asInstanceOf[VarEntry]
+    val recv = evaluateTerm(chunk.args.head, model)
+    val recvVar: Try[VarEntry] = Try(recv.asInstanceOf[VarEntry])
     // this should always be of type VarEntry
-    val perm: Rational = chunk.perm match {
-      case p: PermLiteral => p.literal
-      case _ =>
-        println(
-          s"Converter: permission field of chunk is not PermLiteral but ${chunk.perm.toString}"
-        )
-        Rational.zero
+
+    val perm: Option[Rational] = chunk.perm match {
+      case p: PermLiteral => Some(p.literal)
+      case _              => None
     }
     val value = evaluateTerm(chunk.snap, model)
-
-    val entry = FieldHeapEntry(recvVar, fieldname, perm, chunk.snap.sort)
-    (entry, value)
+    recvVar match {
+      case Success(varEntry) =>
+        FieldHeapEntry(varEntry, fieldname, perm, chunk.snap.sort, value)
+      case _ =>
+        UnresolvedHeapEntry(
+          chunk,
+          "the receiver term is not a variable (this is unexpected)"
+        )
+    }
   }
 
   def extractPredicate(chunk: BasicChunk): HeapEntry = {
@@ -281,6 +312,53 @@ object Converter {
     //the args in most cases.
     val entry = PredHeapEntry(chunk.id.toString, chunk.args.toArray)
     entry
+  }
+
+  def extractSequence(
+      model: Model,
+      heap: ExtractedHeap,
+      nullRefName: String,
+      name: String,
+      elementSort: Sort,
+      encountered: List[String]
+  ): ExtractedModelEntry = {
+    if (!encountered.contains(name)) {
+      val newEncountered = name :: encountered
+      //hopefully Seq_len can only contain integers
+      val lenTry: Try[Int] = Try(getFunctionValue(
+        model,
+        "Seq_length",
+        Seq(ConstantEntry(name)),
+        sorts.Int
+      ).asInstanceOf[LitIntEntry].value.toInt)
+      lenTry match{
+        case Success(x) =>
+          val len: Int = x 
+          var values: List[ExtractedModelEntry] = List()
+          for (i <- 0 to len) {
+            val valueEntry: ExtractedModelEntry = getFunctionValue(
+              model,
+              "Seq_index",
+              Seq(ConstantEntry(name), ConstantEntry(i.toString)),
+              elementSort
+            )
+            //valueEntry might be a Ref or Sequence and has to be mapped as well
+            val finalEntry: ExtractedModelEntry = mapLocalVar(
+              elementSort,
+              valueEntry,
+              heap,
+              model,
+              newEncountered,
+              nullRefName
+            )
+            values = values :+ finalEntry
+          }
+          SeqEntry(name, values)
+        case _ => OtherEntry("unresolvable-length Sequence (unexpected)")
+      }
+    } else {
+      RecursiveRefEntry(name)
+    }
   }
 
   def mapLocalVar(
@@ -304,11 +382,10 @@ object Converter {
           NullRefEntry(name)
         } else if (!encountered.contains(name)) {
           val newEncountered = name :: encountered
-          for ((entry: HeapEntry, value: ExtractedModelEntry) <- heap) {
+          for (entry: HeapEntry <- heap.entries) {
             entry match {
-              case FieldHeapEntry(recv, field, perm @ _, sort) =>
-                if (termEval.toString == recv.toString) {
-                  //if their names are the same: (dont think this can be true in any other way)
+              case FieldHeapEntry(recv, field, perm @ _, sort, value) =>
+                if (termEval == recv) {
                   val recEntry =
                     mapLocalVar(
                       sort,
@@ -327,34 +404,7 @@ object Converter {
         } else {
           RecursiveRefEntry(name)
         }
-      case sorts.Seq(els) =>
-        //not sure if sequences can have recursion but let's make sure
-        if (!encountered.contains(name)) {
-          val newEncountered = name :: encountered
-          //hopefully Seq_len can only contain integers
-          val len: Int = getFunctionValue(
-            model,
-            "Seq_length",
-            Seq(ConstantEntry(name)),
-            sorts.Int
-          ).asInstanceOf[LitIntEntry].value.toInt
-          var values: List[ExtractedModelEntry] = List()
-          for (i <- 0 to len) {
-            val valueEntry: ExtractedModelEntry = getFunctionValue(
-              model,
-              "Seq_index",
-              Seq(ConstantEntry(name), ConstantEntry(i.toString)),
-              els
-            )
-            //valueEntry might be a Ref or Sequence and has to be mapped as well
-            val finalEntry: ExtractedModelEntry = mapLocalVar(els, valueEntry, heap, model, newEncountered, nullRefName)
-            values = values :+ valueEntry
-          }
-          SeqEntry(name, values)
-        } else {
-          RecursiveRefEntry(name)
-        }
-
+      case sorts.Seq(elementSort) => extractSequence(model, heap, nullRefName, name, elementSort, encountered)
       case _ => termEval
     }
 
@@ -367,7 +417,6 @@ object Converter {
       case ast.Perm                  => sorts.Perm
       case ast.Ref                   => sorts.Ref
       case ast.SeqType(elementsType) => sorts.Seq(typeToSort(elementsType))
-      //other types to be implemented
     }
   }
 
@@ -405,9 +454,9 @@ case class Converter(
     heap: Iterable[Chunk],
     oldHeaps: State.OldHeaps
 ) {
-  val extractedHeap: Converter.ExtractedHeap =
+  val extractedHeap: ExtractedHeap =
     Converter.extractHeap(heap, model)
-  val extractedHeaps: Map[String, Converter.ExtractedHeap] =
+  val extractedHeaps: Map[String, ExtractedHeap] =
     oldHeaps.map(x => x._1 -> Converter.extractHeap(x._2.values, model))
 
   val extractedModel = Converter.mapHeapToStore(store, extractedHeap, model)
