@@ -64,14 +64,10 @@ trait CheckExtender extends ProgramBuilder {
     * @param hypothesis The implicitly passed current hypothesis.
     * @return The processed sequence.
     */
-  protected def processSequence(sequence: ast.Seqn)(implicit hypothesis: Hypothesis): ast.Seqn = {
-    // process statements
-    val processed = scoped {
+  protected def processSequence(sequence: ast.Seqn)(implicit hypothesis: Hypothesis): ast.Seqn =
+    makeScope {
       sequence.ss.foreach { statement => processStatement(statement) }
     }
-    // update sequence
-    sequence.copy(ss = processed)(sequence.pos, sequence.info, sequence.errT)
-  }
 
   /**
     * Processes the given statement, i.e., processes all instrumented statements appearing in the statement.

@@ -16,9 +16,9 @@ object Names {
     */
   val invariant = "inv"
 
-  val snapshot = "snap"
+  val snapshot = "s"
 
-  val permission = "perm"
+  val permission = "p"
 
   /**
     * The name used for the recursive predicate.

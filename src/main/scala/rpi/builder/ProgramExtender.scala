@@ -5,7 +5,6 @@ import rpi.inference.Hypothesis
 import rpi.inference.annotation.Annotation
 import rpi.util.ast.{Cut, ValueInfo}
 import viper.silver.ast
-import viper.silver.ast.Stmt
 
 /**
   * A program extender used to annotate the input program with inferred specifications.
@@ -38,7 +37,14 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
     buildProgram(methods, hypothesis)
   }
 
-  override protected def instrumentStatement(instrumented: Stmt)(implicit hypothesis: Hypothesis, annotations: Seq[Annotation]): Unit =
+  override protected def processSequence(sequence: ast.Seqn)(implicit hypothesis: Hypothesis): ast.Seqn = {
+    // process sequence
+    val processed = super.processSequence(sequence)
+    // preserve declarations and meta information
+    sequence.copy(ss = processed.ss)(sequence.pos, sequence.info, sequence.errT)
+  }
+
+  override protected def instrumentStatement(instrumented: ast.Stmt)(implicit hypothesis: Hypothesis, annotations: Seq[Annotation]): Unit =
     instrumented match {
       case ast.Seqn(statements, _) =>
         statements.foreach { statement => instrumentStatement(statement) }
