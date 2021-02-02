@@ -328,9 +328,11 @@ trait TemplateGenerator extends AbstractLearner {
       }
 
     // lemma precondition and postcondition
+    val before = makeResource(makeSegment(from, to))
+    val after = makeResource(makeSegment(from, next))
     val link = makeLink(body)
-    val precondition = Conjunction(Seq(Wrapped(makeSegment(from, to)), link))
-    val postcondition = Wrapped(makeSegment(from, next))
+    val precondition = Conjunction(Seq(Wrapped(before), link))
+    val postcondition = Wrapped(after)
     // create lemma template
     LemmaTemplate(specification, precondition, postcondition)
   }

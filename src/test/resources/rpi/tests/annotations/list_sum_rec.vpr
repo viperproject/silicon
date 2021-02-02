@@ -1,12 +1,12 @@
 field n: Ref
 field v: Int
 
-method sum(a: Ref) returns (r: Int)
+method sum(a: Ref) returns (s: Int)
 {
     if (a == null) {
-        r := 0
+        s := 0
     } else {
-        r := sum(a.n)
-        r := r + a.v
+        s := sum(a.n)
+        s := s + a.v
     }
 }
