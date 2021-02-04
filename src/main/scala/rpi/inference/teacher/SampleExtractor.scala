@@ -3,7 +3,8 @@ package rpi.inference.teacher
 import rpi.Names
 import rpi.inference.context.Instance
 import rpi.inference._
-import rpi.inference.teacher.state.{Adaptor, ModelEvaluator, Snapshot, StateEvaluator}
+import rpi.inference.teacher.query.Query
+import rpi.inference.teacher.state._
 import rpi.util.ast.ValueInfo
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silver.ast
@@ -13,7 +14,7 @@ import viper.silver.verifier.reasons.InsufficientPermission
 /**
   * Extracts samples from verification errors.
   */
-object SampleExtractor {
+trait SampleExtractor extends AbstractTeacher {
   /**
     * Type shortcut for counter examples.
     */
@@ -22,11 +23,11 @@ object SampleExtractor {
   /**
     * Extracts a sample from the given verification error corresponding to a self-framing check.
     *
-    * @param error   The verification error.
-    * @param context The context object.
+    * @param error The verification error.
+    * @param query The query that caused the error.
     * @return The extracted sample.
     */
-  def extractFraming(error: VerificationError, context: QueryContext): Sample = {
+  def framingSample(error: VerificationError, query: Query): Sample = {
     println(error)
     // get counter example and offending location
     val (counter, offending, Some(location)) = extractInformation[ast.LocationAccess](error)
@@ -34,8 +35,8 @@ object SampleExtractor {
     // get label and instance
     val (label, instance) = {
       val heaps = counter.state.oldHeaps
-      context
-        .allSnapshots
+      query
+        .snapshots
         .filter { case (label, _) => heaps.contains(label) }
         .head
     }
@@ -61,14 +62,11 @@ object SampleExtractor {
   /**
     * Extracts a sample from the given verification error corresponding to a basic check.
     *
-    * @param error        The verification error.
-    * @param checkContext The context object.
+    * @param error The verification error.
+    * @param query The query that caused the error.
     * @return The extracted sample.
     */
-  def extractBasic(error: VerificationError, checkContext: QueryContext): Sample = {
-    // read configuration
-    val noInlining = checkContext.configuration.noInlining()
-
+  def basicSample(error: VerificationError, query: Query): Sample = {
     println(error)
     // get counter example, offending location, and context info
     val (counter, offending, info) = extractInformation[Instance](error)
@@ -80,8 +78,8 @@ object SampleExtractor {
     // get state snapshots
     val (currentSnapshot, otherSnapshots) = {
       // gather all encountered state snapshots
-      val encountered = checkContext
-        .allSnapshots
+      val encountered = query
+        .snapshots
         .flatMap { case (label, instance) =>
           if (siliconState.oldHeaps.contains(label)) {
             //Snapshot(label, instance, state, evaluator)
@@ -111,7 +109,7 @@ object SampleExtractor {
     // get current location
     val currentLocation = info match {
       case Some(instance) =>
-        if (noInlining || Names.isRecursive(instance.name)) instance.toActual(offending)
+        if (configuration.noInlining() || Names.isRecursive(instance.name)) instance.toActual(offending)
         else offending
       case _ => offending
     }
@@ -167,7 +165,7 @@ object SampleExtractor {
         // evaluate permission amount
         val permission = {
           val snapshot = currentSnapshot.get
-          val name = checkContext.getName(snapshot.label, currentLocation)
+          val name = query.name(snapshot.label, currentLocation)
           snapshot.state.evaluatePermission(name)
         }
         // we want to require the missing permission form an upstream specification,

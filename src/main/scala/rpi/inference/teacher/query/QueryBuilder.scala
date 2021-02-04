@@ -1,15 +1,14 @@
 package rpi.inference.teacher.query
 
-import rpi.{Configuration, Names}
+import rpi.Names
 import rpi.builder.{CheckExtender, Folding}
-import rpi.inference.context.{Check, Context, IdentityInstance, Instance}
+import rpi.inference.context._
 import rpi.inference.Hypothesis
 import rpi.inference.annotation.Annotation
-import rpi.inference.teacher.QueryContext
 import rpi.util.ast.Expressions._
 import rpi.util.Namespace
 import rpi.util.ast.Statements._
-import rpi.util.ast.{Comment, Cut, ValueInfo}
+import rpi.util.ast._
 import viper.silver.ast
 
 /**
@@ -23,9 +22,9 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
     */
   private var namespace: Namespace = _
 
-  private var query: QueryContext = _
+  private var query: PartialQuery = _
 
-  def framingQuery(hypothesis: Hypothesis): (ast.Program, QueryContext) = {
+  def framingQuery(hypothesis: Hypothesis): Query = {
     /**
       * Helper method that inhales the given expression conjunct-wise. The expression is implicitly rewritten to have
       * its conjuncts at the top level by pushing implications inside.
@@ -95,10 +94,10 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
     // build program
     val program = buildProgram(methods, dummy)
     println(program)
-    (program, query)
+    query(program)
   }
 
-  def basicQuery(checks: Seq[Check], hypothesis: Hypothesis): (ast.Program, QueryContext) = {
+  def basicQuery(checks: Seq[Check], hypothesis: Hypothesis): Query = {
     // reset
     clear()
     // build method for each check
@@ -109,7 +108,7 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
     // build program
     val program = buildProgram(methods, hypothesis)
     println(program)
-    (program, query)
+    query(program)
   }
 
   protected override def instrumentStatement(instrumented: ast.Stmt)(implicit hypothesis: Hypothesis, annotations: Seq[Annotation]): Unit =
@@ -227,7 +226,7 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
     def extractConditions(expression: ast.Exp): Seq[ast.Exp] =
       expression match {
         case access: ast.FieldAccess =>
-          val name = query.getName(label, access)
+          val name = query.name(label, access)
           val variable = ast.LocalVar(name, ast.Perm)()
           Seq(ast.PermGtCmp(variable, ast.NoPerm()())())
         case _ => Seq.empty
@@ -277,11 +276,6 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
     addAssign(variable, expression)
   }
 
-  private def clear(): Unit = {
-    namespace = context.namespace
-    query = new QueryContext(configuration)
-  }
-
   private def buildMethod(name: String, body: ast.Seqn): ast.Method = {
     val declarations = body
       .deepCollect { case variable: ast.LocalVar => variable }
@@ -291,4 +285,8 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
     ast.Method(name, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Some(scoped))()
   }
 
+  private def clear(): Unit = {
+    namespace = context.namespace
+    query = new PartialQuery
+  }
 }

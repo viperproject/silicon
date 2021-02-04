@@ -3,16 +3,33 @@ package rpi.inference.teacher
 import rpi.Configuration
 import rpi.inference.context.{Context, Instance}
 import rpi.inference._
-import rpi.inference.teacher.query.QueryBuilder
+import rpi.inference.teacher.query.{Query, QueryBuilder}
 import viper.silver.ast
 import viper.silver.verifier.{Failure, Success, VerificationError}
+
+trait AbstractTeacher {
+  /**
+    * Returns the context.
+    *
+    * @return The context.
+    */
+  def context: Context
+
+  /**
+    * Returns the configuration.
+    *
+    * @return The configuration.
+    */
+  def configuration: Configuration =
+    context.configuration
+}
 
 /**
   * The teacher providing the samples.
   *
   * @param context The pointer to the context.
   */
-class Teacher(val context: Context) {
+class Teacher(val context: Context) extends AbstractTeacher with SampleExtractor {
   /**
     * The builder used to build the programs used to check hypotheses.
     */
@@ -41,30 +58,31 @@ class Teacher(val context: Context) {
     // self-framing check
     val framing = {
       // TODO: Only perform if syntactic structure suggests that framing might be an issue.
-      val (check, context) = builder.framingQuery(hypothesis)
-      execute(check, error => SampleExtractor.extractFraming(error, context))
+      val query = builder.framingQuery(hypothesis)
+      execute(query, error => framingSample(error, query))
     }
     // other checks, if hypothesis is self-framing
     if (framing.isEmpty)
       context
         .batches
         .flatMap { batch =>
-          val (check, context) = builder.basicQuery(batch, hypothesis)
-          execute(check, error => SampleExtractor.extractBasic(error, context))
+          val query = builder.basicQuery(batch, hypothesis)
+          execute(query, error => basicSample(error, query))
         }
     else framing
   }
 
   /**
-    * Executes the check represented by the given program and uses the given extraction method to produce samples in
-    * case there are failures.
+    * Executes the given query and uses the given extraction function to produce samples in the case of a failure.
     *
-    * @param program The check program.
+    * @param query   The query
     * @param extract The method extracting samples from verification errors.
     * @return The extracted samples.
     */
-  private def execute(program: ast.Program, extract: VerificationError => Sample): Seq[Sample] =
-    context.verifier.verify(program) match {
+  private def execute(query: Query, extract: VerificationError => Sample): Seq[Sample] = {
+    val program = query.program
+    val result = context.verifier.verify(program)
+    result match {
       case Success => Seq.empty
       case Failure(errors) => errors
         .map {
@@ -72,6 +90,7 @@ class Teacher(val context: Context) {
           case error => sys.error(s"Unexpected verification failure: $error")
         }
     }
+  }
 }
 
 /**
@@ -79,7 +98,8 @@ class Teacher(val context: Context) {
   */
 // TODO: No configuration here.
 // TODO: Probably rework entirely.
-class QueryContext(val configuration: Configuration) {
+@deprecated
+class _QC(val configuration: Configuration) {
   /**
     * The labels and instances of the inhaled and exhaled states.
     */
