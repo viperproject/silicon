@@ -60,18 +60,26 @@ case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
 sealed trait ExtractedModelEntry
 case class LitIntEntry(value: BigInt) extends ExtractedModelEntry {
   override def toString = value.toString
+  def negate: LitIntEntry = LitIntEntry(-value)
 }
 case class LitBoolEntry(value: Boolean) extends ExtractedModelEntry {
   override def toString = value.toString
 }
-case class RefEntry(name: String, fields: Map[String, ExtractedModelEntry])
-    extends ExtractedModelEntry {
+case class RefEntry(
+    name: String,
+    fields: Map[String, (ExtractedModelEntry, Option[Rational])]
+) extends ExtractedModelEntry {
   override def toString: String = {
     val buf = fields
-      .map(x => s"\t${x._1} <- ${x._2.toString.split("\n").mkString("\n\t")}\n")
+      .map(x =>
+        s"\t${x._1}(perm: ${x._2._2.map(_.toString).getOrElse("?")}) <- ${x._2._1.toString.split("\n").mkString("\n\t")}\n"
+      )
       .mkString("")
     s"Ref ($name) {\n$buf}"
   }
+}
+case class NullRefEntry(name: String) extends ExtractedModelEntry {
+  override def toString = s"Null($name)"
 }
 case class RecursiveRefEntry(name: String) extends ExtractedModelEntry {
   override def toString = s"recursive reference to $name"
@@ -79,9 +87,7 @@ case class RecursiveRefEntry(name: String) extends ExtractedModelEntry {
 case class VarEntry(name: String, sort: Sort) extends ExtractedModelEntry {
   override def toString = name
 }
-case class NullRefEntry(name: String) extends ExtractedModelEntry {
-  override def toString = s"Null($name)"
-}
+
 case class OtherEntry(value: String) extends ExtractedModelEntry {
   override def toString = s"$value"
 }
@@ -116,7 +122,6 @@ case class UnresolvedHeapEntry(chunk: Chunk, reason: String) extends HeapEntry {
   override def toString = s"$chunk (not further processed because: $reason)"
 }
 
-/* basically a 1 to 1 copy of nagini code */
 object Converter {
   def getFunctionValue(
       model: Model,
@@ -125,21 +130,11 @@ object Converter {
       toSort: Sort
   ): ExtractedModelEntry = {
     val entry: Option[ModelEntry] = model.entries.get(fname)
-    val result: Option[ValueEntry] = entry match {
-      case Some(t: ConstantEntry) => Some(t)
-      case Some(
-            MapEntry(m: Map[Seq[ValueEntry], ValueEntry], els: ValueEntry)
-          ) =>
-        Some(m.get(args).getOrElse(els))
-      case _ => None
-    }
-    result match {
-      case Some(ConstantEntry(x))  => getConstantEntry(toSort, x)
-      case Some(entry: ValueEntry) => UnprocessedModelEntry(entry)
-      case None =>
-        OtherEntry(
-          s"$fname application but function not found in model (unexpected)"
-        )
+    entry match {
+      case Some(MapEntry(m, els)) =>
+        getConstantEntry(toSort, m.get(args).getOrElse(els))
+      case Some(m) => getConstantEntry(toSort, m)
+      case None    => OtherEntry("${fname}-application but not found in model")
     }
   }
 
@@ -154,20 +149,41 @@ object Converter {
     }
   }
 
-  def getConstantEntry(s: Sort, t: String): ExtractedModelEntry = {
+  def getConstantEntry(s: Sort, m: ModelEntry): ExtractedModelEntry = {
     s match {
-      case sorts.Ref => VarEntry(t, sorts.Ref)
-      case sorts.Int => LitIntEntry(BigInt(t))
+      case sorts.Ref => VarEntry(m.toString, sorts.Ref)
+      case sorts.Int =>
+        m match {
+          case ConstantEntry(x) => LitIntEntry(BigInt(x))
+          case ApplicationEntry(name, args) =>
+            //this is needed because negative integers are stored as ApplicationEntries
+            val res = getConstantEntry(s, args(0))
+            res match {
+              case l @ LitIntEntry(_) =>
+                if (name == "-") {
+                  l.negate
+                } else {
+                  //are there other special cases for integers?
+                  OtherEntry(s"$m: non constant ApplicationEntry (unexpected)")
+                }
+              case _ => OtherEntry(s"$m instead of integer literal (unexpected)")
+            }
+          case _ => OtherEntry(s"$m instead of integer literal (unexpected)")
+        }
       case sorts.Bool =>
-        t.toLowerCase() match {
+        m.toString.toLowerCase() match {
           case "true"  => LitBoolEntry(true)
           case "false" => LitBoolEntry(false)
           case x =>
-            OtherEntry(s"expected Boolean but found $x (unexpected)")
+            OtherEntry(s"$x instead of boolean literal (unexpected)")
         }
-      case sorts.Seq(_) => VarEntry(t, s) // handle this later
+      case sorts.Seq(_) => VarEntry(m.toString, s) // will be resolved later
       case _ =>
-        OtherEntry(s"$t instead of constant (unexpected)")
+        m match {
+          case e: ValueEntry => UnprocessedModelEntry(e)
+          case e: MapEntry =>
+            OtherEntry(s"$e ApplicationEntry as Constant (unexpected)")
+        }
     }
   }
 
@@ -177,17 +193,15 @@ object Converter {
       case IntLiteral(x)     => LitIntEntry(x)
       case t: BooleanLiteral => LitBoolEntry(t.value)
       case Null()            => VarEntry(model.entries("$Ref.null").toString, sorts.Ref)
-      case Var(id, sort) =>
-        val key = term.toString
-        //this can fail : TODO throw and catch exception
+      case Var(_, sort) =>
+        val key: String = term.toString
         val entry: Option[ModelEntry] = model.entries.get(key)
-        entry match {
-          case Some(t: ApplicationEntry)  => UnprocessedModelEntry(t)
-          case Some(ConstantEntry(value)) => getConstantEntry(sort, value)
-          case Some(MapEntry(_, _)) =>
-            OtherEntry(s"$id stores a function (unexpected)")
-          case None => OtherEntry(s"Variable $id (not found in model)")
-        }
+        entry
+          .map(x => getConstantEntry(sort, x))
+          .getOrElse(
+            OtherEntry(s"$term variable not found in model (unexpected)")
+          )
+
       case App(app, args) =>
         /* not tested yet, not sure for which examples this occurs on heap*/
         var fname = s"${app.id}%limited"
@@ -204,8 +218,7 @@ object Converter {
           .map(_.entry)
         getFunctionValue(model, fname, argEntries, toSort)
       case Combine(_, _) =>
-        /* where does this actually occur? usually snap.combines
-        are only found in model not as terms
+        /*
         This is a left-over from nagini, not sure if this needs to be
         reimplemented
         val p0eval = evaluateTerm(p0, model)
@@ -231,9 +244,9 @@ object Converter {
             if (name == "$Snap.combine") {
               UnprocessedModelEntry(args(1))
             } else {
-              OtherEntry("Term where Second() is not applicable")
+              OtherEntry(s"Second($p) unapplicable (unexpected)")
             }
-          case _ => OtherEntry("Term where First() is not applicable")
+          case _ => OtherEntry(s"Second($p) unapplicable (unexpected)")
         }
       case SortWrapper(t, to) =>
         val sub = evaluateTerm(t, model)
@@ -259,7 +272,7 @@ object Converter {
         //getFunctionValue(model, lookupFuncName, arg)
         OtherEntry(s"PredicateLookup $predname (unhandled)")
       case _ =>
-        OtherEntry("unhandled Term")
+        OtherEntry(s"$term (unhandled)")
     }
   }
 
@@ -272,7 +285,7 @@ object Converter {
         println(s"DEBUG: $entry")
       case c @ BasicChunk(PredicateID, _, _, _, _) =>
         val entry = extractPredicate(c)
-        println(entry)
+        println(s"DEBUG (heap): $entry")
         entries = entries :+ entry
       case c: BasicChunk =>
         entries = entries :+ UnresolvedHeapEntry(c, "Magic Wands not supported")
@@ -300,7 +313,7 @@ object Converter {
       case _ =>
         UnresolvedHeapEntry(
           chunk,
-          "the receiver term is not a variable (this is unexpected)"
+          "the receiver term is not a variable (unexpected)"
         )
     }
   }
@@ -325,15 +338,17 @@ object Converter {
     if (!encountered.contains(name)) {
       val newEncountered = name :: encountered
       //hopefully Seq_len can only contain integers
-      val lenTry: Try[Int] = Try(getFunctionValue(
-        model,
-        "Seq_length",
-        Seq(ConstantEntry(name)),
-        sorts.Int
-      ).asInstanceOf[LitIntEntry].value.toInt)
-      lenTry match{
+      val lenTry: Try[Int] = Try(
+        getFunctionValue(
+          model,
+          "Seq_length",
+          Seq(ConstantEntry(name)),
+          sorts.Int
+        ).asInstanceOf[LitIntEntry].value.toInt
+      )
+      lenTry match {
         case Success(x) =>
-          val len: Int = x 
+          val len: Int = x
           var values: List[ExtractedModelEntry] = List()
           for (i <- 0 to len) {
             val valueEntry: ExtractedModelEntry = getFunctionValue(
@@ -374,7 +389,7 @@ object Converter {
       case sorts.Int  => termEval
       case sorts.Bool => termEval
       case sorts.Ref =>
-        var map: Map[String, ExtractedModelEntry] = Map()
+        var map: Map[String, (ExtractedModelEntry, Option[Rational])] = Map()
         //if Sort is Ref then termEval has to be of type VarEntry (?)
 
         //this list helps to recognize and handle cyclic references
@@ -395,7 +410,7 @@ object Converter {
                       newEncountered,
                       nullRefName
                     )
-                  map += (field -> recEntry)
+                  map += (field -> (recEntry, perm))
                 }
               case _ =>
             }
@@ -404,7 +419,15 @@ object Converter {
         } else {
           RecursiveRefEntry(name)
         }
-      case sorts.Seq(elementSort) => extractSequence(model, heap, nullRefName, name, elementSort, encountered)
+      case sorts.Seq(elementSort) =>
+        extractSequence(
+          model,
+          heap,
+          nullRefName,
+          name,
+          elementSort,
+          encountered
+        )
       case _ => termEval
     }
 
@@ -437,7 +460,7 @@ object Converter {
           localtype = typeToSort(typ)
           "Result()"
       }
-      println(s"Term: $term")
+      println(s"Debug (mapping): $term")
       val termEval = evaluateTerm(term, model)
       val entry =
         mapLocalVar(localtype, termEval, heap, model, List(), nullRefName)
@@ -454,14 +477,14 @@ case class Converter(
     heap: Iterable[Chunk],
     oldHeaps: State.OldHeaps
 ) {
-  val extractedHeap: ExtractedHeap =
+  def extractedHeap: ExtractedHeap =
     Converter.extractHeap(heap, model)
-  val extractedHeaps: Map[String, ExtractedHeap] =
+  def extractedHeaps: Map[String, ExtractedHeap] =
     oldHeaps.map(x => x._1 -> Converter.extractHeap(x._2.values, model))
 
-  val extractedModel = Converter.mapHeapToStore(store, extractedHeap, model)
+  def extractedModel = Converter.mapHeapToStore(store, extractedHeap, model)
 
-  val modelAtLabel: Map[String, ExtractedModel] = extractedHeaps.map(x =>
+  def modelAtLabel: Map[String, ExtractedModel] = extractedHeaps.map(x =>
     (x._1 -> Converter.mapHeapToStore(store, x._2, model))
   )
 }

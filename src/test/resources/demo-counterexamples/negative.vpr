@@ -1,0 +1,5 @@
+method fun(x:Int)
+  requires x < 0
+{
+  assert(false)
+}
