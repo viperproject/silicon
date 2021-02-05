@@ -31,26 +31,8 @@ import viper.silicon.state.terms.{
   Rational,
   PermLiteral
 }
-/* Explanation: (to be removed later)
-    To use these new extracted counterexamples, you can use the flag "--counterexample mapped"
-    The new trait ExtractedModelEntry should make the counterexamples more readable and extract
-    information from the heap, but heap values such as predicates can still be accessed,
-    also in a more processed way since all the first/second/Sortwrappers should be gone now and
-    replaced with their corresponding values in the extracted Heap fields of the converter class
 
-    A lot of types like sequences etc are not handled yet, and I am not sure if I plan to do so
-    since they are not used in Rust
-
-    The various parts in this file should probably be moved out of the interfaces package,
-    but for now to keep everything in one place is simpler to work on it.
-
-    To see the advantage of these new counterexamples you can run it on the
-    files in src/test/resourcers/demo-counterexamples, the file simple-refs-rec.vpr is
-    probably the most interesting.
-
- */
-
-//Classes for final extracted Model Entries
+//Classes for extracted Model Entries
 case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
   override def toString: String = {
     entries.map(x => s"${x._1} <- ${x._2.toString}").mkString("\n")
@@ -223,7 +205,6 @@ object Converter {
           .map(t => evaluateTerm(t, model))
           .map(_.asInstanceOf[UnprocessedModelEntry])
           .map(_.entry)
-        println("DEBUG: App encountered")
         getFunctionValue(model, fname, argEntries, toSort)
 
       case Combine(p0, p1) =>
@@ -299,10 +280,8 @@ object Converter {
       case c @ BasicChunk(FieldID, _, _, _, _) =>
         val entry = extractField(c, model)
         entries = entries :+ entry
-        println(s"DEBUG (heap field): $entry")
       case c @ BasicChunk(PredicateID, _, _, _, _) =>
         val entry = extractPredicate(c, model)
-        println(s"DEBUG (heap predicate): $entry")
         entries = entries :+ entry
       case c: BasicChunk =>
         entries = entries :+ UnresolvedHeapEntry(c, "Magic Wands not supported")
@@ -325,7 +304,6 @@ object Converter {
       case _ => None
     }
     val value = evaluateTerm(chunk.snap, model)
-    println(s"DEBUG field value: $value")
     recvVar match {
       case Success(varEntry) =>
         FieldHeapEntry(varEntry, fieldname, perm, chunk.snap.sort, value)
@@ -479,7 +457,6 @@ object Converter {
           localtype = typeToSort(typ)
           "Result()"
       }
-      println(s"Debug (mapping): $term")
       val termEval = evaluateTerm(term, model)
       val entry =
         mapLocalVar(localtype, termEval, heap, model, List(), nullRefName)
