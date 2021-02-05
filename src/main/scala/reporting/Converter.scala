@@ -42,7 +42,6 @@ case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
 sealed trait ExtractedModelEntry
 case class LitIntEntry(value: BigInt) extends ExtractedModelEntry {
   override def toString: String = value.toString
-  def negate: LitIntEntry = LitIntEntry(-value)
 }
 case class LitBoolEntry(value: Boolean) extends ExtractedModelEntry {
   override def toString: String = value.toString
@@ -146,16 +145,9 @@ object Converter {
           case ApplicationEntry(name, args) =>
             //this is needed because negative integers are stored as ApplicationEntries
             val res = getConstantEntry(s, args.head)
-            res match {
-              case l @ LitIntEntry(_) =>
-                if (name == "-") {
-                  l.negate
-                } else {
-                  //are there other special cases for integers?
-                  OtherEntry(s"$m", "ApplicationEntry instead of constant")
-                }
-              case _ =>
-                OtherEntry(s"$m", "not an integer literal")
+            (res, name) match {
+              case (LitIntEntry(x), "-") => LitIntEntry(-x)
+              case _ => OtherEntry(s"$m", "not an integer literal")
             }
           case _ => OtherEntry(s"$m", "not an integer literal")
         }
