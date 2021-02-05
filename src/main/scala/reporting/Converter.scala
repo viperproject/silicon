@@ -93,8 +93,6 @@ case class OtherEntry(value: String, problem: String = "") extends ExtractedMode
 }
 case class SeqEntry(name: String, values: List[ExtractedModelEntry])
     extends ExtractedModelEntry {
-  //counterexample sequences are often very long. Does it make sense to print
-  //all of their entries?
   override def toString = s"($name): [${values.map(_.toString).mkString(", ")}]"
 }
 
@@ -225,6 +223,7 @@ object Converter {
           .map(_.entry)
         println("DEBUG: App encountered")
         getFunctionValue(model, fname, argEntries, toSort)
+      
       case Combine(p0, p1) =>
         //assuming Combine can only contain other snap.combine and snap.unit
         val p0Eval = evaluateTerm(p0, model)
@@ -236,6 +235,7 @@ object Converter {
             val entry = ApplicationEntry("$Snap.combine", Seq(e0,e1))
             UnprocessedModelEntry(entry)
           case _ => OtherEntry(s"$term", "unhandled argument terms")        }
+      
       case First(p) =>
         val sub = evaluateTerm(p, model)
         sub match {
@@ -248,6 +248,7 @@ object Converter {
           case OtherEntry(t, _) => OtherEntry(s"First($t)", "unapplicable")
           case _ => OtherEntry(s"First($sub)", "unapplicable")
         }
+      
       case Second(p) =>
         val sub = evaluateTerm(p, model)
         sub match {
@@ -260,6 +261,7 @@ object Converter {
           case OtherEntry(t, _) => OtherEntry(s"Second($t)", "unapplicable")
           case _ => OtherEntry(s"Second($sub)", "unapplicable")
         }
+
       case SortWrapper(t, to) =>
         val sub = evaluateTerm(t, model)
         val fromSortName: String = translateSort(t.sort)
@@ -271,6 +273,7 @@ object Converter {
           case OtherEntry(t, _) => OtherEntry(s"SortWrapper($t)", "unapplicable")
           case _ => OtherEntry(s"SortWrapper($t)", "unapplicable")
         }
+
       case PredicateLookup(predname, _, _) =>
         /* not tested! did never occurr in considered examples */
         /* val lookupFuncName: String = s"$$PSF.lookup_$predname"
@@ -279,6 +282,7 @@ object Converter {
         val snapVal = evaluateTerm(snap, model) */
         //getFunctionValue(model, lookupFuncName, arg)
         OtherEntry(s"PredicateLookup($predname)", "unhandled")
+      
       case _ =>
         OtherEntry(s"$term", "unhandled")
     }
@@ -441,7 +445,6 @@ object Converter {
         )
       case _ => termEval
     }
-
   }
 
   def typeToSort(typ: ast.Type): Sort = {
