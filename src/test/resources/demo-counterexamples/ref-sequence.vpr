@@ -1,0 +1,7 @@
+field seq: Seq[Int]
+
+method foo(x:Ref)
+  requires acc(x.seq) && |x.seq| > 2
+{
+  assert(false)
+}
