@@ -1,5 +1,6 @@
 method fun(x:Int)
   requires x < 0
 {
+  var y: Int := -x
   assert(false)
 }

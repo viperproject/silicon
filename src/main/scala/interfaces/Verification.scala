@@ -91,6 +91,7 @@ case class Failure /*[ST <: Store[ST],
 /* counterexamples defined in silver.verifier */
 trait SiliconCounterexample extends Counterexample {
   val internalStore: Store
+
   def store: Map[String, Term] = internalStore.values.map { case (k, v) =>
     k.name -> v
   }
@@ -123,6 +124,7 @@ case class SiliconVariableCounterexample(
         }
     )
   }
+
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconVariableCounterexample(s, nativeModel)
   }
@@ -137,7 +139,7 @@ case class SiliconMappedCounterexample(
 
   val converter: Converter =
     Converter(nativeModel, internalStore, heap, oldHeaps)
-
+  
   val model: Model = nativeModel
 
   override def toString: String = {
