@@ -29,7 +29,8 @@ import viper.silicon.state.terms.{
   SortWrapper,
   PredicateLookup,
   Rational,
-  PermLiteral
+  PermLiteral,
+  toSnapTree
 }
 
 //Classes for extracted Model Entries
@@ -39,13 +40,37 @@ case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
   }
 }
 
-sealed trait ExtractedModelEntry
+sealed trait ExtractedModelEntry{
+  def asValueEntry: ValueEntry
+}
+
 case class LitIntEntry(value: BigInt) extends ExtractedModelEntry {
   override def toString: String = value.toString
+  def asValueEntry = {
+    if (value < 0){
+      ApplicationEntry("-", Seq(ConstantEntry((-value).toString)))
+    } else {
+      ConstantEntry(value.toString)
+    }
+  }
 }
+
 case class LitBoolEntry(value: Boolean) extends ExtractedModelEntry {
   override def toString: String = value.toString
+  def asValueEntry = ConstantEntry(value.toString)
 }
+
+case class LitPermEntry(value: Double) extends ExtractedModelEntry {
+  override def toString: String = value.toString
+  def asValueEntry = {
+    if (value < 0.0){
+      ApplicationEntry("-", Seq(ConstantEntry((-value).toString)))
+    } else {
+      ConstantEntry(value.toString)
+    }
+  }
+}
+
 case class RefEntry(
     name: String,
     fields: Map[String, (ExtractedModelEntry, Option[Rational])]
@@ -58,29 +83,40 @@ case class RefEntry(
       .mkString("")
     s"Ref ($name) {\n$buf}"
   }
+  def asValueEntry = ConstantEntry(name)
 }
+
 case class NullRefEntry(name: String) extends ExtractedModelEntry {
   override def toString = s"Null($name)"
+  def asValueEntry = ConstantEntry(name)
 }
+
 case class RecursiveRefEntry(name: String) extends ExtractedModelEntry {
   override def toString = s"recursive reference to $name"
+  def asValueEntry = ConstantEntry(name)
 }
+
 case class VarEntry(name: String, sort: Sort) extends ExtractedModelEntry {
   override def toString: String = name
+  def asValueEntry = ConstantEntry(name)
 }
 
 case class OtherEntry(value: String, problem: String = "")
     extends ExtractedModelEntry {
   override def toString = s"$value [$problem]"
+  def asValueEntry = ConstantEntry(value)
 }
+
 case class SeqEntry(name: String, values: List[ExtractedModelEntry])
     extends ExtractedModelEntry {
   override def toString = s"($name): [${values.map(_.toString).mkString(", ")}]"
+  def asValueEntry = ConstantEntry(name)
 }
 
 case class UnprocessedModelEntry(entry: ValueEntry)
     extends ExtractedModelEntry {
   override def toString = s"$entry"
+  def asValueEntry = entry
 }
 
 // processed Heap representation:
@@ -159,6 +195,17 @@ object Converter {
             OtherEntry(s"$x", "not a boolean literal")
         }
       case sorts.Seq(_) => VarEntry(m.toString, s) // will be resolved later
+      case sorts.Perm => 
+        m match{
+          case ConstantEntry(x) => LitPermEntry(x.toDouble)
+          case ApplicationEntry(name, args) => 
+            val res = getConstantEntry(s, args.head)
+            (res, name) match {
+              case (LitPermEntry(x), "-") => LitPermEntry(-x)
+              case _ => OtherEntry(s"$m", "not a permission literal")
+            }
+          case _ => OtherEntry(s"$m", "not a permission literal")
+        }
       case _ =>
         m match {
           case e: ValueEntry => UnprocessedModelEntry(e)
@@ -193,24 +240,21 @@ object Converter {
           }
         }
         val toSort = app.resultSort
-        val argEntries: Seq[ValueEntry] = args
+        val argEntries: Seq[ExtractedModelEntry] = args
           .map(t => evaluateTerm(t, model))
-          .map(_.asInstanceOf[UnprocessedModelEntry])
-          .map(_.entry)
-        getFunctionValue(model, fname, argEntries, toSort)
+
+        val argsFinal = argEntries.map{
+          case UnprocessedModelEntry(entry) => entry
+          case e: ExtractedModelEntry => ConstantEntry(e.toString)
+        }
+        getFunctionValue(model, fname, argsFinal, toSort)
 
       case Combine(p0, p1) =>
         //assuming Combine can only contain other snap.combine and snap.unit
-        val p0Eval = evaluateTerm(p0, model)
-        val p1Eval = evaluateTerm(p1, model)
-        val e0Try = Try(p0Eval.asInstanceOf[UnprocessedModelEntry].entry)
-        val e1Try = Try(p1Eval.asInstanceOf[UnprocessedModelEntry].entry)
-        (e0Try, e1Try) match {
-          case (Success(e0), Success(e1)) =>
-            val entry = ApplicationEntry("$Snap.combine", Seq(e0, e1))
-            UnprocessedModelEntry(entry)
-          case _ => OtherEntry(s"$term", "unhandled argument terms")
-        }
+        val p0Eval = evaluateTerm(p0, model).asValueEntry
+        val p1Eval = evaluateTerm(p1, model).asValueEntry
+        val entry = ApplicationEntry("$Snap.combine", Seq(p0Eval, p1Eval))
+        UnprocessedModelEntry(entry)
 
       case First(p) =>
         val sub = evaluateTerm(p, model)
@@ -252,14 +296,14 @@ object Converter {
           case _ => OtherEntry(s"SortWrapper($t)", "unapplicable")
         }
 
-      case PredicateLookup(predname, _, _) =>
-        /* not tested! did never occurr in considered examples */
-        /* val lookupFuncName: String = s"$$PSF.lookup_$predname"
+      case PredicateLookup(predname, psf, args) =>
+        val lookupFuncName: String = s"$$PSF.lookup_$predname"
         val snap = toSnapTree.apply(args)
-        val psfVal = evaluateTerm(psf, model)
-        val snapVal = evaluateTerm(snap, model) */
-        //getFunctionValue(model, lookupFuncName, arg)
-        OtherEntry(s"PredicateLookup($predname)", "unhandled")
+        val snapVal = evaluateTerm(snap, model).asValueEntry
+        val psfVal = evaluateTerm(psf, model).asValueEntry
+        val arg = Seq(psfVal, snapVal)
+        val result = getFunctionValue(model, lookupFuncName, arg, sorts.Snap)
+        result
 
       case _ =>
         OtherEntry(s"$term", "unhandled")
@@ -349,7 +393,7 @@ object Converter {
             )
             //valueEntry might be a Ref or Sequence and has to be mapped as well
             val finalEntry: ExtractedModelEntry = mapLocalVar(
-              elementSort,
+              Some(elementSort),
               valueEntry,
               heap,
               model,
@@ -367,7 +411,7 @@ object Converter {
   }
 
   def mapLocalVar(
-      sort: Sort,
+      sort: Option[Sort],
       termEval: ExtractedModelEntry,
       heap: ExtractedHeap,
       model: Model,
@@ -376,9 +420,9 @@ object Converter {
   ): ExtractedModelEntry = {
     val name = termEval.toString
     sort match {
-      case sorts.Int  => termEval
-      case sorts.Bool => termEval
-      case sorts.Ref =>
+      case Some(sorts.Int)  => termEval
+      case Some(sorts.Bool) => termEval
+      case Some(sorts.Ref) =>
         var map: Map[String, (ExtractedModelEntry, Option[Rational])] = Map()
         //if Sort is Ref then termEval has to be of type VarEntry (?)
 
@@ -393,7 +437,7 @@ object Converter {
                 if (termEval == recv) {
                   val recEntry =
                     mapLocalVar(
-                      sort,
+                      Some(sort),
                       value,
                       heap,
                       model,
@@ -409,7 +453,7 @@ object Converter {
         } else {
           RecursiveRefEntry(name)
         }
-      case sorts.Seq(elementSort) =>
+      case Some(sorts.Seq(elementSort)) =>
         extractSequence(
           model,
           heap,
@@ -422,13 +466,17 @@ object Converter {
     }
   }
 
-  def typeToSort(typ: ast.Type): Sort = {
+  def typeToSort(typ: ast.Type): Option[Sort] = {
+    //If this returns None, we can still try to evaluate the model entry
     typ match {
-      case ast.Int                   => sorts.Int
-      case ast.Bool                  => sorts.Bool
-      case ast.Perm                  => sorts.Perm
-      case ast.Ref                   => sorts.Ref
-      case ast.SeqType(elementsType) => sorts.Seq(typeToSort(elementsType))
+      case ast.Int                   => Some(sorts.Int)
+      case ast.Bool                  => Some(sorts.Bool)
+      case ast.Perm                  => Some(sorts.Perm)
+      case ast.Ref                   => Some(sorts.Ref)
+      case ast.SeqType(elementsType) => 
+        val elementSort = typeToSort(elementsType)
+        elementSort.map(x => sorts.Seq(x))
+      case _                         => None
     }
   }
 
@@ -440,18 +488,18 @@ object Converter {
     var map: Map[String, ExtractedModelEntry] = Map()
     val nullRefName: String = model.entries("$Ref.null").toString
     for ((variable: ast.AbstractLocalVar, term: Term) <- store.values) {
-      var localtype: Sort = sorts.Unit
+      var localSort: Option[Sort] = None
       val name = variable match {
         case ast.LocalVar(n, typ) =>
-          localtype = typeToSort(typ)
+          localSort = typeToSort(typ)
           n
         case ast.Result(typ) =>
-          localtype = typeToSort(typ)
+          localSort = typeToSort(typ)
           "Result()"
       }
       val termEval = evaluateTerm(term, model)
       val entry =
-        mapLocalVar(localtype, termEval, heap, model, List(), nullRefName)
+        mapLocalVar(localSort, termEval, heap, model, List(), nullRefName)
       map += (name -> entry)
     }
     val extrModel = ExtractedModel(map)
