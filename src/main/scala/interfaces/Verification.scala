@@ -29,7 +29,7 @@ sealed abstract class VerificationResult {
 
   def allPrevious: List[VerificationResult] =
     previous match {
-      case None => Nil
+      case None     => Nil
       case Some(vr) => vr :: vr.allPrevious
     }
 
@@ -73,10 +73,10 @@ case class Unreachable() extends NonFatalResult {
   override val toString = "Unreachable"
 }
 
-case class Failure/*[ST <: Store[ST],
+case class Failure /*[ST <: Store[ST],
                    H <: Heap[H],
                    S <: State[ST, H, S]]*/
-                  (message: VerificationError)
+(message: VerificationError)
     extends FatalResult {
 
   /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
@@ -91,42 +91,63 @@ case class Failure/*[ST <: Store[ST],
 /* counterexamples defined in silver.verifier */
 trait SiliconCounterexample extends Counterexample {
   val internalStore: Store
-  def store: Map[String, Term] = internalStore.values.map{case (k, v) => k.name -> v}
-  def withStore(s: Store) : SiliconCounterexample
+  def store: Map[String, Term] = internalStore.values.map { case (k, v) =>
+    k.name -> v
+  }
+  def withStore(s: Store): SiliconCounterexample
 }
 
-case class SiliconNativeCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeap: Option[Iterable[Chunk]], model: Model) extends SiliconCounterexample {
+case class SiliconNativeCounterexample(
+    internalStore: Store,
+    heap: Iterable[Chunk],
+    oldHeap: Option[Iterable[Chunk]],
+    model: Model
+) extends SiliconCounterexample {
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconNativeCounterexample(s, heap, oldHeap, model)
   }
 }
 
-case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Model) extends SiliconCounterexample {
+case class SiliconVariableCounterexample(
+    internalStore: Store,
+    nativeModel: Model
+) extends SiliconCounterexample {
   override val model: Model = {
-    Model(internalStore.values.filter{
-      case (_,v) => nativeModel.entries.contains(v.toString)
-    }.map{
-      case (k, v) => k.name -> nativeModel.entries(v.toString)
-    })
+    Model(
+      internalStore.values
+        .filter { case (_, v) =>
+          nativeModel.entries.contains(v.toString)
+        }
+        .map { case (k, v) =>
+          k.name -> nativeModel.entries(v.toString)
+        }
+    )
   }
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconVariableCounterexample(s, nativeModel)
   }
 }
 
-case class SiliconMappedCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeaps: State.OldHeaps, nativeModel: Model) extends SiliconCounterexample {
-  
-  val converter = Converter(nativeModel, internalStore, heap, oldHeaps)
-  
-  val model : Model = nativeModel
-  
-  override def toString = {
-    val buf = converter.modelAtLabel.map(x => s"model at label: ${x._1}\n${x._2.toString}\n").mkString("\n")
+case class SiliconMappedCounterexample(
+    internalStore: Store,
+    heap: Iterable[Chunk],
+    oldHeaps: State.OldHeaps,
+    nativeModel: Model
+) extends SiliconCounterexample {
+
+  val converter: Converter =
+    Converter(nativeModel, internalStore, heap, oldHeaps)
+
+  val model: Model = nativeModel
+
+  override def toString: String = {
+    val buf = converter.modelAtLabel
+      .map(x => s"model at label: ${x._1}\n${x._2.toString}\n")
+      .mkString("\n")
     s"$buf\non return: \n${converter.extractedModel.toString}"
-  } 
-  
+  }
+
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel)
   }
 }
-
