@@ -59,11 +59,11 @@ case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
 
 sealed trait ExtractedModelEntry
 case class LitIntEntry(value: BigInt) extends ExtractedModelEntry {
-  override def toString = value.toString
+  override def toString: String = value.toString
   def negate: LitIntEntry = LitIntEntry(-value)
 }
 case class LitBoolEntry(value: Boolean) extends ExtractedModelEntry {
-  override def toString = value.toString
+  override def toString: String = value.toString
 }
 case class RefEntry(
     name: String,
@@ -85,10 +85,11 @@ case class RecursiveRefEntry(name: String) extends ExtractedModelEntry {
   override def toString = s"recursive reference to $name"
 }
 case class VarEntry(name: String, sort: Sort) extends ExtractedModelEntry {
-  override def toString = name
+  override def toString: String = name
 }
 
-case class OtherEntry(value: String, problem: String = "") extends ExtractedModelEntry {
+case class OtherEntry(value: String, problem: String = "")
+    extends ExtractedModelEntry {
   override def toString = s"$value [$problem]"
 }
 case class SeqEntry(name: String, values: List[ExtractedModelEntry])
@@ -96,7 +97,8 @@ case class SeqEntry(name: String, values: List[ExtractedModelEntry])
   override def toString = s"($name): [${values.map(_.toString).mkString(", ")}]"
 }
 
-case class UnprocessedModelEntry(entry: ValueEntry) extends ExtractedModelEntry{
+case class UnprocessedModelEntry(entry: ValueEntry)
+    extends ExtractedModelEntry {
   override def toString = s"$entry"
 }
 
@@ -107,7 +109,7 @@ case class ExtractedHeap(entries: List[HeapEntry])
 
 case class PredHeapEntry(
     name: String,
-    args: Seq[ExtractedModelEntry],
+    args: Seq[ExtractedModelEntry]
 ) extends HeapEntry {
   override def toString = s"$name(${args.mkString(", ")})"
 }
@@ -136,7 +138,7 @@ object Converter {
     val entry: Option[ModelEntry] = model.entries.get(fname)
     entry match {
       case Some(MapEntry(m, els)) =>
-        getConstantEntry(toSort, m.get(args).getOrElse(els))
+        getConstantEntry(toSort, m.getOrElse(args, els))
       case Some(m) => getConstantEntry(toSort, m)
       case None    => OtherEntry("${fname}", "function not found in model")
     }
@@ -161,7 +163,7 @@ object Converter {
           case ConstantEntry(x)             => LitIntEntry(BigInt(x))
           case ApplicationEntry(name, args) =>
             //this is needed because negative integers are stored as ApplicationEntries
-            val res = getConstantEntry(s, args(0))
+            val res = getConstantEntry(s, args.head)
             res match {
               case l @ LitIntEntry(_) =>
                 if (name == "-") {
@@ -171,7 +173,7 @@ object Converter {
                   OtherEntry(s"$m", "ApplicationEntry instead of constant")
                 }
               case _ =>
-                OtherEntry(s"$m", "not an integer literal") 
+                OtherEntry(s"$m", "not an integer literal")
             }
           case _ => OtherEntry(s"$m", "not an integer literal")
         }
@@ -223,7 +225,7 @@ object Converter {
           .map(_.entry)
         println("DEBUG: App encountered")
         getFunctionValue(model, fname, argEntries, toSort)
-      
+
       case Combine(p0, p1) =>
         //assuming Combine can only contain other snap.combine and snap.unit
         val p0Eval = evaluateTerm(p0, model)
@@ -231,24 +233,25 @@ object Converter {
         val e0Try = Try(p0Eval.asInstanceOf[UnprocessedModelEntry].entry)
         val e1Try = Try(p1Eval.asInstanceOf[UnprocessedModelEntry].entry)
         (e0Try, e1Try) match {
-          case (Success(e0), Success(e1)) => 
-            val entry = ApplicationEntry("$Snap.combine", Seq(e0,e1))
+          case (Success(e0), Success(e1)) =>
+            val entry = ApplicationEntry("$Snap.combine", Seq(e0, e1))
             UnprocessedModelEntry(entry)
-          case _ => OtherEntry(s"$term", "unhandled argument terms")        }
-      
+          case _ => OtherEntry(s"$term", "unhandled argument terms")
+        }
+
       case First(p) =>
         val sub = evaluateTerm(p, model)
         sub match {
           case UnprocessedModelEntry(ApplicationEntry(name, args)) =>
             if (name == "$Snap.combine") {
-              UnprocessedModelEntry(args(0))
+              UnprocessedModelEntry(args.head)
             } else {
               OtherEntry(s"First($p)", "unapplicable")
             }
           case OtherEntry(t, _) => OtherEntry(s"First($t)", "unapplicable")
-          case _ => OtherEntry(s"First($sub)", "unapplicable")
+          case _                => OtherEntry(s"First($sub)", "unapplicable")
         }
-      
+
       case Second(p) =>
         val sub = evaluateTerm(p, model)
         sub match {
@@ -259,7 +262,7 @@ object Converter {
               OtherEntry(s"Second($p})", "unapplicable")
             }
           case OtherEntry(t, _) => OtherEntry(s"Second($t)", "unapplicable")
-          case _ => OtherEntry(s"Second($sub)", "unapplicable")
+          case _                => OtherEntry(s"Second($sub)", "unapplicable")
         }
 
       case SortWrapper(t, to) =>
@@ -267,10 +270,12 @@ object Converter {
         val fromSortName: String = translateSort(t.sort)
         val toSortName: String = translateSort(to)
         val fname = s"$$SortWrappers.${fromSortName}To$toSortName"
-        
-        sub match{
-          case UnprocessedModelEntry(entry) => getFunctionValue(model, fname, Seq(entry), to)
-          case OtherEntry(t, _) => OtherEntry(s"SortWrapper($t)", "unapplicable")
+
+        sub match {
+          case UnprocessedModelEntry(entry) =>
+            getFunctionValue(model, fname, Seq(entry), to)
+          case OtherEntry(t, _) =>
+            OtherEntry(s"SortWrapper($t)", "unapplicable")
           case _ => OtherEntry(s"SortWrapper($t)", "unapplicable")
         }
 
@@ -282,7 +287,7 @@ object Converter {
         val snapVal = evaluateTerm(snap, model) */
         //getFunctionValue(model, lookupFuncName, arg)
         OtherEntry(s"PredicateLookup($predname)", "unhandled")
-      
+
       case _ =>
         OtherEntry(s"$term", "unhandled")
     }
@@ -497,10 +502,10 @@ case class Converter(
   lazy val extractedHeaps: Map[String, ExtractedHeap] =
     oldHeaps.map(x => x._1 -> Converter.extractHeap(x._2.values, model))
 
-  lazy val extractedModel =
+  lazy val extractedModel: ExtractedModel =
     Converter.mapHeapToStore(store, extractedHeap, model)
 
   lazy val modelAtLabel: Map[String, ExtractedModel] = extractedHeaps.map(x =>
-    (x._1 -> Converter.mapHeapToStore(store, x._2, model))
+    x._1 -> Converter.mapHeapToStore(store, x._2, model)
   )
 }
