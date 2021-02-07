@@ -3,8 +3,8 @@ package rpi.builder
 import rpi.{Configuration, Names}
 import rpi.inference.context.{Check, Context}
 import rpi.inference.Hypothesis
-import rpi.inference.annotation.Annotation
-import rpi.util.ast.Instrument
+import rpi.inference.annotation.Hint
+import rpi.util.ast.{Cut, Hinted}
 import viper.silver.ast
 
 /**
@@ -83,20 +83,30 @@ trait CheckExtender extends ProgramBuilder {
         val instrumentedThen = processSequence(thenBody)
         val instrumentedElse = processSequence(elseBody)
         addConditional(condition, instrumentedThen, instrumentedElse)
-      case Instrument(statement, annotations) =>
-        instrumentStatement(statement)(hypothesis, annotations)
+      case Hinted(body, hints) =>
+        processHinted(body)(hypothesis, hints)
+      case cut: Cut =>
+        processCut(cut)
       case _ =>
         addStatement(statement)
     }
 
   /**
-    * Processes the given instrumented statement.
+    * Processes the given cut statement.
     *
-    * @param instrumented The instrumented statement.
-    * @param hypothesis   The implicitly passed current hypothesis.
-    * @param annotations  The implicitly passed annotations.
+    * @param cut        The cut statement.
+    * @param hypothesis The implicitly passed hypothesis.
     */
-  protected def instrumentStatement(instrumented: ast.Stmt)(implicit hypothesis: Hypothesis, annotations: Seq[Annotation]): Unit
+  protected def processCut(cut: Cut)(implicit hypothesis: Hypothesis): Unit
+
+  /**
+    * Processes the given hinted statement.
+    *
+    * @param hinted     The hinted statement.
+    * @param hypothesis The implicitly passed hypothesis.
+    * @param hints      The implicitly passed hints.
+    */
+  protected def processHinted(hinted: ast.Stmt)(implicit hypothesis: Hypothesis, hints: Seq[Hint]): Unit
 
   /**
     * Builds and returns a program with the given extended methods and inferred predicates.

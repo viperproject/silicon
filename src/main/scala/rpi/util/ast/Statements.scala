@@ -1,8 +1,12 @@
 package rpi.util.ast
 
-import rpi.inference.annotation.Annotation
+import rpi.inference.annotation.{Annotation, Hint}
 import rpi.inference.context.Check
+import rpi.util.ast.Expressions._
+import rpi.util.ast.Statements._
 import viper.silver.ast
+import viper.silver.ast.pretty.FastPrettyPrinter._
+import viper.silver.ast.pretty.PrettyPrintPrimitives
 
 object Statements {
   @inline
@@ -43,22 +47,20 @@ object Statements {
   def makeLabel(name: String): ast.Label =
     ast.Label(name, Seq.empty)()
 
-  @inline
-  def makeInstrument(body: ast.Seqn, annotations: Seq[Annotation]): Instrument =
-    Instrument(body, annotations)()
+  def makeHinted(body: ast.Seqn, hints: Seq[Hint]): Hinted =
+    Hinted(body, hints)()
 
   @inline
   def makeCut(statement: ast.Stmt, check: Check): Cut =
     Cut(statement)(info = ValueInfo(check))
 }
 
+@deprecated
 case class Instrument(body: ast.Seqn, annotations: Seq[Annotation])
                      (override val pos: ast.Position = ast.NoPosition,
                       override val info: ast.Info = ast.NoInfo,
                       override val errT: ast.ErrorTrafo = ast.NoTrafos) extends ast.ExtensionStmt {
 
-  import ast.pretty.FastPrettyPrinter._
-  import ast.pretty.PrettyPrintPrimitives
 
   override def extensionSubnodes: Seq[ast.Node] =
     Seq(body)
@@ -67,15 +69,21 @@ case class Instrument(body: ast.Seqn, annotations: Seq[Annotation])
     text("instrument") <+> showBlock(body)
 }
 
+case class Hinted(body: ast.Seqn, hints: Seq[Hint])
+                 (override val pos: ast.Position = ast.NoPosition,
+                  override val info: ast.Info = ast.NoInfo,
+                  override val errT: ast.ErrorTrafo = ast.NoTrafos) extends ast.ExtensionStmt {
+  override def extensionSubnodes: Seq[ast.Node] =
+    Seq(body)
+
+  override def prettyPrint: PrettyPrintPrimitives#Cont =
+    text("hinted") <+> showBlock(body)
+}
+
 case class Cut(statement: ast.Stmt)
               (override val pos: ast.Position = ast.NoPosition,
                override val info: ast.Info = ast.NoInfo,
                override val errT: ast.ErrorTrafo = ast.NoTrafos) extends ast.ExtensionStmt {
-
-  import Expressions._
-  import Statements._
-  import ast.pretty.FastPrettyPrinter._
-  import ast.pretty.PrettyPrintPrimitives
 
   lazy val variables: Seq[ast.LocalVar] =
     statement match {

@@ -3,8 +3,9 @@ package rpi.builder
 import rpi.Names
 import rpi.inference.context.Context
 import rpi.inference.Hypothesis
-import rpi.inference.annotation.Annotation
+import rpi.inference.annotation.Hint
 import rpi.util.ast.Expressions._
+import rpi.util.ast.Statements._
 import rpi.util.ast.ValueInfo
 import viper.silver.ast
 
@@ -16,9 +17,6 @@ trait Folding extends ProgramBuilder {
     * The context.
     */
   protected def context: Context
-
-  // TODO: Incorporate into annotation info.
-  var old: Option[String] = None
 
   /**
     * Unfolds the given expression up to the maximal depth.
@@ -94,15 +92,18 @@ trait Folding extends ProgramBuilder {
   /**
     * Folds the given expression from the maximal depth under the consideration of the given annotations.
     *
-    * @param expression  The expression to fold.
-    * @param annotations The annotations.
-    * @param maxDepth    The maximal depth.
-    * @param hypothesis  The current hypothesis.
-    * @param default     The default action for leaf expressions.
+    * @param expression The expression to fold.
+    * @param hints      The annotations.
+    * @param maxDepth   The maximal depth.
+    * @param hypothesis The current hypothesis.
+    * @param default    The default action for leaf expressions.
     */
-  protected def foldWithAnnotations(expression: ast.Exp, annotations: Seq[Annotation])
+  protected def foldWithAnnotations(expression: ast.Exp, hints: Seq[Hint])
                                    (implicit maxDepth: Int, hypothesis: Hypothesis,
                                     default: (ast.Exp, Seq[ast.Exp]) => Unit = (_, _) => ()): Unit = {
+    val downs = hints.filter { hint => hint.isDown }
+    val u = hints.filter { hint => hint.isUp }
+
     /**
       * Returns the conditions under any of which the current argument is relevant for an annotation with the given
       * name.
@@ -112,8 +113,9 @@ trait Folding extends ProgramBuilder {
       * @return The conditions.
       */
     def getConditions(name: String, current: ast.Exp): Seq[ast.Exp] =
-      annotations.flatMap {
-        case Annotation(`name`, argument) =>
+      hints.flatMap {
+        case Hint(`name`, conditions, argument, _) =>
+          ???
           val equality = makeEquality(current, argument)
           Some(equality)
         case _ =>
@@ -137,26 +139,30 @@ trait Folding extends ProgramBuilder {
           val arguments = predicate.loc.args
           arguments match {
             case Seq(start, end: ast.LocalVar) =>
-              val body = makeScope {
-                // down condition
-                val down = getConditions(Names.downAnnotation, end)
-                // conditionally apply lemma
-                val thenBody = makeScope {
-                  // get lemma instance
-                  val instance = {
-                    val previous = ast.LocalVar(s"${old.get}_${end.name}", ast.Ref)()
-                    val arguments = Seq(start, previous, end)
-                    context.instance(Names.appendLemma, arguments)
-                  }
-                  // fold lemma precondition
-                  val precondition = hypothesis.getLemmaPrecondition(instance)
-                  handleStart(precondition)
-                  // apply lemma
-                  val lemmaApplication = hypothesis.getLemmaApplication(instance)
-                  addStatement(lemmaApplication)
+              val body = {
+                val without: ast.Stmt = makeScope(handleStart(predicate))
+                downs.foldRight(without) {
+                  case (hint, result) =>
+                    // condition for lemma application
+                    val condition = {
+                      val equality = makeEquality(end, hint.argument)
+                      makeAnd(hint.conditions :+ equality)
+                    }
+                    // create lemma application
+                    val application = makeScope {
+                      // get lemma instance
+                      val arguments = Seq(start, hint.old, end)
+                      val instance = context.instance(Names.appendLemma, arguments)
+                      // fold lemma precondition
+                      val precondition = hypothesis.getLemmaPrecondition(instance)
+                      handleStart(precondition)
+                      // apply lemma
+                      val lemmaApplication = hypothesis.getLemmaApplication(instance)
+                      addStatement(lemmaApplication)
+                    }
+                    // create conditional lemma application
+                    makeConditional(condition, application, result)
                 }
-                val elseBody = makeScope(handleStart(predicate))
-                addConditionalOr(down, thenBody, elseBody)
               }
               addConditionalAnd(guards, body)
             case _ =>
@@ -180,24 +186,28 @@ trait Folding extends ProgramBuilder {
         case ast.Implies(guard, guarded) =>
           handleStart(guarded, guards :+ guard)
         case predicate: ast.PredicateAccessPredicate =>
-          val body = makeScope {
-            // down condition
-            val start = predicate.loc.args.head
-            val down = getConditions(Names.downAnnotation, start)
-            val up = getConditions(Names.upAnnotation, start)
-            // helper method that folds the predicate up to the given depth
-            val go: Int => ast.Seqn = depth => makeScope(fold(predicate)(depth, hypothesis, default))
-            // conditionally increase or decrease fold depth
-            addConditionalOr(down,
-              makeScope(addConditionalOr(up, go(maxDepth), go(maxDepth - 1))),
-              makeScope(addConditionalOr(up, go(maxDepth + 1), go(maxDepth))))
+          val start = predicate.loc.args.head
+          val body = {
+            val without: ast.Stmt = makeScope(fold(predicate))
+            hints.foldRight(without) {
+              case (hint, result) =>
+                // condition for hint relevance
+                val condition = {
+                  val equality = makeEquality(start, hint.argument)
+                  makeAnd(hint.conditions :+ equality)
+                }
+                // conditionally adapt fold depth
+                val depth = if (hint.isDown) maxDepth - 1 else maxDepth + 1
+                val adapted = makeScope(fold(predicate)(depth, hypothesis, default))
+                makeConditional(condition, adapted, result)
+            }
           }
           addConditionalAnd(guards, body)
         case other =>
           fold(other, guards)
       }
 
-    if (annotations.isEmpty) fold(expression)
+    if (hints.isEmpty) fold(expression)
     else handleEnd(expression)
   }
 }

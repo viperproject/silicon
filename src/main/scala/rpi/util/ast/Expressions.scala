@@ -156,6 +156,10 @@ object Expressions {
     makeVariable(name, ast.Bool)
 
   @inline
+  def makeReference(name: String): ast.LocalVar =
+    makeVariable(name, ast.Ref)
+
+  @inline
   def makeVariable(name: String, typ: ast.Type): ast.LocalVar =
     ast.LocalVar(name, typ)()
 

@@ -1,15 +1,10 @@
 package rpi.inference.context
 
-import rpi.builder.ProgramBuilder
 import rpi.{Configuration, Names}
 import rpi.inference._
-import rpi.inference.annotation.Annotation
 import rpi.util.Namespace
 import viper.silver.ast
 import viper.silver.verifier.Verifier
-
-import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 /**
   * Context information used by the inference.
@@ -131,5 +126,3 @@ class Context(inference: Inference, val input: ast.Program) {
   def instance(access: ast.PredicateAccess): Instance =
     instance(access.predicateName, access.args)
 }
-
-

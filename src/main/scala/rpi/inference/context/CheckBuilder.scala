@@ -2,17 +2,16 @@ package rpi.inference.context
 
 import rpi.Names
 import rpi.builder.ProgramBuilder
-import rpi.inference.annotation.Annotation
+import rpi.inference.annotation.Hint
 import rpi.util.Namespace
+import rpi.util.ast.Expressions._
+import rpi.util.ast.Statements._
 import viper.silver.ast
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 class CheckBuilder(program: ast.Program) extends ProgramBuilder {
-
-  import rpi.util.ast.Expressions._
-  import rpi.util.ast.Statements._
 
   /**
     * The atoms.
@@ -37,9 +36,7 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
       .map { method => method.name -> createCheck(method) }
       .toMap
 
-  // TODO: Implement properly.
-  val annotations: mutable.Buffer[Annotation] =
-    ListBuffer.empty
+  var hints: Seq[Hint] = _
 
   process()
 
@@ -78,14 +75,15 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
   }
 
   private def createBody(check: MethodCheck, sequence: ast.Seqn, declarations: Seq[ast.LocalVarDecl]): Unit = {
+    clear()
     val body = makeScope {
       // inhale method preconditions
-      addInstrumented(addInhale(check.precondition))
+      hinted(addInhale(check.precondition))
       // process body
       val processed = processSequence(sequence, declarations)
       addStatement(processed)
       // exhale method postconditions
-      addInstrumented(addExhale(check.postcondition))
+      hinted(addExhale(check.postcondition))
     }
     check.setBody(body)
   }
@@ -96,9 +94,10 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
     val invariant = createSpecification(Names.invariant, declarations, loop.invs)
     val check = new LoopCheck(name, invariant)
     // add check body
+    clear()
     val body = makeScope {
       // inhale loop invariants and condition
-      addInstrumented {
+      hinted {
         addInhale(invariant)
         addInhale(loop.cond)
       }
@@ -106,7 +105,7 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
       val processed = processSequence(loop.body, declarations)
       addStatement(processed)
       // exhale loop invariants
-      addInstrumented(addExhale(invariant))
+      hinted(addExhale(invariant))
     }
     check.setBody(body)
     // add and return check
@@ -129,55 +128,100 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
         val processed = processSequence(sequence, declarations)
         addStatement(processed)
       case original@ast.If(_, thenBranch, elseBranch) =>
-        // process both branches
-        val processedThen = processSequence(thenBranch, declarations)
-        val processedElse = processSequence(elseBranch, declarations)
+        // save hints
+        val outerHints = consumeHints()
+        // process then branch
+        val thenProcessed = processSequence(thenBranch, declarations)
+        val thenHints = consumeHints()
+        // process else branch
+        val elseProcessed = processSequence(elseBranch, declarations)
+        val elseHints = consumeHints()
+        // restore hints
+        hints = outerHints
+        // handle condition
+        val condition =
+          if (thenHints.isEmpty && elseHints.isEmpty) original.cond
+          else {
+            // update inner hints
+            val condition = save(original.cond)
+            thenHints.foreach { hint => addHint(hint.withCondition(condition)) }
+            elseHints.foreach { hint => addHint(hint.withCondition(makeNot(condition))) }
+            // return condition
+            condition
+          }
         // update conditional
-        val processed = original.copy(thn = processedThen, els = processedElse)(original.pos, original.info, original.errT)
+        val processed = original.copy(cond = condition, thn = thenProcessed, els = elseProcessed)(original.pos, original.info, original.errT)
         addStatement(processed)
       case original@ast.While(condition, _, _) =>
         // loop instrumentation
-        addInstrumented {
-          val check = createCheck(original, declarations)
-          addExhale(check.invariant)
-          addCut(original, check)
+        val check = createCheck(original, declarations)
+        // exhale invariant
+        hinted(addExhale(check.invariant))
+        // cut loop (havoc written variables)
+        // TODO: havoc hints
+        addCut(original, check)
+        // inhale invariant and negation of loop condition
+        hinted {
           addInhale(check.invariant)
           addInhale(makeNot(condition))
         }
       case original@ast.MethodCall(name, arguments, returns) =>
         if (Names.isAnnotation(name)) {
-          val annotation = Annotation(name, arguments.head)
-          annotations.append(annotation)
+          val argument = arguments.head
+          val old = save(argument)
+          val hint = Hint(name, argument, old)
+          addHint(hint)
         } else {
           // make sure all arguments are variables
           val variables = arguments.map {
             case variable: ast.LocalVar =>
               variable
             case field: ast.FieldAccess =>
-              // create auxiliary variable
-              val name = namespace.uniqueIdentifier("t", Some(0))
-              val variable = makeVariable(name, field.typ)
-              // add annotation
-              val annotation = Annotation(Names.downAnnotation, variable)
-              annotations.append(annotation)
-              // assign to variable and return variable
-              addAssign(variable, field)
+              // create variable
+              val variable = save(field)
+              // add hint
+              val old = asVariable(field.rcv)
+              val hint = Hint(Names.downAnnotation, variable, old)
+              addHint(hint)
+              // return variable
               variable
             case argument =>
               sys.error(s"Unexpected argument: $argument")
           }
           val adapted = original.copy(args = variables)(original.pos, original.info, original.errT)
           // method call instrumentation
-          addInstrumented {
-            val check = methods(name)
-            addExhale(check.precondition(variables))
-            addCut(adapted, check)
-            addInhale(check.postcondition(variables ++ returns))
-          }
+          val check = methods(name)
+          // exhale method precondition
+          hinted(addExhale(check.precondition(variables)))
+          // havoc return variables
+          // TODO: havoc hints
+          addCut(adapted, check)
+          // inhale method postcondition
+          hinted(addInhale(check.postcondition(variables ++ returns)))
         }
       case _ =>
         addStatement(statement)
     }
+
+  private def clear(): Unit = {
+    hints = Seq.empty
+  }
+
+  private def asVariable(expression: ast.Exp): ast.LocalVar =
+    expression match {
+      case variable: ast.LocalVar => variable
+      case _ => ???
+    }
+
+  private def save(expression: ast.Exp): ast.LocalVar = {
+    // create variable
+    val name = namespace.uniqueIdentifier("t", Some(0))
+    val variable = makeVariable(name, expression.typ)
+    // add assignment
+    addAssign(variable, expression)
+    // return variable
+    variable
+  }
 
   private def addInhale(instance: Instance): Unit =
     instance.all.foreach { expression => addInhale(expression) }
@@ -185,18 +229,21 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
   private def addExhale(instance: Instance): Unit =
     instance.all.foreach { expression => addExhale(expression) }
 
-  private def addInstrumented(generate: => Unit): Unit = {
-    val consumed = consumeAnnotations()
+  private def hinted(generate: => Unit): Unit = {
+    val hints = this.hints
     val body = makeScope(generate)
-    addStatement(makeInstrument(body, consumed))
+    addStatement(makeHinted(body, hints))
   }
 
   private def addCut(statement: ast.Stmt, check: Check): Unit =
     addStatement(makeCut(statement, check))
 
-  private def consumeAnnotations(): Seq[Annotation] = {
-    val consumed = annotations.toSeq
-    annotations.clear()
+  private def addHint(hint: Hint): Unit =
+    hints = hints :+ hint
+
+  private def consumeHints(): Seq[Hint] = {
+    val consumed = hints
+    hints = Seq.empty
     consumed
   }
 }

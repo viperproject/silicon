@@ -98,7 +98,7 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
       descr = "Disables batch verification of checks.",
       hidden = true)
 
-  val verifyWithAnnotations: ScallopOption[Boolean] =
+  val verifyWithHints: ScallopOption[Boolean] =
     opt[Boolean](
       name = "verifyWithAnnotations",
       hidden = true)

@@ -4,7 +4,7 @@ import rpi.Names
 import rpi.builder.{CheckExtender, Folding}
 import rpi.inference.context._
 import rpi.inference.Hypothesis
-import rpi.inference.annotation.Annotation
+import rpi.inference.annotation.Hint
 import rpi.util.ast.Expressions._
 import rpi.util.Namespace
 import rpi.util.ast.Statements._
@@ -111,10 +111,13 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
     query(program)
   }
 
-  protected override def instrumentStatement(instrumented: ast.Stmt)(implicit hypothesis: Hypothesis, annotations: Seq[Annotation]): Unit =
-    instrumented match {
+  override protected def processCut(cut: Cut)(implicit hypothesis: Hypothesis): Unit =
+    addStatement(cut.havoc)
+
+  protected override def processHinted(hinted: ast.Stmt)(implicit hypothesis: Hypothesis, hints: Seq[Hint]): Unit =
+    hinted match {
       case ast.Seqn(statements, _) =>
-        statements.foreach { statement => instrumentStatement(statement) }
+        statements.foreach { statement => processHinted(statement) }
       case ast.Inhale(expression) =>
         expression match {
           case placeholder: ast.PredicateAccessPredicate =>
@@ -134,8 +137,7 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
             // unfold and save
             val maxDepth = if (configuration.useAnnotations()) check.depth(hypothesis) else 0
             unfold(body)(maxDepth, hypothesis)
-            val label = saveSnapshot(instance)
-            old = Some(label)
+            saveSnapshot(instance)
           case _ =>
             addInhale(expression)
         }
@@ -149,7 +151,7 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
             implicit val label: String = saveSnapshot(instance)
             if (configuration.useAnnotations()) {
               val maxDepth = check.depth(hypothesis)
-              foldWithAnnotations(body, annotations)(maxDepth, hypothesis, savePermission)
+              foldWithAnnotations(body, hints)(maxDepth, hypothesis, savePermission)
             } else {
               val maxDepth = configuration.heuristicsFoldDepth()
               fold(body)(maxDepth, hypothesis, savePermission)
@@ -167,8 +169,6 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
           case _ =>
             addExhale(expression)
         }
-      case cut: Cut =>
-        addStatement(cut.havoc)
       case other =>
         addStatement(other)
     }

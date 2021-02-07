@@ -3,7 +3,7 @@ package rpi.inference.annotation
 import rpi.inference.Hypothesis
 import rpi.inference.context.Instance
 import rpi.util.ast.Expressions._
-import rpi.util.ast.{Cut, Instrument, ValueInfo}
+import rpi.util.ast.{Cut, Hinted, ValueInfo}
 import viper.silver.ast
 
 /**
@@ -69,7 +69,7 @@ object AccessAnalysis {
         statements.foldRight(state) { (current, result) => run(current, result) }
       case ast.If(_, left, right) =>
         run(left, state) join run(right, state)
-      case Instrument(body, _) =>
+      case Hinted(body, _) =>
         run(body, state)
       case _ =>
         state.execute(statement)
