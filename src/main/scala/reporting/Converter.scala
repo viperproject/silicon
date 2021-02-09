@@ -42,6 +42,7 @@ case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
 
 sealed trait ExtractedModelEntry{
   def asValueEntry: ValueEntry
+  def toString: String
 }
 
 case class LitIntEntry(value: BigInt) extends ExtractedModelEntry {
@@ -120,7 +121,9 @@ case class UnprocessedModelEntry(entry: ValueEntry)
 }
 
 // processed Heap representation:
-sealed trait HeapEntry
+sealed trait HeapEntry{
+  def toString: String
+}
 
 case class ExtractedHeap(entries: List[HeapEntry])
 
