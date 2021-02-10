@@ -8,6 +8,8 @@ domain $Map[K, V] {
   function Map_update(m : $Map[K, V], k : K, v : V) : $Map[K, V]
   function Map_values(m : $Map[K, V]) : Set[V]
 
+  function Map_range_domain_skolem(m : $Map[K, V], v : V) : K
+
   /* ** Cardinality */
 
   axiom {
@@ -83,17 +85,31 @@ domain $Map[K, V] {
 
   /* ** Values */
   /* split axiom into each direction */
+//  axiom {
+//    forall m : $Map[K, V], v : V :: { v in Map_values(m) }
+//      v in Map_values(m) ==>
+//        exists k : K :: { k in Map_domain(m) } { Map_apply(m, k) }
+//          k in Map_domain(m) && v == Map_apply(m, k)
+//  }
   axiom {
     forall m : $Map[K, V], v : V :: { v in Map_values(m) }
       v in Map_values(m) ==>
-        exists k : K :: { k in Map_domain(m) } { Map_apply(m, k) }
-          k in Map_domain(m) && v == Map_apply(m, k)
+          Map_range_domain_skolem(m,v) in Map_domain(m) && v == Map_apply(m, Map_range_domain_skolem(m,v))
+  }
+
+  axiom {
+    forall m : $Map[K, V], k : K :: { Map_apply(m, k) } { k in Map_domain(m) }
+       (k in Map_domain(m)
+          ==> |Map_values(m)| > 0) // weaker than the axiom below, but with weaker triggering
   }
 
   /* no need for an "in" term to match this one; cf. example3 test case test5 */
   axiom {
-    forall m : $Map[K, V], k : K :: { k in Map_domain(m) } { Map_apply(m, k) }
-          (k in Map_domain(m)
+    forall m : $Map[K, V], k : K :: { Map_apply(m, k) } // { k in Map_domain(m) }  // REMOVED trigger - this can create issues if several maps share the domain
+       (k in Map_domain(m)
           ==> Map_apply(m, k) in Map_values(m))
   }
+  // There's a potential for matching loops with the extra trigger if two maps have equal domains:
+  // v in range(m1); some k in dom(m1) = dom(m2) s.t. m1[k] = v; m2[k] in range(m2); some k' in dom(m2) s.t. m2[k'] = m2[k]
+
 }
