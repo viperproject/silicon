@@ -1,0 +1,8 @@
+field f: Int
+
+method foo(x: Ref, y: Ref)
+  requires acc(x.f, 1/1) && acc(y.f, 1/2)
+{
+  x.f := y.f*2 + 2
+  assert(false)
+}
