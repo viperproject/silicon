@@ -354,7 +354,7 @@ object SiliconRunner extends SiliconFrontend(StdIOReporter()) {
       case exception: Exception
            if config == null || !config.asInstanceOf[Config].disableCatchingExceptions() =>
 
-        config.assertVerified() // Raises an exception itself, if it fails
+        if (config != null) config.assertVerified() // Raises an exception itself, if it fails
 
         /* An exception's root cause might be an error; the following code takes care of that */
         reporting.exceptionToViperError(exception) match {
