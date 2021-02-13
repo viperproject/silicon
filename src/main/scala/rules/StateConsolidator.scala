@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import scala.annotation.unused
+import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
@@ -21,32 +23,38 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidateIfRetrying(s: State, v: Verifier): State
   def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap)
   def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap)
-  def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State
-  def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State
+
+  protected def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State
+  protected def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State
 }
 
-object stateConsolidator extends StateConsolidationRules {
+/** Performs the minimal work necessary for any consolidator: merging two heaps combines the chunk
+  * collections, but does not merge any chunks or deduce any additional information, e.g. from
+  * permission values. All other operations (state consolidation, assuming QP permission bounds)
+  * are no-ops.
+  */
+class MinimalStateConsolidator extends StateConsolidationRules {
+  def consolidate(s: State, @unused v: Verifier): State = s
+  def consolidateIfRetrying(s: State, @unused v: Verifier): State = s
+
+  def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
+    (fr, Heap(h.values ++ newH.values))
+
+  def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) =
+    (fr, h + ch)
+
+  protected def assumeUpperPermissionBoundForQPFields(s: State, @unused v: Verifier): State = s
+
+  protected def assumeUpperPermissionBoundForQPFields(s: State, @unused heaps: Seq[Heap], @unused v: Verifier): State = s
+}
+
+/** Default implementation that merges as many known-alias chunks as possible, and deduces various
+  * additional properties from and about permissions, (non)aliasing, and field values.
+  */
+class DefaultStateConsolidator(protected val config: Config) extends StateConsolidationRules {
   def consolidate(s: State, v: Verifier): State = {
-    if (Verifier.config.disableMostStateConsolidations() || Verifier.config.enableMoreCompleteExhale()) {
-      // TODO: Skipping most of what the regular state consolidation performs results in
-      //       incompletenesses. E.g. when using quantified permissions, the state consolidation
-      //       will, among other things, assume non-aliasing for receivers of *singleton quantified
-      //       field chunks* whose permissions would sum up to more than full permission.
-      //       This, e.g. causes method test15 from test
-      //       silver\src\test\resources\quantifiedpermissions\sets\generalised_shape.sil
-      //       to fail.
-
-      if (s.retrying) {
-        // TODO: apply to all heaps (s.h +: s.reserveHeaps, as done below)
-        // NOTE: Doing this regardless of s.retrying might improve completeness in certain (rare) cases
-        moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds(s.h, v)
-      }
-
-      return s
-    }
-
     v.decider.prover.comment("[state consolidation]")
-    v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)
+    v.decider.prover.saturate(config.z3SaturationTimeouts.beforeIteration)
 
     val initialHeaps = s.h +: s.reserveHeaps
 
@@ -193,10 +201,10 @@ object stateConsolidator extends StateConsolidationRules {
     }
   }
 
-  def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State =
+  protected def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State =
     assumeUpperPermissionBoundForQPFields(s, s.h +: s.reserveHeaps, v)
 
-  def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State = {
+  protected def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State = {
     heaps.foldLeft(s) { case (si, heap) =>
       val chunks: Seq[QuantifiedFieldChunk] =
         heap.values.collect({ case ch: QuantifiedFieldChunk => ch }).to(Seq)
@@ -234,5 +242,62 @@ object stateConsolidator extends StateConsolidationRules {
     }
 
     (nonQuantifiedChunks, otherChunks)
+  }
+}
+
+/** A variant of [[DefaultStateConsolidator]]:
+  *   - Merging heaps and assuming QP permission bounds is equally complete
+  *   - State consolidation is equally complete, but only performed when Silicon is retrying
+  *     an assertion/operation
+  */
+class RetryingStateConsolidator(config: Config) extends DefaultStateConsolidator(config) {
+  override def consolidate(s: State, v: Verifier): State = {
+    if (s.retrying) super.consolidate(s, v)
+    else s
+  }
+
+  override def consolidateIfRetrying(s: State, v: Verifier): State = consolidate(s, v)
+}
+
+/** A variant of [[RetryingStateConsolidator]] and [[MinimalStateConsolidator]]:
+  *   - Consolidations are equivalent to [[RetryingStateConsolidator]]
+  *   - Merging heaps and assuming QP permission bounds is equivalent to [[MinimalStateConsolidator]]
+  */
+class MinimalRetryingStateConsolidator(config: Config) extends RetryingStateConsolidator(config) {
+  override def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) =
+    (fr, Heap(h.values ++ newH.values))
+
+  override def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) =
+    (fr, h + ch)
+
+  override protected def assumeUpperPermissionBoundForQPFields(s: State, @unused v: Verifier): State = s
+
+  override protected def assumeUpperPermissionBoundForQPFields(s: State, @unused heaps: Seq[Heap], @unused v: Verifier): State = s
+}
+
+/** A variant of [[DefaultStateConsolidator]] that aims to work best when Silicon is run in
+  * more complete exhale mode:
+  *   - Merging heaps and assuming QP permission bounds is equivalent to [[DefaultStateConsolidator]]
+  *   - State consolidation is only performed when Silicon is retrying, and it only deduces
+  *     assumptions about non-QP permission bounds
+  *     (by calling [[moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds]])
+  */
+class MoreComplexExhaleStateConsolidator(config: Config) extends DefaultStateConsolidator(config) {
+  override def consolidate(s: State, v: Verifier): State = {
+    // NOTE: Skipping most of what the regular state consolidation performs results in
+    // incompletenesses. E.g. when using quantified permissions, the state consolidation
+    // will, among other things, assume non-aliasing for receivers of *singleton quantified
+    // field chunks* whose permissions would sum up to more than full permission.
+    // This, e.g. causes method test15 from test
+    //   silver\src\test\resources\quantifiedpermissions\sets\generalised_shape.sil
+    // to fail.
+
+    if (s.retrying) {
+      // TODO: apply to all heaps (s.h +: s.reserveHeaps, as done below)
+      // NOTE: Doing this regardless of s.retrying might improve completeness in certain (rare) cases
+      moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds(s.h, v)
+    }
+
+    s
   }
 }

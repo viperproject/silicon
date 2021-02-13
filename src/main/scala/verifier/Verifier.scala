@@ -7,12 +7,12 @@
 package viper.silicon.verifier
 
 import java.nio.file.Path
-
 import com.typesafe.scalalogging.Logger
 import viper.silver.ast
 import viper.silicon.{Config, Map}
 import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
+import viper.silicon.rules.StateConsolidationRules
 import viper.silicon.state.{IdentifierFactory, SymbolConverter}
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters.{PredicateData, QuantifierSupporter, SnapshotSupporter}
@@ -36,6 +36,7 @@ trait Verifier {
   def axiomRewriter: AxiomRewriter
   def quantifierSupporter: QuantifierSupporter
   def snapshotSupporter: SnapshotSupporter
+  def stateConsolidator: StateConsolidationRules
 
   def verificationPoolManager: VerificationPoolManager
 }
