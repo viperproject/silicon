@@ -5,7 +5,7 @@ import viper.silver.verifier.{Model, ModelEntry, ValueEntry, ConstantEntry, Appl
 import viper.silver.ast
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.{Store, State, BasicChunk}
+import viper.silicon.state.{Store, State, BasicChunk, Identifier}
 import viper.silicon.state.terms._
 import viper.silicon.decider.TermToSMTLib2Converter
 
@@ -84,7 +84,7 @@ case class OtherEntry(value: String, problem: String = "")
   lazy val asValueEntry = ConstantEntry(value)
 }
 
-case class SeqEntry(name: String, values: List[ExtractedModelEntry])
+case class SeqEntry(name: String, values: Vector[ExtractedModelEntry])
     extends ExtractedModelEntry {
   override lazy val toString = s"($name): [${values.map(_.toString).mkString(", ")}]"
   lazy val asValueEntry = ConstantEntry(name)
@@ -101,7 +101,7 @@ sealed trait HeapEntry {
   def toString: String
 }
 
-case class ExtractedHeap(entries: List[HeapEntry])
+case class ExtractedHeap(entries: Vector[HeapEntry])
 
 case class PredHeapEntry(
     name: String,
@@ -124,7 +124,20 @@ case class UnresolvedHeapEntry(chunk: Chunk, reason: String) extends HeapEntry {
 }
 
 object Converter {
-  lazy val termconverter = new TermToSMTLib2Converter();
+  lazy val termconverter = {
+    val conv = new TermToSMTLib2Converter()
+    conv.start()
+    conv
+  }
+  //some tokens used for naming model entries in a more maintainable way
+  lazy val seqLengthId: String = {
+    val term = SeqLength(Var(Identifier("any"), sorts.Seq(sorts.Int)))
+    termconverter.convert(term).split(" ").head.substring(1)
+  }
+  lazy val snapUnitId: String = termconverter.convert(Unit)
+  lazy val nullRefId: String = termconverter.convert(Null())
+  lazy val combineId: String = termconverter.convert(Combine(predef.Zero, predef.Zero)).split(" ").head.substring(1)
+
   def getFunctionValue(
       model: Model,
       fname: String,
@@ -159,8 +172,6 @@ object Converter {
         m match {
           case ConstantEntry("true")  => LitBoolEntry(true)
           case ConstantEntry("false") => LitBoolEntry(false)
-          case x =>
-            OtherEntry(s"$x", "not a boolean literal")
         }
       case sorts.Seq(_) => VarEntry(m.toString, s) // will be resolved later
       case sorts.Perm =>
@@ -185,10 +196,10 @@ object Converter {
 
   def evaluateTerm(term: Term, model: Model): ExtractedModelEntry = {
     term match {
-      case Unit              => UnprocessedModelEntry(ConstantEntry("$Snap.unit"))
+      case Unit              => UnprocessedModelEntry(ConstantEntry(snapUnitId))
       case IntLiteral(x)     => LitIntEntry(x)
       case t: BooleanLiteral => LitBoolEntry(t.value)
-      case Null()            => VarEntry(model.entries("$Ref.null").toString, sorts.Ref)
+      case Null()            => VarEntry(model.entries(nullRefId).toString, sorts.Ref)
       case Var(_, sort) =>
         val key: String = term.toString
         val entry: Option[ModelEntry] = model.entries.get(key)
@@ -199,12 +210,16 @@ object Converter {
           )
 
       case App(app, args) =>
-        //function name could probably also be obtained in a more maintainable way 
-        var fname = s"${app.id}%limited"
-        if (!model.entries.contains(fname)) {
-          fname = app.id.toString
+        //try it with converting app first (maintainable),
+        // but then try it as before since this wasn't tested 
+        var fname = termconverter.convert(term).split(" ").head.substring(1)
+        if (!model.entries.contains(fname)){
+          fname = s"${app.id}%limited"
           if (!model.entries.contains(fname)) {
-            fname = fname.replace("[", "<").replace("]", ">")
+            fname = app.id.toString
+            if (!model.entries.contains(fname)) {
+              fname = fname.replace("[", "<").replace("]", ">")
+            }
           }
         }
         val toSort = app.resultSort
@@ -220,14 +235,14 @@ object Converter {
       case Combine(p0, p1) =>
         val p0Eval = evaluateTerm(p0, model).asValueEntry
         val p1Eval = evaluateTerm(p1, model).asValueEntry
-        val entry = ApplicationEntry("$Snap.combine", Seq(p0Eval, p1Eval))
+        val entry = ApplicationEntry(combineId, Seq(p0Eval, p1Eval))
         UnprocessedModelEntry(entry)
 
       case First(p) =>
         val sub = evaluateTerm(p, model)
         sub match {
           case UnprocessedModelEntry(ApplicationEntry(name, args)) =>
-            if (name == "$Snap.combine") {
+            if (name == combineId) {
               UnprocessedModelEntry(args.head)
             } else {
               OtherEntry(s"First($p)", "unapplicable")
@@ -240,7 +255,7 @@ object Converter {
         val sub = evaluateTerm(p, model)
         sub match {
           case UnprocessedModelEntry(ApplicationEntry(name, args)) =>
-            if (name == "$Snap.combine") {
+            if (name == combineId) {
               UnprocessedModelEntry(args(1))
             } else {
               OtherEntry(s"Second($p})", "unapplicable")
@@ -251,11 +266,7 @@ object Converter {
 
       case SortWrapper(t, to) =>
         val sub = evaluateTerm(t, model)
-        val fromSortName: String = termconverter.convert(t.sort)
-        val toSortName: String = termconverter.convert(to)
-        val fname = s"$$SortWrappers.${fromSortName}To$toSortName"
-        //TODO: replace this string, bad for maintenance
-        //val fname = termconverter.convert(term) gives NullPointerException sadly
+        val fname = termconverter.convert(term).split(" ").head.substring(1)
 
         sub match {
           case UnprocessedModelEntry(entry) =>
@@ -266,7 +277,8 @@ object Converter {
         }
 
       case PredicateLookup(predname, psf, args) =>
-        val lookupFuncName: String = s"$$PSF.lookup_$predname"
+        val lookupFuncName: String = termconverter.convert(term).split(" ").head.substring(1)
+        //val lookupFuncName: String = s"$$PSF.lookup_$predname"
         val snap = toSnapTree.apply(args)
         val snapVal = evaluateTerm(snap, model).asValueEntry
         val psfVal = evaluateTerm(psf, model).asValueEntry
@@ -280,7 +292,7 @@ object Converter {
   }
 
   def extractHeap(h: Iterable[Chunk], model: Model): ExtractedHeap = {
-    var entries: List[HeapEntry] = List()
+    var entries: Vector[HeapEntry] = Vector()
     h foreach {
       case c @ BasicChunk(FieldID, _, _, _, _) =>
         val entry = extractField(c, model)
@@ -336,15 +348,15 @@ object Converter {
       nullRefName: String,
       name: String,
       elementSort: Sort,
-      encountered: List[String]
+      encountered: Set[String]
   ): ExtractedModelEntry = {
     if (!encountered.contains(name)) {
-      val newEncountered = name :: encountered
+      val newEncountered = encountered + name
       //hopefully Seq_len can only contain integers
       val lenTry: Try[Int] = Try(
         getFunctionValue(
           model,
-          "Seq_length",
+          Converter.seqLengthId,
           Seq(ConstantEntry(name)),
           sorts.Int
         ).asInstanceOf[LitIntEntry].value.toInt
@@ -352,7 +364,7 @@ object Converter {
       lenTry match {
         case Success(x) =>
           val len: Int = x
-          var values: List[ExtractedModelEntry] = List()
+          var values: Vector[ExtractedModelEntry] = Vector()
           for (i <- 0 to len) {
             val valueEntry: ExtractedModelEntry = getFunctionValue(
               model,
@@ -384,7 +396,7 @@ object Converter {
       termEval: ExtractedModelEntry,
       heap: ExtractedHeap,
       model: Model,
-      encountered: List[String],
+      encountered: Set[String],
       nullRefName: String
   ): ExtractedModelEntry = {
     val name = termEval.toString
@@ -399,7 +411,7 @@ object Converter {
         if (name == nullRefName) {
           NullRefEntry(name)
         } else if (!encountered.contains(name)) {
-          val newEncountered = name :: encountered
+          val newEncountered = encountered + name
           for (entry: HeapEntry <- heap.entries) {
             entry match {
               case FieldHeapEntry(recv, field, perm @ _, sort, value) =>
@@ -468,7 +480,7 @@ object Converter {
       }
       val termEval = evaluateTerm(term, model)
       val entry =
-        mapLocalVar(localSort, termEval, heap, model, List(), nullRefName)
+        mapLocalVar(localSort, termEval, heap, model, Set(), nullRefName)
       map += (name -> entry)
     }
     val extrModel = ExtractedModel(map)
