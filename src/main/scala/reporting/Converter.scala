@@ -210,18 +210,15 @@ object Converter {
           )
 
       case App(app, args) =>
-        //try it with converting app first (maintainable),
-        // but then try it as before since this wasn't tested 
-        var fname = termconverter.convert(term).split(" ").head.substring(1)
-        if (!model.entries.contains(fname)){
-          fname = s"${app.id}%limited"
-          if (!model.entries.contains(fname)) {
-            fname = app.id.toString
-            if (!model.entries.contains(fname)) {
-              fname = fname.replace("[", "<").replace("]", ">")
-            }
-          }
+        var fnameFull = termconverter.convert(term).split(" ")
+        var fname = ""
+
+        if (args.nonEmpty) {
+          fname = fnameFull.head.substring(1) 
+        } else {
+          fname = fnameFull(1) //of the form (as fname ...)
         }
+
         val toSort = app.resultSort
         val argEntries: Seq[ExtractedModelEntry] = args
           .map(t => evaluateTerm(t, model))
