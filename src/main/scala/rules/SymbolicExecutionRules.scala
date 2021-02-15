@@ -30,6 +30,7 @@ trait SymbolicExecutionRules {
         val nativeModel = Model(model)
         val ce_type = Verifier.config.counterexample()
         val ce: Counterexample = ce_type match {
+          //TODO: Transform counterexample type from String to case objects in config
           case "native" => 
             val oldHeap = s.oldHeaps.get(Verifier.PRE_STATE_LABEL).map(_.values)
             SiliconNativeCounterexample(s.g, s.h.values, oldHeap, nativeModel)
