@@ -64,7 +64,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
                 case Array(k, v) =>
                   Some(k -> v)
                 case other =>
-                  return Left(s"unexpected arguments '$other'")
+                  return Left(s"unexpected arguments '${other.mkString(", ")}'")
            })
 
         Right(Some(config))
@@ -195,7 +195,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     valueName = "level"
   )
 
-  val writeSymbexLogFile = opt[Boolean]("writeSymbexLogFile",
+  val writeSymbexLogFile: ScallopOption[Boolean] = opt[Boolean]("writeSymbexLogFile",
     descr = "Report the symbolic execution log as ExecutionTraceReport",
     default = Some(false),
     noshort = true,
