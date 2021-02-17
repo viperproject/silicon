@@ -7,7 +7,7 @@
 package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.state.Store
+import viper.silicon.state.{State, Store}
 import viper.silver.verifier.{Counterexample, Model, VerificationError}
 import viper.silicon.state.terms.Term
 
@@ -98,6 +98,11 @@ case class SiliconNativeCounterexample(internalStore: Store, heap: Iterable[Chun
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconNativeCounterexample(s, heap, oldHeap, model)
   }
+}
+
+case class SiliconRawCounterexample(conditions: Seq[Term], state: State, model: Model) extends SiliconCounterexample {
+  override val internalStore: Store = state.g
+  override def withStore(s: Store): SiliconCounterexample = copy(state = state.copy(g = s))
 }
 
 case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Model) extends SiliconCounterexample {

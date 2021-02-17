@@ -1,0 +1,14 @@
+field v: Int
+
+method main(a: Ref)
+{
+   swap(a, a)
+}
+
+method swap(a: Ref, b: Ref)
+{
+   var t: Int
+   t := a.v
+   a.v := b.v
+   b.v := t
+}
