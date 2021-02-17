@@ -4,6 +4,7 @@ import rpi.Names
 import rpi.builder.{CheckExtender, Folding}
 import rpi.inference.context._
 import rpi.inference.Hypothesis
+import rpi.inference.annotation.AccessAnalysis.Depth
 import rpi.inference.annotation.Hint
 import rpi.util.ast.Expressions._
 import rpi.util.Namespace

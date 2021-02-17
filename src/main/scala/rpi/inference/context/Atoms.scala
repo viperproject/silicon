@@ -40,10 +40,9 @@ class Atoms(program: ast.Program) {
     * @param expressions The expressions.
     * @return The atoms.
     */
-  def fromExpressions(expressions: Seq[ast.Exp]): Seq[ast.Exp] = {
+  def fromExpressions(expressions: Iterable[ast.Exp]): Seq[ast.Exp] = {
     // get reference-typed expressions
-    val references = expressions
-      .filter { expression => expression.typ == ast.Ref }
+    val references = expressions.filter { expression => expression.isSubtype(ast.Ref) }
     // instantiate templates
     templates.flatMap { template =>
       template.formalArgs.length match {

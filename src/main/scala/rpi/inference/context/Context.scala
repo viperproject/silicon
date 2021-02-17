@@ -113,9 +113,8 @@ class Context(inference: Inference, val input: ast.Program) {
     * @param arguments The arguments.
     * @return The instance.
     */
-  def instance(name: String, arguments: Seq[ast.Exp]): Instance = {
+  def instance(name: String, arguments: Seq[ast.Exp]): Instance =
     BindingInstance(specification(name), arguments)
-  }
 
   /**
     * Returns an instance of the specifications corresponding to the given predicate access.

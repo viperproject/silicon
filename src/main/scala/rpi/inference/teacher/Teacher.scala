@@ -1,10 +1,9 @@
 package rpi.inference.teacher
 
 import rpi.Configuration
-import rpi.inference.context.{Context, Instance}
+import rpi.inference.context.Context
 import rpi.inference._
 import rpi.inference.teacher.query.{Query, QueryBuilder}
-import viper.silver.ast
 import viper.silver.verifier.{Failure, Success, VerificationError}
 
 trait AbstractTeacher {
