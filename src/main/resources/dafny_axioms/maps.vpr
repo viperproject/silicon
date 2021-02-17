@@ -8,46 +8,57 @@ domain $Map[K, V] {
   function Map_update(m : $Map[K, V], k : K, v : V) : $Map[K, V]
   function Map_values(m : $Map[K, V]) : Set[V]
 
+  function Map_range_domain_skolem(m : $Map[K, V], v : V) : K
+
   /* ** Cardinality */
 
   axiom {
     forall m : $Map[K, V] :: { Map_card(m) } 0 <= Map_card(m)
   }
 
+  /* added second trigger set */
   axiom {
-    forall m : $Map[K, V] :: { |Map_domain(m)| } |Map_domain(m)| == Map_card(m)
+    forall m : $Map[K, V] :: { |Map_domain(m)| } {Map_card(m)} |Map_domain(m)| == Map_card(m)
   }
 
   /* ** Disjointness */
 
+  /* split in both directions */
   axiom {
     forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_disjoint(m1, m2) }
-      Map_disjoint(m1, m2) <==>
+      Map_disjoint(m1, m2) ==>
         (forall k : K :: { k in Map_domain(m1) } {k in Map_domain(m2) }
           !(k in Map_domain(m1)) || !(k in Map_domain(m2)))
   }
 
-  /* ** Empty */
+  axiom {
+    forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_disjoint(m1, m2) }
+      !Map_disjoint(m1, m2) ==>
+        (exists k : K :: (k in Map_domain(m1)) && (k in Map_domain(m2)))
+  }
 
+  /* ** Empty */
   axiom {
     forall k : K :: { k in Map_domain((Map_empty() : $Map[K, V])) }
       !(k in Map_domain((Map_empty() : $Map[K, V])))
   }
 
+  /* split last part in both directions */
   axiom {
     forall m : $Map[K, V] :: { Map_card(m) }
       (Map_card(m) == 0 <==> m == Map_empty()) &&
-      (Map_card(m) != 0 <==> exists u : K :: u in Map_domain(m))
+      (Map_card(m) != 0 ==> exists u : K :: u in Map_domain(m)) &&
+      (forall u : K :: {u in Map_domain(m)} u in Map_domain(m) ==> Map_card(m) != 0)
   }
 
   /* Equality */
-
-  axiom {
-    forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_equal(m1, m2) }
-      Map_equal(m1, m2) <==>
-        ((forall k : K :: { k in Map_domain(m1) } { k in Map_domain(m2) } k in Map_domain(m1) <==> k in Map_domain(m2)) &&
-         (forall k : K :: { Map_apply(m1, k) } { Map_apply(m2, k) } k in Map_domain(m1) ==> Map_apply(m1, k) == Map_apply(m2, k)))
-  }
+  // this axiom is only needed in one direction; the other is implied by the next axiom
+    axiom {
+      forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_equal(m1, m2) }
+          ((forall k : K :: { k in Map_domain(m1) } { k in Map_domain(m2) } k in Map_domain(m1) <==> k in Map_domain(m2)) &&
+           (forall k : K :: { Map_apply(m1, k) } { Map_apply(m2, k) } k in Map_domain(m1) ==> Map_apply(m1, k) == Map_apply(m2, k)))
+             ==>  Map_equal(m1, m2)
+    }
 
   axiom {
     forall m1 : $Map[K, V], m2 : $Map[K, V] :: { Map_equal(m1, m2) }
@@ -56,25 +67,49 @@ domain $Map[K, V] {
 
   /* ** Update */
 
+/* added second trigger set (cf. example3 test case, test3)
+/* could also add {Map_update(m,k1,v), Map_apply(m,k1)} as another alternative trigger, but seems subsumed given that we need to know k2 is in a domain */
   axiom {
     forall m : $Map[K, V], k1 : K, k2 : K, v : V ::
-      { k2 in Map_domain(Map_update(m, k1, v)) } { Map_apply(Map_update(m, k1, v), k2) }
+      { k2 in Map_domain(Map_update(m, k1, v)) } {k2 in Map_domain(m), Map_update(m, k1, v)} { Map_apply(Map_update(m, k1, v), k2) }
         (k1 == k2 ==> k2 in Map_domain(Map_update(m, k1, v)) && Map_apply(Map_update(m, k1, v), k2) == v) &&
-        (k1 != k2 ==> (k2 in Map_domain(Map_update(m, k1, v)) <==> k2 in Map_domain(m)) && Map_apply(Map_update(m, k1, v), k2) == Map_apply(m, k2))
+        (k1 != k2 ==> (k2 in Map_domain(Map_update(m, k1, v)) <==> k2 in Map_domain(m)) && (k2 in Map_domain(m) ==> Map_apply(Map_update(m, k1, v), k2) == Map_apply(m, k2)))
   }
 
+/* added second trigger set (not sure of a test case needing it, though) */
   axiom {
-    forall m : $Map[K, V], k : K, v : V :: { Map_card(Map_update(m, k, v)) }
+    forall m : $Map[K, V], k : K, v : V :: { Map_card(Map_update(m, k, v)) } { Map_card(m), Map_update(m, k, v)}
       (k in Map_domain(m) ==> Map_card(Map_update(m, k, v)) == Map_card(m)) &&
       (!(k in Map_domain(m)) ==> Map_card(Map_update(m, k, v)) == Map_card(m) + 1)
   }
 
   /* ** Values */
-
+  /* split axiom into each direction */
+//  axiom {
+//    forall m : $Map[K, V], v : V :: { v in Map_values(m) }
+//      v in Map_values(m) ==>
+//        exists k : K :: { k in Map_domain(m) } { Map_apply(m, k) }
+//          k in Map_domain(m) && v == Map_apply(m, k)
+//  }
   axiom {
     forall m : $Map[K, V], v : V :: { v in Map_values(m) }
-      v in Map_values(m) <==>
-        exists k : K :: { k in Map_domain(m) } { Map_apply(m, k) }
-          k in Map_domain(m) && v == Map_apply(m, k)
+      v in Map_values(m) ==>
+          Map_range_domain_skolem(m,v) in Map_domain(m) && v == Map_apply(m, Map_range_domain_skolem(m,v))
   }
+
+  axiom {
+    forall m : $Map[K, V], k : K :: { Map_apply(m, k) } { k in Map_domain(m) }
+       (k in Map_domain(m)
+          ==> |Map_values(m)| > 0) // weaker than the axiom below, but with weaker triggering
+  }
+
+  /* no need for an "in" term to match this one; cf. example3 test case test5 */
+  axiom {
+    forall m : $Map[K, V], k : K :: { Map_apply(m, k) } // { k in Map_domain(m) }  // REMOVED trigger - this can create issues if several maps share the domain
+       (k in Map_domain(m)
+          ==> Map_apply(m, k) in Map_values(m))
+  }
+  // There's a potential for matching loops with the extra trigger if two maps have equal domains:
+  // v in range(m1); some k in dom(m1) = dom(m2) s.t. m1[k] = v; m2[k] in range(m2); some k' in dom(m2) s.t. m2[k'] = m2[k]
+
 }
