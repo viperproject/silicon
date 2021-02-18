@@ -60,7 +60,28 @@ trait TemplateGenerator extends AbstractLearner {
     */
   private def addLocation(specification: Specification, location: ast.LocationAccess): Unit = {
     /**
-      * Helper method that does the actual adding of the location access.
+      * Helper method that adds the given location access to the given specification if it is allowed.
+      *
+      * @param specification The specification.
+      * @param location      The location access.
+      */
+    def addIfAllowed(specification: Specification, location: ast.LocationAccess): Unit = {
+      // filter location access
+      val allowed = location match {
+        case path: ast.FieldAccess =>
+          getLength(path) <= configuration.maxLength()
+        case ast.PredicateAccess(arguments, _) =>
+          arguments.zipWithIndex.forall {
+            case (_: ast.NullLit, index) => index > 0
+            case (_: ast.LocalVar, _) => true
+            case _ => false
+          }
+      }
+      if (allowed) add(specification, location)
+    }
+
+    /**
+      * Helper method that adds the given location access to the given specification.
       *
       * @param specification The specification.
       * @param location      The location access.
@@ -86,7 +107,7 @@ trait TemplateGenerator extends AbstractLearner {
               add(recursive, recursion)
               // add instance to current specification
               val instance = makeInstance(root)
-              add(specification, instance)
+              addIfAllowed(specification, instance)
             }
             // add nested location
             addLocation(specification, nested)
@@ -102,18 +123,8 @@ trait TemplateGenerator extends AbstractLearner {
         }
     }
 
-    // filter location access
-    val allowed = location match {
-      case path: ast.FieldAccess =>
-        getLength(path) <= configuration.maxLength()
-      case ast.PredicateAccess(arguments, _) =>
-        arguments.zipWithIndex.forall {
-          case (_: ast.NullLit, index) => index > 0
-          case (_: ast.LocalVar, _) => true
-          case _ => false
-        }
-    }
-    if (allowed) add(specification, location)
+    // add location
+    addIfAllowed(specification, location)
   }
 
   /**
