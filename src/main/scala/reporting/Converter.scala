@@ -359,7 +359,7 @@ object Converter {
         case Success(x) =>
           val len: Int = x
           var values: Vector[ExtractedModelEntry] = Vector()
-          for (i <- 0 to len) {
+          for (i <- 0 until len) {
             val valueEntry: ExtractedModelEntry = getFunctionValue(
               model,
               "Seq_index",
