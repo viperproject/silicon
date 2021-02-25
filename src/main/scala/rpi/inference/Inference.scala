@@ -32,6 +32,7 @@ class Inference(val configuration: Configuration) {
     val arguments = Seq(
       "--z3Exe", configuration.z3(),
       "--counterexample", "raw",
+      "--enableMoreCompleteExhale",
       "--ignoreFile", "dummy.vpr")
     instance.parseCommandLine(arguments)
     // return instance
