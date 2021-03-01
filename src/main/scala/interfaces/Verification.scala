@@ -114,6 +114,7 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
       case (k, v) => k.name -> nativeModel.entries(v.toString)
     })
   }
+
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconVariableCounterexample(s, nativeModel)
   }
