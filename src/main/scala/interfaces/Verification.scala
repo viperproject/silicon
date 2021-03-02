@@ -7,10 +7,11 @@
 package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.reporting.Converter
+import viper.silicon.reporting.{Converter, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, ModelInterpreter}
 import viper.silicon.state.{State, Store}
 import viper.silver.verifier.{Counterexample, FailureContext, Model, VerificationError}
 import viper.silicon.state.terms.Term
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
 /*
@@ -141,16 +142,19 @@ case class SiliconMappedCounterexample(
 ) extends SiliconCounterexample {
 
   val converter: Converter =
-    Converter(nativeModel, internalStore, heap, oldHeaps)
+    Converter(nativeModel, internalStore, heap, oldHeaps, Verifier.program)
 
   val model: Model = nativeModel
+  val interpreter: ModelInterpreter[ExtractedModelEntry, Seq[ExtractedModelEntry]] = GenericDomainInterpreter(converter)
 
   override lazy val toString: String = {
     val buf = converter.modelAtLabel
-      .map(x => s"model at label: ${x._1}\n${x._2.toString}\n")
+      .map(x => s"model at label: ${x._1}\n${(ExtractedModel(x._2.entries.map(y => (y._1, interpret(y._2))))).toString}\n")
       .mkString("\n")
-    s"$buf\non return: \n${converter.extractedModel.toString}"
+    s"$buf\non return: \n${(ExtractedModel(converter.extractedModel.entries.map(y => (y._1, interpret(y._2))))).toString}"  
+
   }
+  private def interpret(t: ExtractedModelEntry) = interpreter.interpret(t, Seq())
 
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel)
