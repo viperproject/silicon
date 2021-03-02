@@ -70,7 +70,6 @@ object Silicon {
                                      : Silicon = {
 
     val silicon = new Silicon(PluginAwareReporter(reporter), debugInfo)
-
     silicon.parseCommandLine(args :+ dummyInputFilename)
 
     silicon
@@ -128,7 +127,7 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
 
     lifetimeState = LifetimeState.Started
 
-    setLogLevelsFromConfig()
+//    setLogLevelsFromConfig()
 
     verifier = new DefaultMasterVerifier(config, reporter)
     verifier.start()

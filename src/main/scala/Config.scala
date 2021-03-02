@@ -523,6 +523,18 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some(false),
     noshort = true
   )
+//for some reason it will not accept a counterexample value because silver already has one...
+  override val counterexample :ScallopOption[String] = opt[String](
+    "counterexample_is_broken", //this is because this tool uses some command line stuff from silver and I cannot be bothered to change the whole infrastructure at this moment..
+    descr = "this is only here because silicon does not get the --counterexample argument",
+    default = Some("mapped"), //workaround to always get the counterexample information
+    noshort =true
+  )(singleArgConverter({ 
+    case "mapped" => "mapped"
+    case "native" => "native"
+    case  "variables" => "variables"
+    case _ => "native"
+  }))
 
   /* Option validation (trailing file argument is validated by parent class) */
 
