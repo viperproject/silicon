@@ -102,25 +102,6 @@ trait Folding extends ProgramBuilder {
                                    (implicit maxDepth: Int, hypothesis: Hypothesis,
                                     default: (ast.Exp, Seq[ast.Exp]) => Unit = (_, _) => ()): Unit = {
     val downs = hints.filter { hint => hint.isDown }
-    val u = hints.filter { hint => hint.isUp }
-
-    /**
-      * Returns the conditions under any of which the current argument is relevant for an annotation with the given
-      * name.
-      *
-      * @param name    The name of the annotation.
-      * @param current The current argument.
-      * @return The conditions.
-      */
-    def getConditions(name: String, current: ast.Exp): Seq[ast.Exp] =
-      hints.flatMap {
-        case Hint(`name`, conditions, argument, _) =>
-          ???
-          val equality = makeEquality(current, argument)
-          Some(equality)
-        case _ =>
-          None
-      }
 
     /**
       * Handles the end argument of predicate instances appearing of the given expression.
