@@ -58,6 +58,27 @@ case class StateEvaluator(label: Option[String], state: State, model: ModelEvalu
         result
     }
 
+  // TODO: We might not need this if we switch to a partition abstraction.
+  def evaluateBoolean(expression: ast.Exp): Boolean =
+    expression match {
+      case original@ast.BinExp(left, right) =>
+        left.typ match {
+          case ast.Ref =>
+            // evaluate operands
+            val leftReference = evaluateReference(left)
+            val rightReference = evaluateReference(right)
+            // reduce operands
+            original match {
+              case ast.EqCmp(_, _) =>
+                leftReference == rightReference
+              case ast.NeCmp(_, _) =>
+                leftReference != rightReference
+            }
+          case _ => ???
+        }
+      case _ => ???
+    }
+
   def evaluateBoolean(name: String): Boolean = {
     val variable = ast.LocalVar(name, ast.Bool)()
     val term = state.g(variable)

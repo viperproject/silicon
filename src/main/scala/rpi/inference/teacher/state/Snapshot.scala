@@ -69,10 +69,9 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
   private lazy val abstraction: Abstraction = {
     val values = instance
       .formalAtoms
-      .zipWithIndex
-      .map { case (atom, index) =>
-        val name = s"${label}_$index"
-        val value = state.evaluateBoolean(name)
+      .map { atom =>
+        val actual = instance.toActual(atom)
+        val value = state.evaluateBoolean(actual)
         atom -> value
       }
       .toMap
