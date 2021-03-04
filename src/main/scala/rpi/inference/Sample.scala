@@ -1,8 +1,10 @@
 package rpi.inference
 
 import rpi.inference.context.Specification
+import rpi.util.SeqMap
 import rpi.util.ast.Expressions._
 import viper.silver.ast
+import viper.silver.ast.Exp
 
 /**
   * The super trait for all samples.
@@ -43,42 +45,72 @@ case class Record(specification: Specification, abstraction: Abstraction, locati
   override def toString: String = s"${specification.name}: $abstraction -> {${locations.mkString(", ")}}"
 }
 
-/**
-  * An abstraction of a snapshot that describes the set of concrete states that evaluate the given atoms to the given
-  * values.
-  *
-  * TODO: A canonical form for atoms could allow us to recognize equivalent expressions.
-  */
-case class Abstraction(values: Map[ast.Exp, Boolean]) {
+trait Abstraction {
+  /**
+    * Returns the value of the given atom.
+    *
+    * @param atom The atom to evaluate.
+    * @return The value of the atom.
+    */
+  def value(atom: ast.Exp): Option[Boolean]
+
+  /**
+    * Returns the value of the given atoms.
+    *
+    * @param atoms The atoms to evaluate.
+    * @return The value of the atoms.
+    */
+  def values(atoms: Seq[ast.Exp]): Seq[Option[Boolean]] =
+    atoms.map { atom => value(atom) }
+}
+
+case class PartitionAbstraction(partitions: Map[ast.Exp, Int]) extends Abstraction {
+  override def value(atom: Exp): Option[Boolean] =
+    atom match {
+      case operation@ast.BinExp(left, right) =>
+        for {
+          leftValue <- partitions.get(left)
+          rightValue <- partitions.get(right)
+        } yield operation match {
+          case ast.EqCmp(_, _) => leftValue == rightValue
+          case ast.NeCmp(_, _) => leftValue != rightValue
+        }
+      case _ =>
+        ???
+    }
+
+  override def toString: String =
+    partitions
+      .foldLeft(Map.empty[Int, Seq[ast.Exp]]) {
+        case (current, (atom, partition)) =>
+          SeqMap.add(current, partition, atom)
+      }
+      .map { case (_, seq) => seq.mkString("{", ", ", "}") }
+      .mkString("{", ", ", "}")
+}
+
+case class AtomicAbstraction(values: Map[ast.Exp, Boolean]) extends Abstraction {
+  override def value(atom: Exp): Option[Boolean] =
+    values.get(atom)
+
   /**
     * Computes the meet of this and the other abstract state.
     *
-    * NOTE: The implementation assumes that the states are not conflicting,
-    * i.e., do not assign different values to the same atom.
+    * NOTE: The implementation assumes that the states are not conflicting, i.e., do not assign different values to the
+    * same atom.
     *
     * @param other The other abstract state.
     * @return The meet.
     */
-  def meet(other: Abstraction): Abstraction = {
-    val combined = other.values.foldLeft(values) {
-      case (map, (atom, value)) =>
-        map.updated(atom, value)
-    }
-    Abstraction(combined)
+  def meet(other: AtomicAbstraction): AtomicAbstraction = {
+    val combined = other
+      .values
+      .foldLeft(values) {
+        case (map, (atom, value)) =>
+          map.updated(atom, value)
+      }
+    AtomicAbstraction(combined)
   }
-
-  @inline
-  def getValue(expression: ast.Exp): Option[Boolean] =
-    values.get(expression)
-
-  /**
-    * Returns the values of the given atoms in the abstract state.
-    *
-    * @param atoms The atoms.
-    * @return The values of the atoms.
-    */
-  def getValues(atoms: Seq[ast.Exp]): Seq[Option[Boolean]] =
-    atoms.map { atom => values.get(atom) }
 
   override def toString: String =
     values

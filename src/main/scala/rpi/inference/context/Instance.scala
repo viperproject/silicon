@@ -1,6 +1,6 @@
 package rpi.inference.context
 
-import rpi.inference.{Abstraction, Hypothesis}
+import rpi.inference.{AtomicAbstraction, Hypothesis}
 import rpi.util.ast.Expressions._
 import rpi.util.ast.ValueInfo
 import viper.silver.ast
@@ -102,13 +102,13 @@ sealed trait Instance {
     * @param abstraction The abstraction to translate.
     * @return The abstraction in terms of the actual arguments.
     */
-  def toActual(abstraction: Abstraction): Abstraction = {
+  def toActual(abstraction: AtomicAbstraction): AtomicAbstraction = {
     val updated = abstraction
       .values
       .map { case (atom, value) =>
         toActual(atom) -> value
       }
-    Abstraction(updated)
+    AtomicAbstraction(updated)
   }
 
   /**

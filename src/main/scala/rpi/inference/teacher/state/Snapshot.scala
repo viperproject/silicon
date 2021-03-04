@@ -1,7 +1,7 @@
 package rpi.inference.teacher.state
 
 import rpi.inference.context.{Instance, Specification}
-import rpi.inference.Abstraction
+import rpi.inference.AtomicAbstraction
 import rpi.util.{Collections, SetMap}
 import viper.silver.ast
 
@@ -66,7 +66,7 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
   }
 
   // lazily computed abstraction
-  private lazy val abstraction: Abstraction = {
+  private lazy val abstraction: AtomicAbstraction = {
     val values = instance
       .formalAtoms
       .map { atom =>
@@ -75,7 +75,7 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
         atom -> value
       }
       .toMap
-    Abstraction(values)
+    AtomicAbstraction(values)
   }
 
   def label: String = state.label.get
@@ -87,16 +87,14 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
     *
     * @return The formal state abstraction.
     */
-  def formalAbstraction: Abstraction = abstraction
+  def formalAbstraction: AtomicAbstraction = abstraction
 
   /**
     * Returns the state abstraction in terms of the actual arguments.
     *
     * @return The actual state abstraction.
     */
-  def actualAbstraction: Abstraction = instance.toActual(abstraction)
-
-
+  def actualAbstraction: AtomicAbstraction = instance.toActual(abstraction)
 }
 
 /**
@@ -130,14 +128,14 @@ case class Adaptor(source: StateEvaluator, target: Snapshot) {
     * @param abstraction The state  abstraction to adapt.
     * @return The adapted state abstraction.
     */
-  def adaptAbstraction(abstraction: Abstraction): Abstraction = {
+  def adaptAbstraction(abstraction: AtomicAbstraction): AtomicAbstraction = {
     val values = abstraction
       .values
       .flatMap { case (atom, value) =>
         val adaptedAtom = adapt(atom)
         adaptedAtom.map { adapted => adapted -> value }
       }
-    Abstraction(values)
+    AtomicAbstraction(values)
   }
 
   private def adapt(expression: ast.Exp): Set[ast.Exp] =
@@ -154,6 +152,5 @@ case class Adaptor(source: StateEvaluator, target: Snapshot) {
     val value = source.evaluateReference(expression)
     if (nonnull) target.reachability.getOrElse(value, Set.empty)
     else target.nullableReachability.getOrElse(value, Set.empty)
-
   }
 }

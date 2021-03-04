@@ -282,12 +282,12 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
           // build encodings for option
           val conjuncts = sequence.map {
             case ResourceGuard(id, atoms) =>
-              val values = record.abstraction.getValues(atoms)
+              val values = record.abstraction.values(atoms)
               encodeState(id, values, default)
             case ChoiceGuard(choiceId, index) =>
               encodeChoice(choiceId, index)
             case TruncationGuard(condition) =>
-              val value = record.abstraction.getValue(condition)
+              val value = record.abstraction.value(condition)
               value match {
                 case Some(true) => makeTrue
                 case Some(false) => makeFalse
@@ -440,5 +440,4 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
     def updated(name: String, value: ast.Exp): View =
       View(map.updated(name, value))
   }
-
 }

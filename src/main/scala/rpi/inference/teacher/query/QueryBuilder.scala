@@ -4,7 +4,6 @@ import rpi.Names
 import rpi.builder.{CheckExtender, Folding}
 import rpi.inference.context._
 import rpi.inference.Hypothesis
-import rpi.inference.annotation.AccessAnalysis.Depth
 import rpi.inference.annotation.Hint
 import rpi.util.ast.Expressions._
 import rpi.util.Namespace
@@ -115,6 +114,24 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
   override protected def processCut(cut: Cut)(implicit hypothesis: Hypothesis): Unit =
     addStatement(cut.havoc)
 
+  private def foo(instance: Instance, guards: Seq[ast.Exp] = Seq.empty)(implicit depth: Int, hypothesis: Hypothesis): Unit = {
+    val body = hypothesis.getPredicateBody(instance)
+    bar(body)
+  }
+
+  private def bar(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty)(implicit depth: Int, hypothesis: Hypothesis): Unit =
+    expression match {
+      case ast.TrueLit() => // do nothing
+      case ast.FalseLit() => // do nothing
+      case ast.And(left, right) =>
+        bar(left)
+        bar(right)
+      case ast.Implies(guard, guarded) =>
+        bar(guarded, guards :+ guard)
+      case _ =>
+        ???
+    }
+
   protected override def processHinted(hinted: ast.Stmt)(implicit hypothesis: Hypothesis, hints: Seq[Hint]): Unit =
     hinted match {
       case ast.Seqn(statements, _) =>
@@ -139,6 +156,8 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
             val maxDepth = if (configuration.useAnnotations()) check.depth(hypothesis) else 0
             unfold(body)(maxDepth, hypothesis)
             saveSnapshot(instance)
+          // TODO: Implement me.
+          // foo(instance)(maxDepth, hypothesis)
           case _ =>
             addInhale(expression)
         }
@@ -251,6 +270,7 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
 
   /**
     * Saves the value of the given atom in a variable with the given name.
+    * TODO: Revert and use branchAtom instead?
     *
     * @param name The name of the variable.
     * @param atom The atom to save.
@@ -264,6 +284,11 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
       val elseBody = makeAssign(variable, makeFalse)
       addConditional(atom, thenBody, elseBody)
     }
+
+  private def branchAtom(atom: ast.Exp): Unit = {
+    val dummy = makeScope(addInhale(makeTrue))
+    addConditional(atom, dummy, makeSkip)
+  }
 
   /**
     * Saves the value of the given expression in a variable with the given name.
