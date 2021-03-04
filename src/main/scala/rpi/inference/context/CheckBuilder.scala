@@ -40,19 +40,13 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
 
   process()
 
-  private def process(): Unit = {
+  private def process(): Unit =
     program
       .methods
       .foreach { method =>
         val check = methods(method.name)
         createBody(check, method.body.get, method.formalArgs ++ method.formalReturns)
       }
-
-    checks.foreach { check =>
-      println(check.name)
-      println(check.body)
-    }
-  }
 
   private def createSpecification(prefix: String, parameters: Seq[ast.LocalVarDecl], existing: Seq[ast.Exp]): Instance = {
     val name = namespace.uniqueIdentifier(prefix, Some(0))

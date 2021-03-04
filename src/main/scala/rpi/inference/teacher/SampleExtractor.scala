@@ -28,7 +28,6 @@ trait SampleExtractor extends AbstractTeacher {
     * @return The extracted sample.
     */
   def framingSample(error: VerificationError, query: Query): Sample = {
-    println(error)
     // get counter example and offending location
     val (counter, offending, Some(location)) = extractInformation[ast.LocationAccess](error)
 
@@ -67,7 +66,6 @@ trait SampleExtractor extends AbstractTeacher {
     * @return The extracted sample.
     */
   def basicSample(error: VerificationError, query: Query): Sample = {
-    println(error)
     // get counter example, offending location, and context info
     val (counter, offending, info) = extractInformation[Instance](error)
 

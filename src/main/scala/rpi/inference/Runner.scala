@@ -161,7 +161,6 @@ case object ParsePhase extends Phase[String, ast.Program] {
 case object InferencePhase extends Phase[ast.Program, ast.Program] {
   override def run(input: ast.Program)(implicit inference: Inference): ast.Program = {
     val annotated = inference.run(input)
-    println(annotated)
     // return annotated program
     annotated
   }

@@ -43,11 +43,9 @@ class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
       case template: PredicateTemplate =>
         val predicate = buildPredicate(template)
         predicateBuffer.append(predicate)
-        println(predicate)
       case template: LemmaTemplate =>
         val lemma = buildLemma(template)
         lemmaBuffer.append(lemma)
-        println(lemma)
     }
 
     // create and return hypothesis

@@ -67,7 +67,6 @@ class Learner(val context: Context) extends AbstractLearner with TemplateGenerat
   def hypothesis: Hypothesis =
     if (samples.isEmpty) Hypothesis.empty
     else {
-      samples.foreach { sample => println(sample) }
       // generate templates
       val templates = createTemplates()
 

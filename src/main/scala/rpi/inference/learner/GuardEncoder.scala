@@ -140,7 +140,6 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
     templates
       .flatMap {
         case template: PredicateTemplate =>
-          println(template)
           // process template
           buffer.clear()
           processTemplate(template, depth = 3)
@@ -149,18 +148,9 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
             case (result, (access, guards)) =>
               SeqMap.add(result, access, guards)
           }
-          // debug print
-          map.foreach { case (loc, g) =>
-            println(s"  $loc:")
-            g.foreach { x =>
-              print("    ")
-              println(x.mkString("(", " && ", ")"))
-            }
-          }
           // add map
           Some(template.name -> map)
         case template =>
-          println(template)
           None
       }
       .toMap
@@ -440,4 +430,5 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
     def updated(name: String, value: ast.Exp): View =
       View(map.updated(name, value))
   }
+
 }

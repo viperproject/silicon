@@ -93,7 +93,6 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
 
     // build program
     val program = buildProgram(methods, dummy)
-    println(program)
     query(program)
   }
 
@@ -107,7 +106,6 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
     }
     // build program
     val program = buildProgram(methods, hypothesis)
-    println(program)
     query(program)
   }
 

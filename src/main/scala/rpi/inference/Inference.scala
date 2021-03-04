@@ -75,7 +75,6 @@ class Inference(val configuration: Configuration) {
       val hypothesis = learner.hypothesis
       if (rounds == 0) hypothesis
       else {
-        println(s"----- round ${maxRounds - rounds} -----")
         // check hypothesis
         val samples = teacher.check(hypothesis)
         if (samples.isEmpty) hypothesis

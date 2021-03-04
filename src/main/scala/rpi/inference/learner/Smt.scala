@@ -56,10 +56,8 @@ class Smt(z3: String) {
     *
     * @param line The input line.
     */
-  def writeLine(line: String): Unit = {
-    println(line)
+  def writeLine(line: String): Unit =
     writer.println(line)
-  }
 
   /**
     * Initializes Z3.
@@ -122,7 +120,7 @@ class Smt(z3: String) {
     readResponse() match {
       case "sat" => readModel()
       case response =>
-        println(s"unexpected response: $response")
+        sys.error(s"unexpected response: $response")
         ???
     }
   }
