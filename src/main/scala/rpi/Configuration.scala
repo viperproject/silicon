@@ -103,6 +103,13 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
       name = "verifyWithAnnotations",
       hidden = true)
 
+  val logLevel: ScallopOption[String] =
+    opt[String](
+      name="logLevel",
+      descr = "One of the following log levels: ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF.",
+      default = None)
+
+
   val path: ScallopOption[String] =
     trailArg[String](
       name = "path",

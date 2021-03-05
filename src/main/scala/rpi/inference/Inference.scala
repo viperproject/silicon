@@ -1,5 +1,8 @@
 package rpi.inference
 
+import ch.qos.logback.classic.{Level, Logger}
+import com.typesafe.scalalogging.LazyLogging
+import org.slf4j.LoggerFactory
 import rpi.builder.ProgramExtender
 import rpi.inference.context.Context
 import rpi.Configuration
@@ -16,11 +19,9 @@ import scala.annotation.tailrec
   *
   * @param configuration The configuration.
   */
-class Inference(val configuration: Configuration) {
-  /**
-    * The number of rounds after which the learner gets exhausted and gives up.
-    */
-  val maxRounds: Int = configuration.maxRounds()
+class Inference(val configuration: Configuration) extends LazyLogging {
+
+  import configuration._
 
   /**
     * The instance of the silicon verifier used to generate the samples.
@@ -43,6 +44,17 @@ class Inference(val configuration: Configuration) {
     * Starts the inference and all of its subcomponents.
     */
   def start(): Unit = {
+    // set log level
+    configuration
+      .logLevel
+      .foreach { option =>
+        val level = Level.toLevel(option)
+        LoggerFactory
+          .getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
+          .asInstanceOf[Logger]
+          .setLevel(level)
+      }
+
     verifier.start()
   }
 
@@ -69,11 +81,18 @@ class Inference(val configuration: Configuration) {
     teacher.start()
     learner.start()
 
+    /**
+      * Helper method that iteratively refines the hypothesis.
+      *
+      * @param round The current round.
+      * @return The ultimate hypothesis.
+      */
     @tailrec
-    def infer(rounds: Int): Hypothesis = {
+    def infer(round: Int = 0): Hypothesis = {
+      logger.trace(s"start round #$round")
       // compute hypothesis
       val hypothesis = learner.hypothesis
-      if (rounds == 0) hypothesis
+      if (round >= maxRounds()) hypothesis
       else {
         // check hypothesis
         val samples = teacher.check(hypothesis)
@@ -81,13 +100,13 @@ class Inference(val configuration: Configuration) {
         else {
           // add samples and iterate
           samples.foreach { sample => learner.addSample(sample) }
-          infer(rounds - 1)
+          infer(round + 1)
         }
       }
     }
 
     // infer specifications
-    val hypothesis = infer(maxRounds)
+    val hypothesis = infer()
 
     // stop teacher and learner
     teacher.stop()

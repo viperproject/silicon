@@ -1,5 +1,6 @@
 package rpi.inference.learner
 
+import com.typesafe.scalalogging.LazyLogging
 import rpi.inference.Hypothesis
 import rpi.inference.learner.template._
 import rpi.util.ast.Expressions._
@@ -15,7 +16,7 @@ import scala.collection.mutable.ListBuffer
   * @param learner     The pointer to the learner.
   * @param constraints The constraints at hand.
   */
-class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
+class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) extends LazyLogging {
   /**
     * The maximal number of clauses that may be used for a guard.
     */
@@ -39,12 +40,15 @@ class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) {
     val lemmaBuffer: mutable.Buffer[ast.Method] = ListBuffer.empty
     val predicateBuffer: mutable.Buffer[ast.Predicate] = ListBuffer.empty
 
+    logger.trace("build hypothesis")
     templates.foreach {
       case template: PredicateTemplate =>
         val predicate = buildPredicate(template)
+        logger.trace(predicate.toString)
         predicateBuffer.append(predicate)
       case template: LemmaTemplate =>
         val lemma = buildLemma(template)
+        logger.trace(lemma.toString)
         lemmaBuffer.append(lemma)
     }
 
