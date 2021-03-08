@@ -66,7 +66,7 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
   }
 
   // lazily computed abstraction
-  private lazy val abstraction: AtomicAbstraction = {
+  private lazy val atomicAbstraction: AtomicAbstraction = {
     val values = instance
       .formalAtoms
       .map { atom =>
@@ -87,14 +87,16 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
     *
     * @return The formal state abstraction.
     */
-  def formalAbstraction: AtomicAbstraction = abstraction
+  def formalAtomicAbstraction: AtomicAbstraction =
+    atomicAbstraction
 
   /**
     * Returns the state abstraction in terms of the actual arguments.
     *
     * @return The actual state abstraction.
     */
-  def actualAbstraction: AtomicAbstraction = instance.toActual(abstraction)
+  def actualAtomicAbstraction: AtomicAbstraction =
+    instance.toActual(atomicAbstraction)
 }
 
 /**

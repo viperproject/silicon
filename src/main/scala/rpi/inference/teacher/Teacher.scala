@@ -1,5 +1,6 @@
 package rpi.inference.teacher
 
+import com.typesafe.scalalogging.LazyLogging
 import rpi.Configuration
 import rpi.inference.context.Context
 import rpi.inference._
@@ -28,7 +29,7 @@ trait AbstractTeacher {
   *
   * @param context The pointer to the context.
   */
-class Teacher(val context: Context) extends AbstractTeacher with SampleExtractor {
+class Teacher(val context: Context) extends AbstractTeacher with SampleExtractor with LazyLogging {
   /**
     * The builder used to build the programs used to check hypotheses.
     */
@@ -66,6 +67,7 @@ class Teacher(val context: Context) extends AbstractTeacher with SampleExtractor
         .batches
         .flatMap { batch =>
           val query = builder.basicQuery(batch, hypothesis)
+          logger.info(query.program.toString())
           execute(query, error => basicSample(error, query))
         }
     else framing
@@ -79,7 +81,9 @@ class Teacher(val context: Context) extends AbstractTeacher with SampleExtractor
     * @return The extracted samples.
     */
   private def execute(query: Query, extract: VerificationError => Sample): Seq[Sample] = {
+    logger.trace("execute query")
     val program = query.program
+    logger.trace(program.toString())
     val result = context.verifier.verify(program)
     result match {
       case Success => Seq.empty

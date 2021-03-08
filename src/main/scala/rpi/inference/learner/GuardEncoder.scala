@@ -1,6 +1,6 @@
 package rpi.inference.learner
 
-import rpi.Names
+import com.typesafe.scalalogging.LazyLogging
 import rpi.inference.context.Context
 import rpi.inference._
 import rpi.inference.learner.template._
@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-class GuardEncoder(context: Context, templates: Seq[Template]) {
+class GuardEncoder(context: Context, templates: Seq[Template]) extends LazyLogging {
   /**
     * The maximal number of clauses that may be used for a guard.
     */
@@ -168,6 +168,11 @@ class GuardEncoder(context: Context, templates: Seq[Template]) {
     * @return The constraints representing the encodings of the samples.
     */
   def encodeSamples(samples: Seq[Sample]): Seq[ast.Exp] = {
+    if (logger.underlying.isDebugEnabled) {
+      logger.debug("encode samples")
+      samples.foreach { sample => logger.debug(sample.toString) }
+    }
+
     // the buffer that accumulates constraints
     implicit val buffer: mutable.Buffer[ast.Exp] = ListBuffer.empty
 

@@ -1,0 +1,16 @@
+field l: Ref
+field r: Ref
+field v: Ref
+
+function b(x: Ref): Bool
+
+method traverse(a: Ref)
+{
+    if (a != null) {
+        if (b(a)) {
+            traverse(a.l)
+        } else {
+            traverse(a.r)
+        }
+    }
+}

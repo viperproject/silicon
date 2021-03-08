@@ -112,6 +112,14 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
   override protected def processCut(cut: Cut)(implicit hypothesis: Hypothesis): Unit =
     addStatement(cut.havoc)
 
+  /**
+    * TODO: Implement and rename.
+    *
+    * @param instance
+    * @param guards
+    * @param depth
+    * @param hypothesis
+    */
   private def foo(instance: Instance, guards: Seq[ast.Exp] = Seq.empty)(implicit depth: Int, hypothesis: Hypothesis): Unit = {
     val body = hypothesis.getPredicateBody(instance)
     bar(body)
@@ -268,7 +276,7 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
 
   /**
     * Saves the value of the given atom in a variable with the given name.
-    * TODO: Revert and use branchAtom instead?
+    * TODO: Use branchAtom instead?
     *
     * @param name The name of the variable.
     * @param atom The atom to save.

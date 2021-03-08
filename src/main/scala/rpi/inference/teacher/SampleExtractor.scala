@@ -48,7 +48,7 @@ trait SampleExtractor extends AbstractTeacher {
       val state = StateEvaluator(Some(label), counter.state, model)
       val snapshot = Snapshot(instance, state)
       // compute abstraction
-      snapshot.formalAbstraction
+      snapshot.formalAtomicAbstraction
     }
 
     // create and return sample
@@ -117,11 +117,11 @@ trait SampleExtractor extends AbstractTeacher {
       .map { currentSnapshot =>
         // abstraction
         val abstraction = {
-          val currentAbstraction = currentSnapshot.formalAbstraction
+          val currentAbstraction = currentSnapshot.formalAtomicAbstraction
           otherSnapshots.foldLeft(currentAbstraction) {
             case (combined, otherSnapshot) =>
               val adaptor = Adaptor(otherSnapshot.state, currentSnapshot)
-              val otherAbstraction = otherSnapshot.actualAbstraction
+              val otherAbstraction = otherSnapshot.actualAtomicAbstraction
               val adapted = adaptor.adaptAbstraction(otherAbstraction)
               combined.meet(adapted)
           }
@@ -133,7 +133,13 @@ trait SampleExtractor extends AbstractTeacher {
         }
         // create record
         val specification = currentSnapshot.specification
-        Record(specification, abstraction, locations)
+        // TODO: Eventually replace with partition abstraction.
+        // inject snapshot abstraction for debug purposes
+        val debug = {
+          val secondary = SnapshotAbstraction(currentSnapshot)
+          DebugAbstraction(abstraction, secondary)
+        }
+        Record(specification, debug, locations)
       }
 
     // lazily compute all other records
@@ -143,10 +149,10 @@ trait SampleExtractor extends AbstractTeacher {
         val adaptor = Adaptor(failState, otherSnapshot)
         // abstraction
         val abstraction = {
-          val otherAbstraction = otherSnapshot.formalAbstraction
+          val otherAbstraction = otherSnapshot.formalAtomicAbstraction
           currentSnapshot.foldLeft(otherAbstraction) {
             case (combined, currentSnapshot) =>
-              val currentAbstraction = currentSnapshot.actualAbstraction
+              val currentAbstraction = currentSnapshot.actualAtomicAbstraction
               val adapted = adaptor.adaptAbstraction(currentAbstraction)
               combined.meet(adapted)
           }
@@ -154,11 +160,17 @@ trait SampleExtractor extends AbstractTeacher {
         // create record
         val specification = otherSnapshot.specification
         val locations = adaptor.adaptLocation(currentLocation)
-        Record(specification, abstraction, locations)
+        // TODO: Eventually replace with partition abstraction.
+        // inject snapshot abstraction for debug purposes
+        val debug = {
+          val secondary = SnapshotAbstraction(otherSnapshot)
+          DebugAbstraction(abstraction, secondary)
+        }
+        Record(specification, debug, locations)
       }
 
     // create sample
-    val sample = currentRecord match {
+    currentRecord match {
       case Some(currentRecord) =>
         // evaluate permission amount
         val permission = {
@@ -172,7 +184,6 @@ trait SampleExtractor extends AbstractTeacher {
         else NegativeSample(currentRecord)
       case None => PositiveSample(otherRecords)
     }
-    sample
   }
 
   /**

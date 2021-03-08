@@ -89,17 +89,23 @@ class Inference(val configuration: Configuration) extends LazyLogging {
       */
     @tailrec
     def infer(round: Int = 0): Hypothesis = {
-      logger.trace(s"start round #$round")
       // compute hypothesis
       val hypothesis = learner.hypothesis
+      logger.info("--- current hypothesis ---")
+      hypothesis.predicates.foreach { predicate => logger.info(predicate.toString()) }
       if (round >= maxRounds()) hypothesis
       else {
+        logger.info(s"\n----- start round #$round -----\n")
         // check hypothesis
         val samples = teacher.check(hypothesis)
         if (samples.isEmpty) hypothesis
         else {
           // add samples and iterate
-          samples.foreach { sample => learner.addSample(sample) }
+          logger.info("--- add samples ---")
+          samples.foreach { sample =>
+            logger.info(sample.toString)
+            learner.addSample(sample)
+          }
           infer(round + 1)
         }
       }
