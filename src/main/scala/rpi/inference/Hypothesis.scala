@@ -2,6 +2,7 @@ package rpi.inference
 
 import rpi.inference.context.Instance
 import rpi.util.ast.Expressions._
+import rpi.util.ast.ValueInfo
 import viper.silver.ast
 
 object Hypothesis {
@@ -61,7 +62,8 @@ case class Hypothesis(lemmas: Seq[ast.Method], predicates: Seq[ast.Predicate]) {
     getLemma(instance.name) match {
       case Some(lemma) =>
         val arguments = instance.arguments
-        makeCall(lemma, arguments)
+        val info = ValueInfo(instance)
+        makeCall(lemma, arguments, info)
       case _ => sys.error(s"Lemma $instance not defined by hypothesis.")
     }
 

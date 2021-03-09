@@ -2,8 +2,8 @@ package rpi.builder
 
 import rpi.inference.context.{Context, Instance, LoopCheck}
 import rpi.inference.Hypothesis
-import rpi.inference.annotation.{Annotation, Hint}
-import rpi.util.ast.{Cut, ValueInfo}
+import rpi.inference.annotation.Hint
+import rpi.util.ast._
 import viper.silver.ast
 
 /**
@@ -47,7 +47,7 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
   override protected def processCut(cut: Cut)(implicit hypothesis: Hypothesis): Unit =
     cut.statement match {
       case loop: ast.While =>
-        val check = ValueInfo.value[LoopCheck](cut)
+        val check = Infos.value[LoopCheck](cut)
         val invariants = check.invariant.all(hypothesis)
         val body = processCheck(check, hypothesis)
         // add updated loop
@@ -66,7 +66,7 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
           case placeholder: ast.PredicateAccessPredicate =>
             if (configuration.useAnnotations() || configuration.verifyWithHints()) {
               // get specification
-              val instance = ValueInfo.value[Instance](placeholder)
+              val instance = Infos.value[Instance](placeholder)
               val body = hypothesis.getPredicateBody(instance)
               // unfold
               val maxDepth = check.depth(hypothesis)
@@ -78,7 +78,7 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
         expression match {
           case placeholder: ast.PredicateAccessPredicate =>
             // get specification
-            val instance = ValueInfo.value[Instance](placeholder)
+            val instance = Infos.value[Instance](placeholder)
             val body = hypothesis.getPredicateBody(instance)
             // fold
             if (configuration.useAnnotations() || configuration.verifyWithHints()) {

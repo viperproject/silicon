@@ -3,7 +3,7 @@ package rpi.inference.annotation
 import rpi.inference.Hypothesis
 import rpi.inference.context.Instance
 import rpi.util.ast.Expressions._
-import rpi.util.ast.{Cut, Hinted, ValueInfo}
+import rpi.util.ast._
 import viper.silver.ast
 
 /**
@@ -164,7 +164,7 @@ object AccessAnalysis {
         case ast.Exhale(expression) =>
           expression match {
             case placeholder: ast.PredicateAccessPredicate =>
-              val instance = ValueInfo.value[Instance](placeholder)
+              val instance = Infos.value[Instance](placeholder)
               self.read(instance)
             case _ =>
               self.read(expression)

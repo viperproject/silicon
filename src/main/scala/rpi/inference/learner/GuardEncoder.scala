@@ -150,7 +150,7 @@ class GuardEncoder(context: Context, templates: Seq[Template]) extends LazyLoggi
           }
           // add map
           Some(template.name -> map)
-        case template =>
+        case _ =>
           None
       }
       .toMap

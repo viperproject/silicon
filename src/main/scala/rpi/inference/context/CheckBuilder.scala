@@ -5,6 +5,7 @@ import rpi.builder.ProgramBuilder
 import rpi.inference.annotation.Hint
 import rpi.util.Namespace
 import rpi.util.ast.Expressions._
+import rpi.util.ast.Saved
 import rpi.util.ast.Statements._
 import viper.silver.ast
 
@@ -210,7 +211,7 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
   private def save(expression: ast.Exp): ast.LocalVar = {
     // create variable
     val name = namespace.uniqueIdentifier("t", Some(0))
-    val variable = makeVariable(name, expression.typ)
+    val variable = makeVariable(name, expression.typ, Saved)
     // add assignment
     addAssign(variable, expression)
     // return variable

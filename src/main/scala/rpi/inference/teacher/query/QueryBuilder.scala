@@ -120,7 +120,7 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
         expression match {
           case placeholder: ast.PredicateAccessPredicate =>
             // get specification
-            val instance = ValueInfo.value[Instance](placeholder)
+            val instance = Infos.value[Instance](placeholder)
             val body = hypothesis.getPredicateBody(instance)
             // inhale placeholder predicate
             if (configuration.noInlining()) {
@@ -140,8 +140,6 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
             branchOnAccesses()
 
             saveSnapshot(instance)
-          // TODO: Implement me.
-          // foo(instance)(maxDepth, hypothesis)
           case _ =>
             addInhale(expression)
         }
@@ -149,7 +147,7 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
         expression match {
           case placeholder: ast.PredicateAccessPredicate =>
             // get specification
-            val instance = ValueInfo.value[Instance](placeholder)
+            val instance = Infos.value[Instance](placeholder)
             val body = hypothesis.getPredicateBody(instance)
             // save and fold
             implicit val label: String = saveSnapshot(instance)

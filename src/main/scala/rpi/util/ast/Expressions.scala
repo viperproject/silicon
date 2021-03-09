@@ -160,8 +160,8 @@ object Expressions {
     makeVariable(name, ast.Ref)
 
   @inline
-  def makeVariable(name: String, typ: ast.Type): ast.LocalVar =
-    ast.LocalVar(name, typ)()
+  def makeVariable(name: String, typ: ast.Type, info: ast.Info = ast.NoInfo): ast.LocalVar =
+    ast.LocalVar(name, typ)(info = info)
 
   /**
     * Returns an equality expression that compares the two given expressions.
@@ -203,8 +203,8 @@ object Expressions {
     ast.NullLit()()
 
   @inline
-  def makeCall(method: ast.Method, arguments: Seq[ast.Exp]): ast.MethodCall =
-    ast.MethodCall(method, arguments, Seq.empty)()
+  def makeCall(method: ast.Method, arguments: Seq[ast.Exp], info: ast.Info = ast.NoInfo): ast.MethodCall =
+    ast.MethodCall(method, arguments, Seq.empty)(info = info)
 
   @inline
   def makeField(receiver: ast.Exp, field: ast.Field): ast.FieldAccess =

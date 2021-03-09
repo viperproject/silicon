@@ -5,7 +5,7 @@ import rpi.inference.context.Instance
 import rpi.inference._
 import rpi.inference.teacher.query.Query
 import rpi.inference.teacher.state._
-import rpi.util.ast.ValueInfo
+import rpi.util.ast.Infos
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silver.ast
 import viper.silver.verifier._
@@ -207,7 +207,7 @@ trait SampleExtractor extends AbstractTeacher {
     }
     // extract context info
     val info = error.offendingNode match {
-      case node: ast.Infoed => ValueInfo.valueOption[T](node)
+      case node: ast.Infoed => Infos.valueOption[T](node)
       case _ => None
     }
     // return information
