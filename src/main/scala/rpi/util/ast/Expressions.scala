@@ -207,17 +207,6 @@ object Expressions {
     ast.MethodCall(method, arguments, Seq.empty)()
 
   @inline
-  @deprecated
-  def ms(from: ast.Exp, to: ast.Exp): ast.PredicateAccessPredicate =
-    makeRecursive(Seq(from, to))
-
-  @deprecated
-  private def makeRecursive(arguments: Seq[ast.Exp]): ast.PredicateAccessPredicate = {
-    val access = ast.PredicateAccess(arguments, Names.recursive)()
-    makeResource(access)
-  }
-
-  @inline
   def makeField(receiver: ast.Exp, field: ast.Field): ast.FieldAccess =
     ast.FieldAccess(receiver, field)()
 
