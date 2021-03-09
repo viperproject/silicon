@@ -75,8 +75,9 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
       // inhale method preconditions
       hinted(addInhale(check.precondition))
       // process body
-      val processed = processSequence(sequence, declarations)
+      val (processed, innerHints) = processSequence(sequence, declarations)
       addStatement(processed)
+      innerHints.foreach { hint => addHint(hint) }
       // exhale method postconditions
       hinted(addExhale(check.postcondition))
     }
@@ -97,8 +98,9 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
         addInhale(loop.cond)
       }
       // process body
-      val processed = processSequence(loop.body, declarations)
+      val (processed, innerHints) = processSequence(loop.body, declarations)
       addStatement(processed)
+      innerHints.foreach { hint => addHint(hint) }
       // exhale loop invariants
       hinted(addExhale(invariant))
     }
@@ -108,31 +110,43 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
     check
   }
 
-  private def processSequence(sequence: ast.Seqn, declarations: Seq[ast.LocalVarDecl]): ast.Seqn = {
-    val variables = sequence.scopedDecls.collect { case variable: ast.LocalVarDecl => variable }
-    val all = declarations ++ variables
+  /**
+    * Processes the given sequence and returns the updated sequence and the list of hints that were collected.
+    *
+    * @param sequence     The sequence to process.
+    * @param declarations The declarations.
+    * @return The updated sequence and the collected hints.
+    */
+  private def processSequence(sequence: ast.Seqn, declarations: Seq[ast.LocalVarDecl]): (ast.Seqn, Seq[Hint]) = {
+    // save and reset hints
+    val outerHints = hints
+    hints = Seq.empty
+    // process and update sequence
     val statements = scoped {
+      // add scoped declarations
+      val variables = sequence.scopedDecls.collect { case variable: ast.LocalVarDecl => variable }
+      val all = declarations ++ variables
+      // process statements
       sequence.ss.foreach { statement => processStatement(statement, all) }
     }
-    sequence.copy(ss = statements)(sequence.pos, sequence.info, sequence.errT)
+    val update = sequence.copy(ss = statements)(sequence.pos, sequence.info, sequence.errT)
+    // extract and restore hints
+    val innerHints = hints
+    hints = outerHints
+
+    (update, innerHints)
   }
 
   private def processStatement(statement: ast.Stmt, declarations: Seq[ast.LocalVarDecl]): Unit =
     statement match {
       case sequence: ast.Seqn =>
-        val processed = processSequence(sequence, declarations)
+        val (processed, innerHints) = processSequence(sequence, declarations)
         addStatement(processed)
+        innerHints.foreach { hint => addHint(hint) }
       case original@ast.If(_, thenBranch, elseBranch) =>
-        // save hints
-        val outerHints = consumeHints()
-        // process then branch
-        val thenProcessed = processSequence(thenBranch, declarations)
-        val thenHints = consumeHints()
-        // process else branch
-        val elseProcessed = processSequence(elseBranch, declarations)
-        val elseHints = consumeHints()
-        // restore hints
-        hints = outerHints
+        // process branches
+        val (thenProcessed, thenHints) = processSequence(thenBranch, declarations)
+        val (elseProcessed, elseHints) = processSequence(elseBranch, declarations)
         // handle condition
         val condition =
           if (thenHints.isEmpty && elseHints.isEmpty) original.cond
