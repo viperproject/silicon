@@ -10,11 +10,11 @@ method traverse(a: Ref)
     c := a
     while (c != null)
     {
+        __down__(c)
         if (b(c)) {
             c := c.l
         } else {
             c := c.r
         }
-        __down__(c)
     }
 }

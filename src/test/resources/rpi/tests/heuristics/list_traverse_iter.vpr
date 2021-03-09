@@ -5,9 +5,10 @@ method traverse(a: Ref)
 {
     var c: Ref
     c := a
+
     while (c != null)
     {
-        c := c.n
         __down__(c)
+        c := c.n
     }
 }
