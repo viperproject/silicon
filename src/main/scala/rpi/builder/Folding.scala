@@ -21,21 +21,24 @@ trait Folding extends ProgramBuilder {
   /**
     * Unfolds the given expression up to the maximal depth.
     *
+    * NOTE: The default action function is used by the query builder as a hook to track unfolded field accesses.
+    *
     * @param expression The expression to unfold.
-    * @param guards     The guards collected so far.
+    * @param outer      The outer guards (already handled by conditionals)
+    * @param guards     The current guards (not yet handled by conditionals)
     * @param maxDepth   The maximal depth.
     * @param hypothesis The current hypothesis.
     * @param default    The default action for leaf expressions.
     */
-  protected def unfold(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty)
+  protected def unfold(expression: ast.Exp, outer: Seq[ast.Exp] = Seq.empty, guards: Seq[ast.Exp] = Seq.empty)
                       (implicit maxDepth: Int, hypothesis: Hypothesis,
-                       default: (ast.Exp, Seq[ast.Exp]) => Unit = (_, _) => ()): Unit =
+                       default: (ast.Exp, Seq[ast.Exp], Seq[ast.Exp]) => Unit = (_, _, _) => ()): Unit =
     expression match {
       case ast.And(left, right) =>
-        unfold(left, guards)
-        unfold(right, guards)
+        unfold(left, outer, guards)
+        unfold(right, outer, guards)
       case ast.Implies(guard, guarded) =>
-        unfold(guarded, guards :+ guard)
+        unfold(guarded, outer, guards :+ guard)
       case predicate@ast.PredicateAccessPredicate(access, _) =>
         val depth = getDepth(access.args.head)
         if (depth < maxDepth) {
@@ -45,16 +48,19 @@ trait Folding extends ProgramBuilder {
             // recursively unfold predicates appearing in body
             val instance = context.instance(predicate.loc)
             val body = hypothesis.getPredicateBody(instance)
-            unfold(body)
+            unfold(body, outer ++ guards)
           }
-          addConditionalAnd(guards, unfolds)
-        } else default(predicate, guards)
+          addConditional(guards, unfolds)
+        } else default(predicate, outer, guards)
       case other =>
-        default(other, guards)
+        default(other, outer, guards)
     }
 
   /**
     * Folds the given expression from the maximal depth.
+    *
+    * NOTE: The default action function is used by the query builder to save permissions to folded fields and predicate
+    * accesses.
     *
     * @param expression The expression to fold.
     * @param guards     The guards collected so far.
@@ -83,7 +89,7 @@ trait Folding extends ProgramBuilder {
             val info = ValueInfo(instance)
             addFold(predicate, info)
           }
-          addConditionalAnd(guards, folds)
+          addConditional(guards, folds)
         } else default(predicate, guards)
       case other =>
         default(other, guards)
@@ -145,7 +151,7 @@ trait Folding extends ProgramBuilder {
                     makeConditional(condition, application, result)
                 }
               }
-              addConditionalAnd(guards, body)
+              addConditional(guards, body)
             case _ =>
               handleStart(predicate, guards)
           }
@@ -183,7 +189,7 @@ trait Folding extends ProgramBuilder {
                 makeConditional(condition, adapted, result)
             }
           }
-          addConditionalAnd(guards, body)
+          addConditional(guards, body)
         case other =>
           fold(other, guards)
       }

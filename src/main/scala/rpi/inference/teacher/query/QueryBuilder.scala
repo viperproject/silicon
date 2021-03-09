@@ -6,7 +6,7 @@ import rpi.inference.context._
 import rpi.inference.Hypothesis
 import rpi.inference.annotation.Hint
 import rpi.util.ast.Expressions._
-import rpi.util.Namespace
+import rpi.util.{Collections, Namespace}
 import rpi.util.ast.Statements._
 import rpi.util.ast._
 import viper.silver.ast
@@ -112,32 +112,6 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
   override protected def processCut(cut: Cut)(implicit hypothesis: Hypothesis): Unit =
     addStatement(cut.havoc)
 
-  /**
-    * TODO: Implement and rename.
-    *
-    * @param instance
-    * @param guards
-    * @param depth
-    * @param hypothesis
-    */
-  private def foo(instance: Instance, guards: Seq[ast.Exp] = Seq.empty)(implicit depth: Int, hypothesis: Hypothesis): Unit = {
-    val body = hypothesis.getPredicateBody(instance)
-    bar(body)
-  }
-
-  private def bar(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty)(implicit depth: Int, hypothesis: Hypothesis): Unit =
-    expression match {
-      case ast.TrueLit() => // do nothing
-      case ast.FalseLit() => // do nothing
-      case ast.And(left, right) =>
-        bar(left)
-        bar(right)
-      case ast.Implies(guard, guarded) =>
-        bar(guarded, guards :+ guard)
-      case _ =>
-        ???
-    }
-
   protected override def processHinted(hinted: ast.Stmt)(implicit hypothesis: Hypothesis, hints: Seq[Hint]): Unit =
     hinted match {
       case ast.Seqn(statements, _) =>
@@ -160,7 +134,11 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
             }
             // unfold and save
             val maxDepth = if (configuration.useAnnotations()) check.depth(hypothesis) else 0
-            unfold(body)(maxDepth, hypothesis)
+
+            resetAccesses(instance)
+            unfold(body)(maxDepth, hypothesis, trackAccesses)
+            branchOnAccesses()
+
             saveSnapshot(instance)
           // TODO: Implement me.
           // foo(instance)(maxDepth, hypothesis)
@@ -199,6 +177,55 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
         addStatement(other)
     }
 
+  /**
+    * A map from accesses to the condition under which they are inhaled.
+    */
+  var accesses: Map[ast.Exp, ast.Exp] = _
+
+  private def resetAccesses(instance: Instance): Unit =
+    accesses = instance.arguments
+      .filter { argument => argument.isSubtype(ast.Ref) }
+      .map { argument => argument -> makeTrue }.toMap
+
+  /**
+    * A helper method used to be passed as the default unfold action that tracks unfolded field accesses.
+    *
+    * @param expression The unfolded expression.
+    * @param outer      The outer guards (see [[Folding.unfold]]).
+    * @param guards     The current guards (see [[Folding.unfold]]).
+    */
+  private def trackAccesses(expression: ast.Exp, outer: Seq[ast.Exp], guards: Seq[ast.Exp]): Unit =
+    expression match {
+      case ast.FieldAccessPredicate(access, _) if access.isSubtype(ast.Ref) =>
+        // effective guard
+        val condition = makeAnd(outer ++ guards)
+        // update effective guard
+        val effective = accesses
+          .get(access)
+          .map { existing => makeOr(existing, condition) }
+          .getOrElse(condition)
+        accesses = accesses.updated(access, effective)
+      case _ => // do nothing
+    }
+
+  private def branchOnAccesses(): Unit = {
+    // branch on nullity
+    accesses.foreach {
+      case (path, effective) =>
+        val atom = makeInequality(path, makeNull)
+        val condition = makeAnd(effective, atom)
+        addConditional(condition, makeInhale(makeTrue), makeSkip)
+    }
+
+    // branch on equality
+    Collections.pairs(accesses).foreach {
+      case ((path1, effective1), (path2, effective2)) =>
+        val atom = makeInequality(path1, path2)
+        val condition = makeAnd(Seq(effective1, effective2, atom))
+        addConditional(condition, makeInhale(makeTrue), makeSkip)
+    }
+  }
+
   private def saveSnapshot(instance: Instance): String = {
     // generate unique snapshot label
     val name = namespace.uniqueIdentifier(Names.snapshot, Some(0))
@@ -211,13 +238,13 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
           saveValue(s"${name}_${variable.name}", variable)
       }
     // save values of atoms
-    instance
+    /* instance
       .actualAtoms
       .zipWithIndex
       .foreach {
         case (atom, index) =>
           saveAtom(s"${name}_$index", atom)
-      }
+      } */
     // add label
     addLabel(name)
     // return snapshot label
