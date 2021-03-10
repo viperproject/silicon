@@ -1,7 +1,0 @@
-method find(values: Seq[Int])
-  requires |values| > 3
-  requires values[0] != values[1]
-  requires values[1] != values[2]
-{
-  assert(false)
-}
