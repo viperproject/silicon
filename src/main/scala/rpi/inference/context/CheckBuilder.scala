@@ -171,7 +171,8 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
           addExhale(check.invariant)
         }
         // cut loop (havoc written variables)
-        // TODO: havoc hints
+        // TODO: properly havoc hints
+        hints = Seq.empty
         addCut(original, check)
         // inhale invariant and negation of loop condition
         hinted(hints) {
@@ -209,7 +210,8 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
             addExhale(check.precondition(variables))
           }
           // havoc return variables
-          // TODO: havoc hints
+          // TODO: properly havoc hints
+          hints = Seq.empty
           addCut(adapted, check)
           // inhale method postcondition
           hinted(hints) {
