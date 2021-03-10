@@ -70,16 +70,18 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
   }
 
   private def createBody(check: MethodCheck, sequence: ast.Seqn, declarations: Seq[ast.LocalVarDecl]): Unit = {
-    clear()
     val body = makeScope {
       // inhale method preconditions
-      hinted(addInhale(check.precondition))
+      hinted(Seq.empty) {
+        addInhale(check.precondition)
+      }
       // process body
-      val (processed, innerHints) = processSequence(sequence, declarations)
+      val (processed, hints) = processSequence(sequence, declarations)
       addStatement(processed)
-      innerHints.foreach { hint => addHint(hint) }
       // exhale method postconditions
-      hinted(addExhale(check.postcondition))
+      hinted(hints) {
+        addExhale(check.postcondition)
+      }
     }
     check.setBody(body)
   }
@@ -90,19 +92,19 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
     val invariant = createSpecification(Names.invariant, declarations, loop.invs)
     val check = new LoopCheck(name, invariant)
     // add check body
-    clear()
     val body = makeScope {
       // inhale loop invariants and condition
-      hinted {
+      hinted(Seq.empty) {
         addInhale(invariant)
         addInhale(loop.cond)
       }
       // process body
-      val (processed, innerHints) = processSequence(loop.body, declarations)
+      val (processed, hints) = processSequence(loop.body, declarations)
       addStatement(processed)
-      innerHints.foreach { hint => addHint(hint) }
       // exhale loop invariants
-      hinted(addExhale(invariant))
+      hinted(hints) {
+        addExhale(invariant)
+      }
     }
     check.setBody(body)
     // add and return check
@@ -119,8 +121,8 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
     */
   private def processSequence(sequence: ast.Seqn, declarations: Seq[ast.LocalVarDecl]): (ast.Seqn, Seq[Hint]) = {
     // save and reset hints
-    val outerHints = hints
-    hints = Seq.empty
+    val savedHints = this.hints
+    this.hints = Seq.empty
     // process and update sequence
     val statements = scoped {
       // add scoped declarations
@@ -129,12 +131,12 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
       // process statements
       sequence.ss.foreach { statement => processStatement(statement, all) }
     }
-    val update = sequence.copy(ss = statements)(sequence.pos, sequence.info, sequence.errT)
+    val processed = sequence.copy(ss = statements)(sequence.pos, sequence.info, sequence.errT)
     // extract and restore hints
-    val innerHints = hints
-    hints = outerHints
-
-    (update, innerHints)
+    val hints = this.hints
+    this.hints = savedHints
+    // return processed sequence and hints
+    (processed, hints)
   }
 
   private def processStatement(statement: ast.Stmt, declarations: Seq[ast.LocalVarDecl]): Unit =
@@ -165,12 +167,14 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
         // loop instrumentation
         val check = createCheck(original, declarations)
         // exhale invariant
-        hinted(addExhale(check.invariant))
+        hinted(hints) {
+          addExhale(check.invariant)
+        }
         // cut loop (havoc written variables)
         // TODO: havoc hints
         addCut(original, check)
         // inhale invariant and negation of loop condition
-        hinted {
+        hinted(hints) {
           addInhale(check.invariant)
           addInhale(makeNot(condition))
         }
@@ -201,20 +205,20 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
           // method call instrumentation
           val check = methods(name)
           // exhale method precondition
-          hinted(addExhale(check.precondition(variables)))
+          hinted(hints) {
+            addExhale(check.precondition(variables))
+          }
           // havoc return variables
           // TODO: havoc hints
           addCut(adapted, check)
           // inhale method postcondition
-          hinted(addInhale(check.postcondition(variables ++ returns)))
+          hinted(hints) {
+            addInhale(check.postcondition(variables ++ returns))
+          }
         }
       case _ =>
         addStatement(statement)
     }
-
-  private def clear(): Unit = {
-    hints = Seq.empty
-  }
 
   private def asVariable(expression: ast.Exp): ast.LocalVar =
     expression match {
@@ -238,8 +242,7 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
   private def addExhale(instance: Instance): Unit =
     instance.all.foreach { expression => addExhale(expression) }
 
-  private def hinted(generate: => Unit): Unit = {
-    val hints = this.hints
+  private def hinted(hints: Seq[Hint])(generate: => Unit): Unit = {
     val body = makeScope(generate)
     addStatement(makeHinted(body, hints))
   }
@@ -249,10 +252,4 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
 
   private def addHint(hint: Hint): Unit =
     hints = hints :+ hint
-
-  private def consumeHints(): Seq[Hint] = {
-    val consumed = hints
-    hints = Seq.empty
-    consumed
-  }
 }
