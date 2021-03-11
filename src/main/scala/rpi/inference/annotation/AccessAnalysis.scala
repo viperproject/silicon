@@ -49,6 +49,8 @@ object AccessAnalysis {
         fields(argument)
       case ast.BinExp(left, right) =>
         fields(left) ++ fields(right)
+      case ast.FieldAccessPredicate(field, _) =>
+        Seq(field)
       case field: ast.FieldAccess =>
         Seq(field)
       case _ =>
