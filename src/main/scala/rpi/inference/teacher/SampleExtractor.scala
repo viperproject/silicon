@@ -41,6 +41,7 @@ trait SampleExtractor extends AbstractTeacher {
     }
 
     // get state abstraction
+    // TODO: Debug abstraction
     val abstraction = {
       // get state and model
       val model = ModelEvaluator(counter.model)
@@ -48,7 +49,10 @@ trait SampleExtractor extends AbstractTeacher {
       val state = StateEvaluator(Some(label), counter.state, model)
       val snapshot = Snapshot(instance, state)
       // compute abstraction
-      snapshot.formalAtomicAbstraction
+      val primary = snapshot.formalAtomicAbstraction
+      // debug abstraction
+      val secondary = SnapshotAbstraction(snapshot)
+      DebugAbstraction(primary, secondary)
     }
 
     // create and return sample
@@ -170,7 +174,7 @@ trait SampleExtractor extends AbstractTeacher {
       }
 
     // create sample
-    currentRecord match {
+    val sample = currentRecord match {
       case Some(currentRecord) =>
         // evaluate permission amount
         val permission = {
@@ -184,6 +188,7 @@ trait SampleExtractor extends AbstractTeacher {
         else NegativeSample(currentRecord)
       case None => PositiveSample(otherRecords)
     }
+    sample
   }
 
   /**

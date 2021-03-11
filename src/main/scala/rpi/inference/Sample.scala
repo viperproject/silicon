@@ -71,13 +71,12 @@ case class DebugAbstraction[A <: Abstraction, B <: Abstraction](primary: A, seco
     val secondaryValue = secondary.value(atom)
     // compare and return primary value
     primaryValue.foreach { _ => assert(primaryValue == secondaryValue) }
-    primaryValue
+    secondaryValue
   }
 
   override def toString: String =
-    primary.toString
+    secondary.toString
 }
-
 
 case class SnapshotAbstraction(snapshot: Snapshot) extends Abstraction {
   override def value(atom: Exp): Option[Boolean] = {
@@ -85,6 +84,12 @@ case class SnapshotAbstraction(snapshot: Snapshot) extends Abstraction {
     val value = snapshot.state.evaluateBoolean(actual)
     Some(value)
   }
+
+  override def toString: String =
+    snapshot
+      .partitions
+      .map { partition => partition.mkString("{", ", ", "}") }
+      .mkString("{", ", ", "}")
 }
 
 @deprecated

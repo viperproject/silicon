@@ -97,6 +97,9 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
     */
   def actualAtomicAbstraction: AtomicAbstraction =
     instance.toActual(atomicAbstraction)
+
+  def partitions: Iterable[Set[ast.Exp]] =
+    nullableReachability.map { case (_, set) => set }
 }
 
 /**
