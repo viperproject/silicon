@@ -2,6 +2,7 @@ package rpi.inference.teacher.state
 
 import rpi.inference.context.{Instance, Specification}
 import rpi.inference.AtomicAbstraction
+import rpi.util.ast.Expressions._
 import rpi.util.{Collections, SetMap}
 import viper.silver.ast
 
@@ -31,8 +32,7 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
             .getOrElse(key, Map.empty)
             .foldLeft(map1) {
               case (map2, (name, value)) =>
-                val field = ast.Field(name, ast.Ref)()
-                val extended = paths.map { path => ast.FieldAccess(path, field)(): ast.Exp }
+                val extended = paths.map { path => makeField(path, name, ast.Ref): ast.Exp }
                 SetMap.addAll(map2, value, extended)
             }
         }
@@ -60,7 +60,7 @@ case class Snapshot(instance: Instance, state: StateEvaluator) {
 
   // reachability map with null literal
   private[state] lazy val nullableReachability = {
-    val nil = ast.NullLit()()
+    val nil = makeNull
     val value = state.evaluateReference(nil)
     SetMap.add(reachability, value, nil)
   }
@@ -119,12 +119,12 @@ case class Adaptor(source: StateEvaluator, target: Snapshot) {
     location match {
       case ast.FieldAccess(receiver, field) =>
         val adaptedReceiver = adaptReference(receiver, nonnull = true)
-        adaptedReceiver.map { adapted => ast.FieldAccess(adapted, field)() }
+        adaptedReceiver.map { adapted => makeField(adapted, field) }
       case ast.PredicateAccess(arguments, name) =>
         val adaptedArguments = arguments.map { argument => adaptReference(argument) }
         Collections
           .product(adaptedArguments)
-          .map { combination => ast.PredicateAccess(combination, name)() }
+          .map { combination => makePredicate(name, combination) }
     }
 
   /**
@@ -148,9 +148,9 @@ case class Adaptor(source: StateEvaluator, target: Snapshot) {
       adaptReference(expression)
     } else expression match {
       case ast.EqCmp(left, right) =>
-        for (l <- adapt(left); r <- adapt(right)) yield ast.EqCmp(l, r)()
+        for (l <- adapt(left); r <- adapt(right)) yield makeEquality(l, r)
       case ast.NeCmp(left, right) =>
-        for (l <- adapt(left); r <- adapt(right)) yield ast.NeCmp(l, r)()
+        for (l <- adapt(left); r <- adapt(right)) yield makeInequality(l, r)
     }
 
   private def adaptReference(expression: ast.Exp, nonnull: Boolean = false): Set[ast.Exp] = {

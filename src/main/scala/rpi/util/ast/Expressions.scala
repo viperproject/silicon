@@ -1,6 +1,5 @@
 package rpi.util.ast
 
-import rpi.Names
 import viper.silver.ast
 import viper.silver.ast.utility.rewriter.Traverse
 
@@ -205,6 +204,10 @@ object Expressions {
   @inline
   def makeCall(method: ast.Method, arguments: Seq[ast.Exp], info: ast.Info = ast.NoInfo): ast.MethodCall =
     ast.MethodCall(method, arguments, Seq.empty)(info = info)
+
+  @inline
+  def makeField(receiver: ast.Exp, name: String, typ: ast.Type): ast.FieldAccess =
+    makeField(receiver, ast.Field(name, typ)())
 
   @inline
   def makeField(receiver: ast.Exp, field: ast.Field): ast.FieldAccess =
