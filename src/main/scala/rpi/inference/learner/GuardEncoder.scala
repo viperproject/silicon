@@ -35,6 +35,7 @@ class GuardEncoder(context: Context, templates: Seq[Template]) extends LazyLoggi
     templates
       .flatMap {
         case template: PredicateTemplate =>
+          logger.info(template.toString)
           Some(template.name -> template)
         case _ => None
       }
@@ -245,8 +246,8 @@ class GuardEncoder(context: Context, templates: Seq[Template]) extends LazyLoggi
       .zipWithIndex
       .map { case (record, index) =>
         // note: every other record is in negative position
-        val adapted = if (index % 2 == 0) default else !default
-        encodeRecord(record, adapted)
+        val adaptedDefault = if (index % 2 == 0) default else !default
+        encodeRecord(record, adaptedDefault)
       }
 
     // encode framing constraints
@@ -410,9 +411,21 @@ class GuardEncoder(context: Context, templates: Seq[Template]) extends LazyLoggi
   }
 
   object View {
+    /**
+      * Returns the empty view that does not assign any expression to any variable.
+      *
+      * @return The empty view.
+      */
     def empty: View =
       View(Map.empty)
 
+    /**
+      * Creates the view for the given template with the given arguments.
+      *
+      * @param template  The template.
+      * @param arguments The arguments.
+      * @return The view.
+      */
     def create(template: Template, arguments: Seq[ast.Exp]): View = {
       val names = template
         .specification
@@ -422,9 +435,25 @@ class GuardEncoder(context: Context, templates: Seq[Template]) extends LazyLoggi
     }
   }
 
+  /**
+    * A view mapping variable names to the expressions with which they are instantiated.
+    *
+    * @param map The map.
+    */
   case class View(map: Map[String, ast.Exp]) {
+    /**
+      * Returns whether the view is empty.
+      *
+      * @return True if the view is empty.
+      */
     def isEmpty: Boolean = map.isEmpty
 
+    /**
+      * Adapt the expression according to the view.
+      *
+      * @param expression The expression to adapt.
+      * @return The adapted expression.
+      */
     def adapt(expression: ast.Exp): ast.Exp =
       if (isEmpty) expression
       else expression.transform {
@@ -432,8 +461,15 @@ class GuardEncoder(context: Context, templates: Seq[Template]) extends LazyLoggi
           map.getOrElse(name, variable)
       }
 
-    def updated(name: String, value: ast.Exp): View =
-      View(map.updated(name, value))
+    /**
+      * Updates the view by mapping the variable with the given name to the given expression.
+      *
+      * @param name       The name of the variable.
+      * @param expression The expression.
+      * @return The updated view.
+      */
+    def updated(name: String, expression: ast.Exp): View =
+      View(map.updated(name, expression))
   }
 
 }
