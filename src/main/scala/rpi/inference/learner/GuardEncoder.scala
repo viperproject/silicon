@@ -20,11 +20,6 @@ import scala.collection.mutable.ListBuffer
 
 class GuardEncoder(context: Context, templates: Seq[Template]) extends LazyLogging {
   /**
-    * The maximal number of clauses that may be used for a guard.
-    */
-  private val maxClauses = context.configuration.maxClauses()
-
-  /**
     * Type shortcut for an effective guard.
     *
     * The inner sequence represents a choice that is possible if all guards of the sequence evaluate to true. The outer
@@ -37,6 +32,16 @@ class GuardEncoder(context: Context, templates: Seq[Template]) extends LazyLoggi
     */
   private type EffectiveMap = Map[ast.LocationAccess, Effective]
 
+  /**
+    * The maximal number of clauses that may be used for a guard.
+    */
+  @inline
+  private def maxClauses: Int =
+    context.configuration.maxClauses()
+
+  /**
+    * The map from predicate names to the corresponding predicate template.
+    */
   private val predicates: Map[String, PredicateTemplate] =
     templates
       .flatMap {
@@ -176,7 +181,18 @@ class GuardEncoder(context: Context, templates: Seq[Template]) extends LazyLoggi
     */
   def encodeSamples(samples: Seq[Sample]): Seq[ast.Exp] = {
     if (logger.underlying.isDebugEnabled) {
-      logger.debug("encode samples")
+      // log effective guards
+      logger.debug("effective guards:")
+      guards.foreach { case (specification, map) =>
+        logger.debug(s"  $specification:")
+        map.foreach { case (location, effective) =>
+          logger.debug(s"    $location:")
+          effective.foreach { choice =>
+            logger.debug(s"      ${choice.mkString(" &&")}")
+          }
+        }
+      }
+      logger.debug("encode samples:")
       samples.foreach { sample => logger.debug(sample.toString) }
     }
 
@@ -295,6 +311,8 @@ class GuardEncoder(context: Context, templates: Seq[Template]) extends LazyLoggi
                 case Some(false) => makeFalse
                 case _ =>
                   // TODO: Maybe try model evaluation here?
+                  logger.info("shit happens")
+                  ???
                   makeLiteral(default)
               }
           }

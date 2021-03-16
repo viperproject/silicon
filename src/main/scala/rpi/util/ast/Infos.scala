@@ -21,7 +21,7 @@ object Infos {
   def isSaved(node: ast.Infoed): Boolean =
     node
       .info
-      .getUniqueInfo[Saved.type]
+      .getUniqueInfo[Previous]
       .isDefined
 }
 
@@ -50,6 +50,8 @@ trait Comment extends ValueInfo[Any] {
 }
 
 /**
-  * Info object used to tag saved variables that do not need to be evaluated in a particular state.
+  * Info object used to add information about what the previous value of an expression was.
+  *
+  * @param value The previous value.
   */
-case object Saved extends InferenceInfo
+case class Previous(value: ast.Exp) extends InferenceInfo

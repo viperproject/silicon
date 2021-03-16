@@ -7,7 +7,7 @@
 package rpi.inference.teacher.state
 
 import rpi.util.ast.Expressions.makeVariable
-import rpi.util.ast.Infos
+import rpi.util.ast.{Infos, Previous}
 import viper.silicon.resources.FieldID
 import viper.silicon.state.{BasicChunk, State, terms}
 import viper.silicon.state.terms.sorts
@@ -32,9 +32,12 @@ case class StateEvaluator(label: Option[String], state: State, model: ModelEvalu
     // adapt variable to state (if necessary)
     val adapted = label match {
       case Some(label) if !Infos.isSaved(variable) =>
+        // adapt variable
         val name = s"${label}_${variable.name}"
         makeVariable(name, variable.typ)
-      case _ => variable
+      case _ =>
+        // no adaption needed
+        variable
     }
     // evaluate variable
     val term = state.g(adapted)

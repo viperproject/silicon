@@ -131,15 +131,16 @@ trait Folding extends ProgramBuilder {
         case predicate: ast.PredicateAccessPredicate =>
           val arguments = predicate.loc.args
           arguments match {
-            case Seq(start, end: ast.LocalVar) =>
+            case Seq(start, end) =>
               val body = {
                 val without: ast.Stmt = makeScope(handleStart(predicate))
                 downs.foldRight(without) {
                   case (hint, result) =>
                     // condition for lemma application
                     val condition = {
+                      val inequality = makeInequality(start, end)
                       val equality = makeEquality(end, hint.argument)
-                      makeAnd(hint.conditions :+ equality)
+                      makeAnd(hint.conditions :+ makeAnd(inequality, equality))
                     }
                     // create lemma application
                     val application = makeScope {

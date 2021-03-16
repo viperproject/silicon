@@ -53,16 +53,20 @@ class Inference(val configuration: Configuration) extends LazyLogging {
     // set log level
     configuration
       .logLevel
-      .foreach { option =>
-        val level = Level.toLevel(option)
-        LoggerFactory
-          .getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
-          .asInstanceOf[Logger]
-          .setLevel(level)
-      }
+      .foreach { option => setLogLevel(org.slf4j.Logger.ROOT_LOGGER_NAME, Level.toLevel(option)) }
+
+    // debug logging
+    setLogLevel("rpi.inference.learner.GuardEncoder", Level.DEBUG)
+    setLogLevel("rpi.inference.learner.Smt", Level.DEBUG)
 
     verifier.start()
   }
+
+  private def setLogLevel(name: String, level: Level): Unit =
+    LoggerFactory
+      .getLogger(name)
+      .asInstanceOf[Logger]
+      .setLevel(level)
 
   /**
     * Stops the inference and all of its subcomponents.

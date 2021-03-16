@@ -87,9 +87,7 @@ class Teacher(val context: Context) extends AbstractTeacher with SampleExtractor
     * @return The extracted samples.
     */
   private def execute(query: Query, extract: VerificationError => Sample): Seq[Sample] = {
-    logger.trace("execute query")
     val program = query.program
-    logger.trace(program.toString())
     val result = context.verifier.verify(program)
     result match {
       case Success => Seq.empty

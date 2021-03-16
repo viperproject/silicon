@@ -6,12 +6,14 @@
 
 package rpi.inference.teacher
 
+import com.typesafe.scalalogging.LazyLogging
 import rpi.Names
 import rpi.inference.context.Instance
 import rpi.inference._
 import rpi.inference.teacher.query.Query
 import rpi.inference.teacher.state._
-import rpi.util.ast.Infos
+import rpi.util.ast.Expressions.{makeField, makePredicate}
+import rpi.util.ast.{Infos, Previous}
 import viper.silicon.interfaces.SiliconRawCounterexample
 import viper.silver.ast
 import viper.silver.verifier._
@@ -20,7 +22,7 @@ import viper.silver.verifier.reasons.InsufficientPermission
 /**
   * Extracts samples from verification errors.
   */
-trait SampleExtractor extends AbstractTeacher {
+trait SampleExtractor extends AbstractTeacher with LazyLogging {
   /**
     * Type shortcut for counter examples.
     */
@@ -34,6 +36,8 @@ trait SampleExtractor extends AbstractTeacher {
     * @return The extracted sample.
     */
   def framingSample(error: VerificationError, query: Query): Sample = {
+    logger.info(error.toString)
+
     // get counter example and offending location
     val (counter, offending, Some(location)) = extractInformation[ast.LocationAccess](error)
 
@@ -76,6 +80,8 @@ trait SampleExtractor extends AbstractTeacher {
     * @return The extracted sample.
     */
   def basicSample(error: VerificationError, query: Query): Sample = {
+    logger.info(error.toString)
+
     // get counter example, offending location, and context info
     val (counter, offending, info) = extractInformation[Instance](error)
 
@@ -138,8 +144,35 @@ trait SampleExtractor extends AbstractTeacher {
         }
         // locations
         val locations = {
+          // check whether variable was used to save an expression
+
+          def bar(x: ast.Exp): ast.Exp =
+            x match {
+              case variable: ast.LocalVar =>
+                val info = variable.info.getUniqueInfo[Previous]
+                info match {
+                  case Some(Previous(value)) => value
+                  case _ => variable
+                }
+              case ast.FieldAccess(receiver, field) =>
+                makeField(bar(receiver), field)
+              case _ =>
+                x
+            }
+
+          def foo(access: ast.LocationAccess): ast.LocationAccess =
+            access match {
+              case ast.FieldAccess(receiver, field) =>
+                makeField(bar(receiver), field)
+              case ast.PredicateAccess(arguments, name) =>
+                val x = arguments.map { argument => bar(argument) }
+                makePredicate(name, x)
+            }
+
+          val x = foo(currentLocation)
+
           val adaptor = Adaptor(failState, currentSnapshot)
-          adaptor.adaptLocation(currentLocation)
+          adaptor.adaptLocation(x)
         }
         // create record
         val specification = currentSnapshot.specification

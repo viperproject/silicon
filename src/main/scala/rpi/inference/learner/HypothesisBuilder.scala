@@ -43,7 +43,7 @@ class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) extends Laz
     * @return The hypothesis.
     */
   def buildHypothesis(templates: Seq[Template]): Hypothesis = {
-    logger.debug("build hypothesis")
+    logger.info("build hypothesis")
 
     val lemmaBuffer: mutable.Buffer[ast.Method] = ListBuffer.empty
     val predicateBuffer: mutable.Buffer[ast.Predicate] = ListBuffer.empty
@@ -51,11 +51,11 @@ class HypothesisBuilder(learner: Learner, constraints: Seq[ast.Exp]) extends Laz
     templates.foreach {
       case template: PredicateTemplate =>
         val predicate = buildPredicate(template)
-        logger.debug(predicate.toString())
+        logger.info(predicate.toString())
         predicateBuffer.append(predicate)
       case template: LemmaTemplate =>
         val lemma = buildLemma(template)
-        logger.debug(lemma.toString())
+        logger.info(lemma.toString())
         lemmaBuffer.append(lemma)
     }
 

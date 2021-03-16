@@ -176,6 +176,8 @@ case object InferencePhase extends Phase[ast.Program, ast.Program] {
   * A phase that verifies the input program.
   */
 case object VerificationPhase extends Phase[ast.Program, Boolean] {
-  override def run(input: ast.Program)(implicit inference: Inference): Boolean =
+  override def run(input: ast.Program)(implicit inference: Inference): Boolean = {
+    println(input)
     inference.doesVerify(input)
+  }
 }

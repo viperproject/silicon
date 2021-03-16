@@ -6,14 +6,15 @@
 
 package rpi.inference.learner
 
+import com.typesafe.scalalogging.LazyLogging
 import fastparse.Parsed
 
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.Paths
 import viper.silver.ast
-import viper.silver.verifier.{ModelParser, ConstantEntry}
+import viper.silver.verifier.{ConstantEntry, ModelParser}
 
-class Smt(z3: String) {
+class Smt(z3: String) extends LazyLogging {
   /**
     * The z3 process.
     */
@@ -62,8 +63,10 @@ class Smt(z3: String) {
     *
     * @param line The input line.
     */
-  def writeLine(line: String): Unit =
+  def writeLine(line: String): Unit = {
+    logger.debug(line)
     writer.println(line)
+  }
 
   /**
     * Initializes Z3.
@@ -77,7 +80,7 @@ class Smt(z3: String) {
     writeLine("(set-option :model.v2 true)")
     // allow partial models
     // TODO: Does change do anything?
-    writeLine("(set-option :model.completion false)")
+    // writeLine("(set-option :model.completion false)")
   }
 
   /**

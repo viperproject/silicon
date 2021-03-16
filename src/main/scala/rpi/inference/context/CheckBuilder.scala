@@ -11,7 +11,7 @@ import rpi.builder.ProgramBuilder
 import rpi.inference.annotation.Hint
 import rpi.util.Namespace
 import rpi.util.ast.Expressions._
-import rpi.util.ast.Saved
+import rpi.util.ast.Previous
 import rpi.util.ast.Statements._
 import viper.silver.ast
 
@@ -188,7 +188,7 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
       case original@ast.MethodCall(name, arguments, returns) =>
         if (Names.isAnnotation(name)) {
           val argument = arguments.head
-          val old = save(argument)
+          val old = save(argument, Previous(argument))
           val hint = Hint(name, argument, old)
           addHint(hint)
         } else {
@@ -234,10 +234,10 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
       case _ => ???
     }
 
-  private def save(expression: ast.Exp): ast.LocalVar = {
+  private def save(expression: ast.Exp, info: ast.Info = ast.NoInfo): ast.LocalVar = {
     // create variable
     val name = namespace.uniqueIdentifier("t", Some(0))
-    val variable = makeVariable(name, expression.typ, Saved)
+    val variable = makeVariable(name, expression.typ, info)
     // add assignment
     addAssign(variable, expression)
     // return variable

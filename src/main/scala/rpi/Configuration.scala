@@ -25,7 +25,7 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
     opt[Int](
       name = "maxRounds",
       descr = "The number of rounds after which the learner gets exhausted and gives up.",
-      default = Some(10))
+      default = Some(20))
 
   val maxClauses: ScallopOption[Int] =
     opt[Int](
