@@ -17,7 +17,7 @@ import viper.silver.ast
   *
   * @param context The inference context.
   */
-class ProgramExtender(protected val context: Context) extends CheckExtender with Folding {
+class ProgramExtender(protected val context: Context) extends CheckExtender with Folding with Simplification {
   /**
     * Return the input program annotated with the inferred specifications provided by the given hypothesis.
     *
@@ -75,8 +75,10 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
               val instance = Infos.value[Instance](placeholder)
               val body = hypothesis.getPredicateBody(instance)
               // unfold
-              val maxDepth = check.depth(hypothesis)
-              unfold(body)(maxDepth, hypothesis)
+              simplified {
+                val maxDepth = check.depth(hypothesis)
+                unfold(body)(maxDepth, hypothesis)
+              }
             }
           case _ => // do nothing
         }
@@ -87,12 +89,14 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
             val instance = Infos.value[Instance](placeholder)
             val body = hypothesis.getPredicateBody(instance)
             // fold
-            if (configuration.useAnnotations() || configuration.verifyWithHints()) {
-              val maxDepth = check.depth(hypothesis)
-              foldWithAnnotations(body, hints)(maxDepth, hypothesis)
-            } else {
-              val maxDepth = configuration.heuristicsFoldDepth()
-              fold(body)(maxDepth, hypothesis)
+            simplified {
+              if (configuration.useAnnotations() || configuration.verifyWithHints()) {
+                val maxDepth = check.depth(hypothesis)
+                foldWithAnnotations(body, hints)(maxDepth, hypothesis)
+              } else {
+                val maxDepth = configuration.heuristicsFoldDepth()
+                fold(body)(maxDepth, hypothesis)
+              }
             }
           case _ => // do nothing
         }

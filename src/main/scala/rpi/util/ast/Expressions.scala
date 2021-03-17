@@ -116,7 +116,7 @@ object Expressions {
     * @return The conjunction.
     */
   @inline
-  def makeAnd(left: ast.Exp, right: ast.Exp): ast.Exp =
+  def makeAnd(left: ast.Exp, right: ast.Exp): ast.And =
     ast.And(left, right)()
 
   /**
@@ -248,6 +248,14 @@ object Expressions {
     */
   private def simplification(expression: ast.Node): ast.Node =
     expression match {
+      // simplify equality
+      case ast.EqCmp(left, right) =>
+        if (left == right) makeTrue
+        else expression
+      // simplify inequality
+      case ast.NeCmp(left, right) =>
+        if (left == right) makeFalse
+        else expression
       // simplify conjunction
       case ast.Not(argument) => argument match {
         case ast.TrueLit() => makeFalse
@@ -258,13 +266,8 @@ object Expressions {
         case _ => expression
       }
       // simplify conjunction
-      case ast.And(left, right) => (left, right) match {
-        case (ast.TrueLit(), _) => right
-        case (_, ast.TrueLit()) => left
-        case (ast.FalseLit(), _) => makeFalse
-        case (_, ast.FalseLit()) => makeFalse
-        case _ => expression
-      }
+      case and: ast.And =>
+        simplifyAnd(and)
       // simplify disjunction
       case ast.Or(left, right) => (left, right) match {
         case (ast.TrueLit(), _) => makeTrue
@@ -281,5 +284,14 @@ object Expressions {
       }
       // do nothing by default
       case _ => expression
+    }
+
+  def simplifyAnd(and: ast.And): ast.Exp =
+    (and.left, and.right) match {
+      case (ast.TrueLit(), _) => and.right
+      case (_, ast.TrueLit()) => and.left
+      case (ast.FalseLit(), _) => makeFalse
+      case (_, ast.FalseLit()) => makeFalse
+      case _ => and
     }
 }
