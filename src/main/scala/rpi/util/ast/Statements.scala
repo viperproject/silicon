@@ -61,20 +61,6 @@ object Statements {
     Cut(statement)(info = ValueInfo(check))
 }
 
-@deprecated
-case class Instrument(body: ast.Seqn, annotations: Seq[Annotation])
-                     (override val pos: ast.Position = ast.NoPosition,
-                      override val info: ast.Info = ast.NoInfo,
-                      override val errT: ast.ErrorTrafo = ast.NoTrafos) extends ast.ExtensionStmt {
-
-
-  override def extensionSubnodes: Seq[ast.Node] =
-    Seq(body)
-
-  override def prettyPrint: PrettyPrintPrimitives#Cont =
-    text("instrument") <+> showBlock(body)
-}
-
 case class Hinted(body: ast.Seqn, hints: Seq[Hint])
                  (override val pos: ast.Position = ast.NoPosition,
                   override val info: ast.Info = ast.NoInfo,
