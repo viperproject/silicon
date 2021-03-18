@@ -36,8 +36,16 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
         val postconditions = check.postcondition.all(hypothesis)
         // process body
         val body = processCheck(check, hypothesis)
+        // make sure all variables are declared (i.e. the ones used to save expressions)
+        val undeclared = body
+          .undeclLocalVars
+          .map { variable => ast.LocalVarDecl(variable.name, variable.typ)() }
+          .diff(method.scopedDecls)
+        val transformed =
+          if (undeclared.isEmpty) body
+          else body.copy(scopedDecls = body.scopedDecls ++ undeclared)(body.pos, body.info, body.errT)
         // update method
-        method.copy(pres = preconditions, posts = postconditions, body = Some(body))(method.pos, method.info, method.errT)
+        method.copy(pres = preconditions, posts = postconditions, body = Some(transformed))(method.pos, method.info, method.errT)
       }
     // update program
     buildProgram(methods, hypothesis)
