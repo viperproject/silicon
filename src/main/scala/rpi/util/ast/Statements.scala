@@ -77,7 +77,7 @@ case class Cut(statement: ast.Stmt)
                override val info: ast.Info = ast.NoInfo,
                override val errT: ast.ErrorTrafo = ast.NoTrafos) extends ast.ExtensionStmt {
 
-  lazy val variables: Seq[ast.LocalVar] =
+  lazy val havocked: Seq[ast.LocalVar] =
     statement match {
       case call: ast.MethodCall => call.targets
       case loop: ast.While => loop.writtenVars
@@ -85,7 +85,7 @@ case class Cut(statement: ast.Stmt)
     }
 
   lazy val havoc: ast.Stmt = {
-    val assignments = variables.map { variable => makeAssign(variable, variable) }
+    val assignments = havocked.map { variable => makeAssign(variable, variable) }
     makeLoop(makeFalse, makeSequence(assignments))
   }
 
@@ -93,5 +93,5 @@ case class Cut(statement: ast.Stmt)
     Seq.empty
 
   override def prettyPrint: PrettyPrintPrimitives#Cont =
-    text(s"havoc(${variables.mkString(", ")})")
+    text(s"havoc(${havocked.mkString(", ")})")
 }

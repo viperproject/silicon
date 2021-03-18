@@ -115,7 +115,6 @@ class Configuration(arguments: Seq[String]) extends ScallopConf(arguments) {
       descr = "One of the following log levels: ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF.",
       default = None)
 
-
   val path: ScallopOption[String] =
     trailArg[String](
       name = "path",

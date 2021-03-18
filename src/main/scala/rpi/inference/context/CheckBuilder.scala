@@ -177,8 +177,6 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
           addExhale(check.invariant)
         }
         // cut loop (havoc written variables)
-        // TODO: properly havoc hints
-        hints = Seq.empty
         addCut(original, check)
         // inhale invariant and negation of loop condition
         hinted(hints) {
@@ -216,8 +214,6 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
             addExhale(check.precondition(variables))
           }
           // havoc return variables
-          // TODO: properly havoc hints
-          hints = Seq.empty
           addCut(adapted, check)
           // inhale method postcondition
           hinted(hints) {
@@ -255,8 +251,21 @@ class CheckBuilder(program: ast.Program) extends ProgramBuilder {
     addStatement(makeHinted(body, hints))
   }
 
-  private def addCut(statement: ast.Stmt, check: Check): Unit =
-    addStatement(makeCut(statement, check))
+  private def addCut(statement: ast.Stmt, check: Check): Unit = {
+    // create cut
+    val cut = makeCut(statement, check)
+    // havoc hints
+    hints = hints.filter { hint =>
+      hint.argument match {
+        case variable: ast.LocalVar =>
+          !cut.havocked.contains(variable)
+        case _ =>
+          true
+      }
+    }
+    // add cut
+    addStatement(cut)
+  }
 
   private def addHint(hint: Hint): Unit =
     hints = hints :+ hint

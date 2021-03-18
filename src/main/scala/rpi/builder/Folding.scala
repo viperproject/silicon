@@ -101,19 +101,56 @@ trait Folding extends ProgramBuilder {
         default(other, guards)
     }
 
+  protected def unfoldWithHints(expression: ast.Exp, hints: Seq[Hint])
+                             (implicit maxDepth: Int, hypothesis: Hypothesis,
+
+                              default: (ast.Exp, Seq[ast.Exp], Seq[ast.Exp]) => Unit = (_, _, _) => ()): Unit = {
+
+    def handleStart(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty): Unit =
+      expression match {
+        case ast.And(left, right) =>
+          handleStart(left, guards)
+          handleStart(left, guards)
+        case ast.Implies(guard, guarded) =>
+          handleStart(guarded, guards :+ guard)
+        case predicate: ast.PredicateAccessPredicate =>
+          val body = {
+            val start = predicate.loc.args.head
+            val without: ast.Stmt = makeScope(fold(predicate))
+            hints.foldRight(without) {
+              case (hint, result) =>
+                // condition for hint relevance
+                val condition = {
+                  val equality = makeEquality(start, hint.argument)
+                  makeAnd(hint.conditions :+ equality)
+                }
+                // conditionally adapt fold depth
+                val depth = if (hint.isDown) maxDepth - 1 else maxDepth + 1
+                val adapted = makeScope(unfold(predicate)(depth, hypothesis, default))
+                makeConditional(condition, adapted, result)
+            }
+          }
+          addConditional(guards, body)
+        case other =>
+          unfold(other, guards)
+      }
+
+    if (hints.isEmpty) unfold(expression)
+    else handleStart(expression)
+  }
+
   /**
-    * Folds the given expression from the maximal depth under the consideration of the given annotations.
+    * Folds the given expression from the maximal depth under the consideration of the given hints.
     *
     * @param expression The expression to fold.
-    * @param hints      The annotations.
+    * @param hints      The hints.
     * @param maxDepth   The maximal depth.
     * @param hypothesis The current hypothesis.
     * @param default    The default action for leaf expressions.
     */
-  protected def foldWithAnnotations(expression: ast.Exp, hints: Seq[Hint])
-                                   (implicit maxDepth: Int, hypothesis: Hypothesis,
-                                    default: (ast.Exp, Seq[ast.Exp]) => Unit = (_, _) => ()): Unit = {
-    val downs = hints.filter { hint => hint.isDown }
+  protected def foldWithHints(expression: ast.Exp, hints: Seq[Hint])
+                             (implicit maxDepth: Int, hypothesis: Hypothesis,
+                              default: (ast.Exp, Seq[ast.Exp]) => Unit = (_, _) => ()): Unit = {
 
     /**
       * Handles the end argument of predicate instances appearing of the given expression.
@@ -134,29 +171,31 @@ trait Folding extends ProgramBuilder {
             case Seq(start, end) =>
               val body = {
                 val without: ast.Stmt = makeScope(handleStart(predicate))
-                downs.foldRight(without) {
-                  case (hint, result) =>
-                    // condition for lemma application
-                    val condition = {
-                      val inequality = makeInequality(start, end)
-                      val equality = makeEquality(end, hint.argument)
-                      makeAnd(hint.conditions :+ makeAnd(inequality, equality))
-                    }
-                    // create lemma application
-                    val application = makeScope {
-                      // get lemma instance
-                      val arguments = Seq(start, hint.old, end)
-                      val instance = context.instance(Names.appendLemma, arguments)
-                      // fold lemma precondition
-                      val precondition = hypothesis.getLemmaPrecondition(instance)
-                      handleStart(precondition)
-                      // apply lemma
-                      val lemmaApplication = hypothesis.getLemmaApplication(instance)
-                      addStatement(lemmaApplication)
-                    }
-                    // create conditional lemma application
-                    makeConditional(condition, application, result)
-                }
+                hints
+                  .filter { hint => hint.isDown }
+                  .foldRight(without) {
+                    case (hint, result) =>
+                      // condition for lemma application
+                      val condition = {
+                        val inequality = makeInequality(start, end)
+                        val equality = makeEquality(end, hint.argument)
+                        makeAnd(hint.conditions :+ makeAnd(inequality, equality))
+                      }
+                      // create lemma application
+                      val application = makeScope {
+                        // get lemma instance
+                        val arguments = Seq(start, hint.old, end)
+                        val instance = context.instance(Names.appendLemma, arguments)
+                        // fold lemma precondition
+                        val precondition = hypothesis.getLemmaPrecondition(instance)
+                        handleStart(precondition)
+                        // apply lemma
+                        val lemmaApplication = hypothesis.getLemmaApplication(instance)
+                        addStatement(lemmaApplication)
+                      }
+                      // create conditional lemma application
+                      makeConditional(condition, application, result)
+                  }
               }
               addConditional(guards, body)
             case _ =>
@@ -180,8 +219,8 @@ trait Folding extends ProgramBuilder {
         case ast.Implies(guard, guarded) =>
           handleStart(guarded, guards :+ guard)
         case predicate: ast.PredicateAccessPredicate =>
-          val start = predicate.loc.args.head
           val body = {
+            val start = predicate.loc.args.head
             val without: ast.Stmt = makeScope(fold(predicate))
             hints.foldRight(without) {
               case (hint, result) =>

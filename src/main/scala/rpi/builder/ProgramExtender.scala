@@ -84,8 +84,13 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
               val body = hypothesis.getPredicateBody(instance)
               // unfold
               simplified {
-                val maxDepth = check.depth(hypothesis)
-                unfold(body)(maxDepth, hypothesis)
+                if (configuration.useAnnotations() || configuration.verifyWithHints()) {
+                  val maxDepth = check.depth(hypothesis)
+                  unfoldWithHints(body, hints)(maxDepth, hypothesis)
+                } else {
+                  val maxDepth = check.depth(hypothesis)
+                  unfold(body)(maxDepth, hypothesis)
+                }
               }
             }
           case _ => // do nothing
@@ -100,7 +105,7 @@ class ProgramExtender(protected val context: Context) extends CheckExtender with
             simplified {
               if (configuration.useAnnotations() || configuration.verifyWithHints()) {
                 val maxDepth = check.depth(hypothesis)
-                foldWithAnnotations(body, hints)(maxDepth, hypothesis)
+                foldWithHints(body, hints)(maxDepth, hypothesis)
               } else {
                 val maxDepth = configuration.heuristicsFoldDepth()
                 fold(body)(maxDepth, hypothesis)
