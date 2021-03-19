@@ -101,16 +101,29 @@ trait Folding extends ProgramBuilder {
         default(other, guards)
     }
 
+  /**
+    * Unfolds the given expression from the maximal depth under the consideration of the given hints.
+    *
+    * @param expression The expression to unfold.
+    * @param hints      The hints.
+    * @param maxDepth   The maximal depth.
+    * @param hypothesis The current hypothesis.
+    * @param default    The default action for leaf expressions.
+    */
   protected def unfoldWithHints(expression: ast.Exp, hints: Seq[Hint])
-                             (implicit maxDepth: Int, hypothesis: Hypothesis,
-
-                              default: (ast.Exp, Seq[ast.Exp], Seq[ast.Exp]) => Unit = (_, _, _) => ()): Unit = {
-
+                               (implicit maxDepth: Int, hypothesis: Hypothesis,
+                                default: (ast.Exp, Seq[ast.Exp], Seq[ast.Exp]) => Unit = (_, _, _) => ()): Unit = {
+    /**
+      * Handles the end argument of predicate instances appearing of the given expression.
+      *
+      * @param expression The expression.
+      * @param guards     The guards collected so far.
+      */
     def handleStart(expression: ast.Exp, guards: Seq[ast.Exp] = Seq.empty): Unit =
       expression match {
         case ast.And(left, right) =>
           handleStart(left, guards)
-          handleStart(left, guards)
+          handleStart(right, guards)
         case ast.Implies(guard, guarded) =>
           handleStart(guarded, guards :+ guard)
         case predicate: ast.PredicateAccessPredicate =>
@@ -124,7 +137,7 @@ trait Folding extends ProgramBuilder {
                   val equality = makeEquality(start, hint.argument)
                   makeAnd(hint.conditions :+ equality)
                 }
-                // conditionally adapt fold depth
+                // conditionally adapt unfold depth
                 val depth = if (hint.isDown) maxDepth - 1 else maxDepth + 1
                 val adapted = makeScope(unfold(predicate)(depth, hypothesis, default))
                 makeConditional(condition, adapted, result)
@@ -151,7 +164,6 @@ trait Folding extends ProgramBuilder {
   protected def foldWithHints(expression: ast.Exp, hints: Seq[Hint])
                              (implicit maxDepth: Int, hypothesis: Hypothesis,
                               default: (ast.Exp, Seq[ast.Exp]) => Unit = (_, _) => ()): Unit = {
-
     /**
       * Handles the end argument of predicate instances appearing of the given expression.
       *
