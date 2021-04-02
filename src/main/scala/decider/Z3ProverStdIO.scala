@@ -377,17 +377,17 @@ class Z3ProverStdIO(uniqueId: String,
   private def readModel(separator: String): String = {
     try {
       var endFound = false
-      var result = ""
+      val result = new StringBuilder
       var firstTime = true
       while (!endFound) {
         val nextLine = input.readLine()
         if (nextLine.trim().endsWith("\"") || (firstTime && !nextLine.startsWith("\""))) {
           endFound = true
         }
-        result = result + separator + nextLine
+        result.append(separator).append(nextLine)
         firstTime = false
       }
-      result
+      result.result()
     } catch {
       case e: Exception =>
         println("Error reading model: " + e)

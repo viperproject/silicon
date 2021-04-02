@@ -1,0 +1,23 @@
+field n: Ref
+field v: Int
+
+method main(a: Ref)
+{
+    var c: Ref
+
+    c := a
+
+    while (c != null)
+    {
+        __down__(c)
+        c := c.n
+    }
+
+    c := a
+
+    while (c != null)
+    {
+        __down__(c)
+        c := c.n
+    }
+}

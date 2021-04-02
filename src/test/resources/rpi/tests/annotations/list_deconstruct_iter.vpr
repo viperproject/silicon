@@ -1,0 +1,17 @@
+field n: Ref
+
+method deconstruct(a: Ref)
+{
+    var c: Ref
+
+    c := a
+
+    while (c != null)
+    {
+        var t: Ref
+        __down__(c)
+        t := c.n
+        exhale acc(c.n)
+        c := t
+    }
+}

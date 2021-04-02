@@ -1,0 +1,20 @@
+field l: Ref
+field r: Ref
+field v: Ref
+
+function b(x: Ref): Bool
+
+method traverse(a: Ref)
+{
+    var c: Ref
+    c := a
+    while (c != null)
+    {
+        __down__(c)
+        if (b(c)) {
+            c := c.l
+        } else {
+            c := c.r
+        }
+    }
+}
