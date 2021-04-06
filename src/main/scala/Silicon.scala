@@ -127,7 +127,7 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
 
     lifetimeState = LifetimeState.Started
 
-//    setLogLevelsFromConfig()
+    setLogLevelsFromConfig()
 
     verifier = new DefaultMasterVerifier(config, reporter)
     verifier.start()

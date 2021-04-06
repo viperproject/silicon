@@ -8,6 +8,7 @@ import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.{Store, State, BasicChunk}
 import viper.silicon.state.terms._
 import viper.silicon.decider.TermToSMTLib2Converter
+import _root_.javax.print.attribute.standard.MediaSize.Other
 
 //Classes for extracted Model Entries
 case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
@@ -16,7 +17,7 @@ case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
   }
 }
 
-sealed trait ExtractedModelEntry {
+sealed trait ExtractedModelEntry{
   def asValueEntry: ValueEntry
   def toString: String
 }
@@ -180,6 +181,11 @@ object Converter {
             }
           case _ => OtherEntry(s"$m", "not a permission literal")
         }
+      case sorts.UserSort(id) => 
+        m match {
+          case ConstantEntry(v) => DomainValueEntry(id,v)
+          case _ => OtherEntry(v,"not a constant entry---")
+      }
       case _ =>
         m match {
           case e: ValueEntry => UnprocessedModelEntry(e)
@@ -480,6 +486,17 @@ object Converter {
     val extrModel = ExtractedModel(map)
     extrModel
   }
+  def getDomains(model:Model) :Seq[DomainEntry] = ???
+
+  def translateFunction(model:Model,fname:String):ExtractedFunction{//TODO: find out what kind of fname is used...
+      model.entries.get(fname) match {
+        case Some(MapEntry(m, els)) => ExtractedFunction(fname,m.map(x=>_1.map(y=>getConstantEntry(/*sort?*/???,y)) -> getConstantEntry(???,x._2)),getConstantEntry(???,els))
+            
+        case _ => ExtractedFunction(fname,Seq(),OtherEntry(s"${fname}", "not a function"))
+        case None    => OtherEntry(s"${fname}", "function not found in model")
+      }
+  }
+
 }
 
 case class Converter(
@@ -500,4 +517,21 @@ case class Converter(
   lazy val modelAtLabel: Map[String, ExtractedModel] = extractedHeaps.map(x =>
     x._1 -> Converter.mapHeapToStore(store, x._2, model)
   )
+  lazy val domains : Seq[DomainEntry] = Converter.getDomains(model)
+}
+
+case class DomainValueEntry(domain:String,id:String) extends ExtractedModelEntry{
+  def asValueEntry: Any = ConstantEntry(toString)
+  override def toString: String = s"$domain_$id"
+}
+case class DomainEntry(  name:String,
+                            functions:Seq[ExtractedFunction]
+                          ){
+
+}
+case class ExtractedFunction( fname:String,
+                              options:Map[Seq[ExtractedModelEntry], ExtractedModelEntry],
+                              default:ExtractedModelEntry
+                            ){
+  def apply(args:Seq[ExtractedModelEntry]) : ExtractedModelEntry= options.getOrElse(args,default)
 }
