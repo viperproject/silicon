@@ -1,16 +1,16 @@
 package rpi
 
+import org.scalatest.DoNotDiscover
 import org.scalatest.funsuite.AnyFunSuite
 import rpi.inference.TestRunner
 import viper.silver.utility.Paths
-
-import java.io.File
 import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._
 
 /**
   * Testing the inference.
   */
+@DoNotDiscover
 class RpiTest extends AnyFunSuite with TestRunner {
   /**
     * The path to the tests.
