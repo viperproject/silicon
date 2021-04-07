@@ -5,7 +5,7 @@ import viper.silver.verifier.{Model, ModelEntry, ValueEntry, ConstantEntry, Appl
 import viper.silver.ast
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.state.{Store, State, BasicChunk}
+import viper.silicon.state.{Store, State, BasicChunk,SymbolConverter,DefaultSymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.decider.TermToSMTLib2Converter
 import _root_.javax.print.attribute.standard.MediaSize.Other
@@ -130,6 +130,7 @@ object Converter {
     conv.start()
     conv
   }
+  lazy val symbolConverter:SymbolConverter = new DefaultSymbolConverter
   //some tokens used for naming model entries in a more maintainable way
   lazy val snapUnitId: String = termconverter.convert(Unit)
   lazy val nullRefId: String = termconverter.convert(Null())
@@ -183,8 +184,8 @@ object Converter {
         }
       case sorts.UserSort(id) => 
         m match {
-          case ConstantEntry(v) => DomainValueEntry(id,v)
-          case _ => OtherEntry(v,"not a constant entry---")
+          case ConstantEntry(v) => DomainValueEntry(id.toString(),v.split("!").last)//this is a hack for the moment if there is any way to do this diffrently let me know
+          case _ => OtherEntry(id.toString(),"not a constant entry---")
       }
       case _ =>
         m match {
@@ -449,7 +450,8 @@ object Converter {
 
   def typeToSort(typ: ast.Type): Option[Sort] = {
     //If this returns None, we can still try to evaluate the model entry
-    typ match {
+    Some(symbolConverter.toSort(typ))// simplify the logic with this
+    /* typ match {
       case ast.Int  => Some(sorts.Int)
       case ast.Bool => Some(sorts.Bool)
       case ast.Perm => Some(sorts.Perm)
@@ -458,7 +460,7 @@ object Converter {
         val elementSort = typeToSort(elementsType)
         elementSort.map(x => sorts.Seq(x))
       case _ => None
-    }
+    } */
   }
 
   def mapHeapToStore(
@@ -486,16 +488,48 @@ object Converter {
     val extrModel = ExtractedModel(map)
     extrModel
   }
-  def getDomains(model:Model) :Seq[DomainEntry] = ???
 
-  def translateFunction(model:Model,fname:String):ExtractedFunction{//TODO: find out what kind of fname is used...
-      model.entries.get(fname) match {
-        case Some(MapEntry(m, els)) => ExtractedFunction(fname,m.map(x=>_1.map(y=>getConstantEntry(/*sort?*/???,y)) -> getConstantEntry(???,x._2)),getConstantEntry(???,els))
-            
-        case _ => ExtractedFunction(fname,Seq(),OtherEntry(s"${fname}", "not a function"))
-        case None    => OtherEntry(s"${fname}", "function not found in model")
-      }
+  def getDomains(model:Model,program:ast.Program) :Seq[DomainEntry] = {
+    val domains = program.collect(x=> x match {
+      case a:ast.Domain => a
+    })
+   domains.map(x=>DomainEntry(x.name,x.functions.map(y=>translateFunction(model,y,s"<${y.typ}>")))).toSeq
   }
+
+  def getFunctions(model:Model,program:ast.Program):Seq[ExtractedFunction]={
+    val funcs=program.collect(x=>x match {
+      case f:ast.Function => f
+    })
+    //printf(s"${funcs.map(x=>(x.typ,x.name)).mkString("\n")}")
+    funcs.map(x=>translateFunction(model,x,"%limited")).toSeq 
+  }
+
+  val emptymap =Map.empty[Seq[ExtractedModelEntry],ExtractedModelEntry]
+
+  def translateFunction(model:Model,func:ast.FuncLike,app:String):ExtractedFunction= {//TODO: find out what kind of fname is used... spoiler its internal :(
+    try{  //TODO: find the corresponding internal name corresponding to this one
+          val fname =func.name
+          val typ :ast.Type =func.typ
+          val argtyp :Seq[Sort] =func.formalArgs.map(x=>symbolConverter.toSort(x.typ))
+          val resSort :Sort= symbolConverter.toSort(typ)
+    (model.entries.get(fname++app)) match {
+        case Some(MapEntry(m, els)) => { 
+                                        ExtractedFunction(fname,
+                                                          m.map(x=>(x._1.zip(argtyp).map(y=>getConstantEntry(y._2,y._1)) ->getConstantEntry(resSort,x._2))),
+                                                          getConstantEntry(resSort,els)
+                                                          )
+                                        }
+        case Some(ConstantEntry(t)) => ExtractedFunction(fname,emptymap,getConstantEntry(resSort,ConstantEntry(t)))   
+        case Some(ApplicationEntry(n,args)) => ExtractedFunction(fname,emptymap,getConstantEntry(resSort,ApplicationEntry(n,args)))
+        case Some(x) => ExtractedFunction(fname,emptymap,getConstantEntry(resSort,x))
+        case Some(_) => ExtractedFunction(fname,emptymap,OtherEntry(s"${model.entries.get(fname)}", "not a function"))
+        case None    => ExtractedFunction(fname,emptymap,OtherEntry(s"${fname}", "function not found"))
+      }
+    }catch{//how to handle?
+      case x:Throwable =>{printf(s"$x");ExtractedFunction("dummy",Map.empty[Seq[ExtractedModelEntry],ExtractedModelEntry],LitBoolEntry(false))}
+    }
+  }
+
 
 }
 
@@ -503,7 +537,8 @@ case class Converter(
     model: Model,
     store: Store,
     heap: Iterable[Chunk],
-    oldHeaps: State.OldHeaps
+    oldHeaps: State.OldHeaps,
+    program:ast.Program
 ) {
   lazy val extractedHeap: ExtractedHeap =
     Converter.extractHeap(heap, model)
@@ -517,21 +552,30 @@ case class Converter(
   lazy val modelAtLabel: Map[String, ExtractedModel] = extractedHeaps.map(x =>
     x._1 -> Converter.mapHeapToStore(store, x._2, model)
   )
-  lazy val domains : Seq[DomainEntry] = Converter.getDomains(model)
+  lazy val domains : Seq[DomainEntry] = {Converter.getDomains(model,program)}
+   val non_domain_functions: Seq[ExtractedFunction]= Converter.getFunctions(model,program)
 }
 
 case class DomainValueEntry(domain:String,id:String) extends ExtractedModelEntry{
-  def asValueEntry: Any = ConstantEntry(toString)
-  override def toString: String = s"$domain_$id"
+  def asValueEntry: ValueEntry = ConstantEntry(toString)
+  override def toString: String = s"$domain-$id"
 }
 case class DomainEntry(  name:String,
                             functions:Seq[ExtractedFunction]
                           ){
-
+                            override def toString :String ={
+                              s"domain $name {\n ${functions.mkString("\n")}\n}"
+                            }
 }
 case class ExtractedFunction( fname:String,
                               options:Map[Seq[ExtractedModelEntry], ExtractedModelEntry],
                               default:ExtractedModelEntry
                             ){
   def apply(args:Seq[ExtractedModelEntry]) : ExtractedModelEntry= options.getOrElse(args,default)
+  override def toString: String = {
+    if (options.nonEmpty)
+      s"$fname{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + default +"\n}"
+    else
+      s"$fname{\n    " + default +"\n}"
+  }
 }
