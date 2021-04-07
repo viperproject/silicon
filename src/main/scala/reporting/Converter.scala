@@ -9,6 +9,34 @@ import viper.silicon.state.{Store, State, BasicChunk,SymbolConverter,DefaultSymb
 import viper.silicon.state.terms._
 import viper.silicon.decider.TermToSMTLib2Converter
 import _root_.javax.print.attribute.standard.MediaSize.Other
+import viper.silver.ast.DomainFunc
+import viper.silver.ast.AddOp
+import viper.silver.ast.SubOp
+import viper.silver.ast.MulOp
+import viper.silver.ast.DivOp
+import viper.silver.ast.ModOp
+import viper.silver.ast.PermAddOp
+import viper.silver.ast.PermSubOp
+import viper.silver.ast.PermMulOp
+import viper.silver.ast.IntPermMulOp
+import viper.silver.ast.PermDivOp
+import viper.silver.ast.FracOp
+import viper.silver.ast.NegOp
+import viper.silver.ast.PermNegOp
+import viper.silver.ast.LtOp
+import viper.silver.ast.LeOp
+import viper.silver.ast.GtOp
+import viper.silver.ast.GeOp
+import viper.silver.ast.PermLtOp
+import viper.silver.ast.PermLeOp
+import viper.silver.ast.PermGtOp
+import viper.silver.ast.PermGeOp
+import viper.silver.ast.OrOp
+import viper.silver.ast.AndOp
+import viper.silver.ast.ImpliesOp
+import viper.silver.ast.MagicWandOp
+import viper.silver.ast.NotOp
+import viper.silver.ast.BackendFunc
 
 //Classes for extracted Model Entries
 case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
@@ -444,6 +472,7 @@ object Converter {
           elementSort,
           encountered
         )
+      case Some(sorts.UserSort(id)) => termEval
       case _ => termEval
     }
   }
@@ -502,12 +531,15 @@ object Converter {
     val domains = program.collect(x=> x match {
       case a:ast.Domain => a
     })
-    val concreteDoms = program.collect(x=> x match{
-      case ast.LocalVarDecl(_,ast.DomainType(n,map))=> (n,map)
-    }).filterNot(x=>containsTypeVar(x._2.values.toSeq)).toSet //make shure we have all the possible mappings without the 
-    //find all definitive type instances 
+    val concreteDoms = program.collect(x=> x match{//find all definitive type instances
+      
+     case a:ast.Type=> a match {case ast.DomainType(n,map) => Some((n,map)) case _ => None} 
+    }).collect({case Some(x)=>x}).filterNot(x=>containsTypeVar(x._2.values.toSeq)).toSet //make shure we have all the possible mappings without duplicates 
+     
     val doms = domains.flatMap(x=>concreteDoms.filter(_._1==x.name).map(y=>(x,y._2))) // changing the typevars to the actual ones
+    try{
    doms.map(x=>DomainEntry(x._1.name,x._1.typVars.map(x._2),x._1.functions.map(y=>translateFunction(model,heap,y,x._2)))).toSeq
+   }catch{ case x:Throwable =>{x.printStackTrace; Nil}}
   }
   def containsTypeVar(s:Seq[ast.Type]):Boolean={//helper function
     s.map(_.isInstanceOf[ast.TypeVar]).contains(true)
@@ -555,12 +587,18 @@ object Converter {
                                                         }
                                       }
                                }
-      val entries = model.entries
+      val smtfunc = func match {
+        case t:ast.Function => symbolConverter.toFunction(t).id 
+        case t:ast.DomainFunc =>symbolConverter.toFunction(t,argtyp:+resSort).id 
+        case t:ast.BackendFunc =>symbolConverter.toFunction(t).id 
+      }
+      val kek =smtfunc.toString.replace("[","<").replace("]",">").replace(", ","~_") // this is a hack TODO: rplace with smt converter when possible
+      val entries  = model.entries
       val keys = entries.keys
-      val relfuncs = (keys.filter(_.contains(fname)))
-      val modelFuncname = (keys.filter(_.contains(fname+"%limited"))++
-                          {genmap.isEmpty match {case true => Nil case _ =>relfuncs.filter(_.contains(genmap.values.head))}} ++
-                           relfuncs).head //TODO: make this better
+      
+      val modelFuncname = (keys.filter(_.contains(fname+"%limited"))++ (keys.filter(_==fname))++
+                          (keys.filter(_==kek))
+                           ).head //TODO: make this better
       val simpleRet=(entries.get(modelFuncname)) match {
         case Some(MapEntry(m, els)) => { 
                                         ExtractedFunction(fname,
@@ -575,14 +613,13 @@ object Converter {
         case None    => ExtractedFunction(fname,emptymap,OtherEntry(s"${fname}", "function not found"))
       }
       //extract the values from the tne heap (not sure if this does anything special... )
+      //maybe it is better to resolve this later on
       val advanceRet = ExtractedFunction(fname,
-                                        simpleRet.options.map(x=>(x._1.map(y=>mapLocalVar(Some(resSort),y,heap,model,Nil.toSet,nullRefId)),
-                                                                  mapLocalVar(Some(resSort),x._2,heap,model,Nil.toSet,nullRefId))),
-                                        mapLocalVar(Some(resSort),simpleRet.default,heap,model,Nil.toSet,nullRefId))
+                                        simpleRet.options.map(x=>(x._1.map(y=>mapLocalVar(Some(resSort),y,heap,model,Set(),nullRefId)),
+                                                                  mapLocalVar(Some(resSort),x._2,heap,model,Set(),nullRefId))),
+                                        mapLocalVar(Some(resSort),simpleRet.default,heap,model,Set(),nullRefId))
       simpleRet
   }
-
-
 }
 
 case class Converter(
@@ -605,14 +642,16 @@ case class Converter(
     x._1 -> Converter.mapHeapToStore(store, x._2, model)
   )
   lazy val domains : Seq[DomainEntry] = {Converter.getDomains(model,extractedHeap,program)}
-   val non_domain_functions: Seq[ExtractedFunction]= Converter.getFunctions(model,extractedHeap,program)
+  lazy val non_domain_functions: Seq[ExtractedFunction]= Converter.getFunctions(model,extractedHeap,program)
+  def extractVal(x:VarEntry) = Converter.mapLocalVar(model=model,heap=extractedHeap,encountered = Set(),nullRefName = Converter.nullRefId,termEval=x,sort=Some(x.sort))
 }
 /** Entry for user defined domains 
- *  careful: the types are included in the domain name and do not corespond directly to the name of a DomainEntry
- *  rather they correspond to the valueName of the domain*/
+ *  CAREFUL: the types are included in the domain name and do not correspond directly to the name of a DomainEntry
+ *  rather they correspond to the valueName in the DomainEntry assuming the id of a UserType has the same format*/
 case class DomainValueEntry(domain:String,id:String) extends ExtractedModelEntry{
   def asValueEntry: ValueEntry = ConstantEntry(toString)
   override def toString: String = s"${domain}_$id"
+  def getDomainName :String =domain.takeWhile(_!='[')
 }
 /**
   * Domain entry for specific types, can also be generic
@@ -629,7 +668,7 @@ case class DomainEntry( name:String,
    override def toString :String ={
      s"domain $valueName{\n ${functions.mkString("\n")}\n}"
    }
-   val valueName :String =s"$name${if(types.isEmpty)""else types.map(printTypes(_)).mkString("[",",","]")}" // TODO: find out if this is how they are used in the id
+   val valueName :String =s"$name${if(types.isEmpty)""else types.map(printTypes(_)).mkString("[",", ","]")}" // TODO: find out if this is how they are used in the id
    def printTypes(t:ast.Type):String ={
        t match {
          case ast.TypeVar(x) => x
@@ -640,7 +679,7 @@ case class DomainEntry( name:String,
 /**
   * Function used within or without domains
   *
-  * @param fname function name
+  * @param fname function name without Type Parameter since they are concrete functions
   * @param options map from arguments to function value
   * @param default default value if arguments are not contained in options
   */
