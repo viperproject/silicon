@@ -11,6 +11,8 @@ import viper.silicon.reporting.Converter
 import viper.silicon.state.{Store, State}
 import viper.silver.verifier.{Counterexample, Model, VerificationError}
 import viper.silicon.state.terms.Term
+import viper.silicon.verifier.{Verifier}
+
 
 /*
  * Results
@@ -122,7 +124,7 @@ case class SiliconMappedCounterexample(
 ) extends SiliconCounterexample {
 
   val converter: Converter =
-    Converter(nativeModel, internalStore, heap, oldHeaps)
+    Converter(nativeModel, internalStore, heap, oldHeaps,Verifier.program)
 
   val model: Model = nativeModel
 
@@ -130,7 +132,7 @@ case class SiliconMappedCounterexample(
     val buf = converter.modelAtLabel
       .map(x => s"model at label: ${x._1}\n${x._2.toString}\n")
       .mkString("\n")
-    s"$buf\non return: \n${converter.extractedModel.toString}"
+    s"$buf\non return: \n${converter.extractedModel.toString}" ++ "\n"++converter.domains.mkString("\n") ++ "\n"++converter.non_domain_functions.mkString("\n") 
   }
 
   override def withStore(s: Store): SiliconCounterexample = {

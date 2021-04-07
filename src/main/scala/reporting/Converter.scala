@@ -170,7 +170,7 @@ object Converter {
           case ConstantEntry("true")  => LitBoolEntry(true)
           case ConstantEntry("false") => LitBoolEntry(false)
         }
-      case sorts.Seq(_) => VarEntry(m.toString, s) // will be resolved later
+      case sorts.Seq(_) => VarEntry(m.toString, s)// will be resolved later
       case sorts.Perm =>
         m match {
           case ConstantEntry(x) => LitPermEntry(x.toDouble)
@@ -489,30 +489,79 @@ object Converter {
     extrModel
   }
 
-  def getDomains(model:Model,program:ast.Program) :Seq[DomainEntry] = {
+
+  /**
+    * extracts domains from a program. only the ones that are used in the program... no generics
+    * it also extracts al instatnces (translates the generics to concrete values)
+    *
+    * @param model
+    * @param program
+    * @return
+    */
+  def getDomains(model:Model,heap:ExtractedHeap,program:ast.Program) :Seq[DomainEntry] = {
     val domains = program.collect(x=> x match {
       case a:ast.Domain => a
     })
-   domains.map(x=>DomainEntry(x.name,x.functions.map(y=>translateFunction(model,y,s"<${y.typ}>")))).toSeq
+    val concreteDoms = program.collect(x=> x match{
+      case ast.LocalVarDecl(_,ast.DomainType(n,map))=> (n,map)
+    }).filterNot(x=>containsTypeVar(x._2.values.toSeq)).toSet //make shure we have all the possible mappings without the 
+    //find all definitive type instances 
+    val doms = domains.flatMap(x=>concreteDoms.filter(_._1==x.name).map(y=>(x,y._2))) // changing the typevars to the actual ones
+   doms.map(x=>DomainEntry(x._1.name,x._1.typVars.map(x._2),x._1.functions.map(y=>translateFunction(model,heap,y,x._2)))).toSeq
   }
-
-  def getFunctions(model:Model,program:ast.Program):Seq[ExtractedFunction]={
+  def containsTypeVar(s:Seq[ast.Type]):Boolean={//helper function
+    s.map(_.isInstanceOf[ast.TypeVar]).contains(true)
+  }
+  //extract all non domain internal functions
+  def getFunctions(model:Model,heap:ExtractedHeap,program:ast.Program):Seq[ExtractedFunction]={
     val funcs=program.collect(x=>x match {
       case f:ast.Function => f
     })
     //printf(s"${funcs.map(x=>(x.typ,x.name)).mkString("\n")}")
-    funcs.map(x=>translateFunction(model,x,"%limited")).toSeq 
+    funcs.map(x=>translateFunction(model,heap,x,Nil.toMap)).toSeq 
   }
 
   val emptymap =Map.empty[Seq[ExtractedModelEntry],ExtractedModelEntry]
 
-  def translateFunction(model:Model,func:ast.FuncLike,app:String):ExtractedFunction= {//TODO: find out what kind of fname is used... spoiler its internal :(
-    try{  //TODO: find the corresponding internal name corresponding to this one
-          val fname =func.name
-          val typ :ast.Type =func.typ
-          val argtyp :Seq[Sort] =func.formalArgs.map(x=>symbolConverter.toSort(x.typ))
-          val resSort :Sort= symbolConverter.toSort(typ)
-    (model.entries.get(fname++app)) match {
+  /**
+    * extracts the function instances by searching for the most likely match translating the values in the internal rep
+    *
+    * @param model
+    * @param func the function to translate
+    * @param genmap map of generic types to concrete types
+    * @return
+    */
+  def translateFunction(model:Model,heap:ExtractedHeap,func:ast.FuncLike,genmap:Map[ast.TypeVar,ast.Type]):ExtractedFunction= {
+    val fname =func.name
+    val typ :ast.Type = func.typ
+    //one might argue it is simpler to do with a Try[] object do it if you have time
+      val argtyp :Seq[Sort] = func.formalArgs.map(x=>try {symbolConverter.toSort(x.typ)}
+                              catch{case e:Throwable =>
+                                      {
+                                        x.typ match {
+                                                      case t:ast.TypeVar => symbolConverter.toSort(genmap.apply(t))
+                                                      case x :ast.GenericType => symbolConverter.toSort(x.substitute(genmap))
+                                                      case _ => return ExtractedFunction(fname,emptymap,OtherEntry(s"${x}", "type not resolvable"))
+                                                        }
+                                      }
+                               })
+      val resSort :Sort= try {symbolConverter.toSort(typ)}
+                              catch{case e:Throwable =>
+                                      {
+                                        func.typ match {
+                                                      case t:ast.TypeVar => symbolConverter.toSort(genmap.apply(t))
+                                                      case x :ast.GenericType => symbolConverter.toSort(x.substitute(genmap))
+                                                      case f => return ExtractedFunction(fname,emptymap,OtherEntry(s"${f}", "type not resolvable"))
+                                                        }
+                                      }
+                               }
+      val entries = model.entries
+      val keys = entries.keys
+      val relfuncs = (keys.filter(_.contains(fname)))
+      val modelFuncname = (keys.filter(_.contains(fname+"%limited"))++
+                          {genmap.isEmpty match {case true => Nil case _ =>relfuncs.filter(_.contains(genmap.values.head))}} ++
+                           relfuncs).head //TODO: make this better
+      val simpleRet=(entries.get(modelFuncname)) match {
         case Some(MapEntry(m, els)) => { 
                                         ExtractedFunction(fname,
                                                           m.map(x=>(x._1.zip(argtyp).map(y=>getConstantEntry(y._2,y._1)) ->getConstantEntry(resSort,x._2))),
@@ -525,9 +574,12 @@ object Converter {
         case Some(_) => ExtractedFunction(fname,emptymap,OtherEntry(s"${model.entries.get(fname)}", "not a function"))
         case None    => ExtractedFunction(fname,emptymap,OtherEntry(s"${fname}", "function not found"))
       }
-    }catch{//how to handle?
-      case x:Throwable =>{printf(s"$x");ExtractedFunction("dummy",Map.empty[Seq[ExtractedModelEntry],ExtractedModelEntry],LitBoolEntry(false))}
-    }
+      //extract the values from the tne heap (not sure if this does anything special... )
+      val advanceRet = ExtractedFunction(fname,
+                                        simpleRet.options.map(x=>(x._1.map(y=>mapLocalVar(Some(resSort),y,heap,model,Nil.toSet,nullRefId)),
+                                                                  mapLocalVar(Some(resSort),x._2,heap,model,Nil.toSet,nullRefId))),
+                                        mapLocalVar(Some(resSort),simpleRet.default,heap,model,Nil.toSet,nullRefId))
+      simpleRet
   }
 
 
@@ -552,21 +604,46 @@ case class Converter(
   lazy val modelAtLabel: Map[String, ExtractedModel] = extractedHeaps.map(x =>
     x._1 -> Converter.mapHeapToStore(store, x._2, model)
   )
-  lazy val domains : Seq[DomainEntry] = {Converter.getDomains(model,program)}
-   val non_domain_functions: Seq[ExtractedFunction]= Converter.getFunctions(model,program)
+  lazy val domains : Seq[DomainEntry] = {Converter.getDomains(model,extractedHeap,program)}
+   val non_domain_functions: Seq[ExtractedFunction]= Converter.getFunctions(model,extractedHeap,program)
 }
-
+/** Entry for user defined domains 
+ *  careful: the types are included in the domain name and do not corespond directly to the name of a DomainEntry
+ *  rather they correspond to the valueName of the domain*/
 case class DomainValueEntry(domain:String,id:String) extends ExtractedModelEntry{
   def asValueEntry: ValueEntry = ConstantEntry(toString)
-  override def toString: String = s"$domain-$id"
+  override def toString: String = s"${domain}_$id"
 }
-case class DomainEntry(  name:String,
-                            functions:Seq[ExtractedFunction]
-                          ){
-                            override def toString :String ={
-                              s"domain $name {\n ${functions.mkString("\n")}\n}"
-                            }
+/**
+  * Domain entry for specific types, can also be generic
+  *  does not contain axioms 
+  *
+  * @param name Domain name in viper
+  * @param types type instances or genereic types
+  * @param functions functions defined within the domain not includeing functions that use this domain
+  */
+case class DomainEntry( name:String,
+                        types:Seq[ast.Type],
+                        functions:Seq[ExtractedFunction]
+                      ){
+   override def toString :String ={
+     s"domain $valueName{\n ${functions.mkString("\n")}\n}"
+   }
+   val valueName :String =s"$name${if(types.isEmpty)""else types.map(printTypes(_)).mkString("[",",","]")}" // TODO: find out if this is how they are used in the id
+   def printTypes(t:ast.Type):String ={
+       t match {
+         case ast.TypeVar(x) => x
+         case _ => t.toString()
+       }
+   }
 }
+/**
+  * Function used within or without domains
+  *
+  * @param fname function name
+  * @param options map from arguments to function value
+  * @param default default value if arguments are not contained in options
+  */
 case class ExtractedFunction( fname:String,
                               options:Map[Seq[ExtractedModelEntry], ExtractedModelEntry],
                               default:ExtractedModelEntry
