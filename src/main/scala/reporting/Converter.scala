@@ -9,34 +9,7 @@ import viper.silicon.state.{Store, State, BasicChunk,SymbolConverter,DefaultSymb
 import viper.silicon.state.terms._
 import viper.silicon.decider.TermToSMTLib2Converter
 import _root_.javax.print.attribute.standard.MediaSize.Other
-import viper.silver.ast.DomainFunc
-import viper.silver.ast.AddOp
-import viper.silver.ast.SubOp
-import viper.silver.ast.MulOp
-import viper.silver.ast.DivOp
-import viper.silver.ast.ModOp
-import viper.silver.ast.PermAddOp
-import viper.silver.ast.PermSubOp
-import viper.silver.ast.PermMulOp
-import viper.silver.ast.IntPermMulOp
-import viper.silver.ast.PermDivOp
-import viper.silver.ast.FracOp
-import viper.silver.ast.NegOp
-import viper.silver.ast.PermNegOp
-import viper.silver.ast.LtOp
-import viper.silver.ast.LeOp
-import viper.silver.ast.GtOp
-import viper.silver.ast.GeOp
-import viper.silver.ast.PermLtOp
-import viper.silver.ast.PermLeOp
-import viper.silver.ast.PermGtOp
-import viper.silver.ast.PermGeOp
-import viper.silver.ast.OrOp
-import viper.silver.ast.AndOp
-import viper.silver.ast.ImpliesOp
-import viper.silver.ast.MagicWandOp
-import viper.silver.ast.NotOp
-import viper.silver.ast.BackendFunc
+
 
 //Classes for extracted Model Entries
 case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
@@ -573,7 +546,7 @@ object Converter {
                                         x.typ match {
                                                       case t:ast.TypeVar => symbolConverter.toSort(genmap.apply(t))
                                                       case x :ast.GenericType => symbolConverter.toSort(x.substitute(genmap))
-                                                      case _ => return ExtractedFunction(fname,emptymap,OtherEntry(s"${x}", "type not resolvable"))
+                                                      case _ => return ExtractedFunction(fname,Seq(),sorts.Unit,emptymap,OtherEntry(s"${x}", "type not resolvable"))
                                                         }
                                       }
                                })
@@ -583,7 +556,7 @@ object Converter {
                                         func.typ match {
                                                       case t:ast.TypeVar => symbolConverter.toSort(genmap.apply(t))
                                                       case x :ast.GenericType => symbolConverter.toSort(x.substitute(genmap))
-                                                      case f => return ExtractedFunction(fname,emptymap,OtherEntry(s"${f}", "type not resolvable"))
+                                                      case f => return ExtractedFunction(fname,Seq(),sorts.Unit,emptymap,OtherEntry(s"${f}", "type not resolvable"))
                                                         }
                                       }
                                }
@@ -592,7 +565,7 @@ object Converter {
         case t:ast.DomainFunc =>symbolConverter.toFunction(t,argtyp:+resSort).id 
         case t:ast.BackendFunc =>symbolConverter.toFunction(t).id 
       }
-      val kek =smtfunc.toString.replace("[","<").replace("]",">").replace(", ","~_") // this is a hack TODO: rplace with smt converter when possible
+      val kek =smtfunc.toString.replace("[","<").replace("]",">").replace(", ","~_") // this is a hack TODO: replace with smt converter when possible
       val entries  = model.entries
       val keys = entries.keys
       
@@ -602,19 +575,23 @@ object Converter {
       val simpleRet=(entries.get(modelFuncname)) match {
         case Some(MapEntry(m, els)) => { 
                                         ExtractedFunction(fname,
+                                                          argtyp,
+                                                          resSort,
                                                           m.map(x=>(x._1.zip(argtyp).map(y=>getConstantEntry(y._2,y._1)) ->getConstantEntry(resSort,x._2))),
                                                           getConstantEntry(resSort,els)
                                                           )
                                         }
-        case Some(ConstantEntry(t)) => ExtractedFunction(fname,emptymap,getConstantEntry(resSort,ConstantEntry(t)))   
-        case Some(ApplicationEntry(n,args)) => ExtractedFunction(fname,emptymap,getConstantEntry(resSort,ApplicationEntry(n,args)))
-        case Some(x) => ExtractedFunction(fname,emptymap,getConstantEntry(resSort,x))
-        case Some(_) => ExtractedFunction(fname,emptymap,OtherEntry(s"${model.entries.get(fname)}", "not a function"))
-        case None    => ExtractedFunction(fname,emptymap,OtherEntry(s"${fname}", "function not found"))
+        case Some(ConstantEntry(t)) => ExtractedFunction(fname,argtyp,resSort,emptymap,getConstantEntry(resSort,ConstantEntry(t)))   
+        case Some(ApplicationEntry(n,args)) => ExtractedFunction(fname,argtyp,resSort,emptymap,getConstantEntry(resSort,ApplicationEntry(n,args)))
+        case Some(x) => ExtractedFunction(fname,argtyp,resSort,emptymap,getConstantEntry(resSort,x))
+        case Some(_) => ExtractedFunction(fname,argtyp,resSort,emptymap,OtherEntry(s"${model.entries.get(fname)}", "not a function"))
+        case None    => ExtractedFunction(fname,argtyp,resSort,emptymap,OtherEntry(s"${fname}", "function not found"))
       }
       //extract the values from the tne heap (not sure if this does anything special... )
-      //maybe it is better to resolve this later on
+      //maybe it is better to resolve this later on see comment @ExtractedFunction
       val advanceRet = ExtractedFunction(fname,
+                                        argtyp,
+                                        resSort,
                                         simpleRet.options.map(x=>(x._1.map(y=>mapLocalVar(Some(resSort),y,heap,model,Set(),nullRefId)),
                                                                   mapLocalVar(Some(resSort),x._2,heap,model,Set(),nullRefId))),
                                         mapLocalVar(Some(resSort),simpleRet.default,heap,model,Set(),nullRefId))
@@ -653,12 +630,17 @@ case class DomainValueEntry(domain:String,id:String) extends ExtractedModelEntry
   override def toString: String = s"${domain}_$id"
   def getDomainName :String =domain.takeWhile(_!='[')
 }
+
+case class ExtendedDomainValueEntry(original:DomainValueEntry,info:Map[ExtractedFunction,ExtractedModelEntry]) extends ExtractedModelEntry{
+	def asValueEntry =original.asValueEntry
+	override def toString = original.toString ++" where " ++ info.map(x=>x._1.fname ++ " = " ++ x._2.toString).mkString("{\n\t",";\n\t","\n}")
+}
 /**
   * Domain entry for specific types, can also be generic
   *  does not contain axioms 
   *
   * @param name Domain name in viper
-  * @param types type instances or genereic types
+  * @param types type instances or generic types
   * @param functions functions defined within the domain not includeing functions that use this domain
   */
 case class DomainEntry( name:String,
@@ -666,7 +648,7 @@ case class DomainEntry( name:String,
                         functions:Seq[ExtractedFunction]
                       ){
    override def toString :String ={
-     s"domain $valueName{\n ${functions.mkString("\n")}\n}"
+     s"domain $valueName{\n ${functions.map(_.toString()).mkString("\n")}\n}"
    }
    val valueName :String =s"$name${if(types.isEmpty)""else types.map(printTypes(_)).mkString("[",", ","]")}" // TODO: find out if this is how they are used in the id
    def printTypes(t:ast.Type):String ={
@@ -677,20 +659,42 @@ case class DomainEntry( name:String,
    }
 }
 /**
-  * Function used within or without domains
+  * Function used within or without domains 
+  * CAREFUL: it will not evaluate VarEntries this has to be done via the converter
   *
   * @param fname function name without Type Parameter since they are concrete functions
   * @param options map from arguments to function value
   * @param default default value if arguments are not contained in options
   */
 case class ExtractedFunction( fname:String,
+                              argtypes:Seq[Sort],
+                              returnType:Sort,
                               options:Map[Seq[ExtractedModelEntry], ExtractedModelEntry],
                               default:ExtractedModelEntry
                             ){
-  def apply(args:Seq[ExtractedModelEntry]) : ExtractedModelEntry= options.getOrElse(args,default)
+  def apply(args:Seq[ExtractedModelEntry]) : Either[ExtractedFunction,ExtractedModelEntry]= {//TODO:  typecheck
+    val n = args.length
+    val arglength = argtypes.length
+    if(n== arglength ) //full application
+      Right(options.getOrElse(args,default))
+    else{
+      if(n<arglength)
+          Left(ExtractedFunction(fname+s"_${arglength-n}",
+                                  argtypes.drop(n),
+                                  returnType,
+                                  options.filter(x=>x._1.take(n)==args).map(x=>(x._1.drop(n)->x._2)), //map to simpler function
+                                  default
+                                ))//new function with the first n elements applied
+      else
+        throw new IllegalArgumentException(s"to many arguments for function:$fname")
+    }
+  }
+ 
+
+
   override def toString: String = {
     if (options.nonEmpty)
-      s"$fname{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + default +"\n}"
+      s"$fname${argtypes.mkString("(",",",")")}:$returnType{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + default +"\n}"
     else
       s"$fname{\n    " + default +"\n}"
   }
