@@ -530,7 +530,7 @@ object Converter {
   }
 
   val emptymap =Map.empty[Seq[ExtractedModelEntry],ExtractedModelEntry]
-  val errorfunc =  ExtractedFunction("ERROR",Seq(),sorts.Unit,emptymap,OtherEntry("ERROR","ERROR"))
+  def errorfunc(s:String) =  ExtractedFunction("ERROR",Seq(),sorts.Unit,emptymap,OtherEntry("ERROR",s))
   /**
     * extracts the function instances by searching for the most likely match translating the values in the internal rep
     *
@@ -544,18 +544,18 @@ object Converter {
     val typ :ast.Type = func.typ
     //one might argue it is simpler to do with a Try[] object do it if you have time
       val argtyp :Seq[Sort] = func.formalArgs.map(x=>x.typ match {
-                                                      case x :ast.GenericType =>try{ symbolConverter.toSort(x.substitute(genmap))}catch{ case _ => {printf(s"$fname");return errorfunc}}
-                                                      case t:ast.TypeVar => try{symbolConverter.toSort(genmap.apply(t)) }catch{ case _ => {printf(s"$fname");return errorfunc}}
-                                                      case _ => return ExtractedFunction(fname,Seq(),sorts.Unit,emptymap,OtherEntry(s"${x}", "type not resolvable"))
+                                                      case x :ast.GenericType =>try{ symbolConverter.toSort(x.substitute(genmap))}catch{ case _ => return errorfunc(fname+"typeError in args")}
+                                                      case t:ast.TypeVar => try{symbolConverter.toSort(genmap.apply(t)) }catch{ case _ => return errorfunc(fname+"typeError in args")}
+                                                      case _ => return errorfunc("type not resolvable")
                                                         }
                                                   )
       val resSort :Sort= try {symbolConverter.toSort(typ)}
                               catch{case e:Throwable =>
                                       {
                                         func.typ match {
-                                                      case x :ast.GenericType =>try{ symbolConverter.toSort(x.substitute(genmap))}catch{ case _ => {printf(s"$fname");return errorfunc}}
-                                                      case t:ast.TypeVar => try{symbolConverter.toSort(genmap.apply(t)) }catch{ case _ => {printf(s"$fname");return errorfunc}}
-                                                      case f => return ExtractedFunction(fname,Seq(),sorts.Unit,emptymap,OtherEntry(s"${f}", "type not resolvable"))
+                                                      case x :ast.GenericType =>try{ symbolConverter.toSort(x.substitute(genmap))}catch{ case _ => return errorfunc(fname+" typeError in return type")}
+                                                      case t:ast.TypeVar => try{symbolConverter.toSort(genmap.apply(t)) }catch{ case _ => return errorfunc(fname+" typeError in return type")}
+                                                      case _ => return errorfunc("type not resolvable")
                                                         }
                                       }
                                }
@@ -587,7 +587,7 @@ object Converter {
         case None    => ExtractedFunction(fname,argtyp,resSort,emptymap,OtherEntry(s"${fname}", "function not found"))
       }
       //extract the values from the tne heap (not sure if this does anything special... )
-      //maybe it is better to resolve this later on see comment @ExtractedFunction
+      //maybe it is better to resolve this later on: see comment @ExtractedFunction
       val advanceRet = ExtractedFunction(fname,
                                         argtyp,
                                         resSort,
@@ -623,13 +623,14 @@ case class Converter(
 }
 /** Entry for user defined domains 
  *  CAREFUL: the types are included in the domain name and do not correspond directly to the name of a DomainEntry
- *  rather they correspond to the valueName in the DomainEntry assuming the id of a UserType has the same format*/
+ *  rather they correspond to the valueName in the DomainEntry 
+ **/
 case class DomainValueEntry(domain:String,id:String) extends ExtractedModelEntry{
   def asValueEntry: ValueEntry = ConstantEntry(toString)
   override def toString: String = s"${domain}_$id"
   def getDomainName :String =domain.takeWhile(_!='[')
 }
-
+/** same as DomainValueEntry but with some inforamtion about functions defined on this domain an their coresponding result when using original as input for the function */
 case class ExtendedDomainValueEntry(original:DomainValueEntry,info:Map[ExtractedFunction,ExtractedModelEntry]) extends ExtractedModelEntry{
 	def asValueEntry =original.asValueEntry
 	override def toString = original.toString ++" where " ++
@@ -662,7 +663,7 @@ case class DomainEntry( name:String,
 }
 /**
   * Function used within or without domains 
-  * CAREFUL: it will not evaluate VarEntries this has to be done via the converter
+  * CAREFUL: it will not evaluate VarEntries this has to be done via the converter or Interpreter
   *
   * @param fname function name without Type Parameter since they are concrete functions
   * @param options map from arguments to function value
@@ -677,17 +678,23 @@ case class ExtractedFunction( fname:String,
   def apply(args:Seq[ExtractedModelEntry]) : Either[ExtractedFunction,ExtractedModelEntry]= {//TODO:  typecheck
     val n = args.length
     val arglength = argtypes.length
-    if(n== arglength ) //full application
-      Right(options.getOrElse(args,default))
-    else{
-      if(n<arglength)
+    if(n== arglength ) {//full application
+      if(typecheck(args,argtypes))
+        Right(options.getOrElse(args,default))
+      else
+        throw new IllegalArgumentException("false types: required "+s"$argtypes"+ " but got: "+ s"$args")
+    }else{
+      if(n<arglength){
+        val (subtypes,rest) = argtypes.splitAt(n)
+        if(typecheck(args,subtypes))
           Left(ExtractedFunction(fname+s"_${arglength-n}",
-                                  argtypes.drop(n),
+                                  rest,
                                   returnType,
                                   options.filter(x=>x._1.take(n)==args).map(x=>(x._1.drop(n)->x._2)), //map to simpler function
                                   default
                                 ))//new function with the first n elements applied
-      else
+        else throw new IllegalArgumentException("false types for subapplication:required "+s"$subtypes"+ " but got: "+ s"$args")
+      }else
         throw new IllegalArgumentException(s"to many arguments for function:$fname")
     }
   }
@@ -696,5 +703,24 @@ case class ExtractedFunction( fname:String,
       s"$fname${argtypes.mkString("(",",",")")}:$returnType{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + default +"\n}"
     else
       s"$fname{\n    " + default +"\n}"
+  }
+  def typecheck(is:Seq[ExtractedModelEntry],should:Seq[Sort]) :Boolean= {
+      is.zip(should).foldLeft(true)((x:(Boolean),y:(ExtractedModelEntry,Sort)) => (x && typecheck(y._1,y._2)))
+  }
+  def typecheck(is:ExtractedModelEntry,should:Sort):Boolean = {
+    is match {
+      case LitIntEntry(_) => should == sorts.Int
+      case LitBoolEntry(_) => should == sorts.Bool
+      case LitPermEntry(_) => should == sorts.Perm
+      case RefEntry(_, _) 
+      | NullRefEntry(_) 
+      | RecursiveRefEntry(_) => should ==sorts.Ref
+      case VarEntry(_, sort) => should == sort
+      case OtherEntry(_, _) => false
+      case SeqEntry(name, values) => should match {case sorts.Seq(e) => if(values.isEmpty) typecheck(values.head,e) else true ; case _ => false}
+      case UnprocessedModelEntry(entry) => false
+      case DomainValueEntry(domain, id) => should.toString == domain
+      case ExtendedDomainValueEntry(original, info) => typecheck(original,should)
+    }
   }
 }
