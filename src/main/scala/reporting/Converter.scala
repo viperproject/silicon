@@ -510,9 +510,12 @@ object Converter {
     }).collect({case Some(x)=>x}).filterNot(x=>containsTypeVar(x._2.values.toSeq)).toSet //make shure we have all the possible mappings without duplicates 
      
     val doms = domains.flatMap(x=>concreteDoms.filter(_._1==x.name).map(y=>(x,y._2))) // changing the typevars to the actual ones
-    try{
-   doms.map(x=>DomainEntry(x._1.name,x._1.typVars.map(x._2),x._1.functions.map(y=>translateFunction(model,heap,y,x._2)))).toSeq
-   }catch{ case x:Throwable =>{x.printStackTrace; Nil}}
+   doms.map(x=>DomainEntry(x._1.name,
+                          try{x._1.typVars.map(x._2)}catch{case _ => {printf(s"$x");Seq()}},//problem: throws 
+                          x._1.functions.map(y=>translateFunction(model,heap,y,x._2))
+                          )
+            ).toSeq
+   
   }
   def containsTypeVar(s:Seq[ast.Type]):Boolean={//helper function
     s.map(_.isInstanceOf[ast.TypeVar]).contains(true)
@@ -527,7 +530,7 @@ object Converter {
   }
 
   val emptymap =Map.empty[Seq[ExtractedModelEntry],ExtractedModelEntry]
-
+  val errorfunc =  ExtractedFunction("ERROR",Seq(),sorts.Unit,emptymap,OtherEntry("ERROR","ERROR"))
   /**
     * extracts the function instances by searching for the most likely match translating the values in the internal rep
     *
@@ -540,22 +543,18 @@ object Converter {
     val fname =func.name
     val typ :ast.Type = func.typ
     //one might argue it is simpler to do with a Try[] object do it if you have time
-      val argtyp :Seq[Sort] = func.formalArgs.map(x=>try {symbolConverter.toSort(x.typ)}
-                              catch{case e:Throwable =>
-                                      {
-                                        x.typ match {
-                                                      case t:ast.TypeVar => symbolConverter.toSort(genmap.apply(t))
-                                                      case x :ast.GenericType => symbolConverter.toSort(x.substitute(genmap))
+      val argtyp :Seq[Sort] = func.formalArgs.map(x=>x.typ match {
+                                                      case x :ast.GenericType =>try{ symbolConverter.toSort(x.substitute(genmap))}catch{ case _ => {printf(s"$fname");return errorfunc}}
+                                                      case t:ast.TypeVar => try{symbolConverter.toSort(genmap.apply(t)) }catch{ case _ => {printf(s"$fname");return errorfunc}}
                                                       case _ => return ExtractedFunction(fname,Seq(),sorts.Unit,emptymap,OtherEntry(s"${x}", "type not resolvable"))
                                                         }
-                                      }
-                               })
+                                                  )
       val resSort :Sort= try {symbolConverter.toSort(typ)}
                               catch{case e:Throwable =>
                                       {
                                         func.typ match {
-                                                      case t:ast.TypeVar => symbolConverter.toSort(genmap.apply(t))
-                                                      case x :ast.GenericType => symbolConverter.toSort(x.substitute(genmap))
+                                                      case x :ast.GenericType =>try{ symbolConverter.toSort(x.substitute(genmap))}catch{ case _ => {printf(s"$fname");return errorfunc}}
+                                                      case t:ast.TypeVar => try{symbolConverter.toSort(genmap.apply(t)) }catch{ case _ => {printf(s"$fname");return errorfunc}}
                                                       case f => return ExtractedFunction(fname,Seq(),sorts.Unit,emptymap,OtherEntry(s"${f}", "type not resolvable"))
                                                         }
                                       }
@@ -633,7 +632,10 @@ case class DomainValueEntry(domain:String,id:String) extends ExtractedModelEntry
 
 case class ExtendedDomainValueEntry(original:DomainValueEntry,info:Map[ExtractedFunction,ExtractedModelEntry]) extends ExtractedModelEntry{
 	def asValueEntry =original.asValueEntry
-	override def toString = original.toString ++" where " ++ info.map(x=>x._1.fname ++ " = " ++ x._2.toString).mkString("{\n\t",";\n\t","\n}")
+	override def toString = original.toString ++" where " ++
+                           info.map(x=>x._1.fname ++ " = " ++ x._2.toString.flatMap(y=> y match {
+                                                            case '\n' => "\n\t"
+                                                            case _ => y+:"" })).mkString("{\n\t",";\n\t","\n\t}")
 }
 /**
   * Domain entry for specific types, can also be generic
@@ -689,9 +691,6 @@ case class ExtractedFunction( fname:String,
         throw new IllegalArgumentException(s"to many arguments for function:$fname")
     }
   }
- 
-
-
   override def toString: String = {
     if (options.nonEmpty)
       s"$fname${argtypes.mkString("(",",",")")}:$returnType{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + default +"\n}"
