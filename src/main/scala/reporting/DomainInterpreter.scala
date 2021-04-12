@@ -2,23 +2,37 @@ package viper.silicon.reporting
 import viper.silicon.reporting.{Converter,ExtractedModelEntry}
 import viper.silicon.state.terms._
 import viper.silicon.state.Identifier
-trait ModelInterpreter[T]{
-	def interpret(entry:ExtractedModelEntry):T
+/**
+  * the most Generic form of interpreter
+  *  @param	E : input type
+  *  @param I : info object type
+  *  @param	T : result type
+  */
+trait AbstractInterpreter[E,I,T]{ 
+	def interpret(entry:E,info:I):T
 }
-case class IdentityInterpreter() extends ModelInterpreter[ExtractedModelEntry]{
-	def interpret(entry:ExtractedModelEntry):ExtractedModelEntry=entry
+trait ModelInterpreter[T,I] extends AbstractInterpreter[ExtractedModelEntry,I,T]
+trait DomainInterpreter[T,I] extends AbstractInterpreter[DomainValueEntry,I,T]
+
+
+case class IdentityInterpreter() extends ModelInterpreter[ExtractedModelEntry,Any]{
+	def interpret(entry:ExtractedModelEntry,anything:Any):ExtractedModelEntry=entry
 }
 
 
 /**
   * Simple domain interpreter resolves entries in domains recursively otherwise it just returns the value of the entry
-  *	does not resolve domainvalues stored in sequences or Refs
+  * does not resolve domainvalues stored in sequences or Refs
   * @param c Converter that has all necessary infos about the counterexample domains
   */
-case class GenericDomainInterpreter(c:Converter,resolveRecurively:Boolean) extends ModelInterpreter[ExtractedModelEntry]{
+case class GenericDomainInterpreter(c:Converter) extends ModelInterpreter[ExtractedModelEntry,Seq[ExtractedModelEntry]]{
 	private val domains:Seq[DomainEntry] = c.domains
 	private val functions:Seq[ExtractedFunction] = c.non_domain_functions
-	def interpret(entry: ExtractedModelEntry): ExtractedModelEntry = {
+	def interpret(entry:ExtractedModelEntry,visited:Seq[ExtractedModelEntry]):ExtractedModelEntry ={
+		if(visited.contains(entry)){
+			entry
+		}
+		else
 		entry match {
 			case DomainValueEntry(dom,v) => {
 				val allfuncs = functions ++ {val relevantDomain = domains.filter(x=>x.valueName==dom); if(relevantDomain.isEmpty) Nil else relevantDomain.head.functions}
@@ -29,7 +43,7 @@ case class GenericDomainInterpreter(c:Converter,resolveRecurively:Boolean) exten
 																			 match{
 																				case Right(e)=> e match {
 																					 case va:VarEntry => c.extractVal(va)
-																					 case d:DomainValueEntry => interpret(d)
+																					 case d:DomainValueEntry => interpret(d,entry+:visited)
 																					 case _ => e
 																					} 
 																				case _ => OtherEntry(s"${x.fname}","not been able to resolve function")  
@@ -40,4 +54,5 @@ case class GenericDomainInterpreter(c:Converter,resolveRecurively:Boolean) exten
 			case _ => entry
 		}
 	}
+ 
 }
