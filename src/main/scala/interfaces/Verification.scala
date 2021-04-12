@@ -7,7 +7,7 @@
 package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.reporting.Converter
+import viper.silicon.reporting.{Converter,ModelInterpreter,GenericDomainInterpreter,ExtractedModel,ExtractedModelEntry}
 import viper.silicon.state.{Store, State}
 import viper.silver.verifier.{Counterexample, Model, VerificationError}
 import viper.silicon.state.terms.Term
@@ -127,13 +127,16 @@ case class SiliconMappedCounterexample(
     Converter(nativeModel, internalStore, heap, oldHeaps,Verifier.program)
 
   val model: Model = nativeModel
+  val interpreter:ModelInterpreter[ExtractedModelEntry,Seq[ExtractedModelEntry]] = GenericDomainInterpreter(converter) //TODO : possibly move to constructor //IdentityInterpreter()
 
   override lazy val toString: String = {
     val buf = converter.modelAtLabel
-      .map(x => s"model at label: ${x._1}\n${x._2.toString}\n")
+      .map(x => s"model at label: ${x._1}\n${(ExtractedModel(x._2.entries.map(y=>(y._1,interpret(y._2))))).toString}\n")
       .mkString("\n")
-    s"$buf\non return: \n${converter.extractedModel.toString}" ++ "\n"++converter.domains.mkString("\n") ++ "\n"++converter.non_domain_functions.mkString("\n") 
+    s"$buf\non return: \n${(ExtractedModel(converter.extractedModel.entries.map(y=>(y._1,interpret(y._2))))).toString}" //++ "\n"++converter.domains.mkString("\n") ++ "\n"++converter.non_domain_functions.mkString("\n") 
+
   }
+  private def interpret(t:ExtractedModelEntry) = interpreter.interpret(t,Seq())
 
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel)
