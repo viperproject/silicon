@@ -170,6 +170,10 @@ object Converter {
         m match {
           case ConstantEntry("true")  => LitBoolEntry(true)
           case ConstantEntry("false") => LitBoolEntry(false)
+          case ConstantEntry("0") => LitBoolEntry(false)//this is kind of hacky but there is some strangeness happening...
+          case ConstantEntry("1") => LitBoolEntry(true)
+          case ApplicationEntry(name, arguments) => getConstantEntry(s, arguments.head) // sometimes bools are represented by application("=", application("var",0))
+          case _ => {OtherEntry(s"$m", "not a boolean literal")}
         }
       case sorts.Seq(_) => VarEntry(m.toString, s)// will be resolved later
       case sorts.Perm =>
@@ -188,6 +192,12 @@ object Converter {
           case ConstantEntry(v) => DomainValueEntry(id.toString(),v.split("!").last)//this is a hack for the moment if there is any way to do this diffrently let me know
           case _ => OtherEntry(id.toString(),"not a constant entry---")
       }
+      //ISSUE: snap types are translated to domain sorts
+      case sorts.Snap =>
+        m match {
+          case ConstantEntry(value) => DomainValueEntry(value,s.toString()) // we just make a snap domain i guess
+          case _ => OtherEntry(s.toString(),"snap not a constant")
+        }
       case _ =>
         m match {
           case e: ValueEntry => UnprocessedModelEntry(e)
@@ -367,7 +377,7 @@ object Converter {
         case Success(x) =>
           val len: Int = x
           var values: Vector[ExtractedModelEntry] = Vector()
-          for (i <- 0 to len) {
+          for (i <- 0 to len-1) {
             val valueEntry: ExtractedModelEntry = getFunctionValue(
               model,
               "Seq_index",
@@ -452,7 +462,11 @@ object Converter {
 
   def typeToSort(typ: ast.Type): Option[Sort] = {
     //If this returns None, we can still try to evaluate the model entry
+    try{
     Some(symbolConverter.toSort(typ))// simplify the logic with this
+    }catch{
+      case _:Throwable => None
+    }
     /* typ match {
       case ast.Int  => Some(sorts.Int)
       case ast.Bool => Some(sorts.Bool)
@@ -511,14 +525,14 @@ object Converter {
      
     val doms = domains.flatMap(x=>concreteDoms.filter(_._1==x.name).map(y=>(x,y._2))) // changing the typevars to the actual ones
    doms.map(x=>DomainEntry(x._1.name,
-                          try{x._1.typVars.map(x._2)}catch{case _ => {printf(s"$x");Seq()}},//problem: throws 
+                          try{x._1.typVars.map(x._2)}catch{case _ => {/* printf(s"$x"); */Seq()}},//problem: throws 
                           x._1.functions.map(y=>translateFunction(model,heap,y,x._2))
                           )
             ).toSeq
    
   }
   def containsTypeVar(s:Seq[ast.Type]):Boolean={//helper function
-    s.map(_.isInstanceOf[ast.TypeVar]).contains(true)
+    s.map(x=>x.isInstanceOf[ast.TypeVar]).contains(true)
   }
   //extract all non domain internal functions
   def getFunctions(model:Model,heap:ExtractedHeap,program:ast.Program):Seq[ExtractedFunction]={
@@ -543,16 +557,16 @@ object Converter {
     val fname =func.name
     val typ :ast.Type = func.typ
     //one might argue it is simpler to do with a Try[] object do it if you have time
-      val argtyp :Seq[Sort] = func.formalArgs.map(x=>x.typ match {
+      val argtyp :Seq[Sort] = func.formalArgs.map(x=>try {symbolConverter.toSort(x.typ)} catch{ case _ =>x.typ match {
                                                       case x :ast.GenericType =>try{ symbolConverter.toSort(x.substitute(genmap))}catch{ case _ => return errorfunc(fname+"typeError in args")}
                                                       case t:ast.TypeVar => try{symbolConverter.toSort(genmap.apply(t)) }catch{ case _ => return errorfunc(fname+"typeError in args")}
                                                       case _ => return errorfunc("type not resolvable")
-                                                        }
+                                                        }}
                                                   )
       val resSort :Sort= try {symbolConverter.toSort(typ)}
                               catch{case e:Throwable =>
                                       {
-                                        func.typ match {
+                                        typ match {
                                                       case x :ast.GenericType =>try{ symbolConverter.toSort(x.substitute(genmap))}catch{ case _ => return errorfunc(fname+" typeError in return type")}
                                                       case t:ast.TypeVar => try{symbolConverter.toSort(genmap.apply(t)) }catch{ case _ => return errorfunc(fname+" typeError in return type")}
                                                       case _ => return errorfunc("type not resolvable")
@@ -567,7 +581,7 @@ object Converter {
       val kek =smtfunc.toString.replace("[","<").replace("]",">").replace(", ","~_") // this is a hack TODO: replace with smt converter when possible
       val entries  = model.entries
       val keys = entries.keys
-      
+      //printf(s"$fname: $resSort")
       val modelFuncname = (keys.filter(_.contains(fname+"%limited"))++ (keys.filter(_==fname))++
                           (keys.filter(_==kek))
                            ).head //TODO: make this better
@@ -633,7 +647,7 @@ case class DomainValueEntry(domain:String,id:String) extends ExtractedModelEntry
 /** same as DomainValueEntry but with some inforamtion about functions defined on this domain an their coresponding result when using original as input for the function */
 case class ExtendedDomainValueEntry(original:DomainValueEntry,info:Map[ExtractedFunction,ExtractedModelEntry]) extends ExtractedModelEntry{
 	def asValueEntry =original.asValueEntry
-	override def toString = original.toString ++" where " ++
+	override def toString = original.toString ++" where " ++ //info.map(_._1.toString).mkString++
                            info.map(x=>x._1.fname ++ " = " ++ x._2.toString.flatMap(y=> y match {
                                                             case '\n' => "\n\t"
                                                             case _ => y+:"" })).mkString("{\n\t",";\n\t","\n\t}")
@@ -664,8 +678,11 @@ case class DomainEntry( name:String,
 /**
   * Function used within or without domains 
   * CAREFUL: it will not evaluate VarEntries this has to be done via the converter or Interpreter
+  * it checks the types naïvely, false positives will occur
   *
   * @param fname function name without Type Parameter since they are concrete functions
+  * @param argtypes types of the arguments
+  * @param returnType return type of function
   * @param options map from arguments to function value
   * @param default default value if arguments are not contained in options
   */
@@ -675,7 +692,7 @@ case class ExtractedFunction( fname:String,
                               options:Map[Seq[ExtractedModelEntry], ExtractedModelEntry],
                               default:ExtractedModelEntry
                             ){
-  def apply(args:Seq[ExtractedModelEntry]) : Either[ExtractedFunction,ExtractedModelEntry]= {//TODO:  typecheck
+  def apply(args:Seq[ExtractedModelEntry]) : Either[ExtractedFunction,ExtractedModelEntry]= {//TODO: Beautify
     val n = args.length
     val arglength = argtypes.length
     if(n== arglength ) {//full application
@@ -693,7 +710,7 @@ case class ExtractedFunction( fname:String,
                                   options.filter(x=>x._1.take(n)==args).map(x=>(x._1.drop(n)->x._2)), //map to simpler function
                                   default
                                 ))//new function with the first n elements applied
-        else throw new IllegalArgumentException("false types for subapplication:required "+s"$subtypes"+ " but got: "+ s"$args")
+        else throw new IllegalArgumentException("false types for partial application: required "+s"$subtypes"+ " but got: "+ s"$args")
       }else
         throw new IllegalArgumentException(s"to many arguments for function:$fname")
     }
