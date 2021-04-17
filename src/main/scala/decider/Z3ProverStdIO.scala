@@ -2,29 +2,28 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silicon.decider
 
-import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
+import java.io._
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
 
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.{Config, Map, toMap}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, Z3InteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
-import viper.silver.plugin.PluginAwareReporter
-import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
+import viper.silicon.{Config, Map, toMap}
+import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
 
 class Z3ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
                     identifierFactory: IdentifierFactory,
-                    reporter: PluginAwareReporter)
+                    reporter: Reporter)
     extends Prover
        with LazyLogging {
 

@@ -2,12 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
+
 import scala.annotation.unused
 import scala.util.Random
 import viper.silver.ast
@@ -26,8 +27,7 @@ import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.plugin.PluginAwareReporter
-import viper.silver.reporter.{ConfigurationConfirmation, VerificationResultMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, Reporter, VerificationResultMessage}
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -39,7 +39,7 @@ trait MasterVerifier extends Verifier {
   def verificationPoolManager: VerificationPoolManager
 }
 
-class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareReporter)
+class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     extends BaseVerifier(config, "00")
        with MasterVerifier
        with DefaultFunctionVerificationUnitProvider

@@ -2,17 +2,17 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silicon.tests
 
 import java.nio.file.Path
-import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
-import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
+
 import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
 import viper.silver.frontend.DefaultStates
 import viper.silver.reporter.NoopReporter
-import viper.silver.plugin.PluginAwareReporter
+import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
+import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories =
@@ -57,7 +57,7 @@ class SiliconTests extends SilSuite {
   }
 
   val silicon = {
-    val reporter = PluginAwareReporter(NoopReporter)
+    val reporter = NoopReporter
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
     new Silicon(reporter, debugInfo)
   }
