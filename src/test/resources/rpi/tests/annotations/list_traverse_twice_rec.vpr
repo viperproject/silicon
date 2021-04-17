@@ -1,0 +1,15 @@
+field n: Ref
+field v: Int
+
+method main(a: Ref)
+{
+    traverse(a)
+    traverse(a)
+}
+
+method traverse(a: Ref)
+{
+    if (a != null) {
+        traverse(a.n)
+    }
+}
