@@ -590,7 +590,7 @@ object Converter {
                                         ExtractedFunction(fname,
                                                           argtyp,
                                                           resSort,
-                                                          m.map(x=>(x._1.zip(argtyp).map(y=>getConstantEntry(y._2,y._1)) ->getConstantEntry(resSort,x._2))),
+                                                          try {m.map(x=>(x._1.zip(argtyp).map(y=>getConstantEntry(y._2,y._1)) ->getConstantEntry(resSort,x._2)))} catch{case t:Throwable=>{emptymap}}, //TODO: this throws NumberFormatException
                                                           getConstantEntry(resSort,els)
                                                           )
                                         }
