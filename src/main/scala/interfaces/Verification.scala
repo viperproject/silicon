@@ -7,13 +7,52 @@
 package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
+import viper.silicon.state.terms.Term
 import viper.silicon.state.{State, Store}
 import viper.silver.verifier.{Counterexample, Model, VerificationError}
-import viper.silicon.state.terms.Term
 
 /*
  * Results
  */
+class VerificationResultWrapper(verificationResultsarg: Seq[VerificationResult]) {
+  def verificationResults: Seq[VerificationResult] = verificationResultsarg
+
+  def &&(other: => VerificationResultWrapper): VerificationResultWrapper = {
+    //Filter out multiple Successes
+    var combinedSeq = this.verificationResults ++ other.verificationResults
+    val hasSuccess = combinedSeq.contains(Success())
+    combinedSeq = combinedSeq flatMap {
+      case _: Success => None
+      case vr: VerificationResult => Some(vr)
+    }
+    if (combinedSeq.isEmpty && hasSuccess) combinedSeq = Seq(Success())
+    new VerificationResultWrapper(combinedSeq)
+  }
+  // short circuit "and"
+  def &&&(other: => VerificationResultWrapper): VerificationResultWrapper = { //TODO:J check if this is really needed
+    if (this.containsFatal) this else this && other
+  }
+  def getFatals: Seq[FatalResult] = verificationResults flatMap{
+     case fr: FatalResult => Some(fr)
+     case _ => None
+  }
+  def getFailures: Seq[Failure] = verificationResults flatMap {
+    case fl: Failure => Some(fl)
+    case _ => None
+  }
+  def containsFatal: Boolean = verificationResults.foldLeft(false)((b: Boolean,v: VerificationResult)=>b || v.isFatal)
+  def containsFailure: Boolean = getFailures.nonEmpty
+}
+
+object VerificationResultWrapper {
+  def apply(vr: VerificationResult): VerificationResultWrapper = new VerificationResultWrapper(Seq(vr))
+  def apply(vrs: Seq[VerificationResult]): VerificationResultWrapper = new VerificationResultWrapper(vrs)
+
+  def unapply(arg: VerificationResultWrapper): Option[Seq[VerificationResult]] = Some(arg.verificationResults)
+//  def unapply(vrw: VerificationResultWrapper): Option[Seq[VerificationResult]] = if (vrw.verificationResults.nonEmpty) Some(vrw.verificationResults) else None
+//  def unapply(vr: VerificationResult): Option[VerificationResult] = Some(vr) //TODO:J check how this could work
+}
+
 
 /* TODO: Extract appropriate interfaces and then move the implementations
  *       outside of the interfaces package.
