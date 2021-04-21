@@ -84,8 +84,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                   wand: ast.MagicWand,
                   pve: PartialVerificationError,
                   v: Verifier)
-                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
-                  : VerificationResult =
+                  (Q: (State, MagicWandChunk, Verifier) => VerificationResultWrapper)
+                  : VerificationResultWrapper =
     createChunk(s, wand, MagicWandSnapshot(freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v)), pve, v)(Q)
 
   def createChunk(s: State,
@@ -94,8 +94,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                   rhsSnapshot: Term,
                   pve: PartialVerificationError,
                   v: Verifier)
-                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
-                  : VerificationResult =
+                  (Q: (State, MagicWandChunk, Verifier) => VerificationResultWrapper)
+                  : VerificationResultWrapper =
     createChunk(s, wand, MagicWandSnapshot(abstractLhs, rhsSnapshot), pve, v)(Q)
 
   def createChunk(s: State,
@@ -103,8 +103,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                   snap: MagicWandSnapshot,
                   pve: PartialVerificationError,
                   v: Verifier)
-                 (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
-                 : VerificationResult = {
+                 (Q: (State, MagicWandChunk, Verifier) => VerificationResultWrapper)
+                 : VerificationResultWrapper = {
     evaluateWandArguments(s, wand, pve, v)((s1, ts, v1) =>
       Q(s1, MagicWandChunk(MagicWandIdentifier(wand, Verifier.program), s1.g.values, ts, snap, FullPerm()), v1)
     )
@@ -114,8 +114,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                             wand: ast.MagicWand,
                             pve: PartialVerificationError,
                             v: Verifier)
-                           (Q: (State, Seq[Term], Verifier) => VerificationResult)
-                           : VerificationResult = {
+                           (Q: (State, Seq[Term], Verifier) => VerificationResultWrapper)
+                           : VerificationResultWrapper = {
     val s1 = s.copy(exhaleExt = false)
     val es = wand.subexpressionsToEvaluate(Verifier.program)
 
@@ -128,11 +128,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
                               (s: State,
                                hs: Stack[Heap],
                                pLoss: Term,
-                               failure: Failure,
+                               failure: VerificationResultWrapper,
                                v: Verifier)
                               (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
-                              (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResult)
-                              : VerificationResult = {
+                              (Q: (State, Stack[Heap], Stack[Option[CH]], Verifier) => VerificationResultWrapper)
+                              : VerificationResultWrapper = {
 
     val initialConsumptionResult = ConsumptionResult(pLoss, v, Verifier.config.checkTimeout())
       /* TODO: Introduce a dedicated timeout for the permission check performed by ConsumptionResult,
@@ -198,8 +198,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                   proofScript: ast.Seqn,
                   pve: PartialVerificationError,
                   v: Verifier)
-                 (Q: (State, Chunk, Verifier) => VerificationResult)
-                 : VerificationResult = {
+                 (Q: (State, Chunk, Verifier) => VerificationResultWrapper)
+                 : VerificationResultWrapper = {
 
     /* TODO: Logging code is very similar to that in HeuristicsSupporter. Unify. */
 
@@ -253,7 +253,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                                         freshSnapRoot: Var,
                                         snap: Term,
                                         v3: Verifier)
-                                       : VerificationResult = {
+                                       : VerificationResultWrapper = {
 
       def appendToResults(s5: State, ch: Chunk, pcs: RecordedPathConditions, v4: Verifier): Unit = {
         assert(s5.conservedPcs.nonEmpty, s"Unexpected structure of s5.conservedPcs: ${s5.conservedPcs}")
@@ -299,13 +299,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
           v4.decider.assume(smValueDef)
           val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
-          Success()
+          VerificationResultWrapper(Success())
         })
       } else {
         magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
 //          say(s"done: create wand chunk: $ch")
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
-          Success()
+          VerificationResultWrapper(Success())
         })
       }
     }
@@ -385,8 +385,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
                 wand: ast.MagicWand,
                 pve: PartialVerificationError,
                 v: Verifier)
-               (Q: (State, Verifier) => VerificationResult)
-               : VerificationResult = {
+               (Q: (State, Verifier) => VerificationResultWrapper)
+               : VerificationResultWrapper = {
         consume(s, wand, pve, v)((s1, snap, v1) => {
           val wandSnap = MagicWandSnapshot(snap)
           consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
@@ -404,11 +404,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
   def transfer[CH <: Chunk]
               (s: State,
                perms: Term,
-               failure: Failure,
+               failure: VerificationResultWrapper, //TODO:J maybe change this back to Failure
                v: Verifier)
               (consumeFunction: (State, Heap, Term, Verifier) => (ConsumptionResult, State, Heap, Option[CH]))
-              (Q: (State, Option[CH], Verifier) => VerificationResult)
-              : VerificationResult = {
+              (Q: (State, Option[CH], Verifier) => VerificationResultWrapper)
+              : VerificationResultWrapper = {
     assert(s.recordPcs)
     /* During state consolidation or the consumption of quantified permissions new chunks with new snapshots
      * might be created, the information about these new snapshots is stored in the path conditions and needs

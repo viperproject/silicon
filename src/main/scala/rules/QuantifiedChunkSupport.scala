@@ -14,7 +14,7 @@ import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.{Map, SymbExLogger}
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.VerificationResultWrapper
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -721,8 +721,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               tSnap: Term,
               tPerm: Term,
               v: Verifier)
-             (Q: (State, Verifier) => VerificationResult)
-             : VerificationResult = {
+             (Q: (State, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper = {
 
     val gain = PermTimes(tPerm, s.permissionScalingFactor)
     val (ch: QuantifiedBasicChunk, inverseFunctions) =
@@ -848,8 +848,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             tPerm: Term,
                             resourceTriggerFactory: Term => Term, /* Trigger with some snapshot */
                             v: Verifier)
-                           (Q: (State, Verifier) => VerificationResult)
-                           : VerificationResult = {
+                           (Q: (State, Verifier) => VerificationResultWrapper)
+                           : VerificationResultWrapper = {
 
     val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, resource, tArgs, tSnap, v)
     v.decider.prover.comment("Definitional axioms for singleton-SM's value")
@@ -899,8 +899,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
               v: Verifier)
-             (Q: (State, Heap, Term, Verifier) => VerificationResult)
-             : VerificationResult = {
+             (Q: (State, Heap, Term, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper = {
 
     val inverseFunctions =
       quantifiedChunkSupporter.getFreshInverseFunctions(
@@ -983,7 +983,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               magicWandSupporter.transfer[QuantifiedBasicChunk](
                                           s.copy(smCache = smCache1),
                                           lossOfInvOfLoc,
-                                          createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s),
+                                          VerificationResultWrapper(createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s)),
                                           v)((s2, heap, rPerm, v2) => {
                 val (relevantChunks, otherChunks) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
@@ -1061,12 +1061,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                    smCache = smCache2)
                   Q(s3, h3, smDef2.sm.convert(sorts.Snap), v)
                 case (Incomplete(_), s2, _) =>
-                  createFailure(pve dueTo insufficientPermissionReason, v, s2)}
+                  VerificationResultWrapper(createFailure(pve dueTo insufficientPermissionReason, v, s2))}
             }
           case false =>
-            createFailure(pve dueTo notInjectiveReason, v, s)}
+            VerificationResultWrapper(createFailure(pve dueTo notInjectiveReason, v, s))}
       case false =>
-        createFailure(pve dueTo negativePermissionReason, v, s)}
+        VerificationResultWrapper(createFailure(pve dueTo negativePermissionReason, v, s))}
   }
 
   def consumeSingleLocation(s: State,
@@ -1078,13 +1078,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             optChunkOrderHeuristic: Option[Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk]],
                             pve: PartialVerificationError,
                             v: Verifier)
-                           (Q: (State, Heap, Term, Verifier) => VerificationResult)
-                           : VerificationResult = {
+                           (Q: (State, Heap, Term, Verifier) => VerificationResultWrapper)
+                           : VerificationResultWrapper = {
 
     val resource = resourceAccess.res(Verifier.program)
     val failure = resourceAccess match {
-      case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
-      case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
+      case locAcc: ast.LocationAccess => VerificationResultWrapper(createFailure(pve dueTo InsufficientPermission(locAcc), v, s))
+      case wand: ast.MagicWand => VerificationResultWrapper(createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s))
       case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
     }
     val chunkIdentifier = ChunkIdentifier(resource, Verifier.program)

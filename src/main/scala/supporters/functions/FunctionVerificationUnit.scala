@@ -153,18 +153,17 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
-      Seq(handleFunction(sInit, function))
+      handleFunction(sInit, function).verificationResults
     }
 
-    private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
+    private def handleFunction(sInit: State, function: ast.Function): VerificationResultWrapper = {
       val data = functionData(function)
       val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data), conservingSnapshotGeneration = true)
 
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(s, function) match {
-        case (result1: FatalResult, _) =>
-          data.verificationFailures = data.verificationFailures :+ result1
-
+        case (result1, _) if result1.containsFatal =>
+          data.verificationFailures = data.verificationFailures :++ result1.getFatals
           result1
 
         case (result1, phase1data) =>
@@ -179,20 +178,18 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
             /* Phase 2: Verify the function's postcondition */
             val result2 = verify(function, phase1data)
 
-            result2 match {
-              case fatalResult: FatalResult =>
-                data.verificationFailures = data.verificationFailures :+ fatalResult
-              case _ =>
-                emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq: _*)
+            if(result2.containsFatal){
+              data.verificationFailures = data.verificationFailures :++ result2.getFatals
+            }else{
+              emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq: _*)
             }
-
-            result1 && result2
+            result1 &&& result2 //TODO:J test this
           }
       }
     }
 
     private def checkSpecificationWelldefinedness(sInit: State, function: ast.Function)
-                                                 : (VerificationResult, Seq[Phase1Data]) = {
+                                                 : (VerificationResultWrapper, Seq[Phase1Data]) = {
 
       val comment = ("-" * 5) + " Well-definedness of specifications " + ("-" * 5)
       logger.debug(s"\n\n$comment\n")
@@ -217,7 +214,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           // precondition
           produces(s1, freshSnap, posts, ContractNotWellformed, v)((s2, _) => {
             recorders :+= s2.functionRecorder
-            Success()})})})
+            VerificationResultWrapper(Success())})})})
 
       data.advancePhase(recorders)
 
@@ -225,7 +222,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     }
 
     private def verify(function: ast.Function, phase1data: Seq[Phase1Data])
-                      : VerificationResult = {
+                      : VerificationResultWrapper = {
 
       val comment = ("-" * 5) + " Verification of function body and postcondition " + ("-" * 5)
       logger.debug(s"\n\n$comment\n")
@@ -238,10 +235,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       var recorders: Seq[FunctionRecorder] = Vector.empty
 
-      val result = phase1data.foldLeft(Success(): VerificationResult) {
-        case (fatalResult: FatalResult, _) => fatalResult
+      val result = phase1data.foldLeft(VerificationResultWrapper(Success()): VerificationResultWrapper) { //TODO: look at this
         case (intermediateResult, Phase1Data(sPre, bcsPre, pcsPre)) =>
-          intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
+          intermediateResult &&& executionFlowController.locally(sPre, v)((s1, _) => {
             decider.setCurrentBranchCondition(And(bcsPre))
             decider.assume(pcsPre)
             v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
@@ -249,7 +245,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               decider.assume(data.formalResult === tBody)
               consumes(s2, posts, postconditionViolated, v)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
-                Success()})})})}
+                VerificationResultWrapper(Success())})})})}
 
       data.advancePhase(recorders)
 

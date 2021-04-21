@@ -29,16 +29,16 @@ trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
            cfg: SilverCfg,
            v: Verifier)
-          (Q: (State, Verifier) => VerificationResult)
-          : VerificationResult
+          (Q: (State, Verifier) => VerificationResultWrapper)
+          : VerificationResultWrapper
 
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
-          (Q: (State, Verifier) => VerificationResult)
-          : VerificationResult
+          (Q: (State, Verifier) => VerificationResultWrapper)
+          : VerificationResultWrapper
 
   def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier)
-           (Q: (State, Verifier) => VerificationResult)
-           : VerificationResult
+           (Q: (State, Verifier) => VerificationResultWrapper)
+           : VerificationResultWrapper
 }
 
 object executor extends ExecutionRules {
@@ -47,8 +47,8 @@ object executor extends ExecutionRules {
   import producer._
 
   private def follow(s: State, edge: SilverEdge, v: Verifier)
-                    (Q: (State, Verifier) => VerificationResult)
-                    : VerificationResult = {
+                    (Q: (State, Verifier) => VerificationResultWrapper)
+                    : VerificationResultWrapper = {
 
     val s1 = edge.kind match {
       case cfg.Kind.Out =>
@@ -69,7 +69,7 @@ object executor extends ExecutionRules {
            */
           brancher.branch(s2, tCond, v1)(
             (s3, v3) => exec(s3, ce.target, ce.kind, v3)(Q),
-            (_, _)  => Success()))
+            (_, _)  => VerificationResultWrapper(Success())))
 
       case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
         exec(s1, ue.target, ue.kind, v)(Q)
@@ -80,28 +80,27 @@ object executor extends ExecutionRules {
                       edges: Seq[SilverEdge],
                       @unused pvef: ast.Exp => PartialVerificationError,
                       v: Verifier)
-                     (Q: (State, Verifier) => VerificationResult)
-                     : VerificationResult = {
+                     (Q: (State, Verifier) => VerificationResultWrapper)
+                     : VerificationResultWrapper = {
 
     if (edges.isEmpty) {
       Q(s, v)
     } else
-      edges.foldLeft(Success(): VerificationResult) {
-        case (fatalResult: FatalResult, _) => fatalResult
-        case (_, edge) => follow(s, edge, v)(Q)
+      edges.foldLeft(VerificationResultWrapper(Success()): VerificationResultWrapper) {
+        case (result, edge) => result && follow(s, edge, v)(Q) //TODO:J this one got me good! (is case neccessary?)
       }
   }
 
   def exec(s: State, graph: SilverCfg, v: Verifier)
-          (Q: (State, Verifier) => VerificationResult)
-          : VerificationResult = {
+          (Q: (State, Verifier) => VerificationResultWrapper)
+          : VerificationResultWrapper = {
 
     exec(s, graph.entry, cfg.Kind.Normal, v)(Q)
   }
 
   def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier)
-          (Q: (State, Verifier) => VerificationResult)
-          : VerificationResult = {
+          (Q: (State, Verifier) => VerificationResultWrapper)
+          : VerificationResultWrapper = {
 
     block match {
       case cfg.StatementBlock(stmt) =>
@@ -155,26 +154,24 @@ object executor extends ExecutionRules {
                                               v1.decider.pcs.after(mark),
                                               InsertionOrderedSet.empty[FunctionDecl] /*v2.decider.freshFunctions*/ /* [BRANCH-PARALLELISATION] */)
                   v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
-                  edgeConditions.foldLeft(Success(): VerificationResult) {
-                    case (fatalResult: FatalResult, _) => fatalResult
+                  edgeConditions.foldLeft(VerificationResultWrapper(Success()): VerificationResultWrapper) {
                     case (intermediateResult, eCond) =>
-                      intermediateResult && executionFlowController.locally(s1, v1)((s2, v2) => {
+                      intermediateResult && executionFlowController.locally(s1, v1)((s2, v2) => { //TODO:J maybe short circuit here?
                         eval(s2, eCond, WhileFailed(eCond), v2)((_, _, _) =>
-                          Success())})}})})
+                          VerificationResultWrapper(Success()))})}})})
             && executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
                 consumes(s0, invs, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
-                  phase1data.foldLeft(Success(): VerificationResult) {
-                    case (fatalResult: FatalResult, _) => fatalResult
+                  phase1data.foldLeft(VerificationResultWrapper(Success()): VerificationResultWrapper) {
                     case (intermediateResult, (s1, pcs, _)) => /* [BRANCH-PARALLELISATION] ff1 */
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
-                      intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
+                      intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => { //TODO:J maybe short circuit here?
   //                    v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions)
                         v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
-                          Success()
+                          VerificationResultWrapper(Success())
                         else {
                           execs(s3, stmts, v2)((s4, v3) => {
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
@@ -187,14 +184,14 @@ object executor extends ExecutionRules {
              */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
             consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
-              Success())
+              VerificationResultWrapper(Success()))
         }
     }
   }
 
   def execs(s: State, stmts: Seq[ast.Stmt], v: Verifier)
-           (Q: (State, Verifier) => VerificationResult)
-           : VerificationResult =
+           (Q: (State, Verifier) => VerificationResultWrapper)
+           : VerificationResultWrapper =
 
     if(stmts.nonEmpty)
       exec(s, stmts.head, v)((s1, v1) =>
@@ -203,8 +200,8 @@ object executor extends ExecutionRules {
       Q(s, v)
 
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
-          (Q: (State, Verifier) => VerificationResult)
-          : VerificationResult = {
+          (Q: (State, Verifier) => VerificationResultWrapper)
+          : VerificationResultWrapper = {
 
     val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
@@ -213,11 +210,11 @@ object executor extends ExecutionRules {
   }
 
   def exec2(state: State, stmt: ast.Stmt, v: Verifier)
-           (continuation: (State, Verifier) => VerificationResult)
-           : VerificationResult = {
+           (continuation: (State, Verifier) => VerificationResultWrapper)
+           : VerificationResultWrapper = {
 
     val s = state.copy(h = magicWandSupporter.getExecutionHeap(state))
-    val Q: (State, Verifier) => VerificationResult = (s, v) => {
+    val Q: (State, Verifier) => VerificationResultWrapper = (s, v) => {
       continuation(magicWandSupporter.moveToReserveHeap(s, v), v)}
 
     /* For debugging-purposes only */
@@ -232,7 +229,7 @@ object executor extends ExecutionRules {
         v.decider.prover.comment(stmt.toString())
     }
 
-    val executed = stmt match {
+    val executed: VerificationResultWrapper = stmt match {
       case ast.Seqn(stmts, _) =>
         execs(s, stmts, v)(Q)
 
@@ -293,7 +290,7 @@ object executor extends ExecutionRules {
                 v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
               case (Incomplete(_), s3, _) =>
-                createFailure(pve dueTo InsufficientPermission(fa), v2, s3)}}))
+                VerificationResultWrapper(createFailure(pve dueTo InsufficientPermission(fa), v2, s3))}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         assert(!s.exhaleExt)
@@ -336,7 +333,7 @@ object executor extends ExecutionRules {
       case inhale @ ast.Inhale(a) => a match {
         case _: ast.FalseLit =>
           /* We're done */
-          Success()
+          VerificationResultWrapper(Success())
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterInhale)
@@ -354,15 +351,15 @@ object executor extends ExecutionRules {
           if (v1.decider.checkSmoke())
             QS(s1.copy(h = s.h), v1)
           else
-            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1)
-        })((_, _) => Success())
+            VerificationResultWrapper(createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1))
+        })((_, _) => VerificationResultWrapper(Success()))
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =
           consume(s, a, AssertFailed(assert), v)((_, _, _) =>
-            Success())
+            VerificationResultWrapper(Success()))
 
-        r && Q(s, v)
+        r &&& Q(s,v) // short circuiting TODO:J here might also be a good place to recover from a failed assertion (update state & "not short circuit")
 
       case assert @ ast.Assert(a) =>
         val pve = AssertFailed(assert)
@@ -454,7 +451,7 @@ object executor extends ExecutionRules {
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                 predicateSupporter.fold(s2, predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
               case false =>
-                createFailure(pve dueTo NegativePermission(ePerm), v2, s2)
+                VerificationResultWrapper(createFailure(pve dueTo NegativePermission(ePerm), v2, s2))
             }
           }))
 
@@ -481,7 +478,7 @@ object executor extends ExecutionRules {
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
                 predicateSupporter.unfold(s2.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v2, pa)(Q)
               case false =>
-                createFailure(pve dueTo NegativePermission(ePerm), v2, s2)
+                VerificationResultWrapper(createFailure(pve dueTo NegativePermission(ePerm), v2, s2))
             }
           }))
 

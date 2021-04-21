@@ -56,9 +56,9 @@ trait DefaultCfgVerificationUnitProvider extends VerifierComponent { v: Verifier
       val result = {
         executionFlowController.locally(s, v)((s3, v3) =>  {
           exec(s3, cfg, v3)((_, _) =>
-            Success())}) }
+            VerificationResultWrapper(Success()))}) }
 
-      Seq(result)
+      result.verificationResults
     }
 
     /* Lifetime */

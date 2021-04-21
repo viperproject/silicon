@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silver.verifier.VerificationError
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.interfaces.{Success, VerificationResultWrapper}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -26,12 +26,12 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               ve: VerificationError,
               v: Verifier,
               description: String)
-             (Q: (State, Heap, Term, Verifier) => VerificationResult)
-             : VerificationResult
+             (Q: (State, Heap, Term, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper
 
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
-             (Q: (State, Heap, Verifier) => VerificationResult)
-             : VerificationResult
+             (Q: (State, Heap, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper
 
   def lookup(s: State,
              h: Heap,
@@ -40,8 +40,8 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              ve: VerificationError,
              v: Verifier,
              description: String)
-            (Q: (State, Heap, Term, Verifier) => VerificationResult)
-            : VerificationResult
+            (Q: (State, Heap, Term, Verifier) => VerificationResultWrapper)
+            : VerificationResultWrapper
 
   def findChunk[CH <: NonQuantifiedChunk: ClassTag]
                (chunks: Iterable[Chunk],
@@ -71,8 +71,8 @@ object chunkSupporter extends ChunkSupportRules {
               ve: VerificationError,
               v: Verifier,
               description: String)
-             (Q: (State, Heap, Term, Verifier) => VerificationResult)
-             : VerificationResult = {
+             (Q: (State, Heap, Term, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper = {
 
     heuristicsSupporter.tryOperation[Heap, Term](description)(s, h, v)((s1, h1, v1, QS) => {
       consume(s1, h1, resource, args, perms, ve, v1)((s2, h2, optSnap, v2) =>
@@ -98,12 +98,12 @@ object chunkSupporter extends ChunkSupportRules {
                       perms: Term,
                       ve: VerificationError,
                       v: Verifier)
-                     (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
-                     : VerificationResult = {
+                     (Q: (State, Heap, Option[Term], Verifier) => VerificationResultWrapper)
+                     : VerificationResultWrapper = {
 
     val id = ChunkIdentifier(resource, Verifier.program)
     if (s.exhaleExt) {
-      val failure = createFailure(ve, v, s).withLoad(args)
+      val failure = VerificationResultWrapper(createFailure(ve, v, s).withLoad(args))
       magicWandSupporter.transfer(s, perms, failure, v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
@@ -117,9 +117,9 @@ object chunkSupporter extends ChunkSupportRules {
             case (Complete(), s2, h2, optCh2) =>
               QS(s2.copy(h = s.h), h2, optCh2.map(_.snap), v1)
             case _ if v1.decider.checkSmoke() =>
-              Success() // TODO: Mark branch as dead?
+              VerificationResultWrapper(Success()) // TODO: Mark branch as dead?
             case _ =>
-              createFailure(ve, v1, s1, true).withLoad(args)
+              VerificationResultWrapper(createFailure(ve, v1, s1, true).withLoad(args))
           }
         }
       )(Q)
@@ -176,8 +176,8 @@ object chunkSupporter extends ChunkSupportRules {
   }
 
   def produce(s: State, h: Heap, ch: NonQuantifiedChunk, v: Verifier)
-             (Q: (State, Heap, Verifier) => VerificationResult)
-             : VerificationResult = {
+             (Q: (State, Heap, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper = {
 
     // Try to merge the chunk into the heap by finding an alias.
     // In any case, property assumptions are added after the merge step.
@@ -193,8 +193,8 @@ object chunkSupporter extends ChunkSupportRules {
              ve: VerificationError,
              v: Verifier,
              description: String)
-            (Q: (State, Heap, Term, Verifier) => VerificationResult)
-            : VerificationResult = {
+            (Q: (State, Heap, Term, Verifier) => VerificationResultWrapper)
+            : VerificationResultWrapper = {
 
     heuristicsSupporter.tryOperation[Heap, Term](description)(s, h, v)((s1, h1, v1, QS) => {
       lookup(s1, h1, resource, args, ve, v1)(QS)
@@ -207,8 +207,8 @@ object chunkSupporter extends ChunkSupportRules {
                      args: Seq[Term],
                      ve: VerificationError,
                      v: Verifier)
-                    (Q: (State, Heap, Term, Verifier) => VerificationResult)
-                    : VerificationResult = {
+                    (Q: (State, Heap, Term, Verifier) => VerificationResultWrapper)
+                    : VerificationResultWrapper = {
 
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction =
@@ -225,18 +225,17 @@ object chunkSupporter extends ChunkSupportRules {
                            args: Seq[Term],
                            ve: VerificationError,
                            v: Verifier)
-                          (Q: (State, Term, Verifier) => VerificationResult)
-                          : VerificationResult = {
+                          (Q: (State, Term, Verifier) => VerificationResultWrapper)
+                          : VerificationResultWrapper = {
 
     val id = ChunkIdentifier(resource, Verifier.program)
 
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
-      case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
-        Q(s, ch.snap, v)
+      case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) => Q(s, ch.snap, v)
       case _ if v.decider.checkSmoke() =>
-        Success() // TODO: Mark branch as dead?
+        VerificationResultWrapper(Success()) // TODO: Mark branch as dead?
       case _ =>
-        createFailure(ve, v, s, true).withLoad(args)
+        VerificationResultWrapper(createFailure(ve, v, s, true).withLoad(args))
     }
   }
 

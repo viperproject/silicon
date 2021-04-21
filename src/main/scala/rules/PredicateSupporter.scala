@@ -10,7 +10,7 @@ import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.VerificationResultWrapper
 import viper.silicon.resources.PredicateID
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -25,8 +25,8 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
            constrainableWildcards: InsertionOrderedSet[Var],
            pve: PartialVerificationError,
            v: Verifier)
-          (Q: (State, Verifier) => VerificationResult)
-          : VerificationResult
+          (Q: (State, Verifier) => VerificationResultWrapper)
+          : VerificationResultWrapper
 
   def unfold(s: State,
              predicate: ast.Predicate,
@@ -36,8 +36,8 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
              pve: PartialVerificationError,
              v: Verifier,
              pa: ast.PredicateAccess /* TODO: Make optional */)
-            (Q: (State, Verifier) => VerificationResult)
-            : VerificationResult
+            (Q: (State, Verifier) => VerificationResultWrapper)
+            : VerificationResultWrapper
 }
 
 object predicateSupporter extends PredicateSupportRules {
@@ -51,8 +51,8 @@ object predicateSupporter extends PredicateSupportRules {
            constrainableWildcards: InsertionOrderedSet[Var],
            pve: PartialVerificationError,
            v: Verifier)
-          (Q: (State, Verifier) => VerificationResult)
-          : VerificationResult = {
+          (Q: (State, Verifier) => VerificationResultWrapper)
+          : VerificationResultWrapper = {
 
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
@@ -111,8 +111,8 @@ object predicateSupporter extends PredicateSupportRules {
              pve: PartialVerificationError,
              v: Verifier,
              pa: ast.PredicateAccess)
-            (Q: (State, Verifier) => VerificationResult)
-            : VerificationResult = {
+            (Q: (State, Verifier) => VerificationResultWrapper)
+            : VerificationResultWrapper = {
 
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */

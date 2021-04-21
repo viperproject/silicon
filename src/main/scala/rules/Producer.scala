@@ -10,7 +10,7 @@ import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.VerificationResultWrapper
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms._
@@ -37,8 +37,8 @@ trait ProductionRules extends SymbolicExecutionRules {
               a: ast.Exp,
               pve: PartialVerificationError,
               v: Verifier)
-             (Q: (State, Verifier) => VerificationResult)
-             : VerificationResult
+             (Q: (State, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper
 
   /** Subsequently produces assertions `as` into state `s`.
     *
@@ -60,8 +60,8 @@ trait ProductionRules extends SymbolicExecutionRules {
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier)
-              (Q: (State, Verifier) => VerificationResult)
-              : VerificationResult
+              (Q: (State, Verifier) => VerificationResultWrapper)
+              : VerificationResultWrapper
 }
 
 object producer extends ProductionRules {
@@ -99,8 +99,8 @@ object producer extends ProductionRules {
               a: ast.Exp,
               pve: PartialVerificationError,
               v: Verifier)
-             (Q: (State, Verifier) => VerificationResult)
-             : VerificationResult =
+             (Q: (State, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper =
 
     produceR(s, sf, a.whenInhaling, pve, v)(Q)
 
@@ -110,8 +110,8 @@ object producer extends ProductionRules {
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier)
-              (Q: (State, Verifier) => VerificationResult)
-              : VerificationResult = {
+              (Q: (State, Verifier) => VerificationResultWrapper)
+              : VerificationResultWrapper = {
 
     val allTlcs = mutable.ListBuffer[ast.Exp]()
     val allPves = mutable.ListBuffer[PartialVerificationError]()
@@ -132,8 +132,8 @@ object producer extends ProductionRules {
                           as: Seq[ast.Exp],
                           pves: Seq[PartialVerificationError],
                           v: Verifier)
-                         (Q: (State, Verifier) => VerificationResult)
-                         : VerificationResult = {
+                         (Q: (State, Verifier) => VerificationResultWrapper)
+                         : VerificationResultWrapper = {
 
     if (as.isEmpty)
       Q(s, v)
@@ -163,8 +163,8 @@ object producer extends ProductionRules {
                        a: ast.Exp,
                        pve: PartialVerificationError,
                        v: Verifier)
-                      (Q: (State, Verifier) => VerificationResult)
-                      : VerificationResult = {
+                      (Q: (State, Verifier) => VerificationResultWrapper)
+                      : VerificationResultWrapper = {
 
     val tlcs = a.topLevelConjuncts
     val pves = Seq.fill(tlcs.length)(pve)
@@ -180,8 +180,8 @@ object producer extends ProductionRules {
                                 a: ast.Exp,
                                 pve: PartialVerificationError,
                                 v: Verifier)
-                               (Q: (State, Verifier) => VerificationResult)
-                               : VerificationResult = {
+                               (Q: (State, Verifier) => VerificationResultWrapper)
+                               : VerificationResultWrapper = {
 
     val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(a, s, v.decider.pcs))
     produceTlc(s, sf, a, pve, v)((s1, v1) => {
@@ -194,16 +194,16 @@ object producer extends ProductionRules {
                          a: ast.Exp,
                          pve: PartialVerificationError,
                          v: Verifier)
-                        (continuation: (State, Verifier) => VerificationResult)
-                        : VerificationResult = {
+                        (continuation: (State, Verifier) => VerificationResultWrapper)
+                        : VerificationResultWrapper = {
 
     v.logger.debug(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
     v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
 
-    val Q: (State, Verifier) => VerificationResult = (state, verifier) =>
+    val Q: (State, Verifier) => VerificationResultWrapper = (state, verifier) =>
       continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
 
-    val produced = a match {
+    val produced: VerificationResultWrapper = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impLog = new GlobalBranchRecord(imp, s, v.decider.pcs, "produce")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
@@ -414,7 +414,7 @@ object producer extends ProductionRules {
         }
 
       case _: ast.InhaleExhaleExp =>
-        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
+        VerificationResultWrapper(createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s))
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>

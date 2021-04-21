@@ -30,19 +30,19 @@ import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 
 trait EvaluationRules extends SymbolicExecutionRules {
   def evals(s: State, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, v: Verifier)
-           (Q: (State, List[Term], Verifier) => VerificationResult)
-           : VerificationResult
+           (Q: (State, List[Term], Verifier) => VerificationResultWrapper)
+           : VerificationResultWrapper
 
   def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
-          (Q: (State, Term, Verifier) => VerificationResult)
-          : VerificationResult
+          (Q: (State, Term, Verifier) => VerificationResultWrapper)
+          : VerificationResultWrapper
 
   def evalLocationAccess(s: State,
                          locacc: ast.LocationAccess,
                          pve: PartialVerificationError,
                          v: Verifier)
-                        (Q: (State, String, Seq[Term], Verifier) => VerificationResult)
-                        : VerificationResult
+                        (Q: (State, String, Seq[Term], Verifier) => VerificationResultWrapper)
+                        : VerificationResultWrapper
 
   def evalQuantified(s: State,
                      quant: Quantifier,
@@ -53,8 +53,8 @@ trait EvaluationRules extends SymbolicExecutionRules {
                      name: String,
                      pve: PartialVerificationError,
                      v: Verifier)
-                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Verifier) => VerificationResult)
-                    : VerificationResult
+                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Verifier) => VerificationResultWrapper)
+                    : VerificationResultWrapper
 }
 
 object evaluator extends EvaluationRules {
@@ -62,14 +62,14 @@ object evaluator extends EvaluationRules {
   import producer._
 
   def evals(s: State, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, v: Verifier)
-           (Q: (State, List[Term], Verifier) => VerificationResult)
-           : VerificationResult =
+           (Q: (State, List[Term], Verifier) => VerificationResultWrapper)
+           : VerificationResultWrapper =
 
     evals2(s, es, Nil, pvef, v)(Q)
 
   private def evals2(s: State, es: Seq[ast.Exp], ts: List[Term], pvef: ast.Exp => PartialVerificationError, v: Verifier)
-                    (Q: (State, List[Term], Verifier) => VerificationResult)
-                    : VerificationResult = {
+                    (Q: (State, List[Term], Verifier) => VerificationResultWrapper)
+                    : VerificationResultWrapper = {
 
     if (es.isEmpty)
       Q(s, ts.reverse, v)
@@ -81,8 +81,8 @@ object evaluator extends EvaluationRules {
   /** Wrapper Method for eval, for logging. See Executor.scala for explanation of analogue. **/
   @inline
   def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
-          (Q: (State, Term, Verifier) => VerificationResult)
-          : VerificationResult = {
+          (Q: (State, Term, Verifier) => VerificationResultWrapper)
+          : VerificationResultWrapper = {
 
     val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, s, v.decider.pcs))
     eval3(s, e, pve, v)((s1, t, v1) => {
@@ -91,8 +91,8 @@ object evaluator extends EvaluationRules {
   }
 
   def eval3(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
-           (Q: (State, Term, Verifier) => VerificationResult)
-           : VerificationResult = {
+           (Q: (State, Term, Verifier) => VerificationResultWrapper)
+           : VerificationResultWrapper = {
 
 
     /* For debugging only */
@@ -143,10 +143,10 @@ object evaluator extends EvaluationRules {
   }
 
   protected def eval2(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
-                     (Q: (State, Term, Verifier) => VerificationResult)
-                     : VerificationResult = {
+                     (Q: (State, Term, Verifier) => VerificationResultWrapper)
+                     : VerificationResultWrapper = {
 
-    val resultTerm = e match {
+    val resultTerm: VerificationResultWrapper = e match {
       case _: ast.TrueLit => Q(s, True(), v)
       case _: ast.FalseLit => Q(s, False(), v)
 
@@ -210,7 +210,7 @@ object evaluator extends EvaluationRules {
               } else {
                 v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
+                    VerificationResultWrapper(createFailure(pve dueTo InsufficientPermission(fa), v1, s1))
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
@@ -238,7 +238,7 @@ object evaluator extends EvaluationRules {
                 }
               v1.decider.assert(permCheck) {
                 case false =>
-                  createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
+                  VerificationResultWrapper(createFailure(pve dueTo InsufficientPermission(fa), v1, s1))
                 case true =>
                   val smLookup = Lookup(fa.field.name, smDef1.sm, tRcvr)
                   val fr2 =
@@ -275,7 +275,7 @@ object evaluator extends EvaluationRules {
       case old @ ast.LabelledOld(e0, lbl) =>
         s.oldHeaps.get(lbl) match {
           case None =>
-            createFailure(pve dueTo LabelledStateNotReached(old), v, s)
+            VerificationResultWrapper(createFailure(pve dueTo LabelledStateNotReached(old), v, s))
           case _ =>
             evalInOldState(s, lbl, e0, pve, v)(Q)}
 
@@ -476,8 +476,8 @@ object evaluator extends EvaluationRules {
         */
 
         def bindRcvrsAndEvalBody(s: State, chs: Iterable[NonQuantifiedChunk], args: Seq[ast.Exp], ts: Seq[Term], v: Verifier)
-                                (Q: (State, Seq[Term], Verifier) => VerificationResult)
-                                : VerificationResult = {
+                                (Q: (State, Seq[Term], Verifier) => VerificationResultWrapper)
+                                : VerificationResultWrapper = {
           if (chs.isEmpty)
             Q(s, ts.reverse, v)
           else {
@@ -515,8 +515,8 @@ object evaluator extends EvaluationRules {
         }
 
         def bindQuantRcvrsAndEvalBody(s: State, chs: Iterable[QuantifiedBasicChunk], args: Seq[ast.Exp], ts: Seq[Term], v: Verifier)
-                                     (Q: (State, Seq[Term], Verifier) => VerificationResult)
-                                     : VerificationResult = {
+                                     (Q: (State, Seq[Term], Verifier) => VerificationResultWrapper)
+                                     : VerificationResultWrapper = {
           if (chs.isEmpty)
             Q(s, ts.reverse, v)
           else {
@@ -752,7 +752,7 @@ object evaluator extends EvaluationRules {
                         eval(s10, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
-                  createFailure(pve dueTo NegativePermission(ePerm), v2, s2)}))
+                  VerificationResultWrapper(createFailure(pve dueTo NegativePermission(ePerm), v2, s2))}))
         } else {
           val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables)
           Q(s, unknownValue, v)
@@ -780,9 +780,9 @@ object evaluator extends EvaluationRules {
                   case true =>
                     Q(s1, SeqAt(t0, t1), v1)
                   case false =>
-                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)}
+                    VerificationResultWrapper(createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1))}
               case false =>
-                createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
+                VerificationResultWrapper(createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1))
             }}})
 
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)(Q)
@@ -803,9 +803,9 @@ object evaluator extends EvaluationRules {
                   case true =>
                     Q(s1, SeqUpdate(t0, t1, t2), v1)
                   case false =>
-                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)}
+                    VerificationResultWrapper(createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1))}
               case false =>
-                createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
+                VerificationResultWrapper(createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1))
             }
           }
         })
@@ -897,7 +897,7 @@ object evaluator extends EvaluationRules {
           case (s1, Seq(baseT, keyT), v1) if s1.triggerExp => Q(s1, MapLookup(baseT, keyT), v1)
           case (s1, Seq(baseT, keyT), v1) => v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
             case true => Q(s1, MapLookup(baseT, keyT), v1)
-            case false => createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1)
+            case false => VerificationResultWrapper(createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1))
           }
         })
 
@@ -914,7 +914,7 @@ object evaluator extends EvaluationRules {
       /* Unexpected nodes */
 
       case _: ast.InhaleExhaleExp =>
-        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e), v, s)
+        VerificationResultWrapper(createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e), v, s))
 
       case _: ast.EpsilonPerm
          | _: ast.FieldAccessPredicate
@@ -937,8 +937,8 @@ object evaluator extends EvaluationRules {
                      name: String,
                      pve: PartialVerificationError,
                      v: Verifier)
-                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Verifier) => VerificationResult)
-                    : VerificationResult = {
+                    (Q: (State, Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], (Seq[Term], Seq[Quantification]), Verifier) => VerificationResultWrapper)
+                    : VerificationResultWrapper = {
 
     val localVars = vars map (_.localVar)
 
@@ -974,8 +974,8 @@ object evaluator extends EvaluationRules {
                           fromShortCircuitingAnd: Boolean,
                           pve: PartialVerificationError,
                           v: Verifier)
-                         (Q: (State, Term, Verifier) => VerificationResult)
-                         : VerificationResult = {
+                         (Q: (State, Term, Verifier) => VerificationResultWrapper)
+                         : VerificationResultWrapper = {
 
     joiner.join[Term, Term](s, v)((s1, v1, QB) =>
       brancher.branch(s1, tLhs, v1, fromShortCircuitingAnd)(
@@ -994,8 +994,8 @@ object evaluator extends EvaluationRules {
                              e: ast.Exp,
                              pve: PartialVerificationError,
                              v: Verifier)
-                            (Q: (State, Term, Verifier) => VerificationResult)
-                            : VerificationResult = {
+                            (Q: (State, Term, Verifier) => VerificationResultWrapper)
+                            : VerificationResultWrapper = {
 
     val h = s.oldHeaps(label)
     val s1 = s.copy(h = h, partiallyConsumedHeap = None)
@@ -1012,8 +1012,8 @@ object evaluator extends EvaluationRules {
                          locacc: ast.LocationAccess,
                          pve: PartialVerificationError,
                          v: Verifier)
-                        (Q: (State, String, Seq[Term], Verifier) => VerificationResult)
-                        : VerificationResult = {
+                        (Q: (State, String, Seq[Term], Verifier) => VerificationResultWrapper)
+                        : VerificationResultWrapper = {
 
     locacc match {
       case ast.FieldAccess(eRcvr, field) =>
@@ -1026,8 +1026,8 @@ object evaluator extends EvaluationRules {
   }
 
   def evalResourceAccess(s: State, resacc: ast.ResourceAccess, pve: PartialVerificationError, v: Verifier)
-                        (Q: (State, ChunkIdentifer, Seq[Term], Verifier) => VerificationResult)
-                        : VerificationResult = {
+                        (Q: (State, ChunkIdentifer, Seq[Term], Verifier) => VerificationResultWrapper)
+                        : VerificationResultWrapper = {
     resacc match {
       case wand : ast.MagicWand =>
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) =>
@@ -1048,8 +1048,8 @@ object evaluator extends EvaluationRules {
                         termOp: (Term, Term) => T,
                         pve: PartialVerificationError,
                         v: Verifier)
-                       (Q: (State, T, Verifier) => VerificationResult)
-                       : VerificationResult = {
+                       (Q: (State, T, Verifier) => VerificationResultWrapper)
+                       : VerificationResultWrapper = {
 
     eval(s, e0, pve, v)((s1, t0, v1) =>
       eval(s1, e1, pve, v1)((s2, t1, v2) =>
@@ -1063,12 +1063,12 @@ object evaluator extends EvaluationRules {
                               tZero: Term,
                               pve: PartialVerificationError,
                               v: Verifier)
-                             (Q: (State, Term, Verifier) => VerificationResult)
-                             : VerificationResult = {
+                             (Q: (State, Term, Verifier) => VerificationResultWrapper)
+                             : VerificationResultWrapper = {
 
     v.decider.assert(tDivisor !== tZero){
       case true => Q(s, t, v)
-      case false => createFailure(pve dueTo DivisionByZero(eDivisor), v, s)
+      case false => VerificationResultWrapper(Seq(createFailure(pve dueTo DivisionByZero(eDivisor), v, s)))
     }
   }
 
@@ -1076,8 +1076,8 @@ object evaluator extends EvaluationRules {
                    silverTriggers: Seq[ast.Trigger],
                    pve: PartialVerificationError,
                    v: Verifier)
-                  (Q: (State, Seq[Trigger], Verifier) => VerificationResult)
-                   : VerificationResult = {
+                  (Q: (State, Seq[Trigger], Verifier) => VerificationResultWrapper)
+                   : VerificationResultWrapper = {
 
     evalTriggers(s, silverTriggers map (_.exps), Nil, pve, v)((s1, tTriggersSets, v1) => {
       /* [2015-12-15 Malte]
@@ -1108,8 +1108,8 @@ object evaluator extends EvaluationRules {
                            tTriggersSets: TriggerSets[Term],
                            pve: PartialVerificationError,
                            v: Verifier)
-                          (Q: (State, TriggerSets[Term], Verifier) => VerificationResult)
-                          : VerificationResult = {
+                          (Q: (State, TriggerSets[Term], Verifier) => VerificationResultWrapper)
+                          : VerificationResultWrapper = {
 
     if (eTriggerSets.isEmpty)
       Q(s, tTriggersSets, v)
@@ -1124,8 +1124,8 @@ object evaluator extends EvaluationRules {
   }
 
   private def evalTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier)
-                         (Q: (State, Seq[Term], Verifier) => VerificationResult)
-                         : VerificationResult = {
+                         (Q: (State, Seq[Term], Verifier) => VerificationResultWrapper)
+                         : VerificationResultWrapper = {
 
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map {
@@ -1207,10 +1207,10 @@ object evaluator extends EvaluationRules {
       evals(s, remainingTriggerExpressions, _ => pve, v)((_, remainingTriggerTerms, v1) => {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
         pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
-        Success()})
+        VerificationResultWrapper(Success())})
 
     (r, optRemainingTriggerTerms) match {
-      case (Success(), Some(remainingTriggerTerms)) =>
+      case (VerificationResultWrapper(Seq(Success())), Some(remainingTriggerTerms)) => //TODO:J figure out a way to match this directly to VerificationResultWrapper(Success())
         v.decider.assume(pcDelta)
         Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>
@@ -1252,7 +1252,7 @@ object evaluator extends EvaluationRules {
   }
 
   private def evalHeapTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier)
-                             (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
+                             (Q: (State, Seq[Term], Verifier) => VerificationResultWrapper) : VerificationResultWrapper = {
     var triggers: Seq[Term] = Seq()
     var triggerAxioms: Seq[Term] = Seq()
 
@@ -1271,7 +1271,7 @@ object evaluator extends EvaluationRules {
         triggerAxioms = triggerAxioms ++ axioms
       case e => evalTrigger(s, Seq(e), pve, v)((_, t, _) => {
         triggers = triggers ++ t
-        Success()
+        VerificationResultWrapper(Success())
       })
     }
     v.decider.assume(triggerAxioms)
@@ -1325,7 +1325,7 @@ object evaluator extends EvaluationRules {
                   axioms = axioms ++ smDef1.valueDefinitions
                   mostRecentTrig = FieldTrigger(fa.field.name, smDef1.sm, tRcv)
                   triggers = triggers :+ mostRecentTrig
-                  Success()
+                  VerificationResultWrapper(Success())
                 })
             }
           case None =>
@@ -1333,7 +1333,7 @@ object evaluator extends EvaluationRules {
               axioms = axioms ++ smDef1.valueDefinitions
               mostRecentTrig = FieldTrigger(fa.field.name, smDef1.sm, tRcv)
               triggers = triggers :+ mostRecentTrig
-              Success()
+              VerificationResultWrapper(Success())
             })
         }
     }
@@ -1361,7 +1361,7 @@ object evaluator extends EvaluationRules {
       axioms = axioms ++ smDef1.valueDefinitions
       mostRecentTrig = PredicateTrigger(pa.predicateName, smDef1.sm, tArgs)
       triggers = triggers :+ mostRecentTrig
-      Success()
+      VerificationResultWrapper(Success())
     })
 
     (axioms, triggers, mostRecentTrig)
@@ -1389,7 +1389,7 @@ object evaluator extends EvaluationRules {
       axioms = axioms ++ smDef1.valueDefinitions
       mostRecentTrig = PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, smDef1.sm, tArgs)
       triggers = triggers :+ mostRecentTrig
-      Success()
+    VerificationResultWrapper(Success())
     })
 
     (axioms, triggers, mostRecentTrig)
@@ -1404,15 +1404,15 @@ object evaluator extends EvaluationRules {
                                   exps: Seq[ast.Exp],
                                   pve: PartialVerificationError,
                                   v: Verifier)
-                                 (Q: (State, Term, Verifier) => VerificationResult)
-                                 : VerificationResult = {
+                                 (Q: (State, Term, Verifier) => VerificationResultWrapper)
+                                 : VerificationResultWrapper = {
     assert(
       constructor == Or || constructor == And,
       "Only Or and And are supported as constructors for evalSeqShortCircuit")
 
     assert(exps.nonEmpty, "Empty sequence of expressions not allowed")
 
-    type brFun = (State, Verifier) => VerificationResult
+    type brFun = (State, Verifier) => VerificationResultWrapper
 
     // TODO: Find out and document why swapIfAnd is needed
     val (stop, swapIfAnd) =

@@ -72,7 +72,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
           new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
       }
 
-      val result =
+      val result: VerificationResultWrapper =
         /* Combined the well-formedness check and the execution of the body, which are two separate
          * rules in Smans' paper.
          */
@@ -86,14 +86,14 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                   val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
                     SymbExLogger.currentLog().collapse(null, sepIdentifier)
-                    Success()})})
+                    VerificationResultWrapper(Success())})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
                   exec(s3, body, v3)((s4, v4) =>
                     consumes(s4, posts, postViolated, v4)((_, _, _) =>
-                      Success()))}) }  )})})
+                      VerificationResultWrapper(Success())))}) }  )})})
 
-      Seq(result)
+     result.verificationResults
     }
 
     /* Lifetime */

@@ -7,8 +7,9 @@
 package viper.silicon.rules
 
 import java.util.concurrent._
+
 import viper.silicon.common.concurrency._
-import viper.silicon.interfaces.{Unreachable, VerificationResult}
+import viper.silicon.interfaces._
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Not, Term}
 import viper.silicon.verifier.Verifier
@@ -18,9 +19,9 @@ trait BranchingRules extends SymbolicExecutionRules {
              condition: Term,
              v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
-            (fTrue: (State, Verifier) => VerificationResult,
-             fFalse: (State, Verifier) => VerificationResult)
-            : VerificationResult
+            (fTrue: (State, Verifier) => VerificationResultWrapper,
+             fFalse: (State, Verifier) => VerificationResultWrapper)
+            : VerificationResultWrapper
 }
 
 object brancher extends BranchingRules {
@@ -28,9 +29,9 @@ object brancher extends BranchingRules {
              condition: Term,
              v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
-            (fThen: (State, Verifier) => VerificationResult,
-             fElse: (State, Verifier) => VerificationResult)
-            : VerificationResult = {
+            (fThen: (State, Verifier) => VerificationResultWrapper,
+             fElse: (State, Verifier) => VerificationResultWrapper)
+            : VerificationResultWrapper = {
 
     val negatedCondition = Not(condition)
     val parallelizeElseBranch = s.parallelizeBranches && !s.underJoin
@@ -70,7 +71,7 @@ object brancher extends BranchingRules {
     v.decider.prover.comment(thenBranchComment)
     v.decider.prover.comment(elseBranchComment)
 
-    val elseBranchVerificationTask: Verifier => VerificationResult =
+    val elseBranchVerificationTask: Verifier => VerificationResultWrapper =
       if (executeElseBranch) {
 /* [BRANCH-PARALLELISATION] */
         /* Compute the following sets
@@ -119,10 +120,10 @@ object brancher extends BranchingRules {
           })
         }
       } else {
-        _ => Unreachable()
+        _ => VerificationResultWrapper(Unreachable())
       }
 
-    val elseBranchFuture: Future[Seq[VerificationResult]] =
+    val elseBranchFuture: Future[VerificationResultWrapper] =
       if (executeElseBranch) {
         if (parallelizeElseBranch) {
           /* [BRANCH-PARALLELISATION] */
@@ -136,10 +137,10 @@ object brancher extends BranchingRules {
 //            Seq(res)
 //          })
         } else {
-          new SynchronousFuture(Seq(elseBranchVerificationTask(v)))
+          new SynchronousFuture(elseBranchVerificationTask(v))
         }
       } else {
-        CompletableFuture.completedFuture(Seq(Unreachable()))
+        CompletableFuture.completedFuture(VerificationResultWrapper(Unreachable()))
       }
 
     (if (executeThenBranch) {
@@ -150,7 +151,7 @@ object brancher extends BranchingRules {
         fThen(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
       })
     } else {
-      Unreachable()
+      VerificationResultWrapper(Unreachable())
     }) && {
 
       /* [BRANCH-PARALLELISATION] */
@@ -173,7 +174,7 @@ object brancher extends BranchingRules {
 //        /* Run the task on the current thread */
 //        elseBranchVerificationTask(v)
       } else {
-        var rs: Seq[VerificationResult] = null
+        var rs: VerificationResultWrapper = null
         try {
           rs = elseBranchFuture.get()
         } catch {
@@ -181,9 +182,7 @@ object brancher extends BranchingRules {
             ex.getCause.printStackTrace()
             throw ex
         }
-
-        assert(rs.length == 1, s"Expected a single verification result but found ${rs.length}")
-        rs.head
+          rs
       }
     }
   }

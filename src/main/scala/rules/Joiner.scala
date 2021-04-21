@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.interfaces.{Success, VerificationResultWrapper}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 
@@ -15,18 +15,18 @@ case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathCondi
 
 trait JoiningRules extends SymbolicExecutionRules {
   def join[D, JD](s: State, v: Verifier)
-                 (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
+                 (block: (State, Verifier, (State, D, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
-                 (Q: (State, JD, Verifier) => VerificationResult)
-                 : VerificationResult
+                 (Q: (State, JD, Verifier) => VerificationResultWrapper)
+                 : VerificationResultWrapper
 }
 
 object joiner extends JoiningRules {
   def join[D, JD](s: State, v: Verifier)
-                 (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
+                 (block: (State, Verifier, (State, D, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
-                 (Q: (State, JD, Verifier) => VerificationResult)
-                 : VerificationResult = {
+                 (Q: (State, JD, Verifier) => VerificationResultWrapper)
+                 : VerificationResultWrapper = {
 
     var entries: Seq[JoinDataEntry[D]] = Vector.empty
 
@@ -45,7 +45,7 @@ object joiner extends JoiningRules {
                          oldHeaps = s1.oldHeaps,
                          underJoin = s1.underJoin)
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
-        Success()
+        VerificationResultWrapper(Success())
       })
     }) && {
       if (entries.isEmpty) {
@@ -53,7 +53,7 @@ object joiner extends JoiningRules {
          * the block being infeasible. In turn, we assume that the overall verification path
          * is infeasible. Instead of calling Q, we therefore terminate this path.
          */
-        Success()
+        VerificationResultWrapper(Success())
       } else {
         val (sJoined, dataJoined) = merge(entries)
 

@@ -12,13 +12,13 @@ import viper.silicon.verifier.Verifier
 
 trait ExecutionFlowRules extends SymbolicExecutionRules {
   def locallyWithResult[R](s: State, v: Verifier)
-                          (block: (State, Verifier, R => VerificationResult) => VerificationResult)
-                          (Q: R => VerificationResult)
-                          : VerificationResult
+                          (block: (State, Verifier, R => VerificationResultWrapper) => VerificationResultWrapper)
+                          (Q: R => VerificationResultWrapper)
+                          : VerificationResultWrapper
 
   def locally(s: State, v: Verifier)
-             (block: (State, Verifier) => VerificationResult)
-             : VerificationResult
+             (block: (State, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper
 
 //  def tryOrFailWithResult[R](s: State, v: Verifier)
 //                            (block:    (State, Verifier, (State, R, Verifier) => VerificationResult, Failure => VerificationResult) => VerificationResult)
@@ -30,32 +30,32 @@ trait ExecutionFlowRules extends SymbolicExecutionRules {
 //               (Q: (State, Verifier) => VerificationResult)
 //               : VerificationResult
   def tryOrFail0(s: State, v: Verifier)
-                (action: (State, Verifier, (State, Verifier) => VerificationResult) => VerificationResult)
-                (Q: (State, Verifier) => VerificationResult)
-                : VerificationResult
+                (action: (State, Verifier, (State, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
+                (Q: (State, Verifier) => VerificationResultWrapper)
+                : VerificationResultWrapper
 
   def tryOrFail1[R1](s: State, v: Verifier)
-                    (action: (State, Verifier, (State, R1, Verifier) => VerificationResult) => VerificationResult)
-                    (Q: (State, R1, Verifier) => VerificationResult)
-                    : VerificationResult
+                    (action: (State, Verifier, (State, R1, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
+                    (Q: (State, R1, Verifier) => VerificationResultWrapper)
+                    : VerificationResultWrapper
 
   def tryOrFail2[R1, R2](s: State, v: Verifier)
-                        (action: (State, Verifier, (State, R1, R2, Verifier) => VerificationResult) => VerificationResult)
-                        (Q: (State, R1, R2, Verifier) => VerificationResult)
-                        : VerificationResult
+                        (action: (State, Verifier, (State, R1, R2, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
+                        (Q: (State, R1, R2, Verifier) => VerificationResultWrapper)
+                        : VerificationResultWrapper
 }
 
 object executionFlowController extends ExecutionFlowRules {
   def locallyWithResult[R](s: State, v: Verifier)
-                          (block: (State, Verifier, R => VerificationResult) => VerificationResult)
-                          (Q: R => VerificationResult)
-                          : VerificationResult = {
+                          (block: (State, Verifier, R => VerificationResultWrapper) => VerificationResultWrapper)
+                          (Q: R => VerificationResultWrapper)
+                          : VerificationResultWrapper = {
 
     var optBlockData: Option[R] = None
 
     v.decider.pushScope()
 
-    val blockResult: VerificationResult =
+    val blockResult: VerificationResultWrapper =
       block(s, v, blockData => {
         Predef.assert(optBlockData.isEmpty,
                         "Unexpectedly found more than one block data result. Note that the local "
@@ -63,43 +63,31 @@ object executionFlowController extends ExecutionFlowRules {
 
         optBlockData = Some(blockData)
 
-        Success()})
+        VerificationResultWrapper(Success())})
 
     v.decider.popScope()
-
-    blockResult match {
-      case _: FatalResult =>
-        /* If the local block yielded a fatal result, then the continuation Q
-         * will not be invoked. That is, the current execution path will be
-         * terminated.
-         */
-        blockResult
-
-      case _: NonFatalResult =>
-        /* If the local block yielded a non-fatal result, then the continuation
-         * will only be invoked if the execution of the block yielded data
-         * that the continuation Q can be invoked with, i.e. a result of type D.
-         * If the block's execution did not yield such a result, then the
-         * current execution path will be terminated.
-         */
-        optBlockData match {
-          case Some(localData) => blockResult && Q(localData)
-          case None => blockResult
-        }
+    val res = if(blockResult.containsFatal){ //TODO:J add comments
+      blockResult
+    }else{
+      optBlockData match {
+        case Some(localData) => blockResult && Q(localData)
+        case None => blockResult
+      }
     }
+    res
   }
 
   def locally(s: State, v: Verifier)
-             (block: (State, Verifier) => VerificationResult)
-             : VerificationResult =
+             (block: (State, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper =
 
-    locallyWithResult[VerificationResult](s, v)((s1, v1, QL) => QL(block(s1, v1)))(Predef.identity)
+    locallyWithResult[VerificationResultWrapper](s, v)((s1, v1, QL) => QL(block(s1, v1)))(Predef.identity)
 
 
   private def tryOrFailWithResult[R](s: State, v: Verifier)
-                                    (action: (State, Verifier, (State, R, Verifier) => VerificationResult) => VerificationResult)
-                                    (Q: (State, R, Verifier) => VerificationResult)
-                                    : VerificationResult = {
+                                    (action: (State, Verifier, (State, R, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
+                                    (Q: (State, R, Verifier) => VerificationResultWrapper)
+                                    : VerificationResultWrapper = {
 
     var localActionSuccess = false
 
@@ -119,7 +107,7 @@ object executionFlowController extends ExecutionFlowRules {
 
     val finalActionResult =
       if (   localActionSuccess /* Action succeeded locally */
-          || !firstActionResult.isFatal) /* Action yielded non-fatal result (e.g. because the
+          || !firstActionResult.containsFatal) /* Action yielded non-fatal result (e.g. because the
                                           * current branch turned out to be infeasible) */
         firstActionResult
       else {
@@ -131,23 +119,23 @@ object executionFlowController extends ExecutionFlowRules {
   }
 
   def tryOrFail0(s: State, v: Verifier)
-                (action: (State, Verifier, (State, Verifier) => VerificationResult) => VerificationResult)
-                (Q: (State, Verifier) => VerificationResult)
-                : VerificationResult =
+                (action: (State, Verifier, (State, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
+                (Q: (State, Verifier) => VerificationResultWrapper)
+                : VerificationResultWrapper =
 
       tryOrFailWithResult[scala.Null](s, v)((s1, v1, QS) => action(s1, v1, (s2, v2) => QS(s2, null, v2)))((s2, _, v2) => Q(s2, v2))
 
   def tryOrFail1[R1](s: State, v: Verifier)
-                    (action: (State, Verifier, (State, R1, Verifier) => VerificationResult) => VerificationResult)
-                    (Q: (State, R1, Verifier) => VerificationResult)
-                    : VerificationResult =
+                    (action: (State, Verifier, (State, R1, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
+                    (Q: (State, R1, Verifier) => VerificationResultWrapper)
+                    : VerificationResultWrapper =
 
       tryOrFailWithResult[R1](s, v)(action)(Q)
 
   def tryOrFail2[R1, R2](s: State, v: Verifier)
-                        (action: (State, Verifier, (State, R1, R2, Verifier) => VerificationResult) => VerificationResult)
-                        (Q: (State, R1, R2, Verifier) => VerificationResult)
-                        : VerificationResult =
+                        (action: (State, Verifier, (State, R1, R2, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
+                        (Q: (State, R1, R2, Verifier) => VerificationResultWrapper)
+                        : VerificationResultWrapper =
 
       tryOrFailWithResult[(R1, R2)](s, v)((s1, v1, QS) => action(s1, v1, (s2, r21, r22, v2) => QS(s2, (r21, r22), v2)))((s2, r, v2) => Q(s2, r._1, r._2, v2))
 }

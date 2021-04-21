@@ -9,7 +9,7 @@ package viper.silicon.rules
 import scala.collection.mutable.ListBuffer
 import viper.silicon.{MList, MMap, SymbExLogger}
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.interfaces.{Success, VerificationResultWrapper}
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.rules.chunkSupporter.findChunksWithID
 import viper.silicon.state._
@@ -98,8 +98,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                         resource: ast.Resource,
                         args: Seq[Term],
                         v: Verifier)
-                       (Q: (State, Term, Seq[Term], Term, Verifier) => VerificationResult)
-                       : VerificationResult = {
+                       (Q: (State, Term, Seq[Term], Term, Verifier) => VerificationResultWrapper)
+                       : VerificationResultWrapper = {
 
     if (relevantChunks.size == 1) {
       val chunk = relevantChunks.head
@@ -134,17 +134,17 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                      args: Seq[Term],
                      ve: VerificationError,
                      v: Verifier)
-                    (Q: (State, Term, Verifier) => VerificationResult)
-                    : VerificationResult = {
+                    (Q: (State, Term, Verifier) => VerificationResultWrapper)
+                    : VerificationResultWrapper = {
 
     val id = ChunkIdentifier(resource, Verifier.program)
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
     if (relevantChunks.isEmpty) {
       if (v.decider.checkSmoke()) {
-        Success() // TODO: Mark branch as dead?
+        VerificationResultWrapper(Success()) // TODO: Mark branch as dead?
       } else {
-        createFailure(ve, v, s, true).withLoad(args)
+        VerificationResultWrapper(Seq(createFailure(ve, v, s, true).withLoad(args)))
       }
     } else {
       summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
@@ -152,7 +152,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           case true =>
             Q(s1, snap, v1)
           case false =>
-            createFailure(ve, v, s1).withLoad(args)
+            VerificationResultWrapper(createFailure(ve, v, s1).withLoad(args))
         })
     }
   }
@@ -164,8 +164,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                       perms: Term,
                       ve: VerificationError,
                       v: Verifier)
-                     (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
-                     : VerificationResult = {
+                     (Q: (State, Heap, Option[Term], Verifier) => VerificationResultWrapper)
+                     : VerificationResultWrapper = {
 
     if (s.functionRecorder == NoopFunctionRecorder && !s.hackIssue387DisablePermissionConsumption)
       actualConsumeComplete(s, h, resource, args, perms, ve, v)(Q)
@@ -179,8 +179,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                                args: Seq[Term],
                                                ve: VerificationError,
                                                v: Verifier)
-                                              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
-                                              : VerificationResult = {
+                                              (Q: (State, Heap, Option[Term], Verifier) => VerificationResultWrapper)
+                                              : VerificationResultWrapper = {
 
     val id = ChunkIdentifier(resource, Verifier.program)
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
@@ -190,7 +190,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         case true =>
           Q(s1, h, Some(snap), v1)
         case false =>
-          createFailure(ve, v, s1).withLoad(args)
+          VerificationResultWrapper(Seq(createFailure(ve, v, s1).withLoad(args)))
       })
   }
 
@@ -201,8 +201,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                     perms: Term,
                                     ve: VerificationError,
                                     v: Verifier)
-                                   (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
-                                   : VerificationResult = {
+                                   (Q: (State, Heap, Option[Term], Verifier) => VerificationResultWrapper)
+                                   : VerificationResultWrapper = {
 
     val id = ChunkIdentifier(resource, Verifier.program)
     val relevantChunks = ListBuffer[NonQuantifiedChunk]()
@@ -217,7 +217,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       if (v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
         Q(s, h, None, v)
       } else {
-        createFailure(ve, v, s).withLoad(args)
+        VerificationResultWrapper(Seq(createFailure(ve, v, s).withLoad(args)))
       }
     } else {
       val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
@@ -290,7 +290,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
               }
               Q(s1, newHeap, Some(snap), v1)
             case false =>
-              createFailure(ve, v1, s1).withLoad(args)
+              VerificationResultWrapper(Seq(createFailure(ve, v1, s1).withLoad(args)))
           }
         })
     }

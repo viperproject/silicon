@@ -30,9 +30,9 @@ object heuristicsSupporter extends SymbolicExecutionRules {
   def tryOperation[O1]
                   (description: String)
                   (s: State, h: Heap, v: Verifier)
-                  (action: (State, Heap, Verifier, (State, O1, Verifier) => VerificationResult) => VerificationResult)
-                  (Q: (State, O1, Verifier) => VerificationResult)
-                  : VerificationResult = {
+                  (action: (State, Heap, Verifier, (State, O1, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
+                  (Q: (State, O1, Verifier) => VerificationResultWrapper)
+                  : VerificationResultWrapper = {
 
     tryWithReactions[O1](description)(s, h, v)(action, None)(Q)
   }
@@ -41,11 +41,11 @@ object heuristicsSupporter extends SymbolicExecutionRules {
   def tryOperation[O1, O2]
                   (description: String)
                   (s: State, h: Heap, v: Verifier)
-                  (action: (State, Heap, Verifier, (State, O1, O2, Verifier) => VerificationResult) => VerificationResult)
-                  (Q: (State, O1, O2, Verifier) => VerificationResult)
-                  : VerificationResult = {
+                  (action: (State, Heap, Verifier, (State, O1, O2, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
+                  (Q: (State, O1, O2, Verifier) => VerificationResultWrapper)
+                  : VerificationResultWrapper = {
 
-    val tupledAction = (s1: State, h1: Heap, v1: Verifier, QS: (State, (O1, O2), Verifier) => VerificationResult) =>
+    val tupledAction = (s1: State, h1: Heap, v1: Verifier, QS: (State, (O1, O2), Verifier) => VerificationResultWrapper) =>
       action(s1, h1, v1, (s2, o1: O1, o2: O2, v2) => QS(s2, (o1, o2), v2))
 
     val tupledQ = (s1: State, os: (O1, O2), v1: Verifier) => Q(s1, os._1, os._2, v1)
@@ -57,11 +57,11 @@ object heuristicsSupporter extends SymbolicExecutionRules {
   def tryOperation[O1, O2, O3]
                   (description: String)
                   (s: State, h: Heap, v: Verifier)
-                  (action: (State, Heap, Verifier, (State, O1, O2, O3, Verifier) => VerificationResult) => VerificationResult)
-                  (Q: (State, O1, O2, O3, Verifier) => VerificationResult)
-                  : VerificationResult = {
+                  (action: (State, Heap, Verifier, (State, O1, O2, O3, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
+                  (Q: (State, O1, O2, O3, Verifier) => VerificationResultWrapper)
+                  : VerificationResultWrapper = {
 
-    val tupledAction = (s1: State, h1: Heap, v1: Verifier, QS: (State, (O1, O2, O3), Verifier) => VerificationResult) =>
+    val tupledAction = (s1: State, h1: Heap, v1: Verifier, QS: (State, (O1, O2, O3), Verifier) => VerificationResultWrapper) =>
         action(s1, h1, v1, (s2, o1: O1, o2: O2, o3: O3, v2) => QS(s2, (o1, o2, o3), v2))
 
     val tupledQ = (s1: State, os: (O1, O2, O3), v1: Verifier) => Q(s1, os._1, os._2, os._3, v1)
@@ -73,11 +73,11 @@ object heuristicsSupporter extends SymbolicExecutionRules {
   def tryOperation[O1, O2, O3, O4]
                   (description: String)
                   (s: State, h: Heap, v: Verifier)
-                  (action: (State, Heap, Verifier, (State, O1, O2, O3, O4, Verifier) => VerificationResult) => VerificationResult)
-                  (Q: (State, O1, O2, O3, O4, Verifier) => VerificationResult)
-                  : VerificationResult = {
+                  (action: (State, Heap, Verifier, (State, O1, O2, O3, O4, Verifier) => VerificationResultWrapper) => VerificationResultWrapper)
+                  (Q: (State, O1, O2, O3, O4, Verifier) => VerificationResultWrapper)
+                  : VerificationResultWrapper = {
 
-    val tupledAction = (s1: State, h1: Heap, v1: Verifier, QS: (State, (O1, O2, O3, O4), Verifier) => VerificationResult) =>
+    val tupledAction = (s1: State, h1: Heap, v1: Verifier, QS: (State, (O1, O2, O3, O4), Verifier) => VerificationResultWrapper) =>
       action(s1, h1, v1, (s2, o1: O1, o2: O2, o3: O3, o4: O4, v2) => QS(s2, (o1, o2, o3, o4), v2))
 
     val tupledQ = (s1: State, os: (O1, O2, O3, O4), v1: Verifier) => Q(s1, os._1, os._2, os._3, os._4, v1)
@@ -94,10 +94,10 @@ object heuristicsSupporter extends SymbolicExecutionRules {
   private def tryWithReactions[O]
                               (description: String)
                               (_s: State, h: Heap, v: Verifier)
-                              (action: (State, Heap, Verifier, (State, O, Verifier) => VerificationResult) => VerificationResult,
-                               initialFailure: Option[Failure])
-                              (Q: (State, O, Verifier) => VerificationResult)
-                              : VerificationResult = {
+                              (action: (State, Heap, Verifier, (State, O, Verifier) => VerificationResultWrapper) => VerificationResultWrapper,
+                               initialFailure: Option[VerificationResultWrapper])
+                              (Q: (State, O, Verifier) => VerificationResultWrapper)
+                              : VerificationResultWrapper = {
 
     val myId = cnt; cnt += 1
     val baseIdent = "  "
@@ -169,12 +169,12 @@ object heuristicsSupporter extends SymbolicExecutionRules {
      * reset to 0 in the `QS`, which allows further (nested) heuristics.
      */
 
-    var reactionResult: VerificationResult = globalActionResult
+    var reactionResult: VerificationResultWrapper = globalActionResult
       /* A bit hacky, but having an initial result here simplifies things quite a bit */
 
     (globalActionResult: @unchecked) match {
       case _ if    localActionSuccess
-                || !globalActionResult.isFatal
+                || !globalActionResult.containsFatal
                 || !s.applyHeuristics
 //                || stack.size >= 10 * config.maxHeuristicsDepth() /* TODO: Ugly hack! Shouldn't be necessary */
                 || s.heuristicsDepth >= Verifier.config.maxHeuristicsDepth() => /* Quit trying heuristics */
@@ -185,9 +185,9 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 ////            Thread.sleep(2500)
 //        }
 
-      case actionFailure: Failure =>
+      case _ if globalActionResult.containsFailure =>
         stack ::= myId
-
+        val actionFailure = globalActionResult.getFailures.last //TODO:J feels a bit janky
         say(s"action $myId failed (locally and globally)")
         say(s"description = $description")
         say(s"globalActionResult = $globalActionResult")
@@ -202,7 +202,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 
         say(s"generated ${remainingReactions.length} possible reactions")
 
-        while (reactionResult.isFatal && remainingReactions.nonEmpty) {
+        while (reactionResult.containsFatal && remainingReactions.nonEmpty) {
           lnsay(s"trying next reaction (${triedReactions + 1} out of ${triedReactions + remainingReactions.length})")
 
           val s1 = s.copy(h = h,
@@ -219,7 +219,7 @@ object heuristicsSupporter extends SymbolicExecutionRules {
                 s2.reserveHeaps.map(v2.stateFormatter.format).foreach(str => say(str, 2))
                 QS(s2, h2, v2)})
             )((s1, h1, c2) => {
-                tryWithReactions(description)(s1, h1, c2)(action, initialFailure.orElse(Some(actionFailure)))(Q)})
+                tryWithReactions(description)(s1, h1, c2)(action, initialFailure.orElse(Some(VerificationResultWrapper(actionFailure))))(Q)})
 
           lnsay(s"returned from reaction ${triedReactions + 1} (out of ${triedReactions + remainingReactions.length})")
           say(s"reactionResult = $reactionResult")
@@ -239,17 +239,15 @@ object heuristicsSupporter extends SymbolicExecutionRules {
         say(s"reactionResult = $reactionResult")
     }
 
-    (reactionResult: @unchecked) match {
-      case _ if !reactionResult.isFatal =>
-        reactionResult
-
-      case _: Failure =>
-        initialFailure.getOrElse(globalActionResult)
+    if(reactionResult.containsFatal){
+      reactionResult
+    } else {
+      initialFailure.getOrElse(globalActionResult)
     }
   }
 
   def generateReactions(s: State, h: Heap, @unused v: Verifier, cause: Failure)
-                       : Seq[(State, Heap, Verifier) => ((State, Heap, Verifier) => VerificationResult) => VerificationResult] = {
+                       : Seq[(State, Heap, Verifier) => ((State, Heap, Verifier) => VerificationResultWrapper) => VerificationResultWrapper] = {
 
     val pve = HeuristicsFailed(ast.TrueLit()()) /* TODO: Use a meaningful node */
 
@@ -328,8 +326,8 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 
   def packageWand(wand: ast.MagicWand, @unused pve: PartialVerificationError)
                  (s: State, h: Heap, v: Verifier)
-                 (Q: (State, Heap, Verifier) => VerificationResult)
-                 : VerificationResult = {
+                 (Q: (State, Heap, Verifier) => VerificationResultWrapper)
+                 : VerificationResultWrapper = {
 
       val packageStmt = ast.Package(wand, ast.Seqn(Seq(), Seq())())()
       exec(s.copy(h = h), packageStmt, v)((s1, v1) =>
@@ -338,8 +336,8 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 
   def applyWand(wand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], @unused pve: PartialVerificationError)
                (s: State, h: Heap, v: Verifier)
-               (Q: (State, Heap, Verifier) => VerificationResult)
-               : VerificationResult = {
+               (Q: (State, Heap, Verifier) => VerificationResultWrapper)
+               : VerificationResultWrapper = {
 
       val applyStmt = ast.Apply(wand)()
       exec(s.copy(g = Store(bindings), h = h), applyStmt, v)((s1, v1) => {
@@ -348,8 +346,8 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 
   def unfoldPredicate(acc: ast.PredicateAccessPredicate, @unused pve: PartialVerificationError)
                      (s: State, h: Heap, v: Verifier)
-                     (Q: (State, Heap, Verifier) => VerificationResult)
-                     : VerificationResult = {
+                     (Q: (State, Heap, Verifier) => VerificationResultWrapper)
+                     : VerificationResultWrapper = {
 
       val unfoldStmt = ast.Unfold(acc)()
       exec(s.copy(h = h), unfoldStmt, v)((s1, v1) =>
@@ -358,8 +356,8 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 
   def foldPredicate(acc: ast.PredicateAccessPredicate, @unused pve: PartialVerificationError)
                    (s: State, h: Heap, v: Verifier)
-                   (Q: (State, Heap, Verifier) => VerificationResult)
-                   : VerificationResult = {
+                   (Q: (State, Heap, Verifier) => VerificationResultWrapper)
+                   : VerificationResultWrapper = {
 
       val foldStmt = ast.Fold(acc)()
       exec(s.copy(h = h), foldStmt, v)((s1, v1) =>
@@ -368,8 +366,8 @@ object heuristicsSupporter extends SymbolicExecutionRules {
 
   def foldPredicate(predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError)
                    (s: State, h: Heap, v: Verifier)
-                   (Q: (State, Heap, Verifier) => VerificationResult)
-                   : VerificationResult = {
+                   (Q: (State, Heap, Verifier) => VerificationResultWrapper)
+                   : VerificationResultWrapper = {
 
     predicateSupporter.fold(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)((s1, v1) =>
       Q(s1, s1.h, v1))

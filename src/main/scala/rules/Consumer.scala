@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
-import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.VerificationResultWrapper
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
@@ -33,8 +33,8 @@ trait ConsumptionRules extends SymbolicExecutionRules {
     * @return The result of the continuation.
     */
   def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
-             (Q: (State, Term, Verifier) => VerificationResult)
-             : VerificationResult
+             (Q: (State, Term, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper
 
   /** Subsequently consumes the assertions `as` (from head to tail), starting in state `s`.
     *
@@ -54,8 +54,8 @@ trait ConsumptionRules extends SymbolicExecutionRules {
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier)
-              (Q: (State, Term, Verifier) => VerificationResult)
-              : VerificationResult
+              (Q: (State, Term, Verifier) => VerificationResultWrapper)
+              : VerificationResultWrapper
 }
 
 object consumer extends ConsumptionRules {
@@ -68,8 +68,8 @@ object consumer extends ConsumptionRules {
 
   /** @inheritdoc */
   def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
-             (Q: (State, Term, Verifier) => VerificationResult)
-             : VerificationResult = {
+             (Q: (State, Term, Verifier) => VerificationResultWrapper)
+             : VerificationResultWrapper = {
 
     consumeR(s, s.h, a.whenExhaling, pve, v)((s1, h1, snap, v1) => {
       val s2 = s1.copy(h = h1,
@@ -82,8 +82,8 @@ object consumer extends ConsumptionRules {
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier)
-              (Q: (State, Term, Verifier) => VerificationResult)
-              : VerificationResult = {
+              (Q: (State, Term, Verifier) => VerificationResultWrapper)
+              : VerificationResultWrapper = {
 
     val allTlcs = mutable.ListBuffer[ast.Exp]()
     val allPves = mutable.ListBuffer[PartialVerificationError]()
@@ -108,8 +108,8 @@ object consumer extends ConsumptionRules {
                           tlcs: Seq[ast.Exp],
                           pves: Seq[PartialVerificationError],
                           v: Verifier)
-                         (Q: (State, Heap, Term, Verifier) => VerificationResult)
-                         : VerificationResult = {
+                         (Q: (State, Heap, Term, Verifier) => VerificationResultWrapper)
+                         : VerificationResultWrapper = {
 
     if (tlcs.isEmpty)
       Q(s, h, Unit, v)
@@ -127,8 +127,8 @@ object consumer extends ConsumptionRules {
   }
 
   private def consumeR(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
-                      (Q: (State, Heap, Term, Verifier) => VerificationResult)
-                      : VerificationResult = {
+                      (Q: (State, Heap, Term, Verifier) => VerificationResultWrapper)
+                      : VerificationResultWrapper = {
 
     val tlcs = a.topLevelConjuncts
     val pves = Seq.fill(tlcs.length)(pve)
@@ -145,8 +145,8 @@ object consumer extends ConsumptionRules {
                                   a: ast.Exp,
                                   pve: PartialVerificationError,
                                   v: Verifier)
-                                 (Q: (State, Heap, Term, Verifier) => VerificationResult)
-                                 : VerificationResult = {
+                                 (Q: (State, Heap, Term, Verifier) => VerificationResultWrapper)
+                                 : VerificationResultWrapper = {
 
     /* tryOrFail effects the "main" heap s.h, so we temporarily set the consume-heap h to be the
      * main heap. Note that the main heap is used for evaluating expressions during an ongoing
@@ -169,8 +169,8 @@ object consumer extends ConsumptionRules {
   }
 
   private def consumeTlc(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
-                        (Q: (State, Heap, Term, Verifier) => VerificationResult)
-                        : VerificationResult = {
+                        (Q: (State, Heap, Term, Verifier) => VerificationResultWrapper)
+                        : VerificationResultWrapper = {
 
     /* ATTENTION: Expressions such as `perm(...)` must be evaluated in-place,
      * i.e. in the partially consumed heap which is denoted by `h` here. The
@@ -185,7 +185,7 @@ object consumer extends ConsumptionRules {
     if (s.reserveHeaps.nonEmpty)
       v.logger.debug("hR = " + s.reserveHeaps.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
 
-    val consumed = a match {
+    val consumed: VerificationResultWrapper = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impLog = new GlobalBranchRecord(imp, s, v.decider.pcs, "consume")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
@@ -406,10 +406,10 @@ object consumer extends ConsumptionRules {
                                    constrainableARPs = s.constrainableARPs)
                   Q(s4, h1, snap1, v3)})
               case false =>
-                createFailure(pve dueTo NegativePermission(perm), v2, s2)}))
+                VerificationResultWrapper(createFailure(pve dueTo NegativePermission(perm), v2, s2))}))
 
       case _: ast.InhaleExhaleExp =>
-        createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
+        VerificationResultWrapper(createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s))
 
       /* Handle wands */
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program)) =>
@@ -457,8 +457,8 @@ object consumer extends ConsumptionRules {
   }
 
   private def evalAndAssert(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
-                           (Q: (State, Term, Verifier) => VerificationResult)
-                           : VerificationResult = {
+                           (Q: (State, Term, Verifier) => VerificationResultWrapper)
+                           : VerificationResultWrapper = {
 
     /* It is expected that the partially consumed heap (h in the above implementation of
      * `consume`) has already been assigned to `c.partiallyConsumedHeap`.
@@ -480,8 +480,8 @@ object consumer extends ConsumptionRules {
           case true =>
             v2.decider.assume(t)
             QS(s3, v2)
-          case false =>
-            createFailure(pve dueTo AssertionFalse(e), v2, s3)}})
+          case false => //TODO:J here it might be possible to do sth like  VRW(createFailure) && QS(..) (and update state accordingly) to continue
+            VerificationResultWrapper(createFailure(pve dueTo AssertionFalse(e), v2, s3))}})
     })((s4, v4) => {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,

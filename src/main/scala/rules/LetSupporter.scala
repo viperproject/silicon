@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.VerificationResultWrapper
 import viper.silicon.state.{State, Store}
 import viper.silicon.state.terms.Term
 import viper.silicon.verifier.Verifier
@@ -16,13 +16,13 @@ import viper.silicon.verifier.Verifier
 trait LetSupportRules extends SymbolicExecutionRules {
   def handle[E <: ast.Exp]
             (s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
-            (Q: (State, Store, E, Verifier) => VerificationResult)
-            : VerificationResult
+            (Q: (State, Store, E, Verifier) => VerificationResultWrapper)
+            : VerificationResultWrapper
 
   def handle[E <: ast.Exp]
             (s: State, let: ast.Let, pve: PartialVerificationError, v: Verifier)
-            (Q: (State, Store, E, Verifier) => VerificationResult)
-            : VerificationResult
+            (Q: (State, Store, E, Verifier) => VerificationResultWrapper)
+            : VerificationResultWrapper
 }
 
 object letSupporter extends LetSupportRules {
@@ -30,8 +30,8 @@ object letSupporter extends LetSupportRules {
 
   def handle[E <: ast.Exp]
             (s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
-            (Q: (State, Store, E, Verifier) => VerificationResult)
-            : VerificationResult = {
+            (Q: (State, Store, E, Verifier) => VerificationResultWrapper)
+            : VerificationResultWrapper = {
 
     e match {
       case let: ast.Let => handle(s, Nil, let, pve, v)(Q)
@@ -41,8 +41,8 @@ object letSupporter extends LetSupportRules {
 
   def handle[E <: ast.Exp]
             (s: State, let: ast.Let, pve: PartialVerificationError, v: Verifier)
-            (Q: (State, Store, E, Verifier) => VerificationResult)
-            : VerificationResult = {
+            (Q: (State, Store, E, Verifier) => VerificationResultWrapper)
+            : VerificationResultWrapper = {
 
     handle(s, Nil, let, pve, v)(Q)
   }
@@ -53,8 +53,8 @@ object letSupporter extends LetSupportRules {
                      let: ast.Let,
                      pve: PartialVerificationError,
                      v: Verifier)
-                    (Q: (State, Store, E, Verifier) => VerificationResult)
-                    : VerificationResult = {
+                    (Q: (State, Store, E, Verifier) => VerificationResultWrapper)
+                    : VerificationResultWrapper = {
 
     val ast.Let(x, exp, body) = let
 

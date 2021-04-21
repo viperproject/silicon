@@ -96,18 +96,19 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                          oldHeaps = OldHeaps())
       val err = PredicateNotWellformed(predicate)
 
-      val result = predicate.body match {
+      val result: VerificationResultWrapper = predicate.body match {
         case None =>
-          Success()
+          VerificationResultWrapper(Success())
         case Some(body) =>
           /*    locallyXXX {
                 magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
           &&*/  executionFlowController.locally(s, v)((s1, _) => {
                   produce(s1, freshSnap, body, err, v)((_, _) =>
-                    Success())})
+                    VerificationResultWrapper(Success()))})
       }
 
-      Seq(result)
+      result.verificationResults
+
     }
 
     /* Predicate supporter generates no sorts */
