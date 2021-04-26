@@ -1,0 +1,31 @@
+field n: Ref
+field v: Int
+
+method merge(x: Ref, y: Ref) returns (r: Ref)
+{
+    var a: Ref
+    var b: Ref
+    var c: Ref
+
+    a := x
+    b := y
+
+    // TODO:
+
+    while (a != null && b != null)
+    {
+        if (a.v <= b.v) {
+            __down__(a)
+            c.n := a
+            a := a.n
+        } else {
+            __down__(b)
+            c.n := a
+            b := b.n
+        }
+
+        c := c.n
+
+
+    }
+}

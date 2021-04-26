@@ -1,0 +1,31 @@
+// teacher repeats
+
+field n: Ref
+
+method main(l: Int)
+{
+    var a: Ref
+    var c: Ref
+    var i: Int
+
+    __up__(c)
+    a := new(n)
+    c := a
+    i := 0
+
+    while (i < l)
+    {
+        __down__(c)
+        var t: Ref
+        t := new(n)
+        c.n := t
+        c := t
+        i := i + 1
+    }
+
+    while (a != c)
+    {
+        __down__(a)
+        a := a.n
+    }
+}
