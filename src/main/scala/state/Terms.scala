@@ -878,7 +878,10 @@ class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Equals
 
 object BuiltinEquals extends ((Term, Term) => BooleanTerm) {
   def apply(t1: Term, t2: Term) = (t1, t2) match {
-    case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal == p1.literal) True() else False()
+    case (p0: PermLiteral, p1: PermLiteral) =>
+      // NOTE: The else-case (False()) is only justified because permission literals are stored in a normal form
+      // such that two literals are semantically equivalent iff they are syntactically equivalent.
+      if (p0.literal == p1.literal) True() else False()
     case _ => new BuiltinEquals(t1, t2)
   }
 
