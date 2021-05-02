@@ -151,7 +151,7 @@ object brancher extends BranchingRules {
       })
     } else {
       Unreachable()
-    }) && {
+    }) combine {
 
       /* [BRANCH-PARALLELISATION] */
       if (parallelizeElseBranch) {

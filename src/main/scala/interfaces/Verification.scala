@@ -21,25 +21,22 @@ import viper.silicon.state.terms.Term
 
 /* TODO: Make VerificationResult immutable */
 sealed abstract class VerificationResult {
-  var previous: Option[NonFatalResult] = None
+  var previous: Set[VerificationResult] = Set()
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult
 
-  def allPrevious: List[VerificationResult] =
-    previous match {
-      case None => Nil
-      case Some(vr) => vr :: vr.allPrevious
-    }
-
-  def append(other: NonFatalResult): VerificationResult =
-    previous match {
-      case None =>
-        this.previous = Some(other)
+  def combine(other: => VerificationResult): VerificationResult = {
+    val r: VerificationResult = other
+    this match {
+      case _ : FatalResult =>
+        this.previous = this.previous + r ++  r.previous
         this
-      case Some(vr) =>
-        vr.append(other)
+      case _ =>
+        r.previous = r.previous + this ++ this.previous
+        r
     }
+  }
 }
 
 sealed abstract class FatalResult extends VerificationResult {
@@ -59,8 +56,7 @@ sealed abstract class NonFatalResult extends VerificationResult {
    */
   def &&(other: => VerificationResult): VerificationResult = {
     val r: VerificationResult = other
-    r.append(this)
-    r
+    r.combine(this)
   }
 }
 
