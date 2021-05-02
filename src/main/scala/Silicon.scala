@@ -237,7 +237,7 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
     /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 
     val failures =
-      results.flatMap(r => r :: r.allPrevious)
+      results.flatMap(r => r :: r.previous.toList)
              .collect{ case f: Failure => f } /* Ignore successes */
              .sortBy(_.message.pos match { /* Order failures according to source position */
                 case pos: ast.HasLineColumn => (pos.line, pos.column)
