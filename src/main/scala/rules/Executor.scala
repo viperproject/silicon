@@ -354,7 +354,7 @@ object executor extends ExecutionRules {
           if (v1.decider.checkSmoke())
             QS(s1.copy(h = s.h), v1)
           else
-            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1)
+            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, true)
         })((_, _) => Success())
 
       case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
