@@ -633,7 +633,7 @@ case class Converter(
   )
   lazy val domains : Seq[DomainEntry] = {Converter.getDomains(model,extractedHeap,program)}
   lazy val non_domain_functions: Seq[ExtractedFunction]= Converter.getFunctions(model,extractedHeap,program)
-  def extractVal(x:VarEntry) = Converter.mapLocalVar(model=model,heap=extractedHeap,encountered = Set(),nullRefName = Converter.nullRefId,termEval=x,sort=Some(x.sort))
+  def extractVal(x:VarEntry) = Converter.mapLocalVar(model=model,heap=extractedHeap,encountered = Set(),nullRefName = model.entries(Converter.nullRefId).toString,termEval=x,sort=Some(x.sort))
 }
 /** Entry for user defined domains 
  *  CAREFUL: the types are included in the domain name and do not correspond directly to the name of a DomainEntry
