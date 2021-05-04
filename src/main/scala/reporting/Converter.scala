@@ -600,14 +600,6 @@ object Converter {
         case Some(_) => ExtractedFunction(fname,argtyp,resSort,emptymap,OtherEntry(s"${model.entries.get(fname)}", "not a function"))
         case None    => ExtractedFunction(fname,argtyp,resSort,emptymap,OtherEntry(s"${fname}", "function not found"))
       }
-      //extract the values from the tne heap (not sure if this does anything special... )
-      //maybe it is better to resolve this later on: see comment @ExtractedFunction
-      val advanceRet = ExtractedFunction(fname,
-                                        argtyp,
-                                        resSort,
-                                        simpleRet.options.map(x=>(x._1.map(y=>mapLocalVar(Some(resSort),y,heap,model,Set(),nullRefId)),
-                                                                  mapLocalVar(Some(resSort),x._2,heap,model,Set(),nullRefId))),
-                                        mapLocalVar(Some(resSort),simpleRet.default,heap,model,Set(),nullRefId))
       simpleRet
   }
 }
