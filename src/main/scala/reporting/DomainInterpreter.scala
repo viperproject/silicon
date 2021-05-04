@@ -42,15 +42,16 @@ case class GenericDomainInterpreter(c:Converter) extends ModelInterpreter[Extrac
 															x.apply(Seq(entry))
 																			 match{
 																				case Right(e)=> e match {
-																					 case va:VarEntry => c.extractVal(va)
+																					 //case va:VarEntry => c.extractVal(va)
 																					 case d:DomainValueEntry => interpret(d,entry+:visited)
-																					 case _ => e
+																					 case x => interpret(x,entry+:visited)
 																					} 
 																				case _ => OtherEntry(s"${x.fname}","not been able to resolve function")  
 																			 } )).toMap
 										)	
 			}
-			case e:VarEntry => c.extractVal(e)
+			case e:VarEntry => interpret(c.extractVal(e),e+:visited)
+			case r:RefEntry => RefEntry(r.name,r.fields.map(x=>(x._1,(interpret(x._2._1,r+:visited),x._2._2))))
 			case _ => entry
 		}
 	}
