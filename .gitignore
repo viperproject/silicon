@@ -2,7 +2,10 @@
 .idea_modules
 project/project
 project/target
+project/.bloop
 target
+.metals
+.vscode
 .settings/
 .cache
 .scala_dependencies
