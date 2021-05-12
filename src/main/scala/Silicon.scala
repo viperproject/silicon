@@ -172,10 +172,14 @@ class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(Str
     /* If available, save the filename corresponding to the program under verification in Verifier.inputFile.
      * See also src/test/scala/SiliconTests.scala, where the analogous happens if Silicon is executed while
      * running the test suite.
+     * Do not save the filename if the filename corresponds to the dummy one or `--ignoreFile` has been specified.
+     * Clients assume that the filename is ignored if `--ignoreFile` is used but calling `Paths.get` on it effectively
+     * tries to parse the given string as path. For example, the following string causes an exception on Windows (and
+     * only on Windows): `_programID_d:\a\test`
      *
      * TODO: Figure out what happens when ViperServer is used. */
     config.file.foreach(filename => {
-      if (filename != Silicon.dummyInputFilename) {
+      if (filename != Silicon.dummyInputFilename && !config.ignoreFile.getOrElse(false)) {
         viper.silicon.verifier.Verifier.inputFile = Some(Paths.get(filename))
       }
     })
