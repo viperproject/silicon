@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silicon
 
@@ -69,7 +69,7 @@ object Silicon {
                                       debugInfo: Seq[(String, Any)] = Nil)
                                      : Silicon = {
 
-    val silicon = new Silicon(PluginAwareReporter(reporter), debugInfo)
+    val silicon = new Silicon(reporter, debugInfo)
 
     silicon.parseCommandLine(args :+ dummyInputFilename)
 
@@ -77,13 +77,13 @@ object Silicon {
   }
 }
 
-class Silicon(val reporter: PluginAwareReporter, private var debugInfo: Seq[(String, Any)] = Nil)
+class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] = Nil)
     extends SilVerifier
        with LazyLogging {
 
-  def this(debugInfo: Seq[(String, Any)]) = this(PluginAwareReporter(StdIOReporter()), debugInfo)
+  def this(debugInfo: Seq[(String, Any)]) = this(StdIOReporter(), debugInfo)
 
-  def this() = this(PluginAwareReporter(StdIOReporter()), Nil)
+  def this() = this(StdIOReporter(), Nil)
 
   val name: String = Silicon.name
   val version = Silicon.version
@@ -309,7 +309,7 @@ class SiliconFrontend(override val reporter: PluginAwareReporter,
   protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {
-    siliconInstance = new Silicon(reporter, Seq("args" -> fullCmd))
+    siliconInstance = new Silicon(reporter.reporter, Seq("args" -> fullCmd))
 
     siliconInstance
   }

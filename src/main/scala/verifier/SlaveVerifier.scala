@@ -6,13 +6,13 @@
 
 package viper.silicon.verifier
 
-import viper.silver.components.StatefulComponent
 import viper.silicon.supporters._
-import viper.silver.plugin.PluginAwareReporter
+import viper.silver.components.StatefulComponent
+import viper.silver.reporter.Reporter
 
 class SlaveVerifier(master: MasterVerifier,
                     uniqueId: String,
-                    override val reporter: PluginAwareReporter)
+                    override val reporter: Reporter)
     extends BaseVerifier(Verifier.config, uniqueId)
        with DefaultMethodVerificationUnitProvider
        with DefaultCfgVerificationUnitProvider {
