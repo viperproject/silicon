@@ -6,6 +6,7 @@ import viper.silver.ast
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.{Store, State, BasicChunk,SymbolConverter,DefaultSymbolConverter}
+import viper.silicon.{state => st}
 import viper.silicon.state.terms._
 import viper.silicon.decider.TermToSMTLib2Converter
 import _root_.javax.print.attribute.standard.MediaSize.Other
@@ -193,11 +194,13 @@ object Converter {
           case _ => OtherEntry(id.toString(),"not a constant entry---")
       }
       //ISSUE: snap types are translated to domain sorts
-      case sorts.Snap =>
+      /* case sorts.Snap =>
         m match {
           case ConstantEntry(value) => DomainValueEntry(value,s.toString()) // we just make a snap domain i guess
-          case _ => OtherEntry(s.toString(),"snap not a constant")
-        }
+          case ApplicationEntry(name, args) => OtherEntry(s.toString(),s"app$name $args snap not a constant")
+          case MapEntry(o,d) =>OtherEntry(s.toString(),s"map snap not a constant")
+          case _ => OtherEntry(s.toString(),s"snap not a constant")
+        } */
       case _ =>
         m match {
           case e: ValueEntry => UnprocessedModelEntry(e)
@@ -271,7 +274,7 @@ object Converter {
             } else {
               OtherEntry(s"Second($p})", "unapplicable")
             }
-          case OtherEntry(t, _) => OtherEntry(s"Second($t)", "unapplicable")
+          case OtherEntry(t, m) => OtherEntry(s"Second($t)$m", "unapplicable")
           case _                => OtherEntry(s"Second($sub)", "unapplicable")
         }
 
@@ -285,7 +288,7 @@ object Converter {
           case UnprocessedModelEntry(entry) =>
             getFunctionValue(model, fname, Seq(entry), to)
           case OtherEntry(t, _) =>
-            OtherEntry(s"SortWrapper($t)", "unapplicable")
+            OtherEntry(s"SortWrapper($t)o", "unapplicable")
           case _ => OtherEntry(s"SortWrapper($t)", "unapplicable")
         }
 
@@ -299,7 +302,7 @@ object Converter {
         result
 
       case _ =>
-        OtherEntry(s"$term", "unhandled")
+        OtherEntry(s"s$term", "unhandled")
     }
   }
 
@@ -314,6 +317,27 @@ object Converter {
         entries = entries :+ entry
       case c: BasicChunk =>
         entries = entries :+ UnresolvedHeapEntry(c, "Magic Wands not supported")
+      case c :st.QuantifiedFieldChunk => 
+        val entry = c.snapshotMap
+        val fvf = evaluateTerm(entry,model)
+        val fieldname = c.id.name 
+        try {//many things can go wrong but if they do we cannot infer anything anyways
+          val recvsort =c.singletonRcvr.get.sort
+          val recievers = (0 to 10).map(x=>VarEntry(s"$$Ref!val!$x",recvsort))
+          val recv =  VarEntry("$Ref!val!0",sorts.Ref)
+          val fieldsort  = c.fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+          val permission = getFunctionValue(model,s"$$FVF.perm_$fieldname",Seq(fvf.asValueEntry,recv.asValueEntry),sorts.Perm)
+          //val domvals = getFunctionValue(model,s"$$FVF.domain_$fieldname",Seq(fvf.asValueEntry,recv.asValueEntry),sorts.Set(sorts.Ref))
+        
+          val values =recievers map (x=>getFunctionValue(model,s"$$FVF.lookup_$fieldname",Seq(fvf.asValueEntry,x.asValueEntry),fieldsort))
+          val value = getFunctionValue(model,s"$$FVF.lookup_$fieldname",Seq(fvf.asValueEntry,recv.asValueEntry),fieldsort)
+          //printf(s"${fvf},$permission,$fieldname;$value} ,${c.initialCond};\n")
+          entries = entries ++ values.zip(recievers).map(x=>FieldHeapEntry(x._2,fieldname,Some(new Rational(permission.asInstanceOf[LitPermEntry].value.toInt,1)),fieldsort,x._1))
+        }catch {
+          case _:Throwable => ///continue
+        }
+        
+        
       case c =>
         entries =
           entries :+ UnresolvedHeapEntry(c, "Non-basic chunks not supported")
@@ -439,7 +463,7 @@ object Converter {
                     )
                   map += (field -> (recEntry, perm))
                 }
-              case _ =>
+              case _ => 
             }
           }
           RefEntry(name, map)
