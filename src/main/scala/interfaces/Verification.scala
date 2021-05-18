@@ -26,6 +26,12 @@ sealed abstract class VerificationResult {
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult
 
+  /* Attention: Parameter 'other' of 'combine' is a function! That is, the following
+   * statements
+   *   println(other)
+   *   println(other)
+   * will invoke the function twice, which might not be what you really want!
+   */
   def combine(other: => VerificationResult): VerificationResult = {
     val r: VerificationResult = other
     this match {
