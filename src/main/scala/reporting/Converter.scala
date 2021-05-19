@@ -544,11 +544,20 @@ object Converter {
     })
     val concreteDoms = program.collect(x=> x match{//find all definitive type instances
       
-     case a:ast.Type=> a match {case ast.DomainType(n,map) => Some((n,map)) case _ => None} 
+     case a:ast.Type=> a match {
+       case ast.DomainType(n,map) => Some((n,map))
+       
+       case _ => None
+      } 
+      case e:ast.Exp => e match {
+        case d:ast.DomainFuncApp => Some((d.domainName,d.typVarMap))//sometimes we use a function without having an actual member of this...
+        case _ => None
+      }
     }).collect({case Some(x)=>x}).filterNot(x=>containsTypeVar(x._2.values.toSeq)).toSet //make shure we have all the possible mappings without duplicates 
-     
+    
     val doms = domains.flatMap(x=>if(x.typVars==Nil) Seq((x,Map.empty[ast.TypeVar,ast.Type])) else concreteDoms.filter(_._1==x.name).map(y=>(x,y._2))) // changing the typevars to the actual ones
-   doms.map(x=>DomainEntry(x._1.name,
+    
+    doms.map(x=>DomainEntry(x._1.name,
                           try{x._1.typVars.map(x._2)}catch{case _ => {/* printf(s"$x"); */Seq()}},//problem: throws 
                           x._1.functions.map(y=>translateFunction(model,heap,y,x._2))
                           )
