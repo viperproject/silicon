@@ -96,7 +96,7 @@ def main():
       baseline[[input_headers.file, input_headers.outputs, input_headers.mean]], 
       how='outer', 
       on=input_headers.file,
-      suffixes=('_base', '_var'))
+      suffixes=('_var', '_base'))
 
     comparison = comparison.set_index(input_headers.file)
 

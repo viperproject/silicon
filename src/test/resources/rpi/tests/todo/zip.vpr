@@ -1,0 +1,19 @@
+field n: Ref
+
+method zip(x: Ref, y: Ref) returns (z: Ref)
+{
+    var m: Ref
+
+    z := x
+    m := y
+
+    while (z != null)
+    {
+        var t: Ref
+        __down__(m)
+        t := z.n
+        z.n := m
+        z := m
+        m := t
+    }
+}

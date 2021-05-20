@@ -34,14 +34,14 @@ object Main extends PrintRunner {
     * The options for an inference with predicate segments.
     */
   val segmentsOptions: Seq[String] =
-    annotationsOptions ++ Seq("--useSegments", "--restrictTruncation")
+    annotationsOptions ++ Seq("--useSegments")
 
   /**
     * The main method, i.e., the entry point of the inference.
     *
     * @param arguments The arguments to the inference.
     */
-  def main(arguments: Array[String]): Unit = {
-    run(segmentsOptions ++ arguments)
-  }
+//  def main(arguments: Array[String]): Unit = {
+//    run(segmentsOptions ++ arguments)
+//  }
 }
