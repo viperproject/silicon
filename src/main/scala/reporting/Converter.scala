@@ -543,17 +543,10 @@ object Converter {
       case a:ast.Domain => a
     })
     val concreteDoms = program.collect(x=> x match{//find all definitive type instances
-      
-     case a:ast.Type=> a match {
-       case ast.DomainType(n,map) => Some((n,map))
-       
-       case _ => None
-      } 
-      case e:ast.Exp => e match {
-        case d:ast.DomainFuncApp => Some((d.domainName,d.typVarMap))//sometimes we use a function without having an actual member of this...
-        case _ => None
-      }
-    }).collect({case Some(x)=>x}).filterNot(x=>containsTypeVar(x._2.values.toSeq)).toSet //make shure we have all the possible mappings without duplicates 
+      case ast.DomainType(n,map) => (n,map)
+      case d:ast.DomainFuncApp => (d.domainName,d.typVarMap)//sometimes we use a function without having an actual member of this...
+ 
+    }).filterNot(x=>containsTypeVar(x._2.values.toSeq)).toSet //make shure we have all the possible mappings without duplicates 
     
     val doms = domains.flatMap(x=>if(x.typVars==Nil) Seq((x,Map.empty[ast.TypeVar,ast.Type])) else concreteDoms.filter(_._1==x.name).map(y=>(x,y._2))) // changing the typevars to the actual ones
     
