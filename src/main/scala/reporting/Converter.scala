@@ -10,6 +10,7 @@ import viper.silicon.{state => st}
 import viper.silicon.state.terms._
 import viper.silicon.decider.TermToSMTLib2Converter
 import _root_.javax.print.attribute.standard.MediaSize.Other
+import viper.silicon.state.terms.sorts.UserSort
 
 
 //Classes for extracted Model Entries
@@ -90,6 +91,14 @@ case class OtherEntry(value: String, problem: String = "")
 case class SeqEntry(name: String, values: Vector[ExtractedModelEntry])
     extends ExtractedModelEntry {
   override lazy val toString = s"($name): [${values.map(_.toString).mkString(", ")}]"
+  lazy val asValueEntry = ConstantEntry(name)
+}
+case class SetEntry(name:String, values:Set[ExtractedModelEntry]) extends ExtractedModelEntry {
+  override lazy val toString = s"($name): {${values.map(_.toString).mkString(", ")}}"
+  lazy val asValueEntry = ConstantEntry(name)
+}
+case class MultiSetEntry(name:String, values:Map[ExtractedModelEntry,Int]) extends ExtractedModelEntry {
+  override lazy val toString = s"($name): {${values.map(_.toString).mkString(", ")}}"
   lazy val asValueEntry = ConstantEntry(name)
 }
 
@@ -176,7 +185,10 @@ object Converter {
           case ApplicationEntry(name, arguments) => getConstantEntry(s, arguments.head) // sometimes bools are represented by application("=", application("var",0))
           case _ => {OtherEntry(s"$m", "not a boolean literal")}
         }
-      case sorts.Seq(_) => VarEntry(m.toString, s)// will be resolved later
+      case sorts.Seq(_) 
+      | sorts.Set(_) 
+      /* | sorts.Map(_)
+      | sorts.Multiset(_) */ => VarEntry(m.toString, s)// will be resolved later
       case sorts.Perm =>
         m match {
           case ConstantEntry(x) => LitPermEntry(x.toDouble)
@@ -328,7 +340,7 @@ object Converter {
           val fieldsort  = c.fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
           val permission = getFunctionValue(model,s"$$FVF.perm_$fieldname",Seq(fvf.asValueEntry,recv.asValueEntry),sorts.Perm)
           //val domvals = getFunctionValue(model,s"$$FVF.domain_$fieldname",Seq(fvf.asValueEntry,recv.asValueEntry),sorts.Set(sorts.Ref))
-        
+          //printf("THISISAFVF")
           val values =recievers map (x=>getFunctionValue(model,s"$$FVF.lookup_$fieldname",Seq(fvf.asValueEntry,x.asValueEntry),fieldsort))
           val value = getFunctionValue(model,s"$$FVF.lookup_$fieldname",Seq(fvf.asValueEntry,recv.asValueEntry),fieldsort)
           //printf(s"${fvf},$permission,$fieldname;$value} ,${c.initialCond};\n")
@@ -426,6 +438,33 @@ object Converter {
       RecursiveRefEntry(name)
     }
   }
+def extractSet(
+      model: Model,
+      heap: ExtractedHeap,
+      nullRefName: String,
+      name: String,
+      elementSort: Sort,
+      encountered: Set[String]
+  ): ExtractedModelEntry ={
+    val lenTry: Try[Int] = Try(
+        getFunctionValue(
+          model,
+          "Set_card",
+          Seq(ConstantEntry(name)),
+          sorts.Int
+        ).asInstanceOf[LitIntEntry].value.toInt
+      )
+    SetEntry(name,Range.apply(0,lenTry.getOrElse(0)).map(x=>getSomeEntry(elementSort,x)).toSet)
+  }
+  def getSomeEntry(sort:Sort,num:Int):ExtractedModelEntry = {
+    sort match {
+      case sorts.Bool => LitBoolEntry(num%2==0)
+      case sorts.Int => LitIntEntry(num)
+      case UserSort(id) => DomainValueEntry(id.toString(),num.toString())
+      case x => VarEntry(s"${x.id.toString().replace("[","<").replace("]",">")}!val!$num" , sort)
+    }
+  }
+
 
   def mapLocalVar(
       sort: Option[Sort],
@@ -472,6 +511,15 @@ object Converter {
         }
       case Some(sorts.Seq(elementSort)) =>
         extractSequence(
+          model,
+          heap,
+          nullRefName,
+          name,
+          elementSort,
+          encountered
+        )
+      case Some(sorts.Set(elementSort)) =>
+       extractSet(
           model,
           heap,
           nullRefName,
@@ -608,9 +656,11 @@ object Converter {
       val entries  = model.entries
       val keys = entries.keys
       //printf(s"$fname: $resSort")
-      val modelFuncname = (keys.filter(_.contains(fname+"%limited"))++ (keys.filter(_==fname))++
+      val modelFuncname = try {(keys.filter(_.contains(fname+"%limited"))++ (keys.filter(_==fname))++
                           (keys.filter(_==kek))
-                           ).head //TODO: make this better
+                           ).head} catch {
+                             case _:Throwable => return errorfunc(s"$fname")
+                           } //TODO: make this better
       val simpleRet=(entries.get(modelFuncname)) match {
         case Some(MapEntry(m, els)) => { 
                                         ExtractedFunction(fname,
@@ -733,6 +783,7 @@ case class ExtractedFunction( fname:String,
         throw new IllegalArgumentException(s"to many arguments for function:$fname")
     }
   }
+  def image : Seq[ExtractedModelEntry] = {options.map(_._2).toSeq :+ default}
   override def toString: String = {
     if (options.nonEmpty)
       s"$fname${argtypes.mkString("(",",",")")}:$returnType{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + default +"\n}"
