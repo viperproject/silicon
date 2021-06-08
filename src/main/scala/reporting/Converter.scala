@@ -41,14 +41,10 @@ case class LitBoolEntry(value: Boolean) extends ExtractedModelEntry {
   lazy val asValueEntry = ConstantEntry(value.toString)
 }
 
-case class LitPermEntry(value: Double) extends ExtractedModelEntry {
+case class LitPermEntry(value: Rational) extends ExtractedModelEntry {
   override lazy val toString: String = value.toString
   lazy val asValueEntry = {
-    if (value < 0.0) {
-      ApplicationEntry("-", Seq(ConstantEntry((-value).toString)))
-    } else {
       ConstantEntry(value.toString)
-    }
   }
 }
 
@@ -117,9 +113,10 @@ case class ExtractedHeap(entries: Vector[HeapEntry])
 
 case class PredHeapEntry(
     name: String,
-    args: Seq[ExtractedModelEntry]
+    args: Seq[ExtractedModelEntry],
+    perm:Option[Rational] =None
 ) extends HeapEntry {
-  override lazy val toString = s"$name(${args.mkString(", ")})"
+  override lazy val toString = s"$name(${args.mkString(", ")}) Perm: ${perm.getOrElse("?")}"
 }
 case class FieldHeapEntry(
     recv: VarEntry,
@@ -191,14 +188,23 @@ object Converter {
       | sorts.Multiset(_) */ => VarEntry(m.toString, s)// will be resolved later
       case sorts.Perm =>
         m match {
-          case ConstantEntry(x) => LitPermEntry(x.toDouble)
+          case ConstantEntry(x) => val rat= x.toDouble match{
+            //TODO: make sure this is correct
+            case 0.0 => Rational.zero
+            case x if x >= 1.0 => Rational.one // we reduce to write
+            case x => Rational(1,(1/x).toInt)
+          } ;LitPermEntry(rat) 
           case ApplicationEntry(name, args) =>
             val res = getConstantEntry(s, args.head)
             (res, name) match {
               case (LitPermEntry(x), "-") => LitPermEntry(-x)
-              case _                      => OtherEntry(s"$m", "not a permission literal")
+              case (_,"/") =>  (getConstantEntry(s, args.head),getConstantEntry(s, args.drop(1).head)) match {
+                case (LitPermEntry(x),LitPermEntry(y)) => LitPermEntry(x/y)
+                case  _ =>OtherEntry(s"$m", "not a permission literal div")
+              }
+              case _                      => OtherEntry(s"$m", "pnot a permission literal")
             }
-          case _ => OtherEntry(s"$m", "not a permission literal")
+          case _ => OtherEntry(s"$m", "snot a permission literal")
         }
       case sorts.UserSort(id) => 
         m match {
@@ -312,7 +318,6 @@ object Converter {
         val arg = Seq(psfVal, snapVal)
         val result = getFunctionValue(model, lookupFuncName, arg, sorts.Snap)
         result
-
       case _ =>
         OtherEntry(s"s$term", "unhandled")
     }
@@ -344,7 +349,7 @@ object Converter {
           val values =recievers map (x=>getFunctionValue(model,s"$$FVF.lookup_$fieldname",Seq(fvf.asValueEntry,x.asValueEntry),fieldsort))
           val value = getFunctionValue(model,s"$$FVF.lookup_$fieldname",Seq(fvf.asValueEntry,recv.asValueEntry),fieldsort)
           //printf(s"${fvf},$permission,$fieldname;$value} ,${c.initialCond};\n")
-          entries = entries ++ values.zip(recievers).map(x=>FieldHeapEntry(x._2,fieldname,Some(new Rational(permission.asInstanceOf[LitPermEntry].value.toInt,1)),fieldsort,x._1))
+          entries = entries ++ values.zip(recievers).map(x=>FieldHeapEntry(x._2,fieldname,Some(permission.asInstanceOf[LitPermEntry].value),fieldsort,x._1))
         }catch {
           case _:Throwable => ///continue
         }
@@ -385,9 +390,65 @@ object Converter {
     //variable is part of a class it should be good enough
     //not really sure if the snap value should be added, seems to be same as one of
     //the args in most cases.
+    
     val argsEval = chunk.args.map(x => evaluateTerm(x, model))
-    val entry = PredHeapEntry(chunk.id.toString, argsEval)
+    val perm :Option[Rational]= evalPerm(chunk.perm,model)
+    //printf(s"$perm -- ${chunk.perm}\n")
+    val entry = PredHeapEntry(chunk.id.toString, argsEval,perm)
     entry
+  }
+
+  //TODO: there has to be an easier way...
+  def evalPerm(value:Term,model:Model) : Option[Rational] = {
+    value match {      
+      case Var(id, sort) => evaluateTerm(value,model) match {
+        case LitPermEntry(value) => Some(value)
+        case x => None
+      }
+      case NoPerm() => Some(Rational.zero)
+      case FullPerm() => Some(Rational.one)
+      case  FractionPermLiteral(r) => Some(r)
+      case _: FractionPerm => None
+      case IsValidPermVar(v) => None
+      case IsReadPermVar(v, ub) => None
+      case PermTimes(v1,v2) => (evalPerm(v1,model),evalPerm(v2,model)) match{
+        case (Some(x),Some(y)) => Some(x*y)
+        case _ => None
+      }
+      case IntPermTimes(v1,v2) => (evalPerm(v1,model),evalPerm(v2,model)) match{
+        case (Some(x),Some(y)) => Some(x*y)
+        case _ => None
+      }
+      case PermIntDiv(v1,v2) => (evalPerm(v1,model),evalPerm(v2,model)) match{
+        case (Some(x),Some(y)) => Some(x/y)
+        case _ => None
+      }
+      case PermPlus(v1,v2) => (evalPerm(v1,model),evalPerm(v2,model)) match{
+        case (Some(x),Some(y)) => Some(y+x)
+        case _ => None
+      }
+      case PermMinus(v1,v2) => (evalPerm(v1,model),evalPerm(v2,model)) match{
+        case (Some(x),Some(y)) => Some(x-y)
+        case _ => None
+      }
+      case PermLess(v1,v2) => (evalPerm(v1,model),evalPerm(v2,model)) match{
+        case (Some(x),Some(y)) => None
+        case _ => None
+      }
+      case PermAtMost(v1,v2) => (evalPerm(v1,model),evalPerm(v2,model)) match{
+        case (Some(x),Some(y)) => None
+        case _ => None
+      }
+      case PermMin(v1,v2) => (evalPerm(v1,model),evalPerm(v2,model)) match{
+        case (Some(x),Some(y)) => None
+        case _ => None
+      }
+      
+      //case PermLookup(field, pm, at) =>
+      
+      //case PredicatePermLookup(predname, pm, args) =>
+      case _ => None
+    }
   }
 
   def extractSequence(
