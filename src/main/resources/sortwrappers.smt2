@@ -7,7 +7,7 @@
 ;   IntToSnap(x) = IntToSnap(y)
 ; implies that
 ;   x = y.
-(assert (forall ((x $S$)) (!
+(assert (forall ((x $T$)) (!
     (= x ($SortWrappers.$SnapTo$S$($SortWrappers.$S$To$Snap x)))
     :pattern (($SortWrappers.$S$To$Snap x))
     :qid |$Snap.$SnapTo$S$To$Snap|
