@@ -210,7 +210,7 @@ object evaluator extends EvaluationRules {
               } else {
                 v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1) //TODO:J fix this later
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
@@ -780,9 +780,16 @@ object evaluator extends EvaluationRules {
                   case true =>
                     Q(s1, SeqAt(t0, t1), v1)
                   case false =>
-                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)}
+                    v1.decider.assume(Less(t1, SeqLength(t0)))
+                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1) combine Q(s1, SeqAt(t0, t1), v1) }
               case false =>
-                createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
+                v1.decider.assume(AtLeast(t1, IntLiteral(0)))
+                v1.decider.assert(Less(t1, SeqLength(t0))) {
+                  case true =>
+                    createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1) combine Q(s1, SeqAt(t0, t1), v1)
+                  case false =>
+                    v1.decider.assume(Less(t1, SeqLength(t0)))
+                    createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1) combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1) combine Q(s1, SeqAt(t0, t1), v1)}
             }}})
 
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)(Q)
@@ -803,9 +810,16 @@ object evaluator extends EvaluationRules {
                   case true =>
                     Q(s1, SeqUpdate(t0, t1, t2), v1)
                   case false =>
-                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)}
+                    v1.decider.assume(Less(t1, SeqLength(t0)))
+                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1) combine Q(s1, SeqUpdate(t0, t1, t2), v1) }
               case false =>
-                createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
+                v1.decider.assume(AtLeast(t1, IntLiteral(0)))
+                v1.decider.assert(Less(t1, SeqLength(t0))) {
+                  case true =>
+                    Q(s1, SeqUpdate(t0, t1, t2), v1) combine createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
+                  case false =>
+                    v1.decider.assume(Less(t1, SeqLength(t0)))
+                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1) combine Q(s1, SeqUpdate(t0, t1, t2), v1) combine  createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1) }
             }
           }
         })
@@ -897,7 +911,9 @@ object evaluator extends EvaluationRules {
           case (s1, Seq(baseT, keyT), v1) if s1.triggerExp => Q(s1, MapLookup(baseT, keyT), v1)
           case (s1, Seq(baseT, keyT), v1) => v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
             case true => Q(s1, MapLookup(baseT, keyT), v1)
-            case false => createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1)
+            case false =>
+              v1.decider.assume(SetIn(keyT, MapDomain(baseT)))
+              createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1) combine Q(s1, MapLookup(baseT, keyT), v1) //TODO:J write tests for this case!
           }
         })
 
@@ -1068,7 +1084,9 @@ object evaluator extends EvaluationRules {
 
     v.decider.assert(tDivisor !== tZero){
       case true => Q(s, t, v)
-      case false => createFailure(pve dueTo DivisionByZero(eDivisor), v, s)
+      case false =>
+          v.decider.assume(tDivisor !== tZero)
+          createFailure(pve dueTo DivisionByZero(eDivisor), v, s) combine Q(s, t, v)
     }
   }
 
