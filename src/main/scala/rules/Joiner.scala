@@ -47,7 +47,7 @@ object joiner extends JoiningRules {
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
         Success()
       })
-    }) && {
+    }) combine { // TODO:J might need to change this..
       if (entries.isEmpty) {
         /* No block data was collected, which we interpret as all branches through
          * the block being infeasible. In turn, we assume that the overall verification path
