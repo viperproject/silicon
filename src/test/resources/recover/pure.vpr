@@ -1,0 +1,101 @@
+/************************************************
+/* assert false stmts at the end are to make sure that
+/* the verifier actually gets to those stmts.
+************************************************/
+
+field f: Int
+method test0(x: Ref)
+requires acc(x.f)
+ensures acc(x.f)
+{
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert x.f > 3
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert x.f > 4
+    assert x.f > 3
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+
+ method test1(n: Int) {
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert n != 0
+    assert n != 0
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert n != 1
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+ }
+
+ domain dummy {
+    function W(n: Int): Bool
+    axiom W_always_true { forall x: Int :: W(x) }
+ }
+
+ method test2(n: Int) {
+    //:: ExpectedOutput(assert.failed:division.by.zero)
+    assert W(n/n) // div by zero?
+    assert n != 0
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+ }
+
+ method test3(xs: Seq[Int], idx: Int) {
+    var z: Int
+    //:: ExpectedOutput(assignment.failed:seq.index.negative)
+    //:: ExpectedOutput(assignment.failed:seq.index.length)
+    z := xs[idx] // index out of bounds?
+    assert 0 <= idx && idx < |xs|
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+ }
+
+
+ function square(n: Int): Int
+    requires n <= 0
+ { n*n }
+
+ method test4(n: Int) {
+    //:: ExpectedOutput(application.precondition:assertion.false)
+    assert 0 <= square(n) // precond. might not hold
+    assert n <= 0
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+ }
+method test5(a: Int, b: Int){
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert a == 0
+
+    //:: ExpectedOutput(assert.failed:division.by.zero)
+    assert a/b == 0
+    assert b != 0
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test5b(a: Int, b: Int){
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    // :: ExpectedOutput(assert.failed:division.by.zero) TODO:J we would want to get this error as well ideally
+    assert a/b == 0
+    assert b != 0
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test6(a: Int, b: Int){
+    var c: Int
+
+    //:: ExpectedOutput(assignment.failed:division.by.zero)
+    c := a % b
+
+    assert b != 0
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+
+}
