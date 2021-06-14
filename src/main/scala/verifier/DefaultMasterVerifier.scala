@@ -398,7 +398,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     sortWrapperDeclarationOrder foreach (component =>
       emitSortWrappers(component.sortsAfterAnalysis, sink))
 
-    val backendTypes = new mutable.HashSet[BackendType]
+    val backendTypes = new mutable.LinkedHashSet[BackendType]
     program.visit{
       case t: BackendType => backendTypes.add(t)
     }
