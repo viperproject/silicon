@@ -31,6 +31,10 @@ class TermToSMTLib2Converter
     super.pretty(defaultWidth, render(s))
   }
 
+  def convertSanitized(s: Sort): String = {
+    super.pretty(defaultWidth, doRender(s, true))
+  }
+
   protected def render(sort: Sort) = doRender(sort, false)
 
   protected def doRender(sort: Sort, alwaysSanitize: Boolean = false): Cont = sort match {
