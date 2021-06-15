@@ -122,11 +122,6 @@ object State {
   val OldHeaps = Map
 
   def merge(s1: State, s2: State): State = {
-    /* TODO: Instead of aborting with a pattern mismatch, all mismatches
-     *       should be detected first (and accumulated), and afterwards a meaningful
-     *       exception should be thrown. This would improve debugging significantly.
-     */
-
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, oldHeaps1,
@@ -190,7 +185,15 @@ object State {
                     pmCache = pmCache3)
 
           case _ =>
-            sys.error("State merging failed: unexpected mismatch between symbolic states")
+            val err = new StringBuilder()
+            for (ix <- 0 until s1.productArity) yield {
+              val e1 = s1.productElement(ix)
+              val e2 = s2.productElement(ix)
+              if (e1 != e2) {
+                err ++= s"\n- Field index ${s1.productElementName(ix)} not equal."
+              }
+            }
+            sys.error(s"State merging failed: unexpected mismatch between symbolic states: $err")
       }
     }
   }
