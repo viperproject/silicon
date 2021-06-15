@@ -186,7 +186,7 @@ object State {
 
           case _ =>
             val err = new StringBuilder()
-            for (ix <- 0 until s1.productArity) yield {
+            for (ix <- 0 until s1.productArity) {
               val e1 = s1.productElement(ix)
               val e2 = s2.productElement(ix)
               if (e1 != e2) {
