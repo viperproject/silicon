@@ -50,8 +50,10 @@ trait SymbolicExecutionRules {
       }
     }
     if(Verifier.config.enableBranchconditionReporting()){
-      res.branchConditions = Seq(v.decider.pcs.branchConditionExps
-        .reduce((e1: Exp, e2: Exp) => And(e1,e2)(pos = NoPosition, info = NoInfo, errT = NoTrafos)))
+      if (v.decider.pcs.branchConditionExps.nonEmpty) {
+        res.branchConditions = Seq(v.decider.pcs.branchConditionExps
+          .reduce((e1: Exp, e2: Exp) => And(e1,e2)(pos = NoPosition, info = NoInfo, errT = NoTrafos)))
+      }
     }
     Failure(res)
 
