@@ -7,6 +7,7 @@
 package viper.silicon.rules
 
 import viper.silver.ast
+import viper.silver.ast.{Exp, NoInfo, NoPosition, NoTrafos, And => SilAnd}
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
@@ -309,7 +310,7 @@ object evaluator extends EvaluationRules {
       case ast.CondExp(e0, e1, e2) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, v2)(
+            brancher.branch(s2, t0, e0, v2)(
               (s3, v3) => eval(s3, e1, pve, v3)(QB),
               (s3, v3) => eval(s3, e2, pve, v3)(QB))
           )(entries => {
@@ -969,7 +970,7 @@ object evaluator extends EvaluationRules {
        val preMark = v1.decider.setPathConditionMark()
       evals(s2, es1, _ => pve, v1)((s3, ts1, v2) => {
         val bc = And(ts1)
-        v2.decider.setCurrentBranchCondition(bc)
+        v2.decider.setCurrentBranchCondition(bc) //TODO:J set bcs with exp?
         evals(s3, es2, _ => pve, v2)((s4, ts2, v3) => {
           evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, _) => { // TODO: v4 isn't forward - problem?
             val (auxGlobals, auxNonGlobalQuants) =
@@ -994,7 +995,7 @@ object evaluator extends EvaluationRules {
                          : VerificationResult = {
 
     joiner.join[Term, Term](s, v)((s1, v1, QB) =>
-      brancher.branch(s1, tLhs, v1, fromShortCircuitingAnd)(
+      brancher.branch(s1, tLhs, eRhs, v1, fromShortCircuitingAnd)( //TODO:J NOT CORRECT YET!!! make pc optional? fetch correct path conditions earlier?
         (s2, v2) => eval(s2, eRhs, pve, v2)(QB),
         (s2, v2) => QB(s2, True(), v2))
     )(entries => {
@@ -1443,7 +1444,7 @@ object evaluator extends EvaluationRules {
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, v2, true) _ tupled swapIfAnd(
+            brancher.branch(s2, t0, exps.reduce((e1: Exp,e2: Exp) => SilAnd(e1,e2)(NoPosition,NoInfo,NoTrafos)), v2, true) _ tupled swapIfAnd(
               (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>
