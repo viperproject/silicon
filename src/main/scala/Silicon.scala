@@ -22,9 +22,11 @@ import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.verifier.DefaultMasterVerifier
+import viper.silver.ast.Exp
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
 import viper.silver.plugin.PluginAwareReporter
+import scala.util.chaining._
 
 object Silicon {
   val name = BuildInfo.projectName
@@ -242,11 +244,21 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     val failures =
       results.flatMap(r => r :: r.previous.toList)
-             .collect{ case f: Failure => f } /* Ignore successes */
-             .sortBy(_.message.pos match { /* Order failures according to source position */
-                case pos: ast.HasLineColumn => (pos.line, pos.column)
-                case _ => (-1, -1)
-             })
+        .collect{ case f: Failure => f } /* Ignore successes */
+        .pipe(allResults => {
+          if (config.enableBranchconditionReporting())
+            allResults.groupBy(_.message.readableMessage(withId = true,withPosition = true)).map{case (_: String, fs:List[Failure]) => //TODO:J need to handle counterexamples as well somehow (now they might get thrown away)
+              val allBranchConditions: Seq[Exp] = fs.collect{case f: Failure => f.message.branchConditions}.flatten
+              val m = fs.head.message                          /* those lines seem like they could be made nicer */
+              m.branchConditions = allBranchConditions
+              Failure(m)
+            }.toList
+             else allResults.distinctBy(f => f.message.readableMessage(withId = true,withPosition = true))
+        })
+        .sortBy(_.message.pos match { /* Order failures according to source position */
+          case pos: ast.HasLineColumn => (pos.line, pos.column)
+          case _ => (-1, -1)
+        })
 
 //    if (config.showStatistics.isDefined) {
 //      val proverStats = verifier.decider.statistics()

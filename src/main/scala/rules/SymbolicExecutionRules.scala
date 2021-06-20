@@ -9,6 +9,7 @@ package viper.silicon.rules
 import viper.silicon.interfaces.{Failure, SiliconNativeCounterexample, SiliconRawCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.{And, Exp, NoInfo, NoPosition, NoTrafos}
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
 import viper.silver.verifier.{Counterexample, CounterexampleTransformer, Model, VerificationError}
 
@@ -47,6 +48,10 @@ trait SymbolicExecutionRules {
         }
         res.counterexample = Some(finalCE)
       }
+    }
+    if(Verifier.config.enableBranchconditionReporting()){
+      res.branchConditions = Seq(v.decider.pcs.branchConditionExps
+        .reduce((e1: Exp, e2: Exp) => And(e1,e2)(pos = NoPosition, info = NoInfo, errT = NoTrafos)))
     }
     Failure(res)
 

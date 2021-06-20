@@ -67,7 +67,7 @@ object executor extends ExecutionRules {
           /* Using branch(...) here ensures that the edge condition is recorded
            * as a branch condition on the pathcondition stack.
            */
-          brancher.branch(s2, tCond, v1)(
+          brancher.branch(s2, tCond, ce.condition, v1)(
             (s3, v3) => exec(s3, ce.target, ce.kind, v3)(Q),
             (_, _)  => Success()))
 
@@ -358,7 +358,7 @@ object executor extends ExecutionRules {
           consume(s, a, AssertFailed(assert), v)((_, _, _) =>
             Success())
 
-        r && Q(s, v)
+        r combine Q(s, v)
 
       case assert @ ast.Assert(a) =>
         val pve = AssertFailed(assert)
