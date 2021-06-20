@@ -21,7 +21,7 @@ import viper.silicon.state.terms.Term
 
 /* TODO: Make VerificationResult immutable */
 sealed abstract class VerificationResult {
-  var previous: Set[VerificationResult] = Set()
+  var previous: Seq[VerificationResult] = Seq() //Sets had problems with equality
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult
@@ -36,10 +36,10 @@ sealed abstract class VerificationResult {
     val r: VerificationResult = other
     this match {
       case _ : FatalResult =>
-        this.previous = this.previous + r ++  r.previous
+        this.previous = (this.previous :+ r) ++  r.previous
         this
       case _ =>
-        r.previous = r.previous + this ++ this.previous
+        r.previous = (r.previous :+ this) ++ this.previous
         r
     }
   }

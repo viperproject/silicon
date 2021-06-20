@@ -490,6 +490,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some(false),
     noshort = true
   )
+  val enableBranchconditionReporting: ScallopOption[Boolean] = opt[Boolean]("enableBranchconditionReorting",
+    descr =s"Report branch conditions (can be useful for assertions that fail on multiple branches)",
+    default = Some(true),
+    noshort = true
+  )
 
   val setAxiomatizationFile: ScallopOption[String] = opt[String]("setAxiomatizationFile",
     descr =s"Source file with set axiomatisation. If omitted, built-in one is used.",
