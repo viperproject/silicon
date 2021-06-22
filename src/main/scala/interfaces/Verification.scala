@@ -23,6 +23,7 @@ import viper.silicon.state.terms.Term
 sealed abstract class VerificationResult {
   var previous: Seq[VerificationResult] = Seq() //Sets had problems with equality
 
+
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult
 
