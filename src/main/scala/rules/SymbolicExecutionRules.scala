@@ -49,9 +49,8 @@ trait SymbolicExecutionRules {
         res.counterexample = Some(finalCE)
       }
     }
-    if(Verifier.config.enableBranchconditionReporting() && v.decider.pcs.branchConditionExps.nonEmpty){
-        res.branchConditions = Seq(v.decider.pcs.branchConditionExps
-          .reduce((e1: Exp, e2: Exp) => And(e1,e2)(pos = NoPosition, info = NoInfo, errT = NoTrafos)))
+    if(Verifier.config.enableBranchconditionReporting()){
+      res.branchConditions = Seq(viper.silicon.utils.ast.BigAnd(v.decider.pcs.branchConditionExps.flatten))
     }
     Failure(res)
 

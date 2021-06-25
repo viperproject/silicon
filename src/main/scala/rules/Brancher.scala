@@ -12,12 +12,12 @@ import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.state.State
 import viper.silicon.state.terms.{Not, Term}
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{Exp, NoInfo, NoPosition, NoTrafos, Not => ExpNot}
+import viper.silver.ast
 
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
              condition: Term,
-             conditionExp: Exp,
+             conditionExp: Option[ast.Exp],
              v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
             (fTrue: (State, Verifier) => VerificationResult,
@@ -28,7 +28,7 @@ trait BranchingRules extends SymbolicExecutionRules {
 object brancher extends BranchingRules {
   def branch(s: State,
              condition: Term,
-             conditionExp: Exp,
+             conditionExp: Option[ast.Exp],
              v: Verifier,
              fromShortCircuitingAnd: Boolean = false)
             (fThen: (State, Verifier) => VerificationResult,
@@ -36,7 +36,7 @@ object brancher extends BranchingRules {
             : VerificationResult = {
 
     val negatedCondition = Not(condition)
-    val negatedConditionExp = ExpNot(conditionExp)(NoPosition,NoInfo,NoTrafos)
+    val negatedConditionExp = conditionExp.fold[Option[ast.Exp]](None)(c => Some(ast.Not(c)(pos = conditionExp.get.pos, info = conditionExp.get.info, ast.NoTrafos)))
     val parallelizeElseBranch = s.parallelizeBranches && !s.underJoin
 
     /* Skip path feasibility check if one of the following holds:
@@ -117,7 +117,7 @@ object brancher extends BranchingRules {
             }
 
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            v1.decider.setCurrentBranchConditionWithExp(negatedCondition,negatedConditionExp)
+            v1.decider.setCurrentBranchCondition(negatedCondition,negatedConditionExp)
 
             fElse(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
           })
@@ -149,7 +149,7 @@ object brancher extends BranchingRules {
     (if (executeThenBranch) {
       executionFlowController.locally(s, v)((s1, v1) => {
         v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-        v1.decider.setCurrentBranchConditionWithExp(condition,conditionExp)
+        v1.decider.setCurrentBranchCondition(condition,conditionExp)
 
         fThen(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
       })

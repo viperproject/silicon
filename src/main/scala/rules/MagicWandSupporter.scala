@@ -236,7 +236,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
-    var results: Seq[(State, Stack[Term], Vector[RecordedPathConditions], Chunk)] = Nil
+    var results: Seq[(State, Stack[Term], Stack[Option[Exp]], Vector[RecordedPathConditions], Chunk)] = Nil
 
     /* TODO: When parallelising branches, some of the runtime assertions in the code below crash
      *       during some executions - since such crashes are hard to debug, branch parallelisation
@@ -285,7 +285,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
         val s6 = s5.copy(conservedPcs = conservedPcsStack, recordPcs = s.recordPcs)
 
-        results :+= (s6, v4.decider.pcs.branchConditions, conservedPcs, ch)
+        results :+= (s6, v4.decider.pcs.branchConditions, v4.decider.pcs.branchConditionExps, conservedPcs, ch)
       }
 
       val preMark = v3.decider.setPathConditionMark()
@@ -370,13 +370,14 @@ object magicWandSupporter extends SymbolicExecutionRules {
       res && {
         val state = packageOut._1
         val branchConditions = packageOut._2
-        val conservedPcs = packageOut._3
-        val magicWandChunk = packageOut._4
+        val branchConditionsExp = packageOut._3
+        val conservedPcs = packageOut._4
+        val magicWandChunk = packageOut._5
         val s1 = state.copy(reserveHeaps = state.reserveHeaps.drop(3),
           parallelizeBranches = s.parallelizeBranches /* See comment above */
           /*branchConditions = c.branchConditions*/)
         executionFlowController.locally(s1, v)((s2, v1) => {
-          v1.decider.setCurrentBranchCondition(And(branchConditions))
+          v1.decider.setCurrentBranchCondition(And(branchConditions), Some(viper.silicon.utils.ast.BigAnd(branchConditionsExp.flatten)))
           conservedPcs.foreach(pcs => v1.decider.assume(pcs.conditionalized))
           Q(s2, magicWandChunk, v1)})}})
   }
