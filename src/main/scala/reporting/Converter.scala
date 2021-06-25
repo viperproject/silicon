@@ -3,6 +3,7 @@ package viper.silicon.reporting
 import scala.util.{Try, Success}
 import viper.silver.verifier.{Model, ModelEntry, ValueEntry, ConstantEntry, ApplicationEntry, MapEntry}
 import viper.silver.ast
+import viper.silicon.Map
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.{Store, State, BasicChunk}
