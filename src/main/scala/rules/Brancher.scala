@@ -117,7 +117,7 @@ object brancher extends BranchingRules {
             }
 
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            v1.decider.setCurrentBranchCondition(negatedCondition,negatedConditionExp)
+            v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
 
             fElse(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
           })

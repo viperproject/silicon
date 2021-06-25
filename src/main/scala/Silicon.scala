@@ -246,13 +246,13 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         .collect{ case f: Failure => f } /* Ignore successes */
         .pipe(allResults => {
           if (config.enableBranchconditionReporting())
-            allResults.groupBy(_.message.readableMessage(withId = true,withPosition = true)).map{case (_: String, fs:List[Failure]) =>
+            allResults.groupBy(_.message.readableMessage(withId = true, withPosition = true)).map{case (_: String, fs:List[Failure]) =>
               val allBranchConditions: Seq[ast.Exp] = fs.flatMap(_.message.branchConditions)
               val m = fs.head.message
               m.branchConditions = allBranchConditions
               Failure(m)
             }.toList
-             else allResults.distinctBy(f => f.message.readableMessage(withId = true,withPosition = true))
+             else allResults.distinctBy(f => f.message.readableMessage(withId = true, withPosition = true))
         })
         .sortBy(_.message.pos match { /* Order failures according to source position */
           case pos: ast.HasLineColumn => (pos.line, pos.column)
