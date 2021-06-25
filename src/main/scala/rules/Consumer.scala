@@ -194,7 +194,7 @@ object consumer extends ConsumptionRules {
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) => {
           impLog.finish_cond()
           val branch_res =
-            branch(s1, t0, e0, v1)(
+            branch(s1, t0, Some(e0), v1)(
               (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h3, snap3, v3) => {
                 val res1 = Q(s3, h3, snap3, v3)
                 impLog.finish_thnSubs()
@@ -214,7 +214,7 @@ object consumer extends ConsumptionRules {
         eval(s, e0, pve, v)((s1, t0, v1) => {
           gbLog.finish_cond()
           val branch_res =
-            branch(s1, t0, e0, v1)(
+            branch(s1, t0, Some(e0), v1)(
               (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h3, snap3, v3) => {
                 val res1 = Q(s3, h3, snap3, v3)
                 gbLog.finish_thnSubs()
@@ -484,9 +484,8 @@ object consumer extends ConsumptionRules {
             if (s3.retrying){
               v2.decider.assume(t)
               createFailure(pve dueTo AssertionFalse(e), v2, s3) combine QS(s3, v2)
-            } else createFailure(pve dueTo AssertionFalse(e),v2,s3)
-        }})
-})((s4, v4) => {
+            } else createFailure(pve dueTo AssertionFalse(e),v2,s3)}})
+    })((s4, v4) => {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt)

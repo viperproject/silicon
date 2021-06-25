@@ -22,7 +22,6 @@ import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.verifier.DefaultMasterVerifier
-import viper.silver.ast.Exp
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
 import viper.silver.plugin.PluginAwareReporter
@@ -247,9 +246,9 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         .collect{ case f: Failure => f } /* Ignore successes */
         .pipe(allResults => {
           if (config.enableBranchconditionReporting())
-            allResults.groupBy(_.message.readableMessage(withId = true,withPosition = true)).map{case (_: String, fs:List[Failure]) => //TODO:J need to handle counterexamples as well somehow (now they might get thrown away)
-              val allBranchConditions: Seq[Exp] = fs.collect{case f: Failure => f.message.branchConditions}.flatten
-              val m = fs.head.message                          /* those lines seem like they could be made nicer */
+            allResults.groupBy(_.message.readableMessage(withId = true,withPosition = true)).map{case (_: String, fs:List[Failure]) =>
+              val allBranchConditions: Seq[ast.Exp] = fs.flatMap(_.message.branchConditions)
+              val m = fs.head.message
               m.branchConditions = allBranchConditions
               Failure(m)
             }.toList

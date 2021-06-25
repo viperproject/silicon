@@ -18,7 +18,6 @@ import viper.silicon.interfaces.decider.{Prover, Unsat}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silver.ast.Exp
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 
 /*
@@ -34,8 +33,7 @@ trait Decider {
 
   def checkSmoke(): Boolean
 
-  def setCurrentBranchCondition(t: Term): Unit
-  def setCurrentBranchConditionWithExp(t: Term, te: Exp): Unit
+  def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit
   def setPathConditionMark(): Mark
 
   def assume(t: Term): Unit
@@ -160,12 +158,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       pathConditions.popScope()
     }
 
-    def setCurrentBranchCondition(t: Term): Unit = {
-      pathConditions.setCurrentBranchCondition(t)
-      assume(InsertionOrderedSet(Seq(t)))
-    }
-    def setCurrentBranchConditionWithExp(t: Term, te: Exp): Unit = {
-      pathConditions.setCurrentBranchConditionWithExp(t, te)
+    def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit = {
+      pathConditions.setCurrentBranchCondition(t, te)
       assume(InsertionOrderedSet(Seq(t)))
     }
 
