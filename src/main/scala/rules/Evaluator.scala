@@ -8,7 +8,6 @@ package viper.silicon.rules
 
 import viper.silicon
 import viper.silver.ast
-import viper.silver.ast.{Exp, NoInfo, NoPosition, NoTrafos, And => SilAnd}
 import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
