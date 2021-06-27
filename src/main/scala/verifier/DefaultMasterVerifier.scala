@@ -15,6 +15,7 @@ import viper.silver.components.StatefulComponent
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
+import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
@@ -127,15 +128,15 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
 
   /* Program verification */
 
-  def verify(_program: ast.Program, cfgs: Seq[SilverCfg]): List[VerificationResult] = {
+  def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
       * This is done bottom-up to ensure that nested quantifiers are transformed as well
       * (top-down should also work, but the default of 'innermost' won't).
       * See also [[viper.silicon.utils.ast.autoTrigger]].
       */
-    val program =
-      _program.transform({
+    var program: ast.Program =
+      originalProgram.transform({
         case forall: ast.Forall if forall.isPure =>
           viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
         case exists: ast.Exists =>
@@ -143,6 +144,10 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
       }, Traverse.BottomUp)
 
     // TODO: Autotrigger for cfgs.
+
+    if (config.conditionalizePermissions()) {
+      program = new ConditionalPermissionRewriter().rewrite(program).asInstanceOf[ast.Program]
+    }
 
     if (config.printTranslatedProgram()) {
       println(program)

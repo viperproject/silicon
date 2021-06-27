@@ -524,6 +524,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val conditionalizePermissions: ScallopOption[Boolean] = opt[Boolean]("conditionalizePermissions",
+    descr = "Potentially reduces the number of symbolic execution paths, by conditionalising " + 
+            "permission expressions. E.g. rewrite \"b ==> acc(x.f, p)\" to \"acc(x.f, b ? p : none)\"." +
+            "This is an experimental feature; report problems if you observe any.",
+    default = Some(false),
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(timeout) {
