@@ -115,7 +115,7 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition)
 
-            fElse(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+            fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
           })
         }
       } else {
@@ -147,7 +147,7 @@ object brancher extends BranchingRules {
         v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
         v1.decider.setCurrentBranchCondition(condition)
 
-        fThen(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+        fThen(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
       })
     } else {
       Unreachable()

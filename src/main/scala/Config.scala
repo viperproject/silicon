@@ -11,6 +11,7 @@ import scala.collection.immutable.ArraySeq
 import scala.util.matching.Regex
 import scala.util.Properties._
 import org.rogach.scallop._
+import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
 import viper.silver.frontend.SilFrontendConfig
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
@@ -459,11 +460,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val disableMostStateConsolidations: ScallopOption[Boolean] = opt[Boolean]("disableMostStateConsolidations",
-    descr = "Disable state consolidations, except on-retry and single-merge.",
-    default = Some(false),
+  val stateConsolidationMode: ScallopOption[StateConsolidationMode] = opt[StateConsolidationMode]("stateConsolidationMode",
+    descr = s"One of the following modes:\n${StateConsolidationMode.helpText}",
+    default = Some(StateConsolidationMode.Default),
     noshort = true
-  )
+  )(singleArgConverter(mode => StateConsolidationMode(mode.toInt)))
 
   val numberOfParallelVerifiers: ScallopOption[Int] = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
@@ -587,4 +588,36 @@ object Config {
   }
 
   case class Z3StateSaturationTimeout(timeout: Int, comment: String)
+
+  object StateConsolidationMode extends Enumeration {
+    type StateConsolidationMode = Value
+    val Minimal, Default, Retrying, MinimalRetrying, MoreCompleteExhale = Value
+
+    private[Config] final def helpText: String = {
+      s"""  ${Minimal.id}: Minimal work, many incompletenesses
+         |  ${Default.id}: Most work, fewest incompletenesses
+         |  ${Retrying.id}: Similar to ${Default.id}, but less eager
+         |  ${MinimalRetrying.id}: Less eager and less complete than ${Default.id}
+         |  ${MoreCompleteExhale.id}: Intended for use with --moreCompleteExhale
+         |""".stripMargin
+    }
+
+//    private val converter: ValueConverter[StateConsolidationMode] = new ValueConverter[StateConsolidationMode] {
+//      Try {
+//
+//      }
+//
+//      val pushPopRegex: Regex = """(?i)(pp)""".r
+//      val softConstraintsRegex: Regex = """(?i)(sc)""".r
+//
+//      def parse(s: List[(String, List[String])]): Either[String, Option[AssertionMode]] = s match {
+//        case (_, pushPopRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.PushPop))
+//        case (_, softConstraintsRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.SoftConstraints))
+//        case Nil => Right(None)
+//        case _ => Left(s"unexpected arguments")
+//      }
+//
+//      val argType: ArgType.V = org.rogach.scallop.ArgType.SINGLE
+//    }
+  }
 }
