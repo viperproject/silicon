@@ -8,8 +8,8 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
-
 import scala.annotation.unused
+import scala.collection.mutable
 import scala.util.Random
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
@@ -26,12 +26,10 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
-import viper.silver.ast.{BackendFunc, BackendType}
+import viper.silver.ast.BackendType
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.reporter.{ConfigurationConfirmation, Reporter, VerificationResultMessage}
-
-import scala.collection.mutable
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)

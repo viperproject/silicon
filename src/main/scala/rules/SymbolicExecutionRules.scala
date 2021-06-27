@@ -28,7 +28,7 @@ trait SymbolicExecutionRules {
       val model = v.decider.getModel()
       if (model != null && !model.contains("model is not available")) {
         val nativeModel = Model(model)
-        var ce: Counterexample = Verifier.config.counterexample.toOption match {
+        val ce: Counterexample = Verifier.config.counterexample.toOption match {
           case Some("native") =>
             val oldHeap = if (s.oldHeaps.contains(Verifier.PRE_STATE_LABEL))
               Some(s.oldHeaps(Verifier.PRE_STATE_LABEL).values)
