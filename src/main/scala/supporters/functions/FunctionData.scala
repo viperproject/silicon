@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silicon.supporters.functions
 
@@ -18,7 +18,7 @@ import viper.silicon.state.terms.predef._
 import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.{Config, Map, toMap}
-import viper.silver.plugin.PluginAwareReporter
+import viper.silver.reporter.Reporter
 
 /* TODO: Refactor FunctionData!
  *       Separate computations from "storing" the final results and sharing
@@ -39,7 +39,7 @@ class FunctionData(val programFunction: ast.Function,
                    identifierFactory: IdentifierFactory,
                    predicateData: ast.Predicate => PredicateData,
                    @unused config: Config,
-                   @unused reporter: PluginAwareReporter)
+                   @unused reporter: Reporter)
     extends LazyLogging {
 
   private[this] var phase = 0

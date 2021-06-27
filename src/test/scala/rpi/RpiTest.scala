@@ -108,5 +108,6 @@ class RpiTest extends AnyFunSuite with TestRunner {
         .asScala
         .toSeq
         .flatMap { directory => getFiles(directory) }
+        .sortBy { file => file.getFileName.toString }
     else Seq(path)
 }

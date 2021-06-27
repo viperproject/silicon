@@ -2,12 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
+
 import scala.annotation.unused
 import scala.util.Random
 import viper.silver.ast
@@ -25,10 +26,12 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
+import viper.silver.ast.{BackendFunc, BackendType}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.plugin.PluginAwareReporter
-import viper.silver.reporter.{ConfigurationConfirmation, VerificationResultMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, Reporter, VerificationResultMessage}
+
+import scala.collection.mutable
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -40,7 +43,7 @@ trait MasterVerifier extends Verifier {
   def verificationPoolManager: VerificationPoolManager
 }
 
-class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareReporter)
+class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     extends BaseVerifier(config, "00")
        with MasterVerifier
        with DefaultFunctionVerificationUnitProvider
@@ -400,6 +403,12 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     sortWrapperDeclarationOrder foreach (component =>
       emitSortWrappers(component.sortsAfterAnalysis, sink))
 
+    val backendTypes = new mutable.LinkedHashSet[BackendType]
+    program.visit{
+      case t: BackendType => backendTypes.add(t)
+    }
+    emitSortWrappers(backendTypes map symbolConverter.toSort, sink)
+
     sink.comment("/" * 10 + " Symbols")
     symbolDeclarationOrder foreach (component =>
       component.declareSymbolsAfterAnalysis(sink))
@@ -429,7 +438,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
         sink.declare(fromSnapWrapper)
 
         preambleReader.emitParametricPreamble("/sortwrappers.smt2",
-                                              Map("$S$" -> termConverter.convert(sort)),
+                                              Map("$S$" -> termConverter.convertSanitized(sort),
+                                                  "$T$" -> termConverter.convert(sort)),
                                               sink)
       })
     }

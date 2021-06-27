@@ -1,0 +1,15 @@
+// works with annotations
+// lemma application with segments does not work
+
+field n: Ref
+field v: Int
+
+method equals(a: Ref, b: Ref) returns (r: Bool)
+{
+    if (a != null && b != null) {
+        r := equal(a.n, b.n)
+        r := r && (a.v == b.v)
+    } else {
+        r := (a == null) && (b == null)
+    }
+}

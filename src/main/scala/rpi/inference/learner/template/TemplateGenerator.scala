@@ -134,7 +134,8 @@ trait TemplateGenerator extends AbstractLearner {
                 val recursion = makeRecursive(access +: rest)
                 add(recursive, recursion)
               case _ =>
-                ???
+                // TODO: ???
+                // do nothing
             }
           case _ => // do nothing
         }

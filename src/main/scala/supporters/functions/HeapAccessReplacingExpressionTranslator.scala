@@ -2,11 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.LazyLogging
+
 import scala.annotation.unused
 import viper.silver.ast
 import viper.silicon.Map
@@ -14,14 +15,13 @@ import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
-import viper.silver.plugin.PluginAwareReporter
-import viper.silver.reporter.InternalWarningMessage
+import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                               fresh: (String, Sort) => Var,
                                               resolutionFailureMessage: (ast.Positioned, FunctionData) => String,
                                               stopOnResolutionFailure: (ast.Positioned, FunctionData) => Boolean,
-                                              reporter: PluginAwareReporter)
+                                              reporter: Reporter)
     extends ExpressionTranslator
        with LazyLogging {
 

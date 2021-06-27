@@ -1,0 +1,28 @@
+// works with annotations but is extremely slow
+// not tested with segments yet
+
+field n: Ref
+field v: Int
+
+method equals(a: Ref, b: Ref) returns (r: Bool)
+{
+    var x: Ref
+    var y: Ref
+
+    x := a
+    y := b
+    r := true
+
+    while (x != null && y != null && r)
+    {
+        if (x.v != y.v) {
+            r := false
+        }
+        __down__(x)
+        __down__(y)
+        x := x.n
+        y := y.n
+    }
+
+    r := r && (x == null) && (y == null)
+}

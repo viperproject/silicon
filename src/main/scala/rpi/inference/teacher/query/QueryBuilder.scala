@@ -147,7 +147,6 @@ class QueryBuilder(protected val context: Context) extends CheckExtender with Fo
               val maxDepth = 0
               unfold(body)(maxDepth, hypothesis, trackAccesses)
             }
-            val maxDepth = if (configuration.useAnnotations()) check.depth(hypothesis) else 0
             branchOnAccesses()
             saveSnapshot(instance)
           case _ =>
