@@ -7,6 +7,7 @@
 package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
+import viper.silicon.reporting.Converter
 import viper.silicon.state.{State, Store}
 import viper.silver.verifier.{Counterexample, Model, VerificationError}
 import viper.silicon.state.terms.Term
@@ -90,7 +91,7 @@ case class Failure/*[ST <: Store[ST],
 
 trait SiliconCounterexample extends Counterexample {
   val internalStore: Store
-  def store: Map[String, Term] = internalStore.values.map{case (k, v) => k.name -> v}
+  lazy val store: Map[String, Term] = internalStore.values.map{case (k, v) => k.name -> v}
   def withStore(s: Store) : SiliconCounterexample
 }
 
@@ -113,8 +114,32 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
       case (k, v) => k.name -> nativeModel.entries(v.toString)
     })
   }
+
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconVariableCounterexample(s, nativeModel)
   }
 }
 
+case class SiliconMappedCounterexample(
+    internalStore: Store,
+    heap: Iterable[Chunk],
+    oldHeaps: State.OldHeaps,
+    nativeModel: Model
+) extends SiliconCounterexample {
+
+  val converter: Converter =
+    Converter(nativeModel, internalStore, heap, oldHeaps)
+
+  val model: Model = nativeModel
+
+  override lazy val toString: String = {
+    val buf = converter.modelAtLabel
+      .map(x => s"model at label: ${x._1}\n${x._2.toString}\n")
+      .mkString("\n")
+    s"$buf\non return: \n${converter.extractedModel.toString}"
+  }
+
+  override def withStore(s: Store): SiliconCounterexample = {
+    SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel)
+  }
+}
