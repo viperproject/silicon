@@ -28,19 +28,19 @@ trait SymbolicExecutionRules {
       val model = v.decider.getModel()
       if (model != null && !model.contains("model is not available")) {
         val nativeModel = Model(model)
-        var ce: Counterexample = Verifier.config.counterexample.toOption match {
+        val ce: Counterexample = Verifier.config.counterexample.toOption match {
           case Some("native") => 
             val oldHeap = s.oldHeaps.get(Verifier.PRE_STATE_LABEL).map(_.values)
             SiliconNativeCounterexample(s.g, s.h.values, oldHeap, nativeModel)
-          case Some("raw") => 
+          case Some("raw") =>
             val pcs = v.decider.pcs
             val conditions = pcs.assumptions.toSeq ++ pcs.branchConditions
             SiliconRawCounterexample(conditions, s, nativeModel)
           case Some("mapped") => 
             SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel)
-          case _ => SiliconVariableCounterexample(s.g, nativeModel)
+          case _ =>
+            SiliconVariableCounterexample(s.g, nativeModel)
         }
-        
         val finalCE = ceTrafo match {
           case Some(trafo) => trafo.f(ce)
           case _ => ce

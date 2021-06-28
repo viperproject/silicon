@@ -8,14 +8,15 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
-
 import scala.annotation.unused
+import scala.collection.mutable
 import scala.util.Random
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
+import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
@@ -25,12 +26,10 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
-import viper.silver.ast.{BackendFunc, BackendType}
+import viper.silver.ast.BackendType
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.reporter.{ConfigurationConfirmation, Reporter, VerificationResultMessage}
-
-import scala.collection.mutable
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -130,15 +129,15 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   /* Program verification */
 
-  def verify(_program: ast.Program, cfgs: Seq[SilverCfg]): List[VerificationResult] = {
+  def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
       * This is done bottom-up to ensure that nested quantifiers are transformed as well
       * (top-down should also work, but the default of 'innermost' won't).
       * See also [[viper.silicon.utils.ast.autoTrigger]].
       */
-    val program =
-      _program.transform({
+    var program: ast.Program =
+      originalProgram.transform({
         case forall: ast.Forall if forall.isPure =>
           viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
         case exists: ast.Exists =>
@@ -146,6 +145,10 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       }, Traverse.BottomUp)
 
     // TODO: Autotrigger for cfgs.
+
+    if (config.conditionalizePermissions()) {
+      program = new ConditionalPermissionRewriter().rewrite(program).asInstanceOf[ast.Program]
+    }
 
     if (config.printTranslatedProgram()) {
       println(program)
