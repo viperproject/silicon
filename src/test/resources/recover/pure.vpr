@@ -52,12 +52,62 @@ ensures acc(x.f)
     assert false
  }
 
+ method testSequenceB(xs: Seq[Int], idx: Int){
+    var z: Int
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert idx < |xs|
+    //:: ExpectedOutput(assignment.failed:seq.index.negative)
+    z := xs[idx]
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+ }
+ method testSequenceC(xs: Seq[Int], idx: Int){
+    var z: Int
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert idx > 0
+    //:: ExpectedOutput(assignment.failed:seq.index.length)
+    z := xs[idx]
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+ }
+
+ method testSequenceD(xs: Seq[Int], idx: Int, u: Int){
+    var xs2: Seq[Int]
+    //:: ExpectedOutput(assignment.failed:seq.index.length)
+    //:: ExpectedOutput(assignment.failed:seq.index.negative)
+    xs2 := xs[idx := u]
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+ }
+ method testSequenceE(xs: Seq[Int], idx: Int, u: Int){
+    var xs2: Seq[Int]
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert idx > 0
+    //:: ExpectedOutput(assignment.failed:seq.index.length)
+    xs2 := xs[idx := u]
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+ }
+ method testSequenceF(xs: Seq[Int], idx: Int, u: Int){
+    var xs2: Seq[Int]
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert idx < |xs|
+    //:: ExpectedOutput(assignment.failed:seq.index.negative)
+    xs2 := xs[idx := u]
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+ }
 
  function square(n: Int): Int
     requires n <= 0
  { n*n }
 
- method test4(n: Int) {
+ method testFapp(n: Int) {
     //:: ExpectedOutput(application.precondition:assertion.false)
     assert 0 <= square(n) // precond. might not hold
     assert n <= 0
@@ -65,7 +115,7 @@ ensures acc(x.f)
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
  }
-method test5(a: Int, b: Int){
+method testDivByZero(a: Int, b: Int){
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert a == 0
 
@@ -98,4 +148,23 @@ method test6(a: Int, b: Int){
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 
+}
+method testForPermA(y: Ref)
+requires acc(y.f)
+{
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert forperm x: Ref [x.f] :: x.f > 2
+    assert y.f > 2
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+method testForPermB(y: Ref)
+requires acc(y.f)
+{
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert forperm x: Ref [x.f] :: x.f != 0
+    var z: Int
+    z := y.f/y.f
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
 }
