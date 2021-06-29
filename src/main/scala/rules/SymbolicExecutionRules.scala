@@ -50,7 +50,13 @@ trait SymbolicExecutionRules {
       }
     }
     if(Verifier.config.enableBranchconditionReporting()){
-      res.branchConditions = Seq(viper.silicon.utils.ast.BigAnd(v.decider.pcs.branchConditionExps.flatten))
+      val bcs = v.decider.pcs.branchConditionExps.flatten
+        .filterNot(e => e.isInstanceOf[viper.silver.ast.TrueLit]) /* remove "true" bcs introduced by viper.silicon.utils.ast.BigAnd */
+        .sortBy(_.pos match { /* Order branchconditions according to source position */
+         case pos: viper.silver.ast.HasLineColumn => (pos.line, pos.column)
+         case _ => (-1, -1)
+         })
+      if (bcs.nonEmpty) res.branchConditions = Seq(bcs.map(bc => (bc.toString() + " [ " + bc.pos.toString + " ] ")).mkString(" ~~> "))
     }
     Failure(res)
 
