@@ -85,11 +85,7 @@ object executor extends ExecutionRules {
 
     if (edges.isEmpty) {
       Q(s, v)
-    } else
-      edges.foldLeft(Success(): VerificationResult) {
-        case (fatalResult: FatalResult, _) => fatalResult
-        case (_, edge) => follow(s, edge, v)(Q)
-      }
+    } else edges.foldLeft(Success(): VerificationResult)((result: VerificationResult, edge) => result combine follow(s, edge, v)(Q))
   }
 
   def exec(s: State, graph: SilverCfg, v: Verifier)
