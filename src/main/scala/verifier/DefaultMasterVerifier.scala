@@ -435,10 +435,29 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
         sink.declare(toSnapWrapper)
         sink.declare(fromSnapWrapper)
 
-        preambleReader.emitParametricPreamble("/sortwrappers.smt2",
-                                              Map("$S$" -> termConverter.convertSanitized(sort),
-                                                  "$T$" -> termConverter.convert(sort)),
-                                              sink)
+        val sanitizedSortString = termConverter.convertSanitized(sort)
+        val sortString = termConverter.convert(sort)
+
+        if (sanitizedSortString.contains("$T$")) {
+          // Ensure that sanitizedSortString does not contain the key which we substitute with sortString,
+          // because otherwise, we can have $T$ -> ....$S$.... -> ....<sortString>...., which is not what we want.
+          var i = 0
+          while (sanitizedSortString.contains(s"$$T$i$$")) {
+            i += 1
+          }
+
+          preambleReader.emitParametricPreamble("/sortwrappers.smt2",
+            Map("$T$" -> s"$$T$i$$",
+                "$S$" -> sanitizedSortString,
+                s"$$T$i$$" -> sortString),
+            sink)
+        } else {
+          preambleReader.emitParametricPreamble("/sortwrappers.smt2",
+            Map("$S$" -> sanitizedSortString,
+                "$T$" -> sortString),
+            sink)
+        }
+
       })
     }
   }
