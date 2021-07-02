@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.interfaces.{Failure, SiliconNativeCounterexample, SiliconRawCounterexample, SiliconVariableCounterexample}
+import viper.silicon.interfaces.{Failure, FailureContext, SiliconNativeCounterexample, SiliconRawCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.{And, Exp, NoInfo, NoPosition, NoTrafos}
@@ -22,7 +22,7 @@ trait SymbolicExecutionRules {
         wrapped
       case _ => ve
     }
-    if (v != null && Verifier.config.counterexample.toOption.isDefined) {
+    val counterexample: Option[Counterexample] = if (v != null && Verifier.config.counterexample.toOption.isDefined) {
       if (generateNewModel || v.decider.getModel() == null) {
         v.decider.generateModel()
       }
@@ -46,19 +46,20 @@ trait SymbolicExecutionRules {
           case Some(trafo) => trafo.f(ce)
           case _ => ce
         }
-        res.counterexample = Some(finalCE)
-      }
-    }
-    if(Verifier.config.enableBranchconditionReporting()){
-      val bcs = v.decider.pcs.branchConditionExps.flatten
+        Some(finalCE)
+      } else None
+    } else None
+
+    val branchconditions = if (Verifier.config.enableBranchconditionReporting()) {
+      v.decider.pcs.branchConditionExps.flatten
         .filterNot(e => e.isInstanceOf[viper.silver.ast.TrueLit]) /* remove "true" bcs introduced by viper.silicon.utils.ast.BigAnd */
-        .sortBy(_.pos match { /* Order branchconditions according to source position */
-         case pos: viper.silver.ast.HasLineColumn => (pos.line, pos.column)
-         case _ => (-1, -1)
-         })
-      if (bcs.nonEmpty) res.branchConditions = Seq(bcs.map(bc => (bc.toString() + " [ " + bc.pos.toString + " ] ")).mkString(" ~~> "))
-    }
-    Failure(res)
+        .sortBy(_.pos match {/* Order branchconditions according to source position */
+          case pos: viper.silver.ast.HasLineColumn => (pos.line, pos.column)
+          case _ => (-1, -1)
+        })
+    } else Seq()
+
+    Failure(res, Seq(FailureContext(branchconditions, counterexample)))
 
   }
 }

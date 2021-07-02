@@ -247,12 +247,8 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         .pipe(allResults => {
           if (config.enableBranchconditionReporting())
             allResults.groupBy(_.message.readableMessage(withId = true, withPosition = true)).map{case (_: String, fs:List[Failure]) =>
-              val allBranchConditions: Seq[String] = fs.flatMap(_.message.branchConditions)
-              val allCounterExamples: Seq[SilCounterexample] = fs.flatMap(_.message.counterexample)
-              val m = fs.head.message
-              m.branchConditions = allBranchConditions
-              m.counterexample = allCounterExamples.headOption //TODO:J enable message to hold multiple CEs
-              Failure(m)
+              val allFailureContexts = fs.flatMap(_.failureContexts)
+              Failure(fs.head.message, allFailureContexts)
             }.toList
              else allResults.distinctBy(f => f.message.readableMessage(withId = true, withPosition = true))
         })
@@ -290,7 +286,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     failures
   }
 
-  private def logFailure(failure: Failure, log: String => Unit): Unit = {
+  private def logFailure(failure: Failure, log: String => Unit): Unit = { //TODO:J log context?
     log("\n" + failure.message.readableMessage(withId = true, withPosition = true))
   }
 
