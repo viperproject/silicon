@@ -77,8 +77,9 @@ case class Unreachable() extends NonFatalResult {
 case class Failure/*[ST <: Store[ST],
                    H <: Heap[H],
                    S <: State[ST, H, S]]*/
-                  (message: VerificationError)
-    extends FatalResult {
+                  (message: VerificationError,
+                   failureContexts: Seq[FailureContext] = Seq())
+extends FatalResult {
 
   /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
   var load: Option[Seq[Term]] = None
@@ -87,7 +88,15 @@ case class Failure/*[ST <: Store[ST],
     this
   }
 
-  override lazy val toString = message.readableMessage
+  override lazy val toString = message.readableMessage + failureContexts.toString
+}
+
+case class FailureContext(branchConditions: Seq[viper.silver.ast.Exp], counterexample: Option[Counterexample]) {
+      override lazy val toString =
+        (if(branchConditions.nonEmpty)
+          ("\nunder branch conditions:\n" +
+            branchConditions.map(bc => (bc.toString + " [ " + bc.pos.toString + " ] ")).mkString(" ~~> ") ) else "") +
+          (if(counterexample.isDefined) "\ncounterexample:\n" + counterexample.get.toString else "")
 }
 
 trait SiliconCounterexample extends Counterexample {
