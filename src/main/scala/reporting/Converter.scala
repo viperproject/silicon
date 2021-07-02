@@ -168,6 +168,7 @@ object Converter {
         m match {
           case ConstantEntry("true")  => LitBoolEntry(true)
           case ConstantEntry("false") => LitBoolEntry(false)
+          case _ => OtherEntry(s"$m", "not a boolean literal")
         }
       case sorts.Seq(_) => VarEntry(m.toString, s) // will be resolved later
       case sorts.Perm =>

@@ -917,6 +917,7 @@ object evaluator extends EvaluationRules {
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e), v, s)
 
       case _: ast.EpsilonPerm
+         | _: ast.Maplet
          | _: ast.FieldAccessPredicate
          | _: ast.MagicWand
          | _: ast.PredicateAccess
