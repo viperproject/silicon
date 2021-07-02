@@ -88,7 +88,7 @@ extends FatalResult {
     this
   }
 
-  override lazy val toString = message.readableMessage + failureContexts.toString
+  override lazy val toString = message.readableMessage + failureContexts.mkString("\n")
 }
 
 case class FailureContext(branchConditions: Seq[viper.silver.ast.Exp], counterexample: Option[Counterexample]) {
