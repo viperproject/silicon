@@ -168,3 +168,82 @@ requires acc(y.f)
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
+
+method testAbsLocalVar(b: Bool){
+    var b2: Bool
+    b2 := b
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert b
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert !b
+}
+method testPermA(x: Ref, y: Ref)
+   requires acc(x.f, 1/2)
+{
+    //:: ExpectedOutput(assert.failed:assertion.false)
+   assert perm(y.f) > none
+   assert x == y
+    //:: ExpectedOutput(assert.failed:assertion.false)
+   assert false
+}
+method testPermB(x: Ref)
+   requires acc(x.f, 1/2)
+{
+    //:: ExpectedOutput(assert.failed:assertion.false)
+   assert perm(x.f) > 2/3
+}
+method testPermC(x: Ref, p: Perm)
+   requires acc(x.f, p)
+{
+    //:: ExpectedOutput(assert.failed:assertion.false)
+   assert perm(x.f) > 1/2
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+ method testMapA(b: Bool) {
+  var m : Map[Int, Int] := Map(2 := 12, 3 := 24, 4 := 36)
+  var z: Int
+  if(b){
+    z := 2
+  } else {
+    z := 9
+  }
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert z in m
+  assert z in m
+  assert b
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+ }
+ method testMapB(z: Int) {
+  var m : Map[Int, Int] := Map(2 := 12)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert z in m
+
+  assert z == 2
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+ }
+method testMultisetA(x: Int) {
+  var B: Multiset[Int] := Multiset(1,2,3,3,1)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert (x in B) == 1
+
+  assert x == 2
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+method testMultisetB(x: Int) {
+  var B: Multiset[Int] := Multiset(1,2,3,3,1)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert (x in B) == 2
+
+  assert (x == 1) || (x == 3)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
