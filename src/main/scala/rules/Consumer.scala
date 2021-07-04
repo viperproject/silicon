@@ -395,18 +395,15 @@ object consumer extends ConsumptionRules {
       case ast.AccessPredicate(locacc: ast.LocationAccess, perm) =>
         eval(s, perm, pve, v)((s1, tPerm, v1) =>
           evalLocationAccess(s1, locacc, pve, v1)((s2, _, tArgs, v2) =>
-            v2.decider.assert(perms.IsNonNegative(tPerm)){
-              case true =>
-                val resource = locacc.res(Verifier.program)
-                val loss = PermTimes(tPerm, s2.permissionScalingFactor)
-                val ve = pve dueTo InsufficientPermission(locacc)
-                val description = s"consume ${a.pos}: $a"
-                chunkSupporter.consume(s2, h, resource, tArgs, loss, ve, v2, description)((s3, h1, snap1, v3) => {
-                  val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
-                                   constrainableARPs = s.constrainableARPs)
-                  Q(s4, h1, snap1, v3)})
-              case false =>
-                createFailure(pve dueTo NegativePermission(perm), v2, s2)}))
+            permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
+              val resource = locacc.res(Verifier.program)
+              val loss = PermTimes(tPerm, s3.permissionScalingFactor)
+              val ve = pve dueTo InsufficientPermission(locacc)
+              val description = s"consume ${a.pos}: $a"
+              chunkSupporter.consume(s3, h, resource, tArgs, loss, ve, v3, description)((s4, h1, snap1, v4) => {
+                val s5 = s4.copy(partiallyConsumedHeap = Some(h1),
+                                 constrainableARPs = s.constrainableARPs)
+                Q(s5, h1, snap1, v4)})})))
 
       case _: ast.InhaleExhaleExp =>
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
