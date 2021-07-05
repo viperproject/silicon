@@ -748,7 +748,7 @@ object evaluator extends EvaluationRules {
                                          recordVisited = s3.recordVisited,
                                          permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
-                        val s10 = stateConsolidator.consolidateIfRetrying(s9, v5)
+                        val s10 = v5.stateConsolidator.consolidateIfRetrying(s9, v5)
                         eval(s10, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
@@ -917,6 +917,7 @@ object evaluator extends EvaluationRules {
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e), v, s)
 
       case _: ast.EpsilonPerm
+         | _: ast.Maplet
          | _: ast.FieldAccessPredicate
          | _: ast.MagicWand
          | _: ast.PredicateAccess
@@ -999,7 +1000,7 @@ object evaluator extends EvaluationRules {
 
     val h = s.oldHeaps(label)
     val s1 = s.copy(h = h, partiallyConsumedHeap = None)
-    val s2 = stateConsolidator.consolidateIfRetrying(s1, v)
+    val s2 = v.stateConsolidator.consolidateIfRetrying(s1, v)
 
     eval(s2, e, pve, v)((s3, t, v1) => {
       val s4 = s3.copy(h = s.h,

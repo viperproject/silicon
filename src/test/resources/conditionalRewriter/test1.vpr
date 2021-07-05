@@ -1,0 +1,34 @@
+field f: Ref
+
+predicate P(x: Ref)
+predicate Q(x: Ref)
+predicate R(x: Ref)
+
+method test0(b: Bool, x: Ref)
+  requires acc(x.f)
+  requires b ==> x != null
+
+method test10(b: Bool, x: Ref)
+  requires b ==> acc(x.f)
+
+method test20(b: Bool, x: Ref, i: Int)
+  requires P(x)   && (b ==> x != null)
+  requires i != 0 && (b ==> acc(x.f))
+
+method test30(b: Bool, x: Ref, i: Int)
+  requires b ==> acc(x.f) && true
+
+method test40(b: Bool, x: Ref, i: Int)
+  requires b ==> acc(x.f) && (true && true)
+  requires b ==> (acc(x.f) && true) && true
+
+method test1000(b: Bool, x: Ref, i: Int)
+  requires P(x)   && (b ==> x != null)
+  requires i != 0 && (b ==> acc(x.f))
+{
+  assert x != null || x == null
+  assert b ==> (acc(x.f) && (x.f != null || x.f == null))
+  assert b ==> i != 0 && (acc(x.f) && x != null)
+  assert b ==> (i != 0 && acc(x.f)) && x != null
+  assert b ==> (acc(x.f) && x != null) && i != 0
+}
