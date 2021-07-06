@@ -8,7 +8,6 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
-
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.util.Random

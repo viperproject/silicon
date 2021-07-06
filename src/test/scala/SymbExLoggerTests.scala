@@ -19,12 +19,7 @@ import viper.silver.frontend.{DefaultStates, Frontend}
 import viper.silver.reporter.NoopReporter
 
 class SymbExLoggerTests extends SilSuite {
-  /** directory containing test files */
   val testDirectories = Seq("symbExLogTests")
-  /**
-    * config file specifying what should be logged by the SymbExLogger.
-    * note that only a subset of records is collected to improve robustness of the tests */
-  val logConfigFile = "symbExLogTests/testLogConfig.json"
 
   override def frontend(verifier: Verifier, files: Seq[Path]): Frontend = {
     require(files.length == 1, "tests should consist of exactly one file")
@@ -71,8 +66,7 @@ class SymbExLoggerTests extends SilSuite {
     Seq(
       "--timeout", "300" /* seconds */,
       "--disableCaching", "--ideModeAdvanced",
-      "--numberOfParallelVerifiers", "1",
-      "--logConfig", getTestDirPath(logConfigFile).toString)
+      "--numberOfParallelVerifiers", "1")
 }
 
 class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopReporter) {
