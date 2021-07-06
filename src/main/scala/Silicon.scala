@@ -14,6 +14,7 @@ import scala.util.{Left, Right}
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
+import sourcecode.Text.generate
 import viper.silver.ast
 import viper.silver.frontend.{DefaultStates, SilFrontend}
 import viper.silver.reporter._
@@ -25,6 +26,7 @@ import viper.silicon.verifier.DefaultMasterVerifier
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
 import viper.silver.plugin.PluginAwareReporter
+
 import scala.util.chaining._
 
 object Silicon {
@@ -247,8 +249,8 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         .pipe(allResults => {
           if (config.enableBranchconditionReporting())
             allResults.groupBy(_.message.readableMessage(withId = true, withPosition = true)).map{case (_: String, fs:List[Failure]) =>
-              val allFailureContexts = fs.flatMap(_.failureContexts)
-              Failure(fs.head.message, allFailureContexts)
+              fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
+              Failure(fs.head.message)
             }.toList
              else allResults.distinctBy(f => f.message.readableMessage(withId = true, withPosition = true))
         })

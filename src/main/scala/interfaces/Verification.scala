@@ -8,7 +8,7 @@ package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.state.{State, Store}
-import viper.silver.verifier.{Counterexample, Model, VerificationError}
+import viper.silver.verifier.{Counterexample, FailureContext, Model, VerificationError}
 import viper.silicon.state.terms.Term
 
 /*
@@ -77,8 +77,7 @@ case class Unreachable() extends NonFatalResult {
 case class Failure/*[ST <: Store[ST],
                    H <: Heap[H],
                    S <: State[ST, H, S]]*/
-                  (message: VerificationError,
-                   failureContexts: Seq[FailureContext] = Seq())
+                  (message: VerificationError)
 extends FatalResult {
 
   /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
@@ -88,15 +87,18 @@ extends FatalResult {
     this
   }
 
-  override lazy val toString = message.readableMessage + failureContexts.mkString("\n")
+  override lazy val toString = message.readableMessage
 }
 
-case class FailureContext(branchConditions: Seq[viper.silver.ast.Exp], counterexample: Option[Counterexample]) {
+case class SilFailureContext(branchConditions: Seq[viper.silver.ast.Exp], counterexample: Option[Counterexample]) extends FailureContext {
+
       override lazy val toString =
         (if(branchConditions.nonEmpty)
-          ("\nunder branch conditions:\n" +
-            branchConditions.map(bc => (bc.toString + " [ " + bc.pos.toString + " ] ")).mkString(" ~~> ") ) else "") +
-          (if(counterexample.isDefined) "\ncounterexample:\n" + counterexample.get.toString else "")
+          ("\n\t\tunder branch conditions:\n" +
+            branchConditions.map(bc => (bc.toString + " [ " + bc.pos.toString + " ] ")).mkString("\t\t"," ~~> ","") ) else "") +
+          (if(counterexample.isDefined) "\n\t\tcounterexample:\n" + counterexample.get.toString else "")
+
+  override def counterExample: Option[Counterexample] = counterexample
 }
 
 trait SiliconCounterexample extends Counterexample {

@@ -240,10 +240,9 @@ trait SampleExtractor extends AbstractTeacher with LazyLogging {
     */
   private def extractInformation[T](error: VerificationError): (Counter, ast.LocationAccess, Option[T]) = {
     // extract counter example
-    val counter = error.counterexample match {
-      case Some(value: Counter) => value
-      case _ => sys.error("Verification error does not contain a counter example.")
-    }
+    val counters = error.failureContexts.map(_.counterExample).map {case Some(counterexample: SiliconRawCounterexample) => counterexample}
+    //                                              We should only have multiple CEs at the very end of verification when results are merged
+    val counter = if (counters.length == 1) counters.head else sys.error(s"Verification error does not contain exactly one counterexample")
     // extract offending location
     val offending = error.reason match {
       case InsufficientPermission(location) => location
