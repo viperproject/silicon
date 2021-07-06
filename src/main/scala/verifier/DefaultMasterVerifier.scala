@@ -8,6 +8,7 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
+
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.util.Random
@@ -19,6 +20,7 @@ import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
@@ -29,7 +31,7 @@ import viper.silicon.utils.Counter
 import viper.silver.ast.BackendType
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.reporter.{ConfigurationConfirmation, Reporter, VerificationResultMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage}
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -92,6 +94,10 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     super.stop()
     statefulSubcomponents foreach (_.stop())
   }
+
+  def axiomsAfterAnalysis(): Iterable[Term] = this.domainsContributor.axiomsAfterAnalysis
+
+  def postConditionAxioms(): Vector[Term] = functionsSupporter.getPostConditionAxioms()
 
   /* Verifier orchestration */
 
@@ -245,10 +251,12 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
 
-    /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */
-    SymbExLogger.writeJSFile()
-    /** Write DOT-Representation of the log if the SymbExLogger is enabled */
-    SymbExLogger.writeDotFile()
+    if (config.ideModeAdvanced()) {
+      reporter report ExecutionTraceReport(
+        SymbExLogger.memberList,
+        this.axiomsAfterAnalysis().toList,
+        this.postConditionAxioms().toList)
+    }
 
     (   functionVerificationResults
      ++ predicateVerificationResults

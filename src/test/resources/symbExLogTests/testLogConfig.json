@@ -1,0 +1,27 @@
+{
+	"isBlackList": false,
+	"includeStore": false,
+	"includeHeap": false,
+	"includeOldHeap": false,
+	"includePcs": false,
+	"recordConfigs": [
+		{
+			"kind": "function"
+		},
+		{
+			"kind": "method"
+		},
+		{
+			"kind": "predicate"
+		},
+		{
+			"kind": "execute"
+		},
+		{
+			"kind": "branching"
+		},
+		{
+			"kind": "joining"
+		}
+	]
+}

@@ -1,5 +1,6 @@
 .idea
 .idea_modules
+common/target
 project/project
 project/target
 target
@@ -18,5 +19,7 @@ utils/scripts/tidy_smtlib.jar
 silicon_classpath.txt
 lib/
 silver
-viper_tutorial_examples
+src/test/resources/symbExLogTests/*.alog
+.DS_Store
+viper_tutorial_examples/
 .bsp/

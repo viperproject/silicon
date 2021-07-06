@@ -1,0 +1,21 @@
+predicate P4
+  Branch b@0@00:
+    comment: Reachable
+  Branch !(b@0@00):
+    comment: Reachable
+
+method topOfStackInIgnoredSepSetCheck
+  execute inhale (b ? acc(x.f, write) : true)
+    Branch b@2@01:
+      comment: Reachable
+    Branch !(b@2@01):
+      comment: Reachable
+
+method minimal4
+  execute inhale acc(x.f, write)
+  execute fold acc(P4(b, x), write)
+    Branch b@8@01:
+      comment: Reachable
+    Branch !(b@8@01):
+      comment: Reachable
+

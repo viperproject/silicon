@@ -1,0 +1,16 @@
+field left: Int
+field right: Int
+
+predicate tuple(this: Ref) {
+  acc(this.left) && acc(this.right)
+}
+
+method setTuple(this: Ref, l: Int, r: Int)
+  requires tuple(this)
+  ensures tuple(this)
+{
+  unfold tuple(this)
+  this.left := l
+  this.right := r
+  fold tuple(this)
+}

@@ -47,6 +47,26 @@ method test5(b1: Bool, b2: Bool, x: Ref)
   a := 1
 }
 
+method test5a(b1: Bool, b2: Bool, x: Ref)
+{
+  var a: Int
+  if (b1) {
+    inhale acc(x.f)
+  }
+  if (b2) {
+    inhale acc(x.f)
+  }
+  a := 1
+}
+
+method test5b(b1: Bool, b2: Bool, x: Ref)
+{
+  var a: Int
+  inhale (b1 ? acc(x.f) : true)
+  inhale (b2 ? acc(x.f) : true)
+  a := 1
+}
+
 method test6(b1: Bool, b2: Bool, x: Ref)
 {
   var a: Int

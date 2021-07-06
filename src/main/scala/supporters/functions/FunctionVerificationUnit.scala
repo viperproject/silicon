@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
-import viper.silicon.{Map, Stack, SymbExLogger, toMap}
+import viper.silicon.{Map, Stack, toMap}
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.interfaces._
 import viper.silicon.state._
@@ -20,6 +20,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
@@ -147,13 +148,15 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
-	    SymbExLogger.insertMember(function, null, v.decider.pcs)
+      SymbExLogger.openMemberScope(function, null, v.decider.pcs)
 
       val data = functionData(function)
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
-      Seq(handleFunction(sInit, function))
+      val res = Seq(handleFunction(sInit, function))
+      SymbExLogger.closeMemberScope()
+      res
     }
 
     private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {

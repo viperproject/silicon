@@ -29,6 +29,7 @@ lazy val silicon = (project in file("."))
     // External dependencies
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
     libraryDependencies += "org.apache.commons" % "commons-pool2" % "2.9.0",
+    libraryDependencies += "io.spray" %%  "spray-json" % "1.3.6",
 
     // Only get a few compilation errors at once
     maxErrors := 5,
