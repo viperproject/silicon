@@ -8,6 +8,7 @@ package viper.silicon.verifier
 
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
+import viper.silicon.Config.StateConsolidationMode
 import viper.silver.components.StatefulComponent
 import viper.silicon.{utils, _}
 import viper.silicon.decider.{DefaultDeciderProvider, TermToSMTLib2Converter}
@@ -15,6 +16,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
 import viper.silicon.reporting.DefaultStateFormatter
+import viper.silicon.rules.{DefaultStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingStateConsolidator, StateConsolidationRules}
 import viper.silicon.utils.Counter
 
 import scala.collection.mutable
@@ -49,6 +51,18 @@ abstract class BaseVerifier(val config: Config,
   val axiomRewriter = new AxiomRewriter(new utils.Counter()/*, bookkeeper.logfiles(s"axiomRewriter")*/, triggerGenerator)
   val quantifierSupporter = new DefaultQuantifierSupporter(triggerGenerator)
   val snapshotSupporter = new DefaultSnapshotSupporter(symbolConverter)
+
+  val stateConsolidator: StateConsolidationRules = {
+    import StateConsolidationMode._
+
+    config.stateConsolidationMode() match {
+      case Minimal => new MinimalStateConsolidator
+      case Default => new DefaultStateConsolidator(config)
+      case Retrying => new RetryingStateConsolidator(config)
+      case MinimalRetrying => new MinimalRetryingStateConsolidator(config)
+      case MoreCompleteExhale => new MoreComplexExhaleStateConsolidator(config)
+    }
+  }
 
   private val statefulSubcomponents = List[StatefulComponent](
 //    bookkeeper,

@@ -123,7 +123,7 @@ object executionFlowController extends ExecutionFlowRules {
                                           * current branch turned out to be infeasible) */
         firstActionResult
       else {
-        val s0 = stateConsolidator.consolidate(s, v)
+        val s0 = v.stateConsolidator.consolidate(s, v)
         action(s0.copy(retrying = true), v, (s1, r, v1) => Q(s1.copy(retrying = false), r, v1))
       }
 
