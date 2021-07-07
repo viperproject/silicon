@@ -54,7 +54,7 @@ object executor extends ExecutionRules {
     def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
       edge.kind match {
         case cfg.Kind.Out =>
-          val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+          val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
           val s1 = s.copy(functionRecorder = fr1, h = h1,
                           invariantContexts = s.invariantContexts.tail)
           s1
