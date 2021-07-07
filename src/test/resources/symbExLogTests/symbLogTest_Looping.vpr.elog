@@ -1,0 +1,20 @@
+method outEdgeStateConsolidation
+  execute var j: Int
+  execute var res: Int
+  execute j := 1
+  Branch 1:
+    comment: Reachable
+    Branch j@5@01 < 2:
+      comment: Reachable
+      execute res := 1
+      execute j := j + 1
+    Branch !(j@5@01 < 2):
+      comment: Reachable
+  Branch 2:
+    comment: Reachable
+    Branch !(j@5@01 < 2):
+      comment: Reachable
+      execute res := 2
+    Branch j@5@01 < 2:
+      comment: Reachable
+
