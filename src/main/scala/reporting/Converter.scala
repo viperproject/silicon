@@ -103,7 +103,7 @@ case class UnprocessedModelEntry(entry: ValueEntry)
   override lazy val toString = s"$entry"
   lazy val asValueEntry = entry
 }
-
+//TODO: possibly move ExtractedModelEntry to this trait
 // processed Heap representation:
 sealed trait HeapEntry {
   def toString: String
@@ -115,8 +115,9 @@ case class PredHeapEntry(
     name: String,
     args: Seq[ExtractedModelEntry],
     perm:Option[Rational] =None
-) extends HeapEntry {
+) extends HeapEntry with ExtractedModelEntry{
   override lazy val toString = s"$name(${args.mkString(", ")}) Perm: ${perm.getOrElse("?")}"
+  lazy val asValueEntry = ConstantEntry(name)
 }
 case class FieldHeapEntry(
     recv: VarEntry,
@@ -126,6 +127,15 @@ case class FieldHeapEntry(
     entry: ExtractedModelEntry
 ) extends HeapEntry {
   override lazy val toString = s"$recv.$field"
+}
+case class FVFEntry(
+    fvf:ExtractedModelEntry,
+    field:String,
+    values:(Map[VarEntry,ExtractedModelEntry],ExtractedModelEntry),
+    perms:(Map[VarEntry,Option[Rational]],Option[Rational]),
+    sort:Sort
+) extends HeapEntry{
+  override lazy val toString = s"FVF_$field{$values , $perms}"
 }
 
 case class UnresolvedHeapEntry(chunk: Chunk, reason: String) extends HeapEntry {
@@ -154,7 +164,7 @@ object Converter {
       case Some(MapEntry(m, els)) =>
         getConstantEntry(toSort, m.getOrElse(args, els))
       case Some(m) => getConstantEntry(toSort, m)
-      case None    => OtherEntry("${fname}", "function not found in model")
+      case None    => OtherEntry(s"${fname}", "function not found in model")
     }
   }
 
@@ -338,14 +348,18 @@ object Converter {
         val entry = c.snapshotMap
         val fvf = evaluateTerm(entry,model)
         val fieldname = c.id.name 
+       
         try {//many things can go wrong but if they do we cannot infer anything anyways
-          val recvsort =c.singletonRcvr.get.sort
+           val recvsort =c.singletonRcvr.get.sort
+          val fvfEntry = FVFEntry(fvf,fieldname,null,null,null) //TODO: extract value and permisssion functions to maps
+
+
           val recievers = (0 to 10).map(x=>VarEntry(s"$$Ref!val!$x",recvsort))
           val recv =  VarEntry("$Ref!val!0",sorts.Ref)
           val fieldsort  = c.fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
           val permission = getFunctionValue(model,s"$$FVF.perm_$fieldname",Seq(fvf.asValueEntry,recv.asValueEntry),sorts.Perm)
           //val domvals = getFunctionValue(model,s"$$FVF.domain_$fieldname",Seq(fvf.asValueEntry,recv.asValueEntry),sorts.Set(sorts.Ref))
-          //printf("THISISAFVF")
+          //printf(s"${c.invs}")
           val values =recievers map (x=>getFunctionValue(model,s"$$FVF.lookup_$fieldname",Seq(fvf.asValueEntry,x.asValueEntry),fieldsort))
           val value = getFunctionValue(model,s"$$FVF.lookup_$fieldname",Seq(fvf.asValueEntry,recv.asValueEntry),fieldsort)
           //printf(s"${fvf},$permission,$fieldname;$value} ,${c.initialCond};\n")
@@ -353,6 +367,7 @@ object Converter {
         }catch {
           case _:Throwable => ///continue
         }
+        case c:st.QuantifiedPredicateChunk => /* System.err.print(s"$c") */ () //it  seems sometimes QPs do occur but not deterministically... :)
         
         
       case c =>
@@ -393,18 +408,21 @@ object Converter {
     
     val argsEval = chunk.args.map(x => evaluateTerm(x, model))
     val perm :Option[Rational]= evalPerm(chunk.perm,model)
-    //printf(s"$perm -- ${chunk.perm}\n")
+    
     val entry = PredHeapEntry(chunk.id.toString, argsEval,perm)
+    //printf(s"$entry -- ${chunk.snap}\n")
     entry
   }
 
   //TODO: there has to be an easier way...
   def evalPerm(value:Term,model:Model) : Option[Rational] = {
     value match {      
-      case Var(id, sort) => evaluateTerm(value,model) match {
+      case _:Var  => evaluateTerm(value,model) match {
         case LitPermEntry(value) => Some(value)
         case x => None
       }
+      //TODO: handle macros (possibly in  evaluateTerm)
+      case App(app,args) => /* printf(s"$args , $app ---\n"); */ None
       case NoPerm() => Some(Rational.zero)
       case FullPerm() => Some(Rational.one)
       case  FractionPermLiteral(r) => Some(r)
@@ -443,11 +461,11 @@ object Converter {
         case (Some(x),Some(y)) => None
         case _ => None
       }
-      
+      //case _: App => evaluateTerm(value,model)
       //case PermLookup(field, pm, at) =>
       
       //case PredicatePermLookup(predname, pm, args) =>
-      case _ => None
+      case y =>/*  printf(s"${y.getClass()}"); */ None
     }
   }
 
@@ -563,6 +581,18 @@ def extractSet(
                     )
                   map += (field -> (recEntry, perm))
                 }
+                case FVFEntry(fvf,field, values, perms, sort) => 
+                  val recEntry = mapLocalVar(
+                    Some(sort),
+                      values._1.getOrElse(termEval.asInstanceOf[VarEntry],values._2),
+                      heap,
+                      model,
+                      newEncountered,
+                      nullRefName
+                    )
+                    val perm = perms._1.getOrElse(termEval.asInstanceOf[VarEntry],perms._2)
+                  map += (field -> (recEntry,perm))
+                  
               case _ => 
             }
           }
