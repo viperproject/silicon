@@ -8,6 +8,8 @@ package viper.silicon.rules
 
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 
@@ -30,6 +32,9 @@ object joiner extends JoiningRules {
 
     var entries: Seq[JoinDataEntry[D]] = Vector.empty
 
+    val joiningRecord = new JoiningRecord(s, v.decider.pcs)
+    val uidJoin = SymbExLogger.currentLog().openScope(joiningRecord)
+
     executionFlowController.locally(s, v)((s1, v1) => {
       val preMark = v1.decider.setPathConditionMark()
       val s2 = s1.copy(underJoin = true)
@@ -47,7 +52,8 @@ object joiner extends JoiningRules {
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
         Success()
       })
-    }) combine { // TODO:J might need to change this..
+    }) combine {
+      SymbExLogger.currentLog().closeScope(uidJoin)
       if (entries.isEmpty) {
         /* No block data was collected, which we interpret as all branches through
          * the block being infeasible. In turn, we assume that the overall verification path

@@ -1,0 +1,17 @@
+field f: Int
+field g: Int
+
+method topOfStackInIgnoredSepSetCheck(b: Bool, x: Ref)
+{
+	inhale b ? acc(x.f) : true
+}
+
+predicate P4(b: Bool, x: Ref) {
+	b ? acc(x.f) : true
+}
+
+method minimal4(b: Bool, x: Ref)
+{
+    inhale acc(x.f)
+	fold P4(b, x)
+}

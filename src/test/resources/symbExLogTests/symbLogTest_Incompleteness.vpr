@@ -1,0 +1,45 @@
+field f: Int
+
+method m1_1(x: Ref)
+{
+    inhale acc(x.f, 1/2) && acc(x.f, 1/2)
+    assert acc(x.f)
+}
+
+method m1_2(x: Ref, y: Ref)
+{
+    inhale acc(x.f, 1/2) && acc(y.f, 1/2)
+    inhale x == y
+    assert acc(x.f)
+}
+
+method m1_3(x: Ref, y: Ref, z: Ref)
+{
+    inhale acc(x.f) && acc(y.f)
+    inhale z == x || z == y
+    // assert acc(z.f)
+}
+
+method m2_1(x: Ref)
+{
+    inhale acc(x.f, 1/2) && acc(x.f, 1/2) && x.f == 0
+    exhale acc(x.f, 1/2)
+    assert x.f == 0
+}
+
+method m2_2(x: Ref, y: Ref)
+{
+    inhale acc(x.f, 1/2) && acc(y.f, 1/2) && x.f == 0
+    exhale acc(x.f, 1/2)
+    inhale x == y
+    // assert y.f == 0
+}
+
+method m3_1(x: Ref, y: Ref, z: Ref)
+{
+    inhale acc(x.f) && acc(y.f) && z == x
+    assert x != y
+    inhale acc(z.f, 1/10)
+    // assert true
+    // assert false
+}

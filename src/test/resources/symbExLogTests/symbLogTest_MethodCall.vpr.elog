@@ -1,0 +1,28 @@
+method twice
+  execute r := 2 * i
+
+method m1
+  execute var a: Int
+  execute a := 1
+  execute a := twice(1 + 1)
+  execute a := 2
+
+method m2
+  execute var a: Int
+  Branch 1:
+    comment: Reachable
+    Branch b@13@01:
+      comment: Reachable
+      execute a := twice(2)
+      execute a := twice(4)
+    Branch !(b@13@01):
+      comment: Reachable
+  Branch 2:
+    comment: Reachable
+    Branch !(b@13@01):
+      comment: Reachable
+      execute a := twice(3)
+      execute a := twice(4)
+    Branch b@13@01:
+      comment: Reachable
+

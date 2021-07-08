@@ -1,0 +1,100 @@
+method m1
+  execute var a: Int
+  execute a := (b1 ? (b2 ? 2 : 3) : (b1 && b2 ? 4 : 5))
+    Join
+      Branch b1@2@01:
+        comment: Reachable
+        Join
+          Branch b2@3@01:
+            comment: Reachable
+          Branch !(b2@3@01):
+            comment: Reachable
+      Branch !(b1@2@01):
+        comment: Reachable
+        Join
+          Branch b1@2@01:
+            comment: Reachable
+          Branch !(b1@2@01):
+            comment: Reachable
+        Join
+          Branch b2@3@01 && b1@2@01:
+            comment: Unreachable
+          Branch !(b2@3@01 && b1@2@01):
+            comment: Reachable
+  execute a := 1 + (b1 ? 1 : 2) + 2
+    Join
+      Branch b1@2@01:
+        comment: Reachable
+      Branch !(b1@2@01):
+        comment: Reachable
+  execute a := 1
+
+method m2
+  execute a := 1
+  Branch 1:
+    comment: Reachable
+    Branch True:
+      comment: Reachable
+      execute a := (b ? (a == 1 ? 2 : 3) : (a != 1 ? 4 : 5))
+        Join
+          Branch b@9@01:
+            comment: Reachable
+            Join
+              Branch True:
+                comment: Reachable
+              Branch False:
+                comment: Unreachable
+          Branch !(b@9@01):
+            comment: Reachable
+            Join
+              Branch False:
+                comment: Unreachable
+              Branch True:
+                comment: Reachable
+      Branch 1:
+        comment: Reachable
+        Branch b@9@01:
+          comment: Reachable
+          execute a := 2
+          execute a := 4
+        Branch !(b@9@01):
+          comment: Reachable
+      Branch 2:
+        comment: Reachable
+        Branch !(b@9@01):
+          comment: Reachable
+          execute a := 3
+          execute a := 4
+        Branch b@9@01:
+          comment: Reachable
+    Branch False:
+      comment: Unreachable
+  Branch 2:
+    comment: Reachable
+    Branch False:
+      comment: Unreachable
+    Branch True:
+      comment: Reachable
+
+method m3
+  execute var a: Int
+  Branch 1:
+    comment: Reachable
+    Branch b@14@01:
+      comment: Reachable
+      execute a := (c ? 1 : 2)
+        Join
+          Branch c@15@01:
+            comment: Reachable
+          Branch !(c@15@01):
+            comment: Reachable
+    Branch !(b@14@01):
+      comment: Reachable
+  Branch 2:
+    comment: Reachable
+    Branch !(b@14@01):
+      comment: Reachable
+      execute a := 3 + 4
+    Branch b@14@01:
+      comment: Reachable
+
