@@ -447,6 +447,17 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableCaches: ScallopOption[Boolean] = opt[Boolean]("disableCaches",
+    descr = "Disables various caches in Silicon's state.",
+    default = Some(false),
+    noshort = true
+  )
+
+  def mapCache[A](opt: Option[A]): Option[A] = opt match {
+    case Some(_) if disableCaches() => None
+    case _ => opt
+  }
+
   val enableMoreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
     descr = "Enable a more complete exhale version.",
     default = Some(true),

@@ -576,7 +576,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                              v: Verifier)
                             : (PermMapDefinition, PmCache) = {
 
-    s.pmCache.get(resource, relevantChunks) match {
+    Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
         v.decider.assume(pmDef.valueDefinitions)
         (pmDef, s.pmCache)
@@ -657,7 +657,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
 
     val (smDef, smCache) =
-      s.smCache.get(resource, relevantChunks, optSmDomainDefinitionCondition) match {
+      Verifier.config.mapCache(s.smCache.get(resource, relevantChunks, optSmDomainDefinitionCondition)) match {
         case Some((smDef, _)) if !s.exhaleExt => // Cache hit (and not in extended-exhale mode)
           (smDef, s.smCache)
         case _ =>
