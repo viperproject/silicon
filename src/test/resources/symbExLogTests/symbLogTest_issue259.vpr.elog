@@ -1,0 +1,17 @@
+method foo
+  Branch 1:
+    comment: Reachable
+    Branch b@4@01:
+      comment: Reachable
+      execute assert true
+    Branch !(b@4@01):
+      comment: Reachable
+  Branch 2:
+    comment: Reachable
+    Branch !(b@4@01):
+      comment: Reachable
+      execute assert true
+      execute assert false
+    Branch b@4@01:
+      comment: Unreachable
+

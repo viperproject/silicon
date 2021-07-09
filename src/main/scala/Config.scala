@@ -196,13 +196,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     valueName = "level"
   )
 
-  val writeSymbexLogFile: ScallopOption[Boolean] = opt[Boolean]("writeSymbexLogFile",
-    descr = "Report the symbolic execution log as ExecutionTraceReport",
-    default = Some(false),
-    noshort = true,
-    hidden = true
-  )
-
   val timeout: ScallopOption[Int] = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
             + "not per method or proof obligation (default: 0, i.e. no timeout)."),
@@ -486,6 +479,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val logConfig: ScallopOption[String] = opt[String]("logConfig",
+    descr = "Path to config file specifying SymbExLogger options",
+    default = None,
+    noshort = true,
+    hidden = false
+  )
+
   val disableCatchingExceptions: ScallopOption[Boolean] = opt[Boolean]("disableCatchingExceptions",
     descr =s"Don't catch exceptions (can be useful for debugging problems with ${Silicon.name})",
     default = Some(false),
@@ -553,6 +553,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
+  validateFileOpt(logConfig)
   validateFileOpt(setAxiomatizationFile)
   validateFileOpt(multisetAxiomatizationFile)
   validateFileOpt(sequenceAxiomatizationFile)

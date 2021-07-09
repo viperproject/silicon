@@ -1,0 +1,33 @@
+method m1_1
+  execute inhale acc(x.f, 1 / 2) && acc(x.f, 1 / 2)
+  execute assert acc(x.f, write)
+
+method m1_2
+  execute inhale acc(x.f, 1 / 2) && acc(y.f, 1 / 2)
+  execute inhale x == y
+  execute assert acc(x.f, write)
+
+method m1_3
+  execute inhale acc(x.f, write) && acc(y.f, write)
+  execute inhale z == x || z == y
+    Join
+      Branch z@14@01 == x@12@01:
+        comment: Reachable
+      Branch z@14@01 != x@12@01:
+        comment: Reachable
+
+method m2_1
+  execute inhale acc(x.f, 1 / 2) && (acc(x.f, 1 / 2) && x.f == 0)
+  execute exhale acc(x.f, 1 / 2)
+  execute assert x.f == 0
+
+method m2_2
+  execute inhale acc(x.f, 1 / 2) && (acc(y.f, 1 / 2) && x.f == 0)
+  execute exhale acc(x.f, 1 / 2)
+  execute inhale x == y
+
+method m3_1
+  execute inhale acc(x.f, write) && (acc(y.f, write) && z == x)
+  execute assert x != y
+  execute inhale acc(z.f, 1 / 10)
+

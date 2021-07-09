@@ -1,0 +1,15 @@
+method m1
+  execute var i: Int
+  execute var j: Int
+  execute var b: Bool
+  execute i := 1
+  execute i := 1 + 2
+  execute i := 1 + 2 + 3
+  execute j := i * 2 + 1
+  execute b := 1 == 1
+  execute b := i != j
+  execute b := false && true
+
+method m2
+  execute assert i + 1 == 2
+

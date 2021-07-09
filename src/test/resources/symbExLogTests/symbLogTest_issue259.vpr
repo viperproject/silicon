@@ -1,0 +1,10 @@
+method foo(n:Int,b:Bool,c:Bool)
+{
+  if ( b ) {
+     assert true
+  } else {
+    assert true
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+  }
+}
