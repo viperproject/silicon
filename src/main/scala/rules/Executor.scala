@@ -25,6 +25,7 @@ import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.cfg.{ConditionalEdge, StatementBlock}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -64,29 +65,37 @@ object executor extends ExecutionRules {
       }
     }
 
-    edge match {
-      case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
-        val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
-        val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
+    s.joinPoints.headOption match {
+      case Some(joinPoint) if joinPoint == edge.target =>
+        // Join point reached, stop following edges.
         val s1 = handleOutEdge(s, edge, v)
-        eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
-          /* Using branch(...) here ensures that the edge condition is recorded
-           * as a branch condition on the pathcondition stack.
-           */
-          brancher.branch(s2, tCond, v1)(
-            (s3, v3) =>
-              exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
-                SymbExLogger.currentLog().closeScope(sepIdentifier)
-                Q(s4, v4)
-              }),
-            (_, _)  => {
-              SymbExLogger.currentLog().closeScope(sepIdentifier)
-              Success()
-            }))
+        val s2 = s1.copy(joinPoints = s1.joinPoints.tail)
+        Q(s2, v)
 
-      case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
-        val s1 = handleOutEdge(s, edge, v)
-        exec(s1, ue.target, ue.kind, v)(Q)
+      case _ => edge match {
+        case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
+          val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
+          val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
+          val s1 = handleOutEdge(s, edge, v)
+          eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
+            /* Using branch(...) here ensures that the edge condition is recorded
+             * as a branch condition on the pathcondition stack.
+             */
+            brancher.branch(s2, tCond, v1)(
+              (s3, v3) =>
+                exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
+                  SymbExLogger.currentLog().closeScope(sepIdentifier)
+                  Q(s4, v4)
+                }),
+              (_, _)  => {
+                SymbExLogger.currentLog().closeScope(sepIdentifier)
+                Success()
+              }))
+
+        case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
+          val s1 = handleOutEdge(s, edge, v)
+          exec(s1, ue.target, ue.kind, v)(Q)
+      }
     }
   }
 
@@ -101,20 +110,71 @@ object executor extends ExecutionRules {
       Q(s, v)
     } else if (edges.length == 1) {
       follow(s, edges.head, v)(Q)
-    } else {
-      val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
-      val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
-        case (fatalResult: FatalResult, _) => fatalResult
-        case (_, (edge, edgeIndex)) => {
-          if (edgeIndex != 0) {
-            SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-          }
-          SymbExLogger.currentLog().markReachable(uidBranchPoint)
-          follow(s, edge, v)(Q)
+    } else if (edges.length == 2) {
+      val edge1 = edges.head.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
+      val edge2 = edges.last.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
+
+      assert(edge1.source == edge2.source)
+      val branchPoint = edge1.source
+
+      s.methodCfg.joinPoints.get(branchPoint) match {
+        case Some(joinPoint) if
+          Verifier.config.moreJoins() &&
+          edge1.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
+          edge2.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
+          edge1.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]] &&
+          edge2.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]]
+        => {
+          // Here we assume that edge1.condition is the negation of edge2.condition.
+          assert((edge1.condition, edge2.condition) match {
+            case (exp1, ast.Not(exp2)) => exp1 == exp2
+            case (ast.Not(exp1), exp2) => exp1 == exp2
+            case _ => false
+          })
+
+          eval(s, edge1.condition, pvef(edge1.condition), v)((s1, t0, v1) =>
+            joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s2, v2, QB) => {
+              val s3 = s2.copy(joinPoints = joinPoint +: s2.joinPoints)
+              brancher.branch(s3, t0, v2)(
+                // Follow until join point.
+                (s3, v3) => follow(s3, edge1, v3)((s, v) => QB(s, null, v)),
+                (s3, v3) => follow(s3, edge2, v3)((s, v) => QB(s, null, v))
+              )
+            })(entries => {
+              val s2 = entries match {
+                case Seq(entry) => // One branch is dead
+                  entry.s
+                case Seq(entry1, entry2) => // Both branches are alive
+                  entry1.pathConditionAwareMerge(entry2)
+                case _ =>
+                  sys.error(s"Unexpected join data entries: $entries")
+              }
+              (s2, null)
+            })((s4, _, v4) => {
+              // Continue after merging at join point.
+              exec(s4, joinPoint, s4.methodCfg.inEdges(joinPoint).head.kind, v4)(Q)
+            })
+          )
+
         }
+        case _ =>
+          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
+          val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
+            case (fatalResult: FatalResult, _) => fatalResult
+            case (_, (edge, edgeIndex)) => {
+              if (edgeIndex != 0) {
+                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+              }
+              SymbExLogger.currentLog().markReachable(uidBranchPoint)
+              follow(s, edge, v)(Q)
+            }
+          }
+          SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+          res
       }
-      SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
-      res
+
+    } else {
+      sys.error("At most two out edges expected.")
     }
   }
 

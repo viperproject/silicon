@@ -16,6 +16,7 @@ import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{And, Ite, NoPerm, Term, Var}
 import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.{Map, Stack}
+import viper.silver.cfg.silver.SilverCfg.SilverBlock
 
 final case class State(g: Store = Store(),
                        h: Heap = Heap(),
@@ -33,6 +34,7 @@ final case class State(g: Store = Store(),
                        quantifiedVariables: Stack[Var] = Nil,
                        retrying: Boolean = false,
                        underJoin: Boolean = false,
+                       joinPoints: Stack[SilverBlock] = Stack.empty,
                        functionRecorder: FunctionRecorder = NoopFunctionRecorder,
                        conservingSnapshotGeneration: Boolean = false,
                        recordPossibleTriggers: Boolean = false,
@@ -133,6 +135,7 @@ object State {
                  quantifiedVariables1,
                  retrying1,
                  underJoin1,
+                 joinPoints1,
                  functionRecorder1,
                  conservingSnapshotGeneration1,
                  recordPossibleTriggers1, possibleTriggers1,
@@ -155,6 +158,7 @@ object State {
                      `quantifiedVariables1`,
                      `retrying1`,
                      `underJoin1`,
+                     `joinPoints1`,
                      functionRecorder2,
                      `conservingSnapshotGeneration1`,
                      `recordPossibleTriggers1`, possibleTriggers2,
@@ -271,6 +275,7 @@ object State {
       quantifiedVariables1,
       retrying1,
       underJoin1,
+      joinPoints1,
       functionRecorder1,
       conservingSnapshotGeneration1,
       recordPossibleTriggers1, possibleTriggers1,
@@ -293,6 +298,7 @@ object State {
           `quantifiedVariables1`,
           `retrying1`,
           `underJoin1`,
+          `joinPoints1`,
           functionRecorder2,
           `conservingSnapshotGeneration1`,
           `recordPossibleTriggers1`, possibleTriggers2,
@@ -384,7 +390,6 @@ object State {
             //assert(conservedPcs1 == conservedPcs2)
             //val conservedPcs3 = conservedPcs1
 
-
             val s3 = s1.copy(functionRecorder = functionRecorder3,
               possibleTriggers = possibleTriggers3,
               triggerExp = triggerExp3,
@@ -400,7 +405,7 @@ object State {
               smDomainNeeded = smDomainNeeded3,
               invariantContexts = invariantContexts3,
               reserveHeaps = reserveHeaps3,
-              conservedPcs = conservedPcs3
+              conservedPcs = conservedPcs3,
             )
 
             s3

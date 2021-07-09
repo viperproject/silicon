@@ -199,7 +199,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val timeout: ScallopOption[Int] = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
             + "not per method or proof obligation (default: 0, i.e. no timeout)."),
-    default = Some(0),
+    default = Some(180),
     noshort = true
   )
 
@@ -449,15 +449,29 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val enableMoreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
     descr = "Enable a more complete exhale version.",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
   val moreJoins: ScallopOption[Boolean] = opt[Boolean]("moreJoins",
     descr = "Enable more joins using a more complete implementation of state merging.",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
+
+  val disableCaches: ScallopOption[Boolean] = opt[Boolean]("disableCaches",
+    descr = "Disables various caches within the state.",
+    default = Some(true),
+    noshort = true
+  )
+
+  def mapCache[A](opt: Option[A]): Option[A] = {
+    opt match {
+      case None => None
+      case Some(_) if disableCaches() => None
+      case _ => opt
+    }
+  }
 
   val stateConsolidationMode: ScallopOption[StateConsolidationMode] = opt[StateConsolidationMode]("stateConsolidationMode",
     descr = s"One of the following modes:\n${StateConsolidationMode.helpText}",
