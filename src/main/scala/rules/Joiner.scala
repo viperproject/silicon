@@ -13,7 +13,13 @@ import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 
-case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions)
+case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
+  // Instead of merging states, we can directly merge JoinDataEntries to obtain new States.
+  // This gives us more information about the path conditions.
+  def pathConditionAwareMerge(other: JoinDataEntry[D]): State = {
+    State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
+  }
+}
 
 trait JoiningRules extends SymbolicExecutionRules {
   def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
