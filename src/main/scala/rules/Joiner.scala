@@ -16,7 +16,7 @@ import viper.silicon.verifier.Verifier
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions)
 
 trait JoiningRules extends SymbolicExecutionRules {
-  def join[D, JD](s: State, v: Verifier)
+  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -24,7 +24,7 @@ trait JoiningRules extends SymbolicExecutionRules {
 }
 
 object joiner extends JoiningRules {
-  def join[D, JD](s: State, v: Verifier)
+  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -45,10 +45,16 @@ object joiner extends JoiningRules {
          * affected by the evaluation - such as the store (by let-bindings) or the heap (by
          * state consolidations) to their initial values.
          */
-        val s4 = s3.copy(g = s1.g,
-                         h = s1.h,
-                         oldHeaps = s1.oldHeaps,
-                         underJoin = s1.underJoin)
+        val s4 =
+          if (resetState) {
+            s3.copy(g = s1.g,
+                    h = s1.h,
+                    oldHeaps = s1.oldHeaps,
+                    underJoin = s1.underJoin,
+                    // TODO: Evaluation should not affect partiallyConsumedHeap, probably
+                    ssCache = s1.ssCache,
+                    partiallyConsumedHeap = s1.partiallyConsumedHeap)
+          } else s3
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
         Success()
       })
