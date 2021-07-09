@@ -449,7 +449,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val disableCaches: ScallopOption[Boolean] = opt[Boolean]("disableCaches",
     descr = "Disables various caches in Silicon's state.",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
@@ -470,20 +470,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val disableCaches: ScallopOption[Boolean] = opt[Boolean]("disableCaches",
-    descr = "Disables various caches within the state.",
-    default = Some(true),
-    noshort = true
-  )
-
-  def mapCache[A](opt: Option[A]): Option[A] = {
-    opt match {
-      case None => None
-      case Some(_) if disableCaches() => None
-      case _ => opt
-    }
-  }
-
   val stateConsolidationMode: ScallopOption[StateConsolidationMode] = opt[StateConsolidationMode]("stateConsolidationMode",
     descr = s"One of the following modes:\n${StateConsolidationMode.helpText}",
     default = Some(StateConsolidationMode.Default),
@@ -493,7 +479,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val numberOfParallelVerifiers: ScallopOption[Int] = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
              + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
-    default = Some(Runtime.getRuntime.availableProcessors()),
+    default = Some(1),
     noshort = true
   )
 
