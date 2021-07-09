@@ -454,7 +454,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   def mapCache[A](opt: Option[A]): Option[A] = opt match {
-    case None => None
     case Some(_) if disableCaches() => None
     case _ => opt
   }
