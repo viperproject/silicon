@@ -241,7 +241,7 @@ object consumer extends ConsumptionRules {
         val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          joiner.join[(Heap, Term), (Heap, Term)](s1, v1)((s1, v1, QB) => {
+          joiner.join[(Heap, Term), (Heap, Term)](s1, v1, resetState = false)((s1, v1, QB) => {
             branch(s1, t0, v1)(
               (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
                 SymbExLogger.currentLog().closeScope(uidCondExp)

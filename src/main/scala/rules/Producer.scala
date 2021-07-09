@@ -205,6 +205,38 @@ object producer extends ProductionRules {
       continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
 
     val produced = a match {
+      case imp @ ast.Implies(e0, a0) if !a.isPure && Verifier.config.moreJoins() =>
+        val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
+        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
+
+        eval(s, e0, pve, v)((s1, t0, v1) =>
+          joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
+            branch(s1, t0, v1)(
+              (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
+                SymbExLogger.currentLog().closeScope(uidImplies)
+                QB(s3, null, v3)
+              }),
+              (s2, v2) => {
+                v2.decider.assume(sf(sorts.Snap, v2) === Unit)
+                /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
+                 * otherwise. In order words, only make this assumption if `sf` has
+                 * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
+                 */
+                SymbExLogger.currentLog().closeScope(uidImplies)
+                QB(s2, null, v2)
+              })
+          )(entries => {
+            val s2 = entries match {
+              case Seq(entry) => // One branch is dead
+                entry.s
+              case Seq(entry1, entry2) => // Both branches are alive
+                entry1.pathConditionAwareMerge(entry2)
+              case _ =>
+                sys.error(s"Unexpected join data entries: $entries")}
+            (s2, null)
+          })((s, _, v) => Q(s, v))
+        )
+
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
         val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
@@ -224,6 +256,33 @@ object producer extends ProductionRules {
                 SymbExLogger.currentLog().closeScope(uidImplies)
                 Q(s2, v2)
             }))
+
+      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && Verifier.config.moreJoins() =>
+        val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
+        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
+
+        eval(s, e0, pve, v)((s1, t0, v1) =>
+          joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
+            branch(s1, t0, v1)(
+              (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
+                SymbExLogger.currentLog().closeScope(uidCondExp)
+                QB(s3, null, v3)
+              }),
+              (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
+                SymbExLogger.currentLog().closeScope(uidCondExp)
+                QB(s3, null, v3)
+              }))
+          )(entries => {
+            val s2 = entries match {
+              case Seq(entry) => // One branch is dead
+                entry.s
+              case Seq(entry1, entry2) => // Both branches are alive
+                entry1.pathConditionAwareMerge(entry2)
+              case _ =>
+                sys.error(s"Unexpected join data entries: $entries")}
+            (s2, null)
+          })((s, _, v) => Q(s, v))
+        )
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
