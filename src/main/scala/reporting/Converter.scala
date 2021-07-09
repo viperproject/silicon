@@ -778,7 +778,7 @@ case class Converter(
 case class DomainValueEntry(domain: String, id: String) extends ExtractedModelEntry {
   def asValueEntry: ValueEntry = ConstantEntry(toString)
   override def toString: String = s"${domain}_$id"
-  def getDomainNam: String = domain.takeWhile(_!='[')
+  def getDomainName: String = domain.takeWhile(_!='[')
 }
 /** same as DomainValueEntry but with some inforamtion about functions defined on this domain an their coresponding result when using original as input for the function */
 case class ExtendedDomainValueEntry(original: DomainValueEntry, info: Map[ExtractedFunction, ExtractedModelEntry]) extends ExtractedModelEntry {
