@@ -68,7 +68,6 @@ object Silicon {
                                       reporter: Reporter,
                                       debugInfo: Seq[(String, Any)] = Nil)
                                      : Silicon = {
-
     val silicon = new Silicon(PluginAwareReporter(reporter), debugInfo)
     silicon.parseCommandLine(args :+ dummyInputFilename)
 

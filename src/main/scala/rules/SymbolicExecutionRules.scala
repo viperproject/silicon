@@ -21,7 +21,6 @@ trait SymbolicExecutionRules {
         wrapped
       case _ => ve
     }
-    //for some reason we cannot pass --coutereaxmples as an argument...
     if (v != null && Verifier.config.counterexample.toOption.isDefined) {
 
       if (generateNewModel || v.decider.getModel() == null) {
@@ -40,7 +39,7 @@ trait SymbolicExecutionRules {
             SiliconVariableCounterexample(s.g, nativeModel)
           case "mapped" => 
             SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel)
-          case _ =>SiliconVariableCounterexample(s.g, nativeModel)
+          case _ => SiliconVariableCounterexample(s.g, nativeModel)
         }
         
         val finalCE = ceTrafo match {

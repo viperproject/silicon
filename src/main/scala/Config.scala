@@ -524,7 +524,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(timeout) {
