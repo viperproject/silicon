@@ -184,6 +184,43 @@ object consumer extends ConsumptionRules {
       v.logger.debug("hR = " + s.reserveHeaps.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
 
     val consumed = a match {
+      case imp @ ast.Implies(e0, a0) if !a.isPure && Verifier.config.moreJoins() =>
+        val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
+        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
+
+        evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
+          joiner.join[(Heap, Term), (Heap, Term)](s1, v1, resetState = false)((s1, v1, QB) =>
+            branch(s1, t0, v1)(
+              (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
+                SymbExLogger.currentLog().closeScope(uidImplies)
+                QB(s3, (h1, t1), v3)
+              }),
+              (s2, v2) => {
+                SymbExLogger.currentLog().closeScope(uidImplies)
+                QB(s2, (h, Unit), v2)
+              })
+          )(entries => {
+            val s2 = entries match {
+              case Seq(entry) => // One branch is dead
+                (entry.s, entry.data)
+              case Seq(entry1, entry2) => // Both branches are alive
+                val mergedData = (
+                  State.mergeHeap(
+                    entry1.data._1, And(entry1.pathConditions.branchConditions),
+                    entry2.data._1, And(entry2.pathConditions.branchConditions),
+                  ),
+                  // Asume that entry1.pcs is inverse of entry2.pcs
+                  Ite(And(entry1.pathConditions.branchConditions), entry1.data._2, entry2.data._2)
+                )
+                (entry1.pathConditionAwareMerge(entry2), mergedData)
+              case _ =>
+                sys.error(s"Unexpected join data entries: $entries")}
+            s2
+          })((s4, data, v4) => {
+            Q(s4, data._1, data._2, v4)
+          })
+        )
+
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
         val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
@@ -198,6 +235,44 @@ object consumer extends ConsumptionRules {
               SymbExLogger.currentLog().closeScope(uidImplies)
               Q(s2, h, Unit, v2)
             }))
+
+      case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && Verifier.config.moreJoins() =>
+        val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
+        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
+
+        eval(s, e0, pve, v)((s1, t0, v1) =>
+          joiner.join[(Heap, Term), (Heap, Term)](s1, v1)((s1, v1, QB) => {
+            branch(s1, t0, v1)(
+              (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
+                SymbExLogger.currentLog().closeScope(uidCondExp)
+                QB(s3, (h1, t1), v3)
+              }),
+              (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h1, t1, v3) => {
+                SymbExLogger.currentLog().closeScope(uidCondExp)
+                QB(s3, (h1, t1), v3)
+              }))
+          })(entries => {
+            val s2 = entries match {
+              case Seq(entry) => // One branch is dead
+                (entry.s, entry.data)
+              case Seq(entry1, entry2) => // Both branches are alive
+                val mergedData = (
+                  State.mergeHeap(
+                    entry1.data._1, And(entry1.pathConditions.branchConditions),
+                    entry2.data._1, And(entry2.pathConditions.branchConditions),
+                  ),
+                  // Asume that entry1.pcs is inverse of entry2.pcs
+                  Ite(And(entry1.pathConditions.branchConditions), entry1.data._2, entry2.data._2)
+                )
+                (entry1.pathConditionAwareMerge(entry2), mergedData)
+              case _ =>
+                sys.error(s"Unexpected join data entries: $entries")}
+            s2
+          })((s4, data, v4) => {
+            Q(s4, data._1, data._2, v4)
+          })
+        )
+
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
