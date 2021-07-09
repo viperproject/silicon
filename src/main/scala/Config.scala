@@ -449,7 +449,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val disableCaches: ScallopOption[Boolean] = opt[Boolean]("disableCaches",
     descr = "Disables various caches in Silicon's state.",
-    default = Some(true),
+    default = Some(false),
     noshort = true
   )
 
