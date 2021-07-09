@@ -453,6 +453,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val moreJoins: ScallopOption[Boolean] = opt[Boolean]("moreJoins",
+    descr = "Enable more joins using a more complete implementation of state merging.",
+    default = Some(false),
+    noshort = true
+  )
+
   val stateConsolidationMode: ScallopOption[StateConsolidationMode] = opt[StateConsolidationMode]("stateConsolidationMode",
     descr = s"One of the following modes:\n${StateConsolidationMode.helpText}",
     default = Some(StateConsolidationMode.Default),
