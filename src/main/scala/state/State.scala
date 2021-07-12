@@ -263,8 +263,6 @@ object State {
 
   def merge(s1: State, pc1: RecordedPathConditions, s2: State, pc2: RecordedPathConditions): State = {
 
-    println("MERGE")
-
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, oldHeaps1,
