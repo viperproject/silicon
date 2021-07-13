@@ -11,6 +11,7 @@ import viper.silicon.reporting.Converter
 import viper.silicon.state.{State, Store}
 import viper.silver.verifier.{Counterexample, FailureContext, Model, VerificationError}
 import viper.silicon.state.terms.Term
+import viper.silver.ast
 
 /*
  * Results
@@ -22,7 +23,7 @@ import viper.silicon.state.terms.Term
 
 /* TODO: Make VerificationResult immutable */
 sealed abstract class VerificationResult {
-  var previous: Seq[VerificationResult] = Seq() //Sets had problems with equality
+  var previous: Vector[VerificationResult] = Vector() //Sets had problems with equality
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult
@@ -79,7 +80,7 @@ case class Failure/*[ST <: Store[ST],
                    H <: Heap[H],
                    S <: State[ST, H, S]]*/
                   (message: VerificationError)
-extends FatalResult {
+  extends FatalResult {
 
   /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
   var load: Option[Seq[Term]] = None
@@ -91,15 +92,12 @@ extends FatalResult {
   override lazy val toString = message.readableMessage
 }
 
-case class SilFailureContext(branchConditions: Seq[viper.silver.ast.Exp], counterexample: Option[Counterexample]) extends FailureContext {
-
-      override lazy val toString =
-        (if(branchConditions.nonEmpty)
-          ("\n\t\tunder branch conditions:\n" +
-            branchConditions.map(bc => (bc.toString + " [ " + bc.pos.toString + " ] ")).mkString("\t\t"," ~~> ","") ) else "") +
-          (if(counterexample.isDefined) "\n\t\tcounterexample:\n" + counterexample.get.toString else "")
-
-  override def counterExample: Option[Counterexample] = counterexample
+case class SilFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
+  lazy val branchConditionString = if(branchConditions.nonEmpty)
+    ("\n\t\tunder branch conditions:\n" +
+      branchConditions.map(bc => (bc.toString + " [ " + bc.pos.toString + " ] ")).mkString("\t\t"," ~~> ","") ) else ""
+  lazy val counterExampleString = if(counterExample.isDefined) "\n\t\tcounterexample:\n" + counterExample.get.toString else ""
+  override lazy val toString = branchConditionString + counterExampleString
 }
 
 trait SiliconCounterexample extends Counterexample {
