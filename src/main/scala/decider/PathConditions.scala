@@ -81,6 +81,7 @@ private class PathConditionStackLayer
 
     _branchCondition = Some(condition)
   }
+
   def branchConditionExp_=(condition: Option[ast.Exp]): Unit = {
     assert(_branchConditionExp.isEmpty,
       s"Branch condition is already set (to ${_branchConditionExp.get}), "
