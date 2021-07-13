@@ -155,7 +155,7 @@ object brancher extends BranchingRules {
       SymbExLogger.currentLog().markReachable(uidBranchPoint)
       executionFlowController.locally(s, v)((s1, v1) => {
         v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-        v1.decider.setCurrentBranchCondition(condition,conditionExp)
+        v1.decider.setCurrentBranchCondition(condition, conditionExp)
 
         fThen(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
       })
