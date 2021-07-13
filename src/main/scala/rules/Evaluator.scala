@@ -563,7 +563,7 @@ object evaluator extends EvaluationRules {
                 case wc: QuantifiedMagicWandChunk => PredicateTrigger(wc.id.toString, wc.wsf, ts1)
               }
 
-              evalImplies(s2, And(trig, bc), None ,body, false, pve, v1)((s3, tImplies, v2) => {
+              evalImplies(s2, And(trig, bc), None, body, false, pve, v1)((s3, tImplies, v2) => {
                 val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
                 bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, v2)((s4, ts2, v3) => {
                   SymbExLogger.currentLog().closeScope(uidImplies)
@@ -810,7 +810,7 @@ object evaluator extends EvaluationRules {
                   case false =>
                     v1.decider.assume(Less(t1, SeqLength(t0)))
                     createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1) combine
-                      Q(s1, SeqAt(t0, t1), v1) }
+                      Q(s1, SeqAt(t0, t1), v1)}
               case false =>
                 v1.decider.assume(AtLeast(t1, IntLiteral(0)))
                 v1.decider.assert(Less(t1, SeqLength(t0))) {
@@ -844,7 +844,7 @@ object evaluator extends EvaluationRules {
                   case false =>
                     v1.decider.assume(Less(t1, SeqLength(t0)))
                     createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1) combine
-                      Q(s1, SeqUpdate(t0, t1, t2), v1) }
+                      Q(s1, SeqUpdate(t0, t1, t2), v1)}
               case false =>
                 v1.decider.assume(AtLeast(t1, IntLiteral(0)))
                 v1.decider.assert(Less(t1, SeqLength(t0))) {
@@ -855,7 +855,7 @@ object evaluator extends EvaluationRules {
                     v1.decider.assume(Less(t1, SeqLength(t0)))
                     createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1) combine
                       Q(s1, SeqUpdate(t0, t1, t2), v1) combine
-                        createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1) }
+                        createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)}
             }
           }
         })
@@ -1482,8 +1482,7 @@ object evaluator extends EvaluationRules {
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, Some(viper.silicon.utils.ast.BigAnd(exps)),
-              v2, true) _ tupled swapIfAnd(
+            brancher.branch(s2, t0, Some(viper.silicon.utils.ast.BigAnd(exps)), v2, true) _ tupled swapIfAnd(
               (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>
