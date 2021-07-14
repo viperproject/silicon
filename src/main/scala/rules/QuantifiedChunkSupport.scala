@@ -726,73 +726,73 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult = {
 
+    val gain = PermTimes(tPerm, s.permissionScalingFactor)
+    val (ch: QuantifiedBasicChunk, inverseFunctions) =
+      quantifiedChunkSupporter.createQuantifiedChunk(
+        qvars                = qvars,
+        condition            = tCond,
+        resource             = resource,
+        arguments            = tArgs,
+        permissions          = gain,
+        codomainQVars        = formalQVars,
+        sm                   = tSnap,
+        additionalInvArgs    = s.relevantQuantifiedVariables(tArgs),
+        userProvidedTriggers = optTrigger.map(_ => tTriggers),
+        qidPrefix            = qid,
+        v                    = v)
+    val (effectiveTriggers, effectiveTriggersQVars) =
+      optTrigger match {
+        case Some(_) =>
+          /* Explicit triggers were provided */
+
+          val trig = tTriggers map (t => Trigger(t.p map {
+            /* TODO: Understand and document why the provided trigger ft/pt is sometimes,
+             *       but not always, replaced.
+             */
+            case ft: FieldTrigger =>
+              resource match {
+                case field: ast.Field if ft.field == field.name => FieldTrigger(ft.field, tSnap, ft.at)
+                case _ => ft
+              }
+            case pt: PredicateTrigger =>
+              resource match {
+                case p: ast.Predicate if pt.predname == p.name =>
+                  PredicateTrigger(pt.predname, tSnap, pt.args)
+                case wand: ast.MagicWand if pt.predname == MagicWandIdentifier(wand, Verifier.program).toString =>
+                  PredicateTrigger(pt.predname, tSnap, pt.args)
+                case _ => pt
+              }
+            case other => other
+          }))
+
+          (trig, qvars)
+        case None =>
+          /* No explicit triggers were provided and we resort to those from the inverse
+           * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
+           * Note that the trigger generation code might have added quantified variables
+           * to that axiom.
+           */
+          (inverseFunctions.axiomInversesOfInvertibles.triggers,
+            inverseFunctions.axiomInversesOfInvertibles.vars)
+      }
+
+    if (effectiveTriggers.isEmpty) {
+      val msg = s"No triggers available for quantifier at ${forall.pos}"
+      v.reporter report InternalWarningMessage(msg)
+      v.logger warn msg
+    }
+
+    v.decider.prover.comment("Nested auxiliary terms: globals")
+    v.decider.assume(auxGlobals)
+    v.decider.prover.comment("Nested auxiliary terms: non-globals")
+    v.decider.assume(
+      auxNonGlobals.map(_.copy(
+        vars = effectiveTriggersQVars,
+        triggers = effectiveTriggers)))
+
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
     v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
       case true =>
-        val gain = PermTimes(tPerm, s.permissionScalingFactor)
-        val (ch: QuantifiedBasicChunk, inverseFunctions) =
-          quantifiedChunkSupporter.createQuantifiedChunk(
-            qvars                = qvars,
-            condition            = tCond,
-            resource             = resource,
-            arguments            = tArgs,
-            permissions          = gain,
-            codomainQVars        = formalQVars,
-            sm                   = tSnap,
-            additionalInvArgs    = s.relevantQuantifiedVariables(tArgs),
-            userProvidedTriggers = optTrigger.map(_ => tTriggers),
-            qidPrefix            = qid,
-            v                    = v)
-        val (effectiveTriggers, effectiveTriggersQVars) =
-          optTrigger match {
-            case Some(_) =>
-              /* Explicit triggers were provided */
-
-              val trig = tTriggers map (t => Trigger(t.p map {
-                /* TODO: Understand and document why the provided trigger ft/pt is sometimes,
-                 *       but not always, replaced.
-                 */
-                case ft: FieldTrigger =>
-                  resource match {
-                    case field: ast.Field if ft.field == field.name => FieldTrigger(ft.field, tSnap, ft.at)
-                    case _ => ft
-                  }
-                case pt: PredicateTrigger =>
-                  resource match {
-                    case p: ast.Predicate if pt.predname == p.name =>
-                      PredicateTrigger(pt.predname, tSnap, pt.args)
-                    case wand: ast.MagicWand if pt.predname == MagicWandIdentifier(wand, Verifier.program).toString =>
-                      PredicateTrigger(pt.predname, tSnap, pt.args)
-                    case _ => pt
-                  }
-                case other => other
-              }))
-
-              (trig, qvars)
-            case None =>
-              /* No explicit triggers were provided and we resort to those from the inverse
-               * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
-               * Note that the trigger generation code might have added quantified variables
-               * to that axiom.
-               */
-              (inverseFunctions.axiomInversesOfInvertibles.triggers,
-                inverseFunctions.axiomInversesOfInvertibles.vars)
-          }
-
-        if (effectiveTriggers.isEmpty) {
-          val msg = s"No triggers available for quantifier at ${forall.pos}"
-          v.reporter report InternalWarningMessage(msg)
-          v.logger warn msg
-        }
-
-        v.decider.prover.comment("Nested auxiliary terms: globals")
-        v.decider.assume(auxGlobals)
-        v.decider.prover.comment("Nested auxiliary terms: non-globals")
-        v.decider.assume(
-          auxNonGlobals.map(_.copy(
-            vars = effectiveTriggersQVars,
-            triggers = effectiveTriggers)))
-
         val ax = inverseFunctions.axiomInversesOfInvertibles
         val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
 
