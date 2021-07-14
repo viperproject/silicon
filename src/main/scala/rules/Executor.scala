@@ -48,7 +48,7 @@ object executor extends ExecutionRules {
   import evaluator._
   import producer._
 
-  private def follow(s: State, edge: SilverEdge, v: Verifier)
+  private def follow(s: State, edge: SilverEdge, v: Verifier, joinPoint: Option[SilverBlock])
                     (Q: (State, Verifier) => VerificationResult)
                     : VerificationResult = {
 
@@ -65,12 +65,11 @@ object executor extends ExecutionRules {
       }
     }
 
-    s.joinPoints.headOption match {
-      case Some(joinPoint) if joinPoint == edge.target =>
+    joinPoint match {
+      case Some(jp) if jp == edge.target =>
         // Join point reached, stop following edges.
         val s1 = handleOutEdge(s, edge, v)
-        val s2 = s1.copy(joinPoints = s1.joinPoints.tail)
-        Q(s2, v)
+        Q(s1, v)
 
       case _ => edge match {
         case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
@@ -83,7 +82,7 @@ object executor extends ExecutionRules {
              */
             brancher.branch(s2, tCond, v1)(
               (s3, v3) =>
-                exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
+                exec(s3, ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
                   SymbExLogger.currentLog().closeScope(sepIdentifier)
                   Q(s4, v4)
                 }),
@@ -94,7 +93,7 @@ object executor extends ExecutionRules {
 
         case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
           val s1 = handleOutEdge(s, edge, v)
-          exec(s1, ue.target, ue.kind, v)(Q)
+          exec(s1, ue.target, ue.kind, v, joinPoint)(Q)
       }
     }
   }
@@ -102,14 +101,15 @@ object executor extends ExecutionRules {
   private def follows(s: State,
                       edges: Seq[SilverEdge],
                       @unused pvef: ast.Exp => PartialVerificationError,
-                      v: Verifier)
+                      v: Verifier,
+                      joinPoint: Option[SilverBlock])
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult = {
 
     if (edges.isEmpty) {
       Q(s, v)
     } else if (edges.length == 1) {
-      follow(s, edges.head, v)(Q)
+      follow(s, edges.head, v, joinPoint)(Q)
     } else if (edges.length == 2) {
       val edge1 = edges.head.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
       val edge2 = edges.last.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
@@ -118,7 +118,7 @@ object executor extends ExecutionRules {
       val branchPoint = edge1.source
 
       s.methodCfg.joinPoints.get(branchPoint) match {
-        case Some(joinPoint) if
+        case Some(newJoinPoint) if
           Verifier.config.moreJoins() &&
           edge1.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
           edge2.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
@@ -134,11 +134,10 @@ object executor extends ExecutionRules {
 
           eval(s, edge1.condition, pvef(edge1.condition), v)((s1, t0, v1) =>
             joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s2, v2, QB) => {
-              val s3 = s2.copy(joinPoints = joinPoint +: s2.joinPoints)
-              brancher.branch(s3, t0, v2)(
+              brancher.branch(s2, t0, v2)(
                 // Follow until join point.
-                (s3, v3) => follow(s3, edge1, v3)((s, v) => QB(s, null, v)),
-                (s3, v3) => follow(s3, edge2, v3)((s, v) => QB(s, null, v))
+                (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint))((s, v) => QB(s, null, v)),
+                (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint))((s, v) => QB(s, null, v))
               )
             })(entries => {
               val s2 = entries match {
@@ -152,7 +151,7 @@ object executor extends ExecutionRules {
               (s2, null)
             })((s4, _, v4) => {
               // Continue after merging at join point.
-              exec(s4, joinPoint, s4.methodCfg.inEdges(joinPoint).head.kind, v4)(Q)
+              exec(s4, newJoinPoint, s4.methodCfg.inEdges(newJoinPoint).head.kind, v4, joinPoint)(Q)
             })
           )
 
@@ -166,7 +165,7 @@ object executor extends ExecutionRules {
                 SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
               }
               SymbExLogger.currentLog().markReachable(uidBranchPoint)
-              follow(s, edge, v)(Q)
+              follow(s, edge, v, joinPoint)(Q)
             }
           }
           SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
@@ -182,17 +181,17 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    exec(s, graph.entry, cfg.Kind.Normal, v)(Q)
+    exec(s, graph.entry, cfg.Kind.Normal, v, None)(Q)
   }
 
-  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier)
+  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier, joinPoint: Option[SilverBlock])
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
     block match {
       case cfg.StatementBlock(stmt) =>
         execs(s, stmt, v)((s1, v1) =>
-          follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1)(Q))
+          follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1, joinPoint)(Q))
 
       case   _: cfg.PreconditionBlock[ast.Stmt, ast.Exp]
            | _: cfg.PostconditionBlock[ast.Stmt, ast.Exp] =>
@@ -264,7 +263,7 @@ object executor extends ExecutionRules {
                         else {
                           execs(s3, stmts, v2)((s4, v3) => {
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                            follows(s4, sortedEdges, WhileFailed, v3)(Q)})}})}})}))
+                            follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)})}})}})}))
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or

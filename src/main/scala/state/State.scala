@@ -34,7 +34,6 @@ final case class State(g: Store = Store(),
                        quantifiedVariables: Stack[Var] = Nil,
                        retrying: Boolean = false,
                        underJoin: Boolean = false,
-                       joinPoints: Stack[SilverBlock] = Stack.empty,
                        functionRecorder: FunctionRecorder = NoopFunctionRecorder,
                        conservingSnapshotGeneration: Boolean = false,
                        recordPossibleTriggers: Boolean = false,
@@ -135,7 +134,6 @@ object State {
                  quantifiedVariables1,
                  retrying1,
                  underJoin1,
-                 joinPoints1,
                  functionRecorder1,
                  conservingSnapshotGeneration1,
                  recordPossibleTriggers1, possibleTriggers1,
@@ -158,7 +156,6 @@ object State {
                      `quantifiedVariables1`,
                      `retrying1`,
                      `underJoin1`,
-                     `joinPoints1`,
                      functionRecorder2,
                      `conservingSnapshotGeneration1`,
                      `recordPossibleTriggers1`, possibleTriggers2,
@@ -262,7 +259,7 @@ object State {
   }
 
   def merge(s1: State, pc1: RecordedPathConditions, s2: State, pc2: RecordedPathConditions): State = {
-    println("Merge")
+    //println("Merge")
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, oldHeaps1,
@@ -273,7 +270,6 @@ object State {
       quantifiedVariables1,
       retrying1,
       underJoin1,
-      joinPoints1,
       functionRecorder1,
       conservingSnapshotGeneration1,
       recordPossibleTriggers1, possibleTriggers1,
@@ -296,7 +292,6 @@ object State {
           `quantifiedVariables1`,
           `retrying1`,
           `underJoin1`,
-          `joinPoints1`,
           functionRecorder2,
           `conservingSnapshotGeneration1`,
           `recordPossibleTriggers1`, possibleTriggers2,
