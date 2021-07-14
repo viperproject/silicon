@@ -59,7 +59,8 @@ object joiner extends JoiningRules {
                     underJoin = s1.underJoin,
                     // TODO: Evaluation should not affect partiallyConsumedHeap, probably
                     ssCache = s1.ssCache,
-                    partiallyConsumedHeap = s1.partiallyConsumedHeap)
+                    partiallyConsumedHeap = s1.partiallyConsumedHeap,
+                    invariantContexts = s1.invariantContexts)
           } else s3
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
         Success()
