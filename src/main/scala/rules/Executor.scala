@@ -21,7 +21,6 @@ import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, 
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
@@ -480,15 +479,10 @@ object executor extends ExecutionRules {
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            v2.decider.assert(IsNonNegative(tPerm)){
-              case true =>
-                val wildcards = s2.constrainableARPs -- s1.constrainableARPs
-                predicateSupporter.fold(s2, predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
-              case false =>
-                createFailure(pve dueTo NegativePermission(ePerm), v2, s2)
-            }
-          }))
+          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
+            permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
+              val wildcards = s3.constrainableARPs -- s1.constrainableARPs
+              predicateSupporter.fold(s3, predicate, tArgs, tPerm, wildcards, pve, v3)(Q)})))
 
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
@@ -508,13 +502,10 @@ object executor extends ExecutionRules {
               s2.smCache
             }
 
-            v2.decider.assert(IsNonNegative(tPerm)){
-              case true =>
-                val wildcards = s2.constrainableARPs -- s1.constrainableARPs
-                predicateSupporter.unfold(s2.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v2, pa)(Q)
-              case false =>
-                createFailure(pve dueTo NegativePermission(ePerm), v2, s2)
-            }
+            permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
+              val wildcards = s3.constrainableARPs -- s1.constrainableARPs
+              predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v3, pa)(Q)
+            })
           }))
 
       case pckg @ ast.Package(wand, proofScript) =>
