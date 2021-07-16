@@ -196,13 +196,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     valueName = "level"
   )
 
-  val writeSymbexLogFile: ScallopOption[Boolean] = opt[Boolean]("writeSymbexLogFile",
-    descr = "Report the symbolic execution log as ExecutionTraceReport",
-    default = Some(false),
-    noshort = true,
-    hidden = true
-  )
-
   val timeout: ScallopOption[Int] = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
             + "not per method or proof obligation (default: 0, i.e. no timeout)."),
@@ -454,6 +447,17 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableCaches: ScallopOption[Boolean] = opt[Boolean]("disableCaches",
+    descr = "Disables various caches in Silicon's state.",
+    default = Some(false),
+    noshort = true
+  )
+
+  def mapCache[A](opt: Option[A]): Option[A] = opt match {
+    case Some(_) if disableCaches() => None
+    case _ => opt
+  }
+
   val enableMoreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
     descr = "Enable a more complete exhale version.",
     default = Some(false),
@@ -484,6 +488,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
             "a file '<tempDirectory>/<methodName>.dot'.",
     default = Some(false),
     noshort = true
+  )
+
+  val logConfig: ScallopOption[String] = opt[String]("logConfig",
+    descr = "Path to config file specifying SymbExLogger options",
+    default = None,
+    noshort = true,
+    hidden = false
   )
 
   val disableCatchingExceptions: ScallopOption[Boolean] = opt[Boolean]("disableCatchingExceptions",
@@ -553,6 +564,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
+  validateFileOpt(logConfig)
   validateFileOpt(setAxiomatizationFile)
   validateFileOpt(multisetAxiomatizationFile)
   validateFileOpt(sequenceAxiomatizationFile)

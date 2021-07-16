@@ -7,9 +7,10 @@
 package viper.silicon.rules
 
 import scala.collection.mutable.ListBuffer
-import viper.silicon.{MList, MMap, SymbExLogger}
+import viper.silicon.{MList, MMap}
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.rules.chunkSupporter.findChunksWithID
 import viper.silicon.state._
@@ -43,7 +44,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     //       args. E.g. the summary could be created with free arguments ?a1, ?a2, ...; this summary
     //       could be cached, and ?a1 etc. would be replaced before returning the summary to the caller.
 
-    s.ssCache.get((resource, relevantChunks, args)) match {
+    Verifier.config.mapCache(s.ssCache.get((resource, relevantChunks, args))) match {
       case Some((_taggedSummarisingSnapshot, _summarisingSnapshotDefinitions, _permissionSum)) =>
         return (s, _taggedSummarisingSnapshot, _summarisingSnapshotDefinitions, _permissionSum)
       case _ =>

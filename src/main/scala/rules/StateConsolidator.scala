@@ -10,6 +10,8 @@ import scala.annotation.unused
 import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{CommentRecord, SingleMergeRecord}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -53,6 +55,8 @@ class MinimalStateConsolidator extends StateConsolidationRules {
   */
 class DefaultStateConsolidator(protected val config: Config) extends StateConsolidationRules {
   def consolidate(s: State, v: Verifier): State = {
+    val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(comLog)
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(config.z3SaturationTimeouts.beforeIteration)
 
@@ -69,7 +73,11 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         var newChunks: Seq[NonQuantifiedChunk] = nonQuantifiedChunks
         var functionRecorder: FunctionRecorder = fr
 
+        var fixedPointRound: Int = 0
         do {
+          val roundLog = new CommentRecord("Round " + fixedPointRound, s, v.decider.pcs)
+          val roundSepIdentifier = SymbExLogger.currentLog().openScope(roundLog)
+
           val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
 
           snapEqs foreach v.decider.assume
@@ -79,6 +87,9 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           destChunks = Nil
           newChunks = mergedChunks
           continue = snapEqs.nonEmpty
+
+          SymbExLogger.currentLog().closeScope(roundSepIdentifier)
+          fixedPointRound = fixedPointRound + 1
         } while (continue)
 
         val allChunks = mergedChunks ++ otherChunks
@@ -93,6 +104,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
         }
 
+        SymbExLogger.currentLog().closeScope(sepIdentifier)
         (functionRecorder, hs :+ Heap(allChunks))
       }
 
@@ -114,6 +126,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
   }
 
   def merge(fr1: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
+    val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(mergeLog)
     val (nonQuantifiedChunks, otherChunks) = partition(h)
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, nonQuantifiedChunks, newNonQuantifiedChunks, v)
@@ -126,6 +140,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
     }
 
+    SymbExLogger.currentLog().closeScope(sepIdentifier)
     (fr2, Heap(mergedChunks ++ otherChunks ++ newOtherChunk))
   }
 
@@ -138,11 +153,13 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
                             Seq[NonQuantifiedChunk],
                             InsertionOrderedSet[Term]) = {
 
+    val mergeLog = new SingleMergeRecord(destChunks, newChunks, v.decider.pcs)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(mergeLog)
     // bookkeeper.heapMergeIterations += 1
 
     val initial = (fr, destChunks, Seq[NonQuantifiedChunk](), InsertionOrderedSet[Term]())
 
-    newChunks.foldLeft(initial) { case ((fr1, accMergedChunks, accNewChunks, accSnapEqs), nextChunk) =>
+    val result = newChunks.foldLeft(initial) { case ((fr1, accMergedChunks, accNewChunks, accSnapEqs), nextChunk) =>
       /* accMergedChunks: already merged chunks
        * accNewChunks: newly added chunks
        * accSnapEqs: collected snapshot equalities
@@ -162,6 +179,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           (fr1, nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accSnapEqs)
       }
     }
+    SymbExLogger.currentLog().closeScope(sepIdentifier)
+    result
   }
 
   // Merges two chunks that are aliases (i.e. that have the same id and the args are proven to be equal)

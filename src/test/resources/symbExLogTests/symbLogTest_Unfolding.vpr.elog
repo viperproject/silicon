@@ -1,0 +1,8 @@
+predicate tuple
+
+method setTuple
+  execute unfold acc(tuple(this), write)
+  execute this.left := l
+  execute this.right := r
+  execute fold acc(tuple(this), write)
+

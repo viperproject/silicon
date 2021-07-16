@@ -84,7 +84,7 @@ domain PyType {
   
   unique function slice(): PyType
   
-  unique function range(): PyType
+  unique function py_range(): PyType
   
   unique function Iterator_basic(): PyType
   
@@ -274,8 +274,8 @@ domain PyType {
     extends_(slice(), object()) && get_basic(slice()) == slice()
   }
   
-  axiom subtype_range {
-    extends_(range(), object()) && get_basic(range()) == range()
+  axiom subtype_py_range {
+    extends_(py_range(), object()) && get_basic(py_range()) == py_range()
   }
   
   axiom subtype_Iterator {
@@ -508,33 +508,33 @@ function Measure$check(map: Seq[Measure$], key: Ref, value: Int): Bool
   (forall m: Measure$ :: { (m in map) } (m in map) ==> Measure$guard(m) && Measure$key(m) == key ==> Measure$value(m) > value)
 }
 
-function range___create__(start: Int, stop: Int, ctr: Int): Ref
+function py_range___create__(start: Int, stop: Int, ctr: Int): Ref
   requires stop >= start
-  ensures range___val__(result) == [start..stop)
-  ensures range___start__(result) == start
-  ensures range___stop__(result) == stop
-  ensures typeof(result) == range()
+  ensures py_range___val__(result) == [start..stop)
+  ensures py_range___start__(result) == start
+  ensures py_range___stop__(result) == stop
+  ensures typeof(result) == py_range()
 
 
-function range___val__(self: Ref): Seq[Int]
+function py_range___val__(self: Ref): Seq[Int]
 
 
-function range___start__(self: Ref): Int
+function py_range___start__(self: Ref): Int
 
 
-function range___stop__(self: Ref): Int
+function py_range___stop__(self: Ref): Int
 
 
-function range___len__(self: Ref): Int
-  requires issubtype(typeof(self), range())
-  ensures result == |range___val__(self)|
+function py_range___len__(self: Ref): Int
+  requires issubtype(typeof(self), py_range())
+  ensures result == |py_range___val__(self)|
 
 
-function range___sil_seq__(self: Ref): Seq[Ref]
-  requires issubtype(typeof(self), range())
-  ensures |result| == range___len__(self)
-  ensures (forall i: Int :: { result[i] } i >= 0 && i < |range___val__(self)| ==> result[i] == __prim__int___box__(range___val__(self)[i]))
-  ensures (forall i: Ref :: { (i in result) } (i in result) == (typeof(i) == int() && (int___unbox__(i) in range___val__(self))))
+function py_range___sil_seq__(self: Ref): Seq[Ref]
+  requires issubtype(typeof(self), py_range())
+  ensures |result| == py_range___len__(self)
+  ensures (forall i: Int :: { result[i] } i >= 0 && i < |py_range___val__(self)| ==> result[i] == __prim__int___box__(py_range___val__(self)[i]))
+  ensures (forall i: Ref :: { (i in result) } (i in result) == (typeof(i) == int() && (int___unbox__(i) in py_range___val__(self))))
 
 
 function dict___contains__(self: Ref, item: Ref): Bool
@@ -584,7 +584,7 @@ predicate MustInvokeUnbounded(r: Ref)
 
 predicate _MaySet(rec: Ref, id: Int) 
 
-method test_range(_cthread_156: Ref, _caller_measures_156: Seq[Measure$], _residue_156: Perm) returns (_current_wait_level_156: Perm)
+method test_py_range(_cthread_156: Ref, _caller_measures_156: Seq[Measure$], _residue_156: Perm) returns (_current_wait_level_156: Perm)
   requires _cthread_156 != null
   requires issubtype(typeof(_cthread_156), Thread_0())
   requires [true, perm(MustTerminate(_cthread_156)) == none && ((forperm _r_1: Ref [MustInvokeBounded(_r_1)] :: false) && ((forperm _r_1: Ref [MustInvokeUnbounded(_r_1)] :: false) && ((forperm _r_1: Ref [_r_1.MustReleaseBounded] :: false) && (forperm _r_1: Ref [_r_1.MustReleaseUnbounded] :: false))))]
@@ -597,14 +597,14 @@ method test_range(_cthread_156: Ref, _caller_measures_156: Seq[Measure$], _resid
   var _method_measures_156: Seq[Measure$]
   _method_measures_156 := Seq[Measure$]()
   _err := null
-  r := range___create__(3, 6, 0)
+  r := py_range___create__(3, 6, 0)
   inhale _isDefined(114)
-  assert (forall lambda9_21$i: Ref :: { (lambda9_21$i in range___sil_seq__(_checkDefined(r, 114))) } issubtype(typeof(lambda9_21$i), int()) ==> (lambda9_21$i in range___sil_seq__(_checkDefined(r, 114))) ==> int___gt__(int___unbox__(lambda9_21$i), 1))
+  assert (forall lambda9_21$i: Ref :: { (lambda9_21$i in py_range___sil_seq__(_checkDefined(r, 114))) } issubtype(typeof(lambda9_21$i), int()) ==> (lambda9_21$i in py_range___sil_seq__(_checkDefined(r, 114))) ==> int___gt__(int___unbox__(lambda9_21$i), 1))
   goto __end
   label __end
 }
 
-method test_range_2(_cthread_157: Ref, _caller_measures_157: Seq[Measure$], _residue_157: Perm) returns (_current_wait_level_157: Perm)
+method test_py_range_2(_cthread_157: Ref, _caller_measures_157: Seq[Measure$], _residue_157: Perm) returns (_current_wait_level_157: Perm)
   requires _cthread_157 != null
   requires issubtype(typeof(_cthread_157), Thread_0())
   requires [true, perm(MustTerminate(_cthread_157)) == none && ((forperm _r_4: Ref [MustInvokeBounded(_r_4)] :: false) && ((forperm _r_4: Ref [MustInvokeUnbounded(_r_4)] :: false) && ((forperm _r_4: Ref [_r_4.MustReleaseBounded] :: false) && (forperm _r_4: Ref [_r_4.MustReleaseUnbounded] :: false))))]
@@ -617,9 +617,9 @@ method test_range_2(_cthread_157: Ref, _caller_measures_157: Seq[Measure$], _res
   var _method_measures_157: Seq[Measure$]
   _method_measures_157 := Seq[Measure$]()
   _err := null
-  r_0 := range___create__(3, 6, 1)
+  r_0 := py_range___create__(3, 6, 1)
   inhale _isDefined(3170162)
-  assert (forall lambda15_21$i: Ref :: { (lambda15_21$i in range___sil_seq__(_checkDefined(r_0, 3170162))) } issubtype(typeof(lambda15_21$i), int()) ==> (lambda15_21$i in range___sil_seq__(_checkDefined(r_0, 3170162))) ==> int___gt__(int___unbox__(lambda15_21$i), 4))
+  assert (forall lambda15_21$i: Ref :: { (lambda15_21$i in py_range___sil_seq__(_checkDefined(r_0, 3170162))) } issubtype(typeof(lambda15_21$i), int()) ==> (lambda15_21$i in py_range___sil_seq__(_checkDefined(r_0, 3170162))) ==> int___gt__(int___unbox__(lambda15_21$i), 4))
   goto __end
   label __end
 }
