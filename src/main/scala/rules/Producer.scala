@@ -19,7 +19,6 @@ import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
-import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
 import viper.silver.verifier.reasons.{NegativePermission, ReceiverNotInjective}
 
 trait ProductionRules extends SymbolicExecutionRules {
