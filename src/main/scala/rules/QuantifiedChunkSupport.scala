@@ -722,6 +722,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               tPerm: Term,
               pve: PartialVerificationError,
               negativePermissionReason: => ErrorReason,
+              notInjectiveReason: => ErrorReason,
               v: Verifier)
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult = {
@@ -793,56 +794,77 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
     v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
       case true =>
-        val ax = inverseFunctions.axiomInversesOfInvertibles
-        val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
 
-        v.decider.prover.comment("Definitional axioms for inverse functions")
-        val definitionalAxiomMark = v.decider.setPathConditionMark()
-        v.decider.assume(inv.definitionalAxioms)
-        val conservedPcs =
-          if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
-          else s.conservedPcs
-
-        val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
-        val interpreter = new QuantifiedPropertyInterpreter
-        resourceDescription.instanceProperties.foreach (property => {
-          v.decider.prover.comment(property.description)
-          v.decider.assume(interpreter.buildPathConditionForChunk(
-            chunk = ch,
-            property = property,
-            qvars = effectiveTriggersQVars,
-            args = tArgs,
-            perms = gain,
-            condition = tCond,
-            triggers = effectiveTriggers,
-            qidPrefix = qid)
-          )
-        })
-
-        val codomainVars =
-          resource match {
-            case _: ast.Field => Seq(`?r`)
-            case p: ast.Predicate => s.predicateFormalVarMap(p)
-            case w: ast.MagicWand =>
-              val bodyVars = w.subexpressionsToEvaluate(Verifier.program)
-              bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+        val receiverInjectivityCheck =
+          if (Verifier.config.checkInjectivity()) {
+            quantifiedChunkSupporter.injectivityAxiom(
+              qvars     = qvars,
+              // TODO: Adding ResourceTriggerFunction requires a summarising snapshot map of the current heap
+              condition = tCond, // And(tCond, ResourceTriggerFunction(resource, smDef1.sm, tArgs)),
+              perms     = tPerm,
+              arguments = tArgs,
+              triggers  = Nil,
+              qidPrefix = qid)
+          } else {
+            True()
           }
-        val h1 = s.h + ch
-        val (relevantChunks, _) =
-          quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, ch.id)
-        val (smDef1, smCache1) =
-          quantifiedChunkSupporter.summarisingSnapshotMap(
-            s, resource, codomainVars, relevantChunks, v)
-        val trigger = ResourceTriggerFunction(resource, smDef1.sm, codomainVars)
-        val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
-        val condOfInv = tCond.replace(qvarsToInv)
-        v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars)))) //effectiveTriggers map (t => Trigger(t.p map (_.replace(qvarsToInv))))))
-        val s1 =
-          s.copy(h = h1,
-                 functionRecorder = s.functionRecorder.recordFieldInv(inv),
-                 conservedPcs = conservedPcs,
-                 smCache = smCache1)
-        Q(s1, v)
+        v.decider.prover.comment("Check receiver injectivity")
+        v.decider.assert(receiverInjectivityCheck) {
+          case true =>
+            val ax = inverseFunctions.axiomInversesOfInvertibles
+            val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
+
+            v.decider.prover.comment("Definitional axioms for inverse functions")
+            val definitionalAxiomMark = v.decider.setPathConditionMark()
+            v.decider.assume(inv.definitionalAxioms)
+            val conservedPcs =
+              if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
+              else s.conservedPcs
+
+            val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
+            val interpreter = new QuantifiedPropertyInterpreter
+            resourceDescription.instanceProperties.foreach (property => {
+              v.decider.prover.comment(property.description)
+              v.decider.assume(interpreter.buildPathConditionForChunk(
+                chunk = ch,
+                property = property,
+                qvars = effectiveTriggersQVars,
+                args = tArgs,
+                perms = gain,
+                condition = tCond,
+                triggers = effectiveTriggers,
+                qidPrefix = qid)
+              )
+            })
+
+            // TODO: Why not formalQVars? Used as codomainVars, see above.
+            val codomainVars =
+              resource match {
+                case _: ast.Field => Seq(`?r`)
+                case p: ast.Predicate => s.predicateFormalVarMap(p)
+                case w: ast.MagicWand =>
+                  val bodyVars = w.subexpressionsToEvaluate(Verifier.program)
+                  bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+              }
+            val h1 = s.h + ch
+            val (relevantChunks, _) =
+              quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, ch.id)
+            val (smDef1, smCache1) =
+              quantifiedChunkSupporter.summarisingSnapshotMap(
+                s, resource, codomainVars, relevantChunks, v)
+            val trigger = ResourceTriggerFunction(resource, smDef1.sm, codomainVars)
+            val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
+            val condOfInv = tCond.replace(qvarsToInv)
+            v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars)))) //effectiveTriggers map (t => Trigger(t.p map (_.replace(qvarsToInv))))))
+            val s1 =
+              s.copy(h = h1,
+                     functionRecorder = s.functionRecorder.recordFieldInv(inv),
+                     conservedPcs = conservedPcs,
+                     smCache = smCache1)
+            Q(s1, v)
+          case false =>
+            createFailure(pve dueTo notInjectiveReason, v, s)}
       case false =>
         createFailure(pve dueTo negativePermissionReason, v, s)}
   }

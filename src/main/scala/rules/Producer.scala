@@ -18,7 +18,7 @@ import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
-import viper.silver.verifier.reasons.NegativePermission
+import viper.silver.verifier.reasons.{NegativePermission, ReceiverNotInjective}
 
 trait ProductionRules extends SymbolicExecutionRules {
 
@@ -356,6 +356,7 @@ object producer extends ProductionRules {
               tPerm,
               pve,
               NegativePermission(acc.perm),
+              ReceiverNotInjective(acc.loc),
               v1
             )(Q)
         }
@@ -387,6 +388,7 @@ object producer extends ProductionRules {
               tPerm,
               pve,
               NegativePermission(acc.perm),
+              ReceiverNotInjective(acc.loc),
               v1
             )(Q)
         }
@@ -418,6 +420,7 @@ object producer extends ProductionRules {
               FullPerm(),
               pve,
               NegativePermission(ast.FullPerm()()),
+              sys.error("Quantified wand not injective"),
               v1
             )(Q)
         }
