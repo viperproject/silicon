@@ -313,7 +313,7 @@ object evaluator extends EvaluationRules {
             Q(s2, t1, v2)
           }))
 
-      case condExp @ ast.CondExp(e0, e1, e2) => {
+      case condExp @ ast.CondExp(e0, e1, e2) =>
         val condExpRecord = new CondExpRecord(condExp, s, v.decider.pcs, "CondExp")
         val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
         eval(s, e0, pve, v)((s1, t0, v1) =>
@@ -336,7 +336,6 @@ object evaluator extends EvaluationRules {
             SymbExLogger.currentLog().closeScope(uidCondExp)
             Q(s4, t3, v3)
           }))
-      }
 
       /* Integers */
 

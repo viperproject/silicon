@@ -71,7 +71,7 @@ class SymbExLoggerTests extends SilSuite {
 
 class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopReporter) {
   private val originalFilePath: Path = path
-  private val fileName: Path = originalFilePath.getFileName()
+  private val fileName: Path = originalFilePath.getFileName
 
   /** Is overridden only to append SymbExLogging-UnitTesting-Errors to the Result. **/
   override def result: SilVerificationResult = {
@@ -89,8 +89,8 @@ class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopRep
   }
 
   private def verify(): Seq[SymbExLogUnitTestError] = {
-    val expectedPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".elog").toString()
-    val actualPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".alog").toString()
+    val expectedPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".elog").toString
+    val actualPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".alog").toString
     val testIsExecuted = Files.exists(Paths.get(expectedPath))
 
     if (testIsExecuted) {
@@ -109,14 +109,13 @@ class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopRep
       expectedSource.close()
 
       comparisonResult match {
-        case cf: ComparisonFailed => {
+        case cf: ComparisonFailed =>
           val errorMsg = s"Unit Test failed, expected output " +
             s"does not match actual output. First occurrence at line ${cf.lineNumber}.\n" +
             s"Compared Files:\n" +
-            s"expected: ${expectedPath.toString()}\n" +
-            s"actual:   ${actualPath.toString()}\n"
-          Seq(new SymbExLogUnitTestError(errorMsg))
-        }
+            s"expected: $expectedPath\n" +
+            s"actual:   $actualPath\n"
+          Seq(SymbExLogUnitTestError(errorMsg))
         case _ => Nil
       }
     } else {
@@ -183,7 +182,7 @@ class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopRep
     }
   }
 
-  private def getIndentationLength(s: String): Int = s.prefixLength(c => c == ' ')
+  private def getIndentationLength(s: String): Int = s.segmentLength(c => c == ' ')
 }
 
 case class SymbExLogUnitTestError(msg: String) extends AbstractError {

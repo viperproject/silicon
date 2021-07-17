@@ -19,7 +19,7 @@ class DeciderAssertRecord(val term: Term, val timeout: Option[Int]) extends Data
   override val toTypeString: String = "decider assert"
 
   override lazy val toSimpleString: String = {
-    if (term != null) term.toString()
+    if (term != null) term.toString
     else "null"
   }
 }

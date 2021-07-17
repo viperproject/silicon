@@ -9,15 +9,15 @@ package viper.silicon.logger.records
 trait SymbolicRecord {
   var id: Int = -1
 
-  override def toString(): String = {
-    s"${toTypeString} toSimpleString()"
+  override def toString: String = {
+    s"$toTypeString $toSimpleString"
   }
 
   def toTypeString: String
 
-  def toSimpleString(): String
+  def toSimpleString: String
 
-  def getData(): RecordData = {
+  def getData: RecordData = {
     new RecordData()
   }
 }

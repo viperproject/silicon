@@ -212,7 +212,7 @@ class Z3ProverStdIO(uniqueId: String,
     val endTime = System.currentTimeMillis()
 
     if (!result) {
-      getModel()
+      retrieveAndSaveModel()
     }
 
     pop()
@@ -234,12 +234,12 @@ class Z3ProverStdIO(uniqueId: String,
     readLine()
   }
 
-  private def getModel(): Unit = {
+  private def retrieveAndSaveModel(): Unit = {
     if (Verifier.config.counterexample.toOption.isDefined) {
       writeLine("(get-model)")
 
       var model = readModel("\n").trim()
-      if (model.startsWith("\"")){
+      if (model.startsWith("\"")) {
         model = model.replaceAll("\"", "")
       }
       lastModel = model
@@ -258,7 +258,7 @@ class Z3ProverStdIO(uniqueId: String,
     val endTime = System.currentTimeMillis()
 
     if (!result) {
-      getModel()
+      retrieveAndSaveModel()
     }
 
     (result, endTime - startTime)

@@ -194,7 +194,7 @@ import scala.util.{Failure, Success, Try}
 
 object SymbExLogger {
   /** Collection of logged Method/Predicates/Functions. **/
-  var memberList = Seq[SymbLog]()
+  var memberList: Seq[SymbLog] = Seq[SymbLog]()
   private var uidCounter = 0
 
   var enabled = false
@@ -232,7 +232,7 @@ object SymbExLogger {
     * @param pcs    Current path conditions.
     */
   @elidable(INFO)
-  def openMemberScope(member: ast.Member, s: State, pcs: PathConditionStack) {
+  def openMemberScope(member: ast.Member, s: State, pcs: PathConditionStack): Unit = {
     memberList = memberList ++ Seq(new SymbLog(member, s, pcs))
   }
 
@@ -259,13 +259,13 @@ object SymbExLogger {
     *
     * @param c Config of Silicon.
     */
-  def setConfig(c: Config) {
+  def setConfig(c: Config): Unit = {
     setEnabled(c.ideModeAdvanced())
     logConfig = parseLogConfig(c)
   }
 
   @elidable(INFO)
-  private def setEnabled(b: Boolean) {
+  private def setEnabled(b: Boolean): Unit = {
     enabled = b
   }
 
@@ -273,7 +273,7 @@ object SymbExLogger {
     var logConfigPath = Try(c.logConfig())
     logConfigPath = logConfigPath.filter(path => Files.exists(Paths.get(path)))
     val source = logConfigPath.map(path => scala.io.Source.fromFile(path))
-    val fileContent = source.map(s => s.getLines.mkString)
+    val fileContent = source.map(s => s.getLines().mkString)
     val jsonAst = fileContent.flatMap(content => Try(content.parseJson))
     val logConfig = jsonAst.flatMap(ast => Try(ast.convertTo[LogConfig]))
     logConfig match {
@@ -293,13 +293,13 @@ object SymbExLogger {
   }
 
   /** Path to the file that is being executed. Is used for UnitTesting. **/
-  var filePath: Path = null
+  var filePath: Path = _
 
   /**
     * Resets the SymbExLogger-object, to make it ready for a new file.
     * Only needed when several files are verified together (e.g., sbt test).
     */
-  def reset() {
+  def reset(): Unit = {
     memberList = Seq[SymbLog]()
     uidCounter = 0
     filePath = null
@@ -307,7 +307,7 @@ object SymbExLogger {
     prevSmtStatistics = new Map()
   }
 
-  def resetMemberList() {
+  def resetMemberList(): Unit = {
     memberList = Seq[SymbLog]()
     // or reset by calling it from Decider.reset
     prevSmtStatistics = new Map()
@@ -320,47 +320,30 @@ object SymbExLogger {
     * @return map with differences (only containing values that could be converted) and keys with appended "-delta"
     */
   def getDeltaSmtStatistics(currentStatistics: Map[String, String]) : Map[String, String] = {
-    val deltaStatistics = (currentStatistics map getDelta filter { case (_, value) => value.nonEmpty } map {
-      case (key, Some(value)) => (key + "-delta", value) })
+    val deltaStatistics = currentStatistics map getDelta filter { case (_, value) => value.nonEmpty } map {
+      case (key, Some(value)) => (key + "-delta", value)
+      case other => sys.error(s"Unexpected result pair $other")
+    }
     // set prevStatistics (i.e. override values with same key or add):
     prevSmtStatistics = prevSmtStatistics ++ currentStatistics
     deltaStatistics
   }
 
   private def getDelta(pair: (String, String)): (String, Option[String]) = {
-    val curValInt = toInt(pair._2)
+    val curValInt = pair._2.toIntOption
     val prevValInt = prevSmtStatistics.get(pair._1) match {
-      case Some(value) => toInt(value)
+      case Some(value) => value.toIntOption
       case _ => Some(0) // value not found
     }
-    val curValDouble = toDouble(pair._2)
+    val curValDouble = pair._2.toDoubleOption
     val prevValDouble = prevSmtStatistics.get(pair._1) match {
-      case Some(value) => toDouble(value)
+      case Some(value) => value.toDoubleOption
       case _ => Some(0.0) // value not found
-    }
-    if (curValInt.contains(143)) {
-      val i = 0
     }
     (curValInt, prevValInt, curValDouble, prevValDouble) match {
       case (Some(curInt), Some(prevInt), _, _) => (pair._1, Some((curInt - prevInt).toString))
       case (_, _, Some(curDouble), Some(prevDouble)) => (pair._1, Some((curDouble - prevDouble).toString))
       case _ => (pair._1, None)
-    }
-  }
-
-  private def toInt(str: String): Option[Int] = {
-    try {
-      Some(str.toInt)
-    } catch {
-      case e: NumberFormatException => None
-    }
-  }
-
-  private def toDouble(str: String): Option[Double] = {
-    try {
-      Some(str.toDouble)
-    } catch {
-      case e: NumberFormatException => None
     }
   }
 }
@@ -394,7 +377,7 @@ class SymbLog(v: ast.Member, s: State, pcs: PathConditionStack) {
   // Maps macros to their body
   private var _macros = Map[App, Term]()
 
-  var main: MemberRecord = v match {
+  val main: MemberRecord = v match {
     case m: ast.Method => new MethodRecord(m, s, pcs)
     case p: ast.Predicate => new PredicateRecord(p, s, pcs)
     case f: ast.Function => new FunctionRecord(f, s, pcs)

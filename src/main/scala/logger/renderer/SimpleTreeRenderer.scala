@@ -6,6 +6,7 @@
 
 package viper.silicon.logger.renderer
 
+import scala.annotation.unused
 import viper.silicon.logger.SymbLog
 import viper.silicon.logger.records.SymbolicRecord
 import viper.silicon.logger.records.data.DataRecord
@@ -27,45 +28,6 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     toSimpleTree(member.log, 0, 0)
   }
 
-  /*
-  private def filterEmptyScopes(log: List[SymbolicRecord]): List[SymbolicRecord] = {
-    var res = List[SymbolicRecord]()
-
-    var logIndex = 0
-    while (logIndex < log.length) {
-      val currentRecord: SymbolicRecord = log(logIndex)
-      val nextRecord: SymbolicRecord = if (logIndex < log.length - 1) log(logIndex + 1) else null
-      if (nextRecord != null && discardBoth(currentRecord, nextRecord)) {
-        logIndex = logIndex + 2
-      } else {
-        currentRecord match {
-          case br: BranchingRecord => {
-            br.branches = br.getBranches().map(filterEmptyScopes)
-          }
-          case _ =>
-        }
-        res = res :+ currentRecord
-        logIndex = logIndex + 1
-      }
-    }
-
-    res
-  }
-   */
-
-  private def discardBoth(currentRecord: SymbolicRecord, nextRecord: SymbolicRecord): Boolean = {
-    // check if close scope record directly follows open scope record and both have same id:
-    currentRecord match {
-      case os: OpenScopeRecord => {
-        nextRecord match {
-          case cs: CloseScopeRecord => os.refId == cs.refId
-          case _ => false
-        }
-      }
-      case _ => false
-    }
-  }
-
   /**
     *
     * @param log
@@ -79,8 +41,8 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     var indentLevel = n
     for (record <- log) {
       record match {
-        case os: OpenScopeRecord => indentLevel = indentLevel + 1
-        case cs: CloseScopeRecord => indentLevel = Math.max(minN, indentLevel - 1)
+        case _: OpenScopeRecord => indentLevel = indentLevel + 1
+        case _: CloseScopeRecord => indentLevel = Math.max(minN, indentLevel - 1)
         case br: BranchingRecord => res = res + toSimpleTree(br, minN, indentLevel)
         case jr: JoiningRecord => res = res + toSimpleTree(jr, minN, indentLevel)
         case dr: DataRecord => res = res + toSimpleTree(dr, minN, indentLevel)
@@ -93,19 +55,19 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     "  " * indentLevel
   }
 
-  private def toSimpleTree(dr: DataRecord, minN: Int, n: Int): String = {
+  private def toSimpleTree(dr: DataRecord, @unused minN: Int, n: Int): String = {
     val indent = getIndent(n)
-    s"${indent}${dr.toString}\n"
+    s"$indent$dr\n"
   }
 
-  private def toSimpleTree(br: BranchingRecord, minN: Int, n: Int): String = {
+  private def toSimpleTree(br: BranchingRecord, @unused minN: Int, n: Int): String = {
     val indent = getIndent(n)
     var res = ""
-    val branches = br.getBranches()
+    val branches = br.getBranches
     for (branchIndex <- branches.indices) {
       if (branches.length <= 2 && br.condition.isDefined) {
         val condition = if (branchIndex == 0)  br.condition.get else Not(br.condition.get)
-        res = s"${res}${indent}Branch ${condition.toString()}:\n"
+        res = s"${res}${indent}Branch ${condition}:\n"
       } else {
         res = s"${res}${indent}Branch ${branchIndex + 1}:\n"
       }
@@ -120,7 +82,7 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     res
   }
 
-  private def toSimpleTree(jr: JoiningRecord, minN: Int, n: Int): String = {
+  private def toSimpleTree(@unused jr: JoiningRecord, @unused minN: Int, n: Int): String = {
     s"${getIndent(n)}Join\n"
   }
 }

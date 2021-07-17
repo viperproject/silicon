@@ -11,12 +11,7 @@ import viper.silicon.state.terms.Term
 
 class BranchingRecord(possibleBranchesCount: Int, val condition: Option[Term]) extends StructuralRecord {
   private var currentBranchIndex = 0
-  private var branches: Vector[BranchInfo] = Vector.tabulate(possibleBranchesCount)(_ => new BranchInfo())
-
-  private def getCurrentBranch(): BranchInfo = {
-    assert(currentBranchIndex < branches.length)
-    branches(currentBranchIndex)
-  }
+  private val branches: Vector[BranchInfo] = Vector.tabulate(possibleBranchesCount)(_ => new BranchInfo())
 
   def appendLog(r: SymbolicRecord): Unit = {
     assert(currentBranchIndex < branches.length)
@@ -35,11 +30,11 @@ class BranchingRecord(possibleBranchesCount: Int, val condition: Option[Term]) e
     currentBranchIndex = currentBranchIndex + 1
   }
 
-  def getBranches(): Vector[Seq[SymbolicRecord]] = {
+  def getBranches: Vector[Seq[SymbolicRecord]] = {
     branches.map(log => log.records)
   }
 
-  def getBranchInfos(): Vector[BranchInfo] = {
+  def getBranchInfos: Vector[BranchInfo] = {
     branches
   }
 

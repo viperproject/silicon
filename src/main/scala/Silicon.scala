@@ -207,14 +207,13 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
         result = Some(condenseToViperResult(failures))
       } catch { /* Catch exceptions thrown during verification (errors are not caught) */
-        case _: TimeoutException => {
+        case _: TimeoutException =>
           // verification was interrupted, therefore close the current member's scope:
           SymbExLogger.currentLog().closeMemberScope()
           if (config.ideModeAdvanced()) {
             reporter report ExecutionTraceReport(SymbExLogger.memberList, List(), List())
           }
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
-        }
         case exception: Exception if !config.disableCatchingExceptions() =>
           config.assertVerified() // Raises an exception itself, if it fails
 
