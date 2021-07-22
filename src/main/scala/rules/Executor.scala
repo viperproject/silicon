@@ -118,6 +118,9 @@ object executor extends ExecutionRules {
       val branchPoint = edge1.source
 
       s.methodCfg.joinPoints.get(branchPoint) match {
+        // If a join point was found, the config argument is enabled,
+        // and the source of both conditional edges was a statement block
+        // (we are at an if-statement), we may join the resulting branches again.
         case Some(newJoinPoint) if
           Verifier.config.moreJoins() &&
           edge1.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
@@ -135,7 +138,7 @@ object executor extends ExecutionRules {
           eval(s, edge1.condition, pvef(edge1.condition), v)((s1, t0, v1) =>
             joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s2, v2, QB) => {
               brancher.branch(s2, t0, v2)(
-                // Follow until join point.
+                // Follow only until join point.
                 (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint))((s, v) => QB(s, null, v)),
                 (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint))((s, v) => QB(s, null, v))
               )
