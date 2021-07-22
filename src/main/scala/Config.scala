@@ -199,7 +199,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val timeout: ScallopOption[Int] = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
             + "not per method or proof obligation (default: 0, i.e. no timeout)."),
-    default = Some(180),
+    default = Some(0),
     noshort = true
   )
 
@@ -449,7 +449,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val disableCaches: ScallopOption[Boolean] = opt[Boolean]("disableCaches",
     descr = "Disables various caches in Silicon's state.",
-    default = Some(true),
+    default = Some(false),
     noshort = true
   )
 
@@ -460,13 +460,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val enableMoreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
     descr = "Enable a more complete exhale version.",
-    default = Some(true),
+    default = Some(false),
     noshort = true
   )
 
   val moreJoins: ScallopOption[Boolean] = opt[Boolean]("moreJoins",
     descr = "Enable more joins using a more complete implementation of state merging.",
-    default = Some(true),
+    default = Some(false),
     noshort = true
   )
 
@@ -479,7 +479,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val numberOfParallelVerifiers: ScallopOption[Int] = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
              + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
-    default = Some(1),
+    default = Some(Runtime.getRuntime.availableProcessors()),
     noshort = true
   )
 
