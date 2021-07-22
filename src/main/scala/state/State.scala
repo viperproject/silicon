@@ -200,6 +200,7 @@ object State {
     }
   }
 
+  // Lists all fields which do not match in two states.
   private def generateStateMismatchErrorMessage(s1: State, s2: State): Nothing = {
     val err = new StringBuilder()
     for (ix <- 0 until s1.productArity) yield {
@@ -217,6 +218,7 @@ object State {
 
   // Merges two maps based on fOnce, if entry only exists in one map,
   // and fTwice if entry exists in both maps.
+  // Used to merge the Store.
   private def mergeMaps[K, V, D](map1: Map[K, V], data1: D, map2: Map[K, V], data2: D)
                                 (fOnce: (V, D) => Option[V])
                                 (fTwice: (V, D, V, D) => Option[V])
@@ -235,7 +237,7 @@ object State {
     })
   }
 
-
+  // Puts a collection of chunks under a condition.
   private def conditionalizeChunks(h: Iterable[Chunk], cond: Term): Iterable[Chunk] = {
     h map (c => {
       c match {
@@ -246,10 +248,14 @@ object State {
     })
   }
 
+  // Puts a heap under a condition.
   private def conditionalizeHeap(h: Heap, cond: Term): Heap = {
     Heap(conditionalizeChunks(h.values, cond))
   }
 
+  // Merges two heaps together, by putting h1 under condition cond1,
+  // and h2 under cond2.
+  // Assumes that cond1 is the negation of cond2.
   def mergeHeap(h1: Heap, cond1: Term, h2: Heap, cond2: Term): Heap = {
     val (unconditionalHeapChunks, h1HeapChunksToConditionalize) = h1.values.partition(c1 => h2.values.exists(_ == c1))
     val h2HeapChunksToConditionalize = h2.values.filter(c2 => !unconditionalHeapChunks.exists(_ == c2))
@@ -314,8 +320,6 @@ object State {
             val conditions1 = And(pc1.branchConditions)
             val conditions2 = And(pc2.branchConditions)
 
-            //var mergePcs: Seq[Term] = Vector.empty
-
             val mergeStore = (g1: Store, g2: Store) => {
               Store(mergeMaps(g1.values, conditions1, g2.values, conditions2)
               ((_, _) => {
@@ -328,11 +332,6 @@ object State {
                   Some(v1)
                 } else {
                   assert(v1.sort == v2.sort)
-                  // TODO: Is this faster?
-                  //val t = verifier.decider.fresh(v1.sort)
-                  //mergePcs :+= Implies(cond1, Equals(t, v1))
-                  //mergePcs :+= Implies(cond2, Equals(t, v2))
-                  //Some(t)
                   Some(Ite(cond1, v1, v2))
                 }
               }))
@@ -360,8 +359,6 @@ object State {
               Some(mergeHeap(heap1, cond1, heap2, cond2))
             }))
 
-            //verifier.decider.assume(mergePcs)
-
             // TODO: InvariantContexts should most likely be the same
             assert(invariantContexts1.length == invariantContexts2.length)
             val invariantContexts3 = invariantContexts1
@@ -379,9 +376,6 @@ object State {
             val conservedPcs3 = conservedPcs1
               .zip(conservedPcs1)
               .map({case (pcs1, pcs2) => (pcs1 ++ pcs2).distinct})
-
-            //assert(conservedPcs1 == conservedPcs2)
-            //val conservedPcs3 = conservedPcs1
 
             val s3 = s1.copy(functionRecorder = functionRecorder3,
               possibleTriggers = possibleTriggers3,

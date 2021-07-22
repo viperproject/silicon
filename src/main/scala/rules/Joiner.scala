@@ -46,13 +46,13 @@ object joiner extends JoiningRules {
       val s2 = s1.copy(underJoin = true)
 
       block(s2, v1, (s3, data, v2) => {
-        /* In order to prevent mismatches between different final states of the evaluation
-         * paths that are to be joined, we reset certain state properties that may have been
-         * affected by the evaluation - such as the store (by let-bindings) or the heap (by
-         * state consolidations) to their initial values.
-         */
         val s4 =
           if (resetState) {
+            /* In order to prevent mismatches between different final states of the evaluation
+             * paths that are to be joined, we reset certain state properties that may have been
+             * affected by the evaluation - such as the store (by let-bindings) or the heap (by
+             * state consolidations) to their initial values.
+             */
             s3.copy(g = s1.g,
                     h = s1.h,
                     oldHeaps = s1.oldHeaps,
@@ -61,7 +61,10 @@ object joiner extends JoiningRules {
                     ssCache = s1.ssCache,
                     partiallyConsumedHeap = s1.partiallyConsumedHeap,
                     invariantContexts = s1.invariantContexts)
-          } else s3
+          } else {
+            // For more joins, state shouldn't be reset.
+            s3
+          }
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
         Success()
       })
