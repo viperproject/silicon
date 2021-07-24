@@ -27,7 +27,7 @@ trait DataRecord extends SymbolicRecord {
   val pcs: InsertionOrderedSet[Term]
 
   override lazy val toString: String = {
-    s"${toTypeString} ${toSimpleString}"
+    s"$toTypeString $toSimpleString"
   }
 
   override lazy val toSimpleString: String = {
@@ -35,8 +35,8 @@ trait DataRecord extends SymbolicRecord {
     else "null"
   }
 
-  override def getData(): RecordData = {
-    val data = super.getData()
+  override def getData: RecordData = {
+    val data = super.getData
     value match {
       case posValue: ast.Node with Positioned => data.pos = Some(utils.ast.sourceLineColumn(posValue))
       case _ =>

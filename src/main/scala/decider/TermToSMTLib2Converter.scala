@@ -110,12 +110,11 @@ class TermToSMTLib2Converter
     case x: Var =>
       render(x.id)
 
-    case fapp: Application[_] => {
+    case fapp: Application[_] =>
       fapp.applicable match {
         case _: SMTFun => renderSMTApp(fapp.applicable.id.name, fapp.args, fapp.sort)
         case _ => renderApp(fapp.applicable.id.name, fapp.args, fapp.sort)
       }
-    }
 
 
     /* Handle quantifiers that have at most one trigger set */

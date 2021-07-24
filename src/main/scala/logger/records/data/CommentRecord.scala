@@ -27,7 +27,7 @@ class CommentRecord(str: String, s: State, p: PathConditionStack) extends DataRe
 
   override lazy val toString: String = {
     if (comment != null) {
-      s"comment ${comment}"
+      s"comment $comment"
     } else {
       "comment <null>"
     }

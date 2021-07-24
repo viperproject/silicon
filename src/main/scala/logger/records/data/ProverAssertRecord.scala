@@ -22,12 +22,12 @@ class ProverAssertRecord(val term: Term, val timeout: Option[Int]) extends DataR
   override val toTypeString: String = "prover assert"
 
   override lazy val toSimpleString: String = {
-    if (term != null) term.toString()
+    if (term != null) term.toString
     else "null"
   }
 
   override lazy val getData: RecordData = {
-    val data = super.getData()
+    val data = super.getData
     data.isSmtQuery = true
     data.smtStatistics = statistics
     data

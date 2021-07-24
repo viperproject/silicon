@@ -50,7 +50,7 @@ object SymbExLogReportWriter {
       )
 
     // TODO: Are ID and bindings needed?
-    case MagicWandChunk(id, bindings, args, snap, perm) =>
+    case MagicWandChunk(_, _, args, snap, perm) =>
       JsObject(
         "type" -> JsString("basic_magic_wand_chunk"),
         "args" -> JsArray(args.map(TermWriter.toJSON).toVector),
@@ -132,7 +132,7 @@ object SymbExLogReportWriter {
   def getAllRecords(r: SymbolicRecord): Seq[SymbolicRecord] = {
     // return the record itself plus all records that are referenced by it (which only occurs for branching records)
     r match {
-      case br: BranchingRecord => br.getBranches().foldLeft(Vector[SymbolicRecord](br)) (
+      case br: BranchingRecord => br.getBranches.foldLeft(Vector[SymbolicRecord](br)) (
         (prevVal, curVal) => prevVal ++ getAllRecords(curVal))
       case _ => Vector(r)
     }
@@ -144,18 +144,17 @@ object SymbExLogReportWriter {
     * @return The record translated as a JsValue.
     */
   def toJSON(record: SymbolicRecord): JsValue = {
-
     var isJoinPoint: Boolean = false
     var isScopeOpen: Boolean = false
     var isScopeClose: Boolean = false
-    var isSyntactic: Boolean = false
+    val isSyntactic: Boolean = false
     var branches: Option[JsArray] = None
-    var data: Option[JsObject] = toJSON(record.getData())
+    val data: Option[JsObject] = toJSON(record.getData)
     record match {
-      case br: BranchingRecord => branches = Some(JsArray(br.getBranchInfos().map(toJSON).toVector))
-      case jr: JoiningRecord => isJoinPoint = true
-      case os: OpenScopeRecord => isScopeOpen = true
-      case cs: CloseScopeRecord => isScopeClose = true
+      case br: BranchingRecord => branches = Some(JsArray(br.getBranchInfos.map(toJSON)))
+      case _: JoiningRecord => isJoinPoint = true
+      case _: OpenScopeRecord => isScopeOpen = true
+      case _: CloseScopeRecord => isScopeClose = true
       case _ =>
     }
 
@@ -223,7 +222,7 @@ object SymbExLogReportWriter {
 
   def toJSON(store: Store): JsArray = {
     JsArray(store.values.map({
-      case (v @ AbstractLocalVar(name), value) =>
+      case (AbstractLocalVar(name), value) =>
         JsObject(
           "name" -> JsString(name),
           "value" -> TermWriter.toJSON(value),

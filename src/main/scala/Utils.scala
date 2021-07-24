@@ -146,7 +146,8 @@ package object utils {
       * Attention: This method is *not* thread-safe, because it uses
       * [[silver.ast.utility.Triggers.TriggerGeneration]] , which is itself not thread-safe.
       *
-      * @param forall The quantifier to compute triggers for.
+      * @param q The quantifier to compute triggers for.
+      * @param withAutoTrigger TODO: Why is this argument needed? Why not use q.autoTrigger instead?
       * @return A quantifier that is equal to the input quantifier, except potentially for triggers.
       */
     def autoTrigger[T <: silver.ast.QuantifiedExp](q: T, withAutoTrigger: T): T = {
@@ -179,7 +180,7 @@ package object utils {
                 val intermediateQ = q match {
                   case _: silver.ast.Forall => silver.ast.Forall(variables, Nil, q.exp)(q.pos, q.info)
                   case _: silver.ast.Exists => silver.ast.Exists(variables, Nil, q.exp)(q.pos, q.info)
-                  case _=> sys.error(s"Unexpected expression ${q}")
+                  case _=> sys.error(s"Unexpected expression $q")
                 }
                 silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateQ, triggerSets).getOrElse(q)
               case None =>
