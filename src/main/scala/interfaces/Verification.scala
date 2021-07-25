@@ -11,6 +11,7 @@ import viper.silicon.reporting.Converter
 import viper.silicon.state.{State, Store}
 import viper.silver.verifier.{Counterexample, FailureContext, Model, VerificationError}
 import viper.silicon.state.terms.Term
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
 /*
@@ -35,11 +36,13 @@ sealed abstract class VerificationResult {
    * will invoke the function twice, which might not be what you really want!
    */
   def combine(other: => VerificationResult): VerificationResult = {
-    val r: VerificationResult = other
+    lazy val r: VerificationResult = other
     this match {
       case _ : FatalResult =>
-        this.previous = (this.previous :+ r) ++  r.previous
-        this
+        if (Verifier.config.numberOfErrorsToReport.getOrElse(0) > 0) {
+          this.previous = (this.previous :+ r) ++  r.previous
+          this
+        } else this
       case _ =>
         r.previous = (r.previous :+ this) ++ this.previous
         r

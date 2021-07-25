@@ -468,7 +468,7 @@ object consumer extends ConsumptionRules {
             v2.decider.assume(t)
             QS(s3, v2)
           case false =>
-            if (s3.retrying){
+            if (s3.retrying && Verifier.config.numberOfErrorsToReport.getOrElse(0) > 0){
               v2.decider.assume(t)
               createFailure(pve dueTo AssertionFalse(e), v2, s3) combine QS(s3, v2)
             } else createFailure(pve dueTo AssertionFalse(e), v2, s3)}})
