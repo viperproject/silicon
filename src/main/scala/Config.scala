@@ -453,6 +453,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val numberOfErrorsToReport: ScallopOption[Int] = opt[Int]("numberOfErrorsToReport",
+    descr = "Number of errors before the verifier stops. Currently only 0=one, 1=all",
+    default = Some(1),
+    noshort = true
+  )
+
   val stateConsolidationMode: ScallopOption[StateConsolidationMode] = opt[StateConsolidationMode]("stateConsolidationMode",
     descr = s"One of the following modes:\n${StateConsolidationMode.helpText}",
     default = Some(StateConsolidationMode.Default),
