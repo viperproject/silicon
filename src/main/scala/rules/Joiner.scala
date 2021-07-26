@@ -14,8 +14,9 @@ import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
-  // Instead of merging states, we can directly merge JoinDataEntries to obtain new States.
-  // This gives us more information about the path conditions.
+  // Instead of merging states by calling State.merge,
+  // we can directly merge JoinDataEntries to obtain new States,
+  // and the join data entries themselves provide information about the path conditions to State.merge.
   def pathConditionAwareMerge(other: JoinDataEntry[D]): State = {
     State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
   }
