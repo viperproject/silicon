@@ -135,6 +135,7 @@ object executor extends ExecutionRules {
           })
 
           eval(s, edge1.condition, pvef(edge1.condition), v)((s1, t0, v1) =>
+            // The type arguments here are Null because there is no need to pass any join data.
             joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s2, v2, QB) => {
               brancher.branch(s2, t0, v2)(
                 // Follow only until join point.

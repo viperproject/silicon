@@ -211,6 +211,7 @@ object producer extends ProductionRules {
         val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
+          // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
             branch(s1, t0, v1)(
               (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
@@ -263,6 +264,7 @@ object producer extends ProductionRules {
         val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
+          // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
             branch(s1, t0, v1)(
               (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
