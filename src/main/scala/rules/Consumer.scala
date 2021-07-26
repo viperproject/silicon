@@ -204,12 +204,14 @@ object consumer extends ConsumptionRules {
               case Seq(entry) => // One branch is dead
                 (entry.s, entry.data)
               case Seq(entry1, entry2) => // Both branches are alive
+                // Here we merge additional data collected in each branch.
+                // We assume that entry1.pcs is negation of entry2.pcs.
                 val mergedData = (
+                  // The partially consumed heap is merged based on the corresponding branch conditions of each branch.
                   State.mergeHeap(
                     entry1.data._1, And(entry1.pathConditions.branchConditions),
                     entry2.data._1, And(entry2.pathConditions.branchConditions),
                   ),
-                  // Asume that entry1.pcs is inverse of entry2.pcs
                   Ite(And(entry1.pathConditions.branchConditions), entry1.data._2, entry2.data._2)
                 )
                 (entry1.pathConditionAwareMerge(entry2), mergedData)
