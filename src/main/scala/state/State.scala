@@ -222,7 +222,7 @@ object State {
   private def mergeMaps[K, V, D](map1: Map[K, V], data1: D, map2: Map[K, V], data2: D)
                                 (fOnce: (V, D) => Option[V])
                                 (fTwice: (V, D, V, D) => Option[V])
-  : Map[K, V] = {
+                                : Map[K, V] = {
 
     map1.flatMap({ case (k, v1) =>
       (map2.get(k) match {
