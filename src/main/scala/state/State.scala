@@ -377,25 +377,26 @@ object State {
               .map({case (pcs1, pcs2) => (pcs1 ++ pcs2).distinct})
 
             val s3 = s1.copy(functionRecorder = functionRecorder3,
-              possibleTriggers = possibleTriggers3,
-              triggerExp = triggerExp3,
-              constrainableARPs = constrainableARPs3,
-              // TODO: Merge caches.
-              ssCache = Map.empty,
-              smCache = SnapshotMapCache.empty,
-              pmCache = Map.empty,
-              g = g3,
-              h = h3,
-              oldHeaps = oldHeaps3,
-              partiallyConsumedHeap = partiallyConsumedHeap3,
-              smDomainNeeded = smDomainNeeded3,
-              invariantContexts = invariantContexts3,
-              reserveHeaps = reserveHeaps3,
-              conservedPcs = conservedPcs3,
-            )
+                             possibleTriggers = possibleTriggers3,
+                             triggerExp = triggerExp3,
+                             constrainableARPs = constrainableARPs3,
+                             // TODO: Merge caches.
+                             ssCache = Map.empty,
+                             smCache = SnapshotMapCache.empty,
+                             pmCache = Map.empty,
+                             g = g3,
+                             h = h3,
+                             oldHeaps = oldHeaps3,
+                             partiallyConsumedHeap = partiallyConsumedHeap3,
+                             smDomainNeeded = smDomainNeeded3,
+                             invariantContexts = invariantContexts3,
+                             reserveHeaps = reserveHeaps3,
+                             conservedPcs = conservedPcs3)
 
             s3
 
+            // Optionally, we could also do a state consolidation after each
+            // state merging, but this has shown to decrease performance a bit.
             //val s4 = verifier.stateConsolidator.consolidate(s3, verifier)
             //s4
 
