@@ -105,6 +105,76 @@ object executor extends ExecutionRules {
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult = {
 
+    // Find join point if it exists.
+    val jp: Option[SilverBlock] = edges.headOption.flatMap(edge => s.methodCfg.joinPoints.get(edge.source))
+
+    (edges, jp) match {
+      case (Seq(), _) => Q(s, v)
+      case (Seq(edge), _) => follow(s, edge, v, joinPoint)(Q)
+      case (Seq(edge1, edge2), Some(newJoinPoint)) if
+          Verifier.config.moreJoins() &&
+          // Can't directly match type because of type erasure ...
+          edge1.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
+          edge2.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
+          // We only join branches that originate from if statements
+          // this is the case if the source is a statement block,
+          // as opposed to a loop head block.
+          edge1.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]] &&
+          edge2.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]] =>
+
+        assert(edge1.source == edge2.source)
+
+        val cedge1 = edge1.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
+        val cedge2 = edge2.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
+
+        // Here we assume that edge1.condition is the negation of edge2.condition.
+        assert((cedge1.condition, cedge2.condition) match {
+          case (exp1, ast.Not(exp2)) => exp1 == exp2
+          case (ast.Not(exp1), exp2) => exp1 == exp2
+          case _ => false
+        })
+
+        eval(s, cedge1.condition, pvef(cedge1.condition), v)((s1, t0, v1) =>
+          // The type arguments here are Null because there is no need to pass any join data.
+          joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s2, v2, QB) => {
+            brancher.branch(s2, t0, v2)(
+              // Follow only until join point.
+              (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint))((s, v) => QB(s, null, v)),
+              (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint))((s, v) => QB(s, null, v))
+            )
+          })(entries => {
+            val s2 = entries match {
+              case Seq(entry) => // One branch is dead
+                entry.s
+              case Seq(entry1, entry2) => // Both branches are alive
+                entry1.pathConditionAwareMerge(entry2)
+              case _ =>
+                sys.error(s"Unexpected join data entries: $entries")
+            }
+            (s2, null)
+          })((s4, _, v4) => {
+            // Continue after merging at join point.
+            exec(s4, newJoinPoint, s4.methodCfg.inEdges(newJoinPoint).head.kind, v4, joinPoint)(Q)
+          })
+        )
+
+      case _ =>
+        val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
+        val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
+          case (fatalResult: FatalResult, _) => fatalResult
+          case (_, (edge, edgeIndex)) => {
+            if (edgeIndex != 0) {
+              SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+            }
+            SymbExLogger.currentLog().markReachable(uidBranchPoint)
+            follow(s, edge, v, joinPoint)(Q)
+          }
+        }
+        SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+        res
+    }
+
+    /*
     if (edges.isEmpty) {
       Q(s, v)
     } else if (edges.length == 1) {
@@ -178,6 +248,8 @@ object executor extends ExecutionRules {
     } else {
       sys.error("At most two out edges expected.")
     }
+    */
+
   }
 
   def exec(s: State, graph: SilverCfg, v: Verifier)
