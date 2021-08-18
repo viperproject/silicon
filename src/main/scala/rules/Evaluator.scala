@@ -213,7 +213,7 @@ object evaluator extends EvaluationRules {
               } else {
                 v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
                   case false =>
-                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1) //TODO:J fix this later
+                    createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
@@ -808,21 +808,28 @@ object evaluator extends EvaluationRules {
                   case true =>
                     Q(s1, SeqAt(t0, t1), v1)
                   case false =>
-                    v1.decider.assume(Less(t1, SeqLength(t0)))
-                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1) combine
-                      Q(s1, SeqAt(t0, t1), v1)}
+                    val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)
+                    if (s1.retryLevel == 0 && (Verifier.config.numberOfErrorsToReport() > Verifier.errorsReportedSoFar.get()
+                      || Verifier.config.numberOfErrorsToReport() == 0)) {
+                      v1.decider.assume(Less(t1, SeqLength(t0)))
+                      failure combine Q(s1, SeqAt(t0, t1), v1)
+                    } else failure}
               case false =>
-                v1.decider.assume(AtLeast(t1, IntLiteral(0)))
-                v1.decider.assert(Less(t1, SeqLength(t0))) {
-                  case true =>
-                    createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1) combine
-                      Q(s1, SeqAt(t0, t1), v1)
-                  case false =>
-                    v1.decider.assume(Less(t1, SeqLength(t0)))
-                    createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1) combine
-                      createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1) combine
-                        Q(s1, SeqAt(t0, t1), v1)}
-            }}})
+                val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
+                if (s1.retryLevel == 0 && (Verifier.config.numberOfErrorsToReport() > Verifier.errorsReportedSoFar.get()
+                  || Verifier.config.numberOfErrorsToReport() == 0)) {
+                  v1.decider.assume(AtLeast(t1, IntLiteral(0)))
+                  v1.decider.assert(Less(t1, SeqLength(t0))) {
+                    case true =>
+                      failure1 combine Q(s1, SeqAt(t0, t1), v1)
+                    case false =>
+                      val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)
+                      if (Verifier.config.numberOfErrorsToReport() > Verifier.errorsReportedSoFar.get()
+                        || Verifier.config.numberOfErrorsToReport() == 0){
+                        v1.decider.assume(Less(t1, SeqLength(t0)))
+                        failure2 combine Q(s1, SeqAt(t0, t1), v1)
+                      } else failure2}
+                } else failure1}}})
 
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)(Q)
       case ast.SeqDrop(e0, e1) => evalBinOp(s, e0, e1, SeqDrop, pve, v)(Q)
@@ -842,23 +849,28 @@ object evaluator extends EvaluationRules {
                   case true =>
                     Q(s1, SeqUpdate(t0, t1, t2), v1)
                   case false =>
-                    v1.decider.assume(Less(t1, SeqLength(t0)))
-                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1) combine
-                      Q(s1, SeqUpdate(t0, t1, t2), v1)}
+                    val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)
+                    if (s1.retryLevel == 0 && (Verifier.config.numberOfErrorsToReport() > Verifier.errorsReportedSoFar.get()
+                      || Verifier.config.numberOfErrorsToReport() == 0)) {
+                      v1.decider.assume(Less(t1, SeqLength(t0)))
+                      failure combine Q(s1, SeqUpdate(t0, t1, t2), v1)}
+                    else failure}
               case false =>
-                v1.decider.assume(AtLeast(t1, IntLiteral(0)))
-                v1.decider.assert(Less(t1, SeqLength(t0))) {
-                  case true =>
-                    Q(s1, SeqUpdate(t0, t1, t2), v1) combine
-                      createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
-                  case false =>
-                    v1.decider.assume(Less(t1, SeqLength(t0)))
-                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1) combine
-                      Q(s1, SeqUpdate(t0, t1, t2), v1) combine
-                        createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)}
-            }
-          }
-        })
+                val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
+                if (s1.retryLevel == 0 && (Verifier.config.numberOfErrorsToReport() > Verifier.errorsReportedSoFar.get()
+                  || Verifier.config.numberOfErrorsToReport() == 0)) {
+                  v1.decider.assume(AtLeast(t1, IntLiteral(0)))
+                  v1.decider.assert(Less(t1, SeqLength(t0))) {
+                    case true =>
+                      failure1 combine Q(s1, SeqUpdate(t0, t1, t2), v1)
+                    case false =>
+                      val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)
+                      if (Verifier.config.numberOfErrorsToReport() > Verifier.errorsReportedSoFar.get()
+                        || Verifier.config.numberOfErrorsToReport() == 0){
+                        v1.decider.assume(Less(t1, SeqLength(t0)))
+                        failure2 combine Q(s1, SeqUpdate(t0, t1, t2), v1)
+                      } else failure2}
+            } else failure1}}})
 
       case ast.ExplicitSeq(es) =>
         evals2(s, es, Nil, _ => pve, v)((s1, tEs, v1) => {
@@ -1124,8 +1136,12 @@ object evaluator extends EvaluationRules {
     v.decider.assert(tDivisor !== tZero){
       case true => Q(s, t, v)
       case false =>
+        val failure = createFailure(pve dueTo DivisionByZero(eDivisor), v, s)
+        if (s.retryLevel == 0  && Verifier.config.numberOfErrorsToReport() > Verifier.errorsReportedSoFar.get()
+          || Verifier.config.numberOfErrorsToReport() == 0) {
           v.decider.assume(tDivisor !== tZero)
-          createFailure(pve dueTo DivisionByZero(eDivisor), v, s) combine Q(s, t, v)
+          failure combine Q(s, t, v)
+        } else failure
     }
   }
 
