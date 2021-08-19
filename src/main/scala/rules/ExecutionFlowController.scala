@@ -113,7 +113,7 @@ object executionFlowController extends ExecutionFlowRules {
     val rl = s.retryLevel
     val firstActionResult ={
       action(
-        s.copy( retryLevel = rl + 1),
+        s.copy(retryLevel = rl + 1),
         v,
         (s1, r, v1) => {
           localActionSuccess = true
