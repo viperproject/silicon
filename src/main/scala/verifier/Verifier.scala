@@ -19,6 +19,7 @@ import viper.silicon.utils.Counter
 import viper.silicon.{Config, Map}
 import viper.silver.ast
 import viper.silver.reporter.Reporter
+import java.util.concurrent.atomic.AtomicInteger
 
 trait Verifier {
   def uniqueId: String
@@ -67,6 +68,7 @@ object Verifier {
   def functionData: Map[ast.Function, FunctionData] = _functionData
   /*private*/ def functionData_=(functionData: Map[ast.Function, FunctionData]): Unit =
   { _functionData = functionData }
+ val errorsReportedSoFar = new AtomicInteger(0);
 }
 
 trait VerifierComponent { this: Verifier => }
