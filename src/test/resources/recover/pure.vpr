@@ -129,7 +129,7 @@ method testDivByZero(a: Int, b: Int){
 
 method test5b(a: Int, b: Int){
     //:: ExpectedOutput(assert.failed:assertion.false)
-    // :: ExpectedOutput(assert.failed:division.by.zero) TODO:J we would want to get this error as well ideally
+    //:: ExpectedOutput(assert.failed:division.by.zero)
     assert a/b == 0
     assert b != 0
 
