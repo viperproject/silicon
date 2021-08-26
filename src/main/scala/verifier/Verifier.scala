@@ -68,7 +68,11 @@ object Verifier {
   def functionData: Map[ast.Function, FunctionData] = _functionData
   /*private*/ def functionData_=(functionData: Map[ast.Function, FunctionData]): Unit =
   { _functionData = functionData }
+
  val errorsReportedSoFar = new AtomicInteger(0);
+
+ def reportFurtherErrors(): Boolean = (Verifier.config.numberOfErrorsToReport() > Verifier.errorsReportedSoFar.get()
+                                    || Verifier.config.numberOfErrorsToReport() == 0);
 }
 
 trait VerifierComponent { this: Verifier => }

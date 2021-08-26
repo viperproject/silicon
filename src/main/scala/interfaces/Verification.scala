@@ -36,8 +36,7 @@ sealed abstract class VerificationResult {
    * will invoke the function twice, which might not be what you really want!
    */
   def combine(other: => VerificationResult): VerificationResult = {
-    if (Verifier.config.numberOfErrorsToReport() > Verifier.errorsReportedSoFar.get()
-      || Verifier.config.numberOfErrorsToReport() == 0) {
+    if (Verifier.reportFurtherErrors()){
       val r: VerificationResult = other
       this match {
         case _: FatalResult =>

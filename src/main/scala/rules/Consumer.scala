@@ -469,8 +469,7 @@ object consumer extends ConsumptionRules {
             QS(s3, v2)
           case false =>
             val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3)
-            if (s3.retryLevel == 0 && (Verifier.config.numberOfErrorsToReport() > Verifier.errorsReportedSoFar.get()
-              || Verifier.config.numberOfErrorsToReport() == 0 )){
+            if (s3.retryLevel == 0 && Verifier.reportFurtherErrors()){
               v2.decider.assume(t)
               failure combine QS(s3, v2)
             } else failure}})
