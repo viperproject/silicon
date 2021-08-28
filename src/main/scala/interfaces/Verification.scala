@@ -25,6 +25,7 @@ import viper.silver.ast
 /* TODO: Make VerificationResult immutable */
 sealed abstract class VerificationResult {
   var previous: Vector[VerificationResult] = Vector() //Sets had problems with equality
+  var continueVerification: Boolean
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult
@@ -36,11 +37,12 @@ sealed abstract class VerificationResult {
    * will invoke the function twice, which might not be what you really want!
    */
   def combine(other: => VerificationResult): VerificationResult = {
-    if (Verifier.reportFurtherErrors()){
+    if (this.continueVerification){
       val r: VerificationResult = other
       this match {
         case _: FatalResult =>
           this.previous = (this.previous :+ r) ++ r.previous
+          this.continueVerification = this.continueVerification && r.continueVerification
           this
         case _ =>
           r.previous = (r.previous :+ this) ++ this.previous
@@ -67,22 +69,25 @@ sealed abstract class NonFatalResult extends VerificationResult {
    */
   def &&(other: => VerificationResult): VerificationResult = {
     val r: VerificationResult = other
-    r.combine(this)
+    r.previous = (r.previous :+ this) ++ this.previous
+    r
   }
 }
 
 case class Success() extends NonFatalResult {
+  override var continueVerification: Boolean = true
   override val toString = "Success"
 }
 
 case class Unreachable() extends NonFatalResult {
+  override var continueVerification: Boolean = true
   override val toString = "Unreachable"
 }
 
 case class Failure/*[ST <: Store[ST],
                    H <: Heap[H],
                    S <: State[ST, H, S]]*/
-                  (message: VerificationError)
+                  (message: VerificationError, var continueVerification: Boolean)
   extends FatalResult {
 
   /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */

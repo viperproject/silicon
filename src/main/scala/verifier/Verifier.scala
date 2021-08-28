@@ -39,6 +39,11 @@ trait Verifier {
   def stateConsolidator: StateConsolidationRules
 
   def verificationPoolManager: VerificationPoolManager
+
+  val errorsReportedSoFar = new AtomicInteger(0);
+
+  def reportFurtherErrors(): Boolean = (Verifier.config.numberOfErrorsToReport() > errorsReportedSoFar.get()
+    || Verifier.config.numberOfErrorsToReport() == 0);
 }
 
 /* TODO: Replace getters and setters by public vars
@@ -69,10 +74,7 @@ object Verifier {
   /*private*/ def functionData_=(functionData: Map[ast.Function, FunctionData]): Unit =
   { _functionData = functionData }
 
- val errorsReportedSoFar = new AtomicInteger(0);
 
- def reportFurtherErrors(): Boolean = (Verifier.config.numberOfErrorsToReport() > Verifier.errorsReportedSoFar.get()
-                                    || Verifier.config.numberOfErrorsToReport() == 0);
 }
 
 trait VerifierComponent { this: Verifier => }
