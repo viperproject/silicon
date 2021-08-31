@@ -73,8 +73,6 @@ object Verifier {
   def functionData: Map[ast.Function, FunctionData] = _functionData
   /*private*/ def functionData_=(functionData: Map[ast.Function, FunctionData]): Unit =
   { _functionData = functionData }
-
-
 }
 
 trait VerifierComponent { this: Verifier => }
