@@ -259,7 +259,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
           if (config.enableBranchconditionReporting())
             allResults.groupBy(_.message.readableMessage(withId = true, withPosition = true)).map{case (_: String, fs:List[Failure]) =>
               fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
-              Failure(fs.head.message,true) // the second parameter doesn't matter at this point, but it needs to be set
+              Failure(fs.head.message)
             }.toList
              else allResults.distinctBy(f => f.message.readableMessage(withId = true, withPosition = true))
         })
