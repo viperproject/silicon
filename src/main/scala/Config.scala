@@ -454,7 +454,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val numberOfErrorsToReport: ScallopOption[Int] = opt[Int]("numberOfErrorsToReport",
-    descr = "Number of errors per Member before the verifier stops. If this number is set to 0, all errors are reported.",
+    descr = "Number of errors per member before the verifier stops. If this number is set to 0, all errors are reported.",
     default = Some(1),
     noshort = true
   )
