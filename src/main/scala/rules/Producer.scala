@@ -19,6 +19,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
+import viper.silver.verifier.reasons.{NegativePermission, ReceiverNotInjective}
 
 trait ProductionRules extends SymbolicExecutionRules {
 
@@ -246,40 +247,42 @@ object producer extends ProductionRules {
 
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
-          eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-            val snap = sf(v2.symbolConverter.toSort(field.typ), v2)
-            val gain = PermTimes(tPerm, s2.permissionScalingFactor)
-            if (s2.qpFields.contains(field)) {
-              val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
-              quantifiedChunkSupporter.produceSingleLocation(s2, field, Seq(`?r`), Seq(tRcvr), snap, gain, trigger, v2)(Q)
-            } else {
-              val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, gain)
-              chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) =>
-                Q(s3.copy(h = h3), v3))
-            }}))
+          eval(s1, perm, pve, v1)((s2, tPerm, v2) =>
+            permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
+              val snap = sf(v3.symbolConverter.toSort(field.typ), v3)
+              val gain = PermTimes(tPerm, s3.permissionScalingFactor)
+              if (s3.qpFields.contains(field)) {
+                val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
+                quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Seq(tRcvr), snap, gain, trigger, v3)(Q)
+              } else {
+                val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, gain)
+                chunkSupporter.produce(s3, s3.h, ch, v3)((s4, h4, v4) =>
+                  Q(s4.copy(h = h4), v4))
+              }})))
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
         val predicate = Verifier.program.findPredicate(predicateName)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-          eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-            val snap = sf(
-              predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1)
-                            .getOrElse(sorts.Snap), v2)
-            val gain = PermTimes(tPerm, s2.permissionScalingFactor)
-            if (s2.qpPredicates.contains(predicate)) {
-              val formalArgs = s2.predicateFormalVarMap(predicate)
-              val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
-              quantifiedChunkSupporter.produceSingleLocation(
-                s2, predicate, formalArgs, tArgs, snap, gain, trigger, v2)(Q)
-            } else {
-              val snap1 = snap.convert(sorts.Snap)
-              val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
-              chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
-                if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder) {
-                  v3.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs))
-                }
-                Q(s3.copy(h = h3), v3)})
-            }}))
+          eval(s1, perm, pve, v1)((s1a, tPerm, v1a) =>
+            permissionSupporter.assertNotNegative(s1a, tPerm, perm, pve, v1a)((s2, v2) => {
+              val snap = sf(
+                predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1)
+                              .getOrElse(sorts.Snap), v2)
+              val gain = PermTimes(tPerm, s2.permissionScalingFactor)
+              if (s2.qpPredicates.contains(predicate)) {
+                val formalArgs = s2.predicateFormalVarMap(predicate)
+                val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
+                quantifiedChunkSupporter.produceSingleLocation(
+                  s2, predicate, formalArgs, tArgs, snap, gain, trigger, v2)(Q)
+              } else {
+                val snap1 = snap.convert(sorts.Snap)
+                val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
+                chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
+                  if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder) {
+                    v3.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs))
+                  }
+                  Q(s3.copy(h = h3), v3)})
+              }})))
 
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
@@ -341,6 +344,9 @@ object producer extends ProductionRules {
               Seq(tRcvr),
               tSnap,
               tPerm,
+              pve,
+              NegativePermission(acc.perm),
+              ReceiverNotInjective(acc.loc),
               v1
             )(Q)
         }
@@ -370,6 +376,9 @@ object producer extends ProductionRules {
               tArgs,
               tSnap,
               tPerm,
+              pve,
+              NegativePermission(acc.perm),
+              ReceiverNotInjective(acc.loc),
               v1
             )(Q)
         }
@@ -399,6 +408,9 @@ object producer extends ProductionRules {
               tArgs,
               tSnap,
               FullPerm(),
+              pve,
+              NegativePermission(ast.FullPerm()()),
+              sys.error("Quantified wand not injective"),
               v1
             )(Q)
         }

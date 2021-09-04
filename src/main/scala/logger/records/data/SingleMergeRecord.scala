@@ -33,7 +33,7 @@ class SingleMergeRecord(val destChunks: Seq[NonQuantifiedChunk],
       if (newChunksString == "") {
         s"single merge ${destChunks.mkString(" ")} <="
       } else {
-        s"single merge ${destChunks.mkString(" ")} <= ${newChunksString}"
+        s"single merge ${destChunks.mkString(" ")} <= $newChunksString"
       }
     } else {
       "SingleMerge <null>"

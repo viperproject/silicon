@@ -145,7 +145,7 @@ object Converter {
       case Some(MapEntry(m, els)) =>
         getConstantEntry(toSort, m.getOrElse(args, els))
       case Some(m) => getConstantEntry(toSort, m)
-      case None    => OtherEntry(s"${fname}", "function not found in model")
+      case None    => OtherEntry(s"$fname", "function not found in model")
     }
   }
 

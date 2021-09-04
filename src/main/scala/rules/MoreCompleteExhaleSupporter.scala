@@ -44,7 +44,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     //       args. E.g. the summary could be created with free arguments ?a1, ?a2, ...; this summary
     //       could be cached, and ?a1 etc. would be replaced before returning the summary to the caller.
 
-    s.ssCache.get((resource, relevantChunks, args)) match {
+    Verifier.config.mapCache(s.ssCache.get((resource, relevantChunks, args))) match {
       case Some((_taggedSummarisingSnapshot, _summarisingSnapshotDefinitions, _permissionSum)) =>
         return (s, _taggedSummarisingSnapshot, _summarisingSnapshotDefinitions, _permissionSum)
       case _ =>

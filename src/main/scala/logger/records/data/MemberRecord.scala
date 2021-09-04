@@ -13,7 +13,7 @@ trait MemberRecord extends DataRecord {
   var lastFailedProverQuery: Option[Term] = None
 
   override lazy val getData: RecordData = {
-    val data = super.getData()
+    val data = super.getData
     data.lastSMTQuery = lastFailedProverQuery
     data
   }
