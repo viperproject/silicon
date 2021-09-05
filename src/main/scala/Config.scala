@@ -510,7 +510,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
   val enableBranchconditionReporting: ScallopOption[Boolean] = opt[Boolean]("enableBranchconditionReorting",
     descr = "Report branch conditions (can be useful for assertions that fail on multiple branches)",
-    default = Some(true),
+    default = Some(false),
     noshort = true
   )
 
