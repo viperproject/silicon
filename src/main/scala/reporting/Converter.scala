@@ -199,7 +199,10 @@ object Converter {
         m match {
           case ConstantEntry(x) => val rat = x.toDouble match{
             case 0.0 => Rational.zero
-            case x if x >= 1.0 => Rational.one // we reduce to write
+            case 1.0 => Rational.one
+            case x if x > 1.0 =>  val i = (x % 1).toInt
+                                  val decimal = x - i
+                                  Rational(i,1) + Rational(1,(1/decimal).toInt)
             case x => Rational(1,(1/x).toInt)
           } ;LitPermEntry(rat) 
           case ApplicationEntry(name, args) =>
