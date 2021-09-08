@@ -115,7 +115,7 @@ case class PredHeapEntry(
     args: Seq[ExtractedModelEntry],
     perm: Option[Rational] = None
 ) extends HeapEntry with ExtractedModelEntry{
-  override lazy val toString = s"$name(${args.mkString(", ")}) Perm: ${perm.getOrElse("?")}"
+  override lazy val toString = s"$name(${args.mkString(", ")}), ${perm.getOrElse("?")}"
   lazy val asValueEntry = ConstantEntry(name)
 }
 case class FieldHeapEntry(
@@ -125,7 +125,7 @@ case class FieldHeapEntry(
     sort: Sort,
     entry: ExtractedModelEntry
 ) extends HeapEntry {
-  override lazy val toString = s"$recv.$field"
+  override lazy val toString = s"$recv.$field, ${perm.getOrElse("?")}"
 }
 case class FVFEntry(
     fvf: ExtractedModelEntry,
@@ -210,13 +210,13 @@ object Converter {
                 case (LitPermEntry(x), LitPermEntry(y)) => LitPermEntry(x/y)
                 case  _ => OtherEntry(s"$m", "not a permission literal div")
               }
-              case _                      => OtherEntry(s"$m", "pnot a permission literal")
+              case _  => OtherEntry(s"$m", "not a permission literal")
             }
-          case _ => OtherEntry(s"$m", "snot a permission literal")
+          case _ => OtherEntry(s"$m", "not a permission literal")
         }
       case sorts.UserSort(id) => 
         m match {
-          case ConstantEntry(v) => DomainValueEntry(id.toString(), v.split("!").last)//this is a hack for the moment if there is any way to do this diffrently let me know
+          case ConstantEntry(v) => DomainValueEntry(id.toString(), v.split("!").last)//this is a hack for the moment if there is any way to do this differently let me know
           case _ => OtherEntry(id.toString(),"not a constant entry---")
       }
       //ISSUE: snap types are translated to domain sorts
