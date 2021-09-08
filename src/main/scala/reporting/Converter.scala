@@ -103,7 +103,6 @@ case class UnprocessedModelEntry(entry: ValueEntry)
   override lazy val toString = s"$entry"
   lazy val asValueEntry = entry
 }
-//TODO: possibly move ExtractedModelEntry to this trait
 // processed Heap representation:
 sealed trait HeapEntry {
   def toString: String
@@ -199,7 +198,6 @@ object Converter {
       case sorts.Perm =>
         m match {
           case ConstantEntry(x) => val rat = x.toDouble match{
-            //TODO: make sure this is correct
             case 0.0 => Rational.zero
             case x if x >= 1.0 => Rational.one // we reduce to write
             case x => Rational(1,(1/x).toInt)
@@ -351,14 +349,14 @@ object Converter {
        
         try {//many things can go wrong but if they do, we cannot infer anything anyways
           val recvsort = c.singletonRcvr.get.sort
-          val fvfEntry = FVFEntry(fvf, fieldname, null, null, null) //TODO: extract value and permisssion functions to maps
-          val recievers = (0 to 10).map(x => VarEntry(s"$$Ref!val!$x", recvsort))
+          val fvfEntry = FVFEntry(fvf, fieldname, null, null, null)
+          val receivers = (0 to 10).map(x => VarEntry(s"$$Ref!val!$x", recvsort))
           val recv = VarEntry("$Ref!val!0", sorts.Ref)
           val fieldsort  = c.fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
           val permission = getFunctionValue(model, s"$$FVF.perm_$fieldname", Seq(fvf.asValueEntry, recv.asValueEntry), sorts.Perm)
-          val values = recievers map (x => getFunctionValue(model, s"$$FVF.lookup_$fieldname", Seq(fvf.asValueEntry, x.asValueEntry), fieldsort))
+          val values = receivers map (x => getFunctionValue(model, s"$$FVF.lookup_$fieldname", Seq(fvf.asValueEntry, x.asValueEntry), fieldsort))
           val value = getFunctionValue(model, s"$$FVF.lookup_$fieldname", Seq(fvf.asValueEntry, recv.asValueEntry), fieldsort)
-          entries = entries ++ values.zip(recievers).map(x => FieldHeapEntry(x._2, fieldname, Some(permission.asInstanceOf[LitPermEntry].value), fieldsort, x._1))
+          entries = entries ++ values.zip(receivers).map(x => FieldHeapEntry(x._2, fieldname, Some(permission.asInstanceOf[LitPermEntry].value), fieldsort, x._1))
         }catch {
           case _: Throwable => ///continue
         }
@@ -407,14 +405,13 @@ object Converter {
     entry
   }
 
-  //TODO: there has to be an easier way...
+  
   def evalPerm(value: Term, model: Model): Option[Rational] = {
     value match {      
       case _: Var  => evaluateTerm(value, model) match {
         case LitPermEntry(value) => Some(value)
         case x => None
       }
-      //TODO: handle macros (possibly in  evaluateTerm)
       case App(app, args) => None
       case NoPerm() => Some(Rational.zero)
       case FullPerm() => Some(Rational.one)
@@ -506,14 +503,14 @@ object Converter {
       RecursiveRefEntry(name)
     }
   }
-def extractSet(
+  def extractSet(
       model: Model,
       heap: ExtractedHeap,
       nullRefName: String,
       name: String,
       elementSort: Sort,
       encountered: Set[String]
-  ): ExtractedModelEntry = {
+    ): ExtractedModelEntry = {
     val lenTry: Try[Int] = Try(
         getFunctionValue(
           model,
@@ -627,7 +624,7 @@ def extractSet(
       model: Model
   ): ExtractedModel = {
     var map: Map[String, ExtractedModelEntry] = Map()
-    val nullRefName: String = model.entries("$Ref.null").toString
+    val nullRefName: String = model.entries.getOrElse("$Ref.null","Ref!val!0").toString
     for ((variable: ast.AbstractLocalVar, term: Term) <- store.values) {
       var localSort: Option[Sort] = None
       val name = variable match {
@@ -650,7 +647,7 @@ def extractSet(
 
   /**
     * extracts domains from a program. only the ones that are used in the program... no generics
-    * it also extracts al instatnces (translates the generics to concrete values)
+    * it also extracts all instatnces (translates the generics to concrete values)
     *
     * @param model
     * @param program
@@ -664,7 +661,7 @@ def extractSet(
       case ast.DomainType(n, map) => (n, map)
       case d: ast.DomainFuncApp => (d.domainName, d.typVarMap)//sometimes we use a function without having an actual member of this...
  
-    }).filterNot(x => containsTypeVar(x._2.values.toSeq)).toSet //make shure we have all the possible mappings without duplicates 
+    }).filterNot(x => containsTypeVar(x._2.values.toSeq)).toSet //make sure we have all the possible mappings without duplicates 
     
     val doms = domains.flatMap(x => if(x.typVars == Nil) Seq((x, Map.empty[ast.TypeVar, ast.Type])) else concreteDoms.filter(_._1 == x.name).map(y =>(x, y._2))) // changing the typevars to the actual ones
     
@@ -721,20 +718,20 @@ def extractSet(
         case t: ast.DomainFunc => symbolConverter.toFunction(t, argtyp :+ resSort).id 
         case t: ast.BackendFunc => symbolConverter.toFunction(t).id 
       }
-      val kek = smtfunc.toString.replace("[", "<").replace("]", ">").replace(", ", "~_") // this is a hack TODO: replace with smt converter when possible
+      val kek = smtfunc.toString.replace("[", "<").replace("]", ">").replace(", ", "~_") 
       val entries = model.entries
       val keys = entries.keys
       val modelFuncname = try {(keys.filter(_.contains(fname+"%limited")) ++ (keys.filter(_ == fname))++
                           (keys.filter(_ == kek))
                            ).head} catch {
                              case _: Throwable => return errorfunc(s"$fname")
-                           } //TODO: make this better
+                           } 
       val simpleRet = (entries.get(modelFuncname)) match {
         case Some(MapEntry(m, els)) => { 
                                         ExtractedFunction(fname,
                                                           argtyp,
                                                           resSort,
-                                                          try {m.map(x =>(x._1.zip(argtyp).map(y => getConstantEntry(y._2, y._1)) -> getConstantEntry(resSort, x._2)))} catch { case t: Throwable => { emptymap}}, //TODO: this throws NumberFormatException
+                                                          try {m.map(x =>(x._1.zip(argtyp).map(y => getConstantEntry(y._2, y._1)) -> getConstantEntry(resSort, x._2)))} catch { case t: Throwable => { emptymap}},
                                                           getConstantEntry(resSort, els)
                                                           )
                                         }
@@ -769,7 +766,7 @@ case class Converter(
   )
   lazy val domains: Seq[DomainEntry] = {Converter.getDomains(model, extractedHeap, program)}
   lazy val non_domain_functions: Seq[ExtractedFunction] = Converter.getFunctions(model, extractedHeap, program)
-  def extractVal(x: VarEntry) = Converter.mapLocalVar(model = model, heap = extractedHeap, encountered = Set(), nullRefName = model.entries(Converter.nullRefId).toString, termEval = x, sort = Some(x.sort))
+  def extractVal(x: VarEntry) = Converter.mapLocalVar(model = model, heap = extractedHeap, encountered = Set(), nullRefName = model.entries.getOrElse(Converter.nullRefId,"Ref!val!0").toString, termEval = x, sort = Some(x.sort))
 }
 /** Entry for user defined domains 
  *  CAREFUL: the types are included in the domain name and do not correspond directly to the name of a DomainEntry
@@ -803,7 +800,7 @@ case class DomainEntry( name: String,
    override def toString: String = {
      s"domain $valueName{\n ${functions.map(_.toString()).mkString("\n")}\n}"
    }
-   val valueName: String = s"$name${if(types.isEmpty)""else types.map(printTypes(_)).mkString("[",", ","]")}" // TODO: find out if this is how they are used in the id
+   val valueName: String = s"$name${if(types.isEmpty)""else types.map(printTypes(_)).mkString("[",", ","]")}" 
    def printTypes(t: ast.Type): String = {
        t match {
          case ast.TypeVar(x) => x
@@ -828,7 +825,7 @@ case class ExtractedFunction( fname: String,
                               options: Map[Seq[ExtractedModelEntry], ExtractedModelEntry],
                               default: ExtractedModelEntry
                             ) {
-  def apply(args: Seq[ExtractedModelEntry]): Either[ExtractedFunction, ExtractedModelEntry] = {//TODO: Beautify
+  def apply(args: Seq[ExtractedModelEntry]): Either[ExtractedFunction, ExtractedModelEntry] = {
     val n = args.length
     val arglength = argtypes.length
     if(n == arglength) {//full application
