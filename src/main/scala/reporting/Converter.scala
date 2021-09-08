@@ -115,7 +115,7 @@ case class PredHeapEntry(
     args: Seq[ExtractedModelEntry],
     perm: Option[Rational] = None
 ) extends HeapEntry with ExtractedModelEntry{
-  override lazy val toString = s"$name(${args.mkString(", ")}), ${perm.getOrElse("?")}"
+  override lazy val toString = s"acc($name(${args.mkString(", ")})), ${perm.getOrElse("?")}"
   lazy val asValueEntry = ConstantEntry(name)
 }
 case class FieldHeapEntry(
@@ -125,7 +125,7 @@ case class FieldHeapEntry(
     sort: Sort,
     entry: ExtractedModelEntry
 ) extends HeapEntry {
-  override lazy val toString = s"$recv.$field, ${perm.getOrElse("?")}"
+  override lazy val toString = s"acc($recv.$field), ${perm.getOrElse("?")}"
 }
 case class FVFEntry(
     fvf: ExtractedModelEntry,
@@ -513,7 +513,7 @@ object Converter {
       name: String,
       elementSort: Sort,
       encountered: Set[String]
-    ): ExtractedModelEntry = {
+  ): ExtractedModelEntry = {
     val lenTry: Try[Int] = Try(
         getFunctionValue(
           model,
@@ -664,7 +664,7 @@ object Converter {
       case ast.DomainType(n, map) => (n, map)
       case d: ast.DomainFuncApp => (d.domainName, d.typVarMap)//sometimes we use a function without having an actual member of this...
  
-    }).filterNot(x => containsTypeVar(x._2.values.toSeq)).toSet //make sure we have all the possible mappings without duplicates 
+    }).filterNot(x => containsTypeVar(x._2.values.toSeq)).toSet //make sure we have all possible mappings without duplicates 
     
     val doms = domains.flatMap(x => if(x.typVars == Nil) Seq((x, Map.empty[ast.TypeVar, ast.Type])) else concreteDoms.filter(_._1 == x.name).map(y =>(x, y._2))) // changing the typevars to the actual ones
     
