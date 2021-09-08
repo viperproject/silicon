@@ -127,13 +127,13 @@ case class SiliconMappedCounterexample(
     Converter(nativeModel, internalStore, heap, oldHeaps,Verifier.program)
 
   val model: Model = nativeModel
-  val interpreter: ModelInterpreter[ExtractedModelEntry, Seq[ExtractedModelEntry]] = GenericDomainInterpreter(converter) //TODO : possibly move to constructor //IdentityInterpreter()
+  val interpreter: ModelInterpreter[ExtractedModelEntry, Seq[ExtractedModelEntry]] = GenericDomainInterpreter(converter)
 
   override lazy val toString: String = {
     val buf = converter.modelAtLabel
       .map(x => s"model at label: ${x._1}\n${(ExtractedModel(x._2.entries.map(y => (y._1, interpret(y._2))))).toString}\n")
       .mkString("\n")
-    s"$buf\non return: \n${(ExtractedModel(converter.extractedModel.entries.map(y => (y._1, interpret(y._2))))).toString}" //++ "\n"++converter.domains.mkString("\n") ++ "\n"++converter.non_domain_functions.mkString("\n") 
+    s"$buf\non return: \n${(ExtractedModel(converter.extractedModel.entries.map(y => (y._1, interpret(y._2))))).toString}"  
 
   }
   private def interpret(t: ExtractedModelEntry) = interpreter.interpret(t, Seq())
