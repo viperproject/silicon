@@ -211,7 +211,7 @@ object producer extends ProductionRules {
         val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          branch(s1, t0, v1)(
+          branch(s1, t0, Some(e0), v1)(
             (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
               SymbExLogger.currentLog().closeScope(uidImplies)
               Q(s3, v3)
@@ -231,7 +231,7 @@ object producer extends ProductionRules {
         val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          branch(s1, t0, v1)(
+          branch(s1, t0, Some(e0), v1)(
             (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
               SymbExLogger.currentLog().closeScope(uidCondExp)
               Q(s3, v3)

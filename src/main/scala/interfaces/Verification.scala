@@ -9,8 +9,10 @@ package viper.silicon.interfaces
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting.Converter
 import viper.silicon.state.{State, Store}
-import viper.silver.verifier.{Counterexample, Model, VerificationError}
+import viper.silver.verifier.{Counterexample, FailureContext, Model, VerificationError}
 import viper.silicon.state.terms.Term
+import viper.silicon.verifier.Verifier
+import viper.silver.ast
 
 /*
  * Results
@@ -22,25 +24,34 @@ import viper.silicon.state.terms.Term
 
 /* TODO: Make VerificationResult immutable */
 sealed abstract class VerificationResult {
-  var previous: Option[NonFatalResult] = None
+  var previous: Vector[VerificationResult] = Vector() //Sets had problems with equality
+  val continueVerification: Boolean = true
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult
 
-  def allPrevious: List[VerificationResult] =
-    previous match {
-      case None => Nil
-      case Some(vr) => vr :: vr.allPrevious
-    }
-
-  def append(other: NonFatalResult): VerificationResult =
-    previous match {
-      case None =>
-        this.previous = Some(other)
-        this
-      case Some(vr) =>
-        vr.append(other)
-    }
+  /* Attention: Parameter 'other' of 'combine' is a function! That is, the following
+   * statements
+   *   println(other)
+   *   println(other)
+   * will invoke the function twice, which might not be what you really want!
+   */
+  def combine(other: => VerificationResult): VerificationResult = {
+    if (this.continueVerification){
+      val r: VerificationResult = other
+      /* Result of combining a failure with a non failure should be a failure.
+      *  When combining two failures, the failure with 'continueVerification'
+      *  set to false (if any) should be the 'head' result */
+      (this, r) match {
+        case (_: FatalResult, _: FatalResult) | (_: FatalResult, _: NonFatalResult) if r.continueVerification =>
+          this.previous = (this.previous :+ r) ++ r.previous
+          this
+        case _ =>
+          r.previous = (r.previous :+ this) ++ this.previous
+          r
+      }
+    } else this
+  }
 }
 
 sealed abstract class FatalResult extends VerificationResult {
@@ -60,7 +71,7 @@ sealed abstract class NonFatalResult extends VerificationResult {
    */
   def &&(other: => VerificationResult): VerificationResult = {
     val r: VerificationResult = other
-    r.append(this)
+    r.previous = (r.previous :+ this) ++ this.previous
     r
   }
 }
@@ -76,8 +87,8 @@ case class Unreachable() extends NonFatalResult {
 case class Failure/*[ST <: Store[ST],
                    H <: Heap[H],
                    S <: State[ST, H, S]]*/
-                  (message: VerificationError)
-    extends FatalResult {
+                  (message: VerificationError, override val continueVerification: Boolean = true)
+  extends FatalResult {
 
   /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
   var load: Option[Seq[Term]] = None
@@ -87,6 +98,14 @@ case class Failure/*[ST <: Store[ST],
   }
 
   override lazy val toString = message.readableMessage
+}
+
+case class SilFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
+  lazy val branchConditionString = if(branchConditions.nonEmpty)
+    ("\n\t\tunder branch conditions:\n" +
+      branchConditions.map(bc => (bc.toString + " [ " + bc.pos.toString + " ] ")).mkString("\t\t"," ~~> ","") ) else ""
+  lazy val counterExampleString = if(counterExample.isDefined) "\n\t\tcounterexample:\n" + counterExample.get.toString else ""
+  override lazy val toString = branchConditionString + counterExampleString
 }
 
 trait SiliconCounterexample extends Counterexample {

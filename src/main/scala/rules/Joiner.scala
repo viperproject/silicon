@@ -48,11 +48,12 @@ object joiner extends JoiningRules {
         val s4 = s3.copy(g = s1.g,
                          h = s1.h,
                          oldHeaps = s1.oldHeaps,
-                         underJoin = s1.underJoin)
+                         underJoin = s1.underJoin,
+                         retrying = s1.retrying)
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
         Success()
       })
-    }) && {
+    }) combine {
       SymbExLogger.currentLog().closeScope(uidJoin)
       if (entries.isEmpty) {
         /* No block data was collected, which we interpret as all branches through

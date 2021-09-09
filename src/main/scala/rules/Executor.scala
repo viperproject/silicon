@@ -72,7 +72,7 @@ object executor extends ExecutionRules {
           /* Using branch(...) here ensures that the edge condition is recorded
            * as a branch condition on the pathcondition stack.
            */
-          brancher.branch(s2, tCond, v1)(
+          brancher.branch(s2, tCond, Some(ce.condition), v1)(
             (s3, v3) =>
               exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
                 SymbExLogger.currentLog().closeScope(sepIdentifier)
@@ -103,13 +103,12 @@ object executor extends ExecutionRules {
     } else {
       val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
       val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
-        case (fatalResult: FatalResult, _) => fatalResult
-        case (_, (edge, edgeIndex)) =>
+        case (result: VerificationResult, (edge, edgeIndex)) =>
           if (edgeIndex != 0) {
             SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
           }
           SymbExLogger.currentLog().markReachable(uidBranchPoint)
-          follow(s, edge, v)(Q)
+          result combine follow(s, edge, v)(Q)
       }
       SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
       res
@@ -385,7 +384,7 @@ object executor extends ExecutionRules {
           consume(s, a, AssertFailed(assert), v)((_, _, _) =>
             Success())
 
-        r && Q(s, v)
+        r combine Q(s, v)
 
       case assert @ ast.Assert(a) =>
         val pve = AssertFailed(assert)

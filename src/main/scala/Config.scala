@@ -464,6 +464,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val numberOfErrorsToReport: ScallopOption[Int] = opt[Int]("numberOfErrorsToReport",
+    descr = "Number of errors per member before the verifier stops. If this number is set to 0, all errors are reported.",
+    default = Some(1),
+    noshort = true
+  )
+
   val stateConsolidationMode: ScallopOption[StateConsolidationMode] = opt[StateConsolidationMode]("stateConsolidationMode",
     descr = s"One of the following modes:\n${StateConsolidationMode.helpText}",
     default = Some(StateConsolidationMode.Default),
@@ -499,6 +505,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val disableCatchingExceptions: ScallopOption[Boolean] = opt[Boolean]("disableCatchingExceptions",
     descr =s"Don't catch exceptions (can be useful for debugging problems with ${Silicon.name})",
+    default = Some(false),
+    noshort = true
+  )
+  val enableBranchconditionReporting: ScallopOption[Boolean] = opt[Boolean]("enableBranchconditionReorting",
+    descr = "Report branch conditions (can be useful for assertions that fail on multiple branches)",
     default = Some(false),
     noshort = true
   )

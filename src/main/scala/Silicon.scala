@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory
 import viper.silver.ast
 import viper.silver.frontend.{DefaultStates, SilFrontend}
 import viper.silver.reporter._
-import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
+import viper.silver.verifier.{Counterexample => SilCounterexample, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.SymbExLogger
@@ -26,6 +26,8 @@ import viper.silicon.verifier.DefaultMasterVerifier
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
 import viper.silver.plugin.PluginAwareReporter
+
+import scala.util.chaining._
 
 object Silicon {
   val name = BuildInfo.projectName
@@ -247,12 +249,23 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 
     val failures =
-      results.flatMap(r => r :: r.allPrevious)
-             .collect{ case f: Failure => f } /* Ignore successes */
-             .sortBy(_.message.pos match { /* Order failures according to source position */
-                case pos: ast.HasLineColumn => (pos.line, pos.column)
-                case _ => (-1, -1)
-             })
+      results.flatMap(r => r :: r.previous.toList)
+        .collect{ case f: Failure => f } /* Ignore successes */
+        .pipe(allResults => {
+          /* If branchconditions are to be reported we collect the different failure contexts
+          *  of all failures that report the same error (but on different branches, with different CounterExample)
+          *  and put those into one failure */
+          if (config.enableBranchconditionReporting())
+            allResults.groupBy(_.message.readableMessage(withId = true, withPosition = true)).map{case (_: String, fs:List[Failure]) =>
+              fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
+              Failure(fs.head.message)
+            }.toList
+             else allResults.distinctBy(f => f.message.readableMessage(withId = true, withPosition = true))
+        })
+        .sortBy(_.message.pos match { /* Order failures according to source position */
+          case pos: ast.HasLineColumn => (pos.line, pos.column)
+          case _ => (-1, -1)
+        })
 
 //    if (config.showStatistics.isDefined) {
 //      val proverStats = verifier.decider.statistics()
@@ -283,7 +296,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     failures
   }
 
-  private def logFailure(failure: Failure, log: String => Unit): Unit = {
+  private def logFailure(failure: Failure, log: String => Unit): Unit = { //TODO:J log context?
     log("\n" + failure.message.readableMessage(withId = true, withPosition = true))
   }
 
