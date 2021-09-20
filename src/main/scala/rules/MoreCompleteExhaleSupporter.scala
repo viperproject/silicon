@@ -19,6 +19,7 @@ import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.FalseLit
 import viper.silver.verifier.VerificationError
 
 object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
@@ -101,8 +102,11 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                         v: Verifier)
                        (Q: (State, Term, Seq[Term], Term, Verifier) => VerificationResult)
                        : VerificationResult = {
-
-    if (relevantChunks.size == 1) {
+    // Don't use the shortcut if we want a counterexample; in that case, we need the decider to perform a single
+    // query to check if the permission amount we have is sufficient to get the correct counterexample. If we perform
+    // the query in two parts (one part here, one part in our caller to see if the permission amount is sufficient),
+    // the counterexample might be wrong.
+    if (relevantChunks.size == 1 &&  !Verifier.config.counterexample.isDefined) {
       val chunk = relevantChunks.head
       if (v.decider.check(And(chunk.args.zip(args).map { case (t1, t2) => t1 === t2 }), Verifier.config.checkTimeout())) {
         return Q(s, chunk.snap, Seq(), chunk.perm, v)
