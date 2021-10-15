@@ -1,4 +1,8 @@
-![Silicon's logo](https://github.com/viperproject/silicon/blob/master/docs/logo_name.png?raw=true "Silicon's logo")
+# Silicon: A Viper Verifier Based on Symbolic Execution
+
+<p align="center">
+  <img width="512" height="144" alt="Silicon logo" src="docs/logo_name.png">
+</p>
 
 Silicon is a state-of-the-art, automated verifier based on symbolic execution,
 and the default verifier of the
