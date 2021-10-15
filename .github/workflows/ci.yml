@@ -42,14 +42,9 @@ jobs:
       - name: Query Z3 version
         run: printf -- "------- Z3 version --------\n%s\n\n" "$(z3 -version)" | tee -a buildinfo.log
       - name: Query Silicon commit
-        run: printf -- "------- Silicon commit --------\n%s\n\n" "$(git -C silicon log --format=reference -n 1 HEAD)" | tee -a buildinfo.log
+        run: printf -- "------- Silicon commit --------\n%s\n\n" "$(git -C . log --format=reference -n 1 HEAD)" | tee -a buildinfo.log
       - name: Query Silver commit
         run: printf -- "------- Silver commit --------\n%s\n\n" "$(git -C silver log --format=reference -n 1 HEAD)" | tee -a buildinfo.log
-
-      # Create symlinks necessary to wire Viper source dependencies
-      - name: Create Silicon's sym links
-        run: ln --symbolic ../silver
-        working-directory: .
 
       - name: Set sbt cache variables
         # Cache path is relative to the directory in which sbt is invoked
