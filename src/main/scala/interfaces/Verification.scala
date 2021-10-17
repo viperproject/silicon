@@ -114,9 +114,9 @@ trait SiliconCounterexample extends Counterexample {
   def withStore(s: Store) : SiliconCounterexample
 }
 
-case class SiliconNativeCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeap: Option[Iterable[Chunk]], model: Model) extends SiliconCounterexample {
+case class SiliconNativeCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeaps: Map[String,Iterable[Chunk]], model: Model) extends SiliconCounterexample {
   override def withStore(s: Store): SiliconCounterexample = {
-    SiliconNativeCounterexample(s, heap, oldHeap, model)
+    SiliconNativeCounterexample(s, heap, oldHeaps, model)
   }
 }
 
