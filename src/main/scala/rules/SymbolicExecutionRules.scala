@@ -31,8 +31,8 @@ trait SymbolicExecutionRules {
         val nativeModel = Model(model)
         val ce: Counterexample = Verifier.config.counterexample.toOption match {
           case Some("native") =>
-            val oldHeap = s.oldHeaps.get(Verifier.PRE_STATE_LABEL).map(_.values)
-            SiliconNativeCounterexample(s.g, s.h.values, oldHeap, nativeModel)
+            val oldHeaps = s.oldHeaps.map { case (label, heap) => label -> heap.values }
+            SiliconNativeCounterexample(s.g, s.h.values, oldHeaps, nativeModel)
           case Some("raw") =>
             val pcs = v.decider.pcs
             val conditions = pcs.assumptions.toSeq ++ pcs.branchConditions
@@ -53,13 +53,14 @@ trait SymbolicExecutionRules {
     val branchconditions = if (Verifier.config.enableBranchconditionReporting()) {
       v.decider.pcs.branchConditionExps.flatten
         .filterNot(e => e.isInstanceOf[viper.silver.ast.TrueLit]) /* remove "true" bcs introduced by viper.silicon.utils.ast.BigAnd */
-        .sortBy(_.pos match {/* Order branchconditions according to source position */
+        .sortBy(_.pos match {
+          /* Order branchconditions according to source position */
           case pos: viper.silver.ast.HasLineColumn => (pos.line, pos.column)
           case _ => (-1, -1)
         })
     } else Seq()
     res.failureContexts = Seq(SilFailureContext(branchconditions, counterexample))
-    Failure(res,v.reportFurtherErrors())
+    Failure(res, v.reportFurtherErrors())
 
   }
 }
