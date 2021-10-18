@@ -299,7 +299,7 @@ class MinimalRetryingStateConsolidator(config: Config) extends RetryingStateCons
   *   - Merging heaps and assuming QP permission bounds is equivalent to [[DefaultStateConsolidator]]
   *   - State consolidation is only performed when Silicon is retrying, and it only deduces
   *     assumptions about non-QP permission bounds
-  *     (by calling [[MoreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds]])
+  *     (by calling [[moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds]])
   */
 class MoreComplexExhaleStateConsolidator(config: Config) extends DefaultStateConsolidator(config) {
   override def consolidate(s: State, v: Verifier): State = {
@@ -314,7 +314,7 @@ class MoreComplexExhaleStateConsolidator(config: Config) extends DefaultStateCon
     if (s.retrying) {
       // TODO: apply to all heaps (s.h +: s.reserveHeaps, as done below)
       // NOTE: Doing this regardless of s.retrying might improve completeness in certain (rare) cases
-      MoreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds(s.h, v)
+      moreCompleteExhaleSupporter.assumeFieldPermissionUpperBounds(s.h, v)
     }
 
     s

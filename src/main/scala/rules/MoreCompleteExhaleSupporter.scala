@@ -21,7 +21,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.VerificationError
 
-object MoreCompleteExhaleSupporter extends SymbolicExecutionRules {
+object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
   sealed trait TaggedSummarisingSnapshot {
     def snapshot: Term
   }
