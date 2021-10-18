@@ -19,10 +19,9 @@ import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.ast.FalseLit
 import viper.silver.verifier.VerificationError
 
-object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
+object MoreCompleteExhaleSupporter extends SymbolicExecutionRules {
   sealed trait TaggedSummarisingSnapshot {
     def snapshot: Term
   }

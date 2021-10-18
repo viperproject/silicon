@@ -9,7 +9,7 @@ package viper.silicon
 import viper.silicon.interfaces.state.NonQuantifiedChunk
 import viper.silver.ast
 import viper.silicon.rules.PermMapDefinition
-import viper.silicon.rules.moreCompleteExhaleSupporter.TaggedSummarisingSnapshot
+import viper.silicon.rules.MoreCompleteExhaleSupporter.TaggedSummarisingSnapshot
 import viper.silicon.state.terms.Term
 
 package object state {
