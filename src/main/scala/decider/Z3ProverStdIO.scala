@@ -31,6 +31,7 @@ class Z3ProverStdIO(uniqueId: String,
   private var lastTimeout: Int = -1
   private var logfileWriter: PrintWriter = _
   private var z3: Process = _
+  private var z3ShutdownHook: Thread = _
   private var input: BufferedReader = _
   private var output: PrintWriter = _
   /* private */ var z3Path: Path = _
@@ -52,6 +53,10 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
   def start(): Unit = {
+    // Calling `start()` multiple times in a row would leak memory and Z3 processes.
+    if (z3ShutdownHook != null) {
+      throw new AssertionError("stop() should be called between any pair of start() calls")
+    }
     pushPopScopeDepth = 0
     lastTimeout = -1
     logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.z3LogFile(uniqueId).toFile)
@@ -59,6 +64,17 @@ class Z3ProverStdIO(uniqueId: String,
     z3 = createZ3Instance()
     input = new BufferedReader(new InputStreamReader(z3.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(z3.getOutputStream)), true)
+    // Register a shutdown hook to stop Z3 when the JVM gracefully terminates.
+    // Note that if the JVM abruptly terminates (e.g. because of a SIGKILL)
+    // this hook will not be executed and the Z3 process will be left running.
+    z3ShutdownHook = new Thread {
+      override def run(): Unit = {
+        if (z3.isAlive) {
+          z3.destroyForcibly()
+        }
+      }
+    }
+    Runtime.getRuntime.addShutdownHook(z3ShutdownHook)
   }
 
   private def createZ3Instance() = {
@@ -90,15 +106,7 @@ class Z3ProverStdIO(uniqueId: String,
     val builder = new ProcessBuilder(z3Path.toFile.getPath +: "-smt2" +: "-in" +: userProvidedZ3Args :_*)
     builder.redirectErrorStream(true)
 
-    val process = builder.start()
-
-    Runtime.getRuntime.addShutdownHook(new Thread {
-      override def run(): Unit = {
-        process.destroy()
-      }
-    })
-
-    process
+    builder.start()
   }
 
   def reset(): Unit = {
@@ -131,6 +139,14 @@ class Z3ProverStdIO(uniqueId: String,
       }
       if (output != null) {
         output.close()
+      }
+
+      if (z3ShutdownHook != null) {
+        // Deregister the shutdown hook, otherwise the Z3 process that has been stopped cannot be garbage collected.
+        // Explanation: https://blog.creekorful.org/2020/03/classloader-and-memory-leaks/
+        // Bug report: https://github.com/viperproject/silicon/issues/579
+        Runtime.getRuntime.removeShutdownHook(z3ShutdownHook)
+        z3ShutdownHook = null
       }
     }
   }

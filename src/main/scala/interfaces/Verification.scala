@@ -11,7 +11,6 @@ import viper.silicon.reporting.Converter
 import viper.silicon.state.{State, Store}
 import viper.silver.verifier.{Counterexample, FailureContext, Model, VerificationError}
 import viper.silicon.state.terms.Term
-import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
 /*
@@ -114,15 +113,10 @@ trait SiliconCounterexample extends Counterexample {
   def withStore(s: Store) : SiliconCounterexample
 }
 
-case class SiliconNativeCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeap: Option[Iterable[Chunk]], model: Model) extends SiliconCounterexample {
+case class SiliconNativeCounterexample(internalStore: Store, heap: Iterable[Chunk], oldHeaps: Map[String,Iterable[Chunk]], model: Model) extends SiliconCounterexample {
   override def withStore(s: Store): SiliconCounterexample = {
-    SiliconNativeCounterexample(s, heap, oldHeap, model)
+    SiliconNativeCounterexample(s, heap, oldHeaps, model)
   }
-}
-
-case class SiliconRawCounterexample(conditions: Seq[Term], state: State, model: Model) extends SiliconCounterexample {
-  override val internalStore: Store = state.g
-  override def withStore(s: Store): SiliconCounterexample = copy(state = state.copy(g = s))
 }
 
 case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Model) extends SiliconCounterexample {

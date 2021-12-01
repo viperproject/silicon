@@ -1,4 +1,8 @@
-![Silicon's logo](https://github.com/viperproject/silicon/blob/master/docs/logo_name.png?raw=true "Silicon's logo")
+# Silicon: A Viper Verifier Based on Symbolic Execution
+
+<p align="center">
+  <img width="512" height="144" alt="Silicon logo" src="docs/logo_name.png">
+</p>
 
 Silicon is a state-of-the-art, automated verifier based on symbolic execution,
 and the default verifier of the
@@ -128,9 +132,9 @@ method main() {
 * You need recent installations of
   1. the [sbt build tool](https://www.scala-sbt.org/)
   2. the [Z3 SMT solver](https://github.com/Z3Prover/z3/releases)
-* Clone [silver](https://github.com/viperproject/silver) repository in your computer.
-* Clone **silicon** (this repository) in your computer, in a separate directory.
-* From within the directory where you installed silicon, create a symbolic link to the directory where you installed silver.
-* On Linux/Mac OS X: ```ln -s <relative path to diretory where you installed silver> silver```
-* On Windows: ```mklink /D silver <relative path to diretory where you installed silver>```
-* Compile by typing: ```sbt compile```
+* Clone [Silver](https://github.com/viperproject/silver), e.g. into `~/silver`
+* Clone Silicon (this repository), e.g. into `~/silicon`
+* From within the directory where you installed Silicon, create a symbolic link to the directory where you installed Silver. E.g. there should be a symbolic link from `~/silicon/silver` to `~/silver`. Alternatively, directly clone Silver into, e.g. `~/silicon/silver`.
+* Open a console, change directory to `~/silicon`
+* Compile by running `sbt compile`, or run all tests via `sbt test`
+* We recommend IDEA IntelliJ for Scala development, but any IDE that supports sbt will do
