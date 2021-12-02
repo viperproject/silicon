@@ -555,6 +555,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val alternativeFunctionVerificationOrder: ScallopOption[Boolean] = opt[Boolean]("alternativeFunctionVerificationOrder",
+    descr = "Calculate the order in which functions are verified and function axioms become available in an" +
+      "alternative way that takes dependencies between functions through predicate unfoldings into account. " +
+      "This is more complete in some cases (see Silicon issue #355) but less complete in others (see test" +
+      "all/issues/silicon/unofficial007).",
+    default = Some(false),
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(timeout) {

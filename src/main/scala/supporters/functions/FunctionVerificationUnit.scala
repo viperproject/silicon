@@ -80,7 +80,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     def analyze(program: ast.Program): Unit = {
       this.program = program
 
-      val heights = Functions.heights(program).toSeq.sortBy(_._2).reverse
+      val heights = Functions.heights(program, Verifier.config.alternativeFunctionVerificationOrder()).toSeq.sortBy(_._2).reverse
 
       functionData = toMap(
         heights.map { case (func, height) =>
