@@ -27,7 +27,7 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
-import viper.silver.ast.BackendType
+import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage}
@@ -194,7 +194,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
-      results
+      setErrorScope(results, function)
     })
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
@@ -203,7 +203,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
-      results
+      setErrorScope(results, predicate)
     })
 
     decider.prover.stop()
@@ -231,7 +231,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
           logger debug s"Silicon finished verification of method `${method.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
 
-          results
+          setErrorScope(results, method)
         })
       }) ++ cfgs.map(cfg => {
         val s = createInitialState(cfg, program)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
@@ -467,5 +467,13 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
       })
     }
+  }
+
+  private def setErrorScope(results: Seq[VerificationResult], scope: Member): Seq[VerificationResult] = {
+    results.foreach {
+      case Failure(err) => err.scope = Some(scope)
+      case _ =>
+    }
+    results
   }
 }
