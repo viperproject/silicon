@@ -471,7 +471,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   private def setErrorScope(results: Seq[VerificationResult], scope: Member): Seq[VerificationResult] = {
     results.foreach {
-      case Failure(err) => err.scope = Some(scope)
+      case f: Failure => f.message.scope = Some(scope)
       case _ =>
     }
     results
