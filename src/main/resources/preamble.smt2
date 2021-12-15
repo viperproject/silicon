@@ -10,8 +10,8 @@
 
 ; --- Snapshots ---
 
-(declare-datatypes () ((
-    $Snap ($Snap.unit)
+(declare-datatypes (($Snap 0)) ((
+    ($Snap.unit)
     ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
 
 ; --- References ---
@@ -21,8 +21,8 @@
 
 ; --- Permissions ---
 
-(declare-sort $FPM)
-(declare-sort $PPM)
+(declare-sort $FPM 0)
+(declare-sort $PPM 0)
 (define-sort $Perm () Real)
 
 (define-const $Perm.Write $Perm 1.0)
