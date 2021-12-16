@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory
 import viper.silver.ast
 import viper.silver.frontend.{DefaultStates, SilFrontend}
 import viper.silver.reporter._
-import viper.silver.verifier.{AbstractVerificationError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
+import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.SymbExLogger
@@ -296,17 +296,17 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   private def failureFilterAndGroupingCriterion(f: Failure): String = {
     // apply transformers if available:
     val transformedError = f.message match {
-      case e: AbstractVerificationError => e.transformedError()
+      case e: SilAbstractVerificationError => e.transformedError()
       case e => e
     }
     // create a string that identifies the given failure:
     transformedError.readableMessage(withId = true, withPosition = true)
   }
 
-  private def failureSortingCriterion(f: Failure): Tuple2[Int, Int] = {
+  private def failureSortingCriterion(f: Failure): (Int, Int) = {
     // apply transformers if available:
     val transformedError = f.message match {
-      case e: AbstractVerificationError => e.transformedError()
+      case e: SilAbstractVerificationError => e.transformedError()
       case e => e
     }
     transformedError.pos match { /* Order failures according to source position */
