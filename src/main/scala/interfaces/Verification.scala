@@ -151,8 +151,7 @@ case class SiliconMappedCounterexample(
     val buf = converter.modelAtLabel
       .map(x => s"model at label: ${x._1}\n${(ExtractedModel(x._2.entries.map(y => (y._1, interpret(y._2))))).toString}\n")
       .mkString("\n")
-    s"$buf\non return: \n${(ExtractedModel(converter.extractedModel.entries.map(y => (y._1, interpret(y._2))))).toString}"  
-
+    s"$buf\non return: \n${(ExtractedModel(converter.extractedModel.entries.map(y => (y._1, interpret(y._2))))).toString}"
   }
   private def interpret(t: ExtractedModelEntry) = interpreter.interpret(t, Seq())
 
