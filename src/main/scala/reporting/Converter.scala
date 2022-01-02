@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2021 ETH Zurich.
+
 package viper.silicon.reporting
 
 import viper.silicon
@@ -15,9 +21,8 @@ import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.terms.sorts.UserSort
 
 case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
-  override lazy val toString: String = {
-    entries.map(x => s"${x._1} <- ${x._2.toString}").mkString("\n")
-  }
+  override lazy val toString: String =
+    entries.map { case (name, entry) => s"$name <- ${entry.toString}" }.mkString("\n")
 }
 
 sealed trait ExtractedModelEntry {
@@ -621,7 +626,7 @@ object Converter {
         x._1.typVars.map(x._2)
       } catch {
         // printf(s"$x")
-        Seq()
+        case _: Throwable => Seq()
       }
       val translatedFunctions = x._1.functions.map(y => translateFunction(model, heap, y, x._2))
       DomainEntry(x._1.name, types, translatedFunctions)
@@ -702,7 +707,6 @@ object Converter {
       case Some(ConstantEntry(t)) => ExtractedFunction(fname, argSort, resSort, Map.empty, getConstantEntry(resSort, ConstantEntry(t)))
       case Some(ApplicationEntry(n, args)) => ExtractedFunction(fname, argSort, resSort, Map.empty, getConstantEntry(resSort, ApplicationEntry(n, args)))
       case Some(x) => ExtractedFunction(fname, argSort, resSort, Map.empty, getConstantEntry(resSort, x))
-      case Some(_) => ExtractedFunction(fname, argSort, resSort, Map.empty, OtherEntry(s"${model.entries.get(fname)}", "not a function"))
       case None    => ExtractedFunction(fname, argSort, resSort, Map.empty, OtherEntry(fname, "function not found"))
     }
   }

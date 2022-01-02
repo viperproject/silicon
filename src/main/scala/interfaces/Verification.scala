@@ -149,11 +149,13 @@ case class SiliconMappedCounterexample(
 
   override lazy val toString: String = {
     val buf = converter.modelAtLabel
-      .map(x => s"model at label: ${x._1}\n${(ExtractedModel(x._2.entries.map(y => (y._1, interpret(y._2))))).toString}\n")
+      .map { case (label, model) => s"model at label $label:\n${interpret(model).toString}"}
       .mkString("\n")
-    s"$buf\non return: \n${(ExtractedModel(converter.extractedModel.entries.map(y => (y._1, interpret(y._2))))).toString}"
+    s"$buf\non return: \n${interpret(converter.extractedModel).toString}"
   }
-  private def interpret(t: ExtractedModelEntry) = interpreter.interpret(t, Seq())
+  private def interpret(t: ExtractedModel): ExtractedModel =
+    ExtractedModel(t.entries.map{ case (name, entry) => (name, interpret(entry)) })
+  private def interpret(t: ExtractedModelEntry): ExtractedModelEntry = interpreter.interpret(t, Seq())
 
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel)

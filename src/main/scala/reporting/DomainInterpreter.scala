@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2021 ETH Zurich.
+
 package viper.silicon.reporting
 
 import viper.silicon
@@ -11,13 +17,13 @@ import viper.silicon.state.Identifier
   *  @param	T : result type
   */
 trait AbstractInterpreter[E, I, T] { 
-	def interpret(entry: E, info: I): T
+  def interpret(entry: E, info: I): T
 }
 trait ModelInterpreter[T, I] extends AbstractInterpreter[ExtractedModelEntry, I, T]
 trait DomainInterpreter[T, I] extends AbstractInterpreter[DomainValueEntry, I, T]
 
 case class IdentityInterpreter() extends ModelInterpreter[ExtractedModelEntry, Any] {
-	def interpret(entry: ExtractedModelEntry, anything: Any): ExtractedModelEntry = entry
+  def interpret(entry: ExtractedModelEntry, anything: Any): ExtractedModelEntry = entry
 }
 
 /**
@@ -28,7 +34,7 @@ case class IdentityInterpreter() extends ModelInterpreter[ExtractedModelEntry, A
 case class GenericDomainInterpreter(c: Converter) extends ModelInterpreter[ExtractedModelEntry, Seq[ExtractedModelEntry]] {
 	private val domains: Seq[DomainEntry] = c.domains
 	private val functions: Seq[ExtractedFunction] = c.non_domain_functions
-	def interpret(entry: ExtractedModelEntry,visited: Seq[ExtractedModelEntry]): ExtractedModelEntry = {
+	def interpret(entry: ExtractedModelEntry, visited: Seq[ExtractedModelEntry]): ExtractedModelEntry = {
 		if (visited.contains(entry)) entry
 		else entry match {
 			case DomainValueEntry(dom, v) =>
@@ -36,17 +42,20 @@ case class GenericDomainInterpreter(c: Converter) extends ModelInterpreter[Extra
 				val domainFunctions = relevantDomain.flatMap(_.functions)
 				val allFunctions = functions ++ domainFunctions
 				val relevantFunctions = allFunctions.filter(x => x.argtypes.length == 1 && x.argtypes.head == sorts.UserSort(Identifier(dom)))
-				val info = silicon.toMap(relevantFunctions.map(x => (x,
-					x(Seq(entry)) match {
+				val info = silicon.toMap(relevantFunctions.map(fn => (fn,
+					fn(Seq(entry)) match {
 						case Right(e) => e match {
 							case d: DomainValueEntry => interpret(d, entry +: visited)
 							case x => interpret(x, entry +: visited)
 						}
-						case _ => OtherEntry(s"${x.fname}","not been able to resolve function")
+						case _ => OtherEntry(s"${fn.fname}","not been able to resolve function")
 					})))
 				ExtendedDomainValueEntry(DomainValueEntry(dom, v), info)
 			case e: VarEntry => interpret(c.extractVal(e), e +: visited)
-			case r: RefEntry => RefEntry(r.name, r.fields.map(x => (x._1, (interpret(x._2._1, r +: visited), x._2._2))))
+			case r: RefEntry => RefEntry(r.name, r.fields.map {
+        // interpret each field entry:
+        case (fieldName, (entry, optPerm)) => (fieldName, (interpret(entry, r +: visited), optPerm))
+      })
 			case _ => entry
 		}
 	}

@@ -1,0 +1,21 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field left: Int
+field right: Int
+
+method simple(x: Ref, y: Ref) returns (n:Int)
+  requires acc(x.left) && acc(x.right)
+  requires acc(y.left) && acc(y.right)
+  requires y.left == 3 && y.right == 4
+  requires x.left == 42 && x.right > 52
+  ensures  acc(x.left) && acc(x.right)
+  ensures  acc(y.left) && acc(y.right)
+  //:: ExpectedCounterexample(postcondition.violated:assertion.false, (x.left == 84))
+  ensures  x.left == 42
+{
+  n := x.left
+  label ret
+  x.left := x.left * 2
+  x.right := 201
+}
