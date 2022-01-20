@@ -425,7 +425,15 @@ class Z3ProverStdIO(uniqueId: String,
         logger warn msg
       }
 
-      repeat = warning
+      // When `smt.qi.profile` is `true`, Z3 periodically reports the quantifier instantiations using the format
+      // `[quantifier_instances] "<quantifier_id>" : <instances> : <maximum generation> : <maximum cost>`.
+      // See: https://github.com/Z3Prover/z3/issues/4522
+      val qiProfile = result.startsWith("[quantifier_instances]")
+      if (qiProfile) {
+        logger info result
+      }
+
+      repeat = warning || qiProfile
     }
 
     result
