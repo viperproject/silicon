@@ -26,4 +26,4 @@ cd "%CURR_DIR%"
 
 set JVM_OPTS=-Xss16m -Dlogback.configurationFile="%BASE_DIR%\src\main\resources\logback.xml" -Dfile.encoding=UTF-8
 
-call java "%JVM_OPTS%" -cp "%CP%" viper.silicon.SiliconRunner %*
+call java %JVM_OPTS% -cp "%CP%" viper.silicon.SiliconRunner %*
