@@ -48,10 +48,6 @@ final case class State(g: Store = Store(),
                        recordPcs: Boolean = false,
                        exhaleExt: Boolean = false,
 
-                       applyHeuristics: Boolean = false,
-                       heuristicsDepth: Int = 0,
-                       triggerAction: AnyRef = null,
-
                        ssCache: SsCache = Map.empty,
                        hackIssue387DisablePermissionConsumption: Boolean = false,
 
@@ -140,7 +136,6 @@ object State {
                  partiallyConsumedHeap1,
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
-                 applyHeuristics1, heuristicsDepth1, triggerAction1,
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, hack, retryLevel) =>
@@ -162,7 +157,6 @@ object State {
                      `partiallyConsumedHeap1`,
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
-                     `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `retryLevel`) =>

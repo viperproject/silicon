@@ -14,7 +14,7 @@ import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
