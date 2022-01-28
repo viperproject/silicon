@@ -38,8 +38,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              resource: ast.Resource,
              args: Seq[Term],
              ve: VerificationError,
-             v: Verifier,
-             description: String)
+             v: Verifier)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult
 
@@ -74,32 +73,31 @@ object chunkSupporter extends ChunkSupportRules {
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    heuristicsSupporter.tryOperation[Heap, Term](description)(s, h, v)((s1, h1, v1, QS) => {
-      consume(s1, h1, resource, args, perms, ve, v1)((s2, h2, optSnap, v2) =>
-        optSnap match {
-          case Some(snap) =>
-            QS(s2, h2, snap.convert(sorts.Snap), v2)
-          case None =>
-            /* Not having consumed anything could mean that we are in an infeasible
-             * branch, or that the permission amount to consume was zero.
-             * Returning a fresh snapshot in these cases should not lose any information.
-             */
-            val fresh = v2.decider.fresh(sorts.Snap)
-            val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
-            QS(s3, h2, fresh, v2)
-        })
-    })(Q)
+    consume2(s, h, resource, args, perms, ve, v)((s2, h2, optSnap, v2) =>
+      optSnap match {
+        case Some(snap) =>
+          Q(s2, h2, snap.convert(sorts.Snap), v2)
+        case None =>
+          /* Not having consumed anything could mean that we are in an infeasible
+           * branch, or that the permission amount to consume was zero.
+           *
+           * [MS 2022-01-28] Previously, a a fresh snapshot was retured, which also had to be
+           * registered with the function recorder. However, since nothing was consumed,
+           * returning the unit snapshot seems more appropriate.
+           */
+          Q(s2, h2, Unit, v2)
+      })
   }
 
-  private def consume(s: State,
-                      h: Heap,
-                      resource: ast.Resource,
-                      args: Seq[Term],
-                      perms: Term,
-                      ve: VerificationError,
-                      v: Verifier)
-                     (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
-                     : VerificationResult = {
+  private def consume2(s: State,
+                       h: Heap,
+                       resource: ast.Resource,
+                       args: Seq[Term],
+                       perms: Term,
+                       ve: VerificationError,
+                       v: Verifier)
+                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
+                      : VerificationResult = {
 
     val id = ChunkIdentifier(resource, Verifier.program)
     if (s.exhaleExt) {
@@ -185,30 +183,14 @@ object chunkSupporter extends ChunkSupportRules {
     Q(s.copy(functionRecorder = fr1), h1, v)
   }
 
-  @inline
   def lookup(s: State,
              h: Heap,
              resource: ast.Resource,
              args: Seq[Term],
              ve: VerificationError,
-             v: Verifier,
-             description: String)
+             v: Verifier)
             (Q: (State, Heap, Term, Verifier) => VerificationResult)
             : VerificationResult = {
-
-    heuristicsSupporter.tryOperation[Heap, Term](description)(s, h, v)((s1, h1, v1, QS) => {
-      lookup(s1, h1, resource, args, ve, v1)(QS)
-    })(Q)
-  }
-
-  private def lookup(s: State,
-                     h: Heap,
-                     resource: ast.Resource,
-                     args: Seq[Term],
-                     ve: VerificationError,
-                     v: Verifier)
-                    (Q: (State, Heap, Term, Verifier) => VerificationResult)
-                    : VerificationResult = {
 
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction =
