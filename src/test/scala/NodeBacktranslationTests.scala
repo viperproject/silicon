@@ -30,7 +30,8 @@ class NodeBacktranslationTests extends AnyFunSuite {
 
     val assignments: Map[LocalVar, Exp] =
       method.deepCollectInBody { case lva: LocalVarAssign => lva }
-            .map(lva => lva.lhs -> lva.rhs) to(Map)
+            .map(lva => lva.lhs -> lva.rhs)
+            .to(Map)
 
     val backtranslationTransformer = ViperStrategy.Slim({
       case lv: LocalVar if assignments.contains(lv) =>

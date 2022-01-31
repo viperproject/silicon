@@ -11,6 +11,7 @@ import scala.collection.immutable.ArraySeq
 import scala.util.matching.Regex
 import scala.util.Properties._
 import org.rogach.scallop._
+import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
 import viper.silver.frontend.SilFrontendConfig
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
@@ -193,13 +194,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     descr = "Set level of certain internal loggers",
     keyName = "logger",
     valueName = "level"
-  )
-
-  val writeSymbexLogFile: ScallopOption[Boolean] = opt[Boolean]("writeSymbexLogFile",
-    descr = "Report the symbolic execution log as ExecutionTraceReport",
-    default = Some(false),
-    noshort = true,
-    hidden = true
   )
 
   val timeout: ScallopOption[Int] = opt[Int]("timeout",
@@ -453,17 +447,34 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableCaches: ScallopOption[Boolean] = opt[Boolean]("disableCaches",
+    descr = "Disables various caches in Silicon's state.",
+    default = Some(false),
+    noshort = true
+  )
+
+  def mapCache[A](opt: Option[A]): Option[A] = opt match {
+    case Some(_) if disableCaches() => None
+    case _ => opt
+  }
+
   val enableMoreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
     descr = "Enable a more complete exhale version.",
     default = Some(false),
     noshort = true
   )
 
-  val disableMostStateConsolidations: ScallopOption[Boolean] = opt[Boolean]("disableMostStateConsolidations",
-    descr = "Disable state consolidations, except on-retry and single-merge.",
+  val moreJoins: ScallopOption[Boolean] = opt[Boolean]("moreJoins",
+    descr = "Enable more joins using a more complete implementation of state merging.",
     default = Some(false),
     noshort = true
   )
+
+  val stateConsolidationMode: ScallopOption[StateConsolidationMode] = opt[StateConsolidationMode]("stateConsolidationMode",
+    descr = s"One of the following modes:\n${StateConsolidationMode.helpText}",
+    default = Some(StateConsolidationMode.Default),
+    noshort = true
+  )(singleArgConverter(mode => StateConsolidationMode(mode.toInt)))
 
   val numberOfParallelVerifiers: ScallopOption[Int] = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
@@ -483,6 +494,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
             "a file '<tempDirectory>/<methodName>.dot'.",
     default = Some(false),
     noshort = true
+  )
+
+  val logConfig: ScallopOption[String] = opt[String]("logConfig",
+    descr = "Path to config file specifying SymbExLogger options",
+    default = None,
+    noshort = true,
+    hidden = false
   )
 
   val disableCatchingExceptions: ScallopOption[Boolean] = opt[Boolean]("disableCatchingExceptions",
@@ -524,6 +542,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val conditionalizePermissions: ScallopOption[Boolean] = opt[Boolean]("conditionalizePermissions",
+    descr = "Potentially reduces the number of symbolic execution paths, by conditionalising " + 
+            "permission expressions. E.g. rewrite \"b ==> acc(x.f, p)\" to \"acc(x.f, b ? p : none)\"." +
+            "This is an experimental feature; report problems if you observe any.",
+    default = Some(false),
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(timeout) {
@@ -544,6 +570,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
+  validateFileOpt(logConfig)
   validateFileOpt(setAxiomatizationFile)
   validateFileOpt(multisetAxiomatizationFile)
   validateFileOpt(sequenceAxiomatizationFile)
@@ -579,4 +606,36 @@ object Config {
   }
 
   case class Z3StateSaturationTimeout(timeout: Int, comment: String)
+
+  object StateConsolidationMode extends Enumeration {
+    type StateConsolidationMode = Value
+    val Minimal, Default, Retrying, MinimalRetrying, MoreCompleteExhale = Value
+
+    private[Config] final def helpText: String = {
+      s"""  ${Minimal.id}: Minimal work, many incompletenesses
+         |  ${Default.id}: Most work, fewest incompletenesses
+         |  ${Retrying.id}: Similar to ${Default.id}, but less eager
+         |  ${MinimalRetrying.id}: Less eager and less complete than ${Default.id}
+         |  ${MoreCompleteExhale.id}: Intended for use with --moreCompleteExhale
+         |""".stripMargin
+    }
+
+//    private val converter: ValueConverter[StateConsolidationMode] = new ValueConverter[StateConsolidationMode] {
+//      Try {
+//
+//      }
+//
+//      val pushPopRegex: Regex = """(?i)(pp)""".r
+//      val softConstraintsRegex: Regex = """(?i)(sc)""".r
+//
+//      def parse(s: List[(String, List[String])]): Either[String, Option[AssertionMode]] = s match {
+//        case (_, pushPopRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.PushPop))
+//        case (_, softConstraintsRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.SoftConstraints))
+//        case Nil => Right(None)
+//        case _ => Left(s"unexpected arguments")
+//      }
+//
+//      val argType: ArgType.V = org.rogach.scallop.ArgType.SINGLE
+//    }
+  }
 }

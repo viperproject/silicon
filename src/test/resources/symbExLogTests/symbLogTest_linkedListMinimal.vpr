@@ -1,0 +1,34 @@
+field data: Int
+field next: Ref
+field head: Ref
+
+predicate lseg(this: Ref, end: Ref)
+{
+  this != end ==>
+  acc(this.data) && acc(this.next) && acc(lseg(this.next, end)) &&
+  unfolding acc(lseg(this.next, end)) in this.next != end ==> this.data <= this.next.data
+}
+
+predicate List(this: Ref)
+{
+  acc(this.head) && acc(lseg(this.head, null))
+}
+
+method insert(this: Ref, elem: Int) returns (index: Int)
+  requires acc(List(this))
+{
+  var tmp: Ref
+  index := 0
+
+  unfold acc(List(this))
+
+  // if(this.head != null) {
+    unfold acc(lseg(this.head, null))
+  // }
+  // inhale acc(this.head)
+  // inhale acc(this.head.data)
+
+  if(this.head == null || elem <= this.head.data) {
+    // fold acc(lseg(this.head, null))
+  }
+}

@@ -20,8 +20,10 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.toSf
 import viper.silicon.utils.ast.flattenOperator
 import viper.silicon.verifier.Verifier
-import viper.silicon.{EvaluateRecord, Map, SymbExLogger, TriggerSets}
+import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -84,9 +86,9 @@ object evaluator extends EvaluationRules {
           (Q: (State, Term, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, s, v.decider.pcs))
+    val sepIdentifier = SymbExLogger.currentLog().openScope(new EvaluateRecord(e, s, v.decider.pcs))
     eval3(s, e, pve, v)((s1, t, v1) => {
-      SymbExLogger.currentLog().collapse(e, sepIdentifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       Q(s1, t, v1)})
   }
 
@@ -303,10 +305,17 @@ object evaluator extends EvaluationRules {
         evalSeqShortCircuit(Or, s, flattened, pve, v)(Q)
 
       case implies @ ast.Implies(e0, e1) =>
+        val impliesRecord = new ImpliesRecord(implies, s, v.decider.pcs, "Implies")
+        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          evalImplies(s1, t0, e1, implies.info == FromShortCircuitingAnd, pve, v1)(Q))
+          evalImplies(s1, t0, e1, implies.info == FromShortCircuitingAnd, pve, v1)((s2, t1, v2) => {
+            SymbExLogger.currentLog().closeScope(uidImplies)
+            Q(s2, t1, v2)
+          }))
 
-      case ast.CondExp(e0, e1, e2) =>
+      case condExp @ ast.CondExp(e0, e1, e2) =>
+        val condExpRecord = new CondExpRecord(condExp, s, v.decider.pcs, "CondExp")
+        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
         eval(s, e0, pve, v)((s1, t0, v1) =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
             brancher.branch(s2, t0, v2)(
@@ -323,7 +332,10 @@ object evaluator extends EvaluationRules {
               case _ =>
                 sys.error(s"Unexpected join data entries: $entries")}
             (s2, result)
-          })(Q))
+          })((s4, t3, v3) => {
+            SymbExLogger.currentLog().closeScope(uidCondExp)
+            Q(s4, t3, v3)
+          }))
 
       /* Integers */
 
@@ -503,13 +515,20 @@ object evaluator extends EvaluationRules {
             val nonQuantArgs = args filter (a => !vars.map(_.localVar).contains(a))
             val indices = nonQuantArgs map (a => args.indexOf(a))
 
+            // TODO LA: nonQuantArgs are not recorded yet
+            val impliesRecord = new ImpliesRecord(null, s2, v.decider.pcs, "bindRcvrsAndEvalBody")
+            val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
+
             evals(s2, nonQuantArgs, _ => pve, v)((s3, tArgs, v1) => {
               val argsWithIndex = tArgs zip indices
               val zippedArgs = argsWithIndex map (ai => (ai._1, ch.args(ai._2)))
               val argsPairWiseEqual = And(zippedArgs map {case (a1, a2) => a1 === a2})
 
               evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), body, false, pve, v1)((s4, tImplies, v2) =>
-                bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, v2)(Q))
+                bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, v2)((s5, ts1, v3) => {
+                  SymbExLogger.currentLog().closeScope(uidImplies)
+                  Q(s5, ts1, v3)
+                }))
             })
           }
         }
@@ -528,6 +547,10 @@ object evaluator extends EvaluationRules {
 
             val s1 = s.copy(s.g + gVars, quantifiedVariables = tVars ++ s.quantifiedVariables)
 
+            // TODO LA: args are not recorded yet
+            val impliesRecord = new ImpliesRecord(null, s1, v.decider.pcs, "bindQuantRcvrsAndEvalBody")
+            val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
+
             evals(s1, args, _ => pve, v)((s2, ts1, v1) => {
               val bc = IsPositive(ch.perm.replace(ch.quantifiedVars, ts1))
               val tTriggers = Seq(Trigger(ch.valueAt(ts1)))
@@ -540,7 +563,10 @@ object evaluator extends EvaluationRules {
 
               evalImplies(s2, And(trig, bc), body, false, pve, v1)((s3, tImplies, v2) => {
                 val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
-                bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, v2)(Q)})
+                bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, v2)((s4, ts2, v3) => {
+                  SymbExLogger.currentLog().closeScope(uidImplies)
+                  Q(s4, ts2, v3)
+                })})
             })
           }
         }
@@ -712,7 +738,7 @@ object evaluator extends EvaluationRules {
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
           evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
             eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
-              v2.decider.assert(IsNonNegative(tPerm)) {
+              v2.decider.assert(IsNonNegative(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
                 case true =>
                   joiner.join[Term, Term](s2, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
@@ -748,7 +774,7 @@ object evaluator extends EvaluationRules {
                                          recordVisited = s3.recordVisited,
                                          permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
-                        val s10 = stateConsolidator.consolidateIfRetrying(s9, v5)
+                        val s10 = v5.stateConsolidator.consolidateIfRetrying(s9, v5)
                         eval(s10, eIn, pve, v5)(QB)})})
                   })(join(v2.symbolConverter.toSort(eIn.typ), "joined_unfolding", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
@@ -917,6 +943,7 @@ object evaluator extends EvaluationRules {
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(e), v, s)
 
       case _: ast.EpsilonPerm
+         | _: ast.Maplet
          | _: ast.FieldAccessPredicate
          | _: ast.MagicWand
          | _: ast.PredicateAccess
@@ -999,7 +1026,7 @@ object evaluator extends EvaluationRules {
 
     val h = s.oldHeaps(label)
     val s1 = s.copy(h = h, partiallyConsumedHeap = None)
-    val s2 = stateConsolidator.consolidateIfRetrying(s1, v)
+    val s2 = v.stateConsolidator.consolidateIfRetrying(s1, v)
 
     eval(s2, e, pve, v)((s3, t, v1) => {
       val s4 = s3.copy(h = s.h,

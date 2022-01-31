@@ -16,14 +16,15 @@ import viper.silver.{ast, cfg}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ExecuteRecord, Map, MethodCallRecord, SymbExLogger}
+import viper.silver.cfg.{ConditionalEdge, StatementBlock}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -46,67 +47,149 @@ object executor extends ExecutionRules {
   import evaluator._
   import producer._
 
-  private def follow(s: State, edge: SilverEdge, v: Verifier)
+  private def follow(s: State, edge: SilverEdge, v: Verifier, joinPoint: Option[SilverBlock])
                     (Q: (State, Verifier) => VerificationResult)
                     : VerificationResult = {
 
-    val s1 = edge.kind match {
-      case cfg.Kind.Out =>
-        val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
-        val s1 = s.copy(functionRecorder = fr1, h = h1,
-                        invariantContexts = s.invariantContexts.tail)
-        s1
-      case _ =>
-        /* No need to do anything special. See also the handling of loop heads in exec below. */
-        s
+    def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
+      edge.kind match {
+        case cfg.Kind.Out =>
+          val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+          val s1 = s.copy(functionRecorder = fr1, h = h1,
+                          invariantContexts = s.invariantContexts.tail)
+          s1
+        case _ =>
+          /* No need to do anything special. See also the handling of loop heads in exec below. */
+          s
+      }
     }
 
-    edge match {
-      case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
-        eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
-          /* Using branch(...) here ensures that the edge condition is recorded
-           * as a branch condition on the pathcondition stack.
-           */
-          brancher.branch(s2, tCond, v1)(
-            (s3, v3) => exec(s3, ce.target, ce.kind, v3)(Q),
-            (_, _)  => Success()))
+    joinPoint match {
+      case Some(jp) if jp == edge.target =>
+        // Join point reached, stop following edges.
+        val s1 = handleOutEdge(s, edge, v)
+        Q(s1, v)
 
-      case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
-        exec(s1, ue.target, ue.kind, v)(Q)
+      case _ => edge match {
+        case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
+          val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
+          val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
+          val s1 = handleOutEdge(s, edge, v)
+          eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
+            /* Using branch(...) here ensures that the edge condition is recorded
+             * as a branch condition on the pathcondition stack.
+             */
+            brancher.branch(s2, tCond, v1)(
+              (s3, v3) =>
+                exec(s3, ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
+                  SymbExLogger.currentLog().closeScope(sepIdentifier)
+                  Q(s4, v4)
+                }),
+              (_, _)  => {
+                SymbExLogger.currentLog().closeScope(sepIdentifier)
+                Success()
+              }))
+
+        case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
+          val s1 = handleOutEdge(s, edge, v)
+          exec(s1, ue.target, ue.kind, v, joinPoint)(Q)
+      }
     }
   }
 
   private def follows(s: State,
                       edges: Seq[SilverEdge],
                       @unused pvef: ast.Exp => PartialVerificationError,
-                      v: Verifier)
+                      v: Verifier,
+                      joinPoint: Option[SilverBlock])
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult = {
 
-    if (edges.isEmpty) {
-      Q(s, v)
-    } else
-      edges.foldLeft(Success(): VerificationResult) {
-        case (fatalResult: FatalResult, _) => fatalResult
-        case (_, edge) => follow(s, edge, v)(Q)
-      }
+    // Find join point if it exists.
+    val jp: Option[SilverBlock] = edges.headOption.flatMap(edge => s.methodCfg.joinPoints.get(edge.source))
+
+    (edges, jp) match {
+      case (Seq(), _) => Q(s, v)
+      case (Seq(edge), _) => follow(s, edge, v, joinPoint)(Q)
+      case (Seq(edge1, edge2), Some(newJoinPoint)) if
+          Verifier.config.moreJoins() &&
+          // Can't directly match type because of type erasure ...
+          edge1.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
+          edge2.isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
+          // We only join branches that originate from if statements
+          // this is the case if the source is a statement block,
+          // as opposed to a loop head block.
+          edge1.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]] &&
+          edge2.source.isInstanceOf[StatementBlock[ast.Stmt, ast.Exp]] =>
+
+        assert(edge1.source == edge2.source)
+
+        val cedge1 = edge1.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
+        val cedge2 = edge2.asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
+
+        // Here we assume that edge1.condition is the negation of edge2.condition.
+        assert((cedge1.condition, cedge2.condition) match {
+          case (exp1, ast.Not(exp2)) => exp1 == exp2
+          case (ast.Not(exp1), exp2) => exp1 == exp2
+          case _ => false
+        })
+
+        eval(s, cedge1.condition, pvef(cedge1.condition), v)((s1, t0, v1) =>
+          // The type arguments here are Null because there is no need to pass any join data.
+          joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s2, v2, QB) => {
+            brancher.branch(s2, t0, v2)(
+              // Follow only until join point.
+              (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint))((s, v) => QB(s, null, v)),
+              (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint))((s, v) => QB(s, null, v))
+            )
+          })(entries => {
+            val s2 = entries match {
+              case Seq(entry) => // One branch is dead
+                entry.s
+              case Seq(entry1, entry2) => // Both branches are alive
+                entry1.pathConditionAwareMerge(entry2)
+              case _ =>
+                sys.error(s"Unexpected join data entries: $entries")
+            }
+            (s2, null)
+          })((s4, _, v4) => {
+            // Continue after merging at join point.
+            exec(s4, newJoinPoint, s4.methodCfg.inEdges(newJoinPoint).head.kind, v4, joinPoint)(Q)
+          })
+        )
+
+      case _ =>
+        val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
+        val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
+          case (fatalResult: FatalResult, _) => fatalResult
+          case (_, (edge, edgeIndex)) => {
+            if (edgeIndex != 0) {
+              SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+            }
+            SymbExLogger.currentLog().markReachable(uidBranchPoint)
+            follow(s, edge, v, joinPoint)(Q)
+          }
+        }
+        SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+        res
+    }
   }
 
   def exec(s: State, graph: SilverCfg, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    exec(s, graph.entry, cfg.Kind.Normal, v)(Q)
+    exec(s, graph.entry, cfg.Kind.Normal, v, None)(Q)
   }
 
-  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier)
+  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier, joinPoint: Option[SilverBlock])
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
     block match {
       case cfg.StatementBlock(stmt) =>
         execs(s, stmt, v)((s1, v1) =>
-          follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1)(Q))
+          follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1, joinPoint)(Q))
 
       case   _: cfg.PreconditionBlock[ast.Stmt, ast.Exp]
            | _: cfg.PostconditionBlock[ast.Stmt, ast.Exp] =>
@@ -178,7 +261,7 @@ object executor extends ExecutionRules {
                         else {
                           execs(s3, stmts, v2)((s4, v3) => {
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                            follows(s4, sortedEdges, WhileFailed, v3)(Q)})}})}})}))
+                            follows(s4, sortedEdges, WhileFailed, v3, joinPoint)(Q)})}})}})}))
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -205,10 +288,9 @@ object executor extends ExecutionRules {
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
-
-    val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, s, v.decider.pcs))
+    val sepIdentifier = SymbExLogger.currentLog().openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
-      SymbExLogger.currentLog().collapse(stmt, sepIdentifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -407,7 +489,7 @@ object executor extends ExecutionRules {
       // Calling hack510() triggers a state consolidation.
       // See also Silicon issue #510.
       case ast.MethodCall(`hack510_method_name`, _, _) =>
-        val s1 = stateConsolidator.consolidate(s, v)
+        val s1 = v.stateConsolidator.consolidate(s, v)
         Q(s1, v)
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
@@ -418,45 +500,47 @@ object executor extends ExecutionRules {
         val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
-        val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
+        val currentLog = SymbExLogger.currentLog()
+        val sepIdentifier = currentLog.openScope(mcLog)
+        val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
+        val paramId = currentLog.openScope(paramLog)
         evals(s, eArgs, _ => pveCall, v)((s1, tArgs, v1) => {
-          mcLog.finish_parameters()
+          currentLog.closeScope(paramId)
           val exampleTrafo = CounterexampleTransformer({
             case ce: SiliconCounterexample => ce.withStore(s1.g)
             case ce => ce
           })
           val pvePre = ErrorWrapperWithExampleTransformer(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
+          val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
+          val preCondId = currentLog.openScope(preCondLog)
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
                            recordVisited = true)
           consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
-            mcLog.finish_precondition()
+            currentLog.closeScope(preCondId)
+            val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
+            val postCondId = currentLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
-              mcLog.finish_postcondition()
+              currentLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
                               .map(p => (p._1, s5.g(p._2))).toMap)
               val s6 = s5.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
-              SymbExLogger.currentLog().collapse(null, sepIdentifier)
+              currentLog.closeScope(sepIdentifier)
               Q(s6, v3)})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            v2.decider.assert(IsNonNegative(tPerm)){
-              case true =>
-                val wildcards = s2.constrainableARPs -- s1.constrainableARPs
-                predicateSupporter.fold(s2, predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
-              case false =>
-                createFailure(pve dueTo NegativePermission(ePerm), v2, s2)
-            }
-          }))
+          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
+            permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
+              val wildcards = s3.constrainableARPs -- s1.constrainableARPs
+              predicateSupporter.fold(s3, predicate, tArgs, tPerm, wildcards, pve, v3)(Q)})))
 
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
@@ -476,13 +560,10 @@ object executor extends ExecutionRules {
               s2.smCache
             }
 
-            v2.decider.assert(IsNonNegative(tPerm)){
-              case true =>
-                val wildcards = s2.constrainableARPs -- s1.constrainableARPs
-                predicateSupporter.unfold(s2.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v2, pa)(Q)
-              case false =>
-                createFailure(pve dueTo NegativePermission(ePerm), v2, s2)
-            }
+            permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
+              val wildcards = s3.constrainableARPs -- s1.constrainableARPs
+              predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, tArgs, tPerm, wildcards, pve, v3, pa)(Q)
+            })
           }))
 
       case pckg @ ast.Package(wand, proofScript) =>

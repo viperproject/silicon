@@ -8,13 +8,22 @@ package viper.silicon.rules
 
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 
-case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions)
+case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
+  // Instead of merging states by calling State.merge,
+  // we can directly merge JoinDataEntries to obtain new States,
+  // and the join data entries themselves provide information about the path conditions to State.merge.
+  def pathConditionAwareMerge(other: JoinDataEntry[D]): State = {
+    State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
+  }
+}
 
 trait JoiningRules extends SymbolicExecutionRules {
-  def join[D, JD](s: State, v: Verifier)
+  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -22,7 +31,7 @@ trait JoiningRules extends SymbolicExecutionRules {
 }
 
 object joiner extends JoiningRules {
-  def join[D, JD](s: State, v: Verifier)
+  def join[D, JD](s: State, v: Verifier, resetState: Boolean = true)
                  (block: (State, Verifier, (State, D, Verifier) => VerificationResult) => VerificationResult)
                  (merge: Seq[JoinDataEntry[D]] => (State, JD))
                  (Q: (State, JD, Verifier) => VerificationResult)
@@ -30,24 +39,38 @@ object joiner extends JoiningRules {
 
     var entries: Seq[JoinDataEntry[D]] = Vector.empty
 
+    val joiningRecord = new JoiningRecord(s, v.decider.pcs)
+    val uidJoin = SymbExLogger.currentLog().openScope(joiningRecord)
+
     executionFlowController.locally(s, v)((s1, v1) => {
       val preMark = v1.decider.setPathConditionMark()
       val s2 = s1.copy(underJoin = true)
 
       block(s2, v1, (s3, data, v2) => {
-        /* In order to prevent mismatches between different final states of the evaluation
-         * paths that are to be joined, we reset certain state properties that may have been
-         * affected by the evaluation - such as the store (by let-bindings) or the heap (by
-         * state consolidations) to their initial values.
-         */
-        val s4 = s3.copy(g = s1.g,
-                         h = s1.h,
-                         oldHeaps = s1.oldHeaps,
-                         underJoin = s1.underJoin)
+        val s4 =
+          if (resetState) {
+            /* In order to prevent mismatches between different final states of the evaluation
+             * paths that are to be joined, we reset certain state properties that may have been
+             * affected by the evaluation - such as the store (by let-bindings) or the heap (by
+             * state consolidations) to their initial values.
+             */
+            s3.copy(g = s1.g,
+                    h = s1.h,
+                    oldHeaps = s1.oldHeaps,
+                    underJoin = s1.underJoin,
+                    // TODO: Evaluation should not affect partiallyConsumedHeap, probably
+                    ssCache = s1.ssCache,
+                    partiallyConsumedHeap = s1.partiallyConsumedHeap,
+                    invariantContexts = s1.invariantContexts)
+          } else {
+            // For more joins, state shouldn't be reset.
+            s3
+          }
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
         Success()
       })
     }) && {
+      SymbExLogger.currentLog().closeScope(uidJoin)
       if (entries.isEmpty) {
         /* No block data was collected, which we interpret as all branches through
          * the block being infeasible. In turn, we assume that the overall verification path
