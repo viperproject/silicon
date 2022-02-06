@@ -85,7 +85,9 @@ object chunkSupporter extends ChunkSupportRules {
            * registered with the function recorder. However, since nothing was consumed,
            * returning the unit snapshot seems more appropriate.
            */
-          Q(s2, h2, Unit, v2)
+          val fresh = v2.decider.fresh(sorts.Snap)
+          val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
+          Q(s3, h2, fresh, v2)
       })
   }
 
