@@ -1435,10 +1435,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val args1 = arguments.map(_.replace(qvars, qvars1))
     val args2 = arguments.map(_.replace(qvars, qvars2))
 
-    val argsEqual =
-      (args1 zip args2)
-        .map(argsRenamed =>  argsRenamed._1 === argsRenamed._2)
-        .reduce((a1, a2) => And(a1, a2))
+    // Note: all lists, such as qvars1 and qvars2, are assumed to have pairwise same length
+
+    val argsEqual: Term =
+      if (args1.isEmpty)
+        True()
+      else
+        (args1 zip args2)
+            .map(argsRenamed =>  argsRenamed._1 === argsRenamed._2)
+            .reduce((a1, a2) => And(a1, a2))
 
     val varsEqual =
       (qvars1 zip qvars2)
