@@ -76,12 +76,14 @@ object evaluator extends EvaluationRules {
     if (es.isEmpty)
       Q(s, ts.reverse, v)
     else
+      // TODO: do not apply `pvef` here just yet!
       eval(s, es.head, pvef(es.head), v)((s1, t, v1) =>
         evals2(s1, es.tail, t :: ts, pvef, v1)(Q))
   }
 
   /** Wrapper Method for eval, for logging. See Executor.scala for explanation of analogue. **/
   @inline
+  @deprecated("Leads to innacurate position data, use `evals` instead", "11.02.2022")
   def eval(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
           (Q: (State, Term, Verifier) => VerificationResult)
           : VerificationResult = {

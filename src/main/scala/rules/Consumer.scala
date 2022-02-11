@@ -68,11 +68,12 @@ object consumer extends ConsumptionRules {
    */
 
   /** @inheritdoc */
+  @deprecated("Leads to innacurate position data, use `consumes` instead", "11.02.2022")
   def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
              (Q: (State, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consumeR(s, s.h, a.whenExhaling, pve, v)((s1, h1, snap, v1) => {
+    consumeR(s, s.h, a.whenExhaling, _ => pve, v)((s1, h1, snap, v1) => {
       val s2 = s1.copy(h = h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap, v1)})
@@ -86,18 +87,9 @@ object consumer extends ConsumptionRules {
               (Q: (State, Term, Verifier) => VerificationResult)
               : VerificationResult = {
 
-    val allTlcs = mutable.ListBuffer[ast.Exp]()
-    val allPves = mutable.ListBuffer[PartialVerificationError]()
+    val allTlcs = as.flatMap(_.whenInhaling.topLevelConjuncts)
 
-    as.foreach(a => {
-      val tlcs = a.whenExhaling.topLevelConjuncts
-      val pves = Seq.fill(tlcs.length)(pvef(a))
-
-      allTlcs ++= tlcs
-      allPves ++= pves
-    })
-
-    consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, h1, snap1, v1) => {
+    consumeTlcs(s, s.h, allTlcs, pvef, v)((s1, h1, snap1, v1) => {
       val s2 = s1.copy(h = h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap1, v1)
@@ -107,7 +99,7 @@ object consumer extends ConsumptionRules {
   private def consumeTlcs(s: State,
                           h: Heap,
                           tlcs: Seq[ast.Exp],
-                          pves: Seq[PartialVerificationError],
+                          pvef: ast.Exp => PartialVerificationError,
                           v: Verifier)
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
@@ -116,25 +108,23 @@ object consumer extends ConsumptionRules {
       Q(s, h, Unit, v)
     else {
       val a = tlcs.head
-      val pve = pves.head
 
       if (tlcs.tail.isEmpty)
-        wrappedConsumeTlc(s, h, a, pve, v)(Q)
+        wrappedConsumeTlc(s, h, a, pvef, v)(Q)
       else
-        wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) =>
-          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, snap2, v2) =>
+        wrappedConsumeTlc(s, h, a, pvef, v)((s1, h1, snap1, v1) =>
+          consumeTlcs(s1, h1, tlcs.tail, pvef, v1)((s2, h2, snap2, v2) =>
             Q(s2, h2, Combine(snap1, snap2), v2)))
     }
   }
 
-  private def consumeR(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  private def consumeR(s: State, h: Heap, a: ast.Exp, pvef: ast.Exp => PartialVerificationError, v: Verifier)
                       (Q: (State, Heap, Term, Verifier) => VerificationResult)
                       : VerificationResult = {
 
     val tlcs = a.topLevelConjuncts
-    val pves = Seq.fill(tlcs.length)(pve)
 
-    consumeTlcs(s, h, tlcs, pves, v)(Q)
+    consumeTlcs(s, h, tlcs, pvef, v)(Q)
   }
 
   /** Wrapper/decorator for consume that injects the following operations:
@@ -144,7 +134,7 @@ object consumer extends ConsumptionRules {
   protected def wrappedConsumeTlc(s: State,
                                   h: Heap,
                                   a: ast.Exp,
-                                  pve: PartialVerificationError,
+                                  pvef: ast.Exp => PartialVerificationError,
                                   v: Verifier)
                                  (Q: (State, Heap, Term, Verifier) => VerificationResult)
                                  : VerificationResult = {
@@ -160,13 +150,13 @@ object consumer extends ConsumptionRules {
 
       val sepIdentifier = SymbExLogger.currentLog().openScope(new ConsumeRecord(a, s1, v.decider.pcs))
 
-      consumeTlc(s1, h0, a, pve, v1)((s2, h2, snap2, v2) => {
+      consumeTlc(s1, h0, a, pvef, v1)((s2, h2, snap2, v2) => {
         SymbExLogger.currentLog().closeScope(sepIdentifier)
         QS(s2, h2, snap2, v2)})
     })(Q)
   }
 
-  private def consumeTlc(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  private def consumeTlc(s: State, h: Heap, a: ast.Exp, pvef: ast.Exp => PartialVerificationError, v: Verifier)
                         (Q: (State, Heap, Term, Verifier) => VerificationResult)
                         : VerificationResult = {
 
@@ -188,9 +178,9 @@ object consumer extends ConsumptionRules {
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
         val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
-        evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
+        evaluator.eval(s, e0, pvef(e0), v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
-            (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a0, pvef, v2)((s3, h1, t1, v3) => {
               SymbExLogger.currentLog().closeScope(uidImplies)
               Q(s3, h1, t1, v3)
             }),
@@ -203,13 +193,13 @@ object consumer extends ConsumptionRules {
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
         val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
 
-        eval(s, e0, pve, v)((s1, t0, v1) =>
+        eval(s, e0, pvef(e0), v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
-            (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a1, pvef, v2)((s3, h1, t1, v3) => {
               SymbExLogger.currentLog().closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             }),
-            (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a2, pvef, v2)((s3, h1, t1, v3) => {
               SymbExLogger.currentLog().closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             })))
@@ -223,7 +213,7 @@ object consumer extends ConsumptionRules {
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
+        evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pvef(a), v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
@@ -239,7 +229,7 @@ object consumer extends ConsumptionRules {
               tCond = tCond,
               tArgs = Seq(tRcvr),
               tPerm = tPerm,
-              pve = pve,
+              pve = pvef(a),
               negativePermissionReason = NegativePermission(acc.perm),
               notInjectiveReason = ReceiverNotInjective(acc.loc),
               insufficientPermissionReason =InsufficientPermission(acc.loc),
@@ -260,7 +250,7 @@ object consumer extends ConsumptionRules {
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pve, v) {
+        evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pvef(a), v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
@@ -276,7 +266,7 @@ object consumer extends ConsumptionRules {
               tCond = tCond,
               tArgs = tArgs,
               tPerm = tPerm,
-              pve = pve,
+              pve = pvef(a),
               negativePermissionReason = NegativePermission(acc.perm),
               notInjectiveReason = ReceiverNotInjective(acc.loc),
               insufficientPermissionReason =InsufficientPermission(acc.loc),
@@ -292,7 +282,7 @@ object consumer extends ConsumptionRules {
           else Some(forall.triggers)
         val ePerm = ast.FullPerm()()
         val tPerm = FullPerm()
-        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
+        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pvef(a), v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             quantifiedChunkSupporter.consume(
               s = s1,
@@ -308,7 +298,7 @@ object consumer extends ConsumptionRules {
               tCond = tCond,
               tArgs = tArgs,
               tPerm = tPerm,
-              pve = pve,
+              pve = pvef(a),
               negativePermissionReason = NegativePermission(ePerm),
               notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
               insufficientPermissionReason = MagicWandChunkNotFound(wand), /*InsufficientPermission(...)*/
@@ -318,8 +308,8 @@ object consumer extends ConsumptionRules {
       case ast.AccessPredicate(loc @ ast.FieldAccess(eRcvr, field), ePerm)
               if s.qpFields.contains(field) =>
 
-        eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
+        eval(s, eRcvr, pvef(eRcvr), v)((s1, tRcvr, v1) =>
+          eval(s1, ePerm, pvef(ePerm), v1)((s2, tPerm, v2) => {
             val (relevantChunks, _) =
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
             val (smDef1, smCache1) =
@@ -336,7 +326,7 @@ object consumer extends ConsumptionRules {
               loc,
               loss,
               None,
-              pve,
+              pvef(loc),
               v2
             )((s3, h3, snap, v3) => {
               val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
@@ -349,8 +339,8 @@ object consumer extends ConsumptionRules {
         val predicate = Verifier.program.findPredicate(predname)
         val formalVars = s.predicateFormalVarMap(predicate)
 
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
+        evals(s, eArgs, pvef, v)((s1, tArgs, v1) =>
+          eval(s1, ePerm, pvef(ePerm), v1)((s2, tPerm, v2) => {
             val (relevantChunks, _) =
               quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(predname))
             val (smDef1, smCache1) =
@@ -367,7 +357,7 @@ object consumer extends ConsumptionRules {
               loc,
               loss,
               None,
-              pve,
+              pvef(loc),
               v2
             )((s3, h3, snap, v3) => {
               val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
@@ -375,17 +365,17 @@ object consumer extends ConsumptionRules {
               Q(s4, h3, snap, v3)})}))
 
       case let: ast.Let if !let.isPure =>
-        letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) => {
+        letSupporter.handle[ast.Exp](s, let, pvef(let), v)((s1, g1, body, v1) => {
           val s2 = s1.copy(g = s1.g + g1)
-          consumeR(s2, h, body, pve, v1)(Q)})
+          consumeR(s2, h, body, pvef, v1)(Q)})
 
       case ast.AccessPredicate(locacc: ast.LocationAccess, perm) =>
-        eval(s, perm, pve, v)((s1, tPerm, v1) =>
-          evalLocationAccess(s1, locacc, pve, v1)((s2, _, tArgs, v2) =>
-            permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
+        eval(s, perm, pvef(perm), v)((s1, tPerm, v1) =>
+          evalLocationAccess(s1, locacc, pvef(locacc), v1)((s2, _, tArgs, v2) =>
+            permissionSupporter.assertNotNegative(s2, tPerm, perm, pvef(perm), v2)((s3, v3) => {
               val resource = locacc.res(Verifier.program)
               val loss = PermTimes(tPerm, s3.permissionScalingFactor)
-              val ve = pve dueTo InsufficientPermission(locacc)
+              val ve = pvef(locacc) dueTo InsufficientPermission(locacc)
               val description = s"consume ${a.pos}: $a"
               chunkSupporter.consume(s3, h, resource, tArgs, loss, ve, v3, description)((s4, h1, snap1, v4) => {
                 val s5 = s4.copy(partiallyConsumedHeap = Some(h1),
@@ -400,7 +390,7 @@ object consumer extends ConsumptionRules {
         val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
 
-        evals(s, bodyVars, _ => pve, v)((s1, tArgs, v1) => {
+        evals(s, bodyVars, pvef, v)((s1, tArgs, v1) => {
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s1.h, MagicWandIdentifier(wand, Verifier.program))
           val (smDef1, smCache1) =
@@ -417,7 +407,7 @@ object consumer extends ConsumptionRules {
             wand,
             loss,
             None,
-            pve,
+            pvef(wand),
             v1
           )((s3, h3, snap, v3) => {
             val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
@@ -425,14 +415,14 @@ object consumer extends ConsumptionRules {
             Q(s4, h3, snap, v3)})})
 
       case wand: ast.MagicWand =>
-        magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
-          val ve = pve dueTo MagicWandChunkNotFound(wand)
+        magicWandSupporter.evaluateWandArguments(s, wand, pvef(wand), v)((s1, tArgs, v1) => {
+          val ve = pvef(wand) dueTo MagicWandChunkNotFound(wand)
           val description = s"consume wand $wand"
           chunkSupporter.consume(s1, h, wand, tArgs, FullPerm(), ve, v1, description)(Q)
         })
 
       case _ =>
-        evalAndAssert(s, a, pve, v)((s1, t, v1) => {
+        evalAndAssert(s, a, pvef(a), v)((s1, t, v1) => {
           Q(s1, h, t, v1)
         })
     }
