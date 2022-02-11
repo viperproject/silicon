@@ -799,7 +799,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
         val receiverInjectivityCheck =
-          if (Verifier.config.checkInjectivity()) {
+          if (!Verifier.config.assumeInjectivityOnInhale()) {
             quantifiedChunkSupporter.injectivityAxiom(
               qvars     = qvars,
               // TODO: Adding ResourceTriggerFunction requires a summarising snapshot map of the current heap
