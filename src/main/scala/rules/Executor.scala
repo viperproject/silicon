@@ -355,40 +355,37 @@ object executor extends ExecutionRules {
         v.decider.assume(ts)
         Q(s1, v)
 
-      case inhale @ ast.Inhale(a) => a match {
+      case ast.Inhale(a) => a match {
         case _: ast.FalseLit =>
           /* We're done */
           Success()
         case _ =>
-          produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
+          produces(s, freshSnap, a.whenInhaling.topLevelConjuncts, InhaleFailed, v)((s1, v1) => {
             v1.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterInhale)
             Q(s1, v1)})
       }
 
-      case exhale @ ast.Exhale(a) =>
-        val pve = ExhaleFailed(exhale)
-        consume(s, a, pve, v)((s1, _, v1) =>
+      case ast.Exhale(a) =>
+        consumes(s, a.whenInhaling.topLevelConjuncts, ExhaleFailed, v)((s1, _, v1) =>
           Q(s1, v1))
 
-      case assert @ ast.Assert(a: ast.FalseLit) =>
+      case ast.Assert(a: ast.FalseLit) =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
         executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
           if (v1.decider.checkSmoke())
             QS(s1.copy(h = s.h), v1)
           else
-            createFailure(AssertFailed(assert) dueTo AssertionFalse(a), v1, s1, true)
+            createFailure(AssertFailed(a) dueTo AssertionFalse(a), v1, s1, true)
         })((_, _) => Success())
 
-      case assert @ ast.Assert(a) if Verifier.config.disableSubsumption() =>
+      case ast.Assert(a) if Verifier.config.disableSubsumption() =>
         val r =
-          consume(s, a, AssertFailed(assert), v)((_, _, _) =>
+          consumes(s, a.whenInhaling.topLevelConjuncts, AssertFailed, v)((_, _, _) =>
             Success())
 
         r combine Q(s, v)
 
-      case assert @ ast.Assert(a) =>
-        val pve = AssertFailed(assert)
-
+      case ast.Assert(a) =>
         if (s.exhaleExt) {
           Predef.assert(s.h.values.isEmpty)
           Predef.assert(s.reserveHeaps.head.values.isEmpty)
@@ -397,11 +394,11 @@ object executor extends ExecutionRules {
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
            * by s.h. By copying hUsed to s.h the contained permissions remain available inside the wand.
            */
-          consume(s, a, pve, v)((s2, _, v1) => {
+          consumes(s, a.whenInhaling.topLevelConjuncts, AssertFailed, v)((s2, _, v1) => {
             Q(s2.copy(h = s2.reserveHeaps.head), v1)
           })
         } else
-          consume(s, a, pve, v)((s1, _, v1) => {
+          consumes(s, a.whenInhaling.topLevelConjuncts, AssertFailed, v)((s1, _, v1) => {
             val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
             Q(s2, v1)})
 
