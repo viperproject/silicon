@@ -13,7 +13,7 @@ import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silicon.state.terms._
 
-class TermToSMTLib2Converter
+class TermToSMTLib2Converter 
     extends FastPrettyPrinterBase
        with TermConverter[String, String, String]
        with StatefulComponent {
@@ -69,7 +69,7 @@ class TermToSMTLib2Converter
 
   protected def render(decl: Decl): Cont = decl match {
     case SortDecl(sort: Sort) =>
-      parens(text("declare-sort") <+> render(sort))
+      parens(text("declare-sort") <+> render(sort) <+> text("0"))
 
     case FunctionDecl(fun: Function) =>
       val idDoc = render(fun.id)
@@ -146,8 +146,15 @@ class TermToSMTLib2Converter
     case uop: Not => renderUnaryOp("not", uop)
     case And(ts) => renderNAryOp("and", ts: _*)
     case Or(ts) => renderNAryOp("or", ts: _*)
-    case bop: Implies => renderBinaryOp("implies", bop)
-    case bop: Iff => renderBinaryOp("iff", bop)
+    case bop: Implies => renderBinaryOp("=>", bop) // implies is a Z3-specific keyword.
+    case bop: Iff =>  {
+        val implication1 = Implies(bop.p0, bop.p1)
+        val implication2 = Implies(bop.p1, bop.p0)
+        val iff = And(Seq(implication1, implication2))
+        render(iff)
+    } // iff is Z3-specific, SMT-LIB2.6 only supports implication.
+    //renderBinaryOp("=>", render(bop.p0), render(bop.p1)) <+> renderBinaryOp("=>", render(bop.p1), render(bop.p0))
+    //case bop: Iff => renderBinaryOp("iff", bop)
     case bop: BuiltinEquals => renderBinaryOp("=", bop)
 
     case bop: CustomEquals => bop.p0.sort match {

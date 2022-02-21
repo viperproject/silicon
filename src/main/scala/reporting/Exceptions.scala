@@ -34,3 +34,15 @@ case class Z3InteractionFailed(proverId: String, message: String)
     def readableMessage = s"Interaction with Z3 (instance $proverId) failed: $message"
   }
 }
+
+case class CVC5InteractionFailed(proverId: String, message: String)
+    extends RuntimeException(message)
+        with SiliconException {
+
+  val asViperError = new AbstractError {
+    def pos = ast.NoPosition
+    def fullId = "cvc5.interaction.failed"
+    def readableMessage = s"Interaction with CVC5 (instance $proverId) failed: $message"
+  }
+}
+
