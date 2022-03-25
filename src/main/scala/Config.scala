@@ -54,10 +54,9 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   private val smtlibOptionsConverter: ValueConverter[Map[String, String]] = new ValueConverter[Map[String, String]] {
     def parse(s: List[(String, List[String])]): Either[String, Option[Map[String, String]]] = s match {
-      case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' =>
+      case (_, str :: Nil) :: Nil =>
         val config = toMap(
-          str.substring(1, str.length - 1) /* Drop leading and trailing quotation mark */
-             .split(' ') /* Separate individual key=value pairs */
+          str.split(' ') /* Separate individual key=value pairs */
              .map(_.trim)
              .filter(_.nonEmpty)
              .map(_.split('=')) /* Split key=value pairs */
@@ -367,15 +366,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val z3Args: ScallopOption[String] = opt[String]("z3Args",
     descr = (  "Command-line arguments which should be forwarded to Z3. "
-             + "The expected format is \"<opt> <opt> ... <opt>\", including the quotation marks."),
+             + "The expected format is \"<opt> <opt> ... <opt>\", excluding the quotation marks."),
     default = None,
     noshort = true
-  )(forwardArgumentsConverter)
+  )
 
   val z3ConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("z3ConfigArgs",
     descr = (  "Configuration options which should be forwarded to Z3. "
              + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
-             + "including the quotation marks. "
+             + "excluding the quotation marks. "
              + "The configuration options given here will override those from Silicon's Z3 preamble."),
     default = Some(Map()),
     noshort = true
