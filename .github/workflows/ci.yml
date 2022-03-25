@@ -25,13 +25,8 @@ jobs:
       # Checkout Silicon (note: all checkouts delete the contents of their working directory)
       - name: Checkout Silicon
         uses: actions/checkout@v2
-
-      # Checkout Viper dependencies (just Silver)
-      - name: Checkout Silver
-        uses: actions/checkout@v2
         with:
-          repository: viperproject/silver
-          path: silver
+          submodules: true
 
       # Query versions, and other details that may help with reconstructing a built. 
       # Results are displayed on stdio, and written to buildinfo.log
@@ -91,6 +86,8 @@ jobs:
       # Checkout Silicon (deletes content of working directory)
       - name: Checkout Silicon
         uses: actions/checkout@v2
+        with:
+          submodules: true
 
       - name: Download artifacts from job test-and-assemble
         uses: actions/download-artifact@v2
