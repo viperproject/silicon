@@ -115,7 +115,7 @@ class TriggerGenerator
          | _: Not | _: Or | _: And | _: Implies | _: Iff | _: Ite
          | _: BuiltinEquals
          | _: Less | _: AtMost | _: Greater | _: AtLeast
-         | _: PermTimes | _: IntPermTimes | _: PermIntDiv | _: PermPlus | _: PermMinus
+         | _: PermTimes | _: IntPermTimes | _: PermIntDiv | _: PermPermDiv |_: PermPlus | _: PermMinus
          | _: PermLess | _: PermAtMost
          | _: Distinct
          | _: Let
