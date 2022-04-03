@@ -150,6 +150,7 @@ trait ExpressionTranslator {
       case ast.PermMul(e0, e1) => PermTimes(f(e0), f(e1))
       case ast.IntPermMul(e0, e1) => IntPermTimes(f(e0), f(e1))
       case ast.PermDiv(e0, e1) => PermIntDiv(f(e0), f(e1))
+      case ast.PermPermDiv(e0, e1) => PermPermDiv(f(e0), f(e1))
       case ast.PermLeCmp(e0, e1) => AtMost(f(e0), f(e1))
       case ast.PermLtCmp(e0, e1) => Less(f(e0), f(e1))
       case ast.PermGeCmp(e0, e1) => AtLeast(f(e0), f(e1))
