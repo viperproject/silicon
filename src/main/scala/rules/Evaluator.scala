@@ -392,10 +392,10 @@ object evaluator extends EvaluationRules {
           eval(s1, e1, pve, v1)((s2, t1, v2) =>
             failIfDivByZero(s2, PermIntDiv(t0, t1), e1, t1, 0, pve, v2)(Q)))
 
-      case ast.PermDiv(e0, e1) =>
+      case ast.PermPermDiv(e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
           eval(s1, e1, pve, v1)((s2, t1, v2) =>
-            failIfDivByZero(s2, PermPermDiv(t0, t1), e1, t1, 0, pve, v2)(Q)))
+            failIfDivByZero(s2, PermPermDiv(t0, t1), e1, t1, FractionPermLiteral(Rational(0, 1)), pve, v2)(Q)))
 
       case ast.PermLeCmp(e0, e1) =>
         evalBinOp(s, e0, e1, AtMost, pve, v)(Q)
