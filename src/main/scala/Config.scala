@@ -582,6 +582,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case other =>
       sys.error(s"Unexpected combination: $other")
   }
+  
+  validateOpt(counterexample, enableMoreCompleteExhale) {
+    case (Some(_), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
+                                        + s"flag ${enableMoreCompleteExhale.name}")
+    case _ => Right()
+  }
 
   validateFileOpt(logConfig)
   validateFileOpt(setAxiomatizationFile)
