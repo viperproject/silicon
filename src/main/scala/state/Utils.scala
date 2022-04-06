@@ -157,6 +157,7 @@ package object utils {
       case PermTimes(p0, p1) => PermTimes(go(p0), go(p1))
       case IntPermTimes(p0, p1) => IntPermTimes(go(p0), go(p1))
       case PermIntDiv(p0, p1) => PermIntDiv(go(p0), go(p1))
+      case PermPermDiv(p0, p1) => PermPermDiv(go(p0), go(p1))
       case PermPlus(p0, p1) => PermPlus(go(p0), go(p1))
       case PermMinus(p0, p1) => PermMinus(go(p0), go(p1))
       case PermLess(p0, p1) => PermLess(go(p0), go(p1))
