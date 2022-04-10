@@ -42,16 +42,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 //    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
 //  }
 
-  private val forwardArgumentsConverter: ValueConverter[String] = new ValueConverter[String] {
-    def parse(s: List[(String, List[String])]): Either[String, Option[String]] = s match {
-      case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' => Right(Some(str.substring(1, str.length - 1)))
-      case Nil => Right(None)
-      case _ => Left(s"unexpected arguments")
-    }
-
-    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
-  }
-
   private val smtlibOptionsConverter: ValueConverter[Map[String, String]] = new ValueConverter[Map[String, String]] {
     def parse(s: List[(String, List[String])]): Either[String, Option[Map[String, String]]] = s match {
       case (_, str :: Nil) :: Nil =>
