@@ -576,7 +576,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   validateOpt(counterexample, enableMoreCompleteExhale) {
     case (Some(_), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
                                         + s"flag ${enableMoreCompleteExhale.name}")
-    case _ => Right()
+    case _ => Right(())
   }
 
   validateFileOpt(logConfig)
