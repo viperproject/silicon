@@ -6,7 +6,6 @@
 (set-option :print-success true)
 
 (set-logic ALL)
-;(set-option :random-seed 0) ; support removed in 1.0.0 (or before)
 (set-option :seed 0)
 (set-option :sat-random-seed 0)
 
