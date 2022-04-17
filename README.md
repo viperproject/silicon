@@ -132,6 +132,7 @@ method main() {
 * You need recent installations of
   1. the [sbt build tool](https://www.scala-sbt.org/)
   2. the [Z3 SMT solver](https://github.com/Z3Prover/z3/releases)
+  3. the [cvc5 SMT solver](https://github.com/cvc5/cvc5/releases)
 * Clone [Silver](https://github.com/viperproject/silver), e.g. into `~/silver`
 * Clone Silicon (this repository), e.g. into `~/silicon`
 * From within the directory where you installed Silicon, create a symbolic link to the directory where you installed Silver. E.g. there should be a symbolic link from `~/silicon/silver` to `~/silver`. Alternatively, directly clone Silver into, e.g. `~/silicon/silver`.

@@ -12,6 +12,7 @@ import scala.util.matching.Regex
 import scala.util.Properties._
 import org.rogach.scallop._
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
+import viper.silicon.decider.{Z3ProverStdIO, Cvc5ProverStdIO}
 import viper.silver.frontend.SilFrontendConfig
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
@@ -196,15 +197,25 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     valueName = "level"
   )
 
-  val timeout: ScallopOption[Int] = opt[Int]("timeout",
+  private val rawTimeout: ScallopOption[Int] = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
-            + "not per method or proof obligation (default: 0, i.e. no timeout)."),
-    default = Some(0),
+            + s"not per method or proof obligation (default: 0 i.e. no timeout for all provers except ${Cvc5ProverStdIO.name} with default 180)."),
+    default = None,
     noshort = true
   )
 
+  lazy val timeout: Int = rawTimeout.toOption match {
+    case Some(t) => t
+    // Not set, so compute default value based on prover selected.
+    case _ => prover.toOption match {
+      case Some(Cvc5ProverStdIO.name) => 180
+      case _ => 0
+    }
+  }
+
   val assertTimeout: ScallopOption[Int] = opt[Int]("assertTimeout",
-    descr = "Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout).",
+    descr = ("Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout)."
+            + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
     default = None,
     noshort = true
   )
@@ -215,7 +226,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + "check doesn't, at least not directly. However, failing checks might result in "
              + "performance degradation, e.g. when a dead program path is nevertheless explored, "
              + "and indirectly in verification failures due to incompletenesses, e.g. when "
-             + "the held permission amount is too coarsely underapproximated (default: 10)."),
+             + "the held permission amount is too coarsely underapproximated (default: 10)."
+             + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
     default = Some(10),
     noshort = true
   )
@@ -305,11 +317,25 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,        // used this value, over 20 tests failed.
   )
 
-  val z3RandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("z3RandomizeSeeds",
-    descr = "Set various Z3 random seeds to random values",
+  val rawProverRandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("proverRandomizeSeeds",
+    descr = "Set various random seeds of the prover to random values",
     default = Some(false),
     noshort = true
   )
+
+  // DEPRECATED and replaced by proverLogFile
+  // but continues to work for now for backwards compatibility.
+  private val rawZ3RandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("z3RandomizeSeeds",
+    descr = ("Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverRandomizeSeeds' instead... "
+             + "Set various Z3 random seeds to random values"),
+    default = Some(false),
+    noshort = true
+  )
+
+  lazy val proverRandomizeSeeds: Boolean = {
+    rawZ3RandomizeSeeds() || rawProverRandomizeSeeds()
+  }
 
   val tempDirectory: ScallopOption[String] = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: ./tmp)",
@@ -324,8 +350,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   private val rawZ3Exe = opt[String]("z3Exe",
-    descr = (  "Z3 executable. The environment variable %s can also "
-             + "be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable),
+    descr = (s"Z3 executable. The environment variable ${Z3ProverStdIO.exeEnvironmentalVariable}"
+             + " can also be used to specify the path of the executable."),
     default = None,
     noshort = true
   )
@@ -333,47 +359,111 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   lazy val z3Exe: String = {
     val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
 
-    rawZ3Exe.toOption.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable)
+    rawZ3Exe.toOption.getOrElse(envOrNone(Z3ProverStdIO.exeEnvironmentalVariable)
                      .getOrElse("z3" + (if (isWindows) ".exe" else "")))
   }
 
-  val defaultRawZ3LogFile = "logfile"
-  val z3LogFileExtension = "smt2"
+  private val rawCvc5Exe = opt[String]("cvc5Exe",
+    descr = (s"cvc5 executable. The environment variable ${Cvc5ProverStdIO.exeEnvironmentalVariable}"
+             + " can also be used to specify the path of the executable."),
+    default = None,
+    noshort = true
+  )
 
-  private val rawZ3LogFile = opt[ConfigValue[String]]("z3LogFile",
-    descr = (  "Log file containing the interaction with Z3, "
-             + s"extension $z3LogFileExtension will be appended. "
-             + s"(default: <tempDirectory>/$defaultRawZ3LogFile.$z3LogFileExtension)"),
-    default = Some(DefaultValue(defaultRawZ3LogFile)),
+  lazy val cvc5Exe: String = {
+    val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
+
+    rawCvc5Exe.toOption.getOrElse(envOrNone(Cvc5ProverStdIO.exeEnvironmentalVariable)
+                     .getOrElse("cvc5" + (if (isWindows) ".exe" else "")))
+  }
+
+  val defaultRawProverLogFile = "logfile"
+  val proverLogFileExtension = "smt2"
+
+  private val rawProverLogFile = opt[ConfigValue[String]]("proverLogFile",
+    descr = (  "Log file containing the interaction with the prover, "
+             + s"extension $proverLogFileExtension will be appended. "
+             + s"(default: <tempDirectory>/$defaultRawProverLogFile.$proverLogFileExtension)"),
+    default = Some(DefaultValue(defaultRawProverLogFile)),
     noshort = true
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
 
-  def z3LogFile(suffix: String = ""): Path = rawZ3LogFile() match {
-    case UserValue(logfile) =>
-      logfile.toLowerCase match {
-        case "$infile" =>
-          sys.error("Implementation missing")
-//          /* TODO: Reconsider: include suffix; prover started before infile is known */
-//          inputFile.map(f =>
-//            common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some(z3LogFileExtension)).toPath
-//          ).getOrElse(defaultZ3LogFile)
-        case _ =>
-          Paths.get(s"$logfile-$suffix.$z3LogFileExtension")
-      }
+  // DEPRECATED and replaced by proverLogFile
+  // but continues to work for now for backwards compatibility.
+  private val rawZ3LogFile = opt[ConfigValue[String]]("z3LogFile",
+    descr = (  "Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverLogFile' instead... "
+             + "Log file containing the interaction with the prover, "
+             + s"extension $proverLogFileExtension will be appended. "
+             + s"(default: <tempDirectory>/$defaultRawProverLogFile.$proverLogFileExtension)."),
+    default = Some(DefaultValue(defaultRawProverLogFile)),
+    noshort = true
+  )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
+
+  def getProverLogfile(suffix: String = "", rawLogFile: ConfigValue[String]): Path = {
+    rawLogFile match {
+      case UserValue(logfile) =>
+        logfile.toLowerCase match {
+          case "$infile" =>
+            sys.error("Implementation missing")
+            // /* TODO: Reconsider: include suffix; prover started before infile is known */
+            // inputFile.map(f =>
+            //   common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some(proverLogFileExtension)).toPath
+            // ).getOrElse(defaultproverLogFile)
+          case _ =>
+            Paths.get(s"$logfile-$suffix.$proverLogFileExtension")
+        }
 
     case DefaultValue(_) =>
-      Paths.get(tempDirectory(), s"$defaultRawZ3LogFile-$suffix.$z3LogFileExtension")
+      Paths.get(tempDirectory(), s"$defaultRawProverLogFile-$suffix.$proverLogFileExtension")
+    }
   }
 
-  val z3Args: ScallopOption[String] = opt[String]("z3Args",
-    descr = (  "Command-line arguments which should be forwarded to Z3. "
+  def proverLogFile(suffix: String = ""): Path = rawProverLogFile() match {
+    // If proverLogFile is the default value, check whether deprecated option z3LogFile is set.
+    case DefaultValue(_) => getProverLogfile(suffix, rawZ3LogFile())
+    case rawLogFile => getProverLogfile(suffix, rawLogFile)
+  }
+
+  val rawProverArgs: ScallopOption[String] = opt[String]("proverArgs",
+    descr = (  "Command-line arguments which should be forwarded to the prover. "
              + "The expected format is \"<opt> <opt> ... <opt>\", including the quotation marks."),
     default = None,
     noshort = true
   )(forwardArgumentsConverter)
 
-  val z3ConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("z3ConfigArgs",
-    descr = (  "Configuration options which should be forwarded to Z3. "
+  // DEPRECATED and replaced by proverArgs
+  // but continues to work for now for backwards compatibility.
+  private val rawZ3Args: ScallopOption[String] = opt[String]("z3Args",
+    descr = (  "Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverArgs' instead... "
+             + "Command-line arguments which should be forwarded to Z3. "
+             + "The expected format is \"<opt> <opt> ... <opt>\", including the quotation marks."),
+    default = None,
+    noshort = true
+  )(forwardArgumentsConverter)
+
+  lazy val proverArgs: Option[String] = rawProverArgs.toOption match {
+    // If proverArgs is the default value, check whether deprecated option z3Args is set.
+    case None => rawZ3Args.toOption
+    case optionArgs => optionArgs
+  }
+
+  val rawProverConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("proverConfigArgs",
+    descr = (  "Configuration options which should be forwarded to the prover. "
+             + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
+             + "including the quotation marks. "
+             + "The configuration options given here will override those from Silicon's prover preamble."),
+    default = Some(Map()),
+    noshort = true
+  )(smtlibOptionsConverter)
+
+  // DEPRECATED and replaced by proverArgs
+  // but continues to work for now for backwards compatibility.
+  private val rawZ3ConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("z3ConfigArgs",
+    descr = (  "Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverConfigArgs' instead... "
+             + "Configuration options which should be forwarded to Z3. "
              + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
              + "including the quotation marks. "
              + "The configuration options given here will override those from Silicon's Z3 preamble."),
@@ -381,14 +471,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )(smtlibOptionsConverter)
 
+  lazy val proverConfigArgs: Map[String, String] = {
+    // If proverConfigArgs is the default value, check whether deprecated
+    // option z3ConfigArgs is set.
+    if (rawProverConfigArgs().isEmpty) rawZ3ConfigArgs()
+    else rawProverConfigArgs()
+  }
+
   lazy val z3Timeout: Int =
     None.orElse(
-            z3ConfigArgs().collectFirst {
+            proverConfigArgs.collectFirst {
               case (k, v) if k.toLowerCase == "timeout" && v.forall(Character.isDigit) => v.toInt
             })
         .orElse{
             val z3TimeoutArg = """-t:(\d+)""".r
-            z3Args.toOption.flatMap(args => z3TimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
+            proverArgs.flatMap(args => z3TimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
         .getOrElse(0)
 
   val maxHeuristicsDepth: ScallopOption[Int] = opt[Int]("maxHeuristicsDepth",
@@ -564,9 +661,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val prover: ScallopOption[String] = opt[String]("prover",
+    descr = (s"One of the provers ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}. " +
+      s"(default: ${Z3ProverStdIO.name})."),
+    default = Some(Z3ProverStdIO.name),
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
 
-  validateOpt(timeout) {
+  validateOpt(prover) {
+    case Some(Z3ProverStdIO.name) | Some(Cvc5ProverStdIO.name) => Right(())
+    case prover => Left(s"Unknown prover '$prover' provided. Expected one of ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}.")
+  }
+
+  validateOpt(rawTimeout) {
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
     case _ => Right(())
   }
