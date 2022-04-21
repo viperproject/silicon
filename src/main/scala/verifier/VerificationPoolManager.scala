@@ -30,7 +30,7 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
     def declare(decl: Decl): Unit =  slaveVerifiers foreach (_.decider.prover.declare(decl))
     def comment(content: String): Unit = slaveVerifiers foreach (_.decider.prover.comment(content))
 
-    def saturate(data: Option[Config.Z3StateSaturationTimeout]): Unit =
+    def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit =
       slaveVerifiers foreach (_.decider.prover.saturate(data))
 
     def saturate(timeout: Int, comment: String): Unit =

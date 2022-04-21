@@ -126,7 +126,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       _verificationPoolManager.pooledVerifiers.saturate(timeout, comment)
     }
 
-    def saturate(data: Option[Config.Z3StateSaturationTimeout]): Unit = {
+    def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
       decider.prover.saturate(data)
       _verificationPoolManager.pooledVerifiers.saturate(data)
     }
@@ -179,7 +179,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     allProvers.comment("End preamble")
     allProvers.comment("-" * 60)
 
-    allProvers.saturate(config.z3SaturationTimeouts.afterPrelude)
+    allProvers.saturate(config.proverSaturationTimeouts.afterPrelude)
 
 
     SymbExLogger.resetMemberList()

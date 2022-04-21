@@ -249,9 +249,9 @@ abstract class ProverStdIO(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def saturate(data: Option[Config.Z3StateSaturationTimeout]): Unit = {
+  def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
     data match {
-      case Some(Config.Z3StateSaturationTimeout(timeout, comment)) => saturate(timeout, comment)
+      case Some(Config.ProverStateSaturationTimeout(timeout, comment)) => saturate(timeout, comment)
       case None => /* Don't do anything */
     }
   }

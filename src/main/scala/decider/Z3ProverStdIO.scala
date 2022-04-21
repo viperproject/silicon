@@ -42,7 +42,7 @@ class Z3ProverStdIO(uniqueId: String,
   val randomizeSeedsOptions = Z3ProverStdIO.randomizeSeedsOptions
 
   protected def setTimeout(timeout: Option[Int]): Unit = {
-    val effectiveTimeout = timeout.getOrElse(Verifier.config.z3Timeout)
+    val effectiveTimeout = timeout.getOrElse(Verifier.config.proverTimeout)
 
     /* [2015-07-27 Malte] Setting the timeout unnecessarily often seems to
      * worsen performance, if only a bit. For the current test suite of
@@ -52,8 +52,8 @@ class Z3ProverStdIO(uniqueId: String,
     if (lastTimeout != effectiveTimeout) {
       lastTimeout = effectiveTimeout
 
-      if(Verifier.config.z3EnableResourceBounds()) {
-        writeLine(s"(set-option :rlimit ${effectiveTimeout * Verifier.config.z3ResourcesPerMillisecond()})")
+      if(Verifier.config.proverEnableResourceBounds) {
+        writeLine(s"(set-option :rlimit ${effectiveTimeout * Verifier.config.proverResourcesPerMillisecond})")
       } else {
         writeLine(s"(set-option :timeout $effectiveTimeout)")
       }
