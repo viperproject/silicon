@@ -9,6 +9,7 @@ predicate P01(x: Ref, n: Int) {
      acc(x.ss)
   && |x.ss| == n
   && 3 <= n
+  && (forall i: Int, j: Int :: i >= 0 && i < |x.ss| && j >= 0 && j < |x.ss| && i != j ==> x.ss[i] != x.ss[j])
   && (forall j: Int :: 0 <= j && j < 3 ==> acc(x.ss[j].f))
   && (forall j: Int :: 3 <= j && j < n ==> acc(x.ss[j].f))
 }

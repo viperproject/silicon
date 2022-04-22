@@ -3,6 +3,7 @@ field f: Int
 predicate P02(xs: Seq[Ref], n: Int) {
      |xs| == n
   && 3 <= n
+  && (forall i: Int, j: Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j])
   && (forall j: Int :: 0 <= j && j < 3 ==> acc(xs[j].f))
   && (forall j: Int :: 3 <= j && j < n ==> acc(xs[j].f))
 }

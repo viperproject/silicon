@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory
 import viper.silver.ast
 import viper.silver.frontend.{DefaultStates, SilFrontend}
 import viper.silver.reporter._
-import viper.silver.verifier.{Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
+import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.reporting.condenseToViperResult
@@ -253,16 +253,13 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
           *  of all failures that report the same error (but on different branches, with different CounterExample)
           *  and put those into one failure */
           if (config.enableBranchconditionReporting())
-            allResults.groupBy(_.message.readableMessage(withId = true, withPosition = true)).map{case (_: String, fs:List[Failure]) =>
+            allResults.groupBy(failureFilterAndGroupingCriterion).map{case (_: String, fs:List[Failure]) =>
               fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
               Failure(fs.head.message)
             }.toList
-             else allResults.distinctBy(f => f.message.readableMessage(withId = true, withPosition = true))
+             else allResults.distinctBy(failureFilterAndGroupingCriterion)
         })
-        .sortBy(_.message.pos match { /* Order failures according to source position */
-          case pos: ast.HasLineColumn => (pos.line, pos.column)
-          case _ => (-1, -1)
-        })
+        .sortBy(failureSortingCriterion)
 
 //    if (config.showStatistics.isDefined) {
 //      val proverStats = verifier.decider.statistics()
@@ -291,6 +288,28 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         failures.length))
 
     failures
+  }
+
+  private def failureFilterAndGroupingCriterion(f: Failure): String = {
+    // apply transformers if available:
+    val transformedError = f.message match {
+      case e: SilAbstractVerificationError => e.transformedError()
+      case e => e
+    }
+    // create a string that identifies the given failure:
+    transformedError.readableMessage(withId = true, withPosition = true)
+  }
+
+  private def failureSortingCriterion(f: Failure): (Int, Int) = {
+    // apply transformers if available:
+    val transformedError = f.message match {
+      case e: SilAbstractVerificationError => e.transformedError()
+      case e => e
+    }
+    transformedError.pos match { /* Order failures according to source position */
+      case pos: ast.HasLineColumn => (pos.line, pos.column)
+      case _ => (-1, -1)
+    }
   }
 
   private def logFailure(failure: Failure, log: String => Unit): Unit = { //TODO:J log context?

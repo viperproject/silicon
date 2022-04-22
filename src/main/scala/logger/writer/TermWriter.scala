@@ -57,8 +57,8 @@ object TermWriter {
 
   def toJSON(term: Term): JsValue = term match {
 
-    case b: BinaryOp[Term] => binary(b.op, toJSON(b.p0), toJSON(b.p1))
-    case u: UnaryOp[Term] => unary(u.op, toJSON(u.p))
+    case b: BinaryOp[Term@unchecked] => binary(b.op, toJSON(b.p0), toJSON(b.p1))
+    case u: UnaryOp[Term@unchecked] => unary(u.op, toJSON(u.p))
 
     // TODO: do we need triggers and isGlobal?
     case Quantification(quantifier, vars, body, _, name, _) =>

@@ -43,22 +43,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 //    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
 //  }
 
-  private val forwardArgumentsConverter: ValueConverter[String] = new ValueConverter[String] {
-    def parse(s: List[(String, List[String])]): Either[String, Option[String]] = s match {
-      case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' => Right(Some(str.substring(1, str.length - 1)))
-      case Nil => Right(None)
-      case _ => Left(s"unexpected arguments")
-    }
-
-    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
-  }
-
   private val smtlibOptionsConverter: ValueConverter[Map[String, String]] = new ValueConverter[Map[String, String]] {
     def parse(s: List[(String, List[String])]): Either[String, Option[Map[String, String]]] = s match {
-      case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' =>
+      case (_, str :: Nil) :: Nil =>
         val config = toMap(
-          str.substring(1, str.length - 1) /* Drop leading and trailing quotation mark */
-             .split(' ') /* Separate individual key=value pairs */
+          str.split(' ') /* Separate individual key=value pairs */
              .map(_.trim)
              .filter(_.nonEmpty)
              .map(_.split('=')) /* Split key=value pairs */
@@ -503,10 +492,10 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   private val rawProverArgs: ScallopOption[String] = opt[String]("proverArgs",
     descr = (  "Command-line arguments which should be forwarded to the prover. "
-             + "The expected format is \"<opt> <opt> ... <opt>\", including the quotation marks."),
+             + "The expected format is \"<opt> <opt> ... <opt>\", excluding the quotation marks."),
     default = None,
     noshort = true
-  )(forwardArgumentsConverter)
+  )
 
   // DEPRECATED and replaced by proverArgs
   // but continues to work for now for backwards compatibility.
@@ -514,7 +503,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     descr = (  "Warning: This option is deprecated due to standardization in option naming."
              + " Please use 'proverArgs' instead... "
              + "Command-line arguments which should be forwarded to Z3. "
-             + "The expected format is \"<opt> <opt> ... <opt>\", including the quotation marks."),
+             + "The expected format is \"<opt> <opt> ... <opt>\", excluding the quotation marks."),
     default = None,
     noshort = true
   )(forwardArgumentsConverter)
@@ -540,7 +529,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + " Please use 'proverConfigArgs' instead... "
              + "Configuration options which should be forwarded to Z3. "
              + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
-             + "including the quotation marks. "
+             + "excluding the quotation marks. "
              + "The configuration options given here will override those from Silicon's Z3 preamble."),
     default = Some(Map()),
     noshort = true
@@ -678,7 +667,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some(false),
     noshort = true
   )
-  val enableBranchconditionReporting: ScallopOption[Boolean] = opt[Boolean]("enableBranchconditionReorting",
+  val enableBranchconditionReporting: ScallopOption[Boolean] = opt[Boolean]("enableBranchconditionReporting",
     descr = "Report branch conditions (can be useful for assertions that fail on multiple branches)",
     default = Some(false),
     noshort = true
@@ -764,6 +753,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + s"${numberOfParallelVerifiers.name} to 1")
     case other =>
       sys.error(s"Unexpected combination: $other")
+  }
+  
+  validateOpt(counterexample, enableMoreCompleteExhale) {
+    case (Some(_), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
+                                        + s"flag ${enableMoreCompleteExhale.name}")
+    case _ => Right(())
   }
 
   validateFileOpt(logConfig)

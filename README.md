@@ -129,13 +129,22 @@ method main() {
 
 # Build Instructions
 
+> See [the documentation wiki](https://github.com/viperproject/documentation/wiki) for instructions on how to try out or install the Viper tools.
+
 * You need recent installations of
   1. the [sbt build tool](https://www.scala-sbt.org/)
   2. the [Z3 SMT solver](https://github.com/Z3Prover/z3/releases)
   3. the [cvc5 SMT solver](https://github.com/cvc5/cvc5/releases)
-* Clone [Silver](https://github.com/viperproject/silver), e.g. into `~/silver`
-* Clone Silicon (this repository), e.g. into `~/silicon`
-* From within the directory where you installed Silicon, create a symbolic link to the directory where you installed Silver. E.g. there should be a symbolic link from `~/silicon/silver` to `~/silver`. Alternatively, directly clone Silver into, e.g. `~/silicon/silver`.
-* Open a console, change directory to `~/silicon`
-* Compile by running `sbt compile`, or run all tests via `sbt test`
-* We recommend IDEA IntelliJ for Scala development, but any IDE that supports sbt will do
+* Clone this repository *recursively* by running:  
+`git clone --recursive https://github.com/viperproject/silicon`
+
+And then, from the cloned directory, with the `Z3_EXE` environment variable set appropriately;  
+* Compile and run with:  
+  `sbt "run [options] <path to Viper file>"`  
+  Or run all tests via `sbt test`
+* Alternatively, for a faster startup without compilation each time, build a `.jar` file:  
+  `sbt assembly`  
+  And then run with:  
+  `java -jar ./target/scala-*/silicon.jar [options] <path to Viper file>`
+
+> We recommend IDEA IntelliJ for Scala development, but any IDE that supports sbt will do

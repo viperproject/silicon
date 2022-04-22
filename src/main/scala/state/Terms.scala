@@ -1130,6 +1130,25 @@ object PermIntDiv extends ((Term, Term) => Term) {
   def unapply(t: PermIntDiv) = Some((t.p0, t.p1))
 }
 
+class PermPermDiv(val p0: Term, val p1: Term)
+  extends Permissions
+    with BinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term] {
+
+  utils.assertSort(p1, "Second term", sorts.Perm)
+
+  override val op = "/"
+}
+
+object PermPermDiv extends ((Term, Term) => Term) {
+
+  def apply(t0: Term, t1: Term) = (t0, t1) match {
+    case (_, _) => new PermPermDiv(t0, t1)
+  }
+
+  def unapply(t: PermPermDiv) = Some((t.p0, t.p1))
+}
+
 object PermDiv extends ((Term, Term) => Term) {
   import predef.One
 
@@ -2137,6 +2156,7 @@ object utils {
     case PermTimes(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
     case IntPermTimes(_, t1) => consumeExactRead(t1, constrainableARPs)
     case PermIntDiv(t0, _) => consumeExactRead(t0, constrainableARPs)
+    case PermPermDiv(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
     case PermMin(t0 ,t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
     case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
     case _ => true
