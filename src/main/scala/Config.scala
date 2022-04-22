@@ -506,7 +506,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + "The expected format is \"<opt> <opt> ... <opt>\", excluding the quotation marks."),
     default = None,
     noshort = true
-  )(forwardArgumentsConverter)
+  )
 
   lazy val proverArgs: Option[String] = {
     if (rawZ3Args.isSupplied) rawZ3Args.toOption
