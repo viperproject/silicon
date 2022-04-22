@@ -134,6 +134,7 @@ method main() {
 * You need recent installations of
   1. the [sbt build tool](https://www.scala-sbt.org/)
   2. the [Z3 SMT solver](https://github.com/Z3Prover/z3/releases)
+  3. the [cvc5 SMT solver](https://github.com/cvc5/cvc5/releases)
 * Clone this repository *recursively* by running:  
 `git clone --recursive https://github.com/viperproject/silicon`
 

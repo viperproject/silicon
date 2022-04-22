@@ -12,11 +12,11 @@
 ; been emitted.
 
 (assert (forall ((vs $FVF<$T$>) (ws $FVF<$T$>)) (!
-    (implies
+    (=>
       (and
         (Set_equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
         (forall ((x $Ref)) (!
-          (implies
+          (=>
             (Set_in x ($FVF.domain_$FLD$ vs))
             (= ($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))
           :qid |qp.$FVF<$T$>-eq-inner|

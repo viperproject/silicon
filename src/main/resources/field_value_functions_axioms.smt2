@@ -12,11 +12,11 @@
 ; been emitted.
 
 (assert (forall ((vs $FVF<$T$>) (ws $FVF<$T$>)) (!
-    (implies
+    (=>
       (and
         (Set_equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
         (forall ((x $Ref)) (!
-          (implies
+          (=>
             (Set_in x ($FVF.domain_$FLD$ vs))
             (= ($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))
           ; :pattern ((Set_in x ($FVF.domain_$FLD$ vs)))
@@ -33,8 +33,8 @@
 
 (assert (forall ((r $Ref) (pm $FPM)) (!
     ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))
-    :pattern ($FVF.perm_$FLD$ pm r))))
+    :pattern (($FVF.perm_$FLD$ pm r))))) ; ensure :pattern ((f x)) instead of pattern (f x) since pattern must a be a list.
 
 (assert (forall ((r $Ref) (f $S$)) (!
     (= ($FVF.loc_$FLD$ f r) true)
-    :pattern ($FVF.loc_$FLD$ f r))))
+    :pattern (($FVF.loc_$FLD$ f r))))) ; ensure :pattern ((f x)) instead of pattern (f x) since pattern must a be a list.

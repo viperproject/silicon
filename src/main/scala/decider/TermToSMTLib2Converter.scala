@@ -13,7 +13,7 @@ import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silicon.state.terms._
 
-class TermToSMTLib2Converter
+class TermToSMTLib2Converter 
     extends FastPrettyPrinterBase
        with TermConverter[String, String, String]
        with StatefulComponent {
@@ -69,7 +69,7 @@ class TermToSMTLib2Converter
 
   protected def render(decl: Decl): Cont = decl match {
     case SortDecl(sort: Sort) =>
-      parens(text("declare-sort") <+> render(sort))
+      parens(text("declare-sort") <+> render(sort) <+> text("0"))
 
     case FunctionDecl(fun: Function) =>
       val idDoc = render(fun.id)
@@ -125,16 +125,28 @@ class TermToSMTLib2Converter
         val docVars = ssep((vars map (v => parens(text(render(v.id)) <+> render(v.sort)))).to(collection.immutable.Seq), space)
         val docQuant = render(quant)
 
+        // Render only triggers with non-empty terms since cvc5 breaks on
+        // empty patterns (i.e. :pattern ()).
+        val renderedTriggerTerms = triggers.collect {
+            case trigger if trigger.p.nonEmpty => ssep((trigger.p map render).to(collection.immutable.Seq), space)
+          }
+
         val docTriggers =
-          ssep(triggers.map(trigger => ssep((trigger.p map render).to(collection.immutable.Seq), space))
-            .map(d => text(":pattern") <+> parens(d)).to(collection.immutable.Seq),
-            line)
+          if (renderedTriggerTerms.isEmpty)
+            nil
+          else
+            ssep(renderedTriggerTerms.map(d => text(":pattern") <+> parens(d)).to(collection.immutable.Seq), line)
 
         val docQid: Cont =
           if (name.isEmpty) nil
           else s":qid |$name|"
 
-        parens(docQuant <+> parens(docVars) <+> parens(text("!") <> nest(defaultIndent, line <> docBody <> line <> docTriggers <> line <> docQid)))
+        // Omit annotation for empty name and triggers since cvc5 fails
+        // for annotations containing zero attributes (Z3 simply ignores it).
+        if (name.isEmpty && triggers.isEmpty)
+          parens(docQuant <+> parens(docVars) <+> nest(defaultIndent, line <> docBody))
+        else
+          parens(docQuant <+> parens(docVars) <+> parens(text("!") <> nest(defaultIndent, line <> docBody <> line <> docTriggers <> line <> docQid)))
       } else {
         // TODO: This seems like a hack.
         //       It would be better to avoid creating quantifications with no variables in the first place.
@@ -146,8 +158,13 @@ class TermToSMTLib2Converter
     case uop: Not => renderUnaryOp("not", uop)
     case And(ts) => renderNAryOp("and", ts: _*)
     case Or(ts) => renderNAryOp("or", ts: _*)
-    case bop: Implies => renderBinaryOp("implies", bop)
-    case bop: Iff => renderBinaryOp("iff", bop)
+    case bop: Implies => renderBinaryOp("=>", bop)
+    case bop: Iff =>  {
+        val implication1 = Implies(bop.p0, bop.p1)
+        val implication2 = Implies(bop.p1, bop.p0)
+        val iff = And(Seq(implication1, implication2))
+        render(iff)
+    }
     case bop: BuiltinEquals => renderBinaryOp("=", bop)
 
     case bop: CustomEquals => bop.p0.sort match {

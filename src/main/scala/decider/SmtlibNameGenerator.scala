@@ -128,6 +128,65 @@ class SmtlibNameSanitizer extends AbstractNameSanitizer {
     "re.inter", "seq.to.re", "seq.in.re", "re.all", "re.empty",
 
     /* Other reserved words (Z3 specific?) */
-    "min", "List", "const"
+    "min", "List", "const",
+
+    /* cvc5 - Transcendental operators, see https://github.com/cvc5/cvc5/blob/main/src/parser/smt2/smt2.cpp */
+    "exp", "sin", "cos", "tan", "csc", "sec", "cot", "arcsin", "arccos", "arctan", "arccsc", "arcsec", "arccot", "sqrt",
+
+    /* cvc5 - Commands, see https://github.com/cvc5/cvc5/blob/main/docs/ext/smtliblexer.py */
+    "assert", "block-model", "block-model-values", "check-sat",
+    "check-sat-assuming", "declare-const", "declare-datatype",
+    "declare-datatypes", "declare-codatatypes", "declare-fun",
+    "declare-sort", "define-const", "define-fun", "define-fun-rec",
+    "define-funs-rec", "define-sort", "echo", "exit", "get-abduct",
+    "get-abduct-next", "get-assertions", "get-assignment", "get-info",
+    "get-interpolant", "get-model", "get-option", "get-proof", "get-qe",
+    "get-qe-disjunct", "get-unsat-assumptions", "get-unsat-core",
+    "get-value", "pop", "push", "reset", "reset-assertions", "set-info",
+    "set-logic", "set-option",
+    "assume", "check-synth", "constraint", "declare-var", "inv-constraint",
+    "synth-fun", "synth-inv", "declare-pool",
+
+    /* cvc5 - Sorts, see https://github.com/cvc5/cvc5/blob/main/docs/ext/smtliblexer.py */
+    "Array", "BitVec", "Bag", "Bool", "FloatingPoint", "Float[0-9]+",
+    "Int", "Real", "RegLan", "RoundingMode", "Set", "Seq", "String",
+    "Tuple",
+
+    /* cvc5 - Operators, see https://github.com/cvc5/cvc5/blob/main/docs/ext/smtliblexer.py */
+    "select", "store",
+    "concat", "extract", "repeat", "zero_extend", "sign_extend",
+    "rotate_left", "rotate_right", "bvnot", "bvand", "bvor", "bvneg",
+    "bvadd", "bvmul", "bvudiv", "bvurem", "bvshl", "bvlshr", "bvult",
+    "bvnand", "bvnor", "bvxor", "bvxnor", "bvcomp", "bvsub", "bvsdiv",
+    "bvsrem", "bvsmod", "bvashr", "bvule", "bvugt", "bvuge", "bvslt",
+    "bvsle", "bvsgt", "bvsge",
+    "tuple", "tuple.project", "tuple.select", "tuple.update",
+    "RNE", "RNA", "RTP", "RTN", "RTZ", "fp", "NaN", "fp.abs", "fp.neg",
+    "fp.add", "fp.sub", "fp.mul", "fp.div", "fp.fma", "fp.sqrt",
+    "fp.rem", "fp.roundToIntegral", "fp.min", "fp.max", "fp.leq",
+    "fp.lt", "fp.geq", "fp.gt", "fp.eq", "fp.isNormal",
+    "fp.isSubnormal", "fp.isZero", "fp.isInfinite", "fp.isNaN",
+    "fp.isNegative", "fp.isPositive", "to_fp", "to_fp_unsigned",
+    "fp.to_ubv", "fp.to_sbv", "fp.to_real", "+oo", "-oo", "+zero",
+    "-zero",
+    "divisible", "to_real", "to_int", "is_int", "iand", "int2bv",
+    "sep.emp", "pto", "sep", "wand", "sep.nil",
+    "set.union", "set.minus", "set.member", "set.subset", "set.empty",
+    "set.singleton", "set.card", "set.insert", "set.complement",
+    "set.universe", "rel.transpose", "rel.tclosure", "rel.join",
+    "rel.product", "set.inter",
+    "char", "str.++", "str.len", "str.<", "str.<=", "str.to_re",
+    "str.in_re", "re.none", "re.all", "re.allchar", "re.++",
+    "re.union", "re.inter", "re.*", "str.<=", "str.at", "str.substr",
+    "str.prefixof", "str.suffixof", "str.contains", "str.indexof",
+    "str.replace", "str.replace_all", "str.replace_re",
+    "str.replace_re_all", "re.comp", "re.diff", "re.+", "re.opt",
+    "re.range", "re.^", "re.loop", "str.is_digit", "str.to_code",
+    "str.from_code", "str.to_int", "str.from_int",
+    "seq.++", "seq.len", "seq.extract", "seq.update", "seq.at",
+    "seq.contains", "seq.indexof", "seq.replace", "seq.prefixof",
+    "seq.suffixof", "seq.rev", "seq.replace_all", "seq.unit",
+    "seq.nth", "seq.empty",
+    "witness"
   )
 }
