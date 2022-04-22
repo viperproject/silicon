@@ -33,8 +33,8 @@
 
 (assert (forall ((r $Ref) (pm $FPM)) (!
     ($Perm.isValidVar ($FVF.perm_$FLD$ pm r))
-    :pattern (($FVF.perm_$FLD$ pm r))))) ; ensure :pattern ((f x)) instead of pattern (f x) since pattern must a be a list.
+    :pattern (($FVF.perm_$FLD$ pm r)))))
 
 (assert (forall ((r $Ref) (f $S$)) (!
     (= ($FVF.loc_$FLD$ f r) true)
-    :pattern (($FVF.loc_$FLD$ f r))))) ; ensure :pattern ((f x)) instead of pattern (f x) since pattern must a be a list.
+    :pattern (($FVF.loc_$FLD$ f r)))))

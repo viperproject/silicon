@@ -32,8 +32,8 @@
 
 (assert (forall ((s $Snap) (pm $PPM)) (!
     ($Perm.isValidVar ($PSF.perm_$PRD$ pm s))
-    :pattern (($PSF.perm_$PRD$ pm s))))) ; ensure :pattern ((f x)) instead of pattern (f x) since pattern must a be a list.
+    :pattern (($PSF.perm_$PRD$ pm s)))))
 
 (assert (forall ((s $Snap) (f $S$)) (!
     (= ($PSF.loc_$PRD$ f s) true)
-    :pattern (($PSF.loc_$PRD$ f s))))) ; ensure :pattern ((f x)) instead of pattern (f x) since pattern must a be a list.
+    :pattern (($PSF.loc_$PRD$ f s)))))
