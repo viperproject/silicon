@@ -199,10 +199,10 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
       try {
         val failures =
-          if (config.timeout == 0)
+          if (config.timeout() == 0)
             future.get()
           else
-            future.get(config.timeout, TimeUnit.SECONDS)
+            future.get(config.timeout(), TimeUnit.SECONDS)
 
         result = Some(condenseToViperResult(failures))
       } catch { /* Catch exceptions thrown during verification (errors are not caught) */
@@ -212,7 +212,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
           if (config.ideModeAdvanced()) {
             reporter report ExecutionTraceReport(SymbExLogger.memberList, List(), List())
           }
-          result = Some(SilFailure(SilTimeoutOccurred(config.timeout, "second(s)") :: Nil))
+          result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
         case exception: Exception if !config.disableCatchingExceptions() =>
           config.assertVerified() // Raises an exception itself, if it fails
 
