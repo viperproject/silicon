@@ -728,7 +728,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case prover => Left(s"Unknown prover '$prover' provided. Expected one of ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}.")
   }
 
-  validateOpt(rawTimeout) {
+  validateOpt(timeout) {
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
     case _ => Right(())
   }
