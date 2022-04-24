@@ -186,23 +186,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     valueName = "level"
   )
 
-  // cvc5 uses a different default timeout since per check timeouts are not supported.
-  private val rawTimeout: ScallopOption[Int] = opt[Int]("timeout",
+  val timeout: ScallopOption[Int] = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
-            + s"not per method or proof obligation (default for ${Cvc5ProverStdIO.name} prover: 180"
-            +"; default for all other provers: 0, i.e. no timeout."),
-    default = None,
+            + "not per method or proof obligation (default: 0, i.e. no timeout)."),
+    default = Some(0),
     noshort = true
   )
-
-  lazy val timeout: Int = rawTimeout.toOption match {
-    case Some(t) => t
-    // Not set, so compute default value based on prover selected.
-    case _ => prover.toOption match {
-      case Some(Cvc5ProverStdIO.name) => 180
-      case _ => 0
-    }
-  }
 
   val assertTimeout: ScallopOption[Int] = opt[Int]("assertTimeout",
     descr = ("Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout)."
