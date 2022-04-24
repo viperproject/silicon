@@ -199,7 +199,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
       try {
         val failures =
-          if (config.timeout() == 0)
+          if (config.timeout.toOption.getOrElse(0) == 0)
             future.get()
           else
             future.get(config.timeout(), TimeUnit.SECONDS)
