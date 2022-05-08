@@ -108,6 +108,7 @@ object chunkSupporter extends ChunkSupportRules {
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
+        // 2022-05-07 MHS: MoreCompleteExhale isn't yet integrated into function verification, hence the limitation to method verification
         if (s.isMethodVerification && Verifier.config.enableMoreCompleteExhale()) {
           moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, perms, ve, v1)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
