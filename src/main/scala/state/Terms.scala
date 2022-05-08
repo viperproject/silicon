@@ -1062,8 +1062,8 @@ case class IsValidPermVar(v: Var) extends BooleanTerm {
   override lazy val toString = s"PVar($v)"
 }
 
-case class IsReadPermVar(v: Var, ub: Term) extends BooleanTerm {
-  override lazy val toString = s"RdVar($v, $ub)"
+case class IsReadPermVar(v: Var) extends BooleanTerm {
+  override lazy val toString = s"RdVar($v)"
 }
 
 class PermTimes(val p0: Term, val p1: Term)

@@ -56,7 +56,7 @@ trait Decider {
 
   def fresh(sort: Sort): Var
   def fresh(v: ast.AbstractLocalVar): Var
-  def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term)
+  def freshARP(id: String = "$k"): (Var, Term)
   def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
 
   def generateModel(): Unit
@@ -272,9 +272,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def fresh(v: ast.AbstractLocalVar) =
       prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ))
 
-    def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term) = {
+    def freshARP(id: String = "$k"): (Var, Term) = {
       val permVar = prover_fresh[Var](id, Nil, sorts.Perm)
-      val permVarConstraints = IsReadPermVar(permVar, upperBound)
+      val permVarConstraints = IsReadPermVar(permVar)
 
       (permVar, permVarConstraints)
     }
