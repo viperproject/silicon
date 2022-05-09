@@ -224,81 +224,128 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         createFailure(ve, v, s).withLoad(args)
       }
     } else {
-      val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
+      if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
+        actualConsumeCompleteConstrainable(s, relevantChunks, args, perms, ve, v)((s1, updatedChunks, optSnap, v2) => {
+          Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, v2)})
+      } else {
+        var pNeeded = perms
+        var pSum: Term = NoPerm()
+        val newChunks = ListBuffer[NonQuantifiedChunk]()
+        var moreNeeded = true
 
-      var pNeeded = perms
-      var pSum: Term = NoPerm()
-      val newChunks = ListBuffer[NonQuantifiedChunk]()
-      var moreNeeded = true
+        val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
 
-      val definiteAlias = chunkSupporter.findChunk[NonQuantifiedChunk](relevantChunks, id, args, v)
-
-      val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
-        // The definitive alias and syntactic aliases should get priority, since it is always
-        // possible to consume from them
-        definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
-      }
-
-      val additionalArgs = s.relevantQuantifiedVariables
-      var currentFunctionRecorder = s.functionRecorder
-
-      relevantChunks.sortWith(sortFunction) foreach { ch =>
-        if (moreNeeded) {
-          val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
-          pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm()))
-          val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm())
-          val pTakenArgs = additionalArgs
-          val pTakenDecl = v.decider.freshMacro("mce_pTaken", pTakenArgs, pTakenBody)
-          val pTakenMacro = Macro(pTakenDecl.id, pTakenDecl.args.map(_.sort), pTakenDecl.body.sort)
-          val pTaken = App(pTakenMacro, pTakenArgs)
-
-          currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(pTakenDecl)
-          SymbExLogger.currentLog().addMacro(pTaken, pTakenBody)
-
-          val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
-          pNeeded = PermMinus(pNeeded, pTaken)
-
-          if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
-            newChunks.append(newChunk)
-          }
-
-          val toCheck = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
-          moreNeeded = !v.decider.check(toCheck, Verifier.config.splitTimeout())
-        } else {
-          newChunks.append(ch)
+        val sortFunction: (NonQuantifiedChunk, NonQuantifiedChunk) => Boolean = (ch1, ch2) => {
+          // The definitive alias and syntactic aliases should get priority, since it is always
+          // possible to consume from them
+          definiteAlias.contains(ch1) || !definiteAlias.contains(ch2) && ch1.args == args
         }
-      }
 
-      val allChunks = otherChunks ++ newChunks
-      val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
-      newChunks foreach { ch =>
-        val resource = Resources.resourceDescriptions(ch.resourceID)
-        v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
-      }
-      val newHeap = Heap(allChunks)
+        val additionalArgs = s.relevantQuantifiedVariables
+        var currentFunctionRecorder = s.functionRecorder
 
-      val s0 = s.copy(functionRecorder = currentFunctionRecorder)
+        relevantChunks.sortWith(sortFunction) foreach { ch =>
+          if (moreNeeded) {
+            val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
+            pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm()))
+            val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm())
+            val pTakenArgs = additionalArgs
+            val pTakenDecl = v.decider.freshMacro("mce_pTaken", pTakenArgs, pTakenBody)
+            val pTakenMacro = Macro(pTakenDecl.id, pTakenDecl.args.map(_.sort), pTakenDecl.body.sort)
+            val pTaken = App(pTakenMacro, pTakenArgs)
 
-      summarise(s0, relevantChunks.toSeq, resource, args, v)((s1, snap, _, _, v1) =>
-        if (!moreNeeded) {
-          if (!consumeExact) {
-            v1.decider.assume(PermLess(perms, pSum))
+            currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(pTakenDecl)
+            SymbExLogger.currentLog().addMacro(pTaken, pTakenBody)
+
+            val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
+            pNeeded = PermMinus(pNeeded, pTaken)
+
+            if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
+              newChunks.append(newChunk)
+            }
+
+            moreNeeded = !v.decider.check(pNeeded === NoPerm(), Verifier.config.splitTimeout())
+          } else {
+            newChunks.append(ch)
           }
-          Q(s1, newHeap, Some(snap), v1)
-        } else {
-          val toAssert = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
-          v1.decider.assert(toAssert) {
-            case true =>
-              if (!consumeExact) {
-                v1.decider.assume(PermLess(perms, pSum))
-              }
-              Q(s1, newHeap, Some(snap), v1)
-            case false =>
-              createFailure(ve, v1, s1).withLoad(args)
-          }
-        })
+        }
+
+        val allChunks = otherChunks ++ newChunks
+        // TODO: Since no permissions were gained, I don't see why the PropertyInterpreter would yield any new assumptions.
+        //       See if it can be removed here.
+        val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
+        newChunks foreach { ch =>
+          val resource = Resources.resourceDescriptions(ch.resourceID)
+          v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+        }
+        val newHeap = Heap(allChunks)
+
+        val s0 = s.copy(functionRecorder = currentFunctionRecorder)
+
+        summarise(s0, relevantChunks.toSeq, resource, args, v)((s1, snap, _, _, v1) =>
+          if (!moreNeeded) {
+            Q(s1, newHeap, Some(snap), v1)
+          } else {
+            v1.decider.assert(pNeeded === NoPerm()) {
+              case true =>
+                Q(s1, newHeap, Some(snap), v1)
+              case false =>
+                createFailure(ve, v1, s1).withLoad(args)
+            }
+          })
+      }
     }
   }
+
+  private def actualConsumeCompleteConstrainable(s: State,
+                                                 relevantChunks: ListBuffer[NonQuantifiedChunk],
+                                                 args: Seq[Term],
+                                                 perms: Term, // Expected to be constrainable. Will be assumed to equal the consumed permission amount.
+                                                 ve: VerificationError,
+                                                 v: Verifier)
+                                                (Q: (State, ListBuffer[NonQuantifiedChunk], Option[Term], Verifier) => VerificationResult)
+                                                : VerificationResult = {
+
+    assert(s.functionRecorder == NoopFunctionRecorder)
+
+    var totalPermSum: Term = NoPerm()
+    var totalPermTaken: Term = NoPerm()
+    val snap: Term = v.decider.fresh(sorts.Snap)
+
+    val updatedChunks =
+      relevantChunks map (ch => {
+        val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
+        val permTaken = v.decider.fresh("p", sorts.Perm)
+
+        totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm()))
+        totalPermTaken = PermPlus(totalPermTaken, permTaken)
+
+        v.decider.assume(Seq(
+          IsValidPermVar(permTaken),
+          PermAtMost(permTaken, ch.perm),
+          Implies(Not(eq), permTaken === NoPerm()),
+          Implies(permTaken !== NoPerm(), snap === ch.snap.convert(sorts.Snap))
+        ))
+
+        ch.withPerm(PermMinus(ch.perm, permTaken))
+      })
+
+    v.decider.assume(
+      Implies(
+        totalPermSum !== NoPerm(),
+        And(
+          PermLess(NoPerm(), totalPermTaken),
+          PermLess(totalPermTaken, totalPermSum))))
+
+    v.decider.assert(totalPermTaken !== NoPerm()) {
+      case true =>
+        v.decider.assume(perms === totalPermTaken)
+        Q(s, updatedChunks, Some(snap), v)
+      case false =>
+        createFailure(ve, v, s).withLoad(args)
+    }
+  }
+
 
   private val freeReceiver = Var(Identifier("?rcvr"), sorts.Ref)
 
