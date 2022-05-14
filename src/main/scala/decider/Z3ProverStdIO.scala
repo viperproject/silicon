@@ -9,16 +9,17 @@ package viper.silicon.decider
 import java.io._
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
-
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.decider.{Prover, Sat, Unknown, Unsat}
+import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, Z3InteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
+
+import scala.collection.mutable
 
 class Z3ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
@@ -34,7 +35,8 @@ class Z3ProverStdIO(uniqueId: String,
   private var z3ShutdownHook: Thread = _
   private var input: BufferedReader = _
   private var output: PrintWriter = _
-  /* private */ var z3Path: Path = _
+
+  var z3Path: Path = _
   var lastModel : String = _
 
   def z3Version(): Version = {
@@ -172,7 +174,7 @@ class Z3ProverStdIO(uniqueId: String,
 
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
-  def assume(term: Term) = {
+  def assume(term: Term): Unit = {
 //    /* Detect certain simple problems with quantifiers.
 //     * Note that the current checks don't take in account whether or not a
 //     * quantification occurs in positive or negative position.
@@ -197,10 +199,10 @@ class Z3ProverStdIO(uniqueId: String,
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None) =
+  def assert(goal: Term, timeout: Option[Int] = None): Boolean =
     assert(termConverter.convert(goal), timeout)
 
-  def assert(goal: String, timeout: Option[Int]) = {
+  def assert(goal: String, timeout: Option[Int]): Boolean = {
 //    bookkeeper.assertionCounter += 1
 
     setTimeout(timeout)
@@ -280,7 +282,7 @@ class Z3ProverStdIO(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def check(timeout: Option[Int] = None) = {
+  def check(timeout: Option[Int] = None): Result = {
     setTimeout(timeout)
 
     writeLine("(check-sat)")
@@ -312,7 +314,7 @@ class Z3ProverStdIO(uniqueId: String,
     }
   }
 
-  def statistics(): Map[String, String]= {
+  def statistics(): Map[String, String] = {
     var repeat = true
     var line = ""
     var stats = scala.collection.immutable.SortedMap[String, String]()
@@ -340,7 +342,7 @@ class Z3ProverStdIO(uniqueId: String,
     toMap(stats)
   }
 
-  def comment(str: String) = {
+  def comment(str: String): Unit = {
     val sanitisedStr =
       str.replaceAll("\r", "")
          .replaceAll("\n", "\n; ")
@@ -348,7 +350,7 @@ class Z3ProverStdIO(uniqueId: String,
     logToFile("; " + sanitisedStr)
   }
 
-  def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort) = {
+  def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort): Fun = {
     val id = identifierFactory.fresh(name)
     val fun = Fun(id, argSorts, resultSort)
     val decl = FunctionDecl(fun)
@@ -392,7 +394,7 @@ class Z3ProverStdIO(uniqueId: String,
   private def readModel(separator: String): String = {
     try {
       var endFound = false
-      val result = new StringBuilder
+      val result = new mutable.StringBuilder
       var firstTime = true
       while (!endFound) {
         val nextLine = input.readLine()
@@ -445,7 +447,7 @@ class Z3ProverStdIO(uniqueId: String,
     }
   }
 
-  private def writeLine(out: String) = {
+  private def writeLine(out: String): Unit = {
     logToFile(out)
     output.println(out)
   }
