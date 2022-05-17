@@ -241,8 +241,8 @@ object consumer extends ConsumptionRules {
               tPerm = tPerm,
               pve = pve,
               negativePermissionReason = NegativePermission(acc.perm),
-              notInjectiveReason = ReceiverNotInjective(acc.loc),
-              insufficientPermissionReason =InsufficientPermission(acc.loc),
+              notInjectiveReason = QPAssertionNotInjective(acc.loc),
+              insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
         }
 
@@ -278,8 +278,8 @@ object consumer extends ConsumptionRules {
               tPerm = tPerm,
               pve = pve,
               negativePermissionReason = NegativePermission(acc.perm),
-              notInjectiveReason = ReceiverNotInjective(acc.loc),
-              insufficientPermissionReason =InsufficientPermission(acc.loc),
+              notInjectiveReason = QPAssertionNotInjective(acc.loc),
+              insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
         }
 
