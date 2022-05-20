@@ -93,11 +93,23 @@ case class Failure/*[ST <: Store[ST],
 }
 
 case class SilFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
-  lazy val branchConditionString = if(branchConditions.nonEmpty)
-    ("\n\t\tunder branch conditions:\n" +
-      branchConditions.map(bc => (bc.toString + " [ " + bc.pos.toString + " ] ")).mkString("\t\t"," ~~> ","") ) else ""
-  lazy val counterExampleString = if(counterExample.isDefined) "\n\t\tcounterexample:\n" + counterExample.get.toString else ""
-  override lazy val toString = branchConditionString + counterExampleString
+  lazy val branchConditionString: String = {
+    if(branchConditions.nonEmpty) {
+      val branchConditionsString =
+        branchConditions
+          .map(bc => (bc.toString + " [ " + bc.pos.toString + " ] "))
+          .mkString("\t\t"," ~~> ","")
+
+      s"\n\t\tunder branch conditions:\n$branchConditionsString"
+    } else
+      ""
+  }
+
+  lazy val counterExampleString: String = {
+    counterExample.fold("")(ce => s"\n\t\tcounterexample:\n$ce")
+  }
+
+  override lazy val toString: String = branchConditionString + counterExampleString
 }
 
 trait SiliconCounterexample extends Counterexample {
