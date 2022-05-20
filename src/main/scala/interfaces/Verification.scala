@@ -97,7 +97,7 @@ case class SilFailureContext(branchConditions: Seq[ast.Exp], counterExample: Opt
     if(branchConditions.nonEmpty) {
       val branchConditionsString =
         branchConditions
-          .map(bc => (bc.toString + " [ " + bc.pos.toString + " ] "))
+          .map(bc => s"$bc [ ${bc.pos} ] ")
           .mkString("\t\t"," ~~> ","")
 
       s"\n\t\tunder branch conditions:\n$branchConditionsString"
