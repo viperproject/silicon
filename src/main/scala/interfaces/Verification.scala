@@ -92,7 +92,7 @@ case class Failure/*[ST <: Store[ST],
   override lazy val toString: String = message.readableMessage
 }
 
-case class SilFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
+case class SiliconFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
   lazy val branchConditionString: String = {
     if(branchConditions.nonEmpty) {
       val branchConditionsString =
