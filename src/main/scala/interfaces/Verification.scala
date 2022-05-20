@@ -126,12 +126,11 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
   }
 }
 
-case class SiliconMappedCounterexample(
-    internalStore: Store,
-    heap: Iterable[Chunk],
-    oldHeaps: State.OldHeaps,
-    nativeModel: Model
-) extends SiliconCounterexample {
+case class SiliconMappedCounterexample(internalStore: Store,
+                                       heap: Iterable[Chunk],
+                                       oldHeaps: State.OldHeaps,
+                                       nativeModel: Model)
+    extends SiliconCounterexample {
 
   val converter: Converter =
     Converter(nativeModel, internalStore, heap, oldHeaps)
@@ -142,6 +141,7 @@ case class SiliconMappedCounterexample(
     val buf = converter.modelAtLabel
       .map(x => s"model at label: ${x._1}\n${x._2.toString}\n")
       .mkString("\n")
+
     s"$buf\non return: \n${converter.extractedModel.toString}"
   }
 
