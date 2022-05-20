@@ -9,9 +9,10 @@ package viper.silicon.interfaces
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.reporting.Converter
 import viper.silicon.state.{State, Store}
-import viper.silver.verifier.{Counterexample, FailureContext, Model, VerificationError}
+import viper.silver.verifier.{AbstractVerificationError, Counterexample, FailureContext, Model, VerificationError}
 import viper.silicon.state.terms.Term
 import viper.silver.ast
+import viper.silver.verifier.errors.{ErrorNode => SilErrorNode}
 
 /*
  * Results
@@ -90,6 +91,16 @@ case class Failure/*[ST <: Store[ST],
   extends FatalResult {
 
   override lazy val toString: String = message.readableMessage
+
+  def transformError(): Failure = {
+    val transformedMessage =
+      message match {
+        case e: AbstractVerificationError => e.transformedError()
+        case e => e
+      }
+
+    copy(message = transformedMessage)
+  }
 }
 
 case class SiliconFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
@@ -161,4 +172,36 @@ case class SiliconMappedCounterexample(internalStore: Store,
   override def withStore(s: Store): SiliconCounterexample = {
     SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel)
   }
+}
+
+final class FailureEquivalenceWrapper(val failure: Failure) {
+  // This class, in particular the choice of relevant components and the implementations of equals
+  // and hashCode, reflect the assumption that offending nodes, i.e. AST nodes, are compared
+  // without taking position and info fields into account.
+  //
+  // NOTE: If we had the guarantee that error is immutable, which in practice it most likely is,
+  // then we could turn all defs into vals.
+
+  private def optInfo(node: SilErrorNode) = node match {
+    case n: ast.Infoed => Some(n.info)
+    case _ => None
+  }
+
+  private def relevantComponents(error: VerificationError) = (
+    error.fullId,
+    error.pos,
+    error.offendingNode,
+    error.reason.offendingNode,
+    optInfo(error.offendingNode),
+    optInfo(error.reason.offendingNode))
+
+
+  override def equals(obj: Any): Boolean = obj match {
+    case other: FailureEquivalenceWrapper =>
+      relevantComponents(failure.message) == relevantComponents(other.failure.message)
+    case _ =>
+      false
+  }
+
+  override def hashCode(): Int = relevantComponents(failure.message).hashCode()
 }

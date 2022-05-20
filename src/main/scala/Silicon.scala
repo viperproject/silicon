@@ -9,7 +9,9 @@ package viper.silicon
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
+import scala.util.chaining._
 import scala.collection.immutable.ArraySeq
+import scala.collection.View
 import scala.util.{Left, Right}
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
@@ -17,17 +19,15 @@ import org.slf4j.LoggerFactory
 import viper.silver.ast
 import viper.silver.frontend.{DefaultStates, SilFrontend}
 import viper.silver.reporter._
-import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
+import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.Failure
+import viper.silicon.interfaces.{Failure, FailureEquivalenceWrapper}
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.verifier.DefaultMasterVerifier
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
 import viper.silver.plugin.PluginAwareReporter
-
-import scala.util.chaining._
 
 object Silicon {
   val name = BuildInfo.projectName
@@ -250,19 +250,28 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     val failures =
       results.flatMap(r => r :: r.previous.toList)
-        .collect{ case f: Failure => f } /* Ignore successes */
+        .collect{ case f: Failure => f.transformError() } /* Ignore successes, transform errors */
         .pipe(allResults => {
           /* If branchconditions are to be reported we collect the different failure contexts
           *  of all failures that report the same error (but on different branches, with different CounterExample)
           *  and put those into one failure */
-          if (config.enableBranchconditionReporting())
-            allResults.groupBy(failureFilterAndGroupingCriterion).map{case (_: String, fs:List[Failure]) =>
-              fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
-              Failure(fs.head.message)
-            }.toList
-             else allResults.distinctBy(failureFilterAndGroupingCriterion)
+          if (config.enableBranchconditionReporting()) {
+            allResults
+              .view
+              .groupBy(failureEquivalenceWrapper)
+              .map{case (_, fs: View[Failure]) =>
+                fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts).to(Seq)
+                Failure(fs.head.message)
+              }
+              .to(List)
+          } else {
+            allResults.distinctBy(failureEquivalenceWrapper)
+          }
         })
-        .sortBy(failureSortingCriterion)
+        .sortBy(_.message.pos match { /* Order failures according to source position */
+            case pos: ast.HasLineColumn => (pos.line, pos.column)
+            case _ => (-1, -1)
+          })
 
 //    if (config.showStatistics.isDefined) {
 //      val proverStats = verifier.decider.statistics()
@@ -293,27 +302,8 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     failures
   }
 
-  private def failureFilterAndGroupingCriterion(f: Failure): String = {
-    // apply transformers if available:
-    val transformedError = f.message match {
-      case e: SilAbstractVerificationError => e.transformedError()
-      case e => e
-    }
-    // create a string that identifies the given failure:
-    transformedError.readableMessage(withId = true, withPosition = true)
-  }
-
-  private def failureSortingCriterion(f: Failure): (Int, Int) = {
-    // apply transformers if available:
-    val transformedError = f.message match {
-      case e: SilAbstractVerificationError => e.transformedError()
-      case e => e
-    }
-    transformedError.pos match { /* Order failures according to source position */
-      case pos: ast.HasLineColumn => (pos.line, pos.column)
-      case _ => (-1, -1)
-    }
-  }
+  protected def failureEquivalenceWrapper(failure: Failure): AnyRef =
+    new FailureEquivalenceWrapper(failure)
 
   private def logFailure(failure: Failure, log: String => Unit): Unit = { //TODO:J log context?
     log("\n" + failure.message.readableMessage(withId = true, withPosition = true))
