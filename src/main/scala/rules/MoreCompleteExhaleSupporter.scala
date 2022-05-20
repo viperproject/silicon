@@ -148,7 +148,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       if (v.decider.checkSmoke()) {
         Success() // TODO: Mark branch as dead?
       } else {
-        createFailure(ve, v, s, true).withLoad(args)
+        createFailure(ve, v, s, true)
       }
     } else {
       summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
@@ -156,7 +156,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           case true =>
             Q(s1, snap, v1)
           case false =>
-            createFailure(ve, v, s1).withLoad(args)
+            createFailure(ve, v, s1)
         })
     }
   }
@@ -194,7 +194,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         case true =>
           Q(s1, h, Some(snap), v1)
         case false =>
-          createFailure(ve, v, s1).withLoad(args)
+          createFailure(ve, v, s1)
       })
   }
 
@@ -221,7 +221,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       if (v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
         Q(s, h, None, v)
       } else {
-        createFailure(ve, v, s).withLoad(args)
+        createFailure(ve, v, s)
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
@@ -290,7 +290,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
               case true =>
                 Q(s1, newHeap, Some(snap), v1)
               case false =>
-                createFailure(ve, v1, s1).withLoad(args)
+                createFailure(ve, v1, s1)
             }
           })
       }
@@ -342,7 +342,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         v.decider.assume(perms === totalPermTaken)
         Q(s, updatedChunks, Some(snap), v)
       case false =>
-        createFailure(ve, v, s).withLoad(args)
+        createFailure(ve, v, s)
     }
   }
 
