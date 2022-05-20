@@ -101,8 +101,9 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp], counterExample:
           .mkString("\t\t"," ~~> ","")
 
       s"\n\t\tunder branch conditions:\n$branchConditionsString"
-    } else
+    } else {
       ""
+    }
   }
 
   lazy val counterExampleString: String = {
