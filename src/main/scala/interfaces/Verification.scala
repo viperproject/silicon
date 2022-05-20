@@ -56,7 +56,7 @@ sealed abstract class VerificationResult {
 sealed abstract class FatalResult extends VerificationResult {
   val isFatal = true
 
-  def &&(other: => VerificationResult) = this
+  def &&(other: => VerificationResult): VerificationResult = this
 }
 
 sealed abstract class NonFatalResult extends VerificationResult {
@@ -89,7 +89,7 @@ case class Failure/*[ST <: Store[ST],
                   (message: VerificationError, override val continueVerification: Boolean = true)
   extends FatalResult {
 
-  override lazy val toString = message.readableMessage
+  override lazy val toString: String = message.readableMessage
 }
 
 case class SilFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
