@@ -39,13 +39,24 @@ class Z3ProverStdIO(uniqueId: String,
   var z3Path: Path = _
   var lastModel : String = _
 
+  @inline
+  private def readLineFromInput(): String = {
+    val line = input.readLine()
+
+    if (line == null) {
+      throw Z3InteractionFailed(uniqueId, s"Interaction with Z3 yielded null. This might indicate that Z3 crashed.")
+    }
+
+    return line
+  }
+
   def z3Version(): Version = {
     val versionPattern = """\(?\s*:version\s+"(.*?)(?:\s*-.*?)?"\)?""".r
     var line = ""
 
     writeLine("(get-info :version)")
 
-    line = input.readLine()
+    line = readLineFromInput()
     comment(line)
 
     line match {
@@ -323,7 +334,7 @@ class Z3ProverStdIO(uniqueId: String,
     writeLine("(get-info :all-statistics)")
 
     do {
-      line = input.readLine()
+      line = readLineFromInput()
       comment(line)
 
       /* Check that the first line starts with "(:". */
@@ -397,7 +408,7 @@ class Z3ProverStdIO(uniqueId: String,
       val result = new mutable.StringBuilder
       var firstTime = true
       while (!endFound) {
-        val nextLine = input.readLine()
+        val nextLine = readLineFromInput()
         if (nextLine.trim().endsWith("\"") || (firstTime && !nextLine.startsWith("\""))) {
           endFound = true
         }
@@ -417,7 +428,7 @@ class Z3ProverStdIO(uniqueId: String,
     var result = ""
 
     while (repeat) {
-      result = input.readLine()
+      result = readLineFromInput()
       if (result.toLowerCase != "success") comment(result)
 
       val warning = result.startsWith("WARNING")
