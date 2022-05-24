@@ -87,13 +87,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
   def identifierFactory: IdentifierFactory
 
   object decider extends Decider with StatefulComponent {
-    private var z3: Z3ProverStdIO = _
+    private var proverStdIO: ProverStdIO = _
     private var pathConditions: PathConditionStack = _
 
 //    private var _freshFunctions: InsertionOrderedSet[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
 //    private var _freshMacros: Vector[MacroDecl] = _
 
-    def prover: Prover = z3
+    def prover: ProverStdIO = proverStdIO
 
     def pcs: PathConditionStack = pathConditions
 
@@ -101,26 +101,35 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 //      pathConditions = other
 //      pathConditions.assumptions foreach prover.assume
 //    }
+    private def getProverStdIO(prover: String): ProverStdIO = prover match {
+      case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
+      case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
+      case prover =>
+        val msg1 = s"Unknown prover '$prover' provided. Defaulting to ${Z3ProverStdIO.name}."
+        logger warn msg1
+        getProverStdIO(Z3ProverStdIO.name)
+    }
 
     private def createProver(): Option[DependencyNotFoundError] = {
-      z3 = new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
-      z3.start() /* Cannot query Z3 version otherwise */
+      proverStdIO = getProverStdIO(Verifier.config.prover())
 
-      val z3Version = z3.z3Version()
+      proverStdIO.start() /* Cannot query prover version otherwise */
+
+      val proverStdIOVersion = proverStdIO.version()
       // One can pass some options. This allows to check whether they have been received.
 
-      val msg = s"Using Z3 $z3Version located at ${z3.z3Path}"
+      val msg = s"Using ${proverStdIO.name} $proverStdIOVersion located at ${proverStdIO.proverPath}"
       reporter report ConfigurationConfirmation(msg)
       logger debug msg
 
-      if (z3Version < Silicon.z3MinVersion) {
-        val msg1 = s"Expected at least Z3 version ${Silicon.z3MinVersion.version}, but found $z3Version"
+      if (proverStdIOVersion < proverStdIO.minVersion) {
+        val msg1 = s"Expected at least ${proverStdIO.name} version ${proverStdIO.minVersion.version}, but found $proverStdIOVersion"
         reporter report InternalWarningMessage(msg1)
         logger warn msg1
       }
 
-      if (Silicon.z3MaxVersion.fold(false)(_ < z3Version)) {
-        val msg1 = s"Silicon might not work with Z3 version $z3Version, consider using ${Silicon.z3MaxVersion.get}"
+      if (proverStdIO.maxVersion.fold(false)(_ < proverStdIOVersion)) {
+        val msg1 = s"Silicon might not work with ${proverStdIO.name} version $proverStdIOVersion, consider using ${proverStdIO.maxVersion.get}"
         reporter report InternalWarningMessage(msg1)
         logger warn msg1
       }
@@ -138,14 +147,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def reset(): Unit = {
-      z3.reset()
+      proverStdIO.reset()
       pathConditions = new LayeredPathConditionStack()
 //      _freshFunctions = InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
 //      _freshMacros = Vector.empty
     }
 
     def stop(): Unit = {
-      if (z3 != null) z3.stop()
+      if (proverStdIO != null) proverStdIO.stop()
     }
 
     /* Assumption scope handling */
@@ -154,14 +163,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //val commentRecord = new CommentRecord("push", null, null)
       //val sepIdentifier = SymbExLogger.currentLog().openScope(commentRecord)
       pathConditions.pushScope()
-      z3.push()
+      proverStdIO.push()
       //SymbExLogger.currentLog().closeScope(sepIdentifier)
     }
 
     def popScope(): Unit = {
       //val commentRecord = new CommentRecord("pop", null, null)
       //val sepIdentifier = SymbExLogger.currentLog().openScope(commentRecord)
-      z3.pop()
+      proverStdIO.pop()
       pathConditions.popScope()
       //SymbExLogger.currentLog().closeScope(sepIdentifier)
     }

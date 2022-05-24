@@ -81,7 +81,7 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
   val commandLineArguments: Seq[String] = Seq(
     "--disableCatchingExceptions",
     "--timeout", System.getProperty(timeoutPropertyName, "180") /* timeout in seconds */
-  ) ++ (if (System.getProperty(randomizePropertyName, "false").toBoolean) Seq("--z3RandomizeSeeds") else Seq.empty)
+  ) ++ (if (System.getProperty(randomizePropertyName, "false").toBoolean) Seq("--proverRandomizeSeeds") else Seq.empty)
 
   lazy val verifier: Silicon = {
     val args =
