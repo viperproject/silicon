@@ -24,13 +24,13 @@ case class ExternalToolError(tool: String, message: String)
   }
 }
 
-case class Z3InteractionFailed(proverId: String, message: String)
+case class ProverInteractionFailed(proverId: String, message: String)
     extends RuntimeException(message)
         with SiliconException {
 
   val asViperError = new AbstractError {
     def pos = ast.NoPosition
-    def fullId = "z3.interaction.failed"
-    def readableMessage = s"Interaction with Z3 (instance $proverId) failed: $message"
+    def fullId = "prover.interaction.failed"
+    def readableMessage = s"Interaction with prover (instance $proverId) failed: $message"
   }
 }

@@ -11,11 +11,11 @@
 ; been emitted.
 
 (assert (forall ((vs $PSF<$S$>) (ws $PSF<$S$>)) (!
-    (implies
+    (=>
       (and
         (Set_equal ($PSF.domain_$PRD$ vs) ($PSF.domain_$PRD$ ws))
         (forall ((x $Snap)) (!
-          (implies
+          (=>
             (Set_in x ($PSF.domain_$PRD$ vs))
             (= ($PSF.lookup_$PRD$ vs x) ($PSF.lookup_$PRD$ ws x)))
           ; :pattern ((Set_in x ($PSF.domain_$PRD$ vs)))
@@ -32,8 +32,8 @@
 
 (assert (forall ((s $Snap) (pm $PPM)) (!
     ($Perm.isValidVar ($PSF.perm_$PRD$ pm s))
-    :pattern ($PSF.perm_$PRD$ pm s))))
+    :pattern (($PSF.perm_$PRD$ pm s)))))
 
 (assert (forall ((s $Snap) (f $S$)) (!
     (= ($PSF.loc_$PRD$ f s) true)
-    :pattern ($PSF.loc_$PRD$ f s))))
+    :pattern (($PSF.loc_$PRD$ f s)))))

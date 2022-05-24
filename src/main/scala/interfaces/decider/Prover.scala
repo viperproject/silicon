@@ -23,7 +23,7 @@ trait ProverLike {
   def declare(decl: Decl): Unit
   def comment(content: String): Unit
   def saturate(timeout: Int, comment: String): Unit
-  def saturate(data: Option[Config.Z3StateSaturationTimeout]): Unit
+  def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit
 }
 
 trait Prover extends ProverLike with StatefulComponent {
