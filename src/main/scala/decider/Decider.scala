@@ -56,7 +56,7 @@ trait Decider {
 
   def fresh(sort: Sort): Var
   def fresh(v: ast.AbstractLocalVar): Var
-  def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term)
+  def freshARP(id: String = "$k"): (Var, Term)
   def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
 
   def generateModel(): Unit
@@ -180,7 +180,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       assume(InsertionOrderedSet(Seq(t)))
     }
 
-    def setPathConditionMark() = pathConditions.mark()
+    def setPathConditionMark(): Mark = pathConditions.mark()
 
     /* Assuming facts */
 
@@ -215,9 +215,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Asserting facts */
 
-    def checkSmoke() = prover.check(Verifier.config.checkTimeout.toOption) == Unsat
+    def checkSmoke(): Boolean = prover.check(Verifier.config.checkTimeout.toOption) == Unsat
 
-    def check(t: Term, timeout: Int) = deciderAssert(t, Some(timeout))
+    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
 
     def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
               (Q: Boolean => VerificationResult)
@@ -261,29 +261,33 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
 
       val result = prover.assert(t, timeout)
-      val statistics = prover.statistics()
-      val deltaStatistics = SymbExLogger.getDeltaSmtStatistics(statistics)
-      assertRecord.statistics = Some(statistics ++ deltaStatistics)
+
+      if (SymbExLogger.enabled) {
+        val statistics = prover.statistics()
+        val deltaStatistics = SymbExLogger.getDeltaSmtStatistics(statistics)
+        assertRecord.statistics = Some(statistics ++ deltaStatistics)
+      }
 
       SymbExLogger.currentLog().closeScope(sepIdentifier)
+
       result
     }
 
     /* Fresh symbols */
 
-    def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort) =
+    def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function =
       prover_fresh[Fun](id, argSorts, resultSort)
 
-    def fresh(id: String, sort: Sort) = prover_fresh[Var](id, Nil, sort)
+    def fresh(id: String, sort: Sort): Var = prover_fresh[Var](id, Nil, sort)
 
-    def fresh(s: Sort) = prover_fresh[Var]("$t", Nil, s)
+    def fresh(s: Sort): Var = prover_fresh[Var]("$t", Nil, s)
 
-    def fresh(v: ast.AbstractLocalVar) =
+    def fresh(v: ast.AbstractLocalVar): Var =
       prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ))
 
-    def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term) = {
+    def freshARP(id: String = "$k"): (Var, Term) = {
       val permVar = prover_fresh[Var](id, Nil, sorts.Perm)
-      val permVarConstraints = IsReadPermVar(permVar, upperBound)
+      val permVarConstraints = IsReadPermVar(permVar)
 
       (permVar, permVarConstraints)
     }
@@ -354,7 +358,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Misc */
 
-    def statistics() = prover.statistics()
+    def statistics(): Map[String, String] = prover.statistics()
 
     override def generateModel(): Unit = proverAssert(False(), None)
 

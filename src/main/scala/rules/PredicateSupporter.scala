@@ -138,7 +138,9 @@ object predicateSupporter extends PredicateSupportRules {
             App(Verifier.predicateData(predicate).triggerFunction,
                 snap.convert(terms.sorts.Snap) +: tArgs)
           v2.decider.assume(predicateTrigger)
-          Q(s4.copy(g = s.g), v2)})
+          Q(s4.copy(g = s.g,
+                    permissionScalingFactor = s.permissionScalingFactor),
+            v2)})
       })
     } else {
       val ve = pve dueTo InsufficientPermission(pa)
@@ -151,7 +153,7 @@ object predicateSupporter extends PredicateSupportRules {
           val predicateTrigger =
             App(Verifier.predicateData(predicate).triggerFunction, snap +: tArgs)
           v2.decider.assume(predicateTrigger)
-          val s5 = s4.copy(g = s2.g,
+          val s5 = s4.copy(g = s.g,
                            permissionScalingFactor = s.permissionScalingFactor)
           Q(s5, v2)})})
     }

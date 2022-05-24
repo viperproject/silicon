@@ -10,7 +10,7 @@ import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.state.State
-import viper.silicon.state.terms.{Term, perms}
+import viper.silicon.state.terms.{Term, perms, Var}
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.reasons.NegativePermission
 
@@ -19,9 +19,14 @@ object permissionSupporter extends SymbolicExecutionRules {
                        (Q: (State, Verifier) => VerificationResult)
                        : VerificationResult = {
 
-    v.decider.assert(perms.IsNonNegative(tPerm)) {
-      case true => Q(s, v)
-      case false => createFailure(pve dueTo NegativePermission(ePerm), v, s)
+    tPerm match {
+      case k: Var if s.constrainableARPs.contains(k) =>
+        Q(s, v)
+      case _ =>
+        v.decider.assert(perms.IsNonNegative(tPerm)) {
+          case true => Q(s, v)
+          case false => createFailure(pve dueTo NegativePermission(ePerm), v, s)
+        }
     }
   }
 }

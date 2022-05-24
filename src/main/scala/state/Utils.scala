@@ -69,7 +69,7 @@ package object utils {
     case _: PermLiteral => Nil
     case fp: FractionPerm => List(fp.n, fp.d)
     case ivp: IsValidPermVar => List(ivp.v)
-    case irp: IsReadPermVar => List(irp.v, irp.ub)
+    case irp: IsReadPermVar => List(irp.v)
     case app: Application[_] => app.args
     case sr: SeqRanged => List(sr.p0, sr.p1)
     case ss: SeqSingleton => List(ss.p)
@@ -153,7 +153,7 @@ package object utils {
       case _: PermLiteral => term
       case FractionPerm(n, d) => FractionPerm(go(n), go(d))
       case IsValidPermVar(v) => IsValidPermVar(go(v))
-      case IsReadPermVar(v, ub) => IsReadPermVar(go(v), go(ub))
+      case IsReadPermVar(v) => IsReadPermVar(go(v))
       case PermTimes(p0, p1) => PermTimes(go(p0), go(p1))
       case IntPermTimes(p0, p1) => IntPermTimes(go(p0), go(p1))
       case PermIntDiv(p0, p1) => PermIntDiv(go(p0), go(p1))

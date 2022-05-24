@@ -56,7 +56,7 @@ sealed abstract class VerificationResult {
 sealed abstract class FatalResult extends VerificationResult {
   val isFatal = true
 
-  def &&(other: => VerificationResult) = this
+  def &&(other: => VerificationResult): VerificationResult = this
 }
 
 sealed abstract class NonFatalResult extends VerificationResult {
@@ -89,22 +89,28 @@ case class Failure/*[ST <: Store[ST],
                   (message: VerificationError, override val continueVerification: Boolean = true)
   extends FatalResult {
 
-  /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
-  var load: Option[Seq[Term]] = None
-  def withLoad(load: Seq[Term]) = {
-    this.load = Some(load)
-    this
-  }
-
-  override lazy val toString = message.readableMessage
+  override lazy val toString: String = message.readableMessage
 }
 
-case class SilFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
-  lazy val branchConditionString = if(branchConditions.nonEmpty)
-    ("\n\t\tunder branch conditions:\n" +
-      branchConditions.map(bc => (bc.toString + " [ " + bc.pos.toString + " ] ")).mkString("\t\t"," ~~> ","") ) else ""
-  lazy val counterExampleString = if(counterExample.isDefined) "\n\t\tcounterexample:\n" + counterExample.get.toString else ""
-  override lazy val toString = branchConditionString + counterExampleString
+case class SiliconFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
+  lazy val branchConditionString: String = {
+    if(branchConditions.nonEmpty) {
+      val branchConditionsString =
+        branchConditions
+          .map(bc => s"$bc [ ${bc.pos} ] ")
+          .mkString("\t\t"," ~~> ","")
+
+      s"\n\t\tunder branch conditions:\n$branchConditionsString"
+    } else {
+      ""
+    }
+  }
+
+  lazy val counterExampleString: String = {
+    counterExample.fold("")(ce => s"\n\t\tcounterexample:\n$ce")
+  }
+
+  override lazy val toString: String = branchConditionString + counterExampleString
 }
 
 trait SiliconCounterexample extends Counterexample {
@@ -133,12 +139,11 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
   }
 }
 
-case class SiliconMappedCounterexample(
-    internalStore: Store,
-    heap: Iterable[Chunk],
-    oldHeaps: State.OldHeaps,
-    nativeModel: Model
-) extends SiliconCounterexample {
+case class SiliconMappedCounterexample(internalStore: Store,
+                                       heap: Iterable[Chunk],
+                                       oldHeaps: State.OldHeaps,
+                                       nativeModel: Model)
+    extends SiliconCounterexample {
 
   val converter: Converter =
     Converter(nativeModel, internalStore, heap, oldHeaps)
@@ -149,6 +154,7 @@ case class SiliconMappedCounterexample(
     val buf = converter.modelAtLabel
       .map(x => s"model at label: ${x._1}\n${x._2.toString}\n")
       .mkString("\n")
+
     s"$buf\non return: \n${converter.extractedModel.toString}"
   }
 

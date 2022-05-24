@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import viper.silicon.interfaces.{Failure, SilFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
+import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 import viper.silver.frontend.{MappedModel, NativeModel}
@@ -56,7 +56,7 @@ trait SymbolicExecutionRules {
           case _ => (-1, -1)
         })
     } else Seq()
-    res.failureContexts = Seq(SilFailureContext(branchconditions, counterexample))
+    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample))
     Failure(res, v.reportFurtherErrors())
 
   }
