@@ -416,8 +416,9 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   lazy val z3Exe: String = {
     val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
 
-    rawZ3Exe.toOption.getOrElse(envOrNone(Z3ProverStdIO.exeEnvironmentalVariable)
-                     .getOrElse("z3" + (if (isWindows) ".exe" else "")))
+    rawZ3Exe.toOption.getOrElse(
+      envOrNone(Z3ProverStdIO.exeEnvironmentalVariable)
+        .getOrElse("z3" + (if (isWindows) ".exe" else "")))
   }
 
   private val rawCvc5Exe = opt[String]("cvc5Exe",
@@ -430,8 +431,9 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   lazy val cvc5Exe: String = {
     val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
 
-    rawCvc5Exe.toOption.getOrElse(envOrNone(Cvc5ProverStdIO.exeEnvironmentalVariable)
-                     .getOrElse("cvc5" + (if (isWindows) ".exe" else "")))
+    rawCvc5Exe.toOption.getOrElse(
+      envOrNone(Cvc5ProverStdIO.exeEnvironmentalVariable)
+        .getOrElse("cvc5" + (if (isWindows) ".exe" else "")))
   }
 
   val defaultRawProverLogFile = "logfile"
@@ -715,8 +717,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val prover: ScallopOption[String] = opt[String]("prover",
-    descr = (s"One of the provers ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}. " +
-      s"(default: ${Z3ProverStdIO.name})."),
+    descr = s"One of the provers ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}. " +
+            s"(default: ${Z3ProverStdIO.name}).",
     default = Some(Z3ProverStdIO.name),
     noshort = true
   )
