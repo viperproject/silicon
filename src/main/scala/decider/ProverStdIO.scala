@@ -58,7 +58,7 @@ abstract class ProverStdIO(uniqueId: String,
     val line = input.readLine()
 
     if (line == null) {
-      throw Z3InteractionFailed(uniqueId, s"Interaction with prover yielded null. This might indicate that the prover crashed.")
+      throw ProverInteractionFailed(uniqueId, s"Interaction with prover yielded null. This might indicate that the prover crashed.")
     }
 
     return line
