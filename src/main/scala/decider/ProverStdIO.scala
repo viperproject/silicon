@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.decider.{Prover, Sat, Unknown, Unsat}
+import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
@@ -20,6 +20,8 @@ import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
+
+import scala.collection.mutable
 
 abstract class ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
@@ -35,7 +37,8 @@ abstract class ProverStdIO(uniqueId: String,
   protected var proverShutdownHook: Thread = _
   protected var input: BufferedReader = _
   protected var output: PrintWriter = _
-  /* private */ var proverPath: Path = _
+
+  var proverPath: Path = _
   var lastModel : String = _
 
   def name: String
@@ -50,13 +53,24 @@ abstract class ProverStdIO(uniqueId: String,
   protected def setTimeout(timeout: Option[Int]): Unit
   protected def getProverPath(): Path
 
+  @inline
+  private def readLineFromInput(): String = {
+    val line = input.readLine()
+
+    if (line == null) {
+      throw Z3InteractionFailed(uniqueId, s"Interaction with prover yielded null. This might indicate that the prover crashed.")
+    }
+
+    return line
+  }
+
   def version(): Version = {
     val versionPattern = """\(?\s*:version\s+"(.*?)(?:\s*-.*?)?"\)?""".r
     var line = ""
 
     writeLine("(get-info :version)")
 
-    line = input.readLine()
+    line = readLineFromInput()
     comment(line)
 
     line match {
@@ -185,7 +199,7 @@ abstract class ProverStdIO(uniqueId: String,
 
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
-  def assume(term: Term) = {
+  def assume(term: Term): Unit = {
 //    /* Detect certain simple problems with quantifiers.
 //     * Note that the current checks don't take in account whether or not a
 //     * quantification occurs in positive or negative position.
@@ -210,10 +224,10 @@ abstract class ProverStdIO(uniqueId: String,
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None) =
+  def assert(goal: Term, timeout: Option[Int] = None): Boolean =
     assert(termConverter.convert(goal), timeout)
 
-  def assert(goal: String, timeout: Option[Int]) = {
+  def assert(goal: String, timeout: Option[Int]): Boolean = {
 //    bookkeeper.assertionCounter += 1
 
     setTimeout(timeout)
@@ -293,7 +307,7 @@ abstract class ProverStdIO(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def check(timeout: Option[Int] = None) = {
+  def check(timeout: Option[Int] = None): Result = {
     setTimeout(timeout)
 
     writeLine("(check-sat)")
@@ -305,7 +319,7 @@ abstract class ProverStdIO(uniqueId: String,
     }
   }
 
-  def statistics(): Map[String, String]= {
+  def statistics(): Map[String, String] = {
     var repeat = true
     var line = ""
     var stats = scala.collection.immutable.SortedMap[String, String]()
@@ -314,7 +328,7 @@ abstract class ProverStdIO(uniqueId: String,
     writeLine("(get-info :all-statistics)")
 
     do {
-      line = input.readLine()
+      line = readLineFromInput()
       comment(line)
 
       /* Check that the first line starts with "(:". */
@@ -333,7 +347,7 @@ abstract class ProverStdIO(uniqueId: String,
     toMap(stats)
   }
 
-  def comment(str: String) = {
+  def comment(str: String): Unit = {
     val sanitisedStr =
       str.replaceAll("\r", "")
          .replaceAll("\n", "\n; ")
@@ -341,7 +355,7 @@ abstract class ProverStdIO(uniqueId: String,
     logToFile("; " + sanitisedStr)
   }
 
-  def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort) = {
+  def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort): Fun = {
     val id = identifierFactory.fresh(name)
     val fun = Fun(id, argSorts, resultSort)
     val decl = FunctionDecl(fun)
@@ -385,10 +399,10 @@ abstract class ProverStdIO(uniqueId: String,
   protected def readModel(separator: String): String = {
     try {
       var endFound = false
-      val result = new StringBuilder
+      val result = new mutable.StringBuilder
       var firstTime = true
       while (!endFound) {
-        val nextLine = input.readLine()
+        val nextLine = readLineFromInput()
         if (nextLine.trim().endsWith("\"") || (firstTime && !nextLine.startsWith("\""))) {
           endFound = true
         }
@@ -408,7 +422,7 @@ abstract class ProverStdIO(uniqueId: String,
     var result = ""
 
     while (repeat) {
-      result = input.readLine()
+      result = readLineFromInput()
       if (result.toLowerCase != "success") comment(result)
 
       val warning = result.startsWith("WARNING")
@@ -438,7 +452,7 @@ abstract class ProverStdIO(uniqueId: String,
     }
   }
 
-  protected def writeLine(out: String) = {
+  protected def writeLine(out: String): Unit = {
     logToFile(out)
     output.println(out)
   }
