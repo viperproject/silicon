@@ -51,7 +51,7 @@ abstract class ProverStdIO(uniqueId: String,
   def randomizeSeedsOptions: Seq[String]
 
   protected def setTimeout(timeout: Option[Int]): Unit
-  protected def getProverPath(): Path
+  protected def getProverPath: Path
 
   @inline
   private def readLineFromInput(): String = {
@@ -61,7 +61,7 @@ abstract class ProverStdIO(uniqueId: String,
       throw ProverInteractionFailed(uniqueId, s"Interaction with prover yielded null. This might indicate that the prover crashed.")
     }
 
-    return line
+    line
   }
 
   def version(): Version = {
@@ -87,7 +87,7 @@ abstract class ProverStdIO(uniqueId: String,
     pushPopScopeDepth = 0
     lastTimeout = -1
     logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
-    proverPath = getProverPath()
+    proverPath = getProverPath
     prover = createProverInstance()
     input = new BufferedReader(new InputStreamReader(prover.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(prover.getOutputStream)), true)
@@ -104,7 +104,7 @@ abstract class ProverStdIO(uniqueId: String,
     Runtime.getRuntime.addShutdownHook(proverShutdownHook)
   }
 
-  protected def createProverInstance() = {
+  protected def createProverInstance(): Process = {
     // One can pass some options. This allows to check whether they have been received.
     val msg = s"Starting prover at location '$proverPath'"
     reporter report ConfigurationConfirmation(msg)
