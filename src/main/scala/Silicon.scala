@@ -25,8 +25,6 @@ import viper.silicon.verifier.DefaultMasterVerifier
 import viper.silicon.decider.{Z3ProverStdIO, Cvc5ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
-import viper.silver.plugin.PluginAwareReporter
-
 import scala.util.chaining._
 
 object Silicon {
@@ -335,16 +333,13 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   }
 }
 
-class SiliconFrontend(override val reporter: PluginAwareReporter,
-                      override implicit val logger: Logger) extends SilFrontend {
-
-  def this(reporter: Reporter, logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) =
-    this(PluginAwareReporter(reporter), logger)
+class SiliconFrontend(override val reporter: Reporter,
+                      override implicit val logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) extends SilFrontend {
 
   protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {
-    siliconInstance = new Silicon(reporter.reporter, Seq("args" -> fullCmd))
+    siliconInstance = new Silicon(reporter, Seq("args" -> fullCmd))
 
     siliconInstance
   }
