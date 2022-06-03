@@ -41,14 +41,9 @@ abstract class ProverStdIO(uniqueId: String,
   var proverPath: Path = _
   var lastModel : String = _
 
-  def name: String
-  def minVersion: Version
-  def maxVersion: Option[Version]
   def exeEnvironmentalVariable: String
   def dependencies: Seq[SilDefaultDependency]
-  def staticPreamble: String
   def startUpArgs: Seq[String]
-  def randomizeSeedsOptions: Seq[String]
 
   protected def setTimeout(timeout: Option[Int]): Unit
   protected def getProverPath: Path

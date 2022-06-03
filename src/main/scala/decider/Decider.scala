@@ -14,7 +14,7 @@ import viper.silver.verifier.DependencyNotFoundError
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.decider.{Prover, Unsat}
+import viper.silicon.interfaces.decider._
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
@@ -87,13 +87,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
   def identifierFactory: IdentifierFactory
 
   object decider extends Decider with StatefulComponent {
-    private var proverStdIO: ProverStdIO = _
+    private var proverStdIO: Prover = _
     private var pathConditions: PathConditionStack = _
 
 //    private var _freshFunctions: InsertionOrderedSet[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
 //    private var _freshMacros: Vector[MacroDecl] = _
 
-    def prover: ProverStdIO = proverStdIO
+    def prover: Prover = proverStdIO
 
     def pcs: PathConditionStack = pathConditions
 
@@ -101,9 +101,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 //      pathConditions = other
 //      pathConditions.assumptions foreach prover.assume
 //    }
-    private def getProverStdIO(prover: String): ProverStdIO = prover match {
+    private def getProverStdIO(prover: String): Prover = prover match {
       case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
       case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
+      case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter)
       case prover =>
         val msg1 = s"Unknown prover '$prover' provided. Defaulting to ${Z3ProverStdIO.name}."
         logger warn msg1
@@ -118,7 +119,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val proverStdIOVersion = proverStdIO.version()
       // One can pass some options. This allows to check whether they have been received.
 
-      val msg = s"Using ${proverStdIO.name} $proverStdIOVersion located at ${proverStdIO.proverPath}"
+      val path = prover match {
+        case pio: ProverStdIO => pio.proverPath
+        case _ => "No Path"
+      }
+      val msg = s"Using ${proverStdIO.name} $proverStdIOVersion located at ${path}"
       reporter report ConfigurationConfirmation(msg)
       logger debug msg
 

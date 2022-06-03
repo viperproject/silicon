@@ -6,6 +6,7 @@
 
 package viper.silicon.interfaces.decider
 
+import viper.silicon.common.config.Version
 import viper.silver.components.StatefulComponent
 import viper.silicon.{Config, Map}
 import viper.silicon.state.terms._
@@ -19,6 +20,7 @@ object Unknown extends Result
 trait ProverLike {
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
+  def emitSettings(contents: Iterable[String]): Unit
   def assume(term: Term): Unit
   def declare(decl: Decl): Unit
   def comment(content: String): Unit
@@ -33,4 +35,15 @@ trait Prover extends ProverLike with StatefulComponent {
   def statistics(): Map[String, String]
   def getLastModel(): String
   def clearLastModel(): Unit
+
+  def name: String
+  def minVersion: Version
+  def maxVersion: Option[Version]
+  def version(): Version
+  def staticPreamble: String
+  def randomizeSeedsOptions: Seq[String]
+
+  def push(n: Int = 1): Unit
+
+  def pop(n: Int = 1): Unit
 }
