@@ -89,7 +89,7 @@ class Z3ProverAPI(uniqueId: String,
   val emittedSorts = mutable.LinkedHashSet[com.microsoft.z3.Sort]()
   val emittedSortSymbols = mutable.LinkedHashSet[Symbol]()
   val emittedFuncs = mutable.LinkedHashSet[FuncDecl]()
-  val emittedFuncSymbols = mutable.LinkedHashSet[Symbol]()
+  val emittedFuncSymbols = mutable.Queue[Symbol]()
 
 
 
@@ -126,6 +126,12 @@ class Z3ProverAPI(uniqueId: String,
     prover.setParameters(params)
     termConverter.start()
     termConverter.ctx = ctx
+    emittedPreambleString.clear()
+    preamblePhaseOver = false
+    emittedFuncs.clear()
+    emittedSorts.clear()
+    emittedFuncSymbols.clear()
+    emittedSortSymbols.clear()
   }
 
 //  protected def createProverInstance(): Process = {
@@ -161,7 +167,9 @@ class Z3ProverAPI(uniqueId: String,
 //  }
 
   def reset(): Unit = {
-    prover.reset()
+    stop()
+    termConverter.reset()
+    start()
   }
 
   /* The statement input.close() does not always terminate (e.g. if there is data left to be read).
@@ -199,6 +207,16 @@ class Z3ProverAPI(uniqueId: String,
 //        proverShutdownHook = null
 //      }
 //    }
+    if (ctx != null){
+      ctx.close()
+      ctx = null
+      emittedPreambleString.clear()
+      preamblePhaseOver = false
+      emittedFuncs.clear()
+      emittedSorts.clear()
+      emittedFuncSymbols.clear()
+      emittedSortSymbols.clear()
+    }
   }
 
   def push(n: Int = 1): Unit = {
@@ -409,13 +427,19 @@ class Z3ProverAPI(uniqueId: String,
         }
       }
       case fd@FunctionDecl(f) => {
-        emittedFuncs.add(termConverter.convert(fd))
-        emittedFuncSymbols.add(termConverter.convertFuncSymbol(fd))
+        val converted = termConverter.convert(fd)
+        if (!emittedFuncs.contains(converted)){
+          emittedFuncs.add(converted)
+          emittedFuncSymbols.append(termConverter.convertFuncSymbol(fd))
+        }
       }
       case md@MacroDecl(id, args, body) => termConverter.macros.update(id.name, (args, body))
       case swd@SortWrapperDecl(from, to) => {
-        emittedFuncs.add(termConverter.convert(swd))
-        emittedFuncSymbols.add(termConverter.convertSortWrapperSymbol(swd))
+        val converted = termConverter.convert(swd)
+        if (!emittedFuncs.contains(converted)){
+          emittedFuncs.add(converted)
+          emittedFuncSymbols.append(termConverter.convertSortWrapperSymbol(swd))
+        }
       }
     }
   }
