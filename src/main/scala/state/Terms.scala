@@ -2085,15 +2085,15 @@ object SortWrapper {
 
 /* Other terms */
 
-class Distinct(val ts: Set[Symbol]) extends BooleanTerm with StructuralEquality {
+class Distinct(val ts: Set[DomainFun]) extends BooleanTerm with StructuralEquality {
   assert(ts.size >= 2, "Distinct requires at least two terms")
 
   val equalityDefiningMembers = ts :: Nil
   override lazy val toString = s"Distinct($ts)"
 }
 
-object Distinct extends (Set[Symbol] => Term) {
-  def apply(ts: Set[Symbol]): Term =
+object Distinct extends (Set[DomainFun] => Term) {
+  def apply(ts: Set[DomainFun]): Term =
     if (ts.size >= 2) new Distinct(ts)
     else True()
 

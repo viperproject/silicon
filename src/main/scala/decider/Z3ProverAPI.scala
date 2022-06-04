@@ -23,6 +23,7 @@ import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 import com.microsoft.z3._
+import com.microsoft.z3.enumerations.Z3_ast_print_mode
 
 import scala.jdk.CollectionConverters
 import scala.jdk.CollectionConverters.MapHasAsJava
@@ -37,24 +38,47 @@ object Z3ProverAPI {
   val staticPreamble = "/z3config.smt2"
   val startUpArgs = Seq("-smt2", "-in")
   val randomizeSeedsOptions = Seq("sat.random_seed", "nlsat.seed", "fp.spacer.random_seed", "smt.random_seed", "sls.random_seed")
+/*
+(set-option :smt.arith.random_initial_value true) ; Boogie: true
+(set-option :smt.random_seed 0)
+(set-option :sls.random_offset true)
+(set-option :sls.random_seed 0)
+(set-option :sls.restart_init false)
+(set-option :sls.walksat_ucb true)
 
+ */
   val initialOptions = Map("auto_config" -> "false", "type_check" -> "true")
   val boolParams = Map(
     "smt.delay_units" -> true,
     "nnf.sk_hack" -> true,
   //  "type_check" -> true,
  //   "smt.bv_reflect" -> true,
-  //  "global_decls" -> true,
+  //  "global-decls" -> true,
     "smt.mbqi" -> false,
-    "model.v2" -> true,
+ //   "model.v2" -> true,
+    "nlsat.randomize" -> true,
+    "nlsat.shuffle_vars" -> false,
+    "smt.arith.random_initial_value" -> true,
+ //   "sls.random_offset" -> true
+ //   "sls.restart_init" -> false,
+  //  "sls.walksat_ucb" -> true
   )
   val intParams = Map("smt.restart_strategy" -> 0,
     "smt.case_split" -> 3,
     "smt.delay_units_threshold" -> 16,
-
     "smt.qi.max_multi_patterns" -> 1000,
+    "smt.phase_selection" -> 0,
+    "sat.random_seed" -> 0,
+    "nlsat.seed" -> 0,
+ //   "fp.spacer.order_children" -> 0,
+ //   "fp.spacer.random_seed" -> 0
+    "random_seed" -> 0,
+ //   "sls.random_seed" -> 0
   )
- // val stringParams = Map("smt.qi.cost" -> "(+ weight generation)")
+  val stringParams = Map(
+    //"smt.qi.cost" -> "(+ weight generation)", // cannot set this for some reason, but this is the default value anyway.
+    "sat.phase" -> "caching"
+  )
   val doubleParams = Map(
     "smt.restart_factor" -> 1.5,
     "smt.qi.eager_threshold" -> 100.0,
@@ -86,6 +110,7 @@ class Z3ProverAPI(uniqueId: String,
 
   var emittedPreambleString = mutable.Queue[String]()
   var preamblePhaseOver = false
+  var preambleAssumes = mutable.LinkedHashSet[BoolExpr]()
   val emittedSorts = mutable.LinkedHashSet[com.microsoft.z3.Sort]()
   val emittedSortSymbols = mutable.LinkedHashSet[Symbol]()
   val emittedFuncs = mutable.LinkedHashSet[FuncDecl]()
@@ -96,7 +121,10 @@ class Z3ProverAPI(uniqueId: String,
 
 
   def version(): Version = {
-    Version(com.microsoft.z3.Version.getFullVersion)
+    val versString = com.microsoft.z3.Version.getFullVersion
+    if (!versString.startsWith("Z3 "))
+      sys.error("unexpected version string")
+    Version(versString.substring(3))
   }
 
   def start(): Unit = {
@@ -119,9 +147,9 @@ class Z3ProverAPI(uniqueId: String,
     Z3ProverAPI.doubleParams.foreach{
       case (k, v) => params.add(k, v)
     }
-    //      Z3ProverAPI.stringParams.foreach{
-    //        case (k, v) => params.add(k, v)
-    //      }
+    Z3ProverAPI.stringParams.foreach{
+      case (k, v) => params.add(k, v)
+    }
     prover = ctx.mkSolver()
     prover.setParameters(params)
     termConverter.start()
@@ -261,8 +289,10 @@ class Z3ProverAPI(uniqueId: String,
   //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
   def assume(term: Term): Unit = {
-    endPreamblePhase()
-    prover.add(termConverter.convert(term).asInstanceOf[BoolExpr])
+    if (preamblePhaseOver)
+      prover.add(termConverter.convert(term).asInstanceOf[BoolExpr])
+    else
+      preambleAssumes.add(termConverter.convert(term).asInstanceOf[BoolExpr])
   }
 
 
@@ -288,6 +318,7 @@ class Z3ProverAPI(uniqueId: String,
     prover.add(negatedGoal)
     val startTime = System.currentTimeMillis()
     val res = prover.check()
+    ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL)
     val endTime = System.currentTimeMillis()
     pop()
 
@@ -368,7 +399,8 @@ class Z3ProverAPI(uniqueId: String,
       val merged = emittedPreambleString.mkString("\n")
       val parsed = ctx.parseSMTLIB2String(merged, emittedSortSymbols.toArray, emittedSorts.toArray, emittedFuncSymbols.toArray, emittedFuncs.toArray)
       prover.add(parsed: _*)
-
+      prover.add(preambleAssumes.toSeq : _*)
+      preambleAssumes.clear()
     }
   }
 
@@ -402,7 +434,8 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def comment(str: String): Unit = {
-
+    if (!preamblePhaseOver && str == "End preamble")
+      endPreamblePhase()
   }
 
   def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort): Fun = {
@@ -494,14 +527,11 @@ class Z3ProverAPI(uniqueId: String,
     if (lastTimeout != effectiveTimeout) {
       lastTimeout = effectiveTimeout
 
-      val p = ctx.mkParams
       if(Verifier.config.proverEnableResourceBounds) {
-        p.add("rlimit", effectiveTimeout * Verifier.config.proverResourcesPerMillisecond)
+        ctx.updateParamValue("rlimit", (effectiveTimeout * Verifier.config.proverResourcesPerMillisecond).toString)
       } else {
-        val p = ctx.mkParams
-        p.add("timeout", effectiveTimeout)
+        ctx.updateParamValue("timeout", effectiveTimeout.toString)
       }
-      prover.setParameters(p)
     }
   }
 

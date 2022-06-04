@@ -11,7 +11,7 @@ import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.terms._
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silver.components.StatefulComponent
-import com.microsoft.z3.{ArithExpr, BoolExpr, Context, IntExpr, RealExpr, Expr => Z3Expr, FuncDecl => Z3FuncDecl, Sort => Z3Sort, Symbol => Z3Symbol}
+import com.microsoft.z3.{ArithExpr, BoolExpr, Constructor, Context, DatatypeSort, IntExpr, RealExpr, Expr => Z3Expr, FuncDecl => Z3FuncDecl, Sort => Z3Sort, Symbol => Z3Symbol}
 
 import scala.collection.mutable
 
@@ -39,16 +39,54 @@ class TermToZ3APIConverter
   }
 
   def getSnapSort = {
-    /*
-    (declare-datatypes (($Snap 0)) ((
-    ($Snap.unit)
-    ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
+    if (snapSort == null) {
+      /*
+      (declare-datatypes (($Snap 0)) ((
+      ($Snap.unit)
+      ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
      */
-    val unit = ctx.mkConstructor("$Snap.unit", "is_$Snap.unit", null, null, null)
-    val sortArray: Array[Z3Sort] = Array(null, null)
-    val combine = ctx.mkConstructor("$Snap.combine", "is_$Snap.combine", Array("$Snap.first", "$Snap.second"), sortArray, Array(0, 0))
-    ctx.mkDatatypeSort("$Snap", Array(unit, combine))
+      val unit = ctx.mkConstructor("$Snap.unit", "is_$Snap.unit", null, null, null)
+
+      val sortArray: Array[Z3Sort] = Array(null, null)
+      val combine = ctx.mkConstructor("$Snap.combine", "is_$Snap.combine", Array("$Snap.first", "$Snap.second"), sortArray, Array(0, 0))
+      snapSort = ctx.mkDatatypeSort("$Snap", Array(unit, combine))
+      unitConstructor = unit.ConstructorDecl()
+      combineConstructor = combine.ConstructorDecl()
+      val accessors = combine.getAccessorDecls
+      firstFunc = accessors(0)
+      secondFunc = accessors(1)
+    }
+    snapSort
   }
+  def getUnitConstructor = {
+    if (unitConstructor == null)
+      getSnapSort
+    unitConstructor
+  }
+
+  def getCombineConstructor = {
+    if (combineConstructor == null)
+      getSnapSort
+    combineConstructor
+  }
+
+  def getFirstFunc = {
+    if (firstFunc == null)
+      getSnapSort
+    firstFunc
+  }
+
+  def getSecondFunc = {
+    if (secondFunc == null)
+      getSnapSort
+    secondFunc
+  }
+
+  var snapSort : DatatypeSort = _
+  var unitConstructor : Z3FuncDecl = _
+  var combineConstructor: Z3FuncDecl = _
+  var firstFunc: Z3FuncDecl = _
+  var secondFunc: Z3FuncDecl = _
 
   def convertSort(s: Sort): Z3Sort = {
     if (sortCache.contains(s))
@@ -59,7 +97,7 @@ class TermToZ3APIConverter
       case sorts.Perm => ctx.mkRealSort()
       case sorts.Snap => getSnapSort
       case sorts.Ref => ctx.mkUninterpretedSort("$Ref")
-      case sorts.Map(keySort, valueSort) => ??? // text("Map") <> "<" <> doRender(keySort, true) <> "~_" <> doRender(valueSort, true) <> ">"
+      case sorts.Map(keySort, valueSort) => ctx.mkUninterpretedSort("Map<" + convertSortName(keySort) + "~_" + convertSortName(valueSort) + ">") // text("Map") <> "<" <> doRender(keySort, true) <> "~_" <> doRender(valueSort, true) <> ">"
       case sorts.Seq(elementSort) => {
         val res = ctx.mkUninterpretedSort("Seq<" + convertSortName(elementSort) + ">")
         res
@@ -95,7 +133,7 @@ class TermToZ3APIConverter
       case sorts.Perm => None
       case sorts.Snap => Some(ctx.mkSymbol("$Snap"))
       case sorts.Ref => Some(ctx.mkSymbol("$Ref"))
-      case sorts.Map(keySort, valueSort) => ??? // text("Map") <> "<" <> doRender(keySort, true) <> "~_" <> doRender(valueSort, true) <> ">"
+      case sorts.Map(keySort, valueSort) => Some(ctx.mkSymbol("Map<" + convertSortName(keySort) + "~_" + convertSortName(valueSort) + ">")) // text("Map") <> "<" <> doRender(keySort, true) <> "~_" <> doRender(valueSort, true) <> ">"
       case sorts.Seq(elementSort) => Some(ctx.mkSymbol("Seq<" + convertSortName(elementSort) + ">")) // text("Seq<") <> doRender(elementSort, true) <> ">"
       case sorts.Set(elementSort) => Some(ctx.mkSymbol("Set<" + convertSortName(elementSort) + ">")) // text("Set<") <> doRender(elementSort, true) <> ">"
       case sorts.Multiset(elementSort) => Some(ctx.mkSymbol("Multiset<" + convertSortName(elementSort) + ">")) //  // text("Multiset<") <> doRender(elementSort, true) <> ">"
@@ -173,8 +211,8 @@ class TermToZ3APIConverter
 
 
   def convertTerm(term: Term): Z3Expr = {
-    if (termCache.contains(term))
-      return termCache(term)
+    //if (termCache.contains(term))
+    //  return termCache(term)
     val res = term match {
       case l: Literal => {
         l match {
@@ -187,7 +225,7 @@ class TermToZ3APIConverter
           case True() => ctx.mkTrue()
           case False() => ctx.mkFalse()
           case Null() => ctx.mkConst("$Ref.null", ctx.mkUninterpretedSort("$Ref"))
-          case Unit => ctx.mkConst("$Snap.unit", getSnapSort) //"$Snap.unit"
+          case Unit => ctx.mkConst(getUnitConstructor)// ctx.mkConst("$Snap.unit", getSnapSort) //"$Snap.unit"
           case _: SeqNil => renderApp("Seq_empty", Seq(), l.sort)
           case _: EmptySet => renderApp("Set_empty", Seq(), l.sort)
           case _: EmptyMultiset => renderApp("Multiset_empty", Seq(), l.sort)
@@ -206,7 +244,12 @@ class TermToZ3APIConverter
           case _: SMTFun => renderSMTApp(convertId(fapp.applicable.id, false), fapp.args, fapp.sort)
           case _ => {
             if (macros.contains(fapp.applicable.id.name)) {
-              ???
+              val (vars, body) = macros(fapp.applicable.id.name)
+              if (vars.length != fapp.args.length)
+                sys.error("macro usage doesn't match")
+              val substituted = body.replace(vars, fapp.args)
+              val res = convert(substituted)
+              res
             }else {
               renderApp(convertId(fapp.applicable.id), fapp.args, fapp.sort)
             }
@@ -216,14 +259,16 @@ class TermToZ3APIConverter
 
       /* Handle quantifiers that have at most one trigger set */
       case Quantification(quant, vars, body, triggers, name, _) => {
-        if (vars.isEmpty)
-          sys.error("wtf")
-        val qvarExprs = vars.map(v => convert(v)).toArray
-        val patterns = triggers.map(t => ctx.mkPattern(t.p.map(convertTerm): _*)).toArray
-        if (quant == Forall) {
-          ctx.mkForall(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
-        }else{
-          ctx.mkExists(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
+        if (vars.isEmpty) {
+          convertTerm(body)
+        } else{
+          val qvarExprs = vars.map(v => convert(v)).toArray
+          val patterns = triggers.filter(_.p.nonEmpty).map(t => ctx.mkPattern(t.p.map(convertTerm): _*)).toArray
+          if (quant == Forall) {
+            ctx.mkForall(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
+          }else{
+            ctx.mkExists(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
+          }
         }
       }
 
@@ -303,7 +348,9 @@ class TermToZ3APIConverter
          (and ($Perm.isValidVar p)
          (not (= p $Perm.No))))
          */
-        ctx.mkLt(ctx.mkReal(0), convert(v).asInstanceOf[ArithExpr])
+        ctx.mkLt(ctx.mkReal(0), convert(v).asInstanceOf[ArithExpr]) // simplified
+        //ctx.mkAnd(ctx.mkLe(ctx.mkReal(0), convert(v).asInstanceOf[ArithExpr]),
+        //  ctx.mkNot(ctx.mkEq(convert(v).asInstanceOf[ArithExpr], ctx.mkReal(0))))
       }
 
       /* Sequences */
@@ -379,19 +426,18 @@ class TermToZ3APIConverter
 
       /* Other terms */
 
-      case First(t) => renderApp("$Snap.first", Seq(t), term.sort)//parens(text("$Snap.first") <+> render(t))
-      case Second(t) => renderApp("$Snap.second", Seq(t), term.sort)
+      case First(t) => ctx.mkApp(firstFunc, convertTerm(t))//renderApp("$Snap.first", Seq(t), term.sort)//parens(text("$Snap.first") <+> render(t))
+      case Second(t) => ctx.mkApp(secondFunc, convertTerm(t))//renderApp("$Snap.second", Seq(t), term.sort)
 
       case bop: Combine =>
-        renderApp("$Snap.combine", Seq(bop.p0, bop.p1), term.sort)
+        ctx.mkApp(combineConstructor, convertTerm(bop.p0), convertTerm(bop.p1))//renderApp("$Snap.combine", Seq(bop.p0, bop.p1), term.sort)
 
       case SortWrapper(t, to) =>
         renderApp(convertId(SortWrapperId(t.sort, to)), Seq(t), to)
       //parens(text(render(SortWrapperId(t.sort, to))) <+> render(t))
 
       case Distinct(symbols) =>
-        ???
-        //ctx.mkDistinct(symbols.map(s => convert(s)): _*)
+        ctx.mkDistinct(symbols.map(s => ctx.mkConst(convertId(s.id), convertSort(s.resultSort))).toSeq: _*)
         //renderApp("distinct") <+> ssep((symbols.toSeq map (s => render(s.id): Cont)).to(collection.immutable.Seq), space))
 
       case Let(bindings, body) =>
@@ -403,7 +449,7 @@ class TermToZ3APIConverter
          | _: Quantification =>
         sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
     }
-    termCache.update(term, res)
+    //termCache.update(term, res)
     res
   }
 
@@ -495,6 +541,11 @@ class TermToZ3APIConverter
     sortCache.clear()
     funcDeclCache.clear()
     termCache.clear()
+    unitConstructor = null
+    combineConstructor = null
+    firstFunc = null
+    secondFunc = null
+    snapSort = null
   }
 
   def stop(): Unit = {
