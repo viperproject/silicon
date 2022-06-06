@@ -64,11 +64,11 @@ trait Decider {
   def clearModel(): Unit
 
 /* [BRANCH-PARALLELISATION] */
-//  def freshFunctions: InsertionOrderedSet[FunctionDecl]
-//  def freshMacros: Vector[MacroDecl]
-//  def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit
-//  def declareAndRecordAsFreshMacros(functions: Vector[MacroDecl]): Unit
-//  def setPcs(other: PathConditionStack): Unit
+  def freshFunctions: InsertionOrderedSet[FunctionDecl]
+  def freshMacros: Vector[MacroDecl]
+  def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit
+  def declareAndRecordAsFreshMacros(functions: Vector[MacroDecl]): Unit
+  def setPcs(other: PathConditionStack): Unit
 
   def statistics(): Map[String, String]
 }
@@ -90,17 +90,17 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var z3: Z3ProverStdIO = _
     private var pathConditions: PathConditionStack = _
 
-//    private var _freshFunctions: InsertionOrderedSet[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
-//    private var _freshMacros: Vector[MacroDecl] = _
+    private var _freshFunctions: InsertionOrderedSet[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
+    private var _freshMacros: Vector[MacroDecl] = _
 
     def prover: Prover = z3
 
     def pcs: PathConditionStack = pathConditions
 
-//    def setPcs(other: PathConditionStack) = { /* [BRANCH-PARALLELISATION] */
-//      pathConditions = other
-//      pathConditions.assumptions foreach prover.assume
-//    }
+    def setPcs(other: PathConditionStack) = { /* [BRANCH-PARALLELISATION] */
+      pathConditions = other
+      pathConditions.assumptions foreach prover.assume
+    }
 
     private def createProver(): Option[DependencyNotFoundError] = {
       z3 = new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
@@ -132,16 +132,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def start(): Unit = {
       pathConditions = new LayeredPathConditionStack()
-//      _freshFunctions = InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
-//      _freshMacros = Vector.empty
+      _freshFunctions = InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
+      _freshMacros = Vector.empty
       createProver()
     }
 
     def reset(): Unit = {
       z3.reset()
       pathConditions = new LayeredPathConditionStack()
-//      _freshFunctions = InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
-//      _freshMacros = Vector.empty
+      _freshFunctions = InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
+      _freshMacros = Vector.empty
     }
 
     def stop(): Unit = {
@@ -285,7 +285,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       prover.declare(macroDecl)
 
-//      _freshMacros = _freshMacros :+ macroDecl /* [BRANCH-PARALLELISATION] */
+      _freshMacros = _freshMacros :+ macroDecl /* [BRANCH-PARALLELISATION] */
 
       macroDecl
     }
@@ -321,27 +321,27 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
               HeapDepFun(proverFun.id, proverFun.argSorts, proverFun.resultSort).asInstanceOf[F]
           }
 
-//      _freshFunctions = _freshFunctions + FunctionDecl(fun) /* [BRANCH-PARALLELISATION] */
+      _freshFunctions = _freshFunctions + FunctionDecl(fun) /* [BRANCH-PARALLELISATION] */
 
       fun
     }
 
 
 /* [BRANCH-PARALLELISATION] */
-//    def freshFunctions: InsertionOrderedSet[FunctionDecl] = _freshFunctions
-//    def freshMacros: Vector[MacroDecl] = _freshMacros
-//
-//    def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit = {
-//      functions foreach prover.declare
-//
-//      _freshFunctions = _freshFunctions ++ functions
-//    }
-//
-//    def declareAndRecordAsFreshMacros(macros: Vector[MacroDecl]): Unit = {
-//      macros foreach prover.declare
-//
-//      _freshMacros = _freshMacros ++ macros
-//    }
+    def freshFunctions: InsertionOrderedSet[FunctionDecl] = _freshFunctions
+    def freshMacros: Vector[MacroDecl] = _freshMacros
+
+    def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit = {
+      functions foreach prover.declare
+
+      _freshFunctions = _freshFunctions ++ functions
+    }
+
+    def declareAndRecordAsFreshMacros(macros: Vector[MacroDecl]): Unit = {
+      macros foreach prover.declare
+
+      _freshMacros = _freshMacros ++ macros
+    }
 
     /* Misc */
 

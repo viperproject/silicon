@@ -87,16 +87,16 @@ object brancher extends BranchingRules {
          * needed, the second one ensures that the current path conditions (etc.) of the
          * "offloading" verifier are captured.
          */
-//        val functionsOfCurrentDecider = v.decider.freshFunctions
-//        val macrosOfCurrentDecider = v.decider.freshMacros
-//        val pcsOfCurrentDecider = v.decider.pcs.duplicate()
+        val functionsOfCurrentDecider = v.decider.freshFunctions
+        val macrosOfCurrentDecider = v.decider.freshMacros
+        val pcsOfCurrentDecider = v.decider.pcs.duplicate()
 
-//        println(s"\n[INIT elseBranchVerificationTask v.uniqueId = ${v.uniqueId}]")
-//        println(s"  condition = $condition")
-//        println("  v.decider.pcs.assumptions = ")
-//        v.decider.pcs.assumptions foreach (a => println(s"    $a"))
-//        println("  v.decider.pcs.branchConditions = ")
-//        v.decider.pcs.branchConditions foreach (a => println(s"    $a"))
+        println(s"\n[INIT elseBranchVerificationTask v.uniqueId = ${v.uniqueId}]")
+        println(s"  condition = $condition")
+        println("  v.decider.pcs.assumptions = ")
+        v.decider.pcs.assumptions foreach (a => println(s"    $a"))
+        println("  v.decider.pcs.branchConditions = ")
+        v.decider.pcs.branchConditions foreach (a => println(s"    $a"))
 
         (v0: Verifier) => {
           SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
@@ -105,20 +105,20 @@ object brancher extends BranchingRules {
             if (v.uniqueId != v1.uniqueId) {
 
               /* [BRANCH-PARALLELISATION] */
-              throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
+              //throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
 
-//                val newFunctions = functionsOfCurrentDecider -- v1.decider.freshFunctions
-//                val newMacros = macrosOfCurrentDecider.diff(v1.decider.freshMacros)
-//
-//                v1.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v1.uniqueId}]")
-//                v1.decider.prover.comment(s"Bulk-declaring functions")
-//                v1.decider.declareAndRecordAsFreshFunctions(newFunctions)
-//                v1.decider.prover.comment(s"Bulk-declaring macros")
-//                v1.decider.declareAndRecordAsFreshMacros(newMacros)
-//
-//                v1.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
-//                v1.decider.setPcs(pcsOfCurrentDecider)
-//                v1.decider.pcs.pushScope() /* Empty scope for which the branch condition can be set */
+                val newFunctions = functionsOfCurrentDecider -- v1.decider.freshFunctions
+                val newMacros = macrosOfCurrentDecider.diff(v1.decider.freshMacros)
+
+                v1.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v1.uniqueId}]")
+                v1.decider.prover.comment(s"Bulk-declaring functions")
+                v1.decider.declareAndRecordAsFreshFunctions(newFunctions)
+                v1.decider.prover.comment(s"Bulk-declaring macros")
+                v1.decider.declareAndRecordAsFreshMacros(newMacros)
+
+                v1.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
+                v1.decider.setPcs(pcsOfCurrentDecider)
+                v1.decider.pcs.pushScope() /* Empty scope for which the branch condition can be set */
             }
 
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
@@ -135,15 +135,14 @@ object brancher extends BranchingRules {
       if (executeElseBranch) {
         if (parallelizeElseBranch) {
           /* [BRANCH-PARALLELISATION] */
-          throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
-//          v.verificationPoolManager.queueVerificationTask(v0 => {
-//            v0.verificationPoolManager.runningVerificationTasks.put(elseBranchVerificationTask, true)
-//            val res = elseBranchVerificationTask(v0)
-//
-//            v0.verificationPoolManager.runningVerificationTasks.remove(elseBranchVerificationTask)
-//
-//            Seq(res)
-//          })
+          v.verificationPoolManager.queueVerificationTask(v0 => {
+            v0.verificationPoolManager.runningVerificationTasks.put(elseBranchVerificationTask, true)
+            val res = elseBranchVerificationTask(v0)
+
+            v0.verificationPoolManager.runningVerificationTasks.remove(elseBranchVerificationTask)
+
+            Seq(res)
+          })
         } else {
           new SynchronousFuture(Seq(elseBranchVerificationTask(v)))
         }
@@ -164,7 +163,7 @@ object brancher extends BranchingRules {
     }) combine {
 
       /* [BRANCH-PARALLELISATION] */
-      if (parallelizeElseBranch) {
+      if (false && parallelizeElseBranch) { // MARCO
 //          && v.verificationPoolManager.slaveVerifierPool.getNumIdle == 0
 //          && !v.verificationPoolManager.runningVerificationTasks.containsKey(elseBranchVerificationTask)
 //                /* TODO: This attempt to ensure that the elseBranchVerificationTask is not already
