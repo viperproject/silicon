@@ -124,8 +124,9 @@ class Z3ProverAPI(uniqueId: String,
   def version(): Version = {
     val versString = com.microsoft.z3.Version.getFullVersion
     if (!versString.startsWith("Z3 "))
-      sys.error("unexpected version string")
-    Version(versString.substring(3))
+      Version(versString)
+    else
+      Version(versString.substring(3))
   }
 
   def start(): Unit = {

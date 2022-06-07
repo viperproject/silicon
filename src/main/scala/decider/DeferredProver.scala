@@ -61,37 +61,48 @@ class DeferredProver(identifierFactory: IdentifierFactory,
     println(s"give me a number less than ${proofObligations.size}. -1 to quit. -2 to iterate through all.")
     oblId = readLine().toInt
     while (oblId != -1){
+      println("choose prover. 0 for z3, 1 for cvc5.")
+      val proverId = readLine().toInt
       if (oblId == -2) {
         for (i <- 0 until proofObligations.size) {
           val obl = proofObligations(i)
           //-println(s"obligation ${i}:")
-          evalProofObl(obl)
+          evalProofObl(obl, proverId)
         }
       }else{
         val obl = proofObligations(oblId)
         println(obl.assertion)
-        evalProofObl(obl)
+        evalProofObl(obl, proverId)
       }
 
-      println(s"give me a number less than ${proofObligations.size}")
+      println(s"give me a number less than ${proofObligations.size}. -1 to quit. -2 to iterate through all.")
       oblId = readLine().toInt
     }
   }
 
-  def evalProofObl(obl: ProofObligation): Unit = {
+  def evalProofObl(obl: ProofObligation, proverId: Int): Unit = {
 
 
     val termConverter = new TermToSMTLib2Converter()
     termConverter.start()
-    val z3Prover = new Z3ProverStdIO("Z3", termConverter, identifierFactory, reporter)
-    z3Prover.start()
-    z3Prover.emitSettings(emittedSettingsString)
-    obl.decls.foreach{
-      case Left(d) => z3Prover.declare(d)
-      case Right(ss) => z3Prover.emit(ss)
+    val prover = if (proverId == 1) {
+      val cvcProver = new Cvc5ProverStdIO("CVC5", termConverter, identifierFactory, reporter)
+      cvcProver.start()
+      new SMTLib2PreambleReader().emitPreamble(Cvc5ProverStdIO.staticPreamble, cvcProver, true)
+      cvcProver
+    }else{
+      val z3Prover = new Z3ProverStdIO("Z3", termConverter, identifierFactory, reporter)
+      z3Prover.start()
+      new SMTLib2PreambleReader().emitPreamble(Z3ProverStdIO.staticPreamble, z3Prover, true)
+      z3Prover
     }
-    obl.assumptions.foreach(a => z3Prover.assume(a))
-    val res = z3Prover.assert(obl.assertion)
+
+    obl.decls.foreach{
+      case Left(d) => prover.declare(d)
+      case Right(ss) => prover.emit(ss)
+    }
+    obl.assumptions.foreach(a => prover.assume(a))
+    val res = prover.assert(obl.assertion)
     if (obl.error.isDefined) {
       if (res) {
         println("all good")
@@ -101,7 +112,7 @@ class DeferredProver(identifierFactory: IdentifierFactory,
     }else{
       println(s"assert succeeded: ${res}")
     }
-    z3Prover.stop()
+    prover.stop()
   }
 
   override def fresh(idstr: String, argSorts: Seq[Sort], resultSort: Sort): terms.Function = {
@@ -151,6 +162,10 @@ class DeferredProver(identifierFactory: IdentifierFactory,
   }
 
   override def emitSettings(contents: Iterable[String]): Unit = {
+    // ignore
+  }
+
+  override def emit(contents: Iterable[String]): Unit = {
     currentDecls.append(Right(contents))
   }
 
