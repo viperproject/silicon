@@ -726,7 +726,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
-    case Some(Z3ProverStdIO.name) | Some(Cvc5ProverStdIO.name) | Some(Z3ProverAPI.name) => Right(())
+    case Some(Z3ProverStdIO.name) | Some(Cvc5ProverStdIO.name) | Some(Z3ProverAPI.name) | Some("Deferred") => Right(())
     case prover => Left(s"Unknown prover '$prover' provided. Expected one of ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}, ${Z3ProverAPI.name}.")
   }
 

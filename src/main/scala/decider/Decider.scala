@@ -13,7 +13,7 @@ import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces._
+import viper.silicon.interfaces.{VerificationResult, _}
 import viper.silicon.interfaces.decider._
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
@@ -105,6 +105,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
       case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
       case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter)
+      case "Deferred" => new DeferredProver(identifierFactory, reporter)
       case prover =>
         val msg1 = s"Unknown prover '$prover' provided. Defaulting to ${Z3ProverStdIO.name}."
         logger warn msg1
@@ -159,7 +160,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def stop(): Unit = {
-      if (proverStdIO != null) proverStdIO.stop()
+      if (proverStdIO != null) {
+        if (proverStdIO.isInstanceOf[DeferredProver]){
+          proverStdIO.asInstanceOf[DeferredProver].checkObligations()
+        }
+        proverStdIO.stop()
+      }
     }
 
     /* Assumption scope handling */
@@ -222,13 +228,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def checkSmoke(): Boolean = prover.check(Verifier.config.checkTimeout.toOption) == Unsat
 
-    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
+    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout), None)
 
     def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
               (Q: Boolean => VerificationResult)
               : VerificationResult = {
 
-      val success = deciderAssert(t, timeout)
+      val success = deciderAssert(t, timeout, Some(Q))
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -242,12 +248,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, timeout: Option[Int]) = {
+    private def deciderAssert(t: Term, timeout: Option[Int], Q: Option[Boolean => VerificationResult]) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
 
       val asserted = isKnownToBeTrue(t)
-      val result = asserted || proverAssert(t, timeout)
+      val result = asserted || proverAssert(t, timeout, Q)
 
       SymbExLogger.currentLog().closeScope(sepIdentifier)
       result
@@ -261,11 +267,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       case _ => false
     }
 
-    private def proverAssert(t: Term, timeout: Option[Int]) = {
+    private def proverAssert(t: Term, timeout: Option[Int], Q: Option[Boolean => VerificationResult]) = {
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
 
-      val result = prover.assert(t, timeout)
+      val result = prover.assert(t, timeout, Q)
 
       if (SymbExLogger.enabled) {
         val statistics = prover.statistics()
@@ -365,7 +371,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def statistics(): Map[String, String] = prover.statistics()
 
-    override def generateModel(): Unit = proverAssert(False(), None)
+    override def generateModel(): Unit = proverAssert(False(), None, None)
 
     override def getModel(): String = prover.getLastModel()
 

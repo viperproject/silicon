@@ -17,13 +17,14 @@ import viper.silicon.{Config, Map, toMap}
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
-
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
+
 import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_ast_print_mode
+import viper.silicon.interfaces.VerificationResult
 
 import scala.jdk.CollectionConverters
 import scala.jdk.CollectionConverters.MapHasAsJava
@@ -299,7 +300,7 @@ class Z3ProverAPI(uniqueId: String,
 
 
 
-  def assert(goal: Term, timeout: Option[Int]): Boolean = {
+  def assert(goal: Term, timeout: Option[Int], error: Option[Boolean => VerificationResult] = None ): Boolean = {
     endPreamblePhase()
     setTimeout(timeout)
 

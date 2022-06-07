@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit
 
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
@@ -219,7 +220,7 @@ abstract class ProverStdIO(uniqueId: String,
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None): Boolean =
+  def assert(goal: Term, timeout: Option[Int] = None, error: Option[Boolean => VerificationResult] = None): Boolean =
     assert(termConverter.convert(goal), timeout)
 
   def assert(goal: String, timeout: Option[Int]): Boolean = {
