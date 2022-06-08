@@ -6,16 +6,15 @@
 
 package viper.silicon.logger
 
-import java.nio.file.{Files, Path, Paths}
-import spray.json._
-import LogConfigProtocol._
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
+import spray.json._
 import viper.silicon.decider.PathConditionStack
+import viper.silicon.logger.LogConfigProtocol._
 import viper.silicon.logger.records.SymbolicRecord
-import viper.silicon.logger.records.data.{DataRecord, FunctionRecord, MemberRecord, MethodRecord, PredicateRecord}
+import viper.silicon.logger.records.data._
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
-import viper.silicon.logger.records.structural.{BranchingRecord, StructuralRecord}
+import viper.silicon.logger.records.structural.BranchingRecord
 import viper.silicon.logger.renderer.SimpleTreeRenderer
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -23,6 +22,7 @@ import viper.silicon.{Config, Map}
 import viper.silver.ast
 import viper.silver.ast.Exp
 
+import java.nio.file.{Files, Path, Paths}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.annotation.elidable
 import scala.annotation.elidable._
@@ -205,11 +205,6 @@ object SymbExLogger {
 
   def freshUid(): Int = uidCounter.getAndIncrement()
 
-  /**
-    * stores the last SMT solver statistics to calculate the diff
-    */
-  private var prevSmtStatistics: Map[String, String] = new Map()
-
   /** Add a new log for a method, function or predicate (member).
     *
     * @param member Either a MethodRecord, PredicateRecord or a FunctionRecord.
@@ -298,47 +293,10 @@ object SymbExLogger {
     filePath = null
     logConfig = LogConfig.default()
     listenerProvider = new InMemorySymbLog(_)
-    prevSmtStatistics = new Map()
   }
 
   def resetMemberList(): Unit = {
     memberList.clear()
-    // or reset by calling it from Decider.reset
-    prevSmtStatistics = new Map()
-  }
-
-  /**
-    * Calculates diff between `currentStatistics` and the statistics from a previous call.
-    * The difference is calculated if value can be converted to an int or double
-    * @param currentStatistics most recent statistics from the SMT solver
-    * @return map with differences (only containing values that could be converted) and keys with appended "-delta"
-    */
-  def getDeltaSmtStatistics(currentStatistics: Map[String, String]) : Map[String, String] = {
-    val deltaStatistics = currentStatistics map getDelta filter { case (_, value) => value.nonEmpty } map {
-      case (key, Some(value)) => (key + "-delta", value)
-      case other => sys.error(s"Unexpected result pair $other")
-    }
-    // set prevStatistics (i.e. override values with same key or add):
-    prevSmtStatistics = prevSmtStatistics ++ currentStatistics
-    deltaStatistics
-  }
-
-  private def getDelta(pair: (String, String)): (String, Option[String]) = {
-    val curValInt = pair._2.toIntOption
-    val prevValInt = prevSmtStatistics.get(pair._1) match {
-      case Some(value) => value.toIntOption
-      case _ => Some(0) // value not found
-    }
-    val curValDouble = pair._2.toDoubleOption
-    val prevValDouble = prevSmtStatistics.get(pair._1) match {
-      case Some(value) => value.toDoubleOption
-      case _ => Some(0.0) // value not found
-    }
-    (curValInt, prevValInt, curValDouble, prevValDouble) match {
-      case (Some(curInt), Some(prevInt), _, _) => (pair._1, Some((curInt - prevInt).toString))
-      case (_, _, Some(curDouble), Some(prevDouble)) => (pair._1, Some((curDouble - prevDouble).toString))
-      case _ => (pair._1, None)
-    }
   }
 }
 
