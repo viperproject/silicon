@@ -7,15 +7,15 @@
 package viper.silicon.logger.renderer
 
 import scala.annotation.unused
-import viper.silicon.logger.SymbLog
+import viper.silicon.logger.InMemorySymbLog
 import viper.silicon.logger.records.SymbolicRecord
 import viper.silicon.logger.records.data.DataRecord
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
 import viper.silicon.logger.records.structural.{BranchingRecord, JoiningRecord}
 import viper.silicon.state.terms.Not
 
-class SimpleTreeRenderer extends Renderer[SymbLog, String] {
-  def render(memberList: Seq[SymbLog]): String = {
+class SimpleTreeRenderer extends Renderer[InMemorySymbLog, String] {
+  def render(memberList: Iterable[InMemorySymbLog]): String = {
     var res = ""
     for (m <- memberList) {
       res = res + renderMember(m) + "\n"
@@ -23,7 +23,7 @@ class SimpleTreeRenderer extends Renderer[SymbLog, String] {
     res
   }
 
-  def renderMember(member: SymbLog): String = {
+  def renderMember(member: InMemorySymbLog): String = {
     // val filteredLog = filterEmptyScopes(member.log)
     toSimpleTree(member.log, 0, 0)
   }

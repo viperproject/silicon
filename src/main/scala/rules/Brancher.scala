@@ -75,7 +75,7 @@ object brancher extends BranchingRules {
     v.decider.prover.comment(thenBranchComment)
     v.decider.prover.comment(elseBranchComment)
 
-    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition))
+    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition), conditionExp)
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch) {

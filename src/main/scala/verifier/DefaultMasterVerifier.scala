@@ -252,7 +252,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     if (config.ideModeAdvanced()) {
       reporter report ExecutionTraceReport(
-        SymbExLogger.memberList,
+        SymbExLogger.memberList.toIndexedSeq,
         this.axiomsAfterAnalysis().toList,
         this.postConditionAxioms().toList)
     }
