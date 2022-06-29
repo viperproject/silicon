@@ -263,7 +263,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val result = prover.assert(t, timeout)
 
       if (SymbExLogger.enabled) {
-        assertRecord.statistics = Some(prover.deltaStatistics())
+        assertRecord.statistics = Some(SymbExLogger.currentLog().deltaStatistics(prover.statistics()))
       }
 
       SymbExLogger.currentLog().closeScope(sepIdentifier)

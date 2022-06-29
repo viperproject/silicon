@@ -398,6 +398,11 @@ class SymbLog(val listener: SymbLogListener, val v: ast.Member, val s: State, va
     */
   private var isClosed: Boolean = false
 
+  /**
+    * Most recent output of (get-info :all-statistics) from the underlying prover
+    */
+  private var lastStatistics: Map[String, String] = Map.empty
+
   // Maps macros to their body
   private var _macros = Map[App, Term]()
 
@@ -529,6 +534,39 @@ class SymbLog(val listener: SymbLogListener, val v: ast.Member, val s: State, va
   def discardSMTQuery(): Unit = {
     if (main != null) {
       main.lastFailedProverQuery = None
+    }
+  }
+
+  /**
+    * Calculates the diff between the current and last statistics query.
+    * The difference is calculated if value can be converted to an int or double
+    * @return map with the current statistics, and the differences (only containing values that could be converted)
+    *         and keys with appended "-delta"
+    */
+  def deltaStatistics(currentStatistics: Map[String, String]): Map[String, String] = {
+    val deltaStatistics = currentStatistics map getDelta filter { case (_, value) => value.nonEmpty } map {
+      case (key, Some(value)) => (key + "-delta", value)
+      case other => sys.error(s"Unexpected result pair $other")
+    }
+    lastStatistics = lastStatistics ++ currentStatistics
+    currentStatistics ++ deltaStatistics
+  }
+
+  private def getDelta(pair: (String, String)): (String, Option[String]) = {
+    val curValInt = pair._2.toIntOption
+    val prevValInt = lastStatistics.get(pair._1) match {
+      case Some(value) => value.toIntOption
+      case _ => Some(0) // value not found
+    }
+    val curValDouble = pair._2.toDoubleOption
+    val prevValDouble = lastStatistics.get(pair._1) match {
+      case Some(value) => value.toDoubleOption
+      case _ => Some(0.0) // value not found
+    }
+    (curValInt, prevValInt, curValDouble, prevValDouble) match {
+      case (Some(curInt), Some(prevInt), _, _) => (pair._1, Some((curInt - prevInt).toString))
+      case (_, _, Some(curDouble), Some(prevDouble)) => (pair._1, Some((curDouble - prevDouble).toString))
+      case _ => (pair._1, None)
     }
   }
 
