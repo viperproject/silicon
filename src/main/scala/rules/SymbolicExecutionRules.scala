@@ -15,7 +15,7 @@ import viper.silver.verifier.{Counterexample, CounterexampleTransformer, Model, 
 
 trait SymbolicExecutionRules {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
-    if (s.retryLevel == 0) v.errorsReportedSoFar.incrementAndGet()
+    if (s.retryLevel == 0 && !ve.isExpected) v.errorsReportedSoFar.incrementAndGet()
     var ceTrafo: Option[CounterexampleTransformer] = None
     val res = ve match {
       case ErrorWrapperWithExampleTransformer(wrapped, trafo) =>
