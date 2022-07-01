@@ -646,7 +646,7 @@ object Converter {
     val funcs = program.collect {
       case f: ast.Function => f
     }
-    funcs.map(x => translateFunction(model, heap, x, silicon.toMap(Nil))).toSeq //.without_snap()
+    funcs.map(x => translateFunction(model, heap, x, silicon.toMap(Nil))).toSeq
   }
 
   def errorfunc(problem: String): ExtractedFunction =
