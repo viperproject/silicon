@@ -19,6 +19,7 @@ import viper.silicon.state.terms._
 import viper.silicon.decider.TermToSMTLib2Converter
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.terms.sorts.UserSort
+import viper.silicon.state.terms.sorts.Snap
 
 case class ExtractedModel(entries: Map[String, ExtractedModelEntry]) {
   override lazy val toString: String =
@@ -166,6 +167,11 @@ object Converter {
   }
 
   def getConstantEntry(s: Sort, m: ModelEntry): ExtractedModelEntry = {
+    //unspecified case if z3 is called with option "model.partial=true"
+    m match { 
+      case ConstantEntry("#unspecified") => return OtherEntry("#unspecified", "default case")
+      case _ => ()
+    }
     s match {
       case sorts.Ref => VarEntry(m.toString, sorts.Ref)
       case sorts.Int =>
@@ -640,7 +646,7 @@ object Converter {
     val funcs = program.collect {
       case f: ast.Function => f
     }
-    funcs.map(x => translateFunction(model, heap, x, silicon.toMap(Nil))).toSeq
+    funcs.map(x => translateFunction(model, heap, x, silicon.toMap(Nil))).toSeq //.without_snap()
   }
 
   def errorfunc(problem: String): ExtractedFunction =
@@ -669,7 +675,7 @@ object Converter {
     val fname = func.name
     val resTyp: ast.Type = func.typ
 
-    val (argSortErrors, argSort) = func.formalArgs
+    var (argSortErrors, argSort) = func.formalArgs
       .map(x => toSortWithSubstitutions(x.typ, s"typeError in arg type ${x.typ}"))
       .partitionMap(identity)
     if (argSortErrors.nonEmpty) {
@@ -697,6 +703,9 @@ object Converter {
     }
     entries.get(modelFuncname) match {
       case Some(MapEntry(m, els)) =>
+        if (modelFuncname.contains("%limited")) {
+          argSort = Seq(Snap) ++ argSort
+        }
         val options: Map[Seq[ExtractedModelEntry], ExtractedModelEntry] = try {
           silicon.toMap(m.map(x => x._1.zip(argSort).map(y => getConstantEntry(y._2, y._1)) -> getConstantEntry(resSort, x._2)))
         } catch {
