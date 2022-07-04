@@ -320,28 +320,36 @@ object consumer extends ConsumptionRules {
 
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            val (relevantChunks, _) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
-            val (smDef1, smCache1) =
-              quantifiedChunkSupporter.summarisingSnapshotMap(
-                s2, field, Seq(`?r`), relevantChunks, v2)
-            v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
-//            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
-            val loss = PermTimes(tPerm, s2.permissionScalingFactor)
-            quantifiedChunkSupporter.consumeSingleLocation(
-              s2.copy(smCache = smCache1),
-              h,
-              Seq(`?r`),
-              Seq(tRcvr),
-              loc,
-              loss,
-              None,
-              pve,
-              v2
-            )((s3, h3, snap, v3) => {
-              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
-                               partiallyConsumedHeap = Some(h3))
-              Q(s4, h3, snap, v3)})}))
+            branch(s2, PermLess(NoPerm(), tPerm), Some(ast.PermLtCmp(ast.NoPerm()(), ePerm)(ePerm.pos, ePerm.info)), v2)(
+              (s3, v3) => {
+                val (relevantChunks, _) =
+                  quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
+                val (smDef1, smCache1) =
+                  quantifiedChunkSupporter.summarisingSnapshotMap(
+                    s3, field, Seq(`?r`), relevantChunks, v3)
+                v3.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
+                //            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
+                val loss = PermTimes(tPerm, s3.permissionScalingFactor)
+                quantifiedChunkSupporter.consumeSingleLocation(
+                  s3.copy(smCache = smCache1),
+                  h,
+                  Seq(`?r`),
+                  Seq(tRcvr),
+                  loc,
+                  loss,
+                  None,
+                  pve,
+                  v3
+                )((s4, h4, snap, v4) => {
+                  val s5 = s4.copy(constrainableARPs = s2.constrainableARPs,
+                    partiallyConsumedHeap = Some(h4))
+                  Q(s5, h4, snap, v4)})
+              },
+              (s3, v3) => {
+                Q(s3, h, Unit, v3)
+              }
+            )}))
+
 
       case ast.AccessPredicate(loc @ ast.PredicateAccess(eArgs, predname), ePerm)
               if s.qpPredicates.contains(Verifier.program.findPredicate(predname)) =>
@@ -351,28 +359,34 @@ object consumer extends ConsumptionRules {
 
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            val (relevantChunks, _) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(predname))
-            val (smDef1, smCache1) =
-              quantifiedChunkSupporter.summarisingSnapshotMap(
-                s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
-            v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
+            branch(s2, PermLess(NoPerm(), tPerm), Some(ast.PermLtCmp(ast.NoPerm()(), ePerm)(ePerm.pos, ePerm.info)), v2)(
+              (s3, v3) => {
+                val (relevantChunks, _) =
+                  quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(predname))
+                val (smDef1, smCache1) =
+                  quantifiedChunkSupporter.summarisingSnapshotMap(
+                    s3, predicate, s3.predicateFormalVarMap(predicate), relevantChunks, v3)
+                v3.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
 
-            val loss = PermTimes(tPerm, s2.permissionScalingFactor)
-            quantifiedChunkSupporter.consumeSingleLocation(
-              s2.copy(smCache = smCache1),
-              h,
-              formalVars,
-              tArgs,
-              loc,
-              loss,
-              None,
-              pve,
-              v2
-            )((s3, h3, snap, v3) => {
-              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
-                               partiallyConsumedHeap = Some(h3))
-              Q(s4, h3, snap, v3)})}))
+                val loss = PermTimes(tPerm, s3.permissionScalingFactor)
+                quantifiedChunkSupporter.consumeSingleLocation(
+                  s3.copy(smCache = smCache1),
+                  h,
+                  formalVars,
+                  tArgs,
+                  loc,
+                  loss,
+                  None,
+                  pve,
+                  v3
+                )((s4, h4, snap, v4) => {
+                  val s5 = s4.copy(constrainableARPs = s2.constrainableARPs,
+                    partiallyConsumedHeap = Some(h4))
+                  Q(s5, h4, snap, v4)})
+              },
+              (s3, v3) => {
+                Q(s3, h, Unit, v3)
+              })}))
 
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) => {
@@ -383,14 +397,22 @@ object consumer extends ConsumptionRules {
         eval(s, perm, pve, v)((s1, tPerm, v1) =>
           evalLocationAccess(s1, locacc, pve, v1)((s2, _, tArgs, v2) =>
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
-              val resource = locacc.res(Verifier.program)
-              val loss = PermTimes(tPerm, s3.permissionScalingFactor)
-              val ve = pve dueTo InsufficientPermission(locacc)
-              val description = s"consume ${a.pos}: $a"
-              chunkSupporter.consume(s3, h, resource, tArgs, loss, ve, v3, description)((s4, h1, snap1, v4) => {
-                val s5 = s4.copy(partiallyConsumedHeap = Some(h1),
-                                 constrainableARPs = s.constrainableARPs)
-                Q(s5, h1, snap1, v4)})})))
+              branch(s3, PermLess(NoPerm(), tPerm), Some(ast.PermLtCmp(ast.NoPerm()(), perm)(perm.pos, perm.info)), v3)(
+                (s4, v4) => {
+                  val resource = locacc.res(Verifier.program)
+                  val loss = PermTimes(tPerm, s4.permissionScalingFactor)
+                  val ve = pve dueTo InsufficientPermission(locacc)
+                  val description = s"consume ${a.pos}: $a"
+                  chunkSupporter.consume(s4, h, resource, tArgs, loss, ve, v4, description)((s5, h1, snap1, v5) => {
+                    val s6 = s5.copy(partiallyConsumedHeap = Some(h1),
+                      constrainableARPs = s.constrainableARPs)
+                    Q(s6, h1, snap1, v5)
+                  })},
+                (s4, v4) => {
+                  Q(s4, h, Unit, v4)
+                })
+            }
+            )))
 
       case _: ast.InhaleExhaleExp =>
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
