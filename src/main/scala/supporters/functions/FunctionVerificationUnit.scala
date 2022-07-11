@@ -247,7 +247,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             decider.setCurrentBranchCondition(And(bcsPre))
             decider.assume(pcsPre)
-            v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
+            v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, _) => {
               decider.assume(data.formalResult === tBody)
               consumes(s2, posts, postconditionViolated, v)((s3, _, _) => {

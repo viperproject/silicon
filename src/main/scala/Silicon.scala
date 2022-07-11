@@ -17,16 +17,14 @@ import org.slf4j.LoggerFactory
 import viper.silver.ast
 import viper.silver.frontend.{DefaultStates, SilFrontend}
 import viper.silver.reporter._
-import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
-import viper.silicon.common.config.Version
+import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.verifier.DefaultMasterVerifier
+import viper.silicon.decider.{Z3ProverStdIO, Cvc5ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
-import viper.silver.plugin.PluginAwareReporter
-
 import scala.util.chaining._
 
 object Silicon {
@@ -44,10 +42,7 @@ object Silicon {
     s"${BuildInfo.projectVersion}${buildVersion.fold("")(v => s" ($v)")}"
 
   val copyright = "(c) Copyright ETH Zurich 2012 - 2019"
-  val z3ExeEnvironmentVariable = "Z3_EXE"
-  val z3MinVersion = Version("4.5.0")
-  val z3MaxVersion: Option[Version] = None // Some(Version("4.5.0")) /* X.Y.Z if that is the *last supported* version */
-  val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "https://github.com/Z3Prover/z3"))
+  val dependencies = Z3ProverStdIO.dependencies ++ Cvc5ProverStdIO.dependencies
 
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
     configMap.flatMap {
@@ -338,16 +333,13 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   }
 }
 
-class SiliconFrontend(override val reporter: PluginAwareReporter,
-                      override implicit val logger: Logger) extends SilFrontend {
-
-  def this(reporter: Reporter, logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) =
-    this(PluginAwareReporter(reporter), logger)
+class SiliconFrontend(override val reporter: Reporter,
+                      override implicit val logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) extends SilFrontend {
 
   protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {
-    siliconInstance = new Silicon(reporter.reporter, Seq("args" -> fullCmd))
+    siliconInstance = new Silicon(reporter, Seq("args" -> fullCmd))
 
     siliconInstance
   }
