@@ -702,6 +702,10 @@ object Converter {
       case _: Throwable => return errorfunc(s"$fname model function not found")
     }
     entries.get(modelFuncname) match {
+      /* A function could be either heap-dependent or heap-independent. If it is the former, each entry's first argument
+        is of type snap. To align this with the function's definition, we add a new parameter to the function of type snap. 
+        We identify a heap-dependent function by checking if it contains the keyword "%limited".
+      */  
       case Some(MapEntry(m, els)) =>
         if (modelFuncname.contains("%limited")) {
           argSort = Seq(Snap) ++ argSort
@@ -739,7 +743,7 @@ case class Converter(model: Model,
     x._1 -> Converter.mapHeapToStore(store, x._2, model)
   )
   lazy val domains: Seq[DomainEntry] = {Converter.getDomains(model, extractedHeap, program)}
-  lazy val non_domain_functions: Seq[ExtractedFunction] = Converter.getFunctions(model, extractedHeap, program)
+  lazy val nonDomainFunctions: Seq[ExtractedFunction] = Converter.getFunctions(model, extractedHeap, program)
   def extractVal(x: VarEntry): ExtractedModelEntry =
     Converter.mapLocalVar(
       model = model,

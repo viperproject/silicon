@@ -33,7 +33,7 @@ case class IdentityInterpreter() extends ModelInterpreter[ExtractedModelEntry, A
   */
 case class GenericDomainInterpreter(c: Converter) extends ModelInterpreter[ExtractedModelEntry, Seq[ExtractedModelEntry]] {
   private val domains: Seq[DomainEntry] = c.domains
-  private val functions: Seq[ExtractedFunction] = c.non_domain_functions
+  private val functions: Seq[ExtractedFunction] = c.nonDomainFunctions
   def interpret(entry: ExtractedModelEntry, visited: Seq[ExtractedModelEntry]): ExtractedModelEntry = {
     if (visited.contains(entry)) entry
     else entry match {
