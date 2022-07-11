@@ -421,7 +421,7 @@ object Converter {
       case  FractionPermLiteral(r) => Some(r)
       case _: FractionPerm => None
       case IsValidPermVar(_) => None
-      case IsReadPermVar(_, _) => None
+      case IsReadPermVar(_) => None
       case PermTimes(v1, v2) => (evalPerm(v1, model), evalPerm(v2, model)) match {
         case (Some(x), Some(y)) => Some(x * y)
         case _ => None
