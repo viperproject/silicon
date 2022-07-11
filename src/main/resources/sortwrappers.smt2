@@ -7,16 +7,16 @@
 ;   IntToSnap(x) = IntToSnap(y)
 ; implies that
 ;   x = y.
-(assert (forall ((x $T$)) (!
+(assert (! (forall ((x $T$)) (!
     (= x ($SortWrappers.$SnapTo$S$($SortWrappers.$S$To$Snap x)))
     :pattern (($SortWrappers.$S$To$Snap x))
     :qid |$Snap.$SnapTo$S$To$Snap|
-    )))
-(assert (forall ((x $Snap)) (!
+    )) :named tosnap$I$))
+(assert (! (forall ((x $Snap)) (!
     (= x ($SortWrappers.$S$To$Snap($SortWrappers.$SnapTo$S$ x)))
     :pattern (($SortWrappers.$SnapTo$S$ x))
     :qid |$Snap.$S$To$SnapTo$S$|
-    )))
+    )) :named fromsnap$I$))
 
 ; On several examples, e.g., AVLTree.iterative.sil, Z3 instantiates the sort
 ; wrapper axioms somewhat often. It might be possible to include the wrappers

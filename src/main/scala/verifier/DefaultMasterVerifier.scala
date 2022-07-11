@@ -426,11 +426,13 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       component.emitAxiomsAfterAnalysis(sink))
   }
 
+  var sortIndex = 0
   private def emitSortWrappers(ss: Iterable[Sort], sink: ProverLike): Unit = {
     if (ss.nonEmpty) {
       sink.comment("Declaring additional sort wrappers")
 
-      ss.foreach(sort => {
+      ss.foreach { sort =>
+        sortIndex += 1
         val toSnapWrapper = terms.SortWrapperDecl(sort, sorts.Snap)
         val fromSnapWrapper = terms.SortWrapperDecl(sorts.Snap, sort)
 
@@ -451,16 +453,18 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           preambleReader.emitParametricPreamble("/sortwrappers.smt2",
             Map("$T$" -> s"$$T$i$$",
                 "$S$" -> sanitizedSortString,
+                "$I$" -> sortIndex.toString,
                 s"$$T$i$$" -> sortString),
             sink)
         } else {
           preambleReader.emitParametricPreamble("/sortwrappers.smt2",
             Map("$S$" -> sanitizedSortString,
-                "$T$" -> sortString),
+              "$I$" -> sortIndex.toString,
+              "$T$" -> sortString),
             sink)
         }
 
-      })
+      }
     }
   }
 

@@ -30,6 +30,7 @@ abstract class ProverStdIO(uniqueId: String,
     extends Prover
        with LazyLogging {
 
+  private var assertionLabelNumber = 0
   protected var pushPopScopeDepth = 0
   protected var lastTimeout: Int = -1
   protected var logfileWriter: PrintWriter = _
@@ -217,10 +218,16 @@ abstract class ProverStdIO(uniqueId: String,
     assume(termConverter.convert(term))
   }
 
+  def emitAssert(term: String) = {
+    assertionLabelNumber += 1
+    val assertString = s"(assert (! $term :named l$assertionLabelNumber))"
+    writeLine(assertString)
+  }
+
   def assume(term: String): Unit = {
 //    bookkeeper.assumptionCounter += 1
 
-    writeLine("(assert " + term + ")")
+    emitAssert(term)
     readSuccess()
   }
 
@@ -246,7 +253,9 @@ abstract class ProverStdIO(uniqueId: String,
   protected def assertUsingPushPop(goal: String): (Boolean, Long) = {
     push()
 
-    writeLine("(assert (not " + goal + "))")
+    emitAssert(
+      s"(not $goal)"
+    )
     readSuccess()
 
     val startTime = System.currentTimeMillis()
@@ -292,7 +301,7 @@ abstract class ProverStdIO(uniqueId: String,
   protected def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
     val guard = fresh("grd", Nil, sorts.Bool)
 
-    writeLine(s"(assert (=> $guard (not $goal)))")
+    emitAssert(s"(=> $guard (not $goal))")
     readSuccess()
 
     val startTime = System.currentTimeMillis()

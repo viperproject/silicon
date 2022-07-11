@@ -49,7 +49,8 @@ object joiner extends JoiningRules {
                          h = s1.h,
                          oldHeaps = s1.oldHeaps,
                          underJoin = s1.underJoin,
-                         retrying = s1.retrying)
+                         retrying = s1.retrying,
+        )
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
         Success()
       })
@@ -67,6 +68,7 @@ object joiner extends JoiningRules {
         entries foreach (entry => {
           val pcs = entry.pathConditions.conditionalized
           v.decider.prover.comment("Joined path conditions")
+          println(entry.pathConditions.conditionalized)
           v.decider.assume(pcs)
         })
 

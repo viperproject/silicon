@@ -785,6 +785,7 @@ object Implies extends ((Term, Term) => Term) {
     case (False(), _) => True()
     case (_, True()) => True()
     case (_, Implies(e10, e11)) => Implies(And(e0, e10), e11)
+    case (t, And(ts)) if ts.contains(t) => Implies(t, And(ts.filterNot(_ == t)))
     case _ if e0 == e1 => True()
     case _ => new Implies(e0, e1)
   }
