@@ -128,6 +128,41 @@ class SmtlibNameSanitizer extends AbstractNameSanitizer {
     "re.inter", "seq.to.re", "seq.in.re", "re.all", "re.empty",
 
     /* Other reserved words (Z3 specific?) */
-    "min", "List", "const"
+    "min", "List", "const",
+
+    /* cvc5 - Transcendental operators, see https://github.com/cvc5/cvc5/blob/main/src/parser/smt2/smt2.cpp */
+    "exp", "sin", "cos", "tan", "csc", "sec", "cot", "arcsin", "arccos", "arctan", "arccsc", "arcsec", "arccot", "sqrt",
+
+    /* cvc5 - Commands, see https://github.com/cvc5/cvc5/blob/main/docs/ext/smtliblexer.py */
+    "block-model", "block-model-values", "declare-codatatypes",
+    "define-const", "define-funs-rec", "get-abduct", "get-abduct-next",
+    "get-interpolant", "get-qe", "get-qe-disjunct", "assume", "check-synth",
+    "constraint", "declare-var", "inv-constraint", "synth-fun", "synth-inv",
+    "declare-pool",
+
+    /* cvc5 - Sorts, see https://github.com/cvc5/cvc5/blob/main/docs/ext/smtliblexer.py */
+    "Bag", "FloatingPoint", "Float[0-9]+", "RegLan", "RoundingMode", "Set", "Tuple",
+
+    /* cvc5 - Operators, see https://github.com/cvc5/cvc5/blob/main/docs/ext/smtliblexer.py */
+    "repeat", "zero_extend", "sign_extend", "rotate_left", "rotate_right",
+    "bvnand", "bvnor", "bvxor", "bvxnor", "bvcomp", "bvsub", "bvsdiv",
+    "bvsrem", "bvsmod", "bvashr", "bvule", "bvugt", "bvuge", "bvslt", "bvsle",
+    "bvsgt", "bvsge", "tuple", "tuple.project", "tuple.select",
+    "tuple.update", "RNE", "RNA", "RTP", "RTN", "RTZ", "fp", "NaN", "fp.abs",
+    "fp.neg", "fp.add", "fp.sub", "fp.mul", "fp.div", "fp.fma", "fp.sqrt",
+    "fp.rem", "fp.roundToIntegral", "fp.min", "fp.max", "fp.leq", "fp.lt",
+    "fp.geq", "fp.gt", "fp.eq", "fp.isNormal", "fp.isSubnormal", "fp.isZero",
+    "fp.isInfinite", "fp.isNaN", "fp.isNegative", "fp.isPositive", "to_fp",
+    "to_fp_unsigned", "fp.to_ubv", "fp.to_sbv", "fp.to_real", "+oo", "-oo",
+    "+zero", "-zero", "divisible", "iand", "int2bv", "sep.emp", "pto", "sep",
+    "wand", "sep.nil", "set.union", "set.minus", "set.member", "set.subset",
+    "set.empty", "set.singleton", "set.card", "set.insert", "set.complement",
+    "set.universe", "rel.transpose", "rel.tclosure", "rel.join",
+    "rel.product", "set.inter", "char", "str.++", "str.<", "str.<=",
+    "str.to_re", "str.in_re", "re.none", "re.++", "re.*", "str.<=",
+    "str.replace_all", "str.replace_re", "str.replace_re_all", "re.comp",
+    "re.diff", "re.+", "re.^", "str.is_digit", "str.to_code", "str.from_code",
+    "str.to_int", "str.from_int", "seq.++", "seq.update", "seq.rev",
+    "seq.replace_all", "seq.nth", "witness"
   )
 }
