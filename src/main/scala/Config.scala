@@ -416,9 +416,10 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   lazy val z3Exe: String = {
     val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
 
-    rawZ3Exe.toOption.getOrElse(
-      envOrNone(Z3ProverStdIO.exeEnvironmentalVariable)
-        .getOrElse("z3" + (if (isWindows) ".exe" else "")))
+//    rawZ3Exe.toOption.getOrElse(
+//      envOrNone(Z3ProverStdIO.exeEnvironmentalVariable)
+//        .getOrElse("z3" + (if (isWindows) ".exe" else "")))
+    "/home/daniel/.local/bin/z3"  // NOCOMMIT
   }
 
   private val rawCvc5Exe = opt[String]("cvc5Exe",
@@ -612,7 +613,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val enableMoreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
     descr = "Enable a more complete exhale version.",
-    default = Some(false),
+    default = Some(true),
     noshort = true
   )
 
@@ -631,7 +632,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val numberOfParallelVerifiers: ScallopOption[Int] = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
              + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
-    default = Some(Runtime.getRuntime.availableProcessors()),
+    default = Some(1), //Some(Runtime.getRuntime.availableProcessors()),
     noshort = true
   )
 

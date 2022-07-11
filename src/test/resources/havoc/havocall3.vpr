@@ -1,0 +1,11 @@
+field f: Int
+
+// We have an arbitrary element in s. It is changed by the havocall
+method foo(s: Set[Ref], a: Ref)
+    requires forall x: Ref :: x in s ==> acc(x.f)
+    requires a in s && a.f == 3
+{
+    havocall x: Ref :: x in s ==> x.f
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert a.f == 3
+}

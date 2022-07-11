@@ -1,3 +1,4 @@
 [submodule "silver"]
 	path = silver
-	url = https://github.com/viperproject/silver.git
+	url = https://github.com/dddzzz18/silver.git
+	branch = add_havoc_to_silver

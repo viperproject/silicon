@@ -1379,7 +1379,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   /* Misc */
 
   /* ATTENTION: Never create a snapshot map without calling this method! */
-  private def freshSnapshotMap(s: State,
+  def freshSnapshotMap(s: State,
                                resource: ast.Resource,
                                appliedArgs: Seq[Term],
                                v: Verifier)
