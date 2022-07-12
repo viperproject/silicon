@@ -142,15 +142,23 @@ private trait LayeredPathConditionStackLike {
   protected def conditionalized(layers: Stack[PathConditionStackLayer]): Seq[Term] = {
     var unconditionalTerms = Vector.empty[Term]
     var conditionalTerms = Vector.empty[Term]
+    var implicationLHS: Term = True()
 
-    for (layer <- layers) {
+    for (layer <- layers.reverseIterator) {
       unconditionalTerms ++= layer.globalAssumptions
 
+      layer.branchCondition foreach { condition =>
+         implicationLHS = And(implicationLHS, condition)
+      }
+
       conditionalTerms :+=
-        Implies(layer.branchCondition.getOrElse(True()), And(layer.nonGlobalAssumptions))
+        Implies(implicationLHS, And(layer.nonGlobalAssumptions))
     }
 
-    unconditionalTerms ++ conditionalTerms
+    val result = unconditionalTerms ++ conditionalTerms
+//    println(s"UNCONDITIONAL: ${unconditionalTerms}")
+//    println(s"CONDITIONAL: ${conditionalTerms}")
+    result
   }
 
   protected def quantified(layers: Stack[PathConditionStackLayer],

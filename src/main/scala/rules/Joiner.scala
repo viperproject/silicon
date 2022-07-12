@@ -65,13 +65,21 @@ object joiner extends JoiningRules {
       } else {
         val (sJoined, dataJoined) = merge(entries)
 
+//        println("START ENTRIES")
         entries foreach (entry => {
           val pcs = entry.pathConditions.conditionalized
-          v.decider.prover.comment("Joined path conditions")
-          println(entry.pathConditions.conditionalized)
+          v.decider.prover.comment(s"Joined path conditions ${entry.pathConditions.branchConditions}")
+//          println("Joined path conditions")
+//          for {
+//            c <- pcs
+//            cc <- c.topLevelConjuncts
+//          } yield {
+//            println(cc)
+//          }
+//          println("----------")
           v.decider.assume(pcs)
         })
-
+//        println("STOP ENTRIES")
         Q(sJoined, dataJoined, v)
       }
     }

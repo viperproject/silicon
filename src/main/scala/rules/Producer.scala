@@ -199,7 +199,7 @@ object producer extends ProductionRules {
                         (continuation: (State, Verifier) => VerificationResult)
                         : VerificationResult = {
 
-    println(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
+//    println(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
     v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
 
     val Q: (State, Verifier) => VerificationResult = (state, verifier) =>
@@ -233,12 +233,12 @@ object producer extends ProductionRules {
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
             (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
-              println(s"IN IF $a ${v2}")
+//              println(s"IN IF $a ${v2}")
               SymbExLogger.currentLog().closeScope(uidCondExp)
               Q(s3, v3)
             }),
             (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
-              println(s"IN ELSE $a ${v2}")
+//              println(s"IN ELSE $a ${v2}")
               SymbExLogger.currentLog().closeScope(uidCondExp)
               Q(s3, v3)
             })))
@@ -422,8 +422,8 @@ object producer extends ProductionRules {
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
-        println(s"$a: ${sf(sorts.Snap, v)} is a unit")
-        // v.decider.assume(sf(sorts.Snap, v) === Unit) /* TODO: See comment for case ast.Implies above */
+//        println(s"$a: ${sf(sorts.Snap, v)} is a unit")
+        v.decider.assume(sf(sorts.Snap, v) === Unit) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, v1) => {
           v1.decider.assume(t)
           Q(s1, v1)})
