@@ -1,0 +1,27 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field elem : Int
+field next : Ref
+
+predicate lseg(first: Ref, last: Ref, values: Seq[Int])
+{
+  first != last ==>
+    acc(first.elem) && acc(first.next) &&
+    0 < |values| &&
+    first.elem == values[0] &&
+    lseg(first.next, last, values[1..])
+}
+
+method removeFirst(first: Ref, last: Ref, values: Seq[Int]) returns  (value: Int, second: Ref)
+  requires lseg(first, last, values)
+  requires first != last
+  ensures  lseg(second, last, values[1..])
+  // we have insufficient field permissions when second is equal to last:
+  //:: ExpectedCounterexample(not.wellformed:insufficient.permission, (second == last))
+  ensures  value != unfolding lseg(second, last, values[1..]) in second.elem
+{
+  unfold lseg(first, last, values)
+  value := first.elem
+  second := first.next
+}
