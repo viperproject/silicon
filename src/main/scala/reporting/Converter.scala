@@ -229,9 +229,10 @@ object Converter {
         }
       case sorts.UserSort(id) => 
         m match {
-          case ConstantEntry(v) => DomainValueEntry(id.toString, v.split("!").last) //this is a hack for the moment if there is any way to do this differently let me know
+          // TODO: remove this string-based operation
+          case ConstantEntry(v) => DomainValueEntry(id.toString, v.split("!").last)
           case _ => OtherEntry(id.toString,"not a constant entry---")
-      }
+        }
       //ISSUE: snap types are translated to domain sorts
       /* case sorts.Snap =>
         m match {
@@ -324,7 +325,7 @@ object Converter {
           case UnprocessedModelEntry(entry) =>
             getFunctionValue(model, fname, Seq(entry), to)
           case OtherEntry(t, _) =>
-            OtherEntry(s"SortWrapper($t)o", "unapplicable")
+            OtherEntry(s"SortWrapper($t)", "unapplicable")
           case _ => OtherEntry(s"SortWrapper($t)", "unapplicable")
         }
 
@@ -359,14 +360,14 @@ object Converter {
           val recvsort = c.singletonRcvr.get.sort
           val receivers = (0 to 10).map(x => VarEntry(s"$$Ref!val!$x", recvsort))
           val recv = VarEntry("$Ref!val!0", sorts.Ref)
-          val fieldsort  = c.fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+          val fieldsort = c.fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
           val permission = getFunctionValue(model, s"$$FVF.perm_$fieldname", Seq(fvf.asValueEntry, recv.asValueEntry), sorts.Perm)
           val values = receivers map (x => getFunctionValue(model, s"$$FVF.lookup_$fieldname", Seq(fvf.asValueEntry, x.asValueEntry), fieldsort))
           entries = entries ++ values.zip(receivers).map(x => FieldHeapEntry(x._2, fieldname, Some(permission.asInstanceOf[LitPermEntry].value), fieldsort, x._1))
         } catch {
           case _: Throwable => // continue
         }
-        case _: st.QuantifiedPredicateChunk =>  // it seems that sometimes QPs do occur but not deterministically... :)
+      case _: st.QuantifiedPredicateChunk => // it seems that sometimes QPs do occur but not deterministically... :)
 
       case c =>
         entries = entries :+ UnresolvedHeapEntry(c, "Non-basic chunks not supported")
@@ -408,9 +409,8 @@ object Converter {
     PredHeapEntry(chunk.id.toString, argsEval, perm)
   }
 
-  
   def evalPerm(value: Term, model: Model): Option[Rational] = {
-    value match {      
+    value match {
       case _: Var => evaluateTerm(value, model) match {
         case LitPermEntry(value) => Some(value)
         case _ => None
@@ -418,30 +418,20 @@ object Converter {
       case App(_, _) => None
       case NoPerm() => Some(Rational.zero)
       case FullPerm() => Some(Rational.one)
-      case  FractionPermLiteral(r) => Some(r)
+      case FractionPermLiteral(r) => Some(r)
       case _: FractionPerm => None
       case IsValidPermVar(_) => None
       case IsReadPermVar(_) => None
-      case PermTimes(v1, v2) => (evalPerm(v1, model), evalPerm(v2, model)) match {
-        case (Some(x), Some(y)) => Some(x * y)
-        case _ => None
-      }
-      case IntPermTimes(v1, v2) => (evalPerm(v1, model), evalPerm(v2, model)) match {
-        case (Some(x), Some(y)) => Some(x * y)
-        case _ => None
-      }
-      case PermIntDiv(v1, v2) => (evalPerm(v1, model), evalPerm(v2, model)) match {
-        case (Some(x), Some(y)) => Some(x / y)
-        case _ => None
-      }
-      case PermPlus(v1, v2) => (evalPerm(v1, model), evalPerm(v2, model)) match {
-        case (Some(x), Some(y)) => Some(y + x)
-        case _ => None
-      }
-      case PermMinus(v1, v2) => (evalPerm(v1, model), evalPerm(v2, model)) match {
-        case (Some(x), Some(y)) => Some(x - y)
-        case _ => None
-      }
+      case PermTimes(v1, v2) =>
+        evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x * y))
+      case IntPermTimes(v1, v2) =>
+        evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x * y))
+      case PermIntDiv(v1, v2) =>
+        evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x / y))
+      case PermPlus(v1, v2) =>
+        evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x + y))
+      case PermMinus(v1, v2) =>
+        evalPerm(v1, model).flatMap(x => evalPerm(v2, model).map(y => x - y))
       case PermLess(_, _) => None
       case PermAtMost(_, _) => None
       case PermMin(_, _) => None
@@ -519,7 +509,6 @@ object Converter {
     case x => VarEntry(s"${x.id.toString.replace("[","<").replace("]",">")}!val!$num" , sort)
   }
 
-
   def mapLocalVar(sort: Option[Sort],
                   termEval: ExtractedModelEntry,
                   heap: ExtractedHeap,
@@ -529,7 +518,7 @@ object Converter {
                  ): ExtractedModelEntry = {
     val name = termEval.toString
     sort match {
-      case Some(sorts.Int)  => termEval
+      case Some(sorts.Int) => termEval
       case Some(sorts.Bool) => termEval
       case Some(sorts.Ref) =>
         var map: Map[String, (ExtractedModelEntry, Option[Rational])] = Map()
@@ -578,9 +567,9 @@ object Converter {
 
   def typeToSort(typ: ast.Type): Option[Sort] = {
     // if this returns None, we can still try to evaluate the model entry
-    try{
+    try {
       Some(symbolConverter.toSort(typ)) // simplify the logic with this
-    }catch{
+    } catch {
       case _: Throwable => None
     }
   }
@@ -631,7 +620,6 @@ object Converter {
       val types = try {
         x._1.typVars.map(x._2)
       } catch {
-        // printf(s"$x")
         case _: Throwable => Seq()
       }
       val translatedFunctions = x._1.functions.map(y => translateFunction(model, heap, y, x._2))
