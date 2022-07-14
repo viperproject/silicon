@@ -147,8 +147,10 @@ private trait LayeredPathConditionStackLike {
     for (layer <- layers.reverseIterator) {
       unconditionalTerms ++= layer.globalAssumptions
 
-      layer.branchCondition foreach { condition =>
-         implicationLHS = And(implicationLHS, condition)
+      layer.branchCondition match {
+        case Some(condition) =>
+          implicationLHS = And(implicationLHS, condition)
+        case None =>
       }
 
       conditionalTerms :+=
