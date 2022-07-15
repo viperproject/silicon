@@ -31,7 +31,7 @@ abstract class ProverStdIO(uniqueId: String,
        with LazyLogging {
 
   protected var pushPopScopeDepth = 0
-  protected var lastTimeout: Int = -1
+  protected var lastTimeout: Option[Int] = None
   protected var logfileWriter: PrintWriter = _
   protected var prover: Process = _
   protected var proverShutdownHook: Thread = _
@@ -85,7 +85,7 @@ abstract class ProverStdIO(uniqueId: String,
       throw new AssertionError("stop() should be called between any pair of start() calls")
     }
     pushPopScopeDepth = 0
-    lastTimeout = -1
+    lastTimeout = None
     logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
     proverPath = getProverPath
     prover = createProverInstance()
@@ -180,8 +180,18 @@ abstract class ProverStdIO(uniqueId: String,
 
   def push(n: Int = 1): Unit = {
     pushPopScopeDepth += n
+
+    // Disable timeout during push, to handle
+    // https://github.com/viperproject/silicon/issues/535
+    val resetTimeoutTo = lastTimeout
+    if(resetTimeoutTo.isDefined) {
+      setTimeout(None)
+    }
     val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + pushPopScopeDepth
     writeLine(cmd)
+    if(resetTimeoutTo.isDefined) {
+      setTimeout(resetTimeoutTo)
+    }
     readSuccess()
   }
 

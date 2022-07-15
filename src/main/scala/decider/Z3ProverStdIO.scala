@@ -49,11 +49,11 @@ class Z3ProverStdIO(uniqueId: String,
      * 199 Silver files, the total verification time increased from 60s
      * to 70s if 'set-option' is emitted every time.
      */
-    if (lastTimeout != effectiveTimeout) {
-      lastTimeout = effectiveTimeout
+    if (!lastTimeout.contains(effectiveTimeout)) {
+      lastTimeout = Some(effectiveTimeout)
 
       if(Verifier.config.proverEnableResourceBounds) {
-        writeLine(s"(set-option :rlimit ${effectiveTimeout * Verifier.config.proverResourcesPerMillisecond})")
+        writeLine(s"(set-option :rlimit ${effectiveTimeout.toLong * Verifier.config.proverResourcesPerMillisecond})")
       } else {
         writeLine(s"(set-option :timeout $effectiveTimeout)")
       }
