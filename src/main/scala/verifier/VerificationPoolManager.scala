@@ -19,10 +19,10 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
   private val numberOfSlaveVerifiers: Int = Verifier.config.numberOfParallelVerifiers()
 
   /*private*/ var slaveVerifiers: Seq[SlaveVerifier] = _
-  /*private*/ var slaveVerifierExecutor: ExecutorService = _
+  /*private*/ var slaveVerifierExecutor: ForkJoinPool = _
   /*private*/ var slaveVerifierPool: ObjectPool[SlaveVerifier] = _
 
-  /* private */ var runningVerificationTasks: ConcurrentHashMap[AnyRef, Boolean] = _
+  ///* private */ var runningVerificationTasks: ConcurrentHashMap[AnyRef, Boolean] = _
 
   private[verifier] object pooledVerifiers extends ProverLike {
     def emit(content: String): Unit = slaveVerifiers foreach (_.decider.prover.emit(content))
@@ -41,7 +41,7 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
   private def setupSlaveVerifierPool(): Unit = {
     slaveVerifiers = Vector.empty
-    runningVerificationTasks = new ConcurrentHashMap()
+    //runningVerificationTasks = new ConcurrentHashMap()
 
     val poolConfig: GenericObjectPoolConfig[SlaveVerifier] = new GenericObjectPoolConfig()
     poolConfig.setMaxTotal(numberOfSlaveVerifiers)
@@ -61,14 +61,16 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
     assert(slaveVerifiers.length == poolConfig.getMaxTotal)
     slaveVerifiers foreach (_.start())
 
-    slaveVerifierExecutor = Executors.newFixedThreadPool(poolConfig.getMaxTotal)
+    //System.setProperty("java.util.concurrent.ForkJoinPool.common.maximumSpares", "0")
+    slaveVerifierExecutor = new ForkJoinPool(poolConfig.getMaxTotal, new SlaveBorrowingForkJoinThreadFactory(), null, false)
+    //slaveVerifierExecutor = Executors.newFixedThreadPool(poolConfig.getMaxTotal)
 //    slaveVerifierExecutor = Executors.newWorkStealingPool(poolConfig.getMaxTotal)
   }
 
   private def resetSlaveVerifierPool(): Unit = {
     slaveVerifiers foreach (_.reset())
 
-    runningVerificationTasks.clear()
+    //runningVerificationTasks.clear()
   }
 
   private def teardownSlaveVerifierPool(): Unit = {
@@ -97,28 +99,16 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
   /* Verification task management */
 
-  private final class SlaveBorrowingVerificationTask(task: SlaveVerifier => Seq[VerificationResult])
-      extends Callable[Seq[VerificationResult]] {
 
-    def call(): Seq[VerificationResult] = {
-      var slave: SlaveVerifier = null
-
-      try {
-        slave = slaveVerifierPool.borrowObject()
-
-        task(slave)
-      } finally {
-        if (slave != null) {
-          slaveVerifierPool.returnObject(slave)
-        }
-      }
-    }
-  }
 
   def queueVerificationTask(task: SlaveVerifier => Seq[VerificationResult])
                            : Future[Seq[VerificationResult]] = {
-
-    slaveVerifierExecutor.submit(new SlaveBorrowingVerificationTask(task))
+    val thread = Thread.currentThread()
+    if (thread.isInstanceOf[SlaveBorrowingForkJoinWorkerThread]){
+      new SlaveAwareForkJoinTask(task).fork
+    }else{
+      slaveVerifierExecutor.submit(new SlaveAwareForkJoinTask(task))
+    }
   }
 
   /* Lifetime */
@@ -134,4 +124,40 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
   def stop(): Unit = {
     teardownSlaveVerifierPool()
   }
+
+  // new
+
+  class SlaveBorrowingForkJoinThreadFactory extends ForkJoinPool.ForkJoinWorkerThreadFactory {
+    override def newThread(forkJoinPool: ForkJoinPool): ForkJoinWorkerThread = new SlaveBorrowingForkJoinWorkerThread(forkJoinPool)
+  }
+
+  class SlaveBorrowingForkJoinWorkerThread(pool: ForkJoinPool) extends ForkJoinWorkerThread(pool) {
+    var slave: SlaveVerifier = null
+
+    override def onStart(): Unit = {
+      slave = slaveVerifierPool.borrowObject()
+    }
+
+    override def onTermination(exception: Throwable): Unit = {
+      if (slave != null) {
+        slaveVerifierPool.returnObject(slave)
+      }
+    }
+
+  }
+
+
+  class SlaveAwareForkJoinTask(task: SlaveVerifier => Seq[VerificationResult])
+  //extends Callable[Seq[VerificationResult]] {
+    extends RecursiveTask[Seq[VerificationResult]]{
+
+    override def compute(): Seq[VerificationResult] = {
+      println("starting new task")
+      val worker = Thread.currentThread().asInstanceOf[SlaveBorrowingForkJoinWorkerThread]
+      val slave = worker.slave
+      task(slave)
+    }
+  }
 }
+
+

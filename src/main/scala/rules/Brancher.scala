@@ -103,6 +103,7 @@ object brancher extends BranchingRules {
           SymbExLogger.currentLog().markReachable(uidBranchPoint)
           executionFlowController.locally(s, v0)((s1, v1) => {
             if (v.uniqueId != v1.uniqueId) {
+              //println("DIFFERENT IDS, TAKING OVER")
 
               /* [BRANCH-PARALLELISATION] */
               //throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
@@ -119,6 +120,8 @@ object brancher extends BranchingRules {
                 v1.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
                 v1.decider.setPcs(pcsOfCurrentDecider)
                 v1.decider.pcs.pushScope() /* Empty scope for which the branch condition can be set */
+            }else{
+              //println("same ids, keep going!")
             }
 
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
@@ -136,10 +139,10 @@ object brancher extends BranchingRules {
         if (parallelizeElseBranch) {
           /* [BRANCH-PARALLELISATION] */
           v.verificationPoolManager.queueVerificationTask(v0 => {
-            v0.verificationPoolManager.runningVerificationTasks.put(elseBranchVerificationTask, true)
+            //v0.verificationPoolManager.runningVerificationTasks.put(elseBranchVerificationTask, true)
             val res = elseBranchVerificationTask(v0)
 
-            v0.verificationPoolManager.runningVerificationTasks.remove(elseBranchVerificationTask)
+            //v0.verificationPoolManager.runningVerificationTasks.remove(elseBranchVerificationTask)
 
             Seq(res)
           })
@@ -184,7 +187,9 @@ object brancher extends BranchingRules {
       } else {
         var rs: Seq[VerificationResult] = null
         try {
+          println("reaching else-get " + v.uniqueId)
           rs = elseBranchFuture.get()
+          println("after else-get " + v.uniqueId)
         } catch {
           case ex: ExecutionException =>
             ex.getCause.printStackTrace()
