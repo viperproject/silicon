@@ -934,7 +934,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult = {
     // Try shortcut
-
+    
     if (resource.isInstanceOf[Field]) { // TODO: other cases
       val fieldName = resource.asInstanceOf[Field].name
       val exactlyMatchingChunk = h.values.find{
@@ -960,11 +960,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       if (exactlyMatchingChunk.isDefined){
         println("using shortcut")
         // is this the way to do it? anyway, basically just use the chunk we found
-        val s1 = s.copy(h = h - exactlyMatchingChunk.get)
+        val newHeap = h - exactlyMatchingChunk.get
+        val s1 = s.copy(partiallyConsumedHeap = Some(newHeap))
         // I THINK there's no need to check injectivity, non-negativity or anything like that because we already
         // know that those things hold for the chunk we already have, and we know that the thing we're trying to
         // consume is exactly that chunk.
-        return Q(s1, s1.h, exactlyMatchingChunk.get.asInstanceOf[QuantifiedFieldChunk].snapshotMap.convert(sorts.Snap), v)
+        return Q(s1, newHeap, exactlyMatchingChunk.get.asInstanceOf[QuantifiedFieldChunk].snapshotMap.convert(sorts.Snap), v)
       }
     }
 
