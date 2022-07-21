@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2021 ETH Zurich.
+// Copyright (c) 2011-2022 ETH Zurich.
 
 package viper.silicon.tests
 
@@ -19,8 +19,8 @@ class SiliconTests extends SilSuite {
 
   private val silTestDirectories =
     Seq("all",
-        "quantifiedpermissions", "quantifiedpredicates" ,"quantifiedcombinations",
-        "wands", "termination",
+        "quantifiedpermissions", "quantifiedpredicates", "quantifiedcombinations",
+        "wands", "termination", "refute",
         "examples")
 
   val testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories
@@ -47,20 +47,19 @@ class SiliconTests extends SilSuite {
     }
   }
 
-  val silicon = {
+  val silicon: Silicon = {
     val reporter = NoopReporter
     val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
     new Silicon(reporter, debugInfo)
   }
 
-  def verifiers = List(silicon)
+  def verifiers: Seq[Silicon] = Seq(silicon)
 
-  override def configureVerifiersFromConfigMap(configMap: Map[String, Any]) = {
+  override def configureVerifiersFromConfigMap(configMap: Map[String, Any]): Unit = {
     val args = Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap(configMap).getOrElse("silicon", Map()))
-    silicon.parseCommandLine(args :+ Silicon.dummyInputFilename)
+    silicon.parseCommandLine(commandLineArguments ++ args :+ Silicon.dummyInputFilename)
   }
 
   val commandLineArguments: Seq[String] =
-    Seq("--timeout", "300" /* seconds */)
-
+    Seq("--timeout", "600" /* seconds */)
 }

@@ -7,10 +7,12 @@
 package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.reporting.Converter
+import viper.silicon.reporting.{Converter, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, 
+  ModelInterpreter, ExtractedFunction, DomainEntry, VarEntry, RefEntry, NullRefEntry, UnprocessedModelEntry}
 import viper.silicon.state.{State, Store}
-import viper.silver.verifier.{Counterexample, FailureContext, Model, VerificationError}
+import viper.silver.verifier.{Counterexample, FailureContext, Model, VerificationError, ValueEntry, ApplicationEntry, ConstantEntry}
 import viper.silicon.state.terms.Term
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
 /*
@@ -56,7 +58,7 @@ sealed abstract class VerificationResult {
 sealed abstract class FatalResult extends VerificationResult {
   val isFatal = true
 
-  def &&(other: => VerificationResult) = this
+  def &&(other: => VerificationResult): VerificationResult = this
 }
 
 sealed abstract class NonFatalResult extends VerificationResult {
@@ -89,22 +91,28 @@ case class Failure/*[ST <: Store[ST],
                   (message: VerificationError, override val continueVerification: Boolean = true)
   extends FatalResult {
 
-  /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
-  var load: Option[Seq[Term]] = None
-  def withLoad(load: Seq[Term]) = {
-    this.load = Some(load)
-    this
-  }
-
-  override lazy val toString = message.readableMessage
+  override lazy val toString: String = message.readableMessage
 }
 
-case class SilFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
-  lazy val branchConditionString = if(branchConditions.nonEmpty)
-    ("\n\t\tunder branch conditions:\n" +
-      branchConditions.map(bc => (bc.toString + " [ " + bc.pos.toString + " ] ")).mkString("\t\t"," ~~> ","") ) else ""
-  lazy val counterExampleString = if(counterExample.isDefined) "\n\t\tcounterexample:\n" + counterExample.get.toString else ""
-  override lazy val toString = branchConditionString + counterExampleString
+case class SiliconFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
+  lazy val branchConditionString: String = {
+    if(branchConditions.nonEmpty) {
+      val branchConditionsString =
+        branchConditions
+          .map(bc => s"$bc [ ${bc.pos} ] ")
+          .mkString("\t\t"," ~~> ","")
+
+      s"\n\t\tunder branch conditions:\n$branchConditionsString"
+    } else {
+      ""
+    }
+  }
+
+  lazy val counterExampleString: String = {
+    counterExample.fold("")(ce => s"\n\t\tcounterexample:\n$ce")
+  }
+
+  override lazy val toString: String = branchConditionString + counterExampleString
 }
 
 trait SiliconCounterexample extends Counterexample {
@@ -133,23 +141,88 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
   }
 }
 
-case class SiliconMappedCounterexample(
-    internalStore: Store,
-    heap: Iterable[Chunk],
-    oldHeaps: State.OldHeaps,
-    nativeModel: Model
-) extends SiliconCounterexample {
+case class SiliconMappedCounterexample(internalStore: Store,
+                                       heap: Iterable[Chunk],
+                                       oldHeaps: State.OldHeaps,
+                                       nativeModel: Model)
+    extends SiliconCounterexample {
 
   val converter: Converter =
-    Converter(nativeModel, internalStore, heap, oldHeaps)
+    Converter(nativeModel, internalStore, heap, oldHeaps, Verifier.program)
 
   val model: Model = nativeModel
+  val interpreter: ModelInterpreter[ExtractedModelEntry, Seq[ExtractedModelEntry]] = GenericDomainInterpreter(converter)
+  private var heapNames: Map[ValueEntry, String] = Map()
 
   override lazy val toString: String = {
-    val buf = converter.modelAtLabel
-      .map(x => s"model at label: ${x._1}\n${x._2.toString}\n")
+    val extractedModel = converter.extractedModel
+    val bufModels = converter.modelAtLabel
+      .map { case (label, model) => s"model at label $label:\n${interpret(model).toString}"}
       .mkString("\n")
-    s"$buf\non return: \n${converter.extractedModel.toString}"
+    val (bufDomains, bufNonDomainFunctions) = functionsToString()
+    s"$bufModels\non return: \n${interpret(extractedModel).toString} $bufDomains $bufNonDomainFunctions"
+  }
+  private def interpret(t: ExtractedModel): ExtractedModel =
+    ExtractedModel(t.entries.map{ case (name, entry) => (name, interpret(entry)) })
+  private def interpret(t: ExtractedModelEntry): ExtractedModelEntry = interpreter.interpret(t, Seq())
+
+  private def functionsToString() : (String, String) = {
+    //extractedModel.entries should be a bijection so we can invert the map
+    //Since we only care about ref entries we can remove everything else
+    val invEntries = converter.extractedModel.entries.flatMap{ case (name, entry) => 
+      entry match {
+        case RefEntry(symName, _) => Some(symName -> name)
+        case NullRefEntry(symName)=> Some(symName -> name)
+        case _ => None
+      }}
+
+    val replaceDomainFunction = converter.domains.map{ 
+      case DomainEntry(names, types, functions) => 
+      DomainEntry(names, types, renameFunctions(functions, invEntries))
+    }
+    val bufDomains = replaceDomainFunction.nonEmpty match {
+      case true => "\nDomain: \n" + replaceDomainFunction.map(domain => domain.toString()).mkString("\n")
+      case false => ""
+    }
+
+    val replaceNonDomainFunctions = renameFunctions(converter.nonDomainFunctions, invEntries)
+    val bufNonDomainFunctions = replaceNonDomainFunctions.nonEmpty match {
+      case true => "\nFunctions: \n" + replaceNonDomainFunctions.map(fn => fn.toString()).mkString("\n")
+      case false => ""
+    }
+    (bufDomains, bufNonDomainFunctions)
+  }
+
+  private def renameFunctions(fn: Seq[ExtractedFunction], invEntries: Map[String, String]) : Seq[ExtractedFunction] = {
+    fn.map{
+      case ExtractedFunction(fname, argtypes, returnType, options, default) => {
+        val optionsNew = options.map(x => x._1.map(y => renameFunction(y, invEntries)) -> renameFunction(x._2, invEntries))
+        val defaultNew = renameFunction(default, invEntries)
+        ExtractedFunction(fname, argtypes, returnType, optionsNew, defaultNew)
+      }
+    }
+  }
+
+  private def renameFunction(entry:ExtractedModelEntry, invEntries: Map[String, String]): ExtractedModelEntry = {
+    entry match {
+      case VarEntry(name, sort) => VarEntry(invEntries.get(name).getOrElse(name), sort)
+      case UnprocessedModelEntry(unproEntry) => {
+        unproEntry match {
+          case ApplicationEntry("$Snap.combine", Seq(_, _)) =>  renameSnap(unproEntry)
+          case ConstantEntry("$Snap.unit")  => renameSnap(unproEntry)
+          case _ => entry
+        }
+      }
+      case _ => entry
+    }
+  }
+
+  private def renameSnap(entry: ValueEntry): ExtractedModelEntry = {
+    if (!heapNames.contains(entry)) {
+      heapNames += (entry -> ("heap_" + heapNames.size.toString))
+    }
+    UnprocessedModelEntry(ConstantEntry(
+            heapNames.get(entry).orNull))
   }
 
   override def withStore(s: Store): SiliconCounterexample = {

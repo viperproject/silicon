@@ -195,7 +195,7 @@ object executor extends ExecutionRules {
                       intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions)
-                        v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
+                        v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
                           Success()
                         else {
@@ -361,7 +361,7 @@ object executor extends ExecutionRules {
           Success()
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
-            v1.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterInhale)
+            v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
             Q(s1, v1)})
       }
 
@@ -464,7 +464,7 @@ object executor extends ExecutionRules {
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
               currentLog.closeScope(postCondId)
-              v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
+              v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
                               .map(p => (p._1, s5.g(p._2))).toMap)
               val s6 = s5.copy(g = s1.g + gLhs,

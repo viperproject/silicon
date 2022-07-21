@@ -1,0 +1,81 @@
+field f: Int
+
+method test01(x: Ref, y: Ref) {
+  inhale acc(x.f, 1/2) && acc(y.f, 1/2)
+  exhale acc(x.f, wildcard)
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale acc(y.f, 1/2)
+}
+
+method test02(x: Ref, y: Ref) {
+  inhale acc(x.f, 1/2) && acc(y.f, 1/2)
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale acc(x.f, wildcard) && acc(y.f, 1/2)
+}
+
+method test03(x: Ref, y: Ref) {
+  inhale acc(x.f, 1/3) && acc(y.f, 1/4)
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale acc(x.f, wildcard) && acc(y.f, 1/4)
+}
+
+method test20(x: Ref, y: Ref) {
+  inhale acc(x.f, 1/2) && acc(y.f, 1/2)
+  exhale acc(y.f, 1/2) && acc(x.f, wildcard)
+}
+
+method test21(x: Ref, y: Ref) {
+  inhale acc(x.f, 2/3) && acc(y.f, 1/2)
+  assert x != y
+  exhale acc(x.f, wildcard) && acc(y.f, 1/2)
+}
+
+method test30a(a: Ref, c: Int)
+  requires acc(a.f, wildcard)
+  ensures acc(a.f, wildcard)
+{
+  if (0 < c) {
+    test30a(a, c - 1)
+  }
+
+  assert(a.f == old(a.f))
+}
+
+method test30b(a: Ref) {
+  inhale acc(a.f, wildcard)
+  label L
+
+  exhale acc(a.f, wildcard)
+  inhale acc(a.f, wildcard)
+
+  assert(a.f == old[L](a.f))
+
+  exhale acc(a.f, wildcard)
+}
+
+method test30c(a: Ref) {
+  inhale acc(a.f, wildcard)
+  exhale acc(a.f, wildcard)
+  assert acc(a.f, wildcard)
+}
+
+predicate P(x: Ref) { acc(x.f, wildcard) }
+
+method test40(x: Ref, y: Ref)
+  requires acc(x.f, 1/2) && acc(y.f, 1/2)
+{
+  fold P(x)
+  exhale acc(x.f, perm(x.f))
+  exhale acc(y.f, perm(y.f))
+  unfold P(x)
+  if (y == x) {
+    assert y.f == old(y.f)
+  }
+}
+
+method test50(x: Ref, y: Ref)
+{
+  inhale acc(P(x), 1/2) && acc(P(y), 1/2)
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale acc(P(x), wildcard) && acc(P(y), 1/2)
+}

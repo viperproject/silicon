@@ -126,7 +126,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       _verificationPoolManager.pooledVerifiers.saturate(timeout, comment)
     }
 
-    def saturate(data: Option[Config.Z3StateSaturationTimeout]): Unit = {
+    def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
       decider.prover.saturate(data)
       _verificationPoolManager.pooledVerifiers.saturate(data)
     }
@@ -179,7 +179,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     allProvers.comment("End preamble")
     allProvers.comment("-" * 60)
 
-    allProvers.saturate(config.z3SaturationTimeouts.afterPrelude)
+    allProvers.saturate(config.proverSaturationTimeouts.afterPrelude)
 
 
     SymbExLogger.resetMemberList()
@@ -294,24 +294,23 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
   /* Prover preamble: Static preamble */
 
   private def emitStaticPreamble(sink: ProverLike): Unit = {
-    sink.comment("\n; /z3config.smt2")
-    preambleReader.emitPreamble("/z3config.smt2", sink)
+    sink.comment(s"\n; ${decider.prover.staticPreamble}")
+    preambleReader.emitPreamble(decider.prover.staticPreamble, sink)
 
-    if (config.z3RandomizeSeeds()) {
-      sink.comment(s"\n; Randomise seeds [--${config.z3RandomizeSeeds.name}]")
-      val options =
-        Seq("sat.random_seed", "nlsat.seed", "fp.spacer.random_seed", "smt.random_seed", "sls.random_seed")
-          .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
+    if (config.proverRandomizeSeeds) {
+      sink.comment(s"\n; Randomise seeds [--${config.rawProverRandomizeSeeds.name}]")
+      val options = decider.prover.randomizeSeedsOptions
+        .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
 
       preambleReader.emitPreamble(options, sink)
     }
 
     val smt2ConfigOptions =
-      config.z3ConfigArgs().map { case (k, v) => s"(set-option :$k $v)" }
+      config.proverConfigArgs.map { case (k, v) => s"(set-option :$k $v)" }
 
     if (smt2ConfigOptions.nonEmpty) {
-      // One can pass options to Z3. This allows to check whether they have been received.
-      val msg = s"Additional Z3 configuration options are '${config.z3ConfigArgs()}'"
+      // One can pass options to the prover. This allows to check whether they have been received.
+      val msg = s"Additional prover configuration options are '${config.proverConfigArgs}'"
       reporter report ConfigurationConfirmation(msg)
       logger info msg
       preambleReader.emitPreamble(smt2ConfigOptions, sink)

@@ -12,6 +12,7 @@ import scala.util.matching.Regex
 import scala.util.Properties._
 import org.rogach.scallop._
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
+import viper.silicon.decider.{Z3ProverStdIO, Cvc5ProverStdIO}
 import viper.silver.frontend.SilFrontendConfig
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
@@ -81,8 +82,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
   }
 
-  private val saturationTimeoutWeightsConverter: ValueConverter[Z3SaturationTimeoutWeights] = new ValueConverter[Z3SaturationTimeoutWeights] {
-    def parse(s: List[(String, List[String])]): Either[String, Option[Z3SaturationTimeoutWeights]] = s match {
+  private val saturationTimeoutWeightsConverter: ValueConverter[ProverSaturationTimeoutWeights] = new ValueConverter[ProverSaturationTimeoutWeights] {
+    def parse(s: List[(String, List[String])]): Either[String, Option[ProverSaturationTimeoutWeights]] = s match {
       case Seq((_, Seq(rawString))) =>
         val trimmedString = rawString.trim
         if (!trimmedString.startsWith("[") || !trimmedString.endsWith("]"))
@@ -96,13 +97,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
                          .flatMap(s => scala.util.Try(s.toFloat).toOption)
                          .filter(0 <= _)
 
-          if (weights.length == Z3SaturationTimeoutWeights.numberOfWeights) {
-            val result = Z3SaturationTimeoutWeights.from(ArraySeq.unsafeWrapArray(weights))
+          if (weights.length == ProverSaturationTimeoutWeights.numberOfWeights) {
+            val result = ProverSaturationTimeoutWeights.from(ArraySeq.unsafeWrapArray(weights))
             require(result.isDefined, "Unexpected mismatch")
               /* Should always succeed due to above length check */
             Right(result)
           } else
-            Left(s"expected ${Z3SaturationTimeoutWeights.numberOfWeights} non-negative floats")
+            Left(s"expected ${ProverSaturationTimeoutWeights.numberOfWeights} non-negative floats")
         }
 
       case Seq() => Right(None)
@@ -193,7 +194,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val assertTimeout: ScallopOption[Int] = opt[Int]("assertTimeout",
-    descr = "Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout).",
+    descr = ("Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout)."
+            + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
     default = None,
     noshort = true
   )
@@ -204,101 +206,193 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + "check doesn't, at least not directly. However, failing checks might result in "
              + "performance degradation, e.g. when a dead program path is nevertheless explored, "
              + "and indirectly in verification failures due to incompletenesses, e.g. when "
-             + "the held permission amount is too coarsely underapproximated (default: 10)."),
+             + "the held permission amount is too coarsely underapproximated (default: 10)."
+             + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
     default = Some(10),
     noshort = true
   )
 
+  private val rawProverSaturationTimeout = opt[Int]("proverSaturationTimeout",
+    descr = (  "Timeout (in ms) used for the prover's state saturation calls (default: 100). "
+             + "A timeout of 0 disables all saturation checks."
+             +  s"Note that for the ${Cvc5ProverStdIO.name} prover, state saturation calls can "
+             +  "either be disabled (weights or base timeout of 0) or forced with no timeout "
+             + "(positive weight and base timeout)."),
+    default = Some(100),
+    noshort = true
+  )
+
+  // DEPRECATED and replaced by proverSaturationTimeout
+  // but continues to work for now for backwards compatibility.
   private val rawZ3SaturationTimeout = opt[Int]("z3SaturationTimeout",
-    descr = (  "Timeout (in ms) used for Z3 state saturation calls (default: 100). A timeout of "
+    descr = ("Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverSaturationTimeout' instead... "
+             + "Timeout (in ms) used for Z3 state saturation calls (default: 100). A timeout of "
              + "0 disables all saturation checks."),
     default = Some(100),
     noshort = true
   )
 
+  private lazy val rawCombinedSaturationTimeout: Int = {
+    if (rawZ3SaturationTimeout.isSupplied) rawZ3SaturationTimeout()
+    else rawProverSaturationTimeout()
+  }
+
   /* Attention: Update companion object if number of weights changes! */
-  case class Z3SaturationTimeoutWeights(afterPreamble: Float = 1,
+  case class ProverSaturationTimeoutWeights(afterPreamble: Float = 1,
                                         afterContract: Float = 0.5f,
                                         afterUnfold: Float = 0.4f,
                                         afterInhale: Float = 0.2f,
                                         beforeRepetition: Float = 0.02f)
 
-  object Z3SaturationTimeoutWeights {
+  object ProverSaturationTimeoutWeights {
     val numberOfWeights = 5
 
-    def from(weights: Seq[Float]): Option[Z3SaturationTimeoutWeights] = {
+    def from(weights: Seq[Float]): Option[ProverSaturationTimeoutWeights] = {
       weights match {
-        case Seq(w1, w2, w3, w4, w5) => Some(Z3SaturationTimeoutWeights(w1, w2, w3, w4, w5))
+        case Seq(w1, w2, w3, w4, w5) => Some(ProverSaturationTimeoutWeights(w1, w2, w3, w4, w5))
         case _ => None
       }
     }
   }
 
-  private val defaultZ3SaturationTimeoutWeights = Z3SaturationTimeoutWeights()
+  private val defaultProverSaturationTimeoutWeights = ProverSaturationTimeoutWeights()
 
-  private val rawZ3SaturationTimeoutWeights = opt[Z3SaturationTimeoutWeights]("z3SaturationTimeoutWeights",
-    descr = (   "Weights used to compute the effective timeout for Z3 state saturation calls, "
+  private val rawProverSaturationTimeoutWeights = opt[ProverSaturationTimeoutWeights]("proverSaturationTimeoutWeights",
+    descr = (   "Weights used to compute the effective timeout for the prover's state saturation "
+             +  "calls, which are made at various points during a symbolic execution. The effective"
+             +  " timeouts for a particular saturation call is computed by multiplying the "
+             +  "corresponding weight with the base timeout for saturation calls. "
+             +  "Defaults to the following weights:\n"
+             + s"    after program preamble: ${defaultProverSaturationTimeoutWeights.afterPreamble}\n"
+             + s"    after inhaling contracts: ${defaultProverSaturationTimeoutWeights.afterContract}\n"
+             + s"    after unfold: ${defaultProverSaturationTimeoutWeights.afterUnfold}\n"
+             + s"    after inhale: ${defaultProverSaturationTimeoutWeights.afterInhale}\n"
+             + s"    before repeated prover queries: ${defaultProverSaturationTimeoutWeights.beforeRepetition}\n"
+             +  "Weights must be non-negative, a weight of 0 disables the corresponding saturation "
+             +  "call and a minimal timeout of 10ms is enforced."
+             +  s"Note that for the ${Cvc5ProverStdIO.name} prover, state saturation calls can "
+             +  "either be disabled (weights or base timeout of 0) or forced with no timeout "
+             + "(positive weight and base timeout)."),
+    default = Some(defaultProverSaturationTimeoutWeights),
+    noshort = true
+  )(saturationTimeoutWeightsConverter)
+
+  // DEPRECATED and replaced by proverSaturationTimeoutWeights
+  // but continues to work for now for backwards compatibility.
+  private val rawZ3SaturationTimeoutWeights = opt[ProverSaturationTimeoutWeights]("z3SaturationTimeoutWeights",
+    descr = ("Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverSaturationTimeoutWeights' instead... "
+             + "Weights used to compute the effective timeout for Z3 state saturation calls, "
              +  "which are made at various points during a symbolic execution. The effective "
              +  "timeouts for a particular saturation call is computed by multiplying the "
              +  "corresponding weight with the base timeout for saturation calls. "
              +  "Defaults to the following weights:\n"
-             + s"    after program preamble: ${defaultZ3SaturationTimeoutWeights.afterPreamble}\n"
-             + s"    after inhaling contracts: ${defaultZ3SaturationTimeoutWeights.afterContract}\n"
-             + s"    after unfold: ${defaultZ3SaturationTimeoutWeights.afterUnfold}\n"
-             + s"    after inhale: ${defaultZ3SaturationTimeoutWeights.afterInhale}\n"
-             + s"    before repeated Z3 queries: ${defaultZ3SaturationTimeoutWeights.beforeRepetition}\n"
+             + s"    after program preamble: ${defaultProverSaturationTimeoutWeights.afterPreamble}\n"
+             + s"    after inhaling contracts: ${defaultProverSaturationTimeoutWeights.afterContract}\n"
+             + s"    after unfold: ${defaultProverSaturationTimeoutWeights.afterUnfold}\n"
+             + s"    after inhale: ${defaultProverSaturationTimeoutWeights.afterInhale}\n"
+             + s"    before repeated Z3 queries: ${defaultProverSaturationTimeoutWeights.beforeRepetition}\n"
              +  "Weights must be non-negative, a weight of 0 disables the corresponding saturation "
              +  "call and a minimal timeout of 10ms is enforced."),
-    default = Some(defaultZ3SaturationTimeoutWeights),
+    default = Some(defaultProverSaturationTimeoutWeights),
     noshort = true
   )(saturationTimeoutWeightsConverter)
+
+  private lazy val rawCombinedSaturationTimeoutWeights: ProverSaturationTimeoutWeights = {
+    if (rawZ3SaturationTimeoutWeights.isSupplied) rawZ3SaturationTimeoutWeights()
+    else rawProverSaturationTimeoutWeights()
+  }
 
   /* ATTENTION: Don't access the effective weights before the configuration objects has been
    *  properly initialised, i.e. before `this.verify` has been invoked.
    */
-  object z3SaturationTimeouts {
-    private def scale(weight: Float, comment: String): Option[Z3StateSaturationTimeout] = {
-      if (weight == 0 || rawZ3SaturationTimeout() == 0) {
+  object proverSaturationTimeouts {
+    private def scale(weight: Float, comment: String): Option[ProverStateSaturationTimeout] = {
+      if (weight == 0 || rawCombinedSaturationTimeout == 0) {
         None
       } else {
-        Some(Z3StateSaturationTimeout(Math.max(10.0, weight * rawZ3SaturationTimeout()).toInt,
+        Some(ProverStateSaturationTimeout(Math.max(10.0, weight * rawCombinedSaturationTimeout).toInt,
                                       comment))
       }
     }
 
-    val afterPrelude: Option[Z3StateSaturationTimeout] =
-      scale(rawZ3SaturationTimeoutWeights().afterPreamble, "after preamble")
+    val afterPrelude: Option[ProverStateSaturationTimeout] =
+      scale(rawCombinedSaturationTimeoutWeights.afterPreamble, "after preamble")
 
-    val afterContract: Option[Z3StateSaturationTimeout] =
-      scale(rawZ3SaturationTimeoutWeights().afterContract, "after contract")
+    val afterContract: Option[ProverStateSaturationTimeout] =
+      scale(rawCombinedSaturationTimeoutWeights.afterContract, "after contract")
 
-    val afterUnfold: Option[Z3StateSaturationTimeout] =
-      scale(rawZ3SaturationTimeoutWeights().afterUnfold, "after unfold")
+    val afterUnfold: Option[ProverStateSaturationTimeout] =
+      scale(rawCombinedSaturationTimeoutWeights.afterUnfold, "after unfold")
 
-    val afterInhale: Option[Z3StateSaturationTimeout] =
-      scale(rawZ3SaturationTimeoutWeights().afterInhale, "after inhale")
+    val afterInhale: Option[ProverStateSaturationTimeout] =
+      scale(rawCombinedSaturationTimeoutWeights.afterInhale, "after inhale")
 
-    val beforeIteration: Option[Z3StateSaturationTimeout] =
-      scale(rawZ3SaturationTimeoutWeights().beforeRepetition, "before repetition")
+    val beforeIteration: Option[ProverStateSaturationTimeout] =
+      scale(rawCombinedSaturationTimeoutWeights.beforeRepetition, "before repetition")
   }
 
-  val z3EnableResourceBounds: ScallopOption[Boolean] = opt[Boolean]("z3EnableResourceBounds",
-    descr = "Use Z3's resource bounds instead of timeouts",
+  private val rawProverEnableResourceBounds: ScallopOption[Boolean] = opt[Boolean]("proverEnableResourceBounds",
+    descr = "Use prover's resource bounds instead of timeouts",
     default = Some(false),
     noshort = true
   )
 
-  val z3ResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("z3ResourcesPerMillisecond",
-    descr = "Z3 resources per milliseconds. Is used to convert timeouts to resource bounds.",
+  // DEPRECATED and replaced by proverEnableResourceBounds
+  // but continues to work for now for backwards compatibility.
+  private val rawZ3EnableResourceBounds: ScallopOption[Boolean] = opt[Boolean]("z3EnableResourceBounds",
+    descr = ("Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverEnableResourceBounds' instead... "
+             + "Use Z3's resource bounds instead of timeouts"),
+    default = Some(false),
+    noshort = true
+  )
+
+  lazy val proverEnableResourceBounds: Boolean = {
+    rawProverEnableResourceBounds() || rawZ3EnableResourceBounds()
+  }
+
+  private val rawProverResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("proverResourcesPerMillisecond",
+    descr = "Prover resources per milliseconds. Is used to convert timeouts to resource bounds.",
+    default = Some(60000),
+    noshort = true,
+  )
+
+  // DEPRECATED and replaced by proverResourcesPerMillisecond
+  // but continues to work for now for backwards compatibility.
+  private val rawZ3ResourcesPerMillisecond: ScallopOption[Int] = opt[Int]("z3ResourcesPerMillisecond",
+    descr = ("Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverResourcesPerMillisecond' instead... "
+             + "Z3 resources per milliseconds. Is used to convert timeouts to resource bounds."),
     default = Some(60000), // Moritz Knüsel empirically determined 1600 in his BSc thesis, but when Malte
     noshort = true,        // used this value, over 20 tests failed.
   )
 
-  val z3RandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("z3RandomizeSeeds",
-    descr = "Set various Z3 random seeds to random values",
+  lazy val proverResourcesPerMillisecond: Int = {
+    if (rawZ3ResourcesPerMillisecond.isSupplied) rawZ3ResourcesPerMillisecond()
+    else rawProverResourcesPerMillisecond()
+  }  
+
+  val rawProverRandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("proverRandomizeSeeds",
+    descr = "Set various random seeds of the prover to random values",
     default = Some(false),
     noshort = true
   )
+
+  // DEPRECATED and replaced by proverRandomizedSeeds
+  // but continues to work for now for backwards compatibility.
+  private val rawZ3RandomizeSeeds: ScallopOption[Boolean] = opt[Boolean]("z3RandomizeSeeds",
+    descr = ("Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverRandomizeSeeds' instead... "
+             + "Set various Z3 random seeds to random values"),
+    default = Some(false),
+    noshort = true
+  )
+
+  lazy val proverRandomizeSeeds: Boolean = {
+    rawZ3RandomizeSeeds() || rawProverRandomizeSeeds()
+  }
 
   val tempDirectory: ScallopOption[String] = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: ./tmp)",
@@ -313,8 +407,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   private val rawZ3Exe = opt[String]("z3Exe",
-    descr = (  "Z3 executable. The environment variable %s can also "
-             + "be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable),
+    descr = (s"Z3 executable. The environment variable ${Z3ProverStdIO.exeEnvironmentalVariable}"
+             + " can also be used to specify the path of the executable."),
     default = None,
     noshort = true
   )
@@ -322,47 +416,111 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   lazy val z3Exe: String = {
     val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
 
-    rawZ3Exe.toOption.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable)
-                     .getOrElse("z3" + (if (isWindows) ".exe" else "")))
+    rawZ3Exe.toOption.getOrElse(
+      envOrNone(Z3ProverStdIO.exeEnvironmentalVariable)
+        .getOrElse("z3" + (if (isWindows) ".exe" else "")))
   }
 
-  val defaultRawZ3LogFile = "logfile"
-  val z3LogFileExtension = "smt2"
+  private val rawCvc5Exe = opt[String]("cvc5Exe",
+    descr = (s"cvc5 executable. The environment variable ${Cvc5ProverStdIO.exeEnvironmentalVariable}"
+             + " can also be used to specify the path of the executable."),
+    default = None,
+    noshort = true
+  )
 
-  private val rawZ3LogFile = opt[ConfigValue[String]]("z3LogFile",
-    descr = (  "Log file containing the interaction with Z3, "
-             + s"extension $z3LogFileExtension will be appended. "
-             + s"(default: <tempDirectory>/$defaultRawZ3LogFile.$z3LogFileExtension)"),
-    default = Some(DefaultValue(defaultRawZ3LogFile)),
+  lazy val cvc5Exe: String = {
+    val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
+
+    rawCvc5Exe.toOption.getOrElse(
+      envOrNone(Cvc5ProverStdIO.exeEnvironmentalVariable)
+        .getOrElse("cvc5" + (if (isWindows) ".exe" else "")))
+  }
+
+  val defaultRawProverLogFile = "logfile"
+  val proverLogFileExtension = "smt2"
+
+  private val rawProverLogFile = opt[ConfigValue[String]]("proverLogFile",
+    descr = (  "Log file containing the interaction with the prover, "
+             + s"extension $proverLogFileExtension will be appended. "
+             + s"(default: <tempDirectory>/$defaultRawProverLogFile.$proverLogFileExtension)"),
+    default = Some(DefaultValue(defaultRawProverLogFile)),
     noshort = true
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
 
-  def z3LogFile(suffix: String = ""): Path = rawZ3LogFile() match {
-    case UserValue(logfile) =>
-      logfile.toLowerCase match {
-        case "$infile" =>
-          sys.error("Implementation missing")
-//          /* TODO: Reconsider: include suffix; prover started before infile is known */
-//          inputFile.map(f =>
-//            common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some(z3LogFileExtension)).toPath
-//          ).getOrElse(defaultZ3LogFile)
-        case _ =>
-          Paths.get(s"$logfile-$suffix.$z3LogFileExtension")
-      }
+  // DEPRECATED and replaced by proverLogFile
+  // but continues to work for now for backwards compatibility.
+  private val rawZ3LogFile = opt[ConfigValue[String]]("z3LogFile",
+    descr = (  "Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverLogFile' instead... "
+             + "Log file containing the interaction with the prover, "
+             + s"extension $proverLogFileExtension will be appended. "
+             + s"(default: <tempDirectory>/$defaultRawProverLogFile.$proverLogFileExtension)."),
+    default = Some(DefaultValue(defaultRawProverLogFile)),
+    noshort = true
+  )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
+
+  def getProverLogfile(suffix: String = "", rawLogFile: ConfigValue[String]): Path = {
+    rawLogFile match {
+      case UserValue(logfile) =>
+        logfile.toLowerCase match {
+          case "$infile" =>
+            sys.error("Implementation missing")
+            // /* TODO: Reconsider: include suffix; prover started before infile is known */
+            // inputFile.map(f =>
+            //   common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some(proverLogFileExtension)).toPath
+            // ).getOrElse(defaultproverLogFile)
+          case _ =>
+            Paths.get(s"$logfile-$suffix.$proverLogFileExtension")
+        }
 
     case DefaultValue(_) =>
-      Paths.get(tempDirectory(), s"$defaultRawZ3LogFile-$suffix.$z3LogFileExtension")
+      Paths.get(tempDirectory(), s"$defaultRawProverLogFile-$suffix.$proverLogFileExtension")
+    }
   }
 
-  val z3Args: ScallopOption[String] = opt[String]("z3Args",
-    descr = (  "Command-line arguments which should be forwarded to Z3. "
+  def proverLogFile(suffix: String = ""): Path = {
+    if (rawZ3LogFile.isSupplied) getProverLogfile(suffix, rawZ3LogFile())
+    else getProverLogfile(suffix, rawProverLogFile())
+  }
+
+  private val rawProverArgs: ScallopOption[String] = opt[String]("proverArgs",
+    descr = (  "Command-line arguments which should be forwarded to the prover. "
              + "The expected format is \"<opt> <opt> ... <opt>\", excluding the quotation marks."),
     default = None,
     noshort = true
   )
 
-  val z3ConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("z3ConfigArgs",
-    descr = (  "Configuration options which should be forwarded to Z3. "
+  // DEPRECATED and replaced by proverArgs
+  // but continues to work for now for backwards compatibility.
+  private val rawZ3Args: ScallopOption[String] = opt[String]("z3Args",
+    descr = (  "Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverArgs' instead... "
+             + "Command-line arguments which should be forwarded to Z3. "
+             + "The expected format is \"<opt> <opt> ... <opt>\", excluding the quotation marks."),
+    default = None,
+    noshort = true
+  )
+
+  lazy val proverArgs: Option[String] = {
+    if (rawZ3Args.isSupplied) rawZ3Args.toOption
+    else rawProverArgs.toOption
+  }
+
+  private val rawProverConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("proverConfigArgs",
+    descr = (  "Configuration options which should be forwarded to the prover. "
+             + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
+             + "excluding the quotation marks. "
+             + "The configuration options given here will override those from Silicon's prover preamble."),
+    default = Some(Map()),
+    noshort = true
+  )(smtlibOptionsConverter)
+
+  // DEPRECATED and replaced by proverConfigArgs
+  // but continues to work for now for backwards compatibility.
+  private val rawZ3ConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("z3ConfigArgs",
+    descr = (  "Warning: This option is deprecated due to standardization in option naming."
+             + " Please use 'proverConfigArgs' instead... "
+             + "Configuration options which should be forwarded to Z3. "
              + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
              + "excluding the quotation marks. "
              + "The configuration options given here will override those from Silicon's Z3 preamble."),
@@ -370,14 +528,19 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )(smtlibOptionsConverter)
 
-  lazy val z3Timeout: Int =
+  lazy val proverConfigArgs: Map[String, String] = {
+    if (rawZ3ConfigArgs.isSupplied) rawZ3ConfigArgs()
+    else rawProverConfigArgs()
+  }
+
+  lazy val proverTimeout: Int =
     None.orElse(
-            z3ConfigArgs().collectFirst {
+            proverConfigArgs.collectFirst {
               case (k, v) if k.toLowerCase == "timeout" && v.forall(Character.isDigit) => v.toInt
             })
         .orElse{
-            val z3TimeoutArg = """-t:(\d+)""".r
-            z3Args.toOption.flatMap(args => z3TimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
+            val proverTimeoutArg = """-t:(\d+)""".r
+            proverArgs.flatMap(args => proverTimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
         .getOrElse(0)
 
   val maxHeuristicsDepth: ScallopOption[Int] = opt[Int]("maxHeuristicsDepth",
@@ -553,7 +716,19 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val prover: ScallopOption[String] = opt[String]("prover",
+    descr = s"One of the provers ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}. " +
+            s"(default: ${Z3ProverStdIO.name}).",
+    default = Some(Z3ProverStdIO.name),
+    noshort = true
+  )
+
   /* Option validation (trailing file argument is validated by parent class) */
+
+  validateOpt(prover) {
+    case Some(Z3ProverStdIO.name) | Some(Cvc5ProverStdIO.name) => Right(())
+    case prover => Left(s"Unknown prover '$prover' provided. Expected one of ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}.")
+  }
 
   validateOpt(timeout) {
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
@@ -614,7 +789,7 @@ object Config {
     case object SoftConstraints extends AssertionMode
   }
 
-  case class Z3StateSaturationTimeout(timeout: Int, comment: String)
+  case class ProverStateSaturationTimeout(timeout: Int, comment: String)
 
   object StateConsolidationMode extends Enumeration {
     type StateConsolidationMode = Value

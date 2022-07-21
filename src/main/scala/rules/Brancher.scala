@@ -91,12 +91,12 @@ object brancher extends BranchingRules {
         val macrosOfCurrentDecider = v.decider.freshMacros
         val pcsOfCurrentDecider = v.decider.pcs.duplicate()
 
-        println(s"\n[INIT elseBranchVerificationTask v.uniqueId = ${v.uniqueId}]")
-        println(s"  condition = $condition")
-        println("  v.decider.pcs.assumptions = ")
-        v.decider.pcs.assumptions foreach (a => println(s"    $a"))
-        println("  v.decider.pcs.branchConditions = ")
-        v.decider.pcs.branchConditions foreach (a => println(s"    $a"))
+        //println(s"\n[INIT elseBranchVerificationTask v.uniqueId = ${v.uniqueId}]")
+        //println(s"  condition = $condition")
+        //println("  v.decider.pcs.assumptions = ")
+        //v.decider.pcs.assumptions foreach (a => println(s"    $a"))
+        //println("  v.decider.pcs.branchConditions = ")
+        //v.decider.pcs.branchConditions foreach (a => println(s"    $a"))
 
         (v0: Verifier) => {
           SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
