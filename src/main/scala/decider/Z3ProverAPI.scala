@@ -31,8 +31,8 @@ import scala.jdk.CollectionConverters.MapHasAsJava
 
 object Z3ProverAPI {
   val name = "Z3-API"
-  val minVersion = Version("4.5.0")
-  val maxVersion = None // Some(Version("4.5.0")) /* X.Y.Z if that is the *last supported* version */
+  val minVersion = Version("4.8.6.0")
+  val maxVersion = Some(Version("4.8.6.0")) /* X.Y.Z if that is the *last supported* version */
   val exeEnvironmentalVariable = "Z3_EXE"
   val dependencies = Seq(SilDefaultDependency("Z3", minVersion.version, "https://github.com/Z3Prover/z3"))
   val staticPreamble = "/z3config.smt2"
@@ -116,7 +116,7 @@ class Z3ProverAPI(uniqueId: String,
   val emittedFuncs = mutable.LinkedHashSet[FuncDecl]()
   val emittedFuncSymbols = mutable.Queue[Symbol]()
 
-
+  val expandMacros = true
 
 
 
@@ -466,7 +466,19 @@ class Z3ProverAPI(uniqueId: String,
           emittedFuncSymbols.append(termConverter.convertFuncSymbol(fd))
         }
       }
-      case md@MacroDecl(id, args, body) => termConverter.macros.update(id.name, (args, body))
+      case MacroDecl(id, args, body) if expandMacros => termConverter.macros.update(id.name, (args, body))
+      case md: MacroDecl if !expandMacros => {
+        val (convertedFunc, axiom) = termConverter.convert(md)
+        if (!emittedFuncs.contains(convertedFunc)){
+          emittedFuncs.add(convertedFunc)
+          emittedFuncSymbols.append(convertedFunc.getName)
+        }
+        if (preamblePhaseOver){
+          prover.add(axiom)
+        }else{
+          preambleAssumes.add(axiom)
+        }
+      }
       case swd@SortWrapperDecl(from, to) => {
         val converted = termConverter.convert(swd)
         if (!emittedFuncs.contains(converted)){
