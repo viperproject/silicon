@@ -26,6 +26,7 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.Field
 import viper.silver.reporter.InternalWarningMessage
 
 case class InverseFunctions(condition: Term,
@@ -932,6 +933,40 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               v: Verifier)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult = {
+    // Try shortcut
+
+    if (resource.isInstanceOf[Field]) { // TODO: other cases
+      val fieldName = resource.asInstanceOf[Field].name
+      val exactlyMatchingChunk = h.values.find{
+        case qfc@QuantifiedFieldChunk(BasicChunkIdentifier(fn), _, prm, Some(invs), _, _, _) if fn == fieldName => {
+          val qvarsToInversesOfCodomain = invs.qvarsToInversesOf(qfc.quantifiedVars)
+          val qvarsToInversesOfCodomainP = Map(qvars(0) -> qvarsToInversesOfCodomain.head._2)
+          val qvarsToOtherQvars = Map(qvars(0) -> qvarsToInversesOfCodomain.head._1)
+
+          val conditionalizedPermissions =
+            Ite(
+              tCond.replace(qvarsToInversesOfCodomainP),
+              tPerm.replace(qvarsToInversesOfCodomainP),
+              NoPerm())
+          var res = prm == conditionalizedPermissions
+          if (res) {
+            val firstTerm = invs.invertibles(0)
+            res = tArgs(0).replace(qvarsToOtherQvars) == firstTerm
+          }
+          res
+        }
+        case _ => false
+      }
+      if (exactlyMatchingChunk.isDefined){
+        println("using shortcut")
+        // is this the way to do it? anyway, basically just use the chunk we found
+        val s1 = s.copy(h = h - exactlyMatchingChunk.get)
+        // I THINK there's no need to check injectivity, non-negativity or anything like that because we already
+        // know that those things hold for the chunk we already have, and we know that the thing we're trying to
+        // consume is exactly that chunk.
+        return Q(s1, s1.h, exactlyMatchingChunk.get.asInstanceOf[QuantifiedFieldChunk].snapshotMap.convert(sorts.Snap), v)
+      }
+    }
 
     val inverseFunctions =
       quantifiedChunkSupporter.getFreshInverseFunctions(
