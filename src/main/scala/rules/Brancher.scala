@@ -38,7 +38,7 @@ object brancher extends BranchingRules {
 
     val negatedCondition = Not(condition)
     val negatedConditionExp = conditionExp.fold[Option[ast.Exp]](None)(c => Some(ast.Not(c)(pos = conditionExp.get.pos, info = conditionExp.get.info, ast.NoTrafos)))
-    val parallelizeElseBranch = s.parallelizeBranches && !s.underJoin
+
 
     /* Skip path feasibility check if one of the following holds:
      *   (1) the branching is due to the short-circuiting evaluation of a conjunction
@@ -60,6 +60,8 @@ object brancher extends BranchingRules {
          !executeThenBranch /* Assumes that ast least one branch is feasible */
       || skipPathFeasibilityCheck
       || !v.decider.check(condition, Verifier.config.checkTimeout()))
+
+    val parallelizeElseBranch = s.parallelizeBranches && !s.underJoin && executeThenBranch && executeElseBranch && condition.toString.contains("arbitrary")
 
 //    val additionalPaths =
 //      if (executeThenBranch && exploreFalseBranch) 1
@@ -107,6 +109,7 @@ object brancher extends BranchingRules {
 
               /* [BRANCH-PARALLELISATION] */
               //throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
+                val before = System.currentTimeMillis()
 
                 val newFunctions = functionsOfCurrentDecider -- v1.decider.freshFunctions
                 val newMacros = macrosOfCurrentDecider.diff(v1.decider.freshMacros)
@@ -120,6 +123,7 @@ object brancher extends BranchingRules {
                 v1.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
                 v1.decider.setPcs(pcsOfCurrentDecider)
                 v1.decider.pcs.pushScope() /* Empty scope for which the branch condition can be set */
+                println("time to move task to other verifier: " + (System.currentTimeMillis() - before))
             }else{
               //println("same ids, keep going!")
             }
@@ -187,9 +191,18 @@ object brancher extends BranchingRules {
       } else {
         var rs: Seq[VerificationResult] = null
         try {
-          println("reaching else-get " + v.uniqueId)
-          rs = elseBranchFuture.get()
-          println("after else-get " + v.uniqueId)
+          //println("reaching else-get " + v.uniqueId)
+          if (parallelizeElseBranch) {
+            val before = System.currentTimeMillis()
+            val tsk = elseBranchFuture.asInstanceOf[ForkJoinTask[Seq[VerificationResult]]]
+            rs = tsk.join()
+            val after = System.currentTimeMillis()
+            println("waited for join: " + (after - before))
+          }else{
+            rs = elseBranchFuture.get()
+          }
+
+          //println("after else-get " + v.uniqueId)
         } catch {
           case ex: ExecutionException =>
             ex.getCause.printStackTrace()

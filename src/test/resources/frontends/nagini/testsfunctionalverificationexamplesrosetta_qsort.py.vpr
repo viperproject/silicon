@@ -570,7 +570,10 @@ predicate MustInvokeBounded(r: Ref)
 
 predicate MustInvokeUnbounded(r: Ref) 
 
-predicate _MaySet(rec: Ref, id: Int) 
+predicate _MaySet(rec: Ref, id: Int)
+
+function arbitrary(): Int
+function arbitrary2(): Int
 
 method quickSort(_cthread_156: Ref, _caller_measures_156: Seq[Measure$], _residue_156: Perm, arr: Ref) returns (_current_wait_level_156: Perm, _res: Ref)
   requires _cthread_156 != null
@@ -612,107 +615,1669 @@ method quickSort(_cthread_156: Ref, _caller_measures_156: Seq[Measure$], _residu
   var target_0: Ref
   var _cwl_156: Perm
   var _method_measures_156: Seq[Measure$]
-  _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
-  _res := null
-  _err := null
-  arr_0 := arr
-  _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
-  inhale issubtype(typeof(list_0), list(int()))
-  less := list_0
-  inhale _isDefined(1936942444)
-  _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
-  inhale issubtype(typeof(list_1), list(int()))
-  pivotList := list_1
-  inhale _isDefined(2148138574800194267504)
-  _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
-  inhale issubtype(typeof(list_2), list(int()))
-  more := list_2
-  inhale _isDefined(1701998445)
-  if (int___le__(list___len__(arr_0), 1)) {
-    _res := arr_0
-    goto __end
-  } else {
-    pivot := list___getitem__(arr_0, __prim__int___box__(0))
-    inhale _isDefined(500086237552)
-    iterable := arr_0
-    _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
-    _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
-    if (iter_err == null) {
-      i := loop_target
-      inhale _isDefined(105)
-    }
-    seqtmp := iterable.list_acc
-    // Save current MustTerminate amount.
-    _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
-    // Save loop termination promise.
-    _loop_termination_flag := true
-    // We are before loop.
-    _loop_check_before := true
-    while (iter_err == null)
-      invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
-      invariant acc(iterable.list_acc, 1 / 20)
-      invariant acc(iter.list_acc, 1 / 20)
-      invariant iter.list_acc == iterable.list_acc
-      invariant seqtmp == iterable.list_acc
-      invariant acc(iter.__iter_index, write)
-      invariant acc(iter.__previous, write)
-      invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
-      invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
-      invariant iter_err == null ==> |iter.list_acc| > 0
-      invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
-      invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
-      invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
-      invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
-      invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
-      invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
-      invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
-      invariant iter_err != null ==> iter.__previous == iter.list_acc
-      invariant |iter.list_acc| == 0 ==> iter_err != null
-      invariant true
-      invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
-      invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
-      invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
-      invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
-      invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
-      invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
-      invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))] 
-    {
-      _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
-      if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
-        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
-      } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
-        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
-      } else {
-        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+
+  if (arbitrary2() > 3){
+    if (arbitrary2() > 7){
+          if (arbitrary() > 1) {
+            if (arbitrary() > 7) {
+                    _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                      _res := null
+                      _err := null
+                      arr_0 := arr
+                      _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_0), list(int()))
+                      less := list_0
+                      inhale _isDefined(1936942444)
+                      _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_1), list(int()))
+                      pivotList := list_1
+                      inhale _isDefined(2148138574800194267504)
+                      _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_2), list(int()))
+                      more := list_2
+                      inhale _isDefined(1701998445)
+                      if (int___le__(list___len__(arr_0), 1)) {
+                        _res := arr_0
+                        goto __end
+                      } else {
+                        pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                        inhale _isDefined(500086237552)
+                        iterable := arr_0
+                        _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                        _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                        if (iter_err == null) {
+                          i := loop_target
+                          inhale _isDefined(105)
+                        }
+                        seqtmp := iterable.list_acc
+                        // Save current MustTerminate amount.
+                        _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                        // Save loop termination promise.
+                        _loop_termination_flag := true
+                        // We are before loop.
+                        _loop_check_before := true
+                        while (iter_err == null)
+                          invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                          invariant acc(iterable.list_acc, 1 / 20)
+                          invariant acc(iter.list_acc, 1 / 20)
+                          invariant iter.list_acc == iterable.list_acc
+                          invariant seqtmp == iterable.list_acc
+                          invariant acc(iter.__iter_index, write)
+                          invariant acc(iter.__previous, write)
+                          invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                          invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                          invariant iter_err == null ==> |iter.list_acc| > 0
+                          invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                          invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                          invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                          invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                          invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                          invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                          invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                          invariant iter_err != null ==> iter.__previous == iter.list_acc
+                          invariant |iter.list_acc| == 0 ==> iter_err != null
+                          invariant true
+                          invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                          invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                          invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                          invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                          invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                          invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                          invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                        {
+                          _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                          if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                          } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                          } else {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                          }
+
+                          _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                          if (iter_err == null) {
+                            i := loop_target
+                            inhale _isDefined(105)
+                          }
+                          // We are after loop body.
+                          _loop_check_before := false
+                          // Check if loop continues to terminate.
+                          assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                        }
+                        // Reset MustTerminate amount to original level.
+                        exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                        _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                        _res := null
+
+                        _res := null
+                        _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                        less := quickSort_res
+                        inhale _isDefined(1936942444)
+                        _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                        more := quickSort_res_0
+                        inhale _isDefined(1701998445)
+                        _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                        _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                        _res := target_0
+                        goto __end
+                      }
+                }else{
+                   _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                     _res := null
+                     _err := null
+                     arr_0 := arr
+                     _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_0), list(int()))
+                     less := list_0
+                     inhale _isDefined(1936942444)
+                     _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_1), list(int()))
+                     pivotList := list_1
+                     inhale _isDefined(2148138574800194267504)
+                     _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_2), list(int()))
+                     more := list_2
+                     inhale _isDefined(1701998445)
+                     if (int___le__(list___len__(arr_0), 1)) {
+                       _res := arr_0
+                       goto __end
+                     } else {
+                       pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                       inhale _isDefined(500086237552)
+                       iterable := arr_0
+                       _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                       _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                       if (iter_err == null) {
+                         i := loop_target
+                         inhale _isDefined(105)
+                       }
+                       seqtmp := iterable.list_acc
+                       // Save current MustTerminate amount.
+                       _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                       // Save loop termination promise.
+                       _loop_termination_flag := true
+                       // We are before loop.
+                       _loop_check_before := true
+                       while (iter_err == null)
+                         invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                         invariant acc(iterable.list_acc, 1 / 20)
+                         invariant acc(iter.list_acc, 1 / 20)
+                         invariant iter.list_acc == iterable.list_acc
+                         invariant seqtmp == iterable.list_acc
+                         invariant acc(iter.__iter_index, write)
+                         invariant acc(iter.__previous, write)
+                         invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                         invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                         invariant iter_err == null ==> |iter.list_acc| > 0
+                         invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                         invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                         invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                         invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                         invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                         invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                         invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                         invariant iter_err != null ==> iter.__previous == iter.list_acc
+                         invariant |iter.list_acc| == 0 ==> iter_err != null
+                         invariant true
+                         invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                         invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                         invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                         invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                         invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                         invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                         invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                       {
+                         _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                         if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                         } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                         } else {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                         }
+
+                         _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                         if (iter_err == null) {
+                           i := loop_target
+                           inhale _isDefined(105)
+                         }
+                         // We are after loop body.
+                         _loop_check_before := false
+                         // Check if loop continues to terminate.
+                         assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                       }
+                       // Reset MustTerminate amount to original level.
+                       exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                       _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                       _res := null
+
+                       _res := null
+                       _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                       less := quickSort_res
+                       inhale _isDefined(1936942444)
+                       _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                       more := quickSort_res_0
+                       inhale _isDefined(1701998445)
+                       _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                       _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                       _res := target_0
+                       goto __end
+                     }
+                }
+          }else{
+            if (arbitrary() < -7) {
+                _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                  _res := null
+                  _err := null
+                  arr_0 := arr
+                  _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_0), list(int()))
+                  less := list_0
+                  inhale _isDefined(1936942444)
+                  _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_1), list(int()))
+                  pivotList := list_1
+                  inhale _isDefined(2148138574800194267504)
+                  _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_2), list(int()))
+                  more := list_2
+                  inhale _isDefined(1701998445)
+                  if (int___le__(list___len__(arr_0), 1)) {
+                    _res := arr_0
+                    goto __end
+                  } else {
+                    pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                    inhale _isDefined(500086237552)
+                    iterable := arr_0
+                    _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                    _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                    if (iter_err == null) {
+                      i := loop_target
+                      inhale _isDefined(105)
+                    }
+                    seqtmp := iterable.list_acc
+                    // Save current MustTerminate amount.
+                    _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                    // Save loop termination promise.
+                    _loop_termination_flag := true
+                    // We are before loop.
+                    _loop_check_before := true
+                    while (iter_err == null)
+                      invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                      invariant acc(iterable.list_acc, 1 / 20)
+                      invariant acc(iter.list_acc, 1 / 20)
+                      invariant iter.list_acc == iterable.list_acc
+                      invariant seqtmp == iterable.list_acc
+                      invariant acc(iter.__iter_index, write)
+                      invariant acc(iter.__previous, write)
+                      invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                      invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                      invariant iter_err == null ==> |iter.list_acc| > 0
+                      invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                      invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                      invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                      invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                      invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                      invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                      invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                      invariant iter_err != null ==> iter.__previous == iter.list_acc
+                      invariant |iter.list_acc| == 0 ==> iter_err != null
+                      invariant true
+                      invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                      invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                      invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                      invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                      invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                      invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                      invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                    {
+                      _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                      if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                      } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                      } else {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                      }
+
+                      _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                      if (iter_err == null) {
+                        i := loop_target
+                        inhale _isDefined(105)
+                      }
+                      // We are after loop body.
+                      _loop_check_before := false
+                      // Check if loop continues to terminate.
+                      assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                    }
+                    // Reset MustTerminate amount to original level.
+                    exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                    _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                    _res := null
+
+                    _res := null
+                    _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                    less := quickSort_res
+                    inhale _isDefined(1936942444)
+                    _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                    more := quickSort_res_0
+                    inhale _isDefined(1701998445)
+                    _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                    _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                    _res := target_0
+                    goto __end
+                  }
+            }else{
+               _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                 _res := null
+                 _err := null
+                 arr_0 := arr
+                 _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_0), list(int()))
+                 less := list_0
+                 inhale _isDefined(1936942444)
+                 _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_1), list(int()))
+                 pivotList := list_1
+                 inhale _isDefined(2148138574800194267504)
+                 _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_2), list(int()))
+                 more := list_2
+                 inhale _isDefined(1701998445)
+                 if (int___le__(list___len__(arr_0), 1)) {
+                   _res := arr_0
+                   goto __end
+                 } else {
+                   pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                   inhale _isDefined(500086237552)
+                   iterable := arr_0
+                   _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                   _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                   if (iter_err == null) {
+                     i := loop_target
+                     inhale _isDefined(105)
+                   }
+                   seqtmp := iterable.list_acc
+                   // Save current MustTerminate amount.
+                   _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                   // Save loop termination promise.
+                   _loop_termination_flag := true
+                   // We are before loop.
+                   _loop_check_before := true
+                   while (iter_err == null)
+                     invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                     invariant acc(iterable.list_acc, 1 / 20)
+                     invariant acc(iter.list_acc, 1 / 20)
+                     invariant iter.list_acc == iterable.list_acc
+                     invariant seqtmp == iterable.list_acc
+                     invariant acc(iter.__iter_index, write)
+                     invariant acc(iter.__previous, write)
+                     invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                     invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                     invariant iter_err == null ==> |iter.list_acc| > 0
+                     invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                     invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                     invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                     invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                     invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                     invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                     invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                     invariant iter_err != null ==> iter.__previous == iter.list_acc
+                     invariant |iter.list_acc| == 0 ==> iter_err != null
+                     invariant true
+                     invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                     invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                     invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                     invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                     invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                     invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                     invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                   {
+                     _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                     if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                     } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                     } else {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                     }
+
+                     _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                     if (iter_err == null) {
+                       i := loop_target
+                       inhale _isDefined(105)
+                     }
+                     // We are after loop body.
+                     _loop_check_before := false
+                     // Check if loop continues to terminate.
+                     assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                   }
+                   // Reset MustTerminate amount to original level.
+                   exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                   _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                   _res := null
+
+                   _res := null
+                   _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                   less := quickSort_res
+                   inhale _isDefined(1936942444)
+                   _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                   more := quickSort_res_0
+                   inhale _isDefined(1701998445)
+                   _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                   _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                   _res := target_0
+                   goto __end
+                 }
+            }
+          }
+      }else{
+          if (arbitrary() > 1) {
+            if (arbitrary() > 7) {
+                    _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                      _res := null
+                      _err := null
+                      arr_0 := arr
+                      _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_0), list(int()))
+                      less := list_0
+                      inhale _isDefined(1936942444)
+                      _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_1), list(int()))
+                      pivotList := list_1
+                      inhale _isDefined(2148138574800194267504)
+                      _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_2), list(int()))
+                      more := list_2
+                      inhale _isDefined(1701998445)
+                      if (int___le__(list___len__(arr_0), 1)) {
+                        _res := arr_0
+                        goto __end
+                      } else {
+                        pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                        inhale _isDefined(500086237552)
+                        iterable := arr_0
+                        _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                        _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                        if (iter_err == null) {
+                          i := loop_target
+                          inhale _isDefined(105)
+                        }
+                        seqtmp := iterable.list_acc
+                        // Save current MustTerminate amount.
+                        _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                        // Save loop termination promise.
+                        _loop_termination_flag := true
+                        // We are before loop.
+                        _loop_check_before := true
+                        while (iter_err == null)
+                          invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                          invariant acc(iterable.list_acc, 1 / 20)
+                          invariant acc(iter.list_acc, 1 / 20)
+                          invariant iter.list_acc == iterable.list_acc
+                          invariant seqtmp == iterable.list_acc
+                          invariant acc(iter.__iter_index, write)
+                          invariant acc(iter.__previous, write)
+                          invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                          invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                          invariant iter_err == null ==> |iter.list_acc| > 0
+                          invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                          invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                          invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                          invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                          invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                          invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                          invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                          invariant iter_err != null ==> iter.__previous == iter.list_acc
+                          invariant |iter.list_acc| == 0 ==> iter_err != null
+                          invariant true
+                          invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                          invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                          invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                          invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                          invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                          invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                          invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                        {
+                          _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                          if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                          } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                          } else {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                          }
+
+                          _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                          if (iter_err == null) {
+                            i := loop_target
+                            inhale _isDefined(105)
+                          }
+                          // We are after loop body.
+                          _loop_check_before := false
+                          // Check if loop continues to terminate.
+                          assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                        }
+                        // Reset MustTerminate amount to original level.
+                        exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                        _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                        _res := null
+
+                        _res := null
+                        _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                        less := quickSort_res
+                        inhale _isDefined(1936942444)
+                        _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                        more := quickSort_res_0
+                        inhale _isDefined(1701998445)
+                        _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                        _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                        _res := target_0
+                        goto __end
+                      }
+                }else{
+                   _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                     _res := null
+                     _err := null
+                     arr_0 := arr
+                     _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_0), list(int()))
+                     less := list_0
+                     inhale _isDefined(1936942444)
+                     _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_1), list(int()))
+                     pivotList := list_1
+                     inhale _isDefined(2148138574800194267504)
+                     _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_2), list(int()))
+                     more := list_2
+                     inhale _isDefined(1701998445)
+                     if (int___le__(list___len__(arr_0), 1)) {
+                       _res := arr_0
+                       goto __end
+                     } else {
+                       pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                       inhale _isDefined(500086237552)
+                       iterable := arr_0
+                       _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                       _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                       if (iter_err == null) {
+                         i := loop_target
+                         inhale _isDefined(105)
+                       }
+                       seqtmp := iterable.list_acc
+                       // Save current MustTerminate amount.
+                       _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                       // Save loop termination promise.
+                       _loop_termination_flag := true
+                       // We are before loop.
+                       _loop_check_before := true
+                       while (iter_err == null)
+                         invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                         invariant acc(iterable.list_acc, 1 / 20)
+                         invariant acc(iter.list_acc, 1 / 20)
+                         invariant iter.list_acc == iterable.list_acc
+                         invariant seqtmp == iterable.list_acc
+                         invariant acc(iter.__iter_index, write)
+                         invariant acc(iter.__previous, write)
+                         invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                         invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                         invariant iter_err == null ==> |iter.list_acc| > 0
+                         invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                         invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                         invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                         invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                         invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                         invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                         invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                         invariant iter_err != null ==> iter.__previous == iter.list_acc
+                         invariant |iter.list_acc| == 0 ==> iter_err != null
+                         invariant true
+                         invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                         invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                         invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                         invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                         invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                         invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                         invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                       {
+                         _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                         if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                         } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                         } else {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                         }
+
+                         _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                         if (iter_err == null) {
+                           i := loop_target
+                           inhale _isDefined(105)
+                         }
+                         // We are after loop body.
+                         _loop_check_before := false
+                         // Check if loop continues to terminate.
+                         assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                       }
+                       // Reset MustTerminate amount to original level.
+                       exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                       _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                       _res := null
+
+                       _res := null
+                       _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                       less := quickSort_res
+                       inhale _isDefined(1936942444)
+                       _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                       more := quickSort_res_0
+                       inhale _isDefined(1701998445)
+                       _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                       _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                       _res := target_0
+                       goto __end
+                     }
+                }
+          }else{
+            if (arbitrary() < -7) {
+                _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                  _res := null
+                  _err := null
+                  arr_0 := arr
+                  _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_0), list(int()))
+                  less := list_0
+                  inhale _isDefined(1936942444)
+                  _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_1), list(int()))
+                  pivotList := list_1
+                  inhale _isDefined(2148138574800194267504)
+                  _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_2), list(int()))
+                  more := list_2
+                  inhale _isDefined(1701998445)
+                  if (int___le__(list___len__(arr_0), 1)) {
+                    _res := arr_0
+                    goto __end
+                  } else {
+                    pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                    inhale _isDefined(500086237552)
+                    iterable := arr_0
+                    _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                    _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                    if (iter_err == null) {
+                      i := loop_target
+                      inhale _isDefined(105)
+                    }
+                    seqtmp := iterable.list_acc
+                    // Save current MustTerminate amount.
+                    _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                    // Save loop termination promise.
+                    _loop_termination_flag := true
+                    // We are before loop.
+                    _loop_check_before := true
+                    while (iter_err == null)
+                      invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                      invariant acc(iterable.list_acc, 1 / 20)
+                      invariant acc(iter.list_acc, 1 / 20)
+                      invariant iter.list_acc == iterable.list_acc
+                      invariant seqtmp == iterable.list_acc
+                      invariant acc(iter.__iter_index, write)
+                      invariant acc(iter.__previous, write)
+                      invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                      invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                      invariant iter_err == null ==> |iter.list_acc| > 0
+                      invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                      invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                      invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                      invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                      invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                      invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                      invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                      invariant iter_err != null ==> iter.__previous == iter.list_acc
+                      invariant |iter.list_acc| == 0 ==> iter_err != null
+                      invariant true
+                      invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                      invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                      invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                      invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                      invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                      invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                      invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                    {
+                      _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                      if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                      } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                      } else {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                      }
+
+                      _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                      if (iter_err == null) {
+                        i := loop_target
+                        inhale _isDefined(105)
+                      }
+                      // We are after loop body.
+                      _loop_check_before := false
+                      // Check if loop continues to terminate.
+                      assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                    }
+                    // Reset MustTerminate amount to original level.
+                    exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                    _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                    _res := null
+
+                    _res := null
+                    _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                    less := quickSort_res
+                    inhale _isDefined(1936942444)
+                    _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                    more := quickSort_res_0
+                    inhale _isDefined(1701998445)
+                    _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                    _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                    _res := target_0
+                    goto __end
+                  }
+            }else{
+               _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                 _res := null
+                 _err := null
+                 arr_0 := arr
+                 _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_0), list(int()))
+                 less := list_0
+                 inhale _isDefined(1936942444)
+                 _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_1), list(int()))
+                 pivotList := list_1
+                 inhale _isDefined(2148138574800194267504)
+                 _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_2), list(int()))
+                 more := list_2
+                 inhale _isDefined(1701998445)
+                 if (int___le__(list___len__(arr_0), 1)) {
+                   _res := arr_0
+                   goto __end
+                 } else {
+                   pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                   inhale _isDefined(500086237552)
+                   iterable := arr_0
+                   _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                   _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                   if (iter_err == null) {
+                     i := loop_target
+                     inhale _isDefined(105)
+                   }
+                   seqtmp := iterable.list_acc
+                   // Save current MustTerminate amount.
+                   _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                   // Save loop termination promise.
+                   _loop_termination_flag := true
+                   // We are before loop.
+                   _loop_check_before := true
+                   while (iter_err == null)
+                     invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                     invariant acc(iterable.list_acc, 1 / 20)
+                     invariant acc(iter.list_acc, 1 / 20)
+                     invariant iter.list_acc == iterable.list_acc
+                     invariant seqtmp == iterable.list_acc
+                     invariant acc(iter.__iter_index, write)
+                     invariant acc(iter.__previous, write)
+                     invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                     invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                     invariant iter_err == null ==> |iter.list_acc| > 0
+                     invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                     invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                     invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                     invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                     invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                     invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                     invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                     invariant iter_err != null ==> iter.__previous == iter.list_acc
+                     invariant |iter.list_acc| == 0 ==> iter_err != null
+                     invariant true
+                     invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                     invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                     invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                     invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                     invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                     invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                     invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                   {
+                     _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                     if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                     } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                     } else {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                     }
+
+                     _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                     if (iter_err == null) {
+                       i := loop_target
+                       inhale _isDefined(105)
+                     }
+                     // We are after loop body.
+                     _loop_check_before := false
+                     // Check if loop continues to terminate.
+                     assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                   }
+                   // Reset MustTerminate amount to original level.
+                   exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                   _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                   _res := null
+
+                   _res := null
+                   _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                   less := quickSort_res
+                   inhale _isDefined(1936942444)
+                   _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                   more := quickSort_res_0
+                   inhale _isDefined(1701998445)
+                   _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                   _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                   _res := target_0
+                   goto __end
+                 }
+            }
+          }
       }
-      label loop_end
-      _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
-      if (iter_err == null) {
-        i := loop_target
-        inhale _isDefined(105)
+  }else{
+    if (arbitrary2() < -3){
+          if (arbitrary() > 1) {
+            if (arbitrary() > 7) {
+                    _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                      _res := null
+                      _err := null
+                      arr_0 := arr
+                      _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_0), list(int()))
+                      less := list_0
+                      inhale _isDefined(1936942444)
+                      _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_1), list(int()))
+                      pivotList := list_1
+                      inhale _isDefined(2148138574800194267504)
+                      _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_2), list(int()))
+                      more := list_2
+                      inhale _isDefined(1701998445)
+                      if (int___le__(list___len__(arr_0), 1)) {
+                        _res := arr_0
+                        goto __end
+                      } else {
+                        pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                        inhale _isDefined(500086237552)
+                        iterable := arr_0
+                        _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                        _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                        if (iter_err == null) {
+                          i := loop_target
+                          inhale _isDefined(105)
+                        }
+                        seqtmp := iterable.list_acc
+                        // Save current MustTerminate amount.
+                        _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                        // Save loop termination promise.
+                        _loop_termination_flag := true
+                        // We are before loop.
+                        _loop_check_before := true
+                        while (iter_err == null)
+                          invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                          invariant acc(iterable.list_acc, 1 / 20)
+                          invariant acc(iter.list_acc, 1 / 20)
+                          invariant iter.list_acc == iterable.list_acc
+                          invariant seqtmp == iterable.list_acc
+                          invariant acc(iter.__iter_index, write)
+                          invariant acc(iter.__previous, write)
+                          invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                          invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                          invariant iter_err == null ==> |iter.list_acc| > 0
+                          invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                          invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                          invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                          invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                          invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                          invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                          invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                          invariant iter_err != null ==> iter.__previous == iter.list_acc
+                          invariant |iter.list_acc| == 0 ==> iter_err != null
+                          invariant true
+                          invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                          invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                          invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                          invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                          invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                          invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                          invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                        {
+                          _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                          if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                          } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                          } else {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                          }
+
+                          _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                          if (iter_err == null) {
+                            i := loop_target
+                            inhale _isDefined(105)
+                          }
+                          // We are after loop body.
+                          _loop_check_before := false
+                          // Check if loop continues to terminate.
+                          assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                        }
+                        // Reset MustTerminate amount to original level.
+                        exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                        _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                        _res := null
+
+                        _res := null
+                        _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                        less := quickSort_res
+                        inhale _isDefined(1936942444)
+                        _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                        more := quickSort_res_0
+                        inhale _isDefined(1701998445)
+                        _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                        _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                        _res := target_0
+                        goto __end
+                      }
+                }else{
+                   _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                     _res := null
+                     _err := null
+                     arr_0 := arr
+                     _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_0), list(int()))
+                     less := list_0
+                     inhale _isDefined(1936942444)
+                     _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_1), list(int()))
+                     pivotList := list_1
+                     inhale _isDefined(2148138574800194267504)
+                     _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_2), list(int()))
+                     more := list_2
+                     inhale _isDefined(1701998445)
+                     if (int___le__(list___len__(arr_0), 1)) {
+                       _res := arr_0
+                       goto __end
+                     } else {
+                       pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                       inhale _isDefined(500086237552)
+                       iterable := arr_0
+                       _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                       _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                       if (iter_err == null) {
+                         i := loop_target
+                         inhale _isDefined(105)
+                       }
+                       seqtmp := iterable.list_acc
+                       // Save current MustTerminate amount.
+                       _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                       // Save loop termination promise.
+                       _loop_termination_flag := true
+                       // We are before loop.
+                       _loop_check_before := true
+                       while (iter_err == null)
+                         invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                         invariant acc(iterable.list_acc, 1 / 20)
+                         invariant acc(iter.list_acc, 1 / 20)
+                         invariant iter.list_acc == iterable.list_acc
+                         invariant seqtmp == iterable.list_acc
+                         invariant acc(iter.__iter_index, write)
+                         invariant acc(iter.__previous, write)
+                         invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                         invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                         invariant iter_err == null ==> |iter.list_acc| > 0
+                         invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                         invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                         invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                         invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                         invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                         invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                         invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                         invariant iter_err != null ==> iter.__previous == iter.list_acc
+                         invariant |iter.list_acc| == 0 ==> iter_err != null
+                         invariant true
+                         invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                         invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                         invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                         invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                         invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                         invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                         invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                       {
+                         _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                         if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                         } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                         } else {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                         }
+
+                         _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                         if (iter_err == null) {
+                           i := loop_target
+                           inhale _isDefined(105)
+                         }
+                         // We are after loop body.
+                         _loop_check_before := false
+                         // Check if loop continues to terminate.
+                         assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                       }
+                       // Reset MustTerminate amount to original level.
+                       exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                       _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                       _res := null
+
+                       _res := null
+                       _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                       less := quickSort_res
+                       inhale _isDefined(1936942444)
+                       _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                       more := quickSort_res_0
+                       inhale _isDefined(1701998445)
+                       _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                       _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                       _res := target_0
+                       goto __end
+                     }
+                }
+          }else{
+            if (arbitrary() < -7) {
+                _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                  _res := null
+                  _err := null
+                  arr_0 := arr
+                  _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_0), list(int()))
+                  less := list_0
+                  inhale _isDefined(1936942444)
+                  _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_1), list(int()))
+                  pivotList := list_1
+                  inhale _isDefined(2148138574800194267504)
+                  _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_2), list(int()))
+                  more := list_2
+                  inhale _isDefined(1701998445)
+                  if (int___le__(list___len__(arr_0), 1)) {
+                    _res := arr_0
+                    goto __end
+                  } else {
+                    pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                    inhale _isDefined(500086237552)
+                    iterable := arr_0
+                    _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                    _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                    if (iter_err == null) {
+                      i := loop_target
+                      inhale _isDefined(105)
+                    }
+                    seqtmp := iterable.list_acc
+                    // Save current MustTerminate amount.
+                    _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                    // Save loop termination promise.
+                    _loop_termination_flag := true
+                    // We are before loop.
+                    _loop_check_before := true
+                    while (iter_err == null)
+                      invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                      invariant acc(iterable.list_acc, 1 / 20)
+                      invariant acc(iter.list_acc, 1 / 20)
+                      invariant iter.list_acc == iterable.list_acc
+                      invariant seqtmp == iterable.list_acc
+                      invariant acc(iter.__iter_index, write)
+                      invariant acc(iter.__previous, write)
+                      invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                      invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                      invariant iter_err == null ==> |iter.list_acc| > 0
+                      invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                      invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                      invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                      invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                      invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                      invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                      invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                      invariant iter_err != null ==> iter.__previous == iter.list_acc
+                      invariant |iter.list_acc| == 0 ==> iter_err != null
+                      invariant true
+                      invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                      invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                      invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                      invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                      invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                      invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                      invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                    {
+                      _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                      if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                      } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                      } else {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                      }
+
+                      _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                      if (iter_err == null) {
+                        i := loop_target
+                        inhale _isDefined(105)
+                      }
+                      // We are after loop body.
+                      _loop_check_before := false
+                      // Check if loop continues to terminate.
+                      assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                    }
+                    // Reset MustTerminate amount to original level.
+                    exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                    _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                    _res := null
+
+                    _res := null
+                    _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                    less := quickSort_res
+                    inhale _isDefined(1936942444)
+                    _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                    more := quickSort_res_0
+                    inhale _isDefined(1701998445)
+                    _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                    _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                    _res := target_0
+                    goto __end
+                  }
+            }else{
+               _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                 _res := null
+                 _err := null
+                 arr_0 := arr
+                 _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_0), list(int()))
+                 less := list_0
+                 inhale _isDefined(1936942444)
+                 _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_1), list(int()))
+                 pivotList := list_1
+                 inhale _isDefined(2148138574800194267504)
+                 _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_2), list(int()))
+                 more := list_2
+                 inhale _isDefined(1701998445)
+                 if (int___le__(list___len__(arr_0), 1)) {
+                   _res := arr_0
+                   goto __end
+                 } else {
+                   pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                   inhale _isDefined(500086237552)
+                   iterable := arr_0
+                   _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                   _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                   if (iter_err == null) {
+                     i := loop_target
+                     inhale _isDefined(105)
+                   }
+                   seqtmp := iterable.list_acc
+                   // Save current MustTerminate amount.
+                   _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                   // Save loop termination promise.
+                   _loop_termination_flag := true
+                   // We are before loop.
+                   _loop_check_before := true
+                   while (iter_err == null)
+                     invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                     invariant acc(iterable.list_acc, 1 / 20)
+                     invariant acc(iter.list_acc, 1 / 20)
+                     invariant iter.list_acc == iterable.list_acc
+                     invariant seqtmp == iterable.list_acc
+                     invariant acc(iter.__iter_index, write)
+                     invariant acc(iter.__previous, write)
+                     invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                     invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                     invariant iter_err == null ==> |iter.list_acc| > 0
+                     invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                     invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                     invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                     invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                     invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                     invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                     invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                     invariant iter_err != null ==> iter.__previous == iter.list_acc
+                     invariant |iter.list_acc| == 0 ==> iter_err != null
+                     invariant true
+                     invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                     invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                     invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                     invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                     invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                     invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                     invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                   {
+                     _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                     if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                     } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                     } else {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                     }
+
+                     _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                     if (iter_err == null) {
+                       i := loop_target
+                       inhale _isDefined(105)
+                     }
+                     // We are after loop body.
+                     _loop_check_before := false
+                     // Check if loop continues to terminate.
+                     assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                   }
+                   // Reset MustTerminate amount to original level.
+                   exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                   _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                   _res := null
+
+                   _res := null
+                   _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                   less := quickSort_res
+                   inhale _isDefined(1936942444)
+                   _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                   more := quickSort_res_0
+                   inhale _isDefined(1701998445)
+                   _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                   _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                   _res := target_0
+                   goto __end
+                 }
+            }
+          }
+      }else{
+          if (arbitrary() > 1) {
+            if (arbitrary() > 7) {
+                    _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                      _res := null
+                      _err := null
+                      arr_0 := arr
+                      _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_0), list(int()))
+                      less := list_0
+                      inhale _isDefined(1936942444)
+                      _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_1), list(int()))
+                      pivotList := list_1
+                      inhale _isDefined(2148138574800194267504)
+                      _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                      inhale issubtype(typeof(list_2), list(int()))
+                      more := list_2
+                      inhale _isDefined(1701998445)
+                      if (int___le__(list___len__(arr_0), 1)) {
+                        _res := arr_0
+                        goto __end
+                      } else {
+                        pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                        inhale _isDefined(500086237552)
+                        iterable := arr_0
+                        _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                        _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                        if (iter_err == null) {
+                          i := loop_target
+                          inhale _isDefined(105)
+                        }
+                        seqtmp := iterable.list_acc
+                        // Save current MustTerminate amount.
+                        _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                        // Save loop termination promise.
+                        _loop_termination_flag := true
+                        // We are before loop.
+                        _loop_check_before := true
+                        while (iter_err == null)
+                          invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                          invariant acc(iterable.list_acc, 1 / 20)
+                          invariant acc(iter.list_acc, 1 / 20)
+                          invariant iter.list_acc == iterable.list_acc
+                          invariant seqtmp == iterable.list_acc
+                          invariant acc(iter.__iter_index, write)
+                          invariant acc(iter.__previous, write)
+                          invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                          invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                          invariant iter_err == null ==> |iter.list_acc| > 0
+                          invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                          invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                          invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                          invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                          invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                          invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                          invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                          invariant iter_err != null ==> iter.__previous == iter.list_acc
+                          invariant |iter.list_acc| == 0 ==> iter_err != null
+                          invariant true
+                          invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                          invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                          invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                          invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                          invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                          invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                          invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                        {
+                          _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                          if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                          } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                          } else {
+                            _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                          }
+
+                          _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                          if (iter_err == null) {
+                            i := loop_target
+                            inhale _isDefined(105)
+                          }
+                          // We are after loop body.
+                          _loop_check_before := false
+                          // Check if loop continues to terminate.
+                          assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                        }
+                        // Reset MustTerminate amount to original level.
+                        exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                        _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                        _res := null
+
+                        _res := null
+                        _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                        less := quickSort_res
+                        inhale _isDefined(1936942444)
+                        _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                        more := quickSort_res_0
+                        inhale _isDefined(1701998445)
+                        _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                        _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                        _res := target_0
+                        goto __end
+                      }
+                }else{
+                   _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                     _res := null
+                     _err := null
+                     arr_0 := arr
+                     _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_0), list(int()))
+                     less := list_0
+                     inhale _isDefined(1936942444)
+                     _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_1), list(int()))
+                     pivotList := list_1
+                     inhale _isDefined(2148138574800194267504)
+                     _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                     inhale issubtype(typeof(list_2), list(int()))
+                     more := list_2
+                     inhale _isDefined(1701998445)
+                     if (int___le__(list___len__(arr_0), 1)) {
+                       _res := arr_0
+                       goto __end
+                     } else {
+                       pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                       inhale _isDefined(500086237552)
+                       iterable := arr_0
+                       _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                       _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                       if (iter_err == null) {
+                         i := loop_target
+                         inhale _isDefined(105)
+                       }
+                       seqtmp := iterable.list_acc
+                       // Save current MustTerminate amount.
+                       _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                       // Save loop termination promise.
+                       _loop_termination_flag := true
+                       // We are before loop.
+                       _loop_check_before := true
+                       while (iter_err == null)
+                         invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                         invariant acc(iterable.list_acc, 1 / 20)
+                         invariant acc(iter.list_acc, 1 / 20)
+                         invariant iter.list_acc == iterable.list_acc
+                         invariant seqtmp == iterable.list_acc
+                         invariant acc(iter.__iter_index, write)
+                         invariant acc(iter.__previous, write)
+                         invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                         invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                         invariant iter_err == null ==> |iter.list_acc| > 0
+                         invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                         invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                         invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                         invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                         invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                         invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                         invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                         invariant iter_err != null ==> iter.__previous == iter.list_acc
+                         invariant |iter.list_acc| == 0 ==> iter_err != null
+                         invariant true
+                         invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                         invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                         invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                         invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                         invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                         invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                         invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                       {
+                         _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                         if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                         } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                         } else {
+                           _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                         }
+
+                         _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                         if (iter_err == null) {
+                           i := loop_target
+                           inhale _isDefined(105)
+                         }
+                         // We are after loop body.
+                         _loop_check_before := false
+                         // Check if loop continues to terminate.
+                         assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                       }
+                       // Reset MustTerminate amount to original level.
+                       exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                       _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                       _res := null
+
+                       _res := null
+                       _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                       less := quickSort_res
+                       inhale _isDefined(1936942444)
+                       _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                       more := quickSort_res_0
+                       inhale _isDefined(1701998445)
+                       _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                       _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                       _res := target_0
+                       goto __end
+                     }
+                }
+          }else{
+            if (arbitrary() < -7) {
+                _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                  _res := null
+                  _err := null
+                  arr_0 := arr
+                  _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_0), list(int()))
+                  less := list_0
+                  inhale _isDefined(1936942444)
+                  _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_1), list(int()))
+                  pivotList := list_1
+                  inhale _isDefined(2148138574800194267504)
+                  _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                  inhale issubtype(typeof(list_2), list(int()))
+                  more := list_2
+                  inhale _isDefined(1701998445)
+                  if (int___le__(list___len__(arr_0), 1)) {
+                    _res := arr_0
+                    goto __end
+                  } else {
+                    pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                    inhale _isDefined(500086237552)
+                    iterable := arr_0
+                    _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                    _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                    if (iter_err == null) {
+                      i := loop_target
+                      inhale _isDefined(105)
+                    }
+                    seqtmp := iterable.list_acc
+                    // Save current MustTerminate amount.
+                    _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                    // Save loop termination promise.
+                    _loop_termination_flag := true
+                    // We are before loop.
+                    _loop_check_before := true
+                    while (iter_err == null)
+                      invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                      invariant acc(iterable.list_acc, 1 / 20)
+                      invariant acc(iter.list_acc, 1 / 20)
+                      invariant iter.list_acc == iterable.list_acc
+                      invariant seqtmp == iterable.list_acc
+                      invariant acc(iter.__iter_index, write)
+                      invariant acc(iter.__previous, write)
+                      invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                      invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                      invariant iter_err == null ==> |iter.list_acc| > 0
+                      invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                      invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                      invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                      invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                      invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                      invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                      invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                      invariant iter_err != null ==> iter.__previous == iter.list_acc
+                      invariant |iter.list_acc| == 0 ==> iter_err != null
+                      invariant true
+                      invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                      invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                      invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                      invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                      invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                      invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                      invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                    {
+                      _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                      if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                      } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                      } else {
+                        _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                      }
+
+                      _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                      if (iter_err == null) {
+                        i := loop_target
+                        inhale _isDefined(105)
+                      }
+                      // We are after loop body.
+                      _loop_check_before := false
+                      // Check if loop continues to terminate.
+                      assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                    }
+                    // Reset MustTerminate amount to original level.
+                    exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                    _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                    _res := null
+
+                    _res := null
+                    _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                    less := quickSort_res
+                    inhale _isDefined(1936942444)
+                    _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                    more := quickSort_res_0
+                    inhale _isDefined(1701998445)
+                    _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                    _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                    _res := target_0
+                    goto __end
+                  }
+            }else{
+               _method_measures_156 := Seq(Measure$create(true, _cthread_156, int___add__(2, list___len__(arr))))
+                 _res := null
+                 _err := null
+                 arr_0 := arr
+                 _cwl_156, list_0 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_0), list(int()))
+                 less := list_0
+                 inhale _isDefined(1936942444)
+                 _cwl_156, list_1 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_1), list(int()))
+                 pivotList := list_1
+                 inhale _isDefined(2148138574800194267504)
+                 _cwl_156, list_2 := list___init__(_cthread_156, _method_measures_156, _residue_156)
+                 inhale issubtype(typeof(list_2), list(int()))
+                 more := list_2
+                 inhale _isDefined(1701998445)
+                 if (int___le__(list___len__(arr_0), 1)) {
+                   _res := arr_0
+                   goto __end
+                 } else {
+                   pivot := list___getitem__(arr_0, __prim__int___box__(0))
+                   inhale _isDefined(500086237552)
+                   iterable := arr_0
+                   _cwl_156, iter := list___iter__(_cthread_156, _method_measures_156, _residue_156, iterable)
+                   _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                   if (iter_err == null) {
+                     i := loop_target
+                     inhale _isDefined(105)
+                   }
+                   seqtmp := iterable.list_acc
+                   // Save current MustTerminate amount.
+                   _loop_original_must_terminate := perm(MustTerminate(_cthread_156))
+                   // Save loop termination promise.
+                   _loop_termination_flag := true
+                   // We are before loop.
+                   _loop_check_before := true
+                   while (iter_err == null)
+                     invariant [(forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _residue_157) && ((forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _residue_157) && _residue_156 <= _residue_157), true]
+                     invariant acc(iterable.list_acc, 1 / 20)
+                     invariant acc(iter.list_acc, 1 / 20)
+                     invariant iter.list_acc == iterable.list_acc
+                     invariant seqtmp == iterable.list_acc
+                     invariant acc(iter.__iter_index, write)
+                     invariant acc(iter.__previous, write)
+                     invariant iter_err == null ==> iter.__iter_index - 1 == |iter.__previous|
+                     invariant iter_err != null ==> iter.__iter_index == |iter.__previous|
+                     invariant iter_err == null ==> |iter.list_acc| > 0
+                     invariant iter.__iter_index >= 0 && iter.__iter_index <= |iter.list_acc|
+                     invariant |iter.list_acc| > 0 ==> iter.__iter_index > 0
+                     invariant |iter.list_acc| > 0 ==> loop_target == iter.list_acc[iter.__iter_index - 1]
+                     invariant |iter.list_acc| > 0 ==> (loop_target in iter.list_acc)
+                     invariant iter_err == null ==> iter.__previous == iter.list_acc[..iter.__iter_index - 1]
+                     invariant |iter.list_acc| > 0 ==> issubtype(typeof(loop_target), int())
+                     invariant |iter.list_acc| > 0 ==> i == loop_target && _isDefined(105)
+                     invariant iter_err != null ==> iter.__previous == iter.list_acc
+                     invariant |iter.list_acc| == 0 ==> iter_err != null
+                     invariant true
+                     invariant acc(_checkDefined(less, 1936942444).list_acc, write) && (acc(_checkDefined(pivotList, 2148138574800194267504).list_acc, write) && acc(_checkDefined(more, 1701998445).list_acc, write))
+                     invariant int___eq__(__prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))), __prim__int___box__(int___add__(int___add__(list___len__(_checkDefined(less, 1936942444)), list___len__(_checkDefined(more, 1701998445))), list___len__(_checkDefined(pivotList, 2148138574800194267504)))))
+                     invariant int___gt__(PSeq___len__(PSeq___create__(iter.__previous, int())), 0) ==> int___gt__(list___len__(_checkDefined(pivotList, 2148138574800194267504)), 0)
+                     invariant acc(arr_0.list_acc, 1 / 2) && (int___gt__(list___len__(arr_0), 0) && int___eq__(list___getitem__(arr_0, __prim__int___box__(0)), _checkDefined(pivot, 500086237552)))
+                     invariant (iter_err == null ==> int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))) > 0) && [acc(MustTerminate(_cthread_156), write), true]
+                     invariant [true, _loop_check_before ==> _loop_termination_flag || (!(iter_err == null) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))))]
+                     invariant [true, !_loop_check_before ==> (forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false)))]
+                   {
+                     _loop_measures := Seq(Measure$create(true, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int())))))
+                     if (int___lt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(less, 1936942444), _checkDefined(i, 105))
+                     } elseif (int___gt__(int___unbox__(_checkDefined(i, 105)), int___unbox__(_checkDefined(pivot, 500086237552)))) {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(more, 1701998445), _checkDefined(i, 105))
+                     } else {
+                       _cwl_156 := list_append(_cthread_156, _method_measures_156, _residue_157, _checkDefined(pivotList, 2148138574800194267504), _checkDefined(i, 105))
+                     }
+
+                     _cwl_156, loop_target, iter_err := Iterator___next__(_cthread_156, _method_measures_156, _residue_156, iter)
+                     if (iter_err == null) {
+                       i := loop_target
+                       inhale _isDefined(105)
+                     }
+                     // We are after loop body.
+                     _loop_check_before := false
+                     // Check if loop continues to terminate.
+                     assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
+                   }
+                   // Reset MustTerminate amount to original level.
+                   exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
+                   _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
+                   _res := null
+
+                   _res := null
+                   _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
+                   less := quickSort_res
+                   inhale _isDefined(1936942444)
+                   _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
+                   more := quickSort_res_0
+                   inhale _isDefined(1701998445)
+                   _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
+                   _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
+                   _res := target_0
+                   goto __end
+                 }
+            }
+          }
       }
-      // We are after loop body.
-      _loop_check_before := false
-      // Check if loop continues to terminate.
-      assert _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_156, int___sub__(list___len__(arr_0), PSeq___len__(PSeq___create__(iter.__previous, int()))))
-    }
-    // Reset MustTerminate amount to original level.
-    exhale perm(MustTerminate(_cthread_156)) > none ==> acc(MustTerminate(_cthread_156), perm(MustTerminate(_cthread_156)) - _loop_original_must_terminate)
-    _cwl_156 := Iterator___del__(_cthread_156, _method_measures_156, _residue_157, iter)
-    _res := null
-    label post_loop
-    _res := null
-    _cwl_156, quickSort_res := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444))
-    less := quickSort_res
-    inhale _isDefined(1936942444)
-    _cwl_156, quickSort_res_0 := quickSort(_cthread_156, _method_measures_156, _residue_156, _checkDefined(more, 1701998445))
-    more := quickSort_res_0
-    inhale _isDefined(1701998445)
-    _cwl_156, target := list___add__(_cthread_156, _method_measures_156, _residue_156, _checkDefined(less, 1936942444), _checkDefined(pivotList, 2148138574800194267504))
-    _cwl_156, target_0 := list___add__(_cthread_156, _method_measures_156, _residue_156, target, _checkDefined(more, 1701998445))
-    _res := target_0
-    goto __end
   }
+
   goto __end
   label __end
 }
