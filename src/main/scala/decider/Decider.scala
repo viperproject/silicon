@@ -10,7 +10,7 @@ import scala.reflect.{ClassTag, classTag}
 import com.typesafe.scalalogging.Logger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
-import viper.silver.verifier.DependencyNotFoundError
+import viper.silver.verifier.{DependencyNotFoundError, Model}
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
@@ -19,7 +19,7 @@ import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.verifier.{Verifier, VerifierComponent, Model}
+import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 
 /*
@@ -369,7 +369,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     override def generateModel(): Unit = proverAssert(False(), None)
 
-    override def getModel(): String = prover.getLastModel()
+    override def getModel(): Model = prover.getModel()
+
+    override def hasModel(): Boolean = prover.hasModel()
+
+    override def isModelValid(): Boolean = prover.isModelValid()
 
     override def clearModel(): Unit = prover.clearLastModel()
   }

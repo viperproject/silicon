@@ -8,25 +8,21 @@ package viper.silicon.decider
 
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
-import viper.silicon.decider.TermToSMTLib2Converter
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
-import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Sort, SortDecl, SortWrapperDecl, Term, sorts}
-import viper.silicon.{Config, Map, toMap}
+import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
-import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
-import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Model => ViperModel}
-import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
-import java.nio.file.{Path, Paths}
-import java.util.concurrent.TimeUnit
+import viper.silver.reporter.Reporter
+import viper.silver.verifier.{ApplicationEntry, ConstantEntry, MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
+import java.io.PrintWriter
+import java.nio.file.Path
 
 import scala.collection.mutable
 import com.microsoft.z3._
-import com.microsoft.z3.enumerations.Z3_ast_print_mode
+import viper.silicon.reporting.ExternalToolError
 
 import scala.collection.immutable.ListMap
-import scala.jdk.CollectionConverters
 import scala.jdk.CollectionConverters.MapHasAsJava
 
 
@@ -36,6 +32,9 @@ object Z3ProverAPI {
   val maxVersion = Some(Version("4.8.6.0")) /* X.Y.Z if that is the *last supported* version */
   val exeEnvironmentalVariable = "Z3_EXE"
   val dependencies = Seq(SilDefaultDependency("Z3", minVersion.version, "https://github.com/Z3Prover/z3"))
+  val staticPreamble = "/z3config.smt2"
+  val startUpArgs = Seq("-smt2", "-in")
+  val randomizeSeedsOptions = Seq("sat.random_seed", "nlsat.seed", "fp.spacer.random_seed", "smt.random_seed", "sls.random_seed")
 
   val initialOptions = Map("auto_config" -> "false", "type_check" -> "true")
   val boolParams = Map(
@@ -101,10 +100,10 @@ class Z3ProverAPI(uniqueId: String,
 
 
   def version(): Version = {
-    val versString = com.microsoft.z3.Version.getFullVersion
-    if (!versString.startsWith("Z3 "))
-      sys.error("unexpected version string")
-    Version(versString.substring(3))
+    var versString = com.microsoft.z3.Version.getFullVersion
+    if (versString.startsWith("Z3 "))
+      versString = versString.substring(3)
+    Version(versString)
   }
 
   def start(): Unit = {
@@ -190,21 +189,29 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def assume(term: Term): Unit = {
-    if (preamblePhaseOver)
-      prover.add(termConverter.convert(term).asInstanceOf[BoolExpr])
-    else
-      preambleAssumes.add(termConverter.convert(term).asInstanceOf[BoolExpr])
+    try {
+      if (preamblePhaseOver)
+        prover.add(termConverter.convert(term).asInstanceOf[BoolExpr])
+      else
+        preambleAssumes.add(termConverter.convert(term).asInstanceOf[BoolExpr])
+    } catch {
+      case e: Z3Exception => throw ExternalToolError("Prover", "Z3 error: " + e.getMessage)
+    }
   }
 
   def assert(goal: Term, timeout: Option[Int]): Boolean = {
     endPreamblePhase()
     setTimeout(timeout)
 
-    val (result, duration) = Verifier.config.assertionMode() match {
-      case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
-      case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
+    try {
+      val (result, duration) = Verifier.config.assertionMode() match {
+        case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
+        case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
+      }
+      result
+    } catch {
+      case e: Z3Exception => throw ExternalToolError("Prover", "Z3 error: " + e.getMessage)
     }
-    result
   }
 
   protected def assertUsingPushPop(goal: Term): (Boolean, Long) = {
@@ -253,7 +260,7 @@ class Z3ProverAPI(uniqueId: String,
     val guardApp = App(guard, Nil)
     val goalImplication = Implies(guardApp, goal)
 
-    prover.add(termConverter.convertTerm(goalImplication))
+    prover.add(termConverter.convertTerm(goalImplication).asInstanceOf[BoolExpr])
 
     val startTime = System.currentTimeMillis()
     val res = prover.check(termConverter.convertTerm(guardApp))
@@ -280,8 +287,6 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def endPreamblePhase() =  {
-
-
     if (!preamblePhaseOver) {
       preamblePhaseOver = true
 
@@ -365,13 +370,33 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   override def getModel(): ViperModel = {
+    val entries = new mutable.HashMap[String, ModelEntry]()
     for (constDecl <- lastModel.getConstDecls){
       val constInterp = lastModel.getConstInterp(constDecl)
+      val constName = constDecl.getName.toString
+      val entry = fastparse.parse(constInterp.toString, ModelParser.value(_)).get.value
+      entries.update(constName, entry)
     }
     for (funcDecl <- lastModel.getFuncDecls) {
       val funcInterp = lastModel.getFuncInterp(funcDecl)
+      val options = new mutable.HashMap[Seq[ValueEntry], ValueEntry]()
+      for (entry <- funcInterp.getEntries) {
+        val args = entry.getArgs.map(arg => fastparse.parse(arg.toString, ModelParser.value(_)).get.value)
+        val value = fastparse.parse(entry.getValue.toString, ModelParser.value(_)).get.value
+        options.update(args, value)
+      }
+      val els = fastparse.parse(funcInterp.getElse.toString, ModelParser.value(_)).get.value
+      entries.update(funcDecl.getName.toString, MapEntry(options.toMap, els))
     }
-    null
+    ViperModel(entries.toMap)
+  }
+
+  override def hasModel(): Boolean = {
+    lastModel != null
+  }
+
+  override def isModelValid(): Boolean = {
+    lastModel != null
   }
 
   override def clearLastModel(): Unit = lastModel = null
