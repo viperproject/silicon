@@ -165,6 +165,14 @@ class TermToZ3APIConverter
   def convertFuncSymbol(fd: FunctionDecl): Z3Symbol = {
     ctx.mkSymbol(convertId(fd.func.id))
   }
+  
+  def convert(md: MacroDecl): (Z3FuncDecl, BoolExpr) = {
+    val func = ctx.mkFuncDecl(convertId(md.id), md.args.map(a => convertSort(a.sort)).toArray, convertSort(md.body.sort))
+    val app = ctx.mkApp(func, md.args.map(convert(_)).toArray : _*)
+    val patterns = Array(ctx.mkPattern(app))
+    val quant = ctx.mkForall(md.args.map(convert(_)).toArray, ctx.mkEq(convertTerm(md.body), app), 1, patterns, null, ctx.mkSymbol(md.id.name), null)
+    (func, quant)
+  }
 
   def convert(swd: SortWrapperDecl): Z3FuncDecl = {
     val id = swd.id

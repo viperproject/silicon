@@ -9,13 +9,13 @@ package viper.silicon.rules
 import viper.silicon.interfaces.{Failure, SiliconFailureContext, SiliconMappedCounterexample, SiliconNativeCounterexample, SiliconVariableCounterexample}
 import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
-import viper.silver.frontend.{MappedModel, NativeModel}
+import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
 import viper.silver.verifier.{Counterexample, CounterexampleTransformer, Model, VerificationError}
 
 trait SymbolicExecutionRules {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
-    if (s.retryLevel == 0) v.errorsReportedSoFar.incrementAndGet()
+    if (s.retryLevel == 0 && !ve.isExpected) v.errorsReportedSoFar.incrementAndGet()
     var ceTrafo: Option[CounterexampleTransformer] = None
     val res = ve match {
       case ErrorWrapperWithExampleTransformer(wrapped, trafo) =>
@@ -29,14 +29,15 @@ trait SymbolicExecutionRules {
       }
       if (v.decider.isModelValid()) {
         val nativeModel = v.decider.getModel()
-        val ce: Counterexample = Verifier.config.counterexample.toOption match {
-          case Some(NativeModel) =>
+        val ce_type = Verifier.config.counterexample()
+        val ce: Counterexample = ce_type match {
+          case NativeModel =>
             val oldHeaps = s.oldHeaps.map { case (label, heap) => label -> heap.values }
             SiliconNativeCounterexample(s.g, s.h.values, oldHeaps, nativeModel)
-          case Some(MappedModel) =>
-            SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel)
-          case _ =>
+          case VariablesModel =>
             SiliconVariableCounterexample(s.g, nativeModel)
+          case MappedModel =>
+            SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel)
         }
         val finalCE = ceTrafo match {
           case Some(trafo) => trafo.f(ce)
