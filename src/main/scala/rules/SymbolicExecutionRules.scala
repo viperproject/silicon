@@ -24,12 +24,11 @@ trait SymbolicExecutionRules {
       case _ => ve
     }
     val counterexample: Option[Counterexample] = if (v != null && Verifier.config.counterexample.toOption.isDefined) {
-      if (generateNewModel || v.decider.getModel() == null) {
+      if (generateNewModel || v.decider.hasModel) {
         v.decider.generateModel()
       }
-      val model = v.decider.getModel()
-      if (model != null && !model.contains("model is not available")) {
-        val nativeModel = Model(model)
+      if (v.decider.isModelValid()) {
+        val nativeModel = v.decider.getModel()
         val ce: Counterexample = Verifier.config.counterexample.toOption match {
           case Some(NativeModel) =>
             val oldHeaps = s.oldHeaps.map { case (label, heap) => label -> heap.values }

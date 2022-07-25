@@ -10,6 +10,7 @@ import viper.silicon.common.config.Version
 import viper.silver.components.StatefulComponent
 import viper.silicon.{Config, Map}
 import viper.silicon.state.terms._
+import viper.silver.verifier.Model
 
 sealed abstract class Result
 object Sat extends Result
@@ -33,7 +34,9 @@ trait Prover extends ProverLike with StatefulComponent {
   def check(timeout: Option[Int] = None): Result
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def statistics(): Map[String, String]
-  def getLastModel(): String
+  def hasModel(): Boolean
+  def isModelValid(): Boolean
+  def getModel(): Model
   def clearLastModel(): Unit
 
   def name: String

@@ -19,7 +19,7 @@ import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.verifier.{Verifier, VerifierComponent, Model}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 
 /*
@@ -60,8 +60,10 @@ trait Decider {
   def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
 
   def generateModel(): Unit
-  def getModel(): String
+  def getModel(): Model
   def clearModel(): Unit
+  def hasModel(): Boolean
+  def isModelValid(): Boolean
 
 /* [BRANCH-PARALLELISATION] */
 //  def freshFunctions: InsertionOrderedSet[FunctionDecl]

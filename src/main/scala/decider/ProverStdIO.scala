@@ -20,6 +20,7 @@ import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
+import viper.silver.verifier.Model
 
 import scala.collection.mutable
 
@@ -284,6 +285,14 @@ abstract class ProverStdIO(uniqueId: String,
     }
   }
 
+  override def hasModel(): Boolean = {
+    lastModel != null
+  }
+
+  override def isModelValid(): Boolean = {
+    lastModel != null && !lastModel.contains("model is not available")
+  }
+
   protected def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
     val guard = fresh("grd", Nil, sorts.Bool)
 
@@ -452,7 +461,7 @@ abstract class ProverStdIO(uniqueId: String,
     output.println(out)
   }
 
-  override def getLastModel(): String = lastModel
+  override def getModel(): Model = Model(lastModel)
 
   override def clearLastModel(): Unit = lastModel = null
 }
