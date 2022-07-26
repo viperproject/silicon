@@ -24,7 +24,7 @@ trait SymbolicExecutionRules {
       case _ => ve
     }
     val counterexample: Option[Counterexample] = if (v != null && Verifier.config.counterexample.toOption.isDefined) {
-      if (generateNewModel || v.decider.hasModel) {
+      if (generateNewModel || !v.decider.hasModel) {
         v.decider.generateModel()
       }
       if (v.decider.isModelValid()) {

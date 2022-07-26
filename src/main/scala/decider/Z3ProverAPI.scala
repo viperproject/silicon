@@ -24,6 +24,7 @@ import viper.silicon.reporting.ExternalToolError
 
 import scala.collection.immutable.ListMap
 import scala.jdk.CollectionConverters.MapHasAsJava
+import scala.util.Random
 
 
 object Z3ProverAPI {
@@ -34,8 +35,8 @@ object Z3ProverAPI {
   val dependencies = Seq(SilDefaultDependency("Z3", minVersion.version, "https://github.com/Z3Prover/z3"))
   val staticPreamble = "/z3config.smt2"
   val startUpArgs = Seq("-smt2", "-in")
-  val randomizeSeedsOptions = Seq("sat.random_seed", "nlsat.seed", "fp.spacer.random_seed", "smt.random_seed", "sls.random_seed")
-
+  val randomizeSeedsOptions = Seq("random_seed")
+  val randomizeSeedsSetting = "RANDOMIZE_SEEDS"
   val initialOptions = Map("auto_config" -> "false", "type_check" -> "true")
   val boolParams = Map(
     "smt.delay_units" -> true,
@@ -63,11 +64,6 @@ object Z3ProverAPI {
     "smt.qi.eager_threshold" -> 100.0,
   )
 }
-
-/*
-
-TODO: missing randomness-related options
- */
 
 
 class Z3ProverAPI(uniqueId: String,
@@ -186,6 +182,14 @@ class Z3ProverAPI(uniqueId: String,
   override def emitSettings(contents: Iterable[String]): Unit = {
     // we ignore this, don't know any better solution atm.
     // our settings are defined in this class (see above).
+    // except we check if someone gives us our custom randomization string, in which
+    // case we'll directly set the options to randomize.
+    val optionSetString = s"(set-option :${Z3ProverAPI.randomizeSeedsSetting}"
+    if (contents.exists(s => s.startsWith(optionSetString))) {
+      val params = ctx.mkParams()
+      Z3ProverAPI.randomizeSeedsOptions.foreach(o => params.add(o, Random.nextInt(10000)))
+      prover.setParameters(params)
+    }
   }
 
   def assume(term: Term): Unit = {
@@ -428,5 +432,7 @@ class Z3ProverAPI(uniqueId: String,
 
   override def staticPreamble: String = Z3ProverAPI.staticPreamble
 
-  override def randomizeSeedsOptions: Seq[String] = Z3ProverAPI.randomizeSeedsOptions
+  override def randomizeSeedsOptions: Seq[String] = {
+    Seq(Z3ProverAPI.randomizeSeedsSetting)
+  }
 }

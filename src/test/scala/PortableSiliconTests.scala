@@ -79,7 +79,6 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
   val timeoutPropertyName = "SILICONTESTS_TIMEOUT"
 
   val commandLineArguments: Seq[String] = Seq(
-    "--prover", "Z3-API",
     "--disableCatchingExceptions",
     "--timeout", System.getProperty(timeoutPropertyName, "180") /* timeout in seconds */
   ) ++ (if (System.getProperty(randomizePropertyName, "false").toBoolean) Seq("--proverRandomizeSeeds") else Seq.empty)
