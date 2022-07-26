@@ -93,14 +93,14 @@ class TermToZ3APIConverter
       case sorts.Perm => ctx.mkRealSort()
       case sorts.Snap => getSnapSort
       case sorts.Ref => ctx.mkUninterpretedSort("$Ref")
-      case sorts.Map(keySort, valueSort) => ctx.mkUninterpretedSort("Map<" + convertSortName(keySort) + "~_" + convertSortName(valueSort) + ">") // text("Map") <> "<" <> doRender(keySort, true) <> "~_" <> doRender(valueSort, true) <> ">"
+      case sorts.Map(keySort, valueSort) => ctx.mkUninterpretedSort("Map<" + convertSortName(keySort) + "~_" + convertSortName(valueSort) + ">")
       case sorts.Seq(elementSort) => {
         val res = ctx.mkUninterpretedSort("Seq<" + convertSortName(elementSort) + ">")
         res
       }
-      case sorts.Set(elementSort) => ctx.mkUninterpretedSort("Set<" + convertSortName(elementSort) + ">") // text("Set<") <> doRender(elementSort, true) <> ">"
-      case sorts.Multiset(elementSort) => ctx.mkUninterpretedSort("Multiset<" + convertSortName(elementSort) + ">") //  // text("Multiset<") <> doRender(elementSort, true) <> ">"
-      case sorts.UserSort(id) => ctx.mkUninterpretedSort(convertId(id)) // render(id)
+      case sorts.Set(elementSort) => ctx.mkUninterpretedSort("Set<" + convertSortName(elementSort) + ">")
+      case sorts.Multiset(elementSort) => ctx.mkUninterpretedSort("Multiset<" + convertSortName(elementSort) + ">")
+      case sorts.UserSort(id) => ctx.mkUninterpretedSort(convertId(id))
       case sorts.SMTSort(id) => {
         // workaround: since we cannot create a built-in sort from its name, we let Z3 parse
         // a string that uses the sort, take the AST, and get the func decl from there, so that we can
@@ -119,7 +119,7 @@ class TermToZ3APIConverter
         val name = convertSortName(codomainSort)
         ctx.mkUninterpretedSort("$FVF<" + name + ">")
       }
-      case sorts.PredicateSnapFunction(codomainSort) => ctx.mkUninterpretedSort("$PSF<" + convertSortName(codomainSort) + ">")  // text("$PSF<") <> doRender(codomainSort, true) <> ">"
+      case sorts.PredicateSnapFunction(codomainSort) => ctx.mkUninterpretedSort("$PSF<" + convertSortName(codomainSort) + ">")
 
       case sorts.FieldPermFunction() => ctx.mkUninterpretedSort("$FPM") // text("$FPM")
       case sorts.PredicatePermFunction() => ctx.mkUninterpretedSort("$PPM") // text("$PPM")
@@ -134,11 +134,11 @@ class TermToZ3APIConverter
       case sorts.Perm => None
       case sorts.Snap => Some(ctx.mkSymbol("$Snap"))
       case sorts.Ref => Some(ctx.mkSymbol("$Ref"))
-      case sorts.Map(keySort, valueSort) => Some(ctx.mkSymbol("Map<" + convertSortName(keySort) + "~_" + convertSortName(valueSort) + ">")) // text("Map") <> "<" <> doRender(keySort, true) <> "~_" <> doRender(valueSort, true) <> ">"
-      case sorts.Seq(elementSort) => Some(ctx.mkSymbol("Seq<" + convertSortName(elementSort) + ">")) // text("Seq<") <> doRender(elementSort, true) <> ">"
-      case sorts.Set(elementSort) => Some(ctx.mkSymbol("Set<" + convertSortName(elementSort) + ">")) // text("Set<") <> doRender(elementSort, true) <> ">"
-      case sorts.Multiset(elementSort) => Some(ctx.mkSymbol("Multiset<" + convertSortName(elementSort) + ">")) //  // text("Multiset<") <> doRender(elementSort, true) <> ">"
-      case sorts.UserSort(id) => Some(ctx.mkSymbol(convertId(id))) // render(id)
+      case sorts.Map(keySort, valueSort) => Some(ctx.mkSymbol("Map<" + convertSortName(keySort) + "~_" + convertSortName(valueSort) + ">"))
+      case sorts.Seq(elementSort) => Some(ctx.mkSymbol("Seq<" + convertSortName(elementSort) + ">"))
+      case sorts.Set(elementSort) => Some(ctx.mkSymbol("Set<" + convertSortName(elementSort) + ">"))
+      case sorts.Multiset(elementSort) => Some(ctx.mkSymbol("Multiset<" + convertSortName(elementSort) + ">"))
+      case sorts.UserSort(id) => Some(ctx.mkSymbol(convertId(id)))
       case sorts.SMTSort(id) => {
         ???
       }
@@ -148,8 +148,8 @@ class TermToZ3APIConverter
          */
         ???
 
-      case sorts.FieldValueFunction(codomainSort) => Some(ctx.mkSymbol("$FVF<" + convertSortName(codomainSort) + ">")) //  // text("$FVF<") <> doRender(codomainSort, true) <> ">"
-      case sorts.PredicateSnapFunction(codomainSort) => Some(ctx.mkSymbol("$PSF<" + convertSortName(codomainSort) + ">"))  // text("$PSF<") <> doRender(codomainSort, true) <> ">"
+      case sorts.FieldValueFunction(codomainSort) => Some(ctx.mkSymbol("$FVF<" + convertSortName(codomainSort) + ">")) //
+      case sorts.PredicateSnapFunction(codomainSort) => Some(ctx.mkSymbol("$PSF<" + convertSortName(codomainSort) + ">"))
 
       case sorts.FieldPermFunction() => Some(ctx.mkSymbol("$FPM")) // text("$FPM")
       case sorts.PredicatePermFunction() => Some(ctx.mkSymbol("$PPM")) // text("$PPM")
@@ -212,10 +212,10 @@ class TermToZ3APIConverter
           case False() => ctx.mkFalse()
           case Null() => ctx.mkConst("$Ref.null", ctx.mkUninterpretedSort("$Ref"))
           case Unit => ctx.mkConst(getUnitConstructor)
-          case _: SeqNil => renderApp("Seq_empty", Seq(), l.sort)
-          case _: EmptySet => renderApp("Set_empty", Seq(), l.sort)
-          case _: EmptyMultiset => renderApp("Multiset_empty", Seq(), l.sort)
-          case _: EmptyMap => renderApp("Map_empty", Seq(), l.sort)
+          case _: SeqNil => createApp("Seq_empty", Seq(), l.sort)
+          case _: EmptySet => createApp("Set_empty", Seq(), l.sort)
+          case _: EmptyMultiset => createApp("Multiset_empty", Seq(), l.sort)
+          case _: EmptyMap => createApp("Map_empty", Seq(), l.sort)
         }
       }
 
@@ -227,7 +227,7 @@ class TermToZ3APIConverter
 
       case fapp: Application[_] =>
         fapp.applicable match {
-          case _: SMTFun => renderSMTApp(convertId(fapp.applicable.id, false), fapp.args, fapp.sort)
+          case _: SMTFun => createSMTApp(convertId(fapp.applicable.id, false), fapp.args, fapp.sort)
           case _ => {
             if (macros.contains(fapp.applicable.id.name)) {
               val (vars, body) = macros(fapp.applicable.id.name)
@@ -237,7 +237,7 @@ class TermToZ3APIConverter
               val res = convert(substituted)
               res
             }else {
-              renderApp(convertId(fapp.applicable.id), fapp.args, fapp.sort)
+              createApp(convertId(fapp.applicable.id), fapp.args, fapp.sort)
             }
           }
         }
@@ -275,10 +275,10 @@ class TermToZ3APIConverter
       case bop: BuiltinEquals => ctx.mkEq(convertTerm(bop.p0), convertTerm(bop.p1))
 
       case bop: CustomEquals => bop.p0.sort match {
-        case _: sorts.Seq => renderApp("Seq_equal", Seq(bop.p0, bop.p1), bop.sort)
-        case _: sorts.Set => renderApp("Set_equal", Seq(bop.p0, bop.p1), bop.sort)
-        case _: sorts.Multiset => renderApp("Multiset_equal", Seq(bop.p0, bop.p1), bop.sort)
-        case _: sorts.Map => renderApp("Map_equal", Seq(bop.p0, bop.p1), bop.sort)
+        case _: sorts.Seq => createApp("Seq_equal", Seq(bop.p0, bop.p1), bop.sort)
+        case _: sorts.Set => createApp("Set_equal", Seq(bop.p0, bop.p1), bop.sort)
+        case _: sorts.Multiset => createApp("Multiset_equal", Seq(bop.p0, bop.p1), bop.sort)
+        case _: sorts.Map => createApp("Map_equal", Seq(bop.p0, bop.p1), bop.sort)
         case sort => sys.error(s"Don't know how to translate equality between symbols $sort-typed terms")
       }
 
@@ -302,16 +302,16 @@ class TermToZ3APIConverter
 
       case FullPerm() => ctx.mkReal(1)//ctx.mkConst("$Perm.Write", permSort)
       case NoPerm() => ctx.mkReal(0)//ctx.mkConst("$Perm.No", permSort)
-      case FractionPermLiteral(r) => ctx.mkDiv(renderAsReal(IntLiteral(r.numerator)), renderAsReal(IntLiteral(r.denominator)))
-      case FractionPerm(n, d) => ctx.mkDiv(renderAsReal(n), renderAsReal(d))
+      case FractionPermLiteral(r) => ctx.mkDiv(convertToReal(IntLiteral(r.numerator)), convertToReal(IntLiteral(r.denominator)))
+      case FractionPerm(n, d) => ctx.mkDiv(convertToReal(n), convertToReal(d))
       case PermLess(t0, t1) => ctx.mkLt(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
       case PermAtMost(t0, t1) => ctx.mkLe(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
       case PermPlus(t0, t1) => ctx.mkAdd(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
       case PermMinus(t0, t1) => ctx.mkSub(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
       case PermTimes(t0, t1) => ctx.mkMul(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
       case IntPermTimes(t0, t1) => ctx.mkMul(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
-      case PermIntDiv(t0, t1) => ctx.mkDiv(renderAsReal(t0), renderAsReal(t1))
-      case PermPermDiv(t0, t1) => ctx.mkDiv(renderAsReal(t0), renderAsReal(t1))
+      case PermIntDiv(t0, t1) => ctx.mkDiv(convertToReal(t0), convertToReal(t1))
+      case PermPermDiv(t0, t1) => ctx.mkDiv(convertToReal(t0), convertToReal(t1))
       case PermMin(t0, t1) => {
         /*
         (define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
@@ -341,74 +341,74 @@ class TermToZ3APIConverter
 
       /* Sequences */
 
-      case SeqRanged(t0, t1) => renderApp("Seq_range", Seq(t0, t1), term.sort)
-      case SeqSingleton(t0) => renderApp("Seq_singleton", Seq(t0), term.sort)
-      case bop: SeqAppend => renderApp("Seq_append", Seq(bop.p0, bop.p1), term.sort)
-      case uop: SeqLength => renderApp("Seq_length", Seq(uop.p), term.sort)
-      case bop: SeqAt => renderApp("Seq_index", Seq(bop.p0, bop.p1), term.sort)
-      case bop: SeqTake => renderApp("Seq_take", Seq(bop.p0, bop.p1), term.sort)
-      case bop: SeqDrop => renderApp("Seq_drop", Seq(bop.p0, bop.p1), term.sort)
-      case bop: SeqIn => renderApp("Seq_contains", Seq(bop.p0, bop.p1), term.sort)
-      case SeqUpdate(t0, t1, t2) => renderApp("Seq_update", Seq(t0, t1, t2), term.sort)
+      case SeqRanged(t0, t1) => createApp("Seq_range", Seq(t0, t1), term.sort)
+      case SeqSingleton(t0) => createApp("Seq_singleton", Seq(t0), term.sort)
+      case bop: SeqAppend => createApp("Seq_append", Seq(bop.p0, bop.p1), term.sort)
+      case uop: SeqLength => createApp("Seq_length", Seq(uop.p), term.sort)
+      case bop: SeqAt => createApp("Seq_index", Seq(bop.p0, bop.p1), term.sort)
+      case bop: SeqTake => createApp("Seq_take", Seq(bop.p0, bop.p1), term.sort)
+      case bop: SeqDrop => createApp("Seq_drop", Seq(bop.p0, bop.p1), term.sort)
+      case bop: SeqIn => createApp("Seq_contains", Seq(bop.p0, bop.p1), term.sort)
+      case SeqUpdate(t0, t1, t2) => createApp("Seq_update", Seq(t0, t1, t2), term.sort)
 
       /* Sets */
 
-      case uop: SingletonSet => renderApp("Set_singleton", Seq(uop.p), uop.sort)
-      case bop: SetAdd => renderApp("Set_unionone", Seq(bop.p0, bop.p1), bop.sort)
-      case uop: SetCardinality => renderApp("Set_card", Seq(uop.p), uop.sort)
-      case bop: SetDifference => renderApp("Set_difference", Seq(bop.p0, bop.p1), bop.sort)
-      case bop: SetIntersection => renderApp("Set_intersection", Seq(bop.p0, bop.p1), bop.sort)
-      case bop: SetUnion => renderApp("Set_union", Seq(bop.p0, bop.p1), bop.sort)
-      case bop: SetIn => renderApp("Set_in", Seq(bop.p0, bop.p1), bop.sort)
-      case bop: SetSubset => renderApp("Set_subset", Seq(bop.p0, bop.p1), bop.sort)
-      case bop: SetDisjoint => renderApp("Set_disjoint", Seq(bop.p0, bop.p1), bop.sort)
+      case uop: SingletonSet => createApp("Set_singleton", Seq(uop.p), uop.sort)
+      case bop: SetAdd => createApp("Set_unionone", Seq(bop.p0, bop.p1), bop.sort)
+      case uop: SetCardinality => createApp("Set_card", Seq(uop.p), uop.sort)
+      case bop: SetDifference => createApp("Set_difference", Seq(bop.p0, bop.p1), bop.sort)
+      case bop: SetIntersection => createApp("Set_intersection", Seq(bop.p0, bop.p1), bop.sort)
+      case bop: SetUnion => createApp("Set_union", Seq(bop.p0, bop.p1), bop.sort)
+      case bop: SetIn => createApp("Set_in", Seq(bop.p0, bop.p1), bop.sort)
+      case bop: SetSubset => createApp("Set_subset", Seq(bop.p0, bop.p1), bop.sort)
+      case bop: SetDisjoint => createApp("Set_disjoint", Seq(bop.p0, bop.p1), bop.sort)
 
       /* Multisets */
 
-      case uop: SingletonMultiset => renderApp("Multiset_singleton", Seq(uop.p), uop.sort)
-      case bop: MultisetAdd => renderApp("Multiset_unionone", Seq(bop.p0, bop.p1), bop.sort)
-      case uop: MultisetCardinality => renderApp("Multiset_card", Seq(uop.p), uop.sort)
-      case bop: MultisetDifference => renderApp("Multiset_difference", Seq(bop.p0, bop.p1), bop.sort)
-      case bop: MultisetIntersection => renderApp("Multiset_intersection", Seq(bop.p0, bop.p1), bop.sort)
-      case bop: MultisetUnion => renderApp("Multiset_union", Seq(bop.p0, bop.p1), bop.sort)
-      case bop: MultisetSubset => renderApp("Multiset_subset", Seq(bop.p0, bop.p1), bop.sort)
-      case bop: MultisetCount => renderApp("Multiset_count", Seq(bop.p0, bop.p1), bop.sort)
+      case uop: SingletonMultiset => createApp("Multiset_singleton", Seq(uop.p), uop.sort)
+      case bop: MultisetAdd => createApp("Multiset_unionone", Seq(bop.p0, bop.p1), bop.sort)
+      case uop: MultisetCardinality => createApp("Multiset_card", Seq(uop.p), uop.sort)
+      case bop: MultisetDifference => createApp("Multiset_difference", Seq(bop.p0, bop.p1), bop.sort)
+      case bop: MultisetIntersection => createApp("Multiset_intersection", Seq(bop.p0, bop.p1), bop.sort)
+      case bop: MultisetUnion => createApp("Multiset_union", Seq(bop.p0, bop.p1), bop.sort)
+      case bop: MultisetSubset => createApp("Multiset_subset", Seq(bop.p0, bop.p1), bop.sort)
+      case bop: MultisetCount => createApp("Multiset_count", Seq(bop.p0, bop.p1), bop.sort)
 
       /* Maps */
 
-      case m: MapCardinality => renderApp("Map_card", Seq(m.p), m.sort)
-      case m: MapDomain => renderApp("Map_domain", Seq(m.p), m.sort)
-      case m: MapRange => renderApp("Map_values", Seq(m.p), m.sort)
-      case m: MapLookup => renderApp("Map_apply", Seq(m.p0, m.p1), m.sort)
-      case m: MapUpdate => renderApp("Map_update", Seq(m.base, m.key, m.value), m.sort)
+      case m: MapCardinality => createApp("Map_card", Seq(m.p), m.sort)
+      case m: MapDomain => createApp("Map_domain", Seq(m.p), m.sort)
+      case m: MapRange => createApp("Map_values", Seq(m.p), m.sort)
+      case m: MapLookup => createApp("Map_apply", Seq(m.p0, m.p1), m.sort)
+      case m: MapUpdate => createApp("Map_update", Seq(m.base, m.key, m.value), m.sort)
 
       /* Quantified Permissions */
 
-      case Domain(id, fvf) => renderApp("$FVF.domain_" + id, Seq(fvf), term.sort)
+      case Domain(id, fvf) => createApp("$FVF.domain_" + id, Seq(fvf), term.sort)
 
       case Lookup(field, fvf, at) =>
-        renderApp("$FVF.lookup_" + field, Seq(fvf, at), term.sort)
+        createApp("$FVF.lookup_" + field, Seq(fvf, at), term.sort)
 
-      case FieldTrigger(field, fvf, at) => renderApp("$FVF.loc_" + field, (fvf.sort match {
+      case FieldTrigger(field, fvf, at) => createApp("$FVF.loc_" + field, (fvf.sort match {
         case sorts.FieldValueFunction(_) => Seq(Lookup(field, fvf, at), at)
         case _ => Seq(fvf, at)
       }), term.sort)
 
-      case PermLookup(field, pm, at) => renderApp("$FVF.perm_" + field, Seq(pm, at), term.sort)
+      case PermLookup(field, pm, at) => createApp("$FVF.perm_" + field, Seq(pm, at), term.sort)
 
-      case PredicateDomain(id, psf) => renderApp("$PSF.domain_" + id, Seq(psf), term.sort)
+      case PredicateDomain(id, psf) => createApp("$PSF.domain_" + id, Seq(psf), term.sort)
 
       case PredicateLookup(id, psf, args) =>
         val snap: Term = toSnapTree(args)
-        renderApp("$PSF.lookup_" + id, Seq(psf, snap), term.sort)
+        createApp("$PSF.lookup_" + id, Seq(psf, snap), term.sort)
 
       case PredicateTrigger(id, psf, args) =>
         val snap: Term = toSnapTree(args)
-        renderApp("$PSF.loc_" + id, Seq(PredicateLookup(id, psf, args), snap), term.sort)
+        createApp("$PSF.loc_" + id, Seq(PredicateLookup(id, psf, args), snap), term.sort)
 
       case PredicatePermLookup(predname, pm, args) =>
         val snap: Term = toSnapTree(args)
-        renderApp("$PSF.perm_" + predname, Seq(pm, snap), term.sort)
+        createApp("$PSF.perm_" + predname, Seq(pm, snap), term.sort)
 
       /* Other terms */
 
@@ -419,7 +419,7 @@ class TermToZ3APIConverter
         ctx.mkApp(combineConstructor, convertTerm(bop.p0), convertTerm(bop.p1))
 
       case SortWrapper(t, to) =>
-        renderApp(convertId(SortWrapperId(t.sort, to)), Seq(t), to)
+        createApp(convertId(SortWrapperId(t.sort, to)), Seq(t), to)
 
       case Distinct(symbols) =>
         ctx.mkDistinct(symbols.map(s => ctx.mkConst(convertId(s.id), convertSort(s.resultSort))).toSeq: _*)
@@ -435,7 +435,7 @@ class TermToZ3APIConverter
   }
 
   @inline
-  protected def renderApp(functionName: String, args: Seq[Term], outSort: Sort): Z3Expr = {
+  protected def createApp(functionName: String, args: Seq[Term], outSort: Sort): Z3Expr = {
     ctx.mkApp(getFuncDecl(functionName, outSort, args.map(_.sort)), args.map(convertTerm(_)): _*)
   }
 
@@ -449,7 +449,7 @@ class TermToZ3APIConverter
 
 
   @inline
-  protected def renderSMTApp(functionName: String, args: Seq[Term], outSort: Sort): Z3Expr = {
+  protected def createSMTApp(functionName: String, args: Seq[Term], outSort: Sort): Z3Expr = {
     // workaround: since we cannot create a function application with just the name, we let Z3 parse
     // a string that uses the function, take the AST, and get the func decl from there, so that we can
     // programmatically create a func app.
@@ -470,7 +470,7 @@ class TermToZ3APIConverter
   }
 
 
-  protected def renderAsReal(t: Term): RealExpr =
+  protected def convertToReal(t: Term): RealExpr =
     if (t.sort == sorts.Int)
       ctx.mkInt2Real(convertTerm(t).asInstanceOf[IntExpr])
     else
