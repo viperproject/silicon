@@ -509,6 +509,7 @@ class TermToZ3APIConverter
     sanitizedNamesCache.clear()
     macros.clear()
     funcDeclCache.clear()
+    sortCache.clear()
     unitConstructor = null
     combineConstructor = null
     firstFunc = null
