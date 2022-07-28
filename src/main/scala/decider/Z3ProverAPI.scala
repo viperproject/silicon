@@ -48,6 +48,7 @@ object Z3ProverAPI {
   )
   val intParams = Map("smt.restart_strategy" -> 0,
     "smt.case_split" -> 3,
+    "case_split" -> 3,
     "smt.delay_units_threshold" -> 16,
     "smt.qi.max_multi_patterns" -> 1000,
     "smt.phase_selection" -> 0,
