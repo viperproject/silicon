@@ -31,12 +31,19 @@ object Z3ProverAPI {
   val name = "Z3-API"
   val minVersion = Version("4.8.6.0")
   val maxVersion = Some(Version("4.8.6.0")) /* X.Y.Z if that is the *last supported* version */
+
+  // these are not actually used, but since there is a lot of code that expects command line parameters and a
+  // config file, we just supply this information here (whose contents will then be ignored)
   val exeEnvironmentalVariable = "Z3_EXE"
   val dependencies = Seq(SilDefaultDependency("Z3", minVersion.version, "https://github.com/Z3Prover/z3"))
   val staticPreamble = "/z3config.smt2"
   val startUpArgs = Seq("-smt2", "-in")
-  val randomizeSeedsOptions = Seq("random_seed")
+
   val randomizeSeedsSetting = "RANDOMIZE_SEEDS"
+
+  // All options taken from z3config.smt2 and split up according to argument type and time when it has to be set.
+  // I removed all options that (no longer?) exist, since those result in errors from Z3.
+  val randomizeSeedsOptions = Seq("random_seed")
   val initialOptions = Map("auto_config" -> "false", "type_check" -> "true")
   val boolParams = Map(
     "smt.delay_units" -> true,
@@ -92,6 +99,9 @@ class Z3ProverAPI(uniqueId: String,
   val emittedFuncs = mutable.LinkedHashSet[FuncDecl]()
   val emittedFuncSymbols = mutable.Queue[Symbol]()
 
+  // If true, we do not define macros on the Z3 level, but perform macro expansion ourselves on Silicon Terms.
+  // Otherwise, we define a function on the Z3 level and axiomatize it according to the macro definition.
+  // In terms of performance, I could not measure any substantial difference.
   val expandMacros = true
 
 
@@ -155,9 +165,13 @@ class Z3ProverAPI(uniqueId: String,
   def push(n: Int = 1): Unit = {
     endPreamblePhase()
     pushPopScopeDepth += n
-    if (n != 1)
-      sys.error("Not supported")
-    prover.push()
+    if (n == 1) {
+      // the normal case; we handle this without invoking a bunch of higher order functions
+      prover.push()
+    } else {
+      // this might never actually happen
+      (0 until n).foreach(_ => prover.push())
+    }
   }
 
   def pop(n: Int = 1): Unit = {
@@ -313,8 +327,7 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def comment(str: String): Unit = {
-    if (!preamblePhaseOver && str == "End preamble")
-      endPreamblePhase()
+    // ignore
   }
 
   def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort): Fun = {
@@ -328,7 +341,10 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def declare(decl: Decl): Unit = {
-    // just creating the term is enough.
+    // We convert the declaration into a Z3-level declaration (which is automatically added to Z3's
+    // current state) and record it in out collection(s) of emmitted declarations.
+    // Special handling for macro declarations if expandMacros is true; in that case,
+    // nothing is declared on the Z3 level, and we simply remember the definition ourselves.
     decl match {
       case SortDecl(s) => {
         val convertedSort = termConverter.convertSort(s)
