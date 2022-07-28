@@ -28,6 +28,7 @@ class TermToZ3APIConverter
   var ctx: Context = _
   val macros = mutable.HashMap[String, (Seq[Var], Term)]()
 
+  val sortCache = mutable.HashMap[Sort, Z3Sort]()
   val funcDeclCache = mutable.HashMap[(String, Seq[Sort], Sort), Z3FuncDecl]()
 
   def convert(s: Sort): Z3Sort = convertSort(s)
@@ -87,6 +88,9 @@ class TermToZ3APIConverter
   var secondFunc: Z3FuncDecl = _
 
   def convertSort(s: Sort): Z3Sort = {
+    val existingEntry = sortCache.get(s)
+    if (existingEntry.isDefined)
+      return existingEntry.get
     val res = s match {
       case sorts.Int => ctx.mkIntSort()
       case sorts.Bool => ctx.mkBoolSort()
@@ -124,6 +128,7 @@ class TermToZ3APIConverter
       case sorts.FieldPermFunction() => ctx.mkUninterpretedSort("$FPM") // text("$FPM")
       case sorts.PredicatePermFunction() => ctx.mkUninterpretedSort("$PPM") // text("$PPM")
     }
+    sortCache.update(s, res)
     res
   }
 
@@ -249,7 +254,8 @@ class TermToZ3APIConverter
           convertTerm(body)
         } else{
           val qvarExprs = vars.map(v => convert(v)).toArray
-          val patterns = triggers.filter(_.p.nonEmpty).map(t => ctx.mkPattern(t.p.map(convertTerm): _*)).toArray
+          val nonEmptyTriggers = triggers.filter(_.p.nonEmpty)
+          val patterns = if (nonEmptyTriggers.nonEmpty) nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(convertTerm): _*)).toArray else null
           if (quant == Forall) {
             ctx.mkForall(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
           }else{
@@ -300,8 +306,8 @@ class TermToZ3APIConverter
       /* Permissions */
 
 
-      case FullPerm() => ctx.mkReal(1)//ctx.mkConst("$Perm.Write", permSort)
-      case NoPerm() => ctx.mkReal(0)//ctx.mkConst("$Perm.No", permSort)
+      case FullPerm() => ctx.mkReal(1)
+      case NoPerm() => ctx.mkReal(0)
       case FractionPermLiteral(r) => ctx.mkDiv(convertToReal(IntLiteral(r.numerator)), convertToReal(IntLiteral(r.denominator)))
       case FractionPerm(n, d) => ctx.mkDiv(convertToReal(n), convertToReal(d))
       case PermLess(t0, t1) => ctx.mkLt(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
@@ -440,8 +446,9 @@ class TermToZ3APIConverter
   }
 
   def getFuncDecl(name: String, resSort: Sort, argSorts: Seq[Sort]): Z3FuncDecl = {
-    if (funcDeclCache.contains((name, argSorts, resSort)))
-      return funcDeclCache((name, argSorts, resSort))
+    val existingEntry = funcDeclCache.get((name, argSorts, resSort))
+    if (existingEntry.isDefined)
+      return existingEntry.get
     val res = ctx.mkFuncDecl(name, argSorts.map(a => convertSort(a)).toArray, convertSort(resSort))
     funcDeclCache.update((name, argSorts, resSort), res)
     res
