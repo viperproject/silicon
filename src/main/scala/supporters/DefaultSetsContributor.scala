@@ -18,7 +18,7 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
   type BuiltinDomainType = ast.SetType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.SetType]
 
-  val defaultSourceResource: String = "/dafny_axioms/sets.vpr"
+  val defaultSourceResource: String = "/dafny_axioms/sets_new.vpr"
   val userProvidedSourceFilepath: Option[String] = config.setAxiomatizationFile.toOption
   val sourceDomainName: String = "$Set"
 

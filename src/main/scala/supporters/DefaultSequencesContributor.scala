@@ -17,7 +17,7 @@ class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term],
   type BuiltinDomainType = ast.SeqType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.SeqType]
 
-  val defaultSourceResource: String = "/dafny_axioms/sequences.vpr"
+  val defaultSourceResource: String = "/dafny_axioms/sequences_new.vpr"
   val userProvidedSourceFilepath: Option[String] = config.sequenceAxiomatizationFile.toOption
   val sourceDomainName: String = "$Seq"
 
@@ -34,7 +34,7 @@ class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term],
     } else {
       // TODO: Generalise code once more functions (and/or axioms) are affected
       val functions = sequenceDomainInstance.functions.filterNot(_.name == "Seq_range")
-      val axioms = sequenceDomainInstance.axioms.filterNot(_.asInstanceOf[ast.NamedDomainAxiom].name.startsWith("ranged_seq_"))
+      val axioms = sequenceDomainInstance.axioms.filterNot(a => a.isInstanceOf[ast.NamedDomainAxiom] && a.asInstanceOf[ast.NamedDomainAxiom].name.startsWith("ranged_seq_"))
 
       sequenceDomainInstance.copy(functions = functions, axioms = axioms)(sequenceDomainInstance.pos, sequenceDomainInstance.info, sequenceDomainInstance.errT)
     }
