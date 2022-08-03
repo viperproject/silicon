@@ -55,6 +55,7 @@ sealed trait QuantifiedBasicChunk extends QuantifiedChunk {
   override def withSnapshotMap(snap: Term): QuantifiedBasicChunk
   def singletonArguments: Option[Seq[Term]]
   def hints: Seq[Term]
+  val invs: Option[InverseFunctions]
 }
 
 /* TODO: Instead of using the singletonRcvr to differentiate between QP chunks that

@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import scala.annotation.unused
-import scala.collection.immutable.ArraySeq
+import scala.collection.immutable.{ArraySeq, ListMap}
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
@@ -27,7 +27,7 @@ import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.Field
+import viper.silver.ast.{Field, Predicate}
 import viper.silver.reporter.InternalWarningMessage
 
 case class InverseFunctions(condition: Term,
@@ -936,40 +936,40 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
              : VerificationResult = {
     // Try shortcut
 
-    if (s.functionRecorder != NoopFunctionRecorder && resource.isInstanceOf[Field]) { // TODO: other cases
-      val fieldName = resource.asInstanceOf[Field].name
-      val exactlyMatchingChunk = h.values.find{
-        case qfc@QuantifiedFieldChunk(BasicChunkIdentifier(fn), _, prm, Some(invs), _, _, _) if fn == fieldName => {
-          val qvarsToInversesOfCodomain = invs.qvarsToInversesOf(qfc.quantifiedVars)
-          val qvarsToInversesOfCodomainP = Map(qvars(0) -> qvarsToInversesOfCodomain.head._2)
-          val qvarsToOtherQvars = Map(qvars(0) -> qvarsToInversesOfCodomain.head._1)
-          if (qvarsToOtherQvars.head._1.sort == qvarsToOtherQvars.head._2.sort) {
-            val conditionalizedPermissions =
-              Ite(
-                tCond.replace(qvarsToInversesOfCodomainP),
-                tPerm.replace(qvarsToInversesOfCodomainP),
-                NoPerm())
-            var res = prm == conditionalizedPermissions
-            if (res) {
-              val firstTerm = invs.invertibles(0)
-              res = tArgs(0).replace(qvarsToOtherQvars) == firstTerm
-            }
-            res
-          }else{
-            false
-          }
-        }
+    if (s.functionRecorder == NoopFunctionRecorder) {
+      val potentiallyMatchingChunks = h.values.filter{
+        case QuantifiedFieldChunk(BasicChunkIdentifier(id), _, _, Some(_), _, _, _) if resource.isInstanceOf[Field] => resource.asInstanceOf[Field].name == id
+        case QuantifiedPredicateChunk(BasicChunkIdentifier(id), _, _, _, Some(_), _, _, _) if resource.isInstanceOf[Predicate] => resource.asInstanceOf[Predicate].name == id
         case _ => false
+      }.asInstanceOf[Iterable[QuantifiedBasicChunk]]
+      val exactlyMatchingChunk = potentiallyMatchingChunks.find{c => {
+          val invs = c.invs.get
+          val vars =  c.quantifiedVars
+          val prm = c.perm
+          if (invs.inverses.size == qvars.length){
+            val qvarsToInversesOfCodomain = invs.qvarsToInversesOf(vars)
+            val qvarsToInversesOfCodomainP: Map[Var, App] = Map.empty ++ qvars.zipWithIndex.map{case (qv, i) => qv -> qvarsToInversesOfCodomain.toSeq(i)._2}
+            val qvarsToOtherQvars: Map[Var, Var] = Map.empty ++ qvars.zipWithIndex.map{case (qv, i) => qv -> qvarsToInversesOfCodomain.toSeq(i)._1}
+            if (qvarsToOtherQvars.forall{case (v1, v2) => v1.sort == v2.sort}){
+              val conditionalizedPermissions =
+                Ite(
+                  tCond.replace(qvarsToInversesOfCodomainP),
+                  tPerm.replace(qvarsToInversesOfCodomainP),
+                  NoPerm())
+              prm == conditionalizedPermissions && invs.invertibles.zipWithIndex.forall{case (t, i) => tArgs(i).replace(qvarsToOtherQvars) == t}
+            }else false
+          }else false
+        }
       }
+
       if (exactlyMatchingChunk.isDefined){
-        println("using shortcut")
-        // is this the way to do it? anyway, basically just use the chunk we found
+        // just use the chunk we found
         val newHeap = h - exactlyMatchingChunk.get
-        val sm = exactlyMatchingChunk.get.asInstanceOf[QuantifiedFieldChunk].snapshotMap
+        val sm = exactlyMatchingChunk.get.snapshotMap
         val fr1 = s.functionRecorder //.recordFvfAndDomain(sm)
         val s1 = s.copy(partiallyConsumedHeap = Some(newHeap), functionRecorder = fr1)
 
-        // I THINK there's no need to check injectivity, non-negativity or anything like that because we already
+        // there's no need to check injectivity, non-negativity or anything like that because we already
         // know that those things hold for the chunk we already have, and we know that the thing we're trying to
         // consume is exactly that chunk.
         return Q(s1, newHeap, sm.convert(sorts.Snap), v)
