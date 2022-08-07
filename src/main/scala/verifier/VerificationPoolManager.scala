@@ -133,7 +133,6 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
   class SlaveBorrowingForkJoinThreadFactory extends ForkJoinPool.ForkJoinWorkerThreadFactory {
     override def newThread(forkJoinPool: ForkJoinPool): ForkJoinWorkerThread = {
-      println("creating new thread")
       new SlaveBorrowingForkJoinWorkerThread(forkJoinPool)
     }
   }
@@ -142,9 +141,7 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
     var slave: SlaveVerifier = null
 
     override def onStart(): Unit = {
-      println("starting new thread, trying to borrow " + this)
       slave = slaveVerifierPool.borrowObject()
-      println("succeeded in borrowing " + this)
     }
 
     override def onTermination(exception: Throwable): Unit = {
@@ -161,7 +158,6 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
     extends RecursiveTask[Seq[VerificationResult]]{
 
     override def compute(): Seq[VerificationResult] = {
-      //println("starting new task")
       val worker = Thread.currentThread().asInstanceOf[SlaveBorrowingForkJoinWorkerThread]
       val slave = worker.slave
       task(slave)
