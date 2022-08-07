@@ -24,7 +24,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.cfg.ConditionalEdge
+import viper.silver.cfg.{ConditionalEdge, Kind}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -101,7 +101,10 @@ object executor extends ExecutionRules {
       Q(s, v)
     } else if (edges.length == 1) {
       follow(s, edges.head, v)(Q)
-    } else if (edges.length == 2 && edges(0).isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] && edges(1).isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] && edges(1).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]].condition == ast.Not(edges(0).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]].condition)()){
+    } else if (edges.length == 2 && edges(0).isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] && edges(1).isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
+               edges(0).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]].kind == Kind.Normal &&
+               edges(1).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]].kind == Kind.Normal &&
+               edges(1).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]].condition == ast.Not(edges(0).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]].condition)()){
       val thenEdge = edges(0).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
       val elseEdge = edges(1).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
       eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, v1) =>
