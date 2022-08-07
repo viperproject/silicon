@@ -106,6 +106,11 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       _verificationPoolManager.pooledVerifiers.emit(content)
     }
 
+    override def emit(contents: Iterable[String]): Unit = {
+      decider.prover.emit(contents)
+      _verificationPoolManager.pooledVerifiers.emit(contents)
+    }
+
     def assume(term: Term): Unit = {
       decider.prover.assume(term)
       _verificationPoolManager.pooledVerifiers.assume(term)
@@ -129,6 +134,11 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
       decider.prover.saturate(data)
       _verificationPoolManager.pooledVerifiers.saturate(data)
+    }
+
+    override def emitSettings(contents: Iterable[String]): Unit = {
+      decider.prover.emitSettings(contents)
+      _verificationPoolManager.pooledVerifiers.emitSettings(contents)
     }
   }
 
@@ -295,14 +305,14 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   private def emitStaticPreamble(sink: ProverLike): Unit = {
     sink.comment(s"\n; ${decider.prover.staticPreamble}")
-    preambleReader.emitPreamble(decider.prover.staticPreamble, sink)
+    preambleReader.emitPreamble(decider.prover.staticPreamble, sink, true)
 
     if (config.proverRandomizeSeeds) {
       sink.comment(s"\n; Randomise seeds [--${config.rawProverRandomizeSeeds.name}]")
       val options = decider.prover.randomizeSeedsOptions
         .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
 
-      preambleReader.emitPreamble(options, sink)
+      preambleReader.emitPreamble(options, sink, true)
     }
 
     val smt2ConfigOptions =
@@ -313,11 +323,11 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       val msg = s"Additional prover configuration options are '${config.proverConfigArgs}'"
       reporter report ConfigurationConfirmation(msg)
       logger info msg
-      preambleReader.emitPreamble(smt2ConfigOptions, sink)
+      preambleReader.emitPreamble(smt2ConfigOptions, sink, true)
     }
 
     sink.comment("\n; /preamble.smt2")
-    preambleReader.emitPreamble("/preamble.smt2", sink)
+    preambleReader.emitPreamble("/preamble.smt2", sink, false)
   }
 
   /* Prover preamble: After program analysis */

@@ -64,4 +64,6 @@ class Z3ProverStdIO(uniqueId: String,
   protected def getProverPath: Path = {
     Paths.get(Verifier.config.z3Exe)
   }
+
+  override def emitSettings(contents: Iterable[String]): Unit = emit(contents)
 }

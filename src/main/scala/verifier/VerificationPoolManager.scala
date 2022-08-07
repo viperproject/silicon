@@ -26,6 +26,7 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
   private[verifier] object pooledVerifiers extends ProverLike {
     def emit(content: String): Unit = slaveVerifiers foreach (_.decider.prover.emit(content))
+    override def emit(contents: Iterable[String]): Unit = slaveVerifiers foreach (_.decider.prover.emit(contents))
     def assume(term: Term): Unit = slaveVerifiers foreach (_.decider.prover.assume(term))
     def declare(decl: Decl): Unit =  slaveVerifiers foreach (_.decider.prover.declare(decl))
     def comment(content: String): Unit = slaveVerifiers foreach (_.decider.prover.comment(content))
@@ -35,6 +36,9 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
     def saturate(timeout: Int, comment: String): Unit =
       slaveVerifiers foreach (_.decider.prover.saturate(timeout, comment))
+
+    override def emitSettings(contents: Iterable[String]): Unit =
+      slaveVerifiers foreach (_.decider.prover.emitSettings(contents))
   }
 
   /* Verifier pool management */
