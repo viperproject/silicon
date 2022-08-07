@@ -101,13 +101,21 @@ domain $Multiset[E] {
     }
 
     function Multiset_equal(ms0: $Multiset[E], ms1: $Multiset[E]): Bool
+    /*
     axiom {
         forall a: $Multiset[E], b: $Multiset[E] :: { Multiset_equal(a, b) }
             Multiset_equal(a, b) <==> (forall o: E :: { Multiset_count(a, o) } { Multiset_count(b, o) } Multiset_count(a, o) == Multiset_count(b, o))
     }
+    */
+    function Multiset_skolem_diff(s0: $Multiset[E], s1: $Multiset[E]): E
     axiom {
         forall a: $Multiset[E], b: $Multiset[E] :: { Multiset_equal(a, b) }
-            Multiset_equal(a, b) ==> a == b
+            (Multiset_equal(a, b) && a==b) ||
+            (!Multiset_equal(a, b) && a != b && Multiset_skolem_diff(a, b) == Multiset_skolem_diff(b, a) && Multiset_count(a, Multiset_skolem_diff(a, b)) != Multiset_count(b, Multiset_skolem_diff(a, b)))
+    }
+    axiom {
+        forall a: $Multiset[E], b: $Multiset[E] :: { Multiset_equal(a, b) }
+            Multiset_equal(a, b) <==> a == b
     }
 
     function Multiset_disjoint(ms0: $Multiset[E], ms1: $Multiset[E]): Bool

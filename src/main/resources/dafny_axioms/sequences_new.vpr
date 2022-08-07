@@ -167,17 +167,6 @@ domain $Seq[E] {
     // start equals
     function Seq_equal(s0: $Seq[E], s1: $Seq[E]): Bool
 
-    // ME: I don't see how this is useful at all. Shouldn't we just have s0 == s1 instead???
-    // ME TODO: try removing.
-    axiom {
-        forall s0: $Seq[E], s1: $Seq[E] :: { Seq_equal(s0, s1) }
-            Seq_equal(s0, s1) ==>
-                Seq_length(s0) == Seq_length(s1) &&
-                (forall j: Int :: { Seq_index(s0, j) } { Seq_index(s1, j) }
-                    0 <= j && j < Seq_length(s0) ==> Seq_index(s0, j) == Seq_index(s1, j)
-                )
-    }
-
     function Seq_skolem_diff(s0: $Seq[E], s1: $Seq[E]): Int
 
     axiom {
@@ -189,7 +178,7 @@ domain $Seq[E] {
     }
     axiom {
         forall a: $Seq[E], b: $Seq[E] :: { Seq_equal(a, b) }
-        Seq_equal(a, b) ==> a == b
+        Seq_equal(a, b) <==> a == b
     }
 
     // end equals

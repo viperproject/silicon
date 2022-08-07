@@ -114,12 +114,20 @@ domain $Set[E] {
     }
 
     function Set_equal(s0: $Set[E], s1: $Set[E]): Bool
+    /*
     axiom {
         forall a: $Set[E], b: $Set[E] :: { Set_equal(a, b) }
             Set_equal(a, b) <==> (forall o: E :: { Set_in(o, a) } { Set_in(o, b) } Set_in(o, a) <==> Set_in(o, b))
     }
+    */
+    function Set_skolem_diff(s0: $Set[E], s1: $Set[E]): E
     axiom {
         forall a: $Set[E], b: $Set[E] :: { Set_equal(a, b) }
-            Set_equal(a, b) ==> a == b
+            (Set_equal(a, b) && a==b) ||
+            (!Set_equal(a, b) && a != b && Set_skolem_diff(a, b) == Set_skolem_diff(b, a) && Set_in(Set_skolem_diff(a, b), a) != Set_in(Set_skolem_diff(a, b), b))
+    }
+    axiom {
+        forall a: $Set[E], b: $Set[E] :: { Set_equal(a, b) }
+            Set_equal(a, b) <==> a == b
     }
 }
