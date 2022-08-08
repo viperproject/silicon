@@ -82,7 +82,7 @@ class Z3ProverAPI(uniqueId: String,
       with LazyLogging
 {
 
-  protected var pushPopScopeDepth = 0
+  /*protected*/ var pushPopScopeDepth = 0
   protected var lastTimeout: Int = -1
   protected var logfileWriter: PrintWriter = _
   protected var prover: Solver = _

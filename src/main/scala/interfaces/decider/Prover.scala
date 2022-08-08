@@ -46,6 +46,8 @@ trait Prover extends ProverLike with StatefulComponent {
   def staticPreamble: String
   def randomizeSeedsOptions: Seq[String]
 
+  def pushPopScopeDepth: Int
+
   def push(n: Int = 1): Unit
 
   def pop(n: Int = 1): Unit

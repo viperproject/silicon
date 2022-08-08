@@ -7,11 +7,14 @@
 package viper.silicon.rules
 
 import java.util.concurrent._
+
+import viper.silicon.common.collections.immutable
 import viper.silicon.common.concurrency._
+import viper.silicon.decider.{LayeredPathConditionStack, PathConditionStack}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.state.State
-import viper.silicon.state.terms.{Not, Term}
+import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
@@ -81,6 +84,9 @@ object brancher extends BranchingRules {
     v.decider.prover.comment(elseBranchComment)
 
     val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition))
+    var functionsOfCurrentDecider: immutable.InsertionOrderedSet[FunctionDecl] = null
+    var macrosOfCurrentDecider: Vector[MacroDecl] = null
+    var pcsOfCurrentDecider: PathConditionStack = null
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch) {
@@ -92,9 +98,12 @@ object brancher extends BranchingRules {
          * needed, the second one ensures that the current path conditions (etc.) of the
          * "offloading" verifier are captured.
          */
-        val functionsOfCurrentDecider = v.decider.freshFunctions
-        val macrosOfCurrentDecider = v.decider.freshMacros
-        val pcsOfCurrentDecider = v.decider.pcs.duplicate()
+        if (parallelizeElseBranch){
+          functionsOfCurrentDecider = v.decider.freshFunctions
+          macrosOfCurrentDecider = v.decider.freshMacros
+          pcsOfCurrentDecider = v.decider.pcs.duplicate()
+        }
+        //println(s"stack has ${v.decider.pcs.nLayers()} layers, prover has ${v.decider.prover.pushPopScopeDepth} stack size")
 
         //println(s"\n[INIT elseBranchVerificationTask v.uniqueId = ${v.uniqueId}]")
         //println(s"  condition = $condition")
@@ -106,29 +115,27 @@ object brancher extends BranchingRules {
         (v0: Verifier) => {
           SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
           SymbExLogger.currentLog().markReachable(uidBranchPoint)
+          if (v.uniqueId != v0.uniqueId){
+            println("DIFFERENT IDS, TAKING OVER")
+
+            /* [BRANCH-PARALLELISATION] */
+            //throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
+
+            val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
+            val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
+
+            v0.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v0.uniqueId}]")
+            v0.decider.prover.comment(s"Bulk-declaring functions")
+            v0.decider.declareAndRecordAsFreshFunctions(newFunctions)
+            v0.decider.prover.comment(s"Bulk-declaring macros")
+            v0.decider.declareAndRecordAsFreshMacros(newMacros)
+
+            v0.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
+            v0.decider.setPcs(pcsOfCurrentDecider)
+            //v1.decider.pcs.pushScope() /* Empty scope for which the branch condition can be set */
+
+          }
           executionFlowController.locally(s, v0)((s1, v1) => {
-            if (v.uniqueId != v1.uniqueId) {
-              //println("DIFFERENT IDS, TAKING OVER")
-
-              /* [BRANCH-PARALLELISATION] */
-              //throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
-
-                val newFunctions = functionsOfCurrentDecider -- v1.decider.freshFunctions
-                val newMacros = macrosOfCurrentDecider.diff(v1.decider.freshMacros)
-
-                v1.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v1.uniqueId}]")
-                v1.decider.prover.comment(s"Bulk-declaring functions")
-                v1.decider.declareAndRecordAsFreshFunctions(newFunctions)
-                v1.decider.prover.comment(s"Bulk-declaring macros")
-                v1.decider.declareAndRecordAsFreshMacros(newMacros)
-
-                v1.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
-                v1.decider.setPcs(pcsOfCurrentDecider)
-                v1.decider.pcs.pushScope() /* Empty scope for which the branch condition can be set */
-            }else{
-              //println("same ids, keep going!")
-            }
-
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
 
@@ -194,10 +201,29 @@ object brancher extends BranchingRules {
         try {
           //println("reaching else-get " + v.uniqueId)
           if (parallelizeElseBranch) {
+            //functionsOfCurrentDecider = v.decider.freshFunctions
+            //macrosOfCurrentDecider = v.decider.freshMacros
+            pcsOfCurrentDecider = v.decider.pcs.duplicate()
+
             //val before = System.currentTimeMillis()
             val tsk = elseBranchFuture.asInstanceOf[ForkJoinTask[Seq[VerificationResult]]]
+            //val stackSizeBefore = v.decider.prover.pushPopScopeDepth
+            //println(s"stack size before is ${stackSizeBefore}")
+            val pcsBefore = v.decider.pcs
+
+            //val awaitMethod = classOf[ForkJoinTask[Seq[VerificationResult]]].getDeclaredMethod("externalAwaitDone")
+            //awaitMethod.setAccessible(true)
+            //awaitMethod.invoke(tsk)
             rs = tsk.join()
-            val after = System.currentTimeMillis()
+
+            val stackSizeAfter = v.decider.prover.pushPopScopeDepth
+            if (v.decider.pcs != pcsBefore){
+              // we have done other work during the join, need to reset
+              v.decider.setPcs(pcsOfCurrentDecider, true)
+              //val stackSizeAfterAfter = v.decider.prover.pushPopScopeDepth
+              //println(s"restoring after join, ${stackSizeBefore}, ${stackSizeAfter}, ${stackSizeAfterAfter}")
+            }
+            //val after = System.currentTimeMillis()
             //println("waited for join: " + (after - before))
           }else{
             rs = elseBranchFuture.get()
