@@ -65,9 +65,6 @@ object brancher extends BranchingRules {
       || !v.decider.check(condition, Verifier.config.checkTimeout()))
 
     val parallelizeElseBranch = s.parallelizeBranches && !s.underJoin && executeThenBranch && executeElseBranch
-    //if (parallelizeElseBranch){
-    //  println("parallel branching on " + condition.toString)
-    //}
 
 //    val additionalPaths =
 //      if (executeThenBranch && exploreFalseBranch) 1
@@ -116,10 +113,8 @@ object brancher extends BranchingRules {
           SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
           SymbExLogger.currentLog().markReachable(uidBranchPoint)
           if (v.uniqueId != v0.uniqueId){
-            println("DIFFERENT IDS, TAKING OVER")
-
             /* [BRANCH-PARALLELISATION] */
-            //throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
+            // executing the else branch on a different verifier, need to adapt the state
 
             val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
             val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
@@ -132,7 +127,6 @@ object brancher extends BranchingRules {
 
             v0.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
             v0.decider.setPcs(pcsOfCurrentDecider)
-            //v1.decider.pcs.pushScope() /* Empty scope for which the branch condition can be set */
 
           }
           executionFlowController.locally(s, v0)((s1, v1) => {
@@ -151,10 +145,7 @@ object brancher extends BranchingRules {
         if (parallelizeElseBranch) {
           /* [BRANCH-PARALLELISATION] */
           v.verificationPoolManager.queueVerificationTask(v0 => {
-            //v0.verificationPoolManager.runningVerificationTasks.put(elseBranchVerificationTask, true)
             val res = elseBranchVerificationTask(v0)
-
-            //v0.verificationPoolManager.runningVerificationTasks.remove(elseBranchVerificationTask)
 
             Seq(res)
           })
@@ -178,67 +169,32 @@ object brancher extends BranchingRules {
     }) combine {
 
       /* [BRANCH-PARALLELISATION] */
-      if (false && parallelizeElseBranch) { // MARCO
-//          && v.verificationPoolManager.slaveVerifierPool.getNumIdle == 0
-//          && !v.verificationPoolManager.runningVerificationTasks.containsKey(elseBranchVerificationTask)
-//                /* TODO: This attempt to ensure that the elseBranchVerificationTask is not already
-//                 *       being executed is most likely not thread-safe since checking if a task
-//                 *       is still in the queue and canceling it, if so, is not an atomic operation.
-//                 *       I.e. the task may be taken out of the queue in between.
-//                 */
+      var rs: Seq[VerificationResult] = null
+      try {
+        if (parallelizeElseBranch) {
+          pcsOfCurrentDecider = v.decider.pcs.duplicate()
 
-        throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
+          val tsk = elseBranchFuture.asInstanceOf[ForkJoinTask[Seq[VerificationResult]]]
+          val pcsBefore = v.decider.pcs
 
-//        /* Cancelling the task should result in the underlying task being removed from the task
-//         * queue/executor
-//         */
-//        elseBranchFuture.cancel(true)
-//
-//        /* Run the task on the current thread */
-//        elseBranchVerificationTask(v)
-      } else {
-        var rs: Seq[VerificationResult] = null
-        try {
-          //println("reaching else-get " + v.uniqueId)
-          if (parallelizeElseBranch) {
-            //functionsOfCurrentDecider = v.decider.freshFunctions
-            //macrosOfCurrentDecider = v.decider.freshMacros
-            pcsOfCurrentDecider = v.decider.pcs.duplicate()
+          rs = tsk.join()
 
-            //val before = System.currentTimeMillis()
-            val tsk = elseBranchFuture.asInstanceOf[ForkJoinTask[Seq[VerificationResult]]]
-            //val stackSizeBefore = v.decider.prover.pushPopScopeDepth
-            //println(s"stack size before is ${stackSizeBefore}")
-            val pcsBefore = v.decider.pcs
-
-            //val awaitMethod = classOf[ForkJoinTask[Seq[VerificationResult]]].getDeclaredMethod("externalAwaitDone")
-            //awaitMethod.setAccessible(true)
-            //awaitMethod.invoke(tsk)
-            rs = tsk.join()
-
-            val stackSizeAfter = v.decider.prover.pushPopScopeDepth
-            if (v.decider.pcs != pcsBefore){
-              // we have done other work during the join, need to reset
-              v.decider.setPcs(pcsOfCurrentDecider, true)
-              //val stackSizeAfterAfter = v.decider.prover.pushPopScopeDepth
-              //println(s"restoring after join, ${stackSizeBefore}, ${stackSizeAfter}, ${stackSizeAfterAfter}")
-            }
-            //val after = System.currentTimeMillis()
-            //println("waited for join: " + (after - before))
-          }else{
-            rs = elseBranchFuture.get()
+          if (v.decider.pcs != pcsBefore){
+            // we have done other work during the join, need to reset
+            v.decider.setPcs(pcsOfCurrentDecider)
           }
-
-          //println("after else-get " + v.uniqueId)
-        } catch {
-          case ex: ExecutionException =>
-            ex.getCause.printStackTrace()
-            throw ex
+        }else{
+          rs = elseBranchFuture.get()
         }
-
-        assert(rs.length == 1, s"Expected a single verification result but found ${rs.length}")
-        rs.head
+      } catch {
+        case ex: ExecutionException =>
+          ex.getCause.printStackTrace()
+          throw ex
       }
+
+      assert(rs.length == 1, s"Expected a single verification result but found ${rs.length}")
+      rs.head
+
     }
     SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
     res

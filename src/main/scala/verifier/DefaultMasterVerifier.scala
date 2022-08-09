@@ -231,7 +231,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
-        val s = createInitialState(method, program).copy(parallelizeBranches = true) /* [BRANCH-PARALLELISATION] */
+        val s = createInitialState(method, program).copy(parallelizeBranches = Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
@@ -244,7 +244,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           setErrorScope(results, method)
         })
       }) ++ cfgs.map(cfg => {
-        val s = createInitialState(cfg, program).copy(parallelizeBranches = true) /* [BRANCH-PARALLELISATION] */
+        val s = createInitialState(cfg, program).copy(parallelizeBranches = Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()

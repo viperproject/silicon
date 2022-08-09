@@ -635,6 +635,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val parallelizeBranches= opt[Boolean]("parallelizeBranches",
+    descr = "Verify different branches in parallel.",
+    default = Some(false),
+    noshort = true
+  )
+
   val printTranslatedProgram: ScallopOption[Boolean] = opt[Boolean]("printTranslatedProgram",
     descr ="Print the final program that is going to be verified to stdout.",
     default = Some(false),

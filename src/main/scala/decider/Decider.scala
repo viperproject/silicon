@@ -70,7 +70,7 @@ trait Decider {
   def freshMacros: Vector[MacroDecl]
   def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit
   def declareAndRecordAsFreshMacros(functions: Vector[MacroDecl]): Unit
-  def setPcs(other: PathConditionStack, preserveLayers: Boolean=false): Unit
+  def setPcs(other: PathConditionStack): Unit
 
   def statistics(): Map[String, String]
 }
@@ -99,22 +99,17 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def pcs: PathConditionStack = pathConditions
 
-    def setPcs(other: PathConditionStack, preserveLayers: Boolean=false) = {
+    def setPcs(other: PathConditionStack) = {
       /* [BRANCH-PARALLELISATION] */
-      println("setting pcs")
       pathConditions = other
       while (prover.pushPopScopeDepth > 1){
         prover.pop()
       }
-      if (preserveLayers){
-        val layeredStack = other.asInstanceOf[LayeredPathConditionStack]
-        layeredStack.layers.reverse.foreach(l => {
-          l.assumptions foreach prover.assume
-          prover.push()
-        })
-      }else{
-        pathConditions.assumptions foreach prover.assume
-      }
+      val layeredStack = other.asInstanceOf[LayeredPathConditionStack]
+      layeredStack.layers.reverse.foreach(l => {
+        l.assumptions foreach prover.assume
+        prover.push()
+      })
     }
 
     private def getProverStdIO(prover: String): Prover = prover match {
