@@ -10,7 +10,7 @@ import java.util.concurrent._
 
 import viper.silicon.common.collections.immutable
 import viper.silicon.common.concurrency._
-import viper.silicon.decider.{LayeredPathConditionStack, PathConditionStack}
+import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.state.State

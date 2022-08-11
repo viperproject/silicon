@@ -11,7 +11,7 @@ import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
-import viper.silver.verifier.{Counterexample, CounterexampleTransformer, Model, VerificationError}
+import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
@@ -24,7 +24,7 @@ trait SymbolicExecutionRules {
       case _ => ve
     }
     val counterexample: Option[Counterexample] = if (v != null && Verifier.config.counterexample.toOption.isDefined) {
-      if (generateNewModel || !v.decider.hasModel) {
+      if (generateNewModel || !v.decider.hasModel()) {
         v.decider.generateModel()
       }
       if (v.decider.isModelValid()) {

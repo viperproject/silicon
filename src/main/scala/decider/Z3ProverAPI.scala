@@ -13,8 +13,8 @@ import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Sort, SortDecl, SortWrapperDecl, Term, sorts}
 import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
-import viper.silver.reporter.Reporter
-import viper.silver.verifier.{ApplicationEntry, ConstantEntry, MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
+import viper.silver.reporter.{InternalWarningMessage, Reporter}
+import viper.silver.verifier.{MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
 import java.io.PrintWriter
 import java.nio.file.Path
 
@@ -30,7 +30,7 @@ import scala.util.Random
 object Z3ProverAPI {
   val name = "Z3-API"
   val minVersion = Version("4.8.6.0")
-  val maxVersion = Some(Version("4.8.6.0")) /* X.Y.Z if that is the *last supported* version */
+  val maxVersion = Some(Version("4.8.7.0")) /* X.Y.Z if that is the *last supported* version */
 
   // these are not actually used, but since there is a lot of code that expects command line parameters and a
   // config file, we just supply this information here (whose contents will then be ignored)
@@ -214,7 +214,7 @@ class Z3ProverAPI(uniqueId: String,
       else
         preambleAssumes.add(termConverter.convert(term).asInstanceOf[BoolExpr])
     } catch {
-      case e: Z3Exception => throw ExternalToolError("Prover", "Z3 error: " + e.getMessage)
+      case e: Z3Exception => reporter.report(InternalWarningMessage("Z3 error: " + e.getMessage))
     }
   }
 
@@ -223,7 +223,7 @@ class Z3ProverAPI(uniqueId: String,
     setTimeout(timeout)
 
     try {
-      val (result, duration) = Verifier.config.assertionMode() match {
+      val (result, _) = Verifier.config.assertionMode() match {
         case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
         case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
       }
@@ -354,7 +354,7 @@ class Z3ProverAPI(uniqueId: String,
           emittedSorts.add(convertedSort)
         }
       }
-      case fd@FunctionDecl(f) => {
+      case fd: FunctionDecl => {
         val converted = termConverter.convert(fd)
         if (!emittedFuncs.contains(converted)){
           emittedFuncs.add(converted)
@@ -374,7 +374,7 @@ class Z3ProverAPI(uniqueId: String,
           preambleAssumes.add(axiom)
         }
       }
-      case swd@SortWrapperDecl(from, to) => {
+      case swd: SortWrapperDecl => {
         val converted = termConverter.convert(swd)
         if (!emittedFuncs.contains(converted)){
           emittedFuncs.add(converted)
@@ -404,7 +404,7 @@ class Z3ProverAPI(uniqueId: String,
       for (entry <- funcInterp.getEntries) {
         val args = entry.getArgs.map(arg => fastparse.parse(arg.toString, ModelParser.value(_)).get.value)
         val value = fastparse.parse(entry.getValue.toString, ModelParser.value(_)).get.value
-        options.update(args, value)
+        options.update(args.toIndexedSeq, value)
       }
       val els = fastparse.parse(funcInterp.getElse.toString, ModelParser.value(_)).get.value
       entries.update(funcDecl.getName.toString, MapEntry(options.toMap, els))
