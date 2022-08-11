@@ -32,7 +32,7 @@ trait FunctionVerificationUnit[SO, SY, AX]
 
 trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Verifier =>
   def logger: Logger
-  def decider: Decider
+  //def decider: Decider
   def symbolConverter: SymbolConverter
 
   private case class Phase1Data(sPre: State, bcsPre: Stack[Term], pcsPre: InsertionOrderedSet[Term])
@@ -47,6 +47,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     @unused private var program: ast.Program = _
     private var functionData: Map[ast.Function, FunctionData] = Map.empty
+    private var levels: Seq[Seq[ast.Function]] = _
     private var emittedFunctionAxioms: Vector[Term] = Vector.empty
     private var freshVars: Vector[Var] = Vector.empty
     private var postConditionAxioms: Vector[Term] = Vector.empty
@@ -63,6 +64,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     }
 
     def units = functionData.keys.toSeq
+    def unitsByLevel = levels
 
     /* Preamble contribution */
 
@@ -80,7 +82,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     def analyze(program: ast.Program): Unit = {
       this.program = program
 
-      val heights = Functions.heights(program, Verifier.config.alternativeFunctionVerificationOrder()).toSeq.sortBy(_._2).reverse
+      val (heightData, levelData) = Functions.heights(program, Verifier.config.alternativeFunctionVerificationOrder())
+      val heights = heightData.toSeq.sortBy(_._2).reverse
 
       functionData = toMap(
         heights.map { case (func, height) =>
@@ -89,6 +92,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                                       identifierFactory, pred => Verifier.predicateData(pred), Verifier.config,
                                       reporter)
           func -> data})
+
+      levels = levelData.map(l => l.map(c => c.toSeq).toSeq.flatten)
 
       /* TODO: FunctionData and HeapAccessReplacingExpressionTranslator depend
        *       on each other. Refactor s.t. this delayed assignment is no

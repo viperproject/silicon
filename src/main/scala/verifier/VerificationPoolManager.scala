@@ -39,6 +39,12 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
     override def emitSettings(contents: Iterable[String]): Unit =
       slaveVerifiers foreach (_.decider.prover.emitSettings(contents))
+
+    def push(): Unit =
+      slaveVerifiers foreach (_.decider.prover.push())
+
+    def pop(): Unit =
+      slaveVerifiers foreach (_.decider.prover.pop())
   }
 
   /* Verifier pool management */

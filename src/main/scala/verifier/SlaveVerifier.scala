@@ -7,6 +7,7 @@
 package viper.silicon.verifier
 
 import viper.silicon.supporters._
+import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
 import viper.silver.components.StatefulComponent
 import viper.silver.reporter.Reporter
 
@@ -15,7 +16,8 @@ class SlaveVerifier(master: MasterVerifier,
                     override val reporter: Reporter)
     extends BaseVerifier(Verifier.config, uniqueId)
        with DefaultMethodVerificationUnitProvider
-       with DefaultCfgVerificationUnitProvider {
+       with DefaultCfgVerificationUnitProvider
+       with DefaultFunctionVerificationUnitProvider {
 
   private val statefulSubcomponents = List[StatefulComponent](
     methodSupporter,

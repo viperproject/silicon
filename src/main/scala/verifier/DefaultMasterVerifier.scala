@@ -45,8 +45,7 @@ trait MasterVerifier extends Verifier {
 class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     extends BaseVerifier(config, "00")
        with MasterVerifier
-       with DefaultFunctionVerificationUnitProvider
-       with DefaultPredicateVerificationUnitProvider {
+       with DefaultPredicateVerificationUnitProvider{
 
   Verifier.config = config
 
@@ -72,7 +71,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
-    functionsSupporter, predicateSupporter,
+    predicateSupporter,
     _verificationPoolManager,
     MultiRunRecorders /* In lieu of a better place, include MultiRunRecorders singleton here */
   )
@@ -195,6 +194,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     SymbExLogger.resetMemberList()
     SymbExLogger.setConfig(config)
 
+    _verificationPoolManager.pooledVerifiers.push
+
     /* TODO: A workaround for Silver issue #94. toList must be before flatMap.
      *       Otherwise Set will be used internally and some error messages will be lost.
      */
@@ -215,6 +216,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
       setErrorScope(results, predicate)
     })
+
+    _verificationPoolManager.pooledVerifiers.pop
 
     decider.prover.stop()
 
