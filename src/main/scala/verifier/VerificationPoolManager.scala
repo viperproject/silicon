@@ -111,8 +111,8 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
 
 
-  def queueVerificationTask(task: SlaveVerifier => Seq[VerificationResult])
-                           : Future[Seq[VerificationResult]] = {
+  def queueVerificationTask[T](task: SlaveVerifier => T)
+                           : Future[T] = {
     val thread = Thread.currentThread()
     if (thread.isInstanceOf[SlaveBorrowingForkJoinWorkerThread]){
       new SlaveAwareForkJoinTask(task).fork
@@ -159,11 +159,11 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
   }
 
 
-  class SlaveAwareForkJoinTask(task: SlaveVerifier => Seq[VerificationResult])
+  class SlaveAwareForkJoinTask[T](task: SlaveVerifier => T)
   //extends Callable[Seq[VerificationResult]] {
-    extends RecursiveTask[Seq[VerificationResult]]{
+    extends RecursiveTask[T]{
 
-    override def compute(): Seq[VerificationResult] = {
+    override def compute(): T = {
       val worker = Thread.currentThread().asInstanceOf[SlaveBorrowingForkJoinWorkerThread]
       val slave = worker.slave
       task(slave)

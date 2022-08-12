@@ -46,13 +46,13 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     import evaluator._
 
     @unused private var program: ast.Program = _
-    private var functionData: Map[ast.Function, FunctionData] = Map.empty
+    /*private*/ var functionData: Map[ast.Function, FunctionData] = Map.empty
     private var levels: Seq[Seq[ast.Function]] = _
-    private var emittedFunctionAxioms: Vector[Term] = Vector.empty
-    private var freshVars: Vector[Var] = Vector.empty
+    /*private*/ var emittedFunctionAxioms: Vector[Term] = Vector.empty
+    /*private*/ var freshVars: Vector[Var] = Vector.empty
     private var postConditionAxioms: Vector[Term] = Vector.empty
 
-    private val expressionTranslator = {
+    /*private*/ val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
           s"Could not resolve expression $exp (${exp.pos}) during the axiomatisation of "
         + s"function ${data.programFunction.name}. This typically happens if the expression is on "
@@ -93,7 +93,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                                       reporter)
           func -> data})
 
-      levels = levelData.map(l => l.map(c => c.toSeq).toSeq.flatten)
+      levels = levelData.map(l => l.map(c => c.toSeq).toSeq.flatten).reverse
 
       /* TODO: FunctionData and HeapAccessReplacingExpressionTranslator depend
        *       on each other. Refactor s.t. this delayed assignment is no
@@ -166,7 +166,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
       val data = functionData(function)
-      val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data), conservingSnapshotGeneration = true)
+      val myRecorder = ActualFunctionRecorder(data)
+      data.myFunctionRecorder = myRecorder
+      val s = sInit.copy(functionRecorder = myRecorder, conservingSnapshotGeneration = true)
 
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(s, function) match {
@@ -264,7 +266,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       result
     }
 
-    private def emitAndRecordFunctionAxioms(axiom: Term*): Unit = {
+    /*private*/ def emitAndRecordFunctionAxioms(axiom: Term*): Unit = {
       axiom foreach decider.prover.assume
       emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
     }

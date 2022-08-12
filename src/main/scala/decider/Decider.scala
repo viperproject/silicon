@@ -92,8 +92,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var proverStdIO: Prover = _
     private var pathConditions: PathConditionStack = _
 
-    private var _freshFunctions: InsertionOrderedSet[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
-    private var _freshMacros: Vector[MacroDecl] = _
+    /* private*/ var _freshFunctions: InsertionOrderedSet[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
+    /* private*/  var _freshMacros: Vector[MacroDecl] = _
 
     def prover: Prover = proverStdIO
 

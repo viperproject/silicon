@@ -35,7 +35,7 @@ class FunctionData(val programFunction: ast.Function,
                    *       with/in the context of different verifiers.
                    */
                   (symbolConverter: SymbolConverter,
-                   expressionTranslator: HeapAccessReplacingExpressionTranslator,
+                   var expressionTranslator: HeapAccessReplacingExpressionTranslator,
                    identifierFactory: IdentifierFactory,
                    predicateData: ast.Predicate => PredicateData,
                    @unused config: Config,
@@ -85,7 +85,7 @@ class FunctionData(val programFunction: ast.Function,
    *       are currently not really supported (incomplete? unsound?)
    */
 
-  private[functions] var verificationFailures: Seq[FatalResult] = Vector.empty
+  /*private[functions]*/ var verificationFailures: Seq[FatalResult] = Vector.empty
   private[functions] var locToSnap: Map[ast.LocationAccess, Term] = Map.empty
   private[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
   private[this] var freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
@@ -95,6 +95,7 @@ class FunctionData(val programFunction: ast.Function,
   private[this] var freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   private[this] var freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet.empty
   private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
+  var myFunctionRecorder : FunctionRecorder = _
 
   private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunctions] = freshFieldInvs
   private[functions] def getFreshArps: InsertionOrderedSet[Var] = freshArps.map(_._1)
@@ -132,6 +133,7 @@ class FunctionData(val programFunction: ast.Function,
       })
 
     phase += 1
+    println("advanced phase in data for " + function.id)
   }
 
   private def generateNestedDefinitionalAxioms: InsertionOrderedSet[Term] = {
@@ -177,16 +179,28 @@ class FunctionData(val programFunction: ast.Function,
 
   lazy val postAxiom: Option[Term] = {
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
-
+    println("generating post for " + programFunction.name)
     if (programFunction.posts.nonEmpty) {
+      val fr1 = formalResult
       val posts =
         expressionTranslator.translatePostcondition(program, programFunction.posts, this)
 
+      val iThen = expressionTranslator.translatePostcondition(program, Seq(ast.LocalVar("i", ast.Int)()), this)
       val pre = And(translatedPres)
       val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(posts))))
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val body = Let(toMap(bodyBindings), innermostBody)
-
+      val fr2 = formalResult
+      if (fr1 != fr2) {
+        println("wtf")
+      }
+      val bodyVars = body.deepCollect{
+        case v@Var(id, _) if id.name.startsWith("i") => v
+      }
+      if (bodyVars.exists(bv => !arguments.contains(bv))){
+        val iNow = expressionTranslator.translatePostcondition(program, Seq(ast.LocalVar("i", ast.Int)()), this)
+        println("wtfff")
+      }
       Some(Forall(arguments, body, Trigger(limitedFunctionApplication)))
     } else
       None
@@ -249,7 +263,9 @@ class FunctionData(val programFunction: ast.Function,
       val allTriggers = (
            Seq(Trigger(functionApplication))
         ++ predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt))))
-
+      if (body.toString.contains("unresolved")){
+        println("hmmmm")
+      }
       Forall(arguments, body, allTriggers)})
   }
 }

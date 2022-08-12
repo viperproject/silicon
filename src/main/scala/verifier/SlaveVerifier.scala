@@ -21,7 +21,8 @@ class SlaveVerifier(master: MasterVerifier,
 
   private val statefulSubcomponents = List[StatefulComponent](
     methodSupporter,
-    cfgSupporter
+    cfgSupporter,
+    functionsSupporter
   )
 
   def verificationPoolManager: VerificationPoolManager = master.verificationPoolManager
