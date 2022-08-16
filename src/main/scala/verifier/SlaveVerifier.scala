@@ -17,7 +17,8 @@ class SlaveVerifier(master: MasterVerifier,
     extends BaseVerifier(Verifier.config, uniqueId)
        with DefaultMethodVerificationUnitProvider
        with DefaultCfgVerificationUnitProvider
-       with DefaultFunctionVerificationUnitProvider {
+       with DefaultFunctionVerificationUnitProvider
+       with DefaultPredicateVerificationUnitProvider {
 
   private val statefulSubcomponents = List[StatefulComponent](
     methodSupporter,
