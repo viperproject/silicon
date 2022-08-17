@@ -47,13 +47,12 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     import evaluator._
 
     @unused private var program: ast.Program = _
-    /*private*/ var functionData: Map[ast.Function, FunctionData] = Map.empty
+    var functionData: Map[ast.Function, FunctionData] = Map.empty
     private var levels: Seq[Seq[ast.Function]] = _
-    /*private*/ var emittedFunctionAxioms: Vector[Term] = Vector.empty
-    /*private*/ var freshVars: Vector[Var] = Vector.empty
+    private var emittedFunctionAxioms: Vector[Term] = Vector.empty
     private var postConditionAxioms: Vector[Term] = Vector.empty
 
-    /*private*/ val expressionTranslator = {
+    private val expressionTranslator = {
       def resolutionFailureMessage(exp: ast.Positioned, data: FunctionData): String = (
           s"Could not resolve expression $exp (${exp.pos}) during the axiomatisation of "
         + s"function ${data.programFunction.name}. This typically happens if the expression is on "
@@ -75,7 +74,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       */
     private def fresh(id: String, sort: Sort): Var = {
       val x = v.decider.fresh(id, sort)
-      freshVars = freshVars :+ x
 
       x
     }
@@ -131,12 +129,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       sink.comment("Snapshot variable to be used during function verification")
       sink.declare(ConstDecl(`?s`))
-
-      /* The analysis phase should not have introduced any fresh (via decider.fresh)
-       * variables. If it needs to, freshVars might need to be reset after the
-       * analysis phase/before the verification phase.
-       */
-      assert(freshVars.isEmpty)
     }
 
     /* Function supporter generates no axioms during program analysis */
@@ -159,6 +151,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       SymbExLogger.openMemberScope(function, null, v.decider.pcs)
 
       val data = functionData(function)
+      data.expressionTranslator = expressionTranslator
+      data.expressionTranslator.functionData = functionData
+
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
@@ -269,7 +264,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       result
     }
 
-    /*private*/ def emitAndRecordFunctionAxioms(axiom: Term*): Unit = {
+    def emitAndRecordFunctionAxioms(axiom: Term*): Unit = {
       axiom foreach decider.prover.assume
       emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
     }
@@ -294,21 +289,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     val symbolsAfterVerification: Iterable[Decl] =
       generateFunctionSymbolsAfterVerification collect { case Right(f) => f }
 
-    def declareSymbolsAfterVerification(sink: ProverLike): Unit = {
-      generateFunctionSymbolsAfterVerification foreach {
-        case Left(comment) => sink.comment(comment)
-        case Right(decl) => sink.declare(decl)
-      }
-
-      freshVars foreach (x => sink.declare(ConstDecl(x)))
-    }
-
-    val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms
-
-    def emitAxiomsAfterVerification(sink: ProverLike): Unit = {
-      emittedFunctionAxioms foreach sink.assume
-    }
-
     def contributeToGlobalStateAfterVerification(): Unit = {
       Verifier.functionData = functionData
     }
@@ -321,7 +301,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       program = null
       functionData = Map.empty
       emittedFunctionAxioms = Vector.empty
-      freshVars = Vector.empty
     }
 
     def stop(): Unit = {}

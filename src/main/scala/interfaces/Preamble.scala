@@ -45,11 +45,11 @@ trait VerifyingPreambleContributor[+SO, +SY, +AX, U <: ast.Node]
   def sortsAfterVerification: Iterable[SO]
   def declareSortsAfterVerification(sink: ProverLike): Unit
 
-  def symbolsAfterVerification: Iterable[SY]
-  def declareSymbolsAfterVerification(sink: ProverLike): Unit
+  //def symbolsAfterVerification: Iterable[SY]
+  //def declareSymbolsAfterVerification(sink: ProverLike): Unit
 
-  def axiomsAfterVerification: Iterable[AX]
-  def emitAxiomsAfterVerification(sink: ProverLike): Unit
+  //def axiomsAfterVerification: Iterable[AX]
+  //def emitAxiomsAfterVerification(sink: ProverLike): Unit
 
   def contributeToGlobalStateAfterVerification(): Unit
 }

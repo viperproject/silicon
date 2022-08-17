@@ -197,6 +197,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     _verificationPoolManager.pooledVerifiers.push()
     val supporters = _verificationPoolManager.slaveVerifiers.map(_.functionsSupporter)
+    var allEmittedFunctionAxioms: Vector[Term] = Vector.empty
     // NOTE: same functionData map for all
     supporters.foreach(s => s.functionData = functionsSupporter.functionData)
 
@@ -205,85 +206,58 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       val levelResultFutures = funcs.map(f => {
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
-          val fData = v.functionsSupporter.functionData(f)
-          // NOTE: the used fdata must use the expressiontranslator of the verifier, and correct back ref.
-          // this could probably happen inside verify.
-          fData.expressionTranslator = v.functionsSupporter.expressionTranslator
-          fData.expressionTranslator.functionData = v.functionsSupporter.functionData
           val results = v.functionsSupporter.verify(createInitialState(f, program), f)
           val elapsed = System.currentTimeMillis() - startTime
           reporter report VerificationResultMessage(s"silicon", f, elapsed, condenseToViperResult(results))
-          logger debug s"Silicon finished verification of function `${f.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
+          val msg = s"Silicon finished verification of function `${f.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
+          logger debug msg
+          println(msg)
           (setErrorScope(results, f), v.functionsSupporter.functionData(f), f, v)
         })
       })
       val levelResults = levelResultFutures.map(_.get())
       val results = levelResults.map(_._1)
-      // NOTE: some functionsupporters have been used (some possibly twice)
-      val supporters = _verificationPoolManager.slaveVerifiers.map(_.functionsSupporter)
+      // NOTE: some functionsupporters have been used (some possibly more than once)
 
-      val umm = levelResults.groupBy(_._4)
-      umm.
+      val formalArgs = levelResults.map(r => (r._4, r._2.formalArgs.values.map(ConstDecl(_)).toSeq :+ ConstDecl(r._2.formalResult)))
+      val axioms = levelResults.map(r => (r._4, Seq(r._2.limitedAxiom, r._2.triggerAxiom) ++ r._2.postAxiom ++
+        (if (r._3.body.isDefined && r._2.verificationFailures.isEmpty) r._2.definitionalAxiom else None)))
+      allEmittedFunctionAxioms ++= axioms.unzip._2.flatten
 
-
-      val formalArgs = levelResults.flatMap(_._2.formalArgs.values).map(ConstDecl(_))
-      val formalResults = levelResults.map(r => ConstDecl(r._2.formalResult))
-      val limitedAxioms = levelResults.map(_._2.limitedAxiom)
-      val triggerAxioms = levelResults.map(_._2.triggerAxiom)
-      val postAxioms = levelResults.flatMap(_._2.postAxiom)
-      val definitionalAxioms = levelResults.flatMap(_._2.definitionalAxiom)
-
-      val freshFunctions = levelResults.flatMap(_._4.decider.getAndDeleteFreshFunctions())
-      val freshMacros = levelResults.flatMap(_._4.decider.getAndDeleteFreshMacros())
-
+      val freshFunctions = _verificationPoolManager.slaveVerifiers.map(v => (v, v.decider.getAndDeleteFreshFunctions()))
+      val freshMacros = _verificationPoolManager.slaveVerifiers.map(v => (v, v.decider.getAndDeleteFreshMacros()))
 
       // NOTE: update functionData field with new/updated functon data objects
       val newData = levelResults.map(t => t._3 -> t._2)
-      supporters.foreach(s => s.functionData ++= newData)
       functionsSupporter.functionData ++= newData
 
 
-      _verificationPoolManager.slaveVerifiers.foreach(s =>{
-        levelResults.foreach{case (_, data, f, v) => {
-          // for all other verifiers, add
-          if (v != s) {
-            // formal args decls
-            data.formalArgs.values foreach (v => s.decider.prover.declare(ConstDecl(v)))
-            // result decls
-            s.decider.prover.declare(ConstDecl(data.formalResult))
-            // lazy vals, computation may declare new fresh funcs
-            val lAxiom = data.limitedAxiom
-            val tAxiom = data.triggerAxiom
-            val pAxioms = data.postAxiom.toSeq
-            val dAxiom = if (f.body.isDefined && data.verificationFailures.isEmpty) data.definitionalAxiom else None
-            // ??? why what's going on. probably we can pull out the lazy val stuff right.
-            if (v.decider != s.decider) {
-              v.decider.freshFunctions foreach (ff => s.decider.prover.declare(ff))
-              v.decider.freshMacros foreach (ff => s.decider.prover.declare(ff))
-            }
-            s.decider.prover.declare
-            // emit axioms
-            s.functionsSupporter.emitAndRecordFunctionAxioms(lAxiom)
-            s.functionsSupporter.emitAndRecordFunctionAxioms(tAxiom)
-            s.functionsSupporter.emitAndRecordFunctionAxioms(pAxioms: _*)
-            if (f.body.isDefined) {
-              s.functionsSupporter.emitAndRecordFunctionAxioms(dAxiom.toSeq: _*)
-            }
+      _verificationPoolManager.slaveVerifiers.foreach(s => {
+        s.functionsSupporter.functionData ++= newData
+        formalArgs.foreach{case (v, decls) => {
+          if (v != s){
+            decls.foreach(s.decider.prover.declare(_))
+          }
+        }}
+        freshFunctions.foreach{case (v, ff) => {
+          if (v != s){
+            ff.foreach(s.decider.prover.declare(_))
+          }
+        }}
+        freshMacros.foreach{case (v, fm) => {
+          if (v != s){
+            fm.foreach(s.decider.prover.declare(_))
+          }
+        }}
+        axioms.foreach{case (v, axs) => {
+          if (v != s){
+            s.functionsSupporter.emitAndRecordFunctionAxioms(axs: _*)
           }
         }}
       })
-      // clear stuff
-      levelResults.foreach {
-        case (_, _, _, v) => {
-          v.functionsSupporter.freshVars = Vector.empty
-          v.decider._freshFunctions = InsertionOrderedSet.empty
-          v.decider._freshMacros = Vector.empty
-        }
-      }
       results.flatten
     })
 
-    functionsSupporter.emittedFunctionAxioms = _verificationPoolManager.slaveVerifiers.map(_.functionsSupporter.emittedFunctionAxioms).flatten.toVector
 
     val functionVerificationResults = allResults.flatten.toList
 
@@ -296,7 +270,9 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
         val results = v.predicateSupporter.verify(createInitialState(predicate, program), predicate)
         val elapsed = System.currentTimeMillis() - startTime
         reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
-        logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
+        val msg = s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
+        logger debug msg
+        println(msg)
         setErrorScope(results, predicate)
       })
     })
@@ -314,7 +290,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     //predicateSupporter.declareSymbolsAfterVerification(_verificationPoolManager.pooledVerifiers)
     //functionsSupporter.declareSymbolsAfterVerification(_verificationPoolManager.pooledVerifiers)
     //predicateSupporter.emitAxiomsAfterVerification(_verificationPoolManager.pooledVerifiers)
-    functionsSupporter.emitAxiomsAfterVerification(_verificationPoolManager.pooledVerifiers)
+    allEmittedFunctionAxioms foreach _verificationPoolManager.pooledVerifiers.assume
     _verificationPoolManager.pooledVerifiers.comment("End function- and predicate-related preamble")
     _verificationPoolManager.pooledVerifiers.comment("-" * 60)
 

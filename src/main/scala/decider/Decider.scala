@@ -360,6 +360,18 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def freshFunctions: InsertionOrderedSet[FunctionDecl] = _freshFunctions
     def freshMacros: Vector[MacroDecl] = _freshMacros
 
+    def getAndDeleteFreshFunctions(): InsertionOrderedSet[FunctionDecl] = {
+      val res = _freshFunctions
+      _freshFunctions = InsertionOrderedSet.empty
+      res
+    }
+
+    def getAndDeleteFreshMacros(): Vector[MacroDecl] = {
+      val res = _freshMacros
+      _freshMacros = Vector.empty
+      res
+    }
+
     def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit = {
       functions foreach prover.declare
 
