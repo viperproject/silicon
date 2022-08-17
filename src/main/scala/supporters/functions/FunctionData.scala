@@ -133,7 +133,6 @@ class FunctionData(val programFunction: ast.Function,
       })
 
     phase += 1
-    println("advanced phase in data for " + function.id)
   }
 
   private def generateNestedDefinitionalAxioms: InsertionOrderedSet[Term] = {
@@ -179,7 +178,6 @@ class FunctionData(val programFunction: ast.Function,
 
   lazy val postAxiom: Option[Term] = {
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
-    println("generating post for " + programFunction.name)
     if (programFunction.posts.nonEmpty) {
       val fr1 = formalResult
       val posts =

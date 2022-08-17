@@ -30,6 +30,7 @@ import scala.annotation.unused
 trait FunctionVerificationUnit[SO, SY, AX]
     extends VerifyingPreambleContributor[SO, SY, AX, ast.Function]
 
+
 trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Verifier =>
   def logger: Logger
   //def decider: Decider
@@ -89,8 +90,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         heights.map { case (func, height) =>
           val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
           val data = new FunctionData(func, height, quantifiedFields, program)(symbolConverter, expressionTranslator,
-                                      identifierFactory, pred => Verifier.predicateData(pred), Verifier.config,
-                                      reporter)
+            identifierFactory, pred => Verifier.predicateData(pred), Verifier.config,
+            reporter)
           func -> data})
 
       levels = levelData.map(l => l.map(c => c.toSeq).toSeq.flatten).reverse
@@ -101,6 +102,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
        */
       expressionTranslator.functionData = functionData
     }
+
+
 
     def emitAxiomsAfterAnalysis(): Unit = {
       /* No axioms need to be emitted before function verification starts */
