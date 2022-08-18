@@ -106,7 +106,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v)((s1, ts, v1) =>
-      Q(s1, MagicWandChunk(MagicWandIdentifier(wand, Verifier.program), s1.g.values, ts, snap, FullPerm()), v1)
+      Q(s1, MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, snap, FullPerm()), v1)
     )
   }
 
@@ -117,7 +117,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                            (Q: (State, Seq[Term], Verifier) => VerificationResult)
                            : VerificationResult = {
     val s1 = s.copy(exhaleExt = false)
-    val es = wand.subexpressionsToEvaluate(Verifier.program)
+    val es = wand.subexpressionsToEvaluate(s.program)
 
     evals(s1, es, _ => pve, v)((s2, ts, v1) => {
       Q(s2.copy(exhaleExt = s.exhaleExt), ts, v1)
@@ -289,15 +289,15 @@ object magicWandSupporter extends SymbolicExecutionRules {
       }
 
       val preMark = v3.decider.setPathConditionMark()
-      if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program))) {
-        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+      if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
+        val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {
           val (sm, smValueDef) =
             quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
           v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
           v4.decider.assume(smValueDef)
-          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm, s.program)
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
           Success()
         })

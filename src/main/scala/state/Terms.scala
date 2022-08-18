@@ -1987,8 +1987,8 @@ object ResourceTriggerFunction {
   def apply(predicate: ast.Predicate, sm: Term, args: Seq[Term]): PredicateTrigger =
     PredicateTrigger(predicate.name, sm, args)
 
-  def apply(wand: ast.MagicWand, sm: Term, args: Seq[Term]): PredicateTrigger = {
-    val wandId = MagicWandIdentifier(wand, Verifier.program).toString
+  def apply(wand: ast.MagicWand, sm: Term, args: Seq[Term], program: ast.Program): PredicateTrigger = {
+    val wandId = MagicWandIdentifier(wand, program).toString
 
     PredicateTrigger(wandId, sm, args)
   }
@@ -2011,8 +2011,8 @@ object ResourceLookup {
   def apply(predicate: ast.Predicate, sm: Term, args: Seq[Term]): PredicateLookup =
     PredicateLookup(predicate.name, sm, args)
 
-  def apply(wand: ast.MagicWand, sm: Term, args: Seq[Term]): PredicateLookup = {
-    val wandId = MagicWandIdentifier(wand, Verifier.program).toString
+  def apply(wand: ast.MagicWand, sm: Term, args: Seq[Term], program: ast.Program): PredicateLookup = {
+    val wandId = MagicWandIdentifier(wand, program).toString
 
     PredicateLookup(wandId, sm, args)
   }
@@ -2035,8 +2035,8 @@ object ResourcePermissionLookup {
   def apply(predicate: ast.Predicate, sm: Term, args: Seq[Term]): PredicatePermLookup =
     PredicatePermLookup(predicate.name, sm, args)
 
-  def apply(wand: ast.MagicWand, sm: Term, args: Seq[Term]): PredicatePermLookup = {
-    val wandId = MagicWandIdentifier(wand, Verifier.program).toString
+  def apply(wand: ast.MagicWand, sm: Term, args: Seq[Term], program: ast.Program): PredicatePermLookup = {
+    val wandId = MagicWandIdentifier(wand, program).toString
 
     PredicatePermLookup(wandId, sm, args)
   }

@@ -178,7 +178,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
      * TODO: Figure out what happens when ViperServer is used. */
     config.file.foreach(filename => {
       if (filename != Silicon.dummyInputFilename && !config.ignoreFile.getOrElse(false)) {
-        viper.silicon.verifier.Verifier.inputFile = Some(Paths.get(filename))
+        //viper.silicon.verifier.Verifier.inputFile = Some(Paths.get(filename))
       }
     })
 
@@ -373,8 +373,14 @@ class SiliconFrontend(override val reporter: Reporter,
   }
 }
 
-object SiliconRunner extends SiliconFrontend(StdIOReporter()) {
+object SiliconRunner extends SiliconRunnerInstance {
   def main(args: Array[String]): Unit = {
+    runMain(args)
+  }
+}
+
+class SiliconRunnerInstance extends SiliconFrontend(StdIOReporter()) {
+  def runMain(args: Array[String]): Unit = {
     var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
 
     try {
@@ -427,6 +433,6 @@ object SiliconRunner extends SiliconFrontend(StdIOReporter()) {
          */
     }
 
-    sys.exit(exitCode)
+    //sys.exit(exitCode)
   }
 }

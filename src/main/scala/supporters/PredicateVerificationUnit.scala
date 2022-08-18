@@ -50,7 +50,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
   object predicateSupporter extends PredicateVerificationUnit with StatefulComponent {
     import viper.silicon.rules.producer._
 
-    private var predicateData: Map[ast.Predicate, PredicateData] = Map.empty
+    /*private*/ var predicateData: Map[ast.Predicate, PredicateData] = Map.empty
 
     def data = predicateData
     def units = predicateData.keys.toSeq
@@ -78,10 +78,6 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
     /* Predicate supporter generates no axioms */
     val axiomsAfterAnalysis: Iterable[Term] = Seq.empty
     def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = ()
-
-    def updateGlobalStateAfterAnalysis(): Unit = {
-      Verifier.predicateData = predicateData
-    }
 
     /* Verification and subsequent preamble contribution */
 
@@ -123,10 +119,6 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
     /* Predicate supporter generates no axioms */
     val axiomsAfterVerification: Iterable[Term] = Seq.empty
     def emitAxiomsAfterVerification(sink: ProverLike): Unit = ()
-
-    def contributeToGlobalStateAfterVerification(): Unit = {
-      Verifier.predicateData = predicateData
-    }
 
     /* Lifetime */
 

@@ -12,8 +12,7 @@ import fastparse._
 import viper.silicon.interfaces.SiliconMappedCounterexample
 import viper.silicon.reporting.{ExtractedModel, ExtractedModelEntry, LitIntEntry, LitPermEntry, NullRefEntry, RecursiveRefEntry, RefEntry, SeqEntry}
 import viper.silicon.state.terms.Rational
-import viper.silicon.tests.CounterexampleParser.ExpectedCounterexample
-import viper.silver.parser.FastParser.{_line_offset, whitespace}
+import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUse, PIntLit, PLookup, PUnExp}
 import viper.silver.verifier.{FailureContext, VerificationError}
 
@@ -57,17 +56,19 @@ class CounterexampleTests extends SiliconTests {
     private def isExpectedCounterexample(annotation: String, file: Path, lineNr: Int): Option[TestAnnotation] = {
       def parseExpectedCounterexample(id: OutputAnnotationId, expectedCounterexampleString: String): Option[ExpectedCounterexampleAnnotation] = {
         // in order to reuse as much of the existing Viper parser as possible, we have to initialize the `_file` and `_line_offset` fields:
-        FastParser._file = file.toAbsolutePath
+        val fp = new FastParser()
+        fp._file = file.toAbsolutePath
         val lines = expectedCounterexampleString.linesWithSeparators
-        _line_offset = (lines.map(_.length) ++ Seq(0)).toArray
+        fp._line_offset = (lines.map(_.length) ++ Seq(0)).toArray
         var offset = 0
-        for (i <- _line_offset.indices) {
-          val line_length = _line_offset(i)
-          _line_offset(i) = offset
+        for (i <- fp._line_offset.indices) {
+          val line_length = fp._line_offset(i)
+          fp._line_offset(i) = offset
           offset += line_length
         }
+        val cParser = new CounterexampleParser(fp)
         // now parsing is actually possible:
-        fastparse.parse(expectedCounterexampleString, CounterexampleParser.expectedCounterexample(_)) match {
+        fastparse.parse(expectedCounterexampleString, cParser.expectedCounterexample(_)) match {
           case Parsed.Success(expectedCounterexample, _) => Some(ExpectedCounterexampleAnnotation(id, file, lineNr, expectedCounterexample))
           case Parsed.Failure(_, _, extra) =>
             println(s"Parsing expected counterexample failed in file $file: ${extra.trace().longAggregateMsg}")
@@ -172,16 +173,17 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
   * Currently, a counterexample is expressed by a comma separated list of access predicates and equalities (using the
   * same syntax as in Viper)
   */
-object CounterexampleParser {
-  def expectedCounterexample[_: P]: P[ExpectedCounterexample] =
-    (Start ~ "(" ~ (FastParser.accessPred | FastParser.eqExp).rep(0, ",") ~ ")" ~ End)
-      .map(ExpectedCounterexample)
+class CounterexampleParser(fp: FastParser) {
 
-  case class ExpectedCounterexample(exprs: Seq[PExp]) {
-    assert(exprs.forall {
-      case _: PAccPred => true
-      case PBinExp(_, "==", _) => true
-      case _ => false
-    })
-  }
+  def expectedCounterexample[_: P]: P[ExpectedCounterexample] =
+    (Start ~ "(" ~ (fp.accessPred | fp.eqExp).rep(0, ",") ~ ")" ~ End)
+      .map(ExpectedCounterexample)
+}
+
+case class ExpectedCounterexample(exprs: Seq[PExp]) {
+  assert(exprs.forall {
+    case _: PAccPred => true
+    case PBinExp(_, "==", _) => true
+    case _ => false
+  })
 }
