@@ -132,15 +132,16 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 }
 
 trait DomainsTranslator[R] {
-  def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort): R
+  def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort, builtin: Boolean = false): R
 }
 
 class DefaultDomainsTranslator()
     extends DomainsTranslator[Term]
        with ExpressionTranslator {
 
-  def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort): Term = {
-    translate(toSort)(ax.exp) match {
+  def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort, builtin: Boolean = false): Term = {
+    isBuiltin = builtin
+    val res = translate(toSort)(ax.exp) match {
       case terms.Quantification(q, vars, body, triggers, "", _) =>
         val qid = ax match {
           case axiom: NamedDomainAxiom => s"prog.${axiom.name}"
@@ -151,5 +152,7 @@ class DefaultDomainsTranslator()
 
       case other => other
     }
+    isBuiltin = false
+    res
   }
 }

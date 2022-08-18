@@ -6,13 +6,13 @@
 
 package viper.silicon.extensions
 
-import viper.silver.parser.{FastParser, ParserExtension}
+import viper.silver.parser.FastParser
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 
 class TryBlockParserPlugin(fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
   import fastparse._
   import viper.silver.parser.FastParserCompanion.whitespace
-  import fp.{FP, block}
+  import fp.{FP, block, ParserExtension}
 
 
   private val tryKeyword = "try"

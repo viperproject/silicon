@@ -129,7 +129,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
      * are preserved.
      */
     val domainName = f"${d.domainName}[${d.typVarsMap.values.map(t => symbolConverter.toSort(t)).mkString(",")}]"
-    domainTranslator.translateAxiom(ax, symbolConverter.toSort).transform {
+    domainTranslator.translateAxiom(ax, symbolConverter.toSort, true).transform {
       case q@Quantification(_,_,_,_,name,_) if name != "" =>
         q.copy(name = f"${domainName}_${name}")
       case Equals(t1, t2) => BuiltinEquals(t1, t2)
