@@ -96,7 +96,7 @@ object MultiRunRecorders extends StatefulComponent {
   private val sinks = mutable.ArrayBuffer.empty[PrintWriter]
 
   protected def config: Config = Verifier.config
-  protected def source: Option[String] = ??? // Verifier.inputFile.map(_.toString)
+  var source: Option[String] = None
 
   protected def sink(name: String): PrintWriter = {
     val writer =

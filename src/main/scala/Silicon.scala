@@ -9,6 +9,7 @@ package viper.silicon
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
+
 import scala.collection.immutable.ArraySeq
 import scala.util.{Left, Right}
 import ch.qos.logback.classic.{Level, Logger}
@@ -20,11 +21,12 @@ import viper.silver.reporter._
 import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.SymbExLogger
-import viper.silicon.reporting.condenseToViperResult
+import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.verifier.DefaultMasterVerifier
-import viper.silicon.decider.{Z3ProverStdIO, Cvc5ProverStdIO}
+import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
+
 import scala.util.chaining._
 
 object Silicon {
@@ -178,7 +180,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
      * TODO: Figure out what happens when ViperServer is used. */
     config.file.foreach(filename => {
       if (filename != Silicon.dummyInputFilename && !config.ignoreFile.getOrElse(false)) {
-        //viper.silicon.verifier.Verifier.inputFile = Some(Paths.get(filename))
+        MultiRunRecorders.source = Some(filename)
       }
     })
 
