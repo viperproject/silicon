@@ -72,6 +72,7 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
   }
 
   private def resetSlaveVerifierPool(): Unit = {
+    slaveVerifierExecutor.awaitQuiescence(10, TimeUnit.SECONDS)
     slaveVerifiers foreach (_.reset())
 
     //runningVerificationTasks.clear()
@@ -79,6 +80,7 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
   private def teardownSlaveVerifierPool(): Unit = {
     if (slaveVerifiers != null) {
+      slaveVerifierExecutor.awaitQuiescence(10, TimeUnit.SECONDS)
       slaveVerifiers foreach (_.stop())
 
       slaveVerifierExecutor.shutdown()

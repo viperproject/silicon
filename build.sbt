@@ -30,7 +30,7 @@ lazy val silicon = (project in file("."))
     libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
     libraryDependencies += "org.apache.commons" % "commons-pool2" % "2.9.0",
     libraryDependencies += "io.spray" %%  "spray-json" % "1.3.6",
-    libraryDependencies += "com.microsoft.z3" % "z3" % "4.8.9" from "https://www.sosy-lab.org/ivy/org.sosy_lab/javasmt-solver-z3/com.microsoft.z3-4.8.7.jar",
+    libraryDependencies += "com.microsoft.z3" % "z3" % "4.8.7" from "https://www.sosy-lab.org/ivy/org.sosy_lab/javasmt-solver-z3/com.microsoft.z3-4.8.7.jar",
 
     // Only get a few compilation errors at once
     maxErrors := 5,

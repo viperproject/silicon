@@ -506,6 +506,8 @@ class TermToZ3APIConverter
   }
 
   def reset(): Unit = {
+    ctx = null
+    smtlibConverter.reset()
     sanitizedNamesCache.clear()
     macros.clear()
     funcDeclCache.clear()
