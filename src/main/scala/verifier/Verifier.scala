@@ -19,6 +19,7 @@ import viper.silicon.utils.Counter
 import viper.silicon.{Config, Map}
 import viper.silver.ast
 import viper.silver.reporter.Reporter
+import java.util.concurrent.atomic.AtomicInteger
 
 trait Verifier {
   def uniqueId: String
@@ -38,6 +39,11 @@ trait Verifier {
   def stateConsolidator: StateConsolidationRules
 
   def verificationPoolManager: VerificationPoolManager
+
+  val errorsReportedSoFar = new AtomicInteger(0);
+
+  def reportFurtherErrors(): Boolean = (Verifier.config.numberOfErrorsToReport() > errorsReportedSoFar.get()
+    || Verifier.config.numberOfErrorsToReport() == 0);
 }
 
 /* TODO: Replace getters and setters by public vars

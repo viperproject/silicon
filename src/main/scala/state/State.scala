@@ -50,10 +50,6 @@ final case class State(g: Store = Store(),
                        recordPcs: Boolean = false,
                        exhaleExt: Boolean = false,
 
-                       applyHeuristics: Boolean = false,
-                       heuristicsDepth: Int = 0,
-                       triggerAction: AnyRef = null,
-
                        ssCache: SsCache = Map.empty,
                        hackIssue387DisablePermissionConsumption: Boolean = false,
 
@@ -66,7 +62,8 @@ final case class State(g: Store = Store(),
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
                        predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
-                       isMethodVerification: Boolean = false)
+                       isMethodVerification: Boolean = false,
+                       retryLevel: Int = 0)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =
@@ -141,10 +138,9 @@ object State {
                  partiallyConsumedHeap1,
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
-                 applyHeuristics1, heuristicsDepth1, triggerAction1,
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
-                 predicateSnapMap1, predicateFormalVarMap1, hack) =>
+                 predicateSnapMap1, predicateFormalVarMap1, hack, retryLevel) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -163,10 +159,9 @@ object State {
                      `partiallyConsumedHeap1`,
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
-                     `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
-                     `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`) =>
+                     `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `retryLevel`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -268,46 +263,44 @@ object State {
     s1 match {
       /* Decompose state s1 */
       case State(g1, h1, oldHeaps1,
-                 parallelizeBranches1,
-                 recordVisited1, visited1,
-                 methodCfg1, invariantContexts1,
-                 constrainableARPs1,
-                 quantifiedVariables1,
-                 retrying1,
-                 underJoin1,
-                 functionRecorder1,
-                 conservingSnapshotGeneration1,
-                 recordPossibleTriggers1, possibleTriggers1,
-                 triggerExp1,
-                 partiallyConsumedHeap1,
-                 permissionScalingFactor1,
-                 reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
-                 applyHeuristics1, heuristicsDepth1, triggerAction1,
-                 ssCache1, hackIssue387DisablePermissionConsumption1,
-                 qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
-                 predicateSnapMap1, predicateFormalVarMap1, hack) =>
+      parallelizeBranches1,
+      recordVisited1, visited1,
+      methodCfg1, invariantContexts1,
+      constrainableARPs1,
+      quantifiedVariables1,
+      retrying1,
+      underJoin1,
+      functionRecorder1,
+      conservingSnapshotGeneration1,
+      recordPossibleTriggers1, possibleTriggers1,
+      triggerExp1,
+      partiallyConsumedHeap1,
+      permissionScalingFactor1,
+      reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
+      ssCache1, hackIssue387DisablePermissionConsumption1,
+      qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
+      predicateSnapMap1, predicateFormalVarMap1, hack, retryLevel) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
           case State(g2, h2, oldHeaps2,
-                     `parallelizeBranches1`,
-                     `recordVisited1`, `visited1`,
-                     `methodCfg1`, invariantContexts2,
-                     constrainableARPs2,
-                     `quantifiedVariables1`,
-                     `retrying1`,
-                     `underJoin1`,
-                     functionRecorder2,
-                     `conservingSnapshotGeneration1`,
-                     `recordPossibleTriggers1`, possibleTriggers2,
-                     triggerExp2,
-                     partiallyConsumedHeap2,
-                     `permissionScalingFactor1`,
-                     reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
-                     `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
-                     ssCache2, `hackIssue387DisablePermissionConsumption1`,
-                     `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, smDomainNeeded2,
-                     `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`) =>
+          `parallelizeBranches1`,
+          `recordVisited1`, `visited1`,
+          `methodCfg1`, invariantContexts2,
+          constrainableARPs2,
+          `quantifiedVariables1`,
+          `retrying1`,
+          `underJoin1`,
+          functionRecorder2,
+          `conservingSnapshotGeneration1`,
+          `recordPossibleTriggers1`, possibleTriggers2,
+          triggerExp2,
+          partiallyConsumedHeap2,
+          `permissionScalingFactor1`,
+          reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
+          ssCache2, `hackIssue387DisablePermissionConsumption1`,
+          `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, smDomainNeeded2,
+          `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `retryLevel`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2

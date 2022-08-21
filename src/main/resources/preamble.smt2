@@ -10,8 +10,8 @@
 
 ; --- Snapshots ---
 
-(declare-datatypes () ((
-    $Snap ($Snap.unit)
+(declare-datatypes (($Snap 0)) ((
+    ($Snap.unit)
     ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
 
 ; --- References ---
@@ -21,8 +21,8 @@
 
 ; --- Permissions ---
 
-(declare-sort $FPM)
-(declare-sort $PPM)
+(declare-sort $FPM 0)
+(declare-sort $PPM 0)
 (define-sort $Perm () Real)
 
 (define-const $Perm.Write $Perm 1.0)
@@ -31,10 +31,9 @@
 (define-fun $Perm.isValidVar ((p $Perm)) Bool
 	(<= $Perm.No p))
 
-(define-fun $Perm.isReadVar ((p $Perm) (ub $Perm)) Bool
+(define-fun $Perm.isReadVar ((p $Perm)) Bool
     (and ($Perm.isValidVar p)
-         (not (= p $Perm.No))
-         (< p $Perm.Write)))
+         (not (= p $Perm.No))))
 
 ; min function for permissions
 (define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real

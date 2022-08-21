@@ -440,6 +440,10 @@ sealed trait BooleanLiteral extends BooleanTerm with Literal {
   override lazy val toString = value.toString
 }
 
+object BooleanLiteral extends (Boolean => BooleanLiteral) {
+  def apply(b: Boolean): BooleanLiteral = if (b) True() else False()
+}
+
 case class True() extends BooleanLiteral {
   val value = true
   override lazy val toString = "True"
@@ -840,33 +844,37 @@ object Equals extends ((Term, Term) => BooleanTerm) {
     assert(e0.sort == e1.sort,
            s"Expected both operands to be of the same sort, but found ${e0.sort} ($e0) and ${e1.sort} ($e1).")
 
-    if (e0 == e1)
-      True()
-    else
-      e0.sort match {
-        case sorts.Snap =>
-          (e0, e1) match {
-            case (sw1: SortWrapper, sw2: SortWrapper) if sw1.t.sort != sw2.t.sort =>
-              assert(false, s"Equality '(Snap) $e0 == (Snap) $e1' is not allowed")
-            /* The next few cases are nonsensical and might indicate a bug in Silicon.
-               However, they can also arise on infeasible paths (and preventing them
-               would require potentially expensive prover calls), so treating
-               them as errors is unfortunately not an option.
-             */
-            // case (_: Combine, _: SortWrapper) =>
-            //   assert(false, s"Equality '$e0 == (Snap) $e1' is not allowed")
-            // case (_: SortWrapper, _: Combine) =>
-            //   assert(false, s"Equality '(Snap) $e0 == $e1' is not allowed")
-            // case (Unit, _: Combine) | (_: Combine, Unit) =>
-            //   assert(false, s"Equality '$e0 == $e1' is not allowed")
-            case _ => /* Ok */
-          }
+    // Note that the syntactic simplifications (first two cases) can interfere with triggering
+    // if they eliminate potential trigger terms.
+    (e0, e1) match {
+      case (`e0`, `e0`) => True()
+      case (l1: Literal, l2: Literal) => BooleanLiteral(l1 == l2)
+      case _ =>
+        e0.sort match {
+          case sorts.Snap =>
+            (e0, e1) match {
+              case (sw1: SortWrapper, sw2: SortWrapper) if sw1.t.sort != sw2.t.sort =>
+                assert(false, s"Equality '(Snap) $e0 == (Snap) $e1' is not allowed")
+              /* The next few cases are nonsensical and might indicate a bug in Silicon.
+                 However, they can also arise on infeasible paths (and preventing them
+                 would require potentially expensive prover calls), so treating
+                 them as errors is unfortunately not an option.
+               */
+              // case (_: Combine, _: SortWrapper) =>
+              //   assert(false, s"Equality '$e0 == (Snap) $e1' is not allowed")
+              // case (_: SortWrapper, _: Combine) =>
+              //   assert(false, s"Equality '(Snap) $e0 == $e1' is not allowed")
+              // case (Unit, _: Combine) | (_: Combine, Unit) =>
+              //   assert(false, s"Equality '$e0 == $e1' is not allowed")
+              case _ => /* Ok */
+            }
 
-          new BuiltinEquals(e0, e1)
+            new BuiltinEquals(e0, e1)
 
-        case _: sorts.Seq | _: sorts.Set | _: sorts.Multiset | _: sorts.Map => new CustomEquals(e0, e1)
-        case _ => new BuiltinEquals(e0, e1)
-      }
+          case _: sorts.Seq | _: sorts.Set | _: sorts.Multiset | _: sorts.Map => new CustomEquals(e0, e1)
+          case _ => new BuiltinEquals(e0, e1)
+        }
+    }
   }
 
   def unapply(e: Equals) = Some((e.p0, e.p1))
@@ -1062,8 +1070,8 @@ case class IsValidPermVar(v: Var) extends BooleanTerm {
   override lazy val toString = s"PVar($v)"
 }
 
-case class IsReadPermVar(v: Var, ub: Term) extends BooleanTerm {
-  override lazy val toString = s"RdVar($v, $ub)"
+case class IsReadPermVar(v: Var) extends BooleanTerm {
+  override lazy val toString = s"RdVar($v)"
 }
 
 class PermTimes(val p0: Term, val p1: Term)
@@ -1128,6 +1136,25 @@ object PermIntDiv extends ((Term, Term) => Term) {
   }
 
   def unapply(t: PermIntDiv) = Some((t.p0, t.p1))
+}
+
+class PermPermDiv(val p0: Term, val p1: Term)
+  extends Permissions
+    with BinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term] {
+
+  utils.assertSort(p1, "Second term", sorts.Perm)
+
+  override val op = "/"
+}
+
+object PermPermDiv extends ((Term, Term) => Term) {
+
+  def apply(t0: Term, t1: Term) = (t0, t1) match {
+    case (_, _) => new PermPermDiv(t0, t1)
+  }
+
+  def unapply(t: PermPermDiv) = Some((t.p0, t.p1))
 }
 
 object PermDiv extends ((Term, Term) => Term) {
@@ -2059,7 +2086,7 @@ object SortWrapper {
 /* Other terms */
 
 class Distinct(val ts: Set[Symbol]) extends BooleanTerm with StructuralEquality {
-  assert(ts.nonEmpty, "Distinct requires at least one term")
+  assert(ts.size >= 2, "Distinct requires at least two terms")
 
   val equalityDefiningMembers = ts :: Nil
   override lazy val toString = s"Distinct($ts)"
@@ -2067,7 +2094,7 @@ class Distinct(val ts: Set[Symbol]) extends BooleanTerm with StructuralEquality 
 
 object Distinct extends (Set[Symbol] => Term) {
   def apply(ts: Set[Symbol]): Term =
-    if (ts.nonEmpty) new Distinct(ts)
+    if (ts.size >= 2) new Distinct(ts)
     else True()
 
   def unapply(d: Distinct) = Some(d.ts)
@@ -2137,6 +2164,7 @@ object utils {
     case PermTimes(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
     case IntPermTimes(_, t1) => consumeExactRead(t1, constrainableARPs)
     case PermIntDiv(t0, _) => consumeExactRead(t0, constrainableARPs)
+    case PermPermDiv(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
     case PermMin(t0 ,t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
     case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
     case _ => true

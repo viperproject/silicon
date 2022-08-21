@@ -61,7 +61,8 @@ object joiner extends JoiningRules {
                     // TODO: Evaluation should not affect partiallyConsumedHeap, probably
                     ssCache = s1.ssCache,
                     partiallyConsumedHeap = s1.partiallyConsumedHeap,
-                    invariantContexts = s1.invariantContexts)
+                    invariantContexts = s1.invariantContexts,
+                    retrying = s1.retrying)
           } else {
             // For more joins, state shouldn't be reset.
             s3
@@ -69,7 +70,7 @@ object joiner extends JoiningRules {
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
         Success()
       })
-    }) && {
+    }) combine {
       SymbExLogger.currentLog().closeScope(uidJoin)
       if (entries.isEmpty) {
         /* No block data was collected, which we interpret as all branches through

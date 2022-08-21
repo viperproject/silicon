@@ -110,14 +110,14 @@ object executionFlowController extends ExecutionFlowRules {
      *       Currently, the verification will fail without attempting to remedy the situation,
      *       e.g. by performing a state consolidation.
      */
-
-    val firstActionResult =
+    val firstActionResult = {
       action(
-        s,
+        s.copy(retryLevel = s.retryLevel + 1),
         v,
         (s1, r, v1) => {
           localActionSuccess = true
-          Q(s1, r, v1)})
+          Q(s1.copy(retryLevel = s.retryLevel), r, v1)})
+    }
 
     val finalActionResult =
       if (   localActionSuccess /* Action succeeded locally */
@@ -129,7 +129,7 @@ object executionFlowController extends ExecutionFlowRules {
 
         val comLog = new CommentRecord("Retry", s0, v.decider.pcs)
         val sepIdentifier = SymbExLogger.currentLog().openScope(comLog)
-        action(s0.copy(retrying = true), v, (s1, r, v1) => {
+        action(s0.copy(retrying = true, retryLevel = s.retryLevel), v, (s1, r, v1) => {
           SymbExLogger.currentLog().closeScope(sepIdentifier)
           Q(s1.copy(retrying = false), r, v1)
         })

@@ -4,7 +4,7 @@ set CURR_DIR=%cd%
 set BASE_DIR=%~dp0
 
 :: switch to repository root to check for classpath file and possibly call sbt.
-cd %BASE_DIR%
+cd "%BASE_DIR%"
 
 :: Only call sbt if the classpath file is missing.
 if not exist silicon_classpath.txt (
@@ -22,12 +22,8 @@ if not exist silicon_classpath.txt (
 for /f "delims=" %%x in (silicon_classpath.txt) do set CP=%%x
 
 :: switch back to original directory
-cd %CURR_DIR%
+cd "%CURR_DIR%"
 
-set JAVA_EXE=java
-set JVM_OPTS=-Dlogback.configurationFile="%BASE_DIR%\src\main\resources\logback.xml" -Xss16m -Dfile.encoding=UTF-8
-set SILICON_MAIN=viper.silicon.SiliconRunner
-set FWD_ARGS= %*
-set CMD=%JAVA_EXE% %JVM_OPTS% -cp "%CP%" %SILICON_MAIN% %FWD_ARGS%
+set JVM_OPTS=-Xss16m -Dlogback.configurationFile="%BASE_DIR%\src\main\resources\logback.xml" -Dfile.encoding=UTF-8
 
-call %CMD%
+call java %JVM_OPTS% -cp "%CP%" viper.silicon.SiliconRunner %*

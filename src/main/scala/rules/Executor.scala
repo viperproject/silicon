@@ -79,7 +79,7 @@ object executor extends ExecutionRules {
             /* Using branch(...) here ensures that the edge condition is recorded
              * as a branch condition on the pathcondition stack.
              */
-            brancher.branch(s2, tCond, v1)(
+            brancher.branch(s2, tCond, Some(ce.condition), v1)(
               (s3, v3) =>
                 exec(s3, ce.target, ce.kind, v3, joinPoint)((s4, v4) => {
                   SymbExLogger.currentLog().closeScope(sepIdentifier)
@@ -137,7 +137,7 @@ object executor extends ExecutionRules {
         eval(s, cedge1.condition, pvef(cedge1.condition), v)((s1, t0, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s2, v2, QB) => {
-            brancher.branch(s2, t0, v2)(
+            brancher.branch(s2, t0, Some(cedge1.condition), v2)(
               // Follow only until join point.
               (s3, v3) => follow(s3, edge1, v3, Some(newJoinPoint))((s, v) => QB(s, null, v)),
               (s3, v3) => follow(s3, edge2, v3, Some(newJoinPoint))((s, v) => QB(s, null, v))
@@ -255,7 +255,7 @@ object executor extends ExecutionRules {
                       intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
   //                    v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions)
-                        v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
+                        v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
                           Success()
                         else {
@@ -421,7 +421,7 @@ object executor extends ExecutionRules {
           Success()
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
-            v1.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterInhale)
+            v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
             Q(s1, v1)})
       }
 
@@ -444,7 +444,7 @@ object executor extends ExecutionRules {
           consume(s, a, AssertFailed(assert), v)((_, _, _) =>
             Success())
 
-        r && Q(s, v)
+        r combine Q(s, v)
 
       case assert @ ast.Assert(a) =>
         val pve = AssertFailed(assert)
@@ -524,7 +524,7 @@ object executor extends ExecutionRules {
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
               currentLog.closeScope(postCondId)
-              v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
+              v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
                               .map(p => (p._1, s5.g(p._2))).toMap)
               val s6 = s5.copy(g = s1.g + gLhs,

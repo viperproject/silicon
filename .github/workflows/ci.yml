@@ -1,0 +1,166 @@
+#
+# Good to know:
+# * This is essentially a copy of ci.yml from Voila
+# * secrets.GITHUB_TOKEN is provided by GitHub actions, i.e. it is not a custom/personal token
+#
+
+name: ci
+
+on: [push, pull_request, workflow_dispatch]
+
+env:
+  RELEASE_DIR: tmp_release
+
+jobs:
+  test-and-assemble:
+    runs-on: ubuntu-latest
+    container: gobraverifier/gobra-base:v5_z3_4.8.7 # Thank you, Gobra team
+    steps:
+      # Install JDK
+#       - uses: actions/setup-java@v2
+#         with:
+#           distribution: 'adopt' # See https://github.com/marketplace/actions/setup-java-jdk
+#           java-version: '11'
+
+      # Checkout Silicon (note: all checkouts delete the contents of their working directory)
+      - name: Checkout Silicon
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      # Query versions, and other details that may help with reconstructing a built. 
+      # Results are displayed on stdio, and written to buildinfo.log
+      - name: Query current date 
+        run: printf -- "------- Timestamp --------\n%s\n\n" "$(date +"%Y-%m-%d %H:%M")" | tee -a buildinfo.log
+      - name: Query Java version
+        run: printf -- "------- Java version --------\n%s\n\n" "$(java --version)" | tee -a buildinfo.log
+      - name: Query Z3 version
+        run: printf -- "------- Z3 version --------\n%s\n\n" "$(z3 -version)" | tee -a buildinfo.log
+      - name: Query Silicon commit
+        run: printf -- "------- Silicon commit --------\n%s\n\n" "$(git -C . log --format=reference -n 1 HEAD)" | tee -a buildinfo.log
+      - name: Query Silver commit
+        run: printf -- "------- Silver commit --------\n%s\n\n" "$(git -C silver log --format=reference -n 1 HEAD)" | tee -a buildinfo.log
+
+      - name: Set sbt cache variables
+        # Cache path is relative to the directory in which sbt is invoked
+        run: echo "SBT_OPTS=-Dsbt.global.base=sbt-cache/.sbtboot -Dsbt.boot.directory=sbt-cache/.boot -Dsbt.ivy.home=sbt-cache/.ivy" >> $GITHUB_ENV
+      - name: Cache sbt
+        uses: actions/cache@v2
+        with:
+          path: |
+            sbt-cache/.sbtboot
+            sbt-cache/.boot
+            sbt-cache/.ivy/cache
+          # <x>/project/target and <x>/target, where <x> is e.g. 'voila' or 'silicon', are intentionally not
+          # included as several occurrences of NoSuchMethodError exceptions have been observed during CI runs. 
+          # It seems that sbt is unable to correctly compute source files that require a recompilation. 
+          # Compiled source files are therefore not cached.
+          key: ${{ runner.os }}-sbt-no-precompiled-sources-${{ hashFiles('**/build.sbt') }}
+
+      # - name: Execute a single test only
+      #   run: sbt "testOnly -- -n arithmetic.vpr"
+      - name: Execute all tests
+        run: sbt test
+        
+      - name: Assemble Silicon fat jar
+        run: |
+          sbt assembly
+          cp target/scala-2.13/silicon.jar .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-and-assemble
+          path: |
+            silicon.jar
+            buildinfo.log
+          retention-days: 14
+          if-no-files-found: error
+
+  release-snapshot:
+    needs: test-and-assemble
+    # Only for regular commits to master branch (no pull requests, no tagging)
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout Silicon (deletes content of working directory)
+      - name: Checkout Silicon
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Download artifacts from job test-and-assemble
+        uses: actions/download-artifact@v2
+        with:
+          name: test-and-assemble
+
+#       # NOTE: Installing zip fails on container gobraverifier/gobra-base
+#       - name: Install prerequisites
+#         run: apt-get install zip unzip
+#       - name: I need help
+#         run: |
+#           tar --version
+#           gzip --version
+#           zip --version
+
+      - name: Create env variables with release information
+        run: |
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+          TIMESTAMP_TODAY="$(date +%Y-%m-%d)" # NOTE: Safe in filenames 
+          TIMESTAMP_NOW="$(date +%H%M)"       # NOTE: Safe in filenames
+          RELEASE_TAG="snapshot-${TIMESTAMP_TODAY}-${TIMESTAMP_NOW}-${SHORT_SHA}"
+          RELEASE_ASSET="silicon-$RELEASE_TAG" # NOTE: Safe in filenames, no extension
+          RELEASE_NAME="Snapshot ${TIMESTAMP_TODAY}-${TIMESTAMP_NOW}/${SHORT_SHA}"
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          echo "TIMESTAMP_TODAY=$TIMESTAMP_TODAY" >> $GITHUB_ENV
+          echo "TIMESTAMP_NOW=$TIMESTAMP_NOW" >> $GITHUB_ENV
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          echo "RELEASE_ASSET=$RELEASE_ASSET" >> $GITHUB_ENV
+          echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+
+      - name: Gather release files
+        run: |
+          mkdir ${{ env.RELEASE_DIR }}
+          mv silicon.jar ${{ env.RELEASE_DIR }}
+          mv src/test/resources/ ${{ env.RELEASE_DIR }}/testsuite
+          mv silicon.sh ${{ env.RELEASE_DIR }}
+          mv silicon.bat ${{ env.RELEASE_DIR }}
+          mv buildinfo.log ${{ env.RELEASE_DIR }}
+          echo -l ${{ env.RELEASE_DIR }}
+
+      - name: Create release asset archive
+        run: |
+          RELEASE_ASSET="$RELEASE_ASSET.tar.gz" # Add extension
+          # zip -r $RELEASE_ASSET .
+          tar -zcvf $RELEASE_ASSET *
+          echo "RELEASE_ASSET=$RELEASE_ASSET" >> $GITHUB_ENV
+        working-directory: ${{ env.RELEASE_DIR }}
+
+      - name: Create a snapshot release on GitHub (with source assets)
+        id: create_snapshot_release
+        uses: viperproject/create-nightly-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          release_name: ${{ env.RELEASE_NAME }}
+          keep_num: 2
+          keep_tags: false
+      - name: Create GitHub pre-release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          prerelease: true
+          files: ${{ env.RELEASE_DIR }}/${{ env.RELEASE_ASSET }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# #       - name: Create an official release
+# #         if: startsWith(github.ref, 'refs/tags/releases/')
+# #         uses: softprops/action-gh-release@v1
+# #         with:
+# #           prerelease: false
+# #           files: ${{ env.RELEASE_DIR }}     
+# #         env:
+# #           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

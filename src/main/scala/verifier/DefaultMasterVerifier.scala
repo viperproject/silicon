@@ -27,7 +27,7 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
-import viper.silver.ast.BackendType
+import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage}
@@ -126,7 +126,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       _verificationPoolManager.pooledVerifiers.saturate(timeout, comment)
     }
 
-    def saturate(data: Option[Config.Z3StateSaturationTimeout]): Unit = {
+    def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
       decider.prover.saturate(data)
       _verificationPoolManager.pooledVerifiers.saturate(data)
     }
@@ -179,7 +179,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     allProvers.comment("End preamble")
     allProvers.comment("-" * 60)
 
-    allProvers.saturate(config.z3SaturationTimeouts.afterPrelude)
+    allProvers.saturate(config.proverSaturationTimeouts.afterPrelude)
 
 
     SymbExLogger.resetMemberList()
@@ -194,7 +194,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
-      results
+      setErrorScope(results, function)
     })
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
@@ -203,7 +203,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
-      results
+      setErrorScope(results, predicate)
     })
 
     decider.prover.stop()
@@ -231,7 +231,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
           logger debug s"Silicon finished verification of method `${method.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
 
-          results
+          setErrorScope(results, method)
         })
       }) ++ cfgs.map(cfg => {
         val s = createInitialState(cfg, program)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
@@ -266,12 +266,10 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
-    val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
 
     State(qpFields = quantifiedFields,
           qpPredicates = quantifiedPredicates,
           qpMagicWands = quantifiedMagicWands,
-          applyHeuristics = applyHeuristics,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
           isMethodVerification = member.isInstanceOf[ast.Member])
@@ -281,12 +279,10 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     val quantifiedFields = InsertionOrderedSet(program.fields)
     val quantifiedPredicates = InsertionOrderedSet(program.predicates)
     val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.
-    val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
 
     State(qpFields = quantifiedFields,
       qpPredicates = quantifiedPredicates,
       qpMagicWands = quantifiedMagicWands,
-      applyHeuristics = applyHeuristics,
       predicateSnapMap = predSnapGenerator.snapMap,
       predicateFormalVarMap = predSnapGenerator.formalVarMap)
   }
@@ -298,24 +294,23 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
   /* Prover preamble: Static preamble */
 
   private def emitStaticPreamble(sink: ProverLike): Unit = {
-    sink.comment("\n; /z3config.smt2")
-    preambleReader.emitPreamble("/z3config.smt2", sink)
+    sink.comment(s"\n; ${decider.prover.staticPreamble}")
+    preambleReader.emitPreamble(decider.prover.staticPreamble, sink)
 
-    if (config.z3RandomizeSeeds()) {
-      sink.comment(s"\n; Randomise seeds [--${config.z3RandomizeSeeds.name}]")
-      val options =
-        Seq("sat.random_seed", "nlsat.seed", "fp.spacer.random_seed", "smt.random_seed", "sls.random_seed")
-          .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
+    if (config.proverRandomizeSeeds) {
+      sink.comment(s"\n; Randomise seeds [--${config.rawProverRandomizeSeeds.name}]")
+      val options = decider.prover.randomizeSeedsOptions
+        .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
 
       preambleReader.emitPreamble(options, sink)
     }
 
     val smt2ConfigOptions =
-      config.z3ConfigArgs().map { case (k, v) => s"(set-option :$k $v)" }
+      config.proverConfigArgs.map { case (k, v) => s"(set-option :$k $v)" }
 
     if (smt2ConfigOptions.nonEmpty) {
-      // One can pass options to Z3. This allows to check whether they have been received.
-      val msg = s"Additional Z3 configuration options are '${config.z3ConfigArgs()}'"
+      // One can pass options to the prover. This allows to check whether they have been received.
+      val msg = s"Additional prover configuration options are '${config.proverConfigArgs}'"
       reporter report ConfigurationConfirmation(msg)
       logger info msg
       preambleReader.emitPreamble(smt2ConfigOptions, sink)
@@ -467,5 +462,13 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
       })
     }
+  }
+
+  private def setErrorScope(results: Seq[VerificationResult], scope: Member): Seq[VerificationResult] = {
+    results.foreach {
+      case f: Failure => f.message.scope = Some(scope)
+      case _ =>
+    }
+    results
   }
 }

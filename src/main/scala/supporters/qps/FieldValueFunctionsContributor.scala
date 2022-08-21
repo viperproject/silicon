@@ -83,7 +83,7 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
     collectedFields map (f => {
       val sort = symbolConverter.toSort(f.typ)
       val id = f.name
-      val substitutions = Map("$FLD$" -> id, "$S$" -> termConverter.convert(sort))
+      val substitutions = Map("$FLD$" -> id, "$S$" -> termConverter.convert(sort), "$T$" -> termConverter.convertSanitized(sort))
       val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
 
       (s"$templateFile [$id: $sort]", declarations)
@@ -98,7 +98,7 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
     collectedFields map (f => {
       val sort = symbolConverter.toSort(f.typ)
       val id = f.name
-      val substitutions = Map("$FLD$" -> id, "$S$" -> termConverter.convert(sort))
+      val substitutions = Map("$FLD$" -> id, "$S$" -> termConverter.convert(sort), "$T$" -> termConverter.convertSanitized(sort))
       val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
 
       (s"$templateFile [$id: $sort]", declarations)

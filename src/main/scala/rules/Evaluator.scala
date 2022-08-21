@@ -255,8 +255,7 @@ object evaluator extends EvaluationRules {
         evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
           val resource = fa.res(Verifier.program)
-          val description = s"eval ${fa.pos}: $fa"
-          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1, description)((s2, h2, tSnap, v2) => {
+          chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
             Q(s3, tSnap, v1)
@@ -308,7 +307,7 @@ object evaluator extends EvaluationRules {
         val impliesRecord = new ImpliesRecord(implies, s, v.decider.pcs, "Implies")
         val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          evalImplies(s1, t0, e1, implies.info == FromShortCircuitingAnd, pve, v1)((s2, t1, v2) => {
+          evalImplies(s1, t0, Some(e0), e1, implies.info == FromShortCircuitingAnd, pve, v1)((s2, t1, v2) => {
             SymbExLogger.currentLog().closeScope(uidImplies)
             Q(s2, t1, v2)
           }))
@@ -318,7 +317,7 @@ object evaluator extends EvaluationRules {
         val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
         eval(s, e0, pve, v)((s1, t0, v1) =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, v2)(
+            brancher.branch(s2, t0, Some(e0), v2)(
               (s3, v3) => eval(s3, e1, pve, v3)(QB),
               (s3, v3) => eval(s3, e2, pve, v3)(QB))
           )(entries => {
@@ -392,6 +391,11 @@ object evaluator extends EvaluationRules {
         eval(s, e0, pve, v)((s1, t0, v1) =>
           eval(s1, e1, pve, v1)((s2, t1, v2) =>
             failIfDivByZero(s2, PermIntDiv(t0, t1), e1, t1, 0, pve, v2)(Q)))
+
+      case ast.PermPermDiv(e0, e1) =>
+        eval(s, e0, pve, v)((s1, t0, v1) =>
+          eval(s1, e1, pve, v1)((s2, t1, v2) =>
+            failIfDivByZero(s2, PermPermDiv(t0, t1), e1, t1, FractionPermLiteral(Rational(0, 1)), pve, v2)(Q)))
 
       case ast.PermLeCmp(e0, e1) =>
         evalBinOp(s, e0, e1, AtMost, pve, v)(Q)
@@ -524,7 +528,7 @@ object evaluator extends EvaluationRules {
               val zippedArgs = argsWithIndex map (ai => (ai._1, ch.args(ai._2)))
               val argsPairWiseEqual = And(zippedArgs map {case (a1, a2) => a1 === a2})
 
-              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), body, false, pve, v1)((s4, tImplies, v2) =>
+              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), None,body, false, pve, v1) ((s4, tImplies, v2) =>
                 bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, v2)((s5, ts1, v3) => {
                   SymbExLogger.currentLog().closeScope(uidImplies)
                   Q(s5, ts1, v3)
@@ -561,7 +565,7 @@ object evaluator extends EvaluationRules {
                 case wc: QuantifiedMagicWandChunk => PredicateTrigger(wc.id.toString, wc.wsf, ts1)
               }
 
-              evalImplies(s2, And(trig, bc), body, false, pve, v1)((s3, tImplies, v2) => {
+              evalImplies(s2, And(trig, bc), None, body, false, pve, v1)((s3, tImplies, v2) => {
                 val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
                 bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, v2)((s4, ts2, v3) => {
                   SymbExLogger.currentLog().closeScope(uidImplies)
@@ -806,10 +810,25 @@ object evaluator extends EvaluationRules {
                   case true =>
                     Q(s1, SeqAt(t0, t1), v1)
                   case false =>
-                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)}
+                    val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)
+                    if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
+                      v1.decider.assume(Less(t1, SeqLength(t0)))
+                      failure combine Q(s1, SeqAt(t0, t1), v1)
+                    } else failure}
               case false =>
-                createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
-            }}})
+                val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
+                if (s1.retryLevel == 0) {
+                  v1.decider.assume(AtLeast(t1, IntLiteral(0)))
+                  v1.decider.assert(Less(t1, SeqLength(t0))) {
+                    case true =>
+                      failure1 combine Q(s1, SeqAt(t0, t1), v1)
+                    case false =>
+                      val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)
+                      if (v1.reportFurtherErrors()) {
+                        v1.decider.assume(Less(t1, SeqLength(t0)))
+                        failure2 combine Q(s1, SeqAt(t0, t1), v1)
+                      } else failure2}
+                } else failure1}}})
 
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)(Q)
       case ast.SeqDrop(e0, e1) => evalBinOp(s, e0, e1, SeqDrop, pve, v)(Q)
@@ -829,12 +848,25 @@ object evaluator extends EvaluationRules {
                   case true =>
                     Q(s1, SeqUpdate(t0, t1, t2), v1)
                   case false =>
-                    createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)}
+                    val failure = createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)
+                    if (s1.retryLevel == 0 && v1.reportFurtherErrors()) {
+                      v1.decider.assume(Less(t1, SeqLength(t0)))
+                      failure combine Q(s1, SeqUpdate(t0, t1, t2), v1)}
+                    else failure}
               case false =>
-                createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
-            }
-          }
-        })
+                val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
+                if (s1.retryLevel == 0) {
+                  v1.decider.assume(AtLeast(t1, IntLiteral(0)))
+                  v1.decider.assert(Less(t1, SeqLength(t0))) {
+                    case true =>
+                      failure1 combine Q(s1, SeqUpdate(t0, t1, t2), v1)
+                    case false =>
+                      val failure2 = failure1 combine createFailure(pve dueTo SeqIndexExceedsLength(e0, e1), v1, s1)
+                      if (v1.reportFurtherErrors()) {
+                        v1.decider.assume(Less(t1, SeqLength(t0)))
+                        failure2 combine Q(s1, SeqUpdate(t0, t1, t2), v1)
+                      } else failure2}
+            } else failure1}}})
 
       case ast.ExplicitSeq(es) =>
         evals2(s, es, Nil, _ => pve, v)((s1, tEs, v1) => {
@@ -923,7 +955,10 @@ object evaluator extends EvaluationRules {
           case (s1, Seq(baseT, keyT), v1) if s1.triggerExp => Q(s1, MapLookup(baseT, keyT), v1)
           case (s1, Seq(baseT, keyT), v1) => v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
             case true => Q(s1, MapLookup(baseT, keyT), v1)
-            case false => createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1)
+            case false =>
+              v1.decider.assume(SetIn(keyT, MapDomain(baseT)))
+              createFailure(pve dueTo MapKeyNotContained(base, key), v1, s1) combine
+                Q(s1, MapLookup(baseT, keyT), v1) //TODO:J write tests for this case!
           }
         })
 
@@ -980,7 +1015,7 @@ object evaluator extends EvaluationRules {
        val preMark = v1.decider.setPathConditionMark()
       evals(s2, es1, _ => pve, v1)((s3, ts1, v2) => {
         val bc = And(ts1)
-        v2.decider.setCurrentBranchCondition(bc)
+        v2.decider.setCurrentBranchCondition(bc, Some(viper.silicon.utils.ast.BigAnd(es1)))
         evals(s3, es2, _ => pve, v2)((s4, ts2, v3) => {
           evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, _) => { // TODO: v4 isn't forward - problem?
             val (auxGlobals, auxNonGlobalQuants) =
@@ -997,6 +1032,7 @@ object evaluator extends EvaluationRules {
 
   private def evalImplies(s: State,
                           tLhs: Term,
+                          eLhs: Option[ast.Exp],
                           eRhs: ast.Exp,
                           fromShortCircuitingAnd: Boolean,
                           pve: PartialVerificationError,
@@ -1005,7 +1041,7 @@ object evaluator extends EvaluationRules {
                          : VerificationResult = {
 
     joiner.join[Term, Term](s, v)((s1, v1, QB) =>
-      brancher.branch(s1, tLhs, v1, fromShortCircuitingAnd)(
+      brancher.branch(s1, tLhs, eLhs, v1, fromShortCircuitingAnd)(
         (s2, v2) => eval(s2, eRhs, pve, v2)(QB),
         (s2, v2) => QB(s2, True(), v2))
     )(entries => {
@@ -1095,7 +1131,12 @@ object evaluator extends EvaluationRules {
 
     v.decider.assert(tDivisor !== tZero){
       case true => Q(s, t, v)
-      case false => createFailure(pve dueTo DivisionByZero(eDivisor), v, s)
+      case false =>
+        val failure = createFailure(pve dueTo DivisionByZero(eDivisor), v, s)
+        if (s.retryLevel == 0  && v.reportFurtherErrors()) {
+          v.decider.assume(tDivisor !== tZero)
+          failure combine Q(s, t, v)
+        } else failure
     }
   }
 
@@ -1452,7 +1493,7 @@ object evaluator extends EvaluationRules {
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, v2, true) _ tupled swapIfAnd(
+            brancher.branch(s2, t0, Some(viper.silicon.utils.ast.BigAnd(exps)), v2, true) _ tupled swapIfAnd(
               (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>

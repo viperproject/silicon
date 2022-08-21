@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
 import viper.silicon.state._
@@ -190,7 +190,7 @@ object consumer extends ConsumptionRules {
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
           joiner.join[(Heap, Term), (Heap, Term)](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1, t0, v1)(
+            branch(s1, t0, Some(e0), v1)(
               (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
                 SymbExLogger.currentLog().closeScope(uidImplies)
                 QB(s3, (h1, t1), v3)
@@ -228,7 +228,7 @@ object consumer extends ConsumptionRules {
         val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
-          branch(s1, t0, v1)(
+          branch(s1, t0, Some(e0), v1)(
             (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
               SymbExLogger.currentLog().closeScope(uidImplies)
               Q(s3, h1, t1, v3)
@@ -244,7 +244,7 @@ object consumer extends ConsumptionRules {
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           joiner.join[(Heap, Term), (Heap, Term)](s1, v1, resetState = false)((s1, v1, QB) => {
-            branch(s1, t0, v1)(
+            branch(s1, t0, Some(e0), v1)(
               (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
                 SymbExLogger.currentLog().closeScope(uidCondExp)
                 QB(s3, (h1, t1), v3)
@@ -281,7 +281,7 @@ object consumer extends ConsumptionRules {
         val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          branch(s1, t0, v1)(
+          branch(s1, t0, Some(e0), v1)(
             (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
               SymbExLogger.currentLog().closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
@@ -318,8 +318,8 @@ object consumer extends ConsumptionRules {
               tPerm = tPerm,
               pve = pve,
               negativePermissionReason = NegativePermission(acc.perm),
-              notInjectiveReason = ReceiverNotInjective(acc.loc),
-              insufficientPermissionReason =InsufficientPermission(acc.loc),
+              notInjectiveReason = QPAssertionNotInjective(acc.loc),
+              insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
         }
 
@@ -355,8 +355,8 @@ object consumer extends ConsumptionRules {
               tPerm = tPerm,
               pve = pve,
               negativePermissionReason = NegativePermission(acc.perm),
-              notInjectiveReason = ReceiverNotInjective(acc.loc),
-              insufficientPermissionReason =InsufficientPermission(acc.loc),
+              notInjectiveReason = QPAssertionNotInjective(acc.loc),
+              insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
         }
 
@@ -542,7 +542,11 @@ object consumer extends ConsumptionRules {
             v2.decider.assume(t)
             QS(s3, v2)
           case false =>
-            createFailure(pve dueTo AssertionFalse(e), v2, s3)}})
+            val failure = createFailure(pve dueTo AssertionFalse(e), v2, s3)
+            if (s3.retryLevel == 0 && v2.reportFurtherErrors()){
+              v2.decider.assume(t)
+              failure combine QS(s3, v2)
+            } else failure}})
     })((s4, v4) => {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,

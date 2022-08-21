@@ -10,7 +10,7 @@ import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.resources.{FieldID, PredicateID}
@@ -19,7 +19,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.reasons.{NegativePermission, ReceiverNotInjective}
+import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
 
 trait ProductionRules extends SymbolicExecutionRules {
 
@@ -213,7 +213,7 @@ object producer extends ProductionRules {
         eval(s, e0, pve, v)((s1, t0, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1, t0, v1)(
+            branch(s1, t0, Some(e0), v1)(
               (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
                 SymbExLogger.currentLog().closeScope(uidImplies)
                 QB(s3, null, v3)
@@ -244,7 +244,7 @@ object producer extends ProductionRules {
         val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          branch(s1, t0, v1)(
+          branch(s1, t0, Some(e0), v1)(
             (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
               SymbExLogger.currentLog().closeScope(uidImplies)
               Q(s3, v3)
@@ -266,7 +266,7 @@ object producer extends ProductionRules {
         eval(s, e0, pve, v)((s1, t0, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1, t0, v1)(
+            branch(s1, t0, Some(e0), v1)(
               (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
                 SymbExLogger.currentLog().closeScope(uidCondExp)
                 QB(s3, null, v3)
@@ -292,7 +292,7 @@ object producer extends ProductionRules {
         val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          branch(s1, t0, v1)(
+          branch(s1, t0, Some(e0), v1)(
             (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
               SymbExLogger.currentLog().closeScope(uidCondExp)
               Q(s3, v3)
@@ -407,7 +407,7 @@ object producer extends ProductionRules {
               tPerm,
               pve,
               NegativePermission(acc.perm),
-              ReceiverNotInjective(acc.loc),
+              QPAssertionNotInjective(acc.loc),
               v1
             )(Q)
         }
@@ -439,7 +439,7 @@ object producer extends ProductionRules {
               tPerm,
               pve,
               NegativePermission(acc.perm),
-              ReceiverNotInjective(acc.loc),
+              QPAssertionNotInjective(acc.loc),
               v1
             )(Q)
         }
@@ -471,7 +471,7 @@ object producer extends ProductionRules {
               FullPerm(),
               pve,
               NegativePermission(ast.FullPerm()()),
-              sys.error("Quantified wand not injective"),
+              QPAssertionNotInjective(wand),
               v1
             )(Q)
         }

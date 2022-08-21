@@ -17,15 +17,16 @@ import org.slf4j.LoggerFactory
 import viper.silver.ast
 import viper.silver.frontend.{DefaultStates, SilFrontend}
 import viper.silver.reporter._
-import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
-import viper.silicon.common.config.Version
+import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.verifier.DefaultMasterVerifier
+import viper.silicon.decider.{Z3ProverStdIO, Cvc5ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
-import viper.silver.plugin.PluginAwareReporter
+
+import scala.util.chaining._
 
 object Silicon {
   val name = BuildInfo.projectName
@@ -42,10 +43,7 @@ object Silicon {
     s"${BuildInfo.projectVersion}${buildVersion.fold("")(v => s" ($v)")}"
 
   val copyright = "(c) Copyright ETH Zurich 2012 - 2019"
-  val z3ExeEnvironmentVariable = "Z3_EXE"
-  val z3MinVersion = Version("4.5.0")
-  val z3MaxVersion: Option[Version] = None // Some(Version("4.5.0")) /* X.Y.Z if that is the *last supported* version */
-  val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "https://github.com/Z3Prover/z3"))
+  val dependencies = Z3ProverStdIO.dependencies ++ Cvc5ProverStdIO.dependencies
 
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
     configMap.flatMap {
@@ -247,12 +245,20 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 
     val failures =
-      results.flatMap(r => r :: r.allPrevious)
-             .collect{ case f: Failure => f } /* Ignore successes */
-             .sortBy(_.message.pos match { /* Order failures according to source position */
-                case pos: ast.HasLineColumn => (pos.line, pos.column)
-                case _ => (-1, -1)
-             })
+      results.flatMap(r => r :: r.previous.toList)
+        .collect{ case f: Failure => f } /* Ignore successes */
+        .pipe(allResults => {
+          /* If branchconditions are to be reported we collect the different failure contexts
+          *  of all failures that report the same error (but on different branches, with different CounterExample)
+          *  and put those into one failure */
+          if (config.enableBranchconditionReporting())
+            allResults.groupBy(failureFilterAndGroupingCriterion).map{case (_: String, fs:List[Failure]) =>
+              fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
+              Failure(fs.head.message)
+            }.toList
+             else allResults.distinctBy(failureFilterAndGroupingCriterion)
+        })
+        .sortBy(failureSortingCriterion)
 
 //    if (config.showStatistics.isDefined) {
 //      val proverStats = verifier.decider.statistics()
@@ -283,7 +289,29 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     failures
   }
 
-  private def logFailure(failure: Failure, log: String => Unit): Unit = {
+  private def failureFilterAndGroupingCriterion(f: Failure): String = {
+    // apply transformers if available:
+    val transformedError = f.message match {
+      case e: SilAbstractVerificationError => e.transformedError()
+      case e => e
+    }
+    // create a string that identifies the given failure:
+    transformedError.readableMessage(withId = true, withPosition = true)
+  }
+
+  private def failureSortingCriterion(f: Failure): (Int, Int) = {
+    // apply transformers if available:
+    val transformedError = f.message match {
+      case e: SilAbstractVerificationError => e.transformedError()
+      case e => e
+    }
+    transformedError.pos match { /* Order failures according to source position */
+      case pos: ast.HasLineColumn => (pos.line, pos.column)
+      case _ => (-1, -1)
+    }
+  }
+
+  private def logFailure(failure: Failure, log: String => Unit): Unit = { //TODO:J log context?
     log("\n" + failure.message.readableMessage(withId = true, withPosition = true))
   }
 
@@ -306,16 +334,13 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   }
 }
 
-class SiliconFrontend(override val reporter: PluginAwareReporter,
-                      override implicit val logger: Logger) extends SilFrontend {
-
-  def this(reporter: Reporter, logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) =
-    this(PluginAwareReporter(reporter), logger)
+class SiliconFrontend(override val reporter: Reporter,
+                      override implicit val logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) extends SilFrontend {
 
   protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {
-    siliconInstance = new Silicon(reporter.reporter, Seq("args" -> fullCmd))
+    siliconInstance = new Silicon(reporter, Seq("args" -> fullCmd))
 
     siliconInstance
   }

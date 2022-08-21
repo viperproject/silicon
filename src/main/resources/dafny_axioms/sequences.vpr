@@ -53,7 +53,9 @@ domain $Seq[E] {
   }
 
   axiom seq_index_over_singleton {
-    forall e: E :: {Seq_index(Seq_singleton(e), 0)}
+    forall e: E ::
+        // {Seq_index(Seq_singleton(e), 0)}
+        {Seq_singleton(e)} // [2022-03-08 Malte] Weaker trigger to resolve Silicon issue #601
       Seq_index(Seq_singleton(e), 0) == e
   }
 

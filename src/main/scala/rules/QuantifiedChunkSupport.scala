@@ -14,7 +14,7 @@ import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
@@ -799,7 +799,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
         val receiverInjectivityCheck =
-          if (Verifier.config.checkInjectivity()) {
+          if (!Verifier.config.assumeInjectivityOnInhale()) {
             quantifiedChunkSupporter.injectivityAxiom(
               qvars     = qvars,
               // TODO: Adding ResourceTriggerFunction requires a summarising snapshot map of the current heap
@@ -1260,7 +1260,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
 
     v.decider.prover.comment(s"Done precomputing, updating quantified chunks")
-    v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.beforeIteration)
+    v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.beforeIteration)
 
     var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm()), Nil)
 
@@ -1435,10 +1435,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val args1 = arguments.map(_.replace(qvars, qvars1))
     val args2 = arguments.map(_.replace(qvars, qvars2))
 
-    val argsEqual =
-      (args1 zip args2)
-        .map(argsRenamed =>  argsRenamed._1 === argsRenamed._2)
-        .reduce((a1, a2) => And(a1, a2))
+    // Note: all lists, such as qvars1 and qvars2, are assumed to have pairwise same length
+
+    val argsEqual: Term =
+      if (args1.isEmpty)
+        True()
+      else
+        (args1 zip args2)
+            .map(argsRenamed =>  argsRenamed._1 === argsRenamed._2)
+            .reduce((a1, a2) => And(a1, a2))
 
     val varsEqual =
       (qvars1 zip qvars2)

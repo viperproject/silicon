@@ -133,12 +133,14 @@ object predicateSupporter extends PredicateSupportRules {
         val s3 = s2.copy(g = gIns, h = h2)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
-          v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
+          v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           val predicateTrigger =
             App(Verifier.predicateData(predicate).triggerFunction,
                 snap.convert(terms.sorts.Snap) +: tArgs)
           v2.decider.assume(predicateTrigger)
-          Q(s4.copy(g = s.g), v2)})
+          Q(s4.copy(g = s.g,
+                    permissionScalingFactor = s.permissionScalingFactor),
+            v2)})
       })
     } else {
       val ve = pve dueTo InsufficientPermission(pa)
@@ -147,11 +149,11 @@ object predicateSupporter extends PredicateSupportRules {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
-          v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
+          v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           val predicateTrigger =
             App(Verifier.predicateData(predicate).triggerFunction, snap +: tArgs)
           v2.decider.assume(predicateTrigger)
-          val s5 = s4.copy(g = s2.g,
+          val s5 = s4.copy(g = s.g,
                            permissionScalingFactor = s.permissionScalingFactor)
           Q(s5, v2)})})
     }
