@@ -25,7 +25,6 @@ import viper.silicon.verifier.DefaultMasterVerifier
 import viper.silicon.decider.{Z3ProverStdIO, Cvc5ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
-
 import scala.util.chaining._
 
 object Silicon {

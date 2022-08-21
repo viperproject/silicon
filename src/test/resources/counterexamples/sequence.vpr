@@ -1,0 +1,14 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method update(values: Seq[Int]) returns (updatedValues: Seq[Int])
+  requires |values| > 3
+  ensures  |values| == |updatedValues|
+  ensures  updatedValues[0] != updatedValues[1]
+  //:: ExpectedCounterexample(postcondition.violated:assertion.false, (updatedValues[1] == 42, updatedValues[2] == 42))
+  ensures  updatedValues[1] != updatedValues[2]
+{
+  updatedValues := values[0 := 0]
+  updatedValues := updatedValues[1 := 42]
+  updatedValues := updatedValues[2 := 42]
+}

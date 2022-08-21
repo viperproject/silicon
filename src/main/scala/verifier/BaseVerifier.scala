@@ -80,6 +80,7 @@ abstract class BaseVerifier(val config: Config,
   override def reset(): Unit = {
     super.reset()
     statefulSubcomponents foreach (_.reset())
+    errorsReportedSoFar.set(0)
     counters.clear()
   }
 

@@ -1,0 +1,11 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method foo(x: Ref, y: Ref)
+  requires acc(x.f, 1/2) && acc(y.f, 1/2)
+{
+  //:: ExpectedCounterexample(assignment.failed:insufficient.permission, (acc(x.f, 1/2)))
+  x.f := y.f * 2 + 2
+}
