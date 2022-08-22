@@ -1457,7 +1457,8 @@ object SeqUpdate extends ((Term, Term, Term) => SeqTerm) {
     utils.assertSort(t1, "second operand", sorts.Int)
     utils.assertSort(t2, "third operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
 
-    new SeqUpdate(t0, t1, t2)
+
+    SeqAppend(SeqTake(t0,t1),SeqAppend(SeqSingleton(t2),SeqDrop(t0,Plus(t1,IntLiteral(1)))))
   }
 
   def unapply(su: SeqUpdate) = Some((su.t0, su.t1, su.t2))
