@@ -555,6 +555,16 @@ class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
 object Quantification
     extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean) => Quantification) {
 
+  def transformSeqTerms(t: Trigger): Seq[Trigger] = {
+    val transformed = Trigger(t.p.map(_.transform{
+      case SeqIn(t0, t1) => SeqInTrigger(t0, t1)
+    }()))
+    if (transformed != t)
+      Seq(t, transformed)
+    else
+      Seq(t)
+  }
+
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
     apply(q, vars, tBody, triggers, "")
 
@@ -572,6 +582,8 @@ object Quantification
             isGlobal: Boolean)
            : Quantification = {
 
+    val rewrittenTriggers = triggers.flatMap(transformSeqTerms(_))
+
 //    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")
 //    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
 //    assert(triggers.distinct.length == triggers.length, s"Found duplicate triggers: $triggers")
@@ -579,7 +591,7 @@ object Quantification
     /* TODO: If we optimise away a quantifier, we cannot, for example, access
      *       autoTrigger on the returned object.
      */
-    new Quantification(q, vars, tBody, triggers, name, isGlobal)
+    new Quantification(q, vars, tBody, rewrittenTriggers, name, isGlobal)
 //    tBody match {
 //    case True() | False() => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
