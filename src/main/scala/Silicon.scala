@@ -169,20 +169,16 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     logger.debug(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
-    /* If available, save the filename corresponding to the program under verification in Verifier.inputFile.
-     * See also src/test/scala/SiliconTests.scala, where the analogous happens if Silicon is executed while
-     * running the test suite.
-     * Do not save the filename if the filename corresponds to the dummy one or `--ignoreFile` has been specified.
+    /* Do not save the filename if the filename corresponds to the dummy one or `--ignoreFile` has been specified.
      * Clients assume that the filename is ignored if `--ignoreFile` is used but calling `Paths.get` on it effectively
      * tries to parse the given string as path. For example, the following string causes an exception on Windows (and
      * only on Windows): `_programID_d:\a\test`
      *
      * TODO: Figure out what happens when ViperServer is used. */
-    config.file.foreach(filename => {
-      if (filename != Silicon.dummyInputFilename && !config.ignoreFile.getOrElse(false)) {
-        MultiRunRecorders.source = Some(filename)
-      }
-    })
+    val inputFile: Option[String] =
+      if (config.file() != Silicon.dummyInputFilename && !config.ignoreFile.getOrElse(false)) Some(config.file())
+      else None
+    MultiRunRecorders.source = inputFile
 
     // TODO: Check consistency of cfgs.
     val consistencyErrors = utils.consistency.check(program)
@@ -194,7 +190,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
       val executor = Executors.newSingleThreadExecutor()
 
       val future = executor.submit(new Callable[List[Failure]] {
-        def call(): List[Failure] = runVerifier(program, cfgs)
+        def call(): List[Failure] = runVerifier(program, cfgs, inputFile)
       })
 
       try {
@@ -237,11 +233,11 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     }
   }
 
-  private def runVerifier(program: ast.Program, cfgs: Seq[SilverCfg]): List[Failure] = {
+  private def runVerifier(program: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[Failure] = {
 //    verifier.bookkeeper.branches = 1
     /*verifier.bookkeeper.*/startTime = System.currentTimeMillis()
 
-    val results = verifier.verify(program, cfgs)
+    val results = verifier.verify(program, cfgs, inputFile)
 
     /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 
@@ -435,6 +431,6 @@ class SiliconRunnerInstance extends SiliconFrontend(StdIOReporter()) {
          */
     }
 
-    //sys.exit(exitCode)
+    sys.exit(exitCode)
   }
 }

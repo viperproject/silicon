@@ -206,7 +206,7 @@ private object utils {
         program
 
       case fastparse.Parsed.Failure(msg, index, _) =>
-        val (line, col) = lc.apply(index)
+        val (line, col) = lc.getPos(index)
         sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, line, col)}")
         //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
         //? sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, pos(0), pos(1))}")

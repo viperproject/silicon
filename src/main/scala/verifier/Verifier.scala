@@ -55,27 +55,4 @@ object Verifier {
   /*private*/ def config_=(config: Config): Unit = { _config = config }
 }
 
-/* TODO: Replace getters and setters by public vars
-   TODO: Add a description to each var that explain when it is expected to be set */
-class VerifierState {
-
-  private var _program: ast.Program = _
-  def program: ast.Program = _program
-  /*private*/ def program_=(program: ast.Program): Unit = { _program = program }
-
-  private var _inputFile: Option[Path] = None
-  def inputFile: Option[Path] = _inputFile
-  /*private*/ def inputFile_=(file: Option[Path]): Unit = { _inputFile = file }
-
-  private var _predicateData: Map[ast.Predicate, PredicateData] = _
-  def predicateData: Map[ast.Predicate, PredicateData] = _predicateData
-  /*private*/ def predicateData_=(predicateData: Map[ast.Predicate, PredicateData]): Unit =
-    { _predicateData = predicateData }
-
-  private var _functionData: Map[ast.Function, FunctionData] = _
-  def functionData: Map[ast.Function, FunctionData] = _functionData
-  /*private*/ def functionData_=(functionData: Map[ast.Function, FunctionData]): Unit =
-  { _functionData = functionData }
-}
-
 trait VerifierComponent { this: Verifier => }

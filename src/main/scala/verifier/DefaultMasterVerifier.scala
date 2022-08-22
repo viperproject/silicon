@@ -135,7 +135,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   /* Program verification */
 
-  def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg]): List[VerificationResult] = {
+  def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
       * This is done bottom-up to ensure that nested quantifiers are transformed as well
@@ -165,7 +165,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     allProvers.comment("Started: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()) /*bookkeeper.formattedStartTime*/)
     allProvers.comment("Silicon.version: " + Silicon.version)
-    //allProvers.comment(s"Input file: ${Verifier.inputFile.getOrElse("<unknown>")}")
+    allProvers.comment(s"Input file: ${inputFile.getOrElse("<unknown>")}")
     allProvers.comment(s"Verifier id: $uniqueId")
     allProvers.comment("-" * 60)
     allProvers.comment("Begin preamble")

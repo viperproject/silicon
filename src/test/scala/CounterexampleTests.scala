@@ -174,9 +174,10 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
   * same syntax as in Viper)
   */
 class CounterexampleParser(fp: FastParser) {
+  import fp.{accessPred, eqExp}
 
   def expectedCounterexample[_: P]: P[ExpectedCounterexample] =
-    (Start ~ "(" ~ (fp.accessPred | fp.eqExp).rep(0, ",") ~ ")" ~ End)
+    (Start ~ "(" ~ (accessPred | eqExp).rep(0, ",") ~ ")" ~ End)
       .map(ExpectedCounterexample)
 }
 
