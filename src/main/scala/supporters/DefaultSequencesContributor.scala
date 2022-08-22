@@ -17,7 +17,7 @@ class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term],
   type BuiltinDomainType = ast.SeqType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.SeqType]
 
-  val defaultSourceResource: String = "/dafny_axioms/sequences_new.vpr"
+  val defaultSourceResource: String = "/dafny_axioms/sequences.vpr"
   val userProvidedSourceFilepath: Option[String] = config.sequenceAxiomatizationFile.toOption
   val sourceDomainName: String = "$Seq"
 

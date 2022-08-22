@@ -17,7 +17,7 @@ class DefaultMultisetsContributor(val domainTranslator: DomainsTranslator[Term],
   type BuiltinDomainType = ast.MultisetType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.MultisetType]
 
-  val defaultSourceResource: String = "/dafny_axioms/multisets_new.vpr"
+  val defaultSourceResource: String = "/dafny_axioms/multisets.vpr"
   val userProvidedSourceFilepath: Option[String] = config.multisetAxiomatizationFile.toOption
   val sourceDomainName: String = "$Multiset"
 
