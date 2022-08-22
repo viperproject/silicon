@@ -118,7 +118,7 @@ domain $Multiset[E] {
     }
     axiom {
         forall a: $Multiset[E], b: $Multiset[E] :: { Multiset_equal(a, b) }
-            Multiset_equal(a, b) <==> a == b
+            Multiset_equal(a, b) ==> a == b
     }
 
     function Multiset_disjoint(ms0: $Multiset[E], ms1: $Multiset[E]): Bool

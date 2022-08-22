@@ -1413,6 +1413,22 @@ object SeqIn extends ((Term, Term) => BooleanTerm) {
   def unapply(si: SeqIn) = Some((si.p0, si.p1))
 }
 
+class SeqInTrigger(val p0: Term, val p1: Term) extends BooleanTerm
+  with StructuralEqualityBinaryOp[Term] {
+
+  override lazy val toString = s"$p1 in $p0"
+}
+
+object SeqInTrigger extends ((Term, Term) => BooleanTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
+    utils.assertSort(t1, "second operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
+    new SeqInTrigger(t0, t1)
+  }
+
+  def unapply(si: SeqInTrigger) = Some((si.p0, si.p1))
+}
+
 class SeqUpdate(val t0: Term, val t1: Term, val t2: Term)
     extends SeqTerm
        with StructuralEquality {

@@ -149,7 +149,6 @@ domain $Seq[E] {
     // start contains
 
     function Seq_contains(s: $Seq[E], e: E): Bool
-    // ME TODO: is this actually happening?
     function Seq_contains_trigger(s: $Seq[E], e: E): Bool  // usages of Contains inside quantifier triggers are replaced with this
     function Seq_skolem(s: $Seq[E], e: E): Int
     axiom {
@@ -181,7 +180,7 @@ domain $Seq[E] {
     }
     axiom {
         forall a: $Seq[E], b: $Seq[E] :: { Seq_equal(a, b) }
-        Seq_equal(a, b) <==> a == b
+        Seq_equal(a, b) ==> a == b
     }
 
     // end equals

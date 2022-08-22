@@ -172,6 +172,7 @@ package object utils {
       case SeqLength(t) => SeqLength(go(t))
       case SeqAt(t0, t1) => SeqAt(go(t0), go(t1))
       case SeqIn(t0, t1) => SeqIn(go(t0), go(t1))
+      case SeqInTrigger(t0, t1) => SeqInTrigger(go(t0), go(t1))
       case SeqUpdate(t0, t1, t2) => SeqUpdate(go(t0), go(t1), go(t2))
       case SingletonSet(t) => SingletonSet(go(t))
       case SetAdd(t0, t1) => SetAdd(go(t0), go(t1))

@@ -18,7 +18,7 @@ domain $Set[E] {
     axiom {
         forall s: $Set[E] :: { Set_card(s) }
         (Set_card(s) == 0 ==> s == Set_empty()) &&
-        (Set_card(s) != 0 ==> (exists x: E :: Set_in(x, s)))  // ME TODO: skolemize? Why is this still here?
+        (Set_card(s) != 0 ==> (exists x: E :: Set_in(x, s)))
     }
     function Set_singleton(e: E): $Set[E]
     axiom {
@@ -28,7 +28,7 @@ domain $Set[E] {
         forall r: E, o: E :: { Set_in(o, Set_singleton(r)) } Set_in(o, Set_singleton(r)) <==> r ==o
     }
     axiom {
-        forall r: E :: { Set_card(Set_singleton(r)) } Set_card(Set_singleton(r)) == 1 // ME TODO: why not trigger on the constructor alone?
+        forall r: E :: { Set_card(Set_singleton(r)) } Set_card(Set_singleton(r)) == 1
     }
 
     function Set_unionone(s: $Set[E], e: E): $Set[E]
@@ -131,6 +131,6 @@ domain $Set[E] {
     }
     axiom {
         forall a: $Set[E], b: $Set[E] :: { Set_equal(a, b) }
-            Set_equal(a, b) <==> a == b
+            Set_equal(a, b) ==> a == b
     }
 }
