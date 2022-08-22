@@ -144,21 +144,23 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def reset(): Unit = {
-    stop()
     termConverter.reset()
+    stop()
     start()
   }
 
   def stop(): Unit = {
+    emittedPreambleString.clear()
+    preamblePhaseOver = false
+    emittedFuncs.clear()
+    emittedSorts.clear()
+    emittedFuncSymbols.clear()
+    emittedSortSymbols.clear()
+    prover = null
+    lastModel = null
     if (ctx != null){
       ctx.close()
       ctx = null
-      emittedPreambleString.clear()
-      preamblePhaseOver = false
-      emittedFuncs.clear()
-      emittedSorts.clear()
-      emittedFuncSymbols.clear()
-      emittedSortSymbols.clear()
     }
   }
 
