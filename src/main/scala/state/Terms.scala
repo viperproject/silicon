@@ -1971,13 +1971,13 @@ object fromSnapTree extends ((Term, Int) => Seq[Term]) {
 }
 
 object ResourceTriggerFunction {
-  def apply(resource: ast.Resource, sm: Term, args: Seq[Term]): Term = {
+  def apply(resource: ast.Resource, sm: Term, args: Seq[Term], program: ast.Program): Term = {
     resource match {
       case f: ast.Field =>
         assert(args.size == 1)
         apply(f, sm, args.head)
       case p: ast.Predicate => apply(p, sm, args)
-      case w: ast.MagicWand => apply(w, sm, args)
+      case w: ast.MagicWand => apply(w, sm, args, program)
     }
   }
 
@@ -1995,13 +1995,13 @@ object ResourceTriggerFunction {
 }
 
 object ResourceLookup {
-  def apply(resource: ast.Resource, sm: Term, args: Seq[Term]): Term = {
+  def apply(resource: ast.Resource, sm: Term, args: Seq[Term], program: ast.Program): Term = {
     resource match {
       case f: ast.Field =>
         assert(args.size == 1)
         apply(f, sm, args.head)
       case p: ast.Predicate => apply(p, sm, args)
-      case w: ast.MagicWand => apply(w, sm, args)
+      case w: ast.MagicWand => apply(w, sm, args, program)
     }
   }
 
@@ -2019,13 +2019,13 @@ object ResourceLookup {
 }
 
 object ResourcePermissionLookup {
-  def apply(resource: ast.Resource, sm: Term, args: Seq[Term]): Term = {
+  def apply(resource: ast.Resource, sm: Term, args: Seq[Term], program: ast.Program): Term = {
     resource match {
       case f: ast.Field =>
         assert(args.size == 1)
         apply(f, sm, args.head)
       case p: ast.Predicate => apply(p, sm, args)
-      case w: ast.MagicWand => apply(w, sm, args)
+      case w: ast.MagicWand => apply(w, sm, args, program)
     }
   }
 

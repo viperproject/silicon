@@ -493,8 +493,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val valueDefinitions =
       relevantChunks map (chunk => {
-        val lookupSummary = ResourceLookup(resource, sm, Seq(qvar))
-        val lookupChunk = ResourceLookup(resource, chunk.snapshotMap, Seq(qvar))
+        val lookupSummary = ResourceLookup(resource, sm, Seq(qvar), s.program)
+        val lookupChunk = ResourceLookup(resource, chunk.snapshotMap, Seq(qvar), s.program)
 
         // This is justified even for vacuous predicates (e.g. with body "true") and wands because
         // qvar is the tuple of predicate arguments, and thus unrelated to the actual body
@@ -518,8 +518,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val resourceTriggerDefinition =
       Forall(
         qvar,
-        And(relevantChunks map (chunk => ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar)))),
-        Trigger(ResourceLookup(resource, sm, Seq(qvar))),
+        And(relevantChunks map (chunk => ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program))),
+        Trigger(ResourceLookup(resource, sm, Seq(qvar), s.program)),
         s"qp.psmResTrgDef${v.counter(this).next()}",
         isGlobal = true)
 
@@ -538,7 +538,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     (sm, valueDefinitions :+ resourceTriggerDefinition, optDomainDefinition)
   }
 
-  private def summarisePerm(@unused s: State,
+  private def summarisePerm(s: State,
                             relevantChunks: Seq[QuantifiedBasicChunk],
                             codomainQVars: Seq[Var],
                             resource: ast.Resource,
@@ -548,7 +548,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val pm = freshPermMap(resource, Seq(), v)
 
-    val permSummary = ResourcePermissionLookup(resource, pm, codomainQVars)
+    val permSummary = ResourcePermissionLookup(resource, pm, codomainQVars, s.program)
 
     val valueDefinitions =
       Forall(
@@ -558,7 +558,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s"qp.resPrmSumDef${v.counter(this).next()}",
         isGlobal = true)
 
-    val resourceTriggerFunction = ResourceTriggerFunction(resource, smDef.sm, codomainQVars)
+    val resourceTriggerFunction = ResourceTriggerFunction(resource, smDef.sm, codomainQVars, s.program)
 
     // TODO: Quantify over snapshot if resource is predicate.
     //       Also check other places where a similar quantifier is constructed.
@@ -567,8 +567,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         codomainQVars,
         And(resourceTriggerFunction +:
             relevantChunks.map(chunk =>
-              ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars))),
-        Trigger(ResourcePermissionLookup(resource, pm, codomainQVars)),
+              ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars, s.program))),
+        Trigger(ResourcePermissionLookup(resource, pm, codomainQVars, s.program)),
         s"qp.resTrgDef${v.counter(this).next()}",
         isGlobal = true)
 
@@ -608,7 +608,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val additionalSmArgs = s.relevantQuantifiedVariables(arguments)
     val sm = freshSnapshotMap(s, resource, additionalSmArgs, v)
-    val smValueDef = ResourceLookup(resource, sm, arguments) === value
+    val smValueDef = ResourceLookup(resource, sm, arguments, s.program) === value
 
     (sm, smValueDef)
   }
@@ -863,7 +863,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val (smDef1, smCache1) =
               quantifiedChunkSupporter.summarisingSnapshotMap(
                 s, resource, codomainVars, relevantChunks, v)
-            val trigger = ResourceTriggerFunction(resource, smDef1.sm, codomainVars)
+            val trigger = ResourceTriggerFunction(resource, smDef1.sm, codomainVars, s.program)
             val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
             val condOfInv = tCond.replace(qvarsToInv)
             v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars)))) //effectiveTriggers map (t => Trigger(t.p map (_.replace(qvarsToInv))))))
@@ -997,7 +997,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val receiverInjectivityCheck =
           quantifiedChunkSupporter.injectivityAxiom(
             qvars     = qvars,
-            condition = And(tCond, ResourceTriggerFunction(resource, smDef1.sm, tArgs)),
+            condition = And(tCond, ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)),
             perms     = tPerm,
             arguments = tArgs,
             triggers  = Nil,
@@ -1015,7 +1015,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.assume(
               Forall(
                 formalQVars,
-                Implies(condOfInvOfLoc, ResourceTriggerFunction(resource, smDef1.sm, formalQVars)),
+                Implies(condOfInvOfLoc, ResourceTriggerFunction(resource, smDef1.sm, formalQVars, s.program)),
                 Trigger(inverseFunctions.inversesOf(formalQVars))))
 
             /* TODO: Try to unify the upcoming if/else-block, their code is rather similar */
@@ -1175,7 +1175,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       })((s4, optCh, v2) =>
         optCh match {
           case Some(ch) =>
-            val snap = ResourceLookup(resource, ch.snapshotMap, arguments).convert(sorts.Snap)
+            val snap = ResourceLookup(resource, ch.snapshotMap, arguments, s4.program).convert(sorts.Snap)
             Q(s4, s4.h, snap, v2)
           case _ =>
             Q(s4, s4.h, v2.decider.fresh(sorts.Snap), v2)
@@ -1209,7 +1209,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               v = v)
           val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1),
                            smCache = smCache1)
-          val snap = ResourceLookup(resource, smDef1.sm, arguments).convert(sorts.Snap)
+          val snap = ResourceLookup(resource, smDef1.sm, arguments, s2.program).convert(sorts.Snap)
           Q(s2, h1, snap, v)
         case (Incomplete(_), _, _) =>
           failure
