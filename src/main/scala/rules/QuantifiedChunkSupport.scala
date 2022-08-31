@@ -23,6 +23,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.perms.BigPermSum
 import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.state.terms.sorts.Bool
 import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
@@ -33,9 +34,11 @@ case class InverseFunctions(condition: Term,
                             additionalArguments: Vector[Var],
                             axiomInversesOfInvertibles: Quantification,
                             axiomInvertiblesOfInverses: Quantification,
-                            qvarsToInverses: Map[Var, Function]) {
+                            qvarsToInverses: Map[Var, Function],
+                            codomainDefined: Function
+                           ) {
 
-  val inverses: Iterable[Function] = qvarsToInverses.values
+  val inverses = codomainDefined :: qvarsToInverses.values.toList
 
   val definitionalAxioms: Vector[Quantification] =
     Vector(axiomInversesOfInvertibles, axiomInvertiblesOfInverses)
@@ -825,9 +828,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
 
-            v.decider.prover.comment("Definitional axioms for inverse functions")
+            v.decider.prover.comment("Definitional axioms for inverse functions!")
             val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(inv.definitionalAxioms)
+            v.decider.prover.comment("DONE")
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
               else s.conservedPcs
@@ -1006,7 +1010,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
-            val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
+            // println(s"QVARSTOINV: ${qvarsToInvOfLoc}")
+            // println(s"COND ${tCond}")
+//            val invDefinedConds = tCond.deepCollect {
+//              case v: Var if inverseFunctions.qvarsToInverses.contains(v) =>
+//                App(inverseFunctions.codomainInvDefined(v), List(v))
+//            }
+            // println(s"CONDS: ${invDefinedConds}")
+            val condOfInvOfLoc = And(App(inverseFunctions.codomainDefined, formalQVars), tCond.replace(qvarsToInvOfLoc))
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
@@ -1501,6 +1512,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val inversesOfFcts = Array.ofDim[Term](qvars.length)       /* inv_i(f_1(xs), ..., f_m(xs)) */
     val inversesOfCodomains = Array.ofDim[Term](qvars.length)  /* inv_i(rs) */
 
+    val codomainDefined =
+        v.decider.fresh("inv_defined", codomainQVars.map(_.sort), Bool)
+
     qvarsWithIndices foreach { case (qvar, idx) =>
       val fun = v.decider.fresh("inv", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), qvar.sort)
       val inv = (ts: Seq[Term]) => App(fun, additionalInvArgs ++ ts)
@@ -1517,6 +1531,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     /* c(inv_1(rs), ..., inv_n(rs)) */
     val conditionOfInverses =
       condition.replace(qvars, ArraySeq.unsafeWrapArray(inversesOfCodomains))
+
+    // println(s"COND: $conditionOfInverses")
 
     /* c(xs) ==>
      *       inv_1(f_1(xs), ..., f_m(xs)) == x_1
@@ -1557,8 +1573,34 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         conditionOfInverses,
         And(
           fctsOfInversesOfCodomain
+            .zip(invertibles)
             .zip(codomainQVars)
-            .map { case (fctOfInvs, r) => fctOfInvs === r }))
+            .map { case ((fctOfInvs, orig), r) =>
+              val isDefined = codomainDefined
+              if(qvars.contains(orig)) {
+                And(
+                  App(isDefined, codomainQVars),
+                  fctOfInvs === r
+                )
+              } else {
+                And(
+                  Implies(
+                      Exists(qvars, orig === r,
+                        List(
+                          // Trigger(orig === r)
+                        )
+                      ),
+                    App(isDefined, codomainQVars)),
+                Implies(
+                  App(isDefined, codomainQVars),
+                  fctOfInvs === r
+                )
+                )
+              }
+            }
+        ))
+
+    // println(s"BOD: ${axFctsOfInvsBody}")
 
     val axFctsOfInvsTriggers: Seq[Trigger] =
       if (Verifier.config.disableISCTriggers()) Nil
@@ -1580,7 +1622,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       additionalInvArgs.toVector,
       axInvsOfFct,
       axFctsOfInvs,
-      qvars.zip(inverseFunctions).to(Map))
+      qvars.zip(inverseFunctions).to(Map),
+      codomainDefined
+      )
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])

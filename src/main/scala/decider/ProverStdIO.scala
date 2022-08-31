@@ -369,6 +369,7 @@ abstract class ProverStdIO(uniqueId: String,
     val fun = Fun(id, argSorts, resultSort)
     val decl = FunctionDecl(fun)
 
+    // println(s"DECLARE FRESH $id")
     emit(termConverter.convert(decl))
 
     fun
