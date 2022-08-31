@@ -257,7 +257,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val conditionalizedPermissions =
       Ite(
-        condition.replace(qvarsToInversesOfCodomain),
+        resource match {
+          case _: ast.Field =>
+            And(
+              arguments.head.replace(qvarsToInversesOfCodomain) === `?r`,
+              condition.replace(qvarsToInversesOfCodomain)
+            )
+          case _ =>
+            condition.replace(qvarsToInversesOfCodomain)
+        },
         permissions.replace(qvarsToInversesOfCodomain),
         NoPerm())
 
