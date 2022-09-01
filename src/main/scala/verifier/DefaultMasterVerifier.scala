@@ -31,7 +31,8 @@ import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, WarningsDuringTypechecking}
+import viper.silver.verifier.TypecheckerWarning
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -144,10 +145,19 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       */
     var program: ast.Program =
       originalProgram.transform({
-        case forall: ast.Forall if forall.isPure =>
-          viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
+        case forall: ast.Forall if forall.isPure => {
+          val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
+          if (res.triggers.isEmpty)
+            reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          res
+        }
         case exists: ast.Exists =>
-          viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
+        {
+          val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
+          if (res.triggers.isEmpty)
+            reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          res
+        }
       }, Traverse.BottomUp)
 
     // TODO: Autotrigger for cfgs.
