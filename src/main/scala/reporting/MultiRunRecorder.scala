@@ -96,6 +96,11 @@ object MultiRunRecorders extends StatefulComponent {
   private val sinks = mutable.ArrayBuffer.empty[PrintWriter]
 
   protected def config: Config = Verifier.config
+
+  /**
+   The source is set by the Silicon verifier (in method [[viper.silicon.Silicon.verify]]) after parsing and type
+   checking but before consistency checks and verification.
+   */
   var source: Option[String] = None
 
   protected def sink(name: String): PrintWriter = {

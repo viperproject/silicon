@@ -271,13 +271,16 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
      ++ methodVerificationResults)
   }
 
-  private def createInitialState(member: ast.Member, program: ast.Program,
-                                 functionData: Map[ast.Function, FunctionData], predicateData: Map[ast.Predicate, PredicateData]): State = {
+  private def createInitialState(member: ast.Member,
+                                 program: ast.Program,
+                                 functionData: Map[ast.Function, FunctionData],
+                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
 
-    State(program=program, functionData = functionData,
+    State(program = program,
+          functionData = functionData,
           predicateData = predicateData,
           qpFields = quantifiedFields,
           qpPredicates = quantifiedPredicates,
@@ -287,14 +290,19 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           isMethodVerification = member.isInstanceOf[ast.Member])
   }
 
-  private def createInitialState(@unused cfg: SilverCfg, program: ast.Program,
-                                 functionData: Map[ast.Function, FunctionData], predicateData: Map[ast.Predicate, PredicateData]): State = {
+  private def createInitialState(@unused cfg: SilverCfg,
+                                 program: ast.Program,
+                                 functionData: Map[ast.Function, FunctionData],
+                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(program.fields)
     val quantifiedPredicates = InsertionOrderedSet(program.predicates)
     val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.
 
-    State(program=program, functionData = functionData,
-      predicateData = predicateData, qpFields = quantifiedFields,
+    State(
+      program = program,
+      functionData = functionData,
+      predicateData = predicateData,
+      qpFields = quantifiedFields,
       qpPredicates = quantifiedPredicates,
       qpMagicWands = quantifiedMagicWands,
       predicateSnapMap = predSnapGenerator.snapMap,
