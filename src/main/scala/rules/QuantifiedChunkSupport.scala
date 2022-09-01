@@ -831,6 +831,25 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment("Definitional axioms for inverse functions!")
             val definitionalAxiomMark = v.decider.setPathConditionMark()
             v.decider.assume(inv.definitionalAxioms)
+//            v.decider.assume(
+//              Forall(
+//                formalQVars,
+//                App(inverseFunctions.codomainDefined, formalQVars),
+//                Nil
+//              )
+//            )
+            v.decider.assume(
+              Forall(
+                qvars,
+//                Implies(
+//                  tCond,
+                  App(inverseFunctions.codomainDefined, inverseFunctions.invertibles),
+                //),
+                List(
+                  Trigger(inverseFunctions.invertibles)
+                )
+              )
+            )
             v.decider.prover.comment("DONE")
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
@@ -1017,11 +1036,30 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 //                App(inverseFunctions.codomainInvDefined(v), List(v))
 //            }
             // println(s"CONDS: ${invDefinedConds}")
-            val condOfInvOfLoc = And(App(inverseFunctions.codomainDefined, formalQVars), tCond.replace(qvarsToInvOfLoc))
+            val condOfInvOfLoc = And(/*App(inverseFunctions.codomainDefined, formalQVars),*/ tCond.replace(qvarsToInvOfLoc))
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
             v.decider.assume(inverseFunctions.definitionalAxioms)
+
+            v.decider.prover.comment("Inverse image axiom")
+            v.decider.assume(
+              Forall(
+                qvars,
+                Implies(
+                  tCond,
+                  App(inverseFunctions.codomainDefined, inverseFunctions.invertibles)
+                ),
+                Nil
+              )
+            )
+            v.decider.assume(
+              Forall(
+                formalQVars,
+                App(inverseFunctions.codomainDefined, formalQVars),
+                Nil
+              )
+            )
 
             v.decider.assume(
               Forall(
@@ -1579,10 +1617,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               val isDefined = codomainDefined
               if(qvars.contains(orig)) {
                 And(
-                  App(isDefined, codomainQVars),
+                  // App(isDefined, codomainQVars),
                   fctOfInvs === r
                 )
               } else {
+                // fctOfInvs === r
                 And(
                   Implies(
                       Exists(qvars, orig === r,
