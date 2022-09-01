@@ -15,8 +15,8 @@ trait SymbolConverter {
 
   def toSortSpecificId(name: String, sorts: Seq[Sort]): Identifier
 
-  def toFunction(function: ast.DomainFunc): terms.DomainFun
-  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.DomainFun
+  def toFunction(function: ast.DomainFunc, prog: ast.Program): terms.DomainFun
+  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort], prog: ast.Program): terms.DomainFun
 
   def toFunction(function: ast.BackendFunc): terms.SMTFun
 
@@ -53,11 +53,11 @@ class DefaultSymbolConverter extends SymbolConverter {
   def toSortSpecificId(name: String, sorts: Seq[Sort]): Identifier =
     Identifier(name + sorts.mkString("[",",","]"))
 
-  def toFunction(function: ast.DomainFunc): terms.DomainFun = {
+  def toFunction(function: ast.DomainFunc, program: ast.Program): terms.DomainFun = {
     val inSorts = function.formalArgs map (_.typ) map toSort
     val outSort = toSort(function.typ)
 
-    toFunction(function, inSorts :+ outSort)
+    toFunction(function, inSorts :+ outSort, program)
   }
 
   def toFunction(function: ast.BackendFunc): terms.SMTFun = {
@@ -69,12 +69,12 @@ class DefaultSymbolConverter extends SymbolConverter {
     terms.SMTFun(id, inSorts, outSort)
   }
 
-  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.DomainFun = {
+  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort], program: ast.Program): terms.DomainFun = {
     assert(sorts.nonEmpty, "Expected at least one sort, but found none")
 
     val inSorts = sorts.init
     val outSort = sorts.last
-    val domainFunc = Verifier.program.findDomainFunctionOptionally(function.name)
+    val domainFunc = program.findDomainFunctionOptionally(function.name)
     val id = if (domainFunc.isEmpty) Identifier(function.name) else toSortSpecificId(function.name, Seq(outSort))
 
     terms.DomainFun(id, inSorts, outSort)

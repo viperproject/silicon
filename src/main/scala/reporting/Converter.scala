@@ -622,7 +622,7 @@ object Converter {
       } catch {
         case _: Throwable => Seq()
       }
-      val translatedFunctions = x._1.functions.map(y => translateFunction(model, heap, y, x._2))
+      val translatedFunctions = x._1.functions.map(y => translateFunction(model, heap, y, x._2, program))
       DomainEntry(x._1.name, types, translatedFunctions)
     }).toSeq
   }
@@ -634,7 +634,7 @@ object Converter {
     val funcs = program.collect {
       case f: ast.Function => f
     }
-    funcs.map(x => translateFunction(model, heap, x, silicon.toMap(Nil))).toSeq
+    funcs.map(x => translateFunction(model, heap, x, silicon.toMap(Nil), program)).toSeq
   }
 
   def errorfunc(problem: String): ExtractedFunction =
@@ -648,7 +648,7 @@ object Converter {
     * @param genmap map of generic types to concrete types
     * @return
     */
-  def translateFunction(model: Model, heap: ExtractedHeap, func: ast.FuncLike, genmap: Map[ast.TypeVar, ast.Type]): ExtractedFunction = {
+  def translateFunction(model: Model, heap: ExtractedHeap, func: ast.FuncLike, genmap: Map[ast.TypeVar, ast.Type], program: ast.Program): ExtractedFunction = {
     def toSort(typ: ast.Type): Either[Throwable, Sort] = Try(symbolConverter.toSort(typ)).toEither
     def toSortWithSubstitutions(typ: ast.Type, typeErrorMsg: String): Either[String, Sort] = {
       toSort(typ)
@@ -675,7 +675,7 @@ object Converter {
 
     val smtfunc = func match {
       case t: ast.Function => symbolConverter.toFunction(t).id
-      case t: ast.DomainFunc => symbolConverter.toFunction(t, argSort :+ resSort).id
+      case t: ast.DomainFunc => symbolConverter.toFunction(t, argSort :+ resSort, program).id
       case t: ast.BackendFunc => symbolConverter.toFunction(t).id
     }
     val kek = smtfunc.toString

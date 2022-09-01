@@ -25,7 +25,7 @@ import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
-import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
+import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
@@ -136,7 +136,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   /* Program verification */
 
-  def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg]): List[VerificationResult] = {
+  def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
       * This is done bottom-up to ensure that nested quantifiers are transformed as well
@@ -170,14 +170,12 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       println(program)
     }
 
-    Verifier.program = program
-
     predSnapGenerator.setup(program) // TODO: Why did Nadja put this here?
 
 
     allProvers.comment("Started: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()) /*bookkeeper.formattedStartTime*/)
     allProvers.comment("Silicon.version: " + Silicon.version)
-    allProvers.comment(s"Input file: ${Verifier.inputFile.getOrElse("<unknown>")}")
+    allProvers.comment(s"Input file: ${inputFile.getOrElse("<unknown>")}")
     allProvers.comment(s"Verifier id: $uniqueId")
     allProvers.comment("-" * 60)
     allProvers.comment("Begin preamble")
@@ -185,7 +183,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     allProvers.comment("/" * 10 + " Static preamble")
     emitStaticPreamble(allProvers)
 
-    analyzeProgramAndEmitPreambleContributions(program, allProvers) // TODO: Add support for cfgs.
+    val (functionData, predicateData) = analyzeProgramAndEmitPreambleContributions(program, allProvers) // TODO: Add support for cfgs.
 
     allProvers.comment("End preamble")
     allProvers.comment("-" * 60)
@@ -201,7 +199,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
-      val results = functionsSupporter.verify(createInitialState(function, program), function)
+      val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -210,7 +208,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
-      val results = predicateSupporter.verify(createInitialState(predicate, program), predicate)
+      val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -232,7 +230,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
-        val s = createInitialState(method, program)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
+        val s = createInitialState(method, program, functionData, predicateData)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
@@ -245,7 +243,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           setErrorScope(results, method)
         })
       }) ++ cfgs.map(cfg => {
-        val s = createInitialState(cfg, program)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
+        val s = createInitialState(cfg, program, functionData, predicateData)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
@@ -273,12 +271,18 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
      ++ methodVerificationResults)
   }
 
-  private def createInitialState(member: ast.Member, program: ast.Program): State = {
+  private def createInitialState(member: ast.Member,
+                                 program: ast.Program,
+                                 functionData: Map[ast.Function, FunctionData],
+                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
 
-    State(qpFields = quantifiedFields,
+    State(program = program,
+          functionData = functionData,
+          predicateData = predicateData,
+          qpFields = quantifiedFields,
           qpPredicates = quantifiedPredicates,
           qpMagicWands = quantifiedMagicWands,
           predicateSnapMap = predSnapGenerator.snapMap,
@@ -286,12 +290,19 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           isMethodVerification = member.isInstanceOf[ast.Member])
   }
 
-  private def createInitialState(@unused cfg: SilverCfg, program: ast.Program): State = {
+  private def createInitialState(@unused cfg: SilverCfg,
+                                 program: ast.Program,
+                                 functionData: Map[ast.Function, FunctionData],
+                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(program.fields)
     val quantifiedPredicates = InsertionOrderedSet(program.predicates)
     val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.
 
-    State(qpFields = quantifiedFields,
+    State(
+      program = program,
+      functionData = functionData,
+      predicateData = predicateData,
+      qpFields = quantifiedFields,
       qpPredicates = quantifiedPredicates,
       qpMagicWands = quantifiedMagicWands,
       predicateSnapMap = predSnapGenerator.snapMap,
@@ -398,11 +409,13 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     predicateSupporter
   )
 
-  private def analyzeProgramAndEmitPreambleContributions(program: ast.Program, sink: ProverLike): Unit = {
+  private def analyzeProgramAndEmitPreambleContributions(program: ast.Program, sink: ProverLike) = {
     analysisOrder foreach (component => {
       component.analyze(program)
-      component.updateGlobalStateAfterAnalysis()
     })
+    val predicateData = predicateSupporter.predicateData
+    val functionData = functionsSupporter.functionData
+    functionsSupporter.predicateData = predicateData
 
     sink.comment("/" * 10 + " Sorts")
     sortDeclarationOrder foreach (component =>
@@ -435,6 +448,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     sink.comment("/" * 10 + " Axioms")
     axiomDeclarationOrder foreach (component =>
       component.emitAxiomsAfterAnalysis(sink))
+
+    (functionData, predicateData)
   }
 
   private def emitSortWrappers(ss: Iterable[Sort], sink: ProverLike): Unit = {

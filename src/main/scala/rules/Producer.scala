@@ -261,12 +261,12 @@ object producer extends ProductionRules {
               }})))
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
-        val predicate = Verifier.program.findPredicate(predicateName)
+        val predicate = s.program.findPredicate(predicateName)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s1a, tPerm, v1a) =>
             permissionSupporter.assertNotNegative(s1a, tPerm, perm, pve, v1a)((s2, v2) => {
               val snap = sf(
-                predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1)
+                predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
                               .getOrElse(sorts.Snap), v2)
               val gain = PermTimes(tPerm, s2.permissionScalingFactor)
               if (s2.qpPredicates.contains(predicate)) {
@@ -279,13 +279,13 @@ object producer extends ProductionRules {
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
                 chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
                   if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder) {
-                    v3.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs))
+                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs))
                   }
                   Q(s3.copy(h = h3), v3)})
               }})))
 
-      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program)) =>
-        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
+        val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         evals(s, bodyVars, _ => pve, v)((s1, args, v1) => {
           val (sm, smValueDef) =
@@ -297,7 +297,7 @@ object producer extends ProductionRules {
             if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
             else s1.conservedPcs
           val ch =
-            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm, s.program)
           val h2 = s1.h + ch
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h2, ch.id)
@@ -352,7 +352,7 @@ object producer extends ProductionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
-        val predicate = Verifier.program.findPredicate(acc.loc.predicateName)
+        val predicate = s.program.findPredicate(acc.loc.predicateName)
         val formalVars = s.predicateFormalVarMap(predicate)
         val qid = acc.loc.predicateName
         val optTrigger =
@@ -384,12 +384,12 @@ object producer extends ProductionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
-        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+        val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        val qid = MagicWandIdentifier(wand, Verifier.program).toString
+        val qid = MagicWandIdentifier(wand, s.program).toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap), v1)

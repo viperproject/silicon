@@ -311,7 +311,7 @@ object executor extends ExecutionRules {
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 v1.decider.assume(smValueDef)
-                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm)
+                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm, s.program)
                 v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
               case (Incomplete(_), s3, _) =>
@@ -322,7 +322,7 @@ object executor extends ExecutionRules {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
-            val resource = fa.res(Verifier.program)
+            val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
             chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm(), ve, v2, description)((s3, h3, _, v3) => {
@@ -345,7 +345,7 @@ object executor extends ExecutionRules {
             val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
             v.decider.assume(smValueDef)
-            quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm)
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm, s.program)
           } else {
             BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
           }
@@ -411,7 +411,7 @@ object executor extends ExecutionRules {
           if !Verifier.config.disableHavocHack407() && methodName.startsWith(hack407_method_name_prefix) =>
 
         val resourceName = methodName.stripPrefix(hack407_method_name_prefix)
-        val member = Verifier.program.collectFirst {
+        val member = s.program.collectFirst {
           case m: ast.Field if m.name == resourceName => m
           case m: ast.Predicate if m.name == resourceName => m
         }.getOrElse(sys.error(s"Found $methodName, but no matching field or predicate $resourceName"))
@@ -433,7 +433,7 @@ object executor extends ExecutionRules {
         Q(s1, v)
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
-        val meth = Verifier.program.findMethod(methodName)
+        val meth = s.program.findMethod(methodName)
         val fargs = meth.formalArgs.map(_.localVar)
         val formalsToActuals: Map[ast.LocalVar, ast.Exp] = fargs.zip(eArgs).to(Map)
         val reasonTransformer = (n: viper.silver.verifier.errors.ErrorNode) => n.replace(formalsToActuals)
@@ -474,7 +474,7 @@ object executor extends ExecutionRules {
               Q(s6, v3)})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
-        val predicate = Verifier.program.findPredicate(predicateName)
+        val predicate = s.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
@@ -483,7 +483,7 @@ object executor extends ExecutionRules {
               predicateSupporter.fold(s3, predicate, tArgs, tPerm, wildcards, pve, v3)(Q)})))
 
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
-        val predicate = Verifier.program.findPredicate(predicateName)
+        val predicate = s.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
@@ -536,7 +536,7 @@ object executor extends ExecutionRules {
               case ch: QuantifiedMagicWandChunk =>
                 val (relevantChunks, _) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
-                val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+                val bodyVars = wand.subexpressionsToEvaluate(s.program)
                 val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
                 val (smDef, smCache) =
                   quantifiedChunkSupporter.summarisingSnapshotMap(

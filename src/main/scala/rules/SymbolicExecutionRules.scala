@@ -38,7 +38,7 @@ trait SymbolicExecutionRules {
           case VariablesModel =>
             SiliconVariableCounterexample(s.g, nativeModel)
           case MappedModel =>
-            SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel)
+            SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel, s.program)
         }
         val finalCE = ceTrafo match {
           case Some(trafo) => trafo.f(ce)

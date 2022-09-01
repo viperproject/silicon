@@ -141,7 +141,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                     (Q: (State, Term, Verifier) => VerificationResult)
                     : VerificationResult = {
 
-    val id = ChunkIdentifier(resource, Verifier.program)
+    val id = ChunkIdentifier(resource, s.program)
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
     if (relevantChunks.isEmpty) {
@@ -186,7 +186,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                               (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                                               : VerificationResult = {
 
-    val id = ChunkIdentifier(resource, Verifier.program)
+    val id = ChunkIdentifier(resource, s.program)
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
     summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
@@ -208,7 +208,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                    (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                                    : VerificationResult = {
 
-    val id = ChunkIdentifier(resource, Verifier.program)
+    val id = ChunkIdentifier(resource, s.program)
     val relevantChunks = ListBuffer[NonQuantifiedChunk]()
     val otherChunks = ListBuffer[Chunk]()
     h.values foreach {
