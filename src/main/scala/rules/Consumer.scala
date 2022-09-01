@@ -247,7 +247,7 @@ object consumer extends ConsumptionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
-        val predicate = Verifier.program.findPredicate(acc.loc.predicateName)
+        val predicate = s.program.findPredicate(acc.loc.predicateName)
         /* TODO: Quantified codomain variables are used in axioms and chunks (analogous to `?r`)
          *       and need to be instantiated in several places. Hence, they need to be known,
          *       which is more complicated if fresh identifiers are used.
@@ -284,9 +284,9 @@ object consumer extends ConsumptionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
-        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+        val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        val qid = MagicWandIdentifier(wand, Verifier.program).toString
+        val qid = MagicWandIdentifier(wand, s.program).toString
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
@@ -344,9 +344,9 @@ object consumer extends ConsumptionRules {
               Q(s4, h3, snap, v3)})}))
 
       case ast.AccessPredicate(loc @ ast.PredicateAccess(eArgs, predname), ePerm)
-              if s.qpPredicates.contains(Verifier.program.findPredicate(predname)) =>
+              if s.qpPredicates.contains(s.program.findPredicate(predname)) =>
 
-        val predicate = Verifier.program.findPredicate(predname)
+        val predicate = s.program.findPredicate(predname)
         val formalVars = s.predicateFormalVarMap(predicate)
 
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
@@ -383,7 +383,7 @@ object consumer extends ConsumptionRules {
         eval(s, perm, pve, v)((s1, tPerm, v1) =>
           evalLocationAccess(s1, locacc, pve, v1)((s2, _, tArgs, v2) =>
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
-              val resource = locacc.res(Verifier.program)
+              val resource = locacc.res(s.program)
               val loss = PermTimes(tPerm, s3.permissionScalingFactor)
               val ve = pve dueTo InsufficientPermission(locacc)
               val description = s"consume ${a.pos}: $a"
@@ -396,17 +396,17 @@ object consumer extends ConsumptionRules {
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
 
       /* Handle wands */
-      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program)) =>
-        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
+        val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
 
         evals(s, bodyVars, _ => pve, v)((s1, tArgs, v1) => {
           val (relevantChunks, _) =
-            quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s1.h, MagicWandIdentifier(wand, Verifier.program))
+            quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s1.h, MagicWandIdentifier(wand, s.program))
           val (smDef1, smCache1) =
             quantifiedChunkSupporter.summarisingSnapshotMap(
               s1, wand, formalVars, relevantChunks, v1)
-          v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, smDef1.sm, tArgs))
+          v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, s.program).toString, smDef1.sm, tArgs))
 
           val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
           quantifiedChunkSupporter.consumeSingleLocation(
