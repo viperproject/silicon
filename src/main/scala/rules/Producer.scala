@@ -332,6 +332,7 @@ object producer extends ProductionRules {
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
+            // println(s"PRODUCE ${acc.loc.rcv}")
 //            v.decider.assume(PermAtMost(tPerm, FullPerm()))
             quantifiedChunkSupporter.produce(
               s1,
@@ -346,6 +347,7 @@ object producer extends ProductionRules {
               Seq(tRcvr),
               tSnap,
               tPerm,
+              acc.loc.rcv,
               pve,
               NegativePermission(acc.perm),
               QPAssertionNotInjective(acc.loc),
@@ -378,6 +380,7 @@ object producer extends ProductionRules {
               tArgs,
               tSnap,
               tPerm,
+              acc,
               pve,
               NegativePermission(acc.perm),
               QPAssertionNotInjective(acc.loc),
@@ -410,6 +413,7 @@ object producer extends ProductionRules {
               tArgs,
               tSnap,
               FullPerm(),
+              wand,
               pve,
               NegativePermission(ast.FullPerm()()),
               QPAssertionNotInjective(wand),

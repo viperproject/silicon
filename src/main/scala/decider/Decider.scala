@@ -52,6 +52,7 @@ trait Decider {
 
   def fresh(id: String, sort: Sort): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
+  def persistent(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def freshMacro(id: String, formalArgs: Seq[Var], body: Term): MacroDecl
 
   def fresh(sort: Sort): Var
@@ -271,6 +272,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       SymbExLogger.currentLog().closeScope(sepIdentifier)
 
       result
+    }
+
+    var persistentFunctions = Map[String, Function]()
+    def persistent(id: String, argSorts: Seq[Sort], resultSort: Sort): Function = {
+      persistentFunctions.getOrElse(id, {
+        val f = fresh(id, argSorts, resultSort)
+        persistentFunctions = persistentFunctions + (id -> f)
+        f
+      })
+
     }
 
     /* Fresh symbols */

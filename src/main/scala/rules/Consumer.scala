@@ -225,6 +225,7 @@ object consumer extends ConsumptionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+            // println(s"NOMNOM ${acc.loc.rcv}")
             quantifiedChunkSupporter.consume(
               s = s1,
               h = h,
@@ -243,6 +244,7 @@ object consumer extends ConsumptionRules {
               negativePermissionReason = NegativePermission(acc.perm),
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
+              rcv = acc.loc.rcv,
               v1)(Q)
         }
 
@@ -280,6 +282,7 @@ object consumer extends ConsumptionRules {
               negativePermissionReason = NegativePermission(acc.perm),
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
+              acc.loc,
               v1)(Q)
         }
 
@@ -312,6 +315,7 @@ object consumer extends ConsumptionRules {
               negativePermissionReason = NegativePermission(ePerm),
               notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
               insufficientPermissionReason = MagicWandChunkNotFound(wand), /*InsufficientPermission(...)*/
+              wand,
               v1)(Q)
         }
 

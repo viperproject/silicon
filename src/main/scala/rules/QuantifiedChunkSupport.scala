@@ -27,6 +27,7 @@ import viper.silicon.state.terms.sorts.Bool
 import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.{Exp, FuncApp}
 import viper.silver.reporter.InternalWarningMessage
 
 case class InverseFunctions(condition: Term,
@@ -138,6 +139,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                additionalInvArgs: Seq[Var],
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
+                               rcv: Exp,
                                v: Verifier)
                               : InverseFunctions
 
@@ -184,6 +186,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                             additionalInvArgs: Seq[Var],
                             userProvidedTriggers: Option[Seq[Trigger]],
                             qidPrefix: String,
+                            rcv: Exp,
                             v: Verifier)
                            : (QuantifiedBasicChunk, InverseFunctions)
 
@@ -242,9 +245,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             additionalInvArgs: Seq[Var],
                             userProvidedTriggers: Option[Seq[Trigger]],
                             qidPrefix: String,
+                            rcv: Exp,
                             v: Verifier)
                            : (QuantifiedBasicChunk, InverseFunctions) = {
 
+    // println(s"Gen IF from QC $sm")
     val inverseFunctions =
       getFreshInverseFunctions(
         qvars,
@@ -254,7 +259,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         additionalInvArgs,
         userProvidedTriggers,
         qidPrefix,
+        rcv,
         v)
+    // println("DONE")
 
     val qvarsToInversesOfCodomain = inverseFunctions.qvarsToInversesOf(codomainQVars)
 
@@ -263,7 +270,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         resource match {
           case _: ast.Field =>
             And(
-              arguments.head.replace(qvarsToInversesOfCodomain) === `?r`,
+              App(inverseFunctions.codomainDefined, codomainQVars),
               condition.replace(qvarsToInversesOfCodomain)
             )
           case _ =>
@@ -733,6 +740,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               tArgs: Seq[Term],
               tSnap: Term,
               tPerm: Term,
+              rcv: Exp,
               pve: PartialVerificationError,
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
@@ -753,6 +761,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         additionalInvArgs    = s.relevantQuantifiedVariables(tArgs),
         userProvidedTriggers = optTrigger.map(_ => tTriggers),
         qidPrefix            = qid,
+        rcv                  = rcv,
         v                    = v)
     val (effectiveTriggers, effectiveTriggersQVars) =
       optTrigger match {
@@ -960,10 +969,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
+              rcv: Exp,
               v: Verifier)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
+    // println(s"Gen IF from Consume ${tArgs}")
     val inverseFunctions =
       quantifiedChunkSupporter.getFreshInverseFunctions(
         qvars,
@@ -973,7 +984,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s.relevantQuantifiedVariables(tArgs),
         optTrigger.map(_ => tTriggers),
         qid,
-        v)
+        rcv,
+        v,
+      )
+    // println(s"DONE")
     val (effectiveTriggers, effectiveTriggersQVars) =
     optTrigger match {
       case Some(_) =>
@@ -1029,14 +1043,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
-            // println(s"QVARSTOINV: ${qvarsToInvOfLoc}")
-            // println(s"COND ${tCond}")
-//            val invDefinedConds = tCond.deepCollect {
-//              case v: Var if inverseFunctions.qvarsToInverses.contains(v) =>
-//                App(inverseFunctions.codomainInvDefined(v), List(v))
-//            }
-            // println(s"CONDS: ${invDefinedConds}")
-            val condOfInvOfLoc = And(/*App(inverseFunctions.codomainDefined, formalQVars),*/ tCond.replace(qvarsToInvOfLoc))
+            val condOfInvOfLoc = And(App(inverseFunctions.codomainDefined, formalQVars), tCond.replace(qvarsToInvOfLoc))
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
@@ -1053,14 +1060,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 Nil
               )
             )
-            v.decider.assume(
-              Forall(
-                formalQVars,
-                App(inverseFunctions.codomainDefined, formalQVars),
-                Nil
-              )
-            )
-
             v.decider.assume(
               Forall(
                 formalQVars,
@@ -1108,7 +1107,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   s3.relevantQuantifiedVariables(tArgs),
                   optTrigger.map(_ => tTriggers),
                   qid,
-                  v2
+                  rcv,
+                  v2,
                 )
                 val h2 = Heap(remainingChunks ++ otherChunks)
                 val s4 = s3.copy(smCache = smCache2,
@@ -1530,6 +1530,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                additionalInvArgs: Seq[Var],
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
+                               rcv: Exp,
                                v: Verifier)
                               : InverseFunctions = {
 
@@ -1551,7 +1552,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val inversesOfCodomains = Array.ofDim[Term](qvars.length)  /* inv_i(rs) */
 
     val codomainDefined =
-        v.decider.fresh("inv_defined", codomainQVars.map(_.sort), Bool)
+        v.decider.persistent(rcv.toString(), codomainQVars.map(_.sort), Bool)
+
+    // println(s"Fresh codomainDefined ${codomainDefined.id}")
 
     qvarsWithIndices foreach { case (qvar, idx) =>
       val fun = v.decider.fresh("inv", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), qvar.sort)
@@ -1608,34 +1611,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
      */
     val axFctsOfInvsBody =
       Implies(
-        conditionOfInverses,
+        And(conditionOfInverses, App(codomainDefined, codomainQVars)),
         And(
           fctsOfInversesOfCodomain
-            .zip(invertibles)
             .zip(codomainQVars)
-            .map { case ((fctOfInvs, orig), r) =>
-              val isDefined = codomainDefined
-              if(qvars.contains(orig)) {
-                And(
-                  // App(isDefined, codomainQVars),
-                  fctOfInvs === r
-                )
-              } else {
-                // fctOfInvs === r
-                And(
-                  Implies(
-                      Exists(qvars, orig === r,
-                        List(
-                          // Trigger(orig === r)
-                        )
-                      ),
-                    App(isDefined, codomainQVars)),
-                Implies(
-                  App(isDefined, codomainQVars),
-                  fctOfInvs === r
-                )
-                )
-              }
+            .map { case (fctOfInvs, r) =>
+                fctOfInvs === r
             }
         ))
 
