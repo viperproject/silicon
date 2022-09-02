@@ -108,6 +108,7 @@ object brancher extends BranchingRules {
             /* [BRANCH-PARALLELISATION] */
             // executing the else branch on a different verifier, need to adapt the state
 
+            // TODO: These seem to be ListSets, for which subtraction is O(n^2). Maybe replace with LinkedHashSets?
             val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
             val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
 

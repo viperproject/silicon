@@ -43,7 +43,6 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
   private def setupSlaveVerifierPool(): Unit = {
     slaveVerifiers = Vector.empty
-    //runningVerificationTasks = new ConcurrentHashMap()
 
     val poolConfig: GenericObjectPoolConfig[SlaveVerifier] = new GenericObjectPoolConfig()
     poolConfig.setMaxTotal(numberOfSlaveVerifiers)

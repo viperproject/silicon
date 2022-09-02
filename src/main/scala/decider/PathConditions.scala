@@ -221,7 +221,7 @@ private[decider] class LayeredPathConditionStack
        with PathConditionStack
        with Cloneable {
 
-  var layers: Stack[PathConditionStackLayer] = Stack.empty
+  /* private */ var layers: Stack[PathConditionStackLayer] = Stack.empty
   private var markToLength: Map[Mark, Int] = Map.empty
   private var scopeMarks: List[Mark] = List.empty
   private var markCounter = new Counter(0)

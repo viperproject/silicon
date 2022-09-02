@@ -101,42 +101,39 @@ object executor extends ExecutionRules {
       Q(s, v)
     } else if (edges.length == 1) {
       follow(s, edges.head, v)(Q)
-    } else if (Verifier.config.parallelizeBranches() &&
-               edges.length == 2 && edges(0).isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] && edges(1).isInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]] &&
-               edges(0).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]].kind == Kind.Normal &&
-               edges(1).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]].kind == Kind.Normal &&
-               edges(1).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]].condition == ast.Not(edges(0).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]].condition)()){
-      val thenEdge = edges(0).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
-      val elseEdge = edges(1).asInstanceOf[ConditionalEdge[ast.Stmt, ast.Exp]]
-
-      val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
-      val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
-      val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, v1) =>
-        brancher.branch(s2, tCond, Some(thenEdge.condition), v1)(
-          (s3, v3) =>
-            exec(s3, thenEdge.target, thenEdge.kind, v3)((s4, v4) => {
-              SymbExLogger.currentLog().closeScope(sepIdentifier)
-              val branchRes = Q(s4, v4)
-              branchRes
-            }),
-          (s3, v3) =>
-            exec(s3, elseEdge.target, elseEdge.kind, v3)((s4, v4) => {
-              SymbExLogger.currentLog().closeScope(sepIdentifier)
-              Q(s4, v4)
-            })))
-      res
     } else {
-      val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
-      val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
-        case (result: VerificationResult, (edge, edgeIndex)) =>
-          if (edgeIndex != 0) {
-            SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+      edges match {
+        case Seq(thenEdge@ConditionalEdge(cond1, _, _, Kind.Normal), elseEdge@ConditionalEdge(cond2, _, _, Kind.Normal))
+            if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)()  =>
+          val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
+          val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
+          val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, v1) =>
+            brancher.branch(s2, tCond, Some(thenEdge.condition), v1)(
+              (s3, v3) =>
+                exec(s3, thenEdge.target, thenEdge.kind, v3)((s4, v4) => {
+                  SymbExLogger.currentLog().closeScope(sepIdentifier)
+                  val branchRes = Q(s4, v4)
+                  branchRes
+                }),
+              (s3, v3) =>
+                exec(s3, elseEdge.target, elseEdge.kind, v3)((s4, v4) => {
+                  SymbExLogger.currentLog().closeScope(sepIdentifier)
+                  Q(s4, v4)
+                })))
+          res
+        case _ =>
+          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
+          val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
+            case (result: VerificationResult, (edge, edgeIndex)) =>
+              if (edgeIndex != 0) {
+                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+              }
+              SymbExLogger.currentLog().markReachable(uidBranchPoint)
+              result combine follow(s, edge, v)(Q)
           }
-          SymbExLogger.currentLog().markReachable(uidBranchPoint)
-          result combine follow(s, edge, v)(Q)
+          SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+          res
       }
-      SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
-      res
     }
   }
 
