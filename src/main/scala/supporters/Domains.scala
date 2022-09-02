@@ -28,7 +28,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
   private var collectedSorts = InsertionOrderedSet[Sort]()
   private var collectedFunctions = InsertionOrderedSet[terms.DomainFun]()
   private var collectedAxioms = InsertionOrderedSet[Term]()
-  private var uniqueSymbols = MultiMap.empty[Sort, Symbol]
+  private var uniqueSymbols = MultiMap.empty[Sort, DomainFun]
 
   /* Lifetime */
 

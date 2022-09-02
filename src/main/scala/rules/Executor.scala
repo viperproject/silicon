@@ -24,6 +24,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.cfg.{ConditionalEdge, Kind}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -101,17 +102,38 @@ object executor extends ExecutionRules {
     } else if (edges.length == 1) {
       follow(s, edges.head, v)(Q)
     } else {
-      val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
-      val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
-        case (result: VerificationResult, (edge, edgeIndex)) =>
-          if (edgeIndex != 0) {
-            SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+      edges match {
+        case Seq(thenEdge@ConditionalEdge(cond1, _, _, Kind.Normal), elseEdge@ConditionalEdge(cond2, _, _, Kind.Normal))
+            if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)()  =>
+          val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
+          val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
+          val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, v1) =>
+            brancher.branch(s2, tCond, Some(thenEdge.condition), v1)(
+              (s3, v3) =>
+                exec(s3, thenEdge.target, thenEdge.kind, v3)((s4, v4) => {
+                  SymbExLogger.currentLog().closeScope(sepIdentifier)
+                  val branchRes = Q(s4, v4)
+                  branchRes
+                }),
+              (s3, v3) =>
+                exec(s3, elseEdge.target, elseEdge.kind, v3)((s4, v4) => {
+                  SymbExLogger.currentLog().closeScope(sepIdentifier)
+                  Q(s4, v4)
+                })))
+          res
+        case _ =>
+          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
+          val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
+            case (result: VerificationResult, (edge, edgeIndex)) =>
+              if (edgeIndex != 0) {
+                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+              }
+              SymbExLogger.currentLog().markReachable(uidBranchPoint)
+              result combine follow(s, edge, v)(Q)
           }
-          SymbExLogger.currentLog().markReachable(uidBranchPoint)
-          result combine follow(s, edge, v)(Q)
+          SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+          res
       }
-      SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
-      res
     }
   }
 
@@ -176,7 +198,7 @@ object executor extends ExecutionRules {
                 produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
                   phase1data = phase1data :+ (s1,
                                               v1.decider.pcs.after(mark),
-                                              InsertionOrderedSet.empty[FunctionDecl] /*v2.decider.freshFunctions*/ /* [BRANCH-PARALLELISATION] */)
+                                              v1.decider.freshFunctions /* [BRANCH-PARALLELISATION] */)
                   v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
                   edgeConditions.foldLeft(Success(): VerificationResult) {
                     case (fatalResult: FatalResult, _) => fatalResult
@@ -190,10 +212,10 @@ object executor extends ExecutionRules {
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (fatalResult: FatalResult, _) => fatalResult
-                    case (intermediateResult, (s1, pcs, _)) => /* [BRANCH-PARALLELISATION] ff1 */
+                    case (intermediateResult, (s1, pcs, ff1)) => /* [BRANCH-PARALLELISATION] ff1 */
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
                       intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
-  //                    v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
+                        v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
