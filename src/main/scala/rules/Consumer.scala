@@ -325,7 +325,7 @@ object consumer extends ConsumptionRules {
             val (smDef1, smCache1) =
               quantifiedChunkSupporter.summarisingSnapshotMap(
                 s2, field, Seq(`?r`), relevantChunks, v2)
-            v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
+            //v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
 //            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
@@ -356,7 +356,7 @@ object consumer extends ConsumptionRules {
             val (smDef1, smCache1) =
               quantifiedChunkSupporter.summarisingSnapshotMap(
                 s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
-            v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
+            //v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
 
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
@@ -406,7 +406,7 @@ object consumer extends ConsumptionRules {
           val (smDef1, smCache1) =
             quantifiedChunkSupporter.summarisingSnapshotMap(
               s1, wand, formalVars, relevantChunks, v1)
-          v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, s.program).toString, smDef1.sm, tArgs))
+          //v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, s.program).toString, smDef1.sm, tArgs))
 
           val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
           quantifiedChunkSupporter.consumeSingleLocation(

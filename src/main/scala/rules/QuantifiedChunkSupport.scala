@@ -454,7 +454,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           s"qp.fvfDomDef${v.counter(this).next()}",
           isGlobal = true))
 
-    (sm, valueDefinitions :+ resourceTriggerDefinition, optDomainDefinition)
+    (sm, valueDefinitions /*:+ resourceTriggerDefinition*/, optDomainDefinition)
   }
 
   private def summarise_predicate_or_wand(s: State,
@@ -535,7 +535,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           isGlobal = true
         ))
 
-    (sm, valueDefinitions :+ resourceTriggerDefinition, optDomainDefinition)
+    (sm, valueDefinitions /*:+ resourceTriggerDefinition*/, optDomainDefinition)
   }
 
   private def summarisePerm(s: State,
@@ -572,7 +572,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s"qp.resTrgDef${v.counter(this).next()}",
         isGlobal = true)
 
-    (pm, Seq(valueDefinitions, resourceTriggerDefinition))
+    (pm, Seq(valueDefinitions /*, resourceTriggerDefinition*/))
   }
 
   def summarisingPermissionMap(s: State,
@@ -866,7 +866,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val trigger = ResourceTriggerFunction(resource, smDef1.sm, codomainVars, s.program)
             val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
             val condOfInv = tCond.replace(qvarsToInv)
-            v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars)))) //effectiveTriggers map (t => Trigger(t.p map (_.replace(qvarsToInv))))))
+            //v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars)))) //effectiveTriggers map (t => Trigger(t.p map (_.replace(qvarsToInv))))))
             val s1 =
               s.copy(h = h1,
                      functionRecorder = s.functionRecorder.recordFieldInv(inv),
@@ -910,7 +910,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
         s, resource, formalQVars, relevantChunks, v)
-    v.decider.assume(resourceTriggerFactory(smDef1.sm))
+    //v.decider.assume(resourceTriggerFactory(smDef1.sm))
 
     val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
     val s1 = s.copy(h = h1,
@@ -997,7 +997,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val receiverInjectivityCheck =
           quantifiedChunkSupporter.injectivityAxiom(
             qvars     = qvars,
-            condition = And(tCond, ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)),
+            condition = tCond, // And(tCond, ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)),
             perms     = tPerm,
             arguments = tArgs,
             triggers  = Nil,
@@ -1012,11 +1012,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment("Definitional axioms for inverse functions")
             v.decider.assume(inverseFunctions.definitionalAxioms)
 
+            /*
             v.decider.assume(
               Forall(
                 formalQVars,
                 Implies(condOfInvOfLoc, ResourceTriggerFunction(resource, smDef1.sm, formalQVars, s.program)),
                 Trigger(inverseFunctions.inversesOf(formalQVars))))
+
+             */
 
             /* TODO: Try to unify the upcoming if/else-block, their code is rather similar */
             if (s.exhaleExt) {

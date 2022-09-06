@@ -315,7 +315,7 @@ object executor extends ExecutionRules {
             val (smDef1, smCache1) =
               quantifiedChunkSupporter.summarisingSnapshotMap(
                 s2, field, Seq(`?r`), relevantChunks, v1)
-            v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
+            //v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
             v2.decider.clearModel()
             val result = quantifiedChunkSupporter.removePermissions(
               s2.copy(smCache = smCache1),
@@ -334,7 +334,7 @@ object executor extends ExecutionRules {
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 v1.decider.assume(smValueDef)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm, s.program)
-                v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
+                //v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
               case (Incomplete(_), s3, _) =>
                 createFailure(pve dueTo InsufficientPermission(fa), v2, s3)}}))
@@ -516,7 +516,7 @@ object executor extends ExecutionRules {
               val (smDef1, smCache1) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(
                   s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
-              v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
+              //v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
               smCache1
             } else {
               s2.smCache
@@ -563,7 +563,7 @@ object executor extends ExecutionRules {
                 val (smDef, smCache) =
                   quantifiedChunkSupporter.summarisingSnapshotMap(
                     s2, wand, formalVars, relevantChunks, v1)
-                v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get))
+                //v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get))
                 smCache
               case _ => s2.smCache
             }

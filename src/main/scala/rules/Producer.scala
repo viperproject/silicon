@@ -279,7 +279,7 @@ object producer extends ProductionRules {
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
                 chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
                   if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder) {
-                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs))
+                    //v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs))
                   }
                   Q(s3.copy(h = h3), v3)})
               }})))
@@ -304,7 +304,7 @@ object producer extends ProductionRules {
           val (smDef1, smCache1) =
             quantifiedChunkSupporter.summarisingSnapshotMap(
               s1, wand, formalVars, relevantChunks, v1)
-          v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args))
+          //v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args))
           val smDef = SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq())
           val s2 =
             s1.copy(h = h2,

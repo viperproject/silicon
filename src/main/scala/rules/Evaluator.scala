@@ -203,7 +203,7 @@ object evaluator extends EvaluationRules {
                */
               v1.decider.assume(fvfDef.valueDefinitions)
               val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
-              v1.decider.assume(trigger)
+              //v1.decider.assume(trigger)
               if (s1.triggerExp) {
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                 val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
@@ -230,7 +230,7 @@ object evaluator extends EvaluationRules {
                   optQVarsInstantiations = None,
                   v = v1)
               val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
-              v1.decider.assume(trigger)
+              //v1.decider.assume(trigger)
               val permCheck =
                 if (s1.triggerExp) {
                   True()
@@ -445,7 +445,7 @@ object evaluator extends EvaluationRules {
                   val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
                   val (s2, smDef, pmDef) =
                     quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
-                  v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args))
+                  //v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args))
                   (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
 
                 case field: ast.Field =>
@@ -453,7 +453,7 @@ object evaluator extends EvaluationRules {
                     quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, identifier)
                   val (s2, smDef, pmDef) =
                     quantifiedChunkSupporter.heapSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
-                  v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head))
+                  //v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head))
                   val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
                   v1.decider.assume(PermAtMost(currentPermAmount, FullPerm()))
@@ -466,7 +466,7 @@ object evaluator extends EvaluationRules {
                     quantifiedChunkSupporter.heapSummarisingMaps(
                       s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
                   val trigger = PredicateTrigger(predicate.name, smDef.sm, args)
-                  v1.decider.assume(trigger)
+                  //v1.decider.assume(trigger)
                   (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
               }
             } else {
@@ -767,7 +767,7 @@ object evaluator extends EvaluationRules {
                          * to the function arguments and the predicate snapshot
                          * (see 'predicateTriggers' in FunctionData.scala).
                          */
-                      v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
+                      //v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
@@ -1342,7 +1342,7 @@ object evaluator extends EvaluationRules {
         Success()
       })
     }
-    v.decider.assume(triggerAxioms)
+    //v.decider.assume(triggerAxioms)
     Q(s, triggers, v)
   }
 
