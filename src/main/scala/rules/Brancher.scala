@@ -127,7 +127,7 @@ object brancher extends BranchingRules {
             v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
 
             // TODO: we should saturate here to some degree; which option fits best?
-            v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+            //v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
 
             fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
           })
@@ -178,7 +178,7 @@ object brancher extends BranchingRules {
             // we have done other work during the join, need to reset
             v.decider.setPcs(pcsOfCurrentDecider)
             // TODO: we should saturate here to some degree; which option fits best?
-            v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+            //v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
           }
         }else{
           rs = elseBranchFuture.get()
