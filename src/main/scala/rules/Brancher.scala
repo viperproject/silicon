@@ -126,6 +126,9 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
 
+            // TODO: we should saturate here to some degree; which option fits best?
+            v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+
             fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
           })
         }
@@ -159,7 +162,7 @@ object brancher extends BranchingRules {
       })
     } else {
       Unreachable()
-    }) combine {
+    }).combine({
 
       /* [BRANCH-PARALLELISATION] */
       var rs: Seq[VerificationResult] = null
@@ -174,6 +177,8 @@ object brancher extends BranchingRules {
           if (v.decider.pcs != pcsBefore){
             // we have done other work during the join, need to reset
             v.decider.setPcs(pcsOfCurrentDecider)
+            // TODO: we should saturate here to some degree; which option fits best?
+            v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
           }
         }else{
           rs = elseBranchFuture.get()
@@ -187,7 +192,7 @@ object brancher extends BranchingRules {
       assert(rs.length == 1, s"Expected a single verification result but found ${rs.length}")
       rs.head
 
-    }
+    }, alwaysWaitForOther = parallelizeElseBranch)
     SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
     res
   }
