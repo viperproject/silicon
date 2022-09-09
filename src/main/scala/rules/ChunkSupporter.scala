@@ -247,9 +247,12 @@ object chunkSupporter extends ChunkSupportRules {
     }
   }
 
-  def splitHeap[CH <: NonQuantifiedChunk : ClassTag]
-               (h: Heap, id: ChunkIdentifer)
-               : (Seq[CH], Seq[Chunk]) = {
+/** Extract the chunks with resource matching id.
+ * Return two sequences of chunks -- one with resource id, and the
+ * other with the remaining resources.
+ */
+  def splitHeap[CH <: NonQuantifiedChunk : ClassTag](h: Heap, id: ChunkIdentifer)
+                                                   : (Seq[CH], Seq[Chunk]) = {
 
     var relevantChunks = Seq[CH]()
     var otherChunks = Seq[Chunk]()

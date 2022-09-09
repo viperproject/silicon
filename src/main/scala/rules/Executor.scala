@@ -575,10 +575,10 @@ object executor extends ExecutionRules {
         val pve = ApplyFailed(apply)
         magicWandSupporter.applyWand(s, e, pve, v)(Q)
 
-      case havoc : ast.Havoc =>
+      case havoc: ast.Havoc =>
         havocSupporter.execHavoc(havoc, v, s)(Q)
 
-      case havocall : ast.Havocall =>
+      case havocall: ast.Havocall =>
         havocSupporter.execHavocall(havocall, v, s)(Q)
 
       case viper.silicon.extensions.TryBlock(body) =>

@@ -1,5 +1,14 @@
 #! /usr/bin/python3
 
+from pathlib import Path
+import os
+
+script_file = Path(__file__).resolve()
+# we are currently in silicon/src/test/resources/havoc/benchmarks
+top_dir = script_file.parent
+os.chdir(top_dir)
+os.makedirs('autogen', exist_ok=True)
+
 from string import Formatter
 from collections import namedtuple
 
@@ -236,6 +245,7 @@ alt_body = ["label L; var py: Perm := perm(y.f); exhale acc(y.f, py); inhale acc
 common_body = [
     "assume y == x{0}",
     "assume y == z",
+    "//:: ExpectedOutput(assert.failed:assertion.false)",
     "assert z.f == 1234     // should fail",
 ]
 
@@ -253,14 +263,14 @@ havoc_fracs_test = testcase(prelude, [havoc_fracs_method])
 
 for i in range(3, 11):
     alias_test.write("alias_test", i)
-#     impl_test.write("impl_test", i)
+    impl_test.write("impl_test", i)
 
-# for i in range(10, 100, 10):
-#     havocall_test.write("havocall_test", i)
-#     havocall_no_cond_test.write("no_cond", i)
+for i in range(10, 100, 10):
+    havocall_test.write("havocall_test", i)
+    havocall_no_cond_test.write("no_cond", i)
 
-# for i in range(10, 20):
-#     havocall_sets_test.write("sets_test", i)
+for i in range(10, 20):
+    havocall_sets_test.write("sets_test", i)
 
 for i in range(3, 16):
     havoc_fracs_test.write("havoc_fracs", i)
