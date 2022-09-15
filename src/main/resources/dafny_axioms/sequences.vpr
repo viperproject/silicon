@@ -14,6 +14,9 @@ domain $Seq[E] {
   function Seq_drop(s: $Seq[E], n: Int): $Seq[E]
   function Seq_equal(s1: $Seq[E], s2: $Seq[E]): Bool
   function Seq_sameuntil(s1: $Seq[E], s2: $Seq[E], i: Int): Bool
+  function Seq_skolemdiff(s1: $Seq[E], s2: $Seq[E]): Int
+  function Seq_arith_add(i: Int, j: Int): Int
+  function Seq_arith_sub(i: Int, j: Int): Int
 
   axiom seq_length_non_negative {
     forall s: $Seq[E] :: {Seq_length(s)}
@@ -30,7 +33,7 @@ domain $Seq[E] {
   }
 
   axiom length_singleton_seq {
-    forall e: E :: {Seq_length(Seq_singleton(e))}
+    forall e: E :: {Seq_singleton(e)}
       Seq_length(Seq_singleton(e)) == 1
   }
 
@@ -66,24 +69,41 @@ domain $Seq[E] {
       e1 == e2
   }
 
-  axiom seq_append_empty_left { // The axiom was not in the Dafny version
-    forall s: $Seq[E] :: {Seq_append(Seq_empty(), s)}
-      Seq_append(Seq_empty(), s) == s
+  axiom seq_append_empty {
+    forall s1: $Seq[E], s2: $Seq[E] :: {Seq_append(s1, s2)}
+      (s1 == Seq_empty() ==> Seq_append(s1, s2) == s2) &&
+      (s2 == Seq_empty() ==> Seq_append(s1, s2) == s1)
   }
 
-  axiom seq_append_empty_right { // The axiom was not in the Dafny version
-    forall s: $Seq[E] :: {Seq_append(s, Seq_empty())}
-      Seq_append(s, Seq_empty()) == s
-  }
-
-  axiom seq_index_over_append {
+  axiom seq_index_over_append_left {
     forall s1: $Seq[E], s2: $Seq[E], i: Int ::
         {Seq_index(Seq_append(s1, s2), i)}
         {Seq_index(s1, i), Seq_append(s1, s2)}
-      s1 != Seq_empty() && s2 != Seq_empty() /*&& 0 <= i && i < Seq_length(Seq_append(s1, s2))*/ ==> ( // Implication not in the Dafny version
-        i < Seq_length(s1)
-          ? Seq_index(Seq_append(s1, s2), i) == Seq_index(s1, i)
-          : Seq_index(Seq_append(s1, s2), i) == Seq_index(s2, i - Seq_length(s1)))
+      s1 != Seq_empty() && s2 != Seq_empty() && 0 <= i && i < Seq_length(s1) ==> Seq_index(Seq_append(s1, s2), i) == Seq_index(s1, i)
+  }
+
+  axiom seq_index_over_append_right {
+    forall s1: $Seq[E], s2: $Seq[E], i: Int ::
+        {Seq_index(Seq_append(s1, s2), i)}
+      s1 != Seq_empty() && s2 != Seq_empty() && Seq_length(s1) <= i && i < Seq_length(Seq_append(s1, s2)) ==>
+        Seq_arith_add(Seq_arith_sub(i, Seq_length(s1)), Seq_length(s1)) == i &&
+        Seq_index(Seq_append(s1, s2), i) == Seq_index(s2, Seq_arith_sub(i, Seq_length(s1)))
+  }
+
+  axiom seq_index_over_append_right_inv {
+    forall s1: $Seq[E], s2: $Seq[E], i: Int ::
+        {Seq_index(s2, i), Seq_append(s1, s2)}
+      s1 != Seq_empty() && s2 != Seq_empty() && 0 <= i && i < Seq_length(s2) ==>
+        Seq_arith_sub(Seq_arith_add(i, Seq_length(s1)), Seq_length(s1)) == i &&
+        Seq_index(Seq_append(s1, s2), Seq_arith_add(i, Seq_length(s1))) == Seq_index(s2, i)
+  }
+
+  axiom seq_add_def {
+    forall i: Int, j: Int :: {Seq_arith_add(i, j)} Seq_arith_add(i, j) == i + j
+  }
+
+  axiom seq_sub_def {
+    forall i: Int, j: Int :: {Seq_arith_sub(i, j)} Seq_arith_sub(i, j) == i - j
   }
 
   axiom seq_length_invariant_over_update {
@@ -156,7 +176,7 @@ domain $Seq[E] {
   axiom extensional_seq_equality {
     forall s1: $Seq[E], s2: $Seq[E] :: {Seq_equal(s1, s2)}
       Seq_equal(s1, s2)
-        <==> // Two implications in the Dafny version
+        ==>
       (Seq_length(s1) == Seq_length(s2) &&
        forall i: Int :: {Seq_index(s1, i)} {Seq_index(s2, i)}
           0 <= i && i < Seq_length(s1) ==>
@@ -166,6 +186,17 @@ domain $Seq[E] {
   axiom seq_equality_identity {
     forall s1: $Seq[E], s2: $Seq[E] :: {Seq_equal(s1, s2)}
       Seq_equal(s1, s2) ==> s1 == s2
+  }
+
+  axiom seq_disequality_skolem {
+    forall s1: $Seq[E], s2: $Seq[E] :: {Seq_equal(s1, s2)}
+      (s1 == s2 && Seq_equal(s1, s2)) ||
+      (s1 != s2 && !Seq_equal(s1, s2) && Seq_length(s1) != Seq_length(s2)) ||
+      (s1 != s2 && !Seq_equal(s1, s2) && Seq_length(s1) == Seq_length(s2) &&
+        Seq_skolemdiff(s1, s2) == Seq_skolemdiff(s2, s1) &&
+        0 <= Seq_skolemdiff(s1, s2) && Seq_skolemdiff(s1, s2) < Seq_length(s1) &&
+        Seq_index(s1, Seq_skolemdiff(s1, s2)) != Seq_index(s2, Seq_skolemdiff(s1, s2))
+      )
   }
 
   axiom extensional_seq_equality_prefix {
