@@ -13,8 +13,8 @@ import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Sort, SortDecl, SortWrapperDecl, Term, sorts}
 import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
-import viper.silver.reporter.Reporter
-import viper.silver.verifier.{ApplicationEntry, ConstantEntry, MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
+import viper.silver.reporter.{InternalWarningMessage, Reporter}
+import viper.silver.verifier.{MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
 import java.io.PrintWriter
 import java.nio.file.Path
 
@@ -30,7 +30,7 @@ import scala.util.Random
 object Z3ProverAPI {
   val name = "Z3-API"
   val minVersion = Version("4.8.6.0")
-  val maxVersion = Some(Version("4.8.6.0")) /* X.Y.Z if that is the *last supported* version */
+  val maxVersion = Some(Version("4.8.7.0")) /* X.Y.Z if that is the *last supported* version */
 
   // these are not actually used, but since there is a lot of code that expects command line parameters and a
   // config file, we just supply this information here (whose contents will then be ignored)
@@ -82,7 +82,7 @@ class Z3ProverAPI(uniqueId: String,
       with LazyLogging
 {
 
-  /*protected*/ var pushPopScopeDepth = 0
+  /* protected */ var pushPopScopeDepth = 0
   protected var lastTimeout: Int = -1
   protected var logfileWriter: PrintWriter = _
   protected var prover: Solver = _
@@ -144,21 +144,23 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def reset(): Unit = {
-    stop()
     termConverter.reset()
+    stop()
     start()
   }
 
   def stop(): Unit = {
+    emittedPreambleString.clear()
+    preamblePhaseOver = false
+    emittedFuncs.clear()
+    emittedSorts.clear()
+    emittedFuncSymbols.clear()
+    emittedSortSymbols.clear()
+    prover = null
+    lastModel = null
     if (ctx != null){
       ctx.close()
       ctx = null
-      emittedPreambleString.clear()
-      preamblePhaseOver = false
-      emittedFuncs.clear()
-      emittedSorts.clear()
-      emittedFuncSymbols.clear()
-      emittedSortSymbols.clear()
     }
   }
 
@@ -214,7 +216,7 @@ class Z3ProverAPI(uniqueId: String,
       else
         preambleAssumes.add(termConverter.convert(term).asInstanceOf[BoolExpr])
     } catch {
-      case e: Z3Exception => throw ExternalToolError("Prover", "Z3 error: " + e.getMessage)
+      case e: Z3Exception => reporter.report(InternalWarningMessage("Z3 error: " + e.getMessage))
     }
   }
 
@@ -223,7 +225,7 @@ class Z3ProverAPI(uniqueId: String,
     setTimeout(timeout)
 
     try {
-      val (result, duration) = Verifier.config.assertionMode() match {
+      val (result, _) = Verifier.config.assertionMode() match {
         case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
         case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
       }
@@ -305,7 +307,7 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  def endPreamblePhase() =  {
+  def endPreamblePhase(): Unit =  {
     if (!preamblePhaseOver) {
       preamblePhaseOver = true
 
@@ -346,23 +348,21 @@ class Z3ProverAPI(uniqueId: String,
     // Special handling for macro declarations if expandMacros is true; in that case,
     // nothing is declared on the Z3 level, and we simply remember the definition ourselves.
     decl match {
-      case SortDecl(s) => {
+      case SortDecl(s) =>
         val convertedSort = termConverter.convertSort(s)
         val convertedSortSymbol = termConverter.convertSortSymbol(s)
         if (convertedSortSymbol.isDefined) {
           emittedSortSymbols.add(convertedSortSymbol.get)
           emittedSorts.add(convertedSort)
         }
-      }
-      case fd@FunctionDecl(f) => {
+      case fd: FunctionDecl =>
         val converted = termConverter.convert(fd)
         if (!emittedFuncs.contains(converted)){
           emittedFuncs.add(converted)
           emittedFuncSymbols.append(termConverter.convertFuncSymbol(fd))
         }
-      }
       case MacroDecl(id, args, body) if expandMacros => termConverter.macros.update(id.name, (args, body))
-      case md: MacroDecl if !expandMacros => {
+      case md: MacroDecl if !expandMacros =>
         val (convertedFunc, axiom) = termConverter.convert(md)
         if (!emittedFuncs.contains(convertedFunc)){
           emittedFuncs.add(convertedFunc)
@@ -373,14 +373,12 @@ class Z3ProverAPI(uniqueId: String,
         }else{
           preambleAssumes.add(axiom)
         }
-      }
-      case swd@SortWrapperDecl(from, to) => {
+      case swd: SortWrapperDecl =>
         val converted = termConverter.convert(swd)
         if (!emittedFuncs.contains(converted)){
           emittedFuncs.add(converted)
           emittedFuncSymbols.append(termConverter.convertSortWrapperSymbol(swd))
         }
-      }
     }
   }
 
@@ -404,7 +402,7 @@ class Z3ProverAPI(uniqueId: String,
       for (entry <- funcInterp.getEntries) {
         val args = entry.getArgs.map(arg => fastparse.parse(arg.toString, ModelParser.value(_)).get.value)
         val value = fastparse.parse(entry.getValue.toString, ModelParser.value(_)).get.value
-        options.update(args, value)
+        options.update(args.toIndexedSeq, value)
       }
       val els = fastparse.parse(funcInterp.getElse.toString, ModelParser.value(_)).get.value
       entries.update(funcDecl.getName.toString, MapEntry(options.toMap, els))
@@ -441,15 +439,15 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  override def name: String = Z3ProverAPI.name
+  lazy val name: String = Z3ProverAPI.name
 
-  override def minVersion: Version = Z3ProverAPI.minVersion
+  lazy val minVersion: Version = Z3ProverAPI.minVersion
 
-  override def maxVersion: Option[Version] = Z3ProverAPI.maxVersion
+  lazy val maxVersion: Option[Version] = Z3ProverAPI.maxVersion
 
-  override def staticPreamble: String = Z3ProverAPI.staticPreamble
+  lazy val staticPreamble: String = Z3ProverAPI.staticPreamble
 
-  override def randomizeSeedsOptions: Seq[String] = {
+  lazy val randomizeSeedsOptions: Seq[String] = {
     Seq(Z3ProverAPI.randomizeSeedsSetting)
   }
 }

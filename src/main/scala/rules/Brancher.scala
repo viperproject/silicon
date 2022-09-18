@@ -10,7 +10,7 @@ import java.util.concurrent._
 
 import viper.silicon.common.collections.immutable
 import viper.silicon.common.concurrency._
-import viper.silicon.decider.{LayeredPathConditionStack, PathConditionStack}
+import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.state.State
@@ -100,14 +100,6 @@ object brancher extends BranchingRules {
           macrosOfCurrentDecider = v.decider.freshMacros
           pcsOfCurrentDecider = v.decider.pcs.duplicate()
         }
-        //println(s"stack has ${v.decider.pcs.nLayers()} layers, prover has ${v.decider.prover.pushPopScopeDepth} stack size")
-
-        //println(s"\n[INIT elseBranchVerificationTask v.uniqueId = ${v.uniqueId}]")
-        //println(s"  condition = $condition")
-        //println("  v.decider.pcs.assumptions = ")
-        //v.decider.pcs.assumptions foreach (a => println(s"    $a"))
-        //println("  v.decider.pcs.branchConditions = ")
-        //v.decider.pcs.branchConditions foreach (a => println(s"    $a"))
 
         (v0: Verifier) => {
           SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
@@ -116,6 +108,7 @@ object brancher extends BranchingRules {
             /* [BRANCH-PARALLELISATION] */
             // executing the else branch on a different verifier, need to adapt the state
 
+            // TODO: These seem to be ListSets, for which subtraction is O(n^2). Maybe replace with LinkedHashSets?
             val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
             val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
 
@@ -174,10 +167,9 @@ object brancher extends BranchingRules {
         if (parallelizeElseBranch) {
           pcsOfCurrentDecider = v.decider.pcs.duplicate()
 
-          val tsk = elseBranchFuture.asInstanceOf[ForkJoinTask[Seq[VerificationResult]]]
           val pcsBefore = v.decider.pcs
 
-          rs = tsk.join()
+          rs = elseBranchFuture.get()
 
           if (v.decider.pcs != pcsBefore){
             // we have done other work during the join, need to reset

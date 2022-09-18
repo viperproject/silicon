@@ -7,13 +7,13 @@
 package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.reporting.{Converter, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, 
-  ModelInterpreter, ExtractedFunction, DomainEntry, VarEntry, RefEntry, NullRefEntry, UnprocessedModelEntry}
+import viper.silicon.reporting.{Converter, DomainEntry, ExtractedFunction, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, ModelInterpreter, NullRefEntry, RefEntry, UnprocessedModelEntry, VarEntry}
 import viper.silicon.state.{State, Store}
-import viper.silver.verifier.{Counterexample, FailureContext, Model, VerificationError, ValueEntry, ApplicationEntry, ConstantEntry}
+import viper.silver.verifier.{ApplicationEntry, ConstantEntry, Counterexample, FailureContext, Model, ValueEntry, VerificationError}
 import viper.silicon.state.terms.Term
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.Program
 
 /*
  * Results
@@ -144,11 +144,12 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
 case class SiliconMappedCounterexample(internalStore: Store,
                                        heap: Iterable[Chunk],
                                        oldHeaps: State.OldHeaps,
-                                       nativeModel: Model)
+                                       nativeModel: Model,
+                                       program: Program)
     extends SiliconCounterexample {
 
   val converter: Converter =
-    Converter(nativeModel, internalStore, heap, oldHeaps, Verifier.program)
+    Converter(nativeModel, internalStore, heap, oldHeaps, program)
 
   val model: Model = nativeModel
   val interpreter: ModelInterpreter[ExtractedModelEntry, Seq[ExtractedModelEntry]] = GenericDomainInterpreter(converter)
@@ -226,6 +227,6 @@ case class SiliconMappedCounterexample(internalStore: Store,
   }
 
   override def withStore(s: Store): SiliconCounterexample = {
-    SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel)
+    SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel, program)
   }
 }

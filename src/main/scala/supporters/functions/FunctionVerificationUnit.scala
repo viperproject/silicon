@@ -22,6 +22,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
+import viper.silicon.supporters.PredicateData
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
 
@@ -47,7 +48,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     import evaluator._
 
     @unused private var program: ast.Program = _
-    var functionData: Map[ast.Function, FunctionData] = Map.empty
+    /*private*/ var functionData: Map[ast.Function, FunctionData] = Map.empty
     private var levels: Seq[Seq[ast.Function]] = _
     private var emittedFunctionAxioms: Vector[Term] = Vector.empty
     private var postConditionAxioms: Vector[Term] = Vector.empty
@@ -62,6 +63,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       new HeapAccessReplacingExpressionTranslator(
         symbolConverter, fresh, resolutionFailureMessage, (_, _) => false, reporter)
     }
+
+    var predicateData: Map[ast.Predicate, PredicateData] = _
 
     def units = functionData.keys.toSeq
     def unitsByLevel = levels
@@ -88,8 +91,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         heights.map { case (func, height) =>
           val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
           val data = new FunctionData(func, height, quantifiedFields, program)(symbolConverter, expressionTranslator,
-            identifierFactory, pred => Verifier.predicateData(pred), Verifier.config,
-            reporter)
+                                      identifierFactory, pred => predicateData(pred), Verifier.config,
+                                      reporter)
           func -> data})
 
       levels = levelData.map(l => l.map(c => c.toSeq).toSeq.flatten).reverse
@@ -134,10 +137,6 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     /* Function supporter generates no axioms during program analysis */
     val axiomsAfterAnalysis: Iterable[Term] = Seq.empty
     def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = ()
-
-    def updateGlobalStateAfterAnalysis(): Unit = {
-      Verifier.functionData = functionData
-    }
 
     def getPostConditionAxioms() = this.postConditionAxioms
 
@@ -289,8 +288,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     val symbolsAfterVerification: Iterable[Decl] =
       generateFunctionSymbolsAfterVerification collect { case Right(f) => f }
 
-    def contributeToGlobalStateAfterVerification(): Unit = {
-      Verifier.functionData = functionData
+    val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms
+
+    def emitAxiomsAfterVerification(sink: ProverLike): Unit = {
+      emittedFunctionAxioms foreach sink.assume
     }
 
     /* Lifetime */

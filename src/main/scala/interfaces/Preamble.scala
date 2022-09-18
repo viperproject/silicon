@@ -34,8 +34,6 @@ trait PreambleContributor[+SO, +SY, +AX] extends StatefulComponent {
 
   def axiomsAfterAnalysis: Iterable[AX]
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit
-
-  def updateGlobalStateAfterAnalysis(): Unit
 }
 
 trait VerifyingPreambleContributor[+SO, +SY, +AX, U <: ast.Node]
@@ -48,8 +46,6 @@ trait VerifyingPreambleContributor[+SO, +SY, +AX, U <: ast.Node]
   //def symbolsAfterVerification: Iterable[SY]
   //def declareSymbolsAfterVerification(sink: ProverLike): Unit
 
-  //def axiomsAfterVerification: Iterable[AX]
-  //def emitAxiomsAfterVerification(sink: ProverLike): Unit
-
-  def contributeToGlobalStateAfterVerification(): Unit
+  def axiomsAfterVerification: Iterable[AX]
+  def emitAxiomsAfterVerification(sink: ProverLike): Unit
 }

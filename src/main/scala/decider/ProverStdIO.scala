@@ -31,7 +31,7 @@ abstract class ProverStdIO(uniqueId: String,
     extends Prover
        with LazyLogging {
 
-  /*protected*/ var pushPopScopeDepth = 0
+  /* protected */ var pushPopScopeDepth = 0
   protected var lastTimeout: Int = -1
   protected var logfileWriter: PrintWriter = _
   protected var prover: Process = _

@@ -11,7 +11,7 @@ import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.terms._
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silver.components.StatefulComponent
-import com.microsoft.z3.{ArithExpr, BoolExpr, Constructor, Context, DatatypeSort, IntExpr, RealExpr, Expr => Z3Expr, FuncDecl => Z3FuncDecl, Sort => Z3Sort, Symbol => Z3Symbol}
+import com.microsoft.z3.{ArithExpr, BoolExpr, Context, DatatypeSort, IntExpr, RealExpr, Expr => Z3Expr, FuncDecl => Z3FuncDecl, Sort => Z3Sort, Symbol => Z3Symbol}
 
 import scala.collection.mutable
 
@@ -144,7 +144,7 @@ class TermToZ3APIConverter
       case sorts.Set(elementSort) => Some(ctx.mkSymbol("Set<" + convertSortName(elementSort) + ">"))
       case sorts.Multiset(elementSort) => Some(ctx.mkSymbol("Multiset<" + convertSortName(elementSort) + ">"))
       case sorts.UserSort(id) => Some(ctx.mkSymbol(convertId(id)))
-      case sorts.SMTSort(id) => {
+      case sorts.SMTSort(_) => {
         ???
       }
 
@@ -506,6 +506,8 @@ class TermToZ3APIConverter
   }
 
   def reset(): Unit = {
+    ctx = null
+    smtlibConverter.reset()
     sanitizedNamesCache.clear()
     macros.clear()
     funcDeclCache.clear()
