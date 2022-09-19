@@ -37,7 +37,7 @@ sealed abstract class VerificationResult {
    *   println(other)
    * will invoke the function twice, which might not be what you really want!
    */
-  def combine(other: => VerificationResult): VerificationResult = {
+  def combine(other: => VerificationResult, alwaysWaitForOther: Boolean = false): VerificationResult = {
     if (this.continueVerification){
       val r: VerificationResult = other
       /* Result of combining a failure with a non failure should be a failure.
@@ -51,7 +51,14 @@ sealed abstract class VerificationResult {
           r.previous = (r.previous :+ this) ++ this.previous
           r
       }
-    } else this
+    } else {
+      if (alwaysWaitForOther) {
+        // force evaluation
+        val res: VerificationResult = other
+      }
+      this
+    }
+
   }
 }
 

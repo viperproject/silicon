@@ -255,7 +255,11 @@ class TermToZ3APIConverter
         } else{
           val qvarExprs = vars.map(v => convert(v)).toArray
           val nonEmptyTriggers = triggers.filter(_.p.nonEmpty)
-          val patterns = if (nonEmptyTriggers.nonEmpty) nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(convertTerm): _*)).toArray else null
+          val patterns = if (nonEmptyTriggers.nonEmpty)
+              // Simplify trigger terms; Z3 does this automatically when used via stdio, and it sometimes makes
+              // triggers valid that would otherwise be rejected.
+              nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(trm => convertTerm(trm).simplify()): _*)).toArray
+            else null
           if (quant == Forall) {
             ctx.mkForall(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
           }else{

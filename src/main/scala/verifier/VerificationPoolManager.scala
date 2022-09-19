@@ -60,15 +60,13 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
 
     threadPool = new ForkJoinPool(poolConfig.getMaxTotal, new WorkerBorrowingForkJoinThreadFactory(), null, false)
   }
-
+  
   private def resetWorkerPool(): Unit = {
-    threadPool.awaitQuiescence(10, TimeUnit.SECONDS)
     workerVerifiers foreach (_.reset())
   }
 
   private def teardownWorkerPool(): Unit = {
     if (workerVerifiers != null) {
-      threadPool.awaitQuiescence(10, TimeUnit.SECONDS)
       workerVerifiers foreach (_.stop())
 
       threadPool.shutdown()

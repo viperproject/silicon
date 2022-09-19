@@ -47,18 +47,27 @@ object Z3ProverAPI {
   val initialOptions = Map("auto_config" -> "false", "type_check" -> "true")
   val boolParams = Map(
     "smt.delay_units" -> true,
+    "delay_units" -> true,
     "nnf.sk_hack" -> true,
     "smt.mbqi" -> false,
+    "mbqi" -> false,
     "nlsat.randomize" -> true,
     "nlsat.shuffle_vars" -> false,
     "smt.arith.random_initial_value" -> true,
+    "arith.random_initial_value" -> true,
+    "bv.reflect" -> true,
   )
-  val intParams = Map("smt.restart_strategy" -> 0,
+  val intParams = Map(
+    "smt.restart_strategy" -> 0,
+    "restart_strategy" -> 0,
     "smt.case_split" -> 3,
     "case_split" -> 3,
     "smt.delay_units_threshold" -> 16,
+    "delay_units_threshold" -> 16,
     "smt.qi.max_multi_patterns" -> 1000,
+    "qi.max_multi_patterns" -> 1000,
     "smt.phase_selection" -> 0,
+    "phase_selection" -> 0,
     "sat.random_seed" -> 0,
     "nlsat.seed" -> 0,
     "random_seed" -> 0,
@@ -69,7 +78,9 @@ object Z3ProverAPI {
   )
   val doubleParams = Map(
     "smt.restart_factor" -> 1.5,
+    "restart_factor" -> 1.5,
     "smt.qi.eager_threshold" -> 100.0,
+    "qi.eager_threshold" -> 100.0,
   )
 }
 
