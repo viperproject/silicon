@@ -16,7 +16,7 @@ diff -r 19832d947290 src/main/scala/Silicon.scala
  
 -    setLogLevelsFromConfig()
 -
-     verifier = new DefaultMasterVerifier(config)
+     verifier = new DefaultMainVerifier(config)
      verifier.start()
    }
 @@ -304,9 +304,14 @@
