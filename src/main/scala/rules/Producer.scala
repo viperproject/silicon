@@ -299,17 +299,17 @@ object producer extends ProductionRules {
           val ch =
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm, s.program)
           val h2 = s1.h + ch
-          val (relevantChunks, _) =
-            quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h2, ch.id)
-          val (smDef1, smCache1) =
-            quantifiedChunkSupporter.summarisingSnapshotMap(
-              s1, wand, formalVars, relevantChunks, v1)
+          //val (relevantChunks, _) =
+          //  quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h2, ch.id)
+          //val (smDef1, smCache1) =
+          //  quantifiedChunkSupporter.summarisingSnapshotMap(
+          //    s1, wand, formalVars, relevantChunks, v1)
           //v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args))
           val smDef = SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq())
           val s2 =
             s1.copy(h = h2,
                     functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef),
-                    smCache = smCache1,
+                    //smCache = smCache1,
                     conservedPcs = conservedPcs)
           Q(s2, v1)})
 

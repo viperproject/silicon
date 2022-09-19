@@ -60,8 +60,8 @@ object predicateSupporter extends PredicateSupportRules {
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm)
     consume(s1, body, pve, v)((s1a, snap, v1) => {
-      val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
-                            snap.convert(terms.sorts.Snap) +: tArgs)
+      //val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
+      //                      snap.convert(terms.sorts.Snap) +: tArgs)
       //v1.decider.assume(predTrigger)
       val s2 = s1a.setConstrainable(constrainableWildcards, false)
       if (s2.qpPredicates.contains(predicate)) {
@@ -77,14 +77,14 @@ object predicateSupporter extends PredicateSupportRules {
         val h3 = s2.h + ch
         val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
         val smCache = {
-          val (relevantChunks, _) =
-            quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h3, BasicChunkIdentifier(predicate.name))
-          val (smDef1, smCache1) =
-            quantifiedChunkSupporter.summarisingSnapshotMap(
-              s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v1)
+          //val (relevantChunks, _) =
+          //  quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h3, BasicChunkIdentifier(predicate.name))
+          //val (smDef1, smCache1) =
+          //  quantifiedChunkSupporter.summarisingSnapshotMap(
+          //    s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v1)
           //v1.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
 
-          smCache1
+          s2.smCache
         }
 
         val s3 = s2.copy(g = s.g,
@@ -134,9 +134,9 @@ object predicateSupporter extends PredicateSupportRules {
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
-          val predicateTrigger =
-            App(s4.predicateData(predicate).triggerFunction,
-                snap.convert(terms.sorts.Snap) +: tArgs)
+          //val predicateTrigger =
+          //  App(s4.predicateData(predicate).triggerFunction,
+          //      snap.convert(terms.sorts.Snap) +: tArgs)
           //v2.decider.assume(predicateTrigger)
           Q(s4.copy(g = s.g,
                     permissionScalingFactor = s.permissionScalingFactor),
@@ -150,8 +150,8 @@ object predicateSupporter extends PredicateSupportRules {
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
-          val predicateTrigger =
-            App(s4.predicateData(predicate).triggerFunction, snap +: tArgs)
+          //val predicateTrigger =
+          //  App(s4.predicateData(predicate).triggerFunction, snap +: tArgs)
           //v2.decider.assume(predicateTrigger)
           val s5 = s4.copy(g = s.g,
                            permissionScalingFactor = s.permissionScalingFactor)

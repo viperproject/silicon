@@ -202,7 +202,7 @@ object evaluator extends EvaluationRules {
                * which is protected by a trigger term that we currently don't have.
                */
               v1.decider.assume(fvfDef.valueDefinitions)
-              val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
+              //val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
               //v1.decider.assume(trigger)
               if (s1.triggerExp) {
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
@@ -216,7 +216,7 @@ object evaluator extends EvaluationRules {
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
-                    val s2 = s1.copy(functionRecorder = fr1, possibleTriggers = if (s1.recordPossibleTriggers) s1.possibleTriggers + (fa -> trigger) else s1.possibleTriggers)
+                    val s2 = s1.copy(functionRecorder = fr1) //, possibleTriggers = if (s1.recordPossibleTriggers) s1.possibleTriggers + (fa -> trigger) else s1.possibleTriggers)
                     Q(s2, fvfLookup, v1)}
               }
             case _ =>
@@ -229,7 +229,7 @@ object evaluator extends EvaluationRules {
                   optSmDomainDefinitionCondition =  None,
                   optQVarsInstantiations = None,
                   v = v1)
-              val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
+              //val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
               //v1.decider.assume(trigger)
               val permCheck =
                 if (s1.triggerExp) {
@@ -443,16 +443,16 @@ object evaluator extends EvaluationRules {
                     quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, identifier)
                   val bodyVars = wand.subexpressionsToEvaluate(s.program)
                   val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
-                  val (s2, smDef, pmDef) =
-                    quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
+                  val (s2, pmDef) =
+                    quantifiedChunkSupporter.permSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
                   //v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args))
                   (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
 
                 case field: ast.Field =>
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, identifier)
-                  val (s2, smDef, pmDef) =
-                    quantifiedChunkSupporter.heapSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
+                  val (s2, pmDef) =
+                    quantifiedChunkSupporter.permSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
                   //v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head))
                   val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
@@ -1326,17 +1326,23 @@ object evaluator extends EvaluationRules {
 
     exps foreach {
       case fa: ast.FieldAccess =>
+        /*
         val (axioms, trigs, _) = generateFieldTrigger(fa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
+         */
       case pa: ast.PredicateAccess =>
+        /*
         val (axioms, trigs, _) = generatePredicateTrigger(pa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
+         */
       case wand: ast.MagicWand =>
+        /*
         val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
+         */
       case e => evalTrigger(s, Seq(e), pve, v)((_, t, _) => {
         triggers = triggers ++ t
         Success()

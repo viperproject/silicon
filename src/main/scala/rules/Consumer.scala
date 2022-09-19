@@ -320,16 +320,16 @@ object consumer extends ConsumptionRules {
 
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            val (relevantChunks, _) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
-            val (smDef1, smCache1) =
-              quantifiedChunkSupporter.summarisingSnapshotMap(
-                s2, field, Seq(`?r`), relevantChunks, v2)
+            //val (relevantChunks, _) =
+            //  quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
+            //val (smDef1, smCache1) =
+            //  quantifiedChunkSupporter.summarisingSnapshotMap(
+            //    s2, field, Seq(`?r`), relevantChunks, v2)
             //v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
 //            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
-              s2.copy(smCache = smCache1),
+              s2, //.copy(smCache = smCache1),
               h,
               Seq(`?r`),
               Seq(tRcvr),
@@ -351,16 +351,16 @@ object consumer extends ConsumptionRules {
 
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            val (relevantChunks, _) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(predname))
-            val (smDef1, smCache1) =
-              quantifiedChunkSupporter.summarisingSnapshotMap(
-                s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
+            //val (relevantChunks, _) =
+            //  quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(predname))
+            //val (smDef1, smCache1) =
+            //  quantifiedChunkSupporter.summarisingSnapshotMap(
+            //    s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
             //v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
 
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
-              s2.copy(smCache = smCache1),
+              s2, //.copy(smCache = smCache1),
               h,
               formalVars,
               tArgs,
@@ -401,16 +401,16 @@ object consumer extends ConsumptionRules {
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
 
         evals(s, bodyVars, _ => pve, v)((s1, tArgs, v1) => {
-          val (relevantChunks, _) =
-            quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s1.h, MagicWandIdentifier(wand, s.program))
-          val (smDef1, smCache1) =
-            quantifiedChunkSupporter.summarisingSnapshotMap(
-              s1, wand, formalVars, relevantChunks, v1)
+          //val (relevantChunks, _) =
+          //  quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s1.h, MagicWandIdentifier(wand, s.program))
+          //val (smDef1, smCache1) =
+          //  quantifiedChunkSupporter.summarisingSnapshotMap(
+          //    s1, wand, formalVars, relevantChunks, v1)
           //v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, s.program).toString, smDef1.sm, tArgs))
 
           val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
           quantifiedChunkSupporter.consumeSingleLocation(
-            s1.copy(smCache = smCache1),
+            s1, //.copy(smCache = smCache1),
             h,
             formalVars,
             tArgs,
