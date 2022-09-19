@@ -127,6 +127,7 @@ object brancher extends BranchingRules {
             v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
 
             // TODO: we should saturate here to some degree; which option fits best?
+            // Tried out afterContract, got reduced performance on a few examples, need to test probably.
             //v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
 
             fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
