@@ -22,7 +22,7 @@ import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificati
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
-import viper.silicon.verifier.DefaultMasterVerifier
+import viper.silicon.verifier.DefaultMainVerifier
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
@@ -104,7 +104,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   }
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
-  private var verifier: DefaultMasterVerifier = _
+  private var verifier: DefaultMainVerifier = _
 
   private var startTime: Long = _
   private var elapsedMillis: Long = _
@@ -130,7 +130,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     setLogLevelsFromConfig()
 
-    verifier = new DefaultMasterVerifier(config, reporter)
+    verifier = new DefaultMainVerifier(config, reporter)
     verifier.start()
   }
 
