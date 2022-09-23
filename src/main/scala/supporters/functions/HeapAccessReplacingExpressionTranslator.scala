@@ -25,7 +25,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
     extends ExpressionTranslator
        with LazyLogging {
 
-  private var program: ast.Program = _
+  protected var program: ast.Program = _
   @unused private var func: ast.Function = _
   private var data: FunctionData = _
   private var ignoreAccessPredicates = false

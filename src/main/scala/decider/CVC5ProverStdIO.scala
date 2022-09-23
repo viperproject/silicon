@@ -45,4 +45,6 @@ class Cvc5ProverStdIO(uniqueId: String,
   protected def getProverPath: Path = {
     Paths.get(Verifier.config.cvc5Exe)
   }
+
+  override def emitSettings(contents: Iterable[String]): Unit = emit(contents)
 }

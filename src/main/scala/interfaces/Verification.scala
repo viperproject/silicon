@@ -7,11 +7,13 @@
 package viper.silicon.interfaces
 
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.reporting.Converter
+import viper.silicon.reporting.{Converter, DomainEntry, ExtractedFunction, ExtractedModel, ExtractedModelEntry, GenericDomainInterpreter, ModelInterpreter, NullRefEntry, RefEntry, UnprocessedModelEntry, VarEntry}
 import viper.silicon.state.{State, Store}
-import viper.silver.verifier.{Counterexample, FailureContext, Model, VerificationError}
+import viper.silver.verifier.{ApplicationEntry, ConstantEntry, Counterexample, FailureContext, Model, ValueEntry, VerificationError}
 import viper.silicon.state.terms.Term
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.Program
 
 /*
  * Results
@@ -142,23 +144,89 @@ case class SiliconVariableCounterexample(internalStore: Store, nativeModel: Mode
 case class SiliconMappedCounterexample(internalStore: Store,
                                        heap: Iterable[Chunk],
                                        oldHeaps: State.OldHeaps,
-                                       nativeModel: Model)
+                                       nativeModel: Model,
+                                       program: Program)
     extends SiliconCounterexample {
 
   val converter: Converter =
-    Converter(nativeModel, internalStore, heap, oldHeaps)
+    Converter(nativeModel, internalStore, heap, oldHeaps, program)
 
   val model: Model = nativeModel
+  val interpreter: ModelInterpreter[ExtractedModelEntry, Seq[ExtractedModelEntry]] = GenericDomainInterpreter(converter)
+  private var heapNames: Map[ValueEntry, String] = Map()
 
   override lazy val toString: String = {
-    val buf = converter.modelAtLabel
-      .map(x => s"model at label: ${x._1}\n${x._2.toString}\n")
+    val extractedModel = converter.extractedModel
+    val bufModels = converter.modelAtLabel
+      .map { case (label, model) => s"model at label $label:\n${interpret(model).toString}"}
       .mkString("\n")
+    val (bufDomains, bufNonDomainFunctions) = functionsToString()
+    s"$bufModels\non return: \n${interpret(extractedModel).toString} $bufDomains $bufNonDomainFunctions"
+  }
+  private def interpret(t: ExtractedModel): ExtractedModel =
+    ExtractedModel(t.entries.map{ case (name, entry) => (name, interpret(entry)) })
+  private def interpret(t: ExtractedModelEntry): ExtractedModelEntry = interpreter.interpret(t, Seq())
 
-    s"$buf\non return: \n${converter.extractedModel.toString}"
+  private def functionsToString() : (String, String) = {
+    //extractedModel.entries should be a bijection so we can invert the map
+    //Since we only care about ref entries we can remove everything else
+    val invEntries = converter.extractedModel.entries.flatMap{ case (name, entry) => 
+      entry match {
+        case RefEntry(symName, _) => Some(symName -> name)
+        case NullRefEntry(symName)=> Some(symName -> name)
+        case _ => None
+      }}
+
+    val replaceDomainFunction = converter.domains.map{ 
+      case DomainEntry(names, types, functions) => 
+      DomainEntry(names, types, renameFunctions(functions, invEntries))
+    }
+    val bufDomains = replaceDomainFunction.nonEmpty match {
+      case true => "\nDomain: \n" + replaceDomainFunction.map(domain => domain.toString()).mkString("\n")
+      case false => ""
+    }
+
+    val replaceNonDomainFunctions = renameFunctions(converter.nonDomainFunctions, invEntries)
+    val bufNonDomainFunctions = replaceNonDomainFunctions.nonEmpty match {
+      case true => "\nFunctions: \n" + replaceNonDomainFunctions.map(fn => fn.toString()).mkString("\n")
+      case false => ""
+    }
+    (bufDomains, bufNonDomainFunctions)
+  }
+
+  private def renameFunctions(fn: Seq[ExtractedFunction], invEntries: Map[String, String]) : Seq[ExtractedFunction] = {
+    fn.map{
+      case ExtractedFunction(fname, argtypes, returnType, options, default) => {
+        val optionsNew = options.map(x => x._1.map(y => renameFunction(y, invEntries)) -> renameFunction(x._2, invEntries))
+        val defaultNew = renameFunction(default, invEntries)
+        ExtractedFunction(fname, argtypes, returnType, optionsNew, defaultNew)
+      }
+    }
+  }
+
+  private def renameFunction(entry:ExtractedModelEntry, invEntries: Map[String, String]): ExtractedModelEntry = {
+    entry match {
+      case VarEntry(name, sort) => VarEntry(invEntries.get(name).getOrElse(name), sort)
+      case UnprocessedModelEntry(unproEntry) => {
+        unproEntry match {
+          case ApplicationEntry("$Snap.combine", Seq(_, _)) =>  renameSnap(unproEntry)
+          case ConstantEntry("$Snap.unit")  => renameSnap(unproEntry)
+          case _ => entry
+        }
+      }
+      case _ => entry
+    }
+  }
+
+  private def renameSnap(entry: ValueEntry): ExtractedModelEntry = {
+    if (!heapNames.contains(entry)) {
+      heapNames += (entry -> ("heap_" + heapNames.size.toString))
+    }
+    UnprocessedModelEntry(ConstantEntry(
+            heapNames.get(entry).orNull))
   }
 
   override def withStore(s: Store): SiliconCounterexample = {
-    SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel)
+    SiliconMappedCounterexample(s, heap, oldHeaps, nativeModel, program)
   }
 }

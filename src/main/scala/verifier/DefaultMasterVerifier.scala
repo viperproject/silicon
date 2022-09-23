@@ -8,6 +8,7 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
+
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.util.Random
@@ -24,13 +25,14 @@ import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
-import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
+import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, WarningsDuringTypechecking}
+import viper.silver.verifier.TypecheckerWarning
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -106,6 +108,11 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       _verificationPoolManager.pooledVerifiers.emit(content)
     }
 
+    override def emit(contents: Iterable[String]): Unit = {
+      decider.prover.emit(contents)
+      _verificationPoolManager.pooledVerifiers.emit(contents)
+    }
+
     def assume(term: Term): Unit = {
       decider.prover.assume(term)
       _verificationPoolManager.pooledVerifiers.assume(term)
@@ -130,11 +137,16 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       decider.prover.saturate(data)
       _verificationPoolManager.pooledVerifiers.saturate(data)
     }
+
+    override def emitSettings(contents: Iterable[String]): Unit = {
+      decider.prover.emitSettings(contents)
+      _verificationPoolManager.pooledVerifiers.emitSettings(contents)
+    }
   }
 
   /* Program verification */
 
-  def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg]): List[VerificationResult] = {
+  def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
       * This is done bottom-up to ensure that nested quantifiers are transformed as well
@@ -143,10 +155,19 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       */
     var program: ast.Program =
       originalProgram.transform({
-        case forall: ast.Forall if forall.isPure =>
-          viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
+        case forall: ast.Forall if forall.isPure => {
+          val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
+          if (res.triggers.isEmpty)
+            reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          res
+        }
         case exists: ast.Exists =>
-          viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
+        {
+          val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
+          if (res.triggers.isEmpty)
+            reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          res
+        }
       }, Traverse.BottomUp)
 
     // TODO: Autotrigger for cfgs.
@@ -159,14 +180,12 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       println(program)
     }
 
-    Verifier.program = program
-
     predSnapGenerator.setup(program) // TODO: Why did Nadja put this here?
 
 
     allProvers.comment("Started: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()) /*bookkeeper.formattedStartTime*/)
     allProvers.comment("Silicon.version: " + Silicon.version)
-    allProvers.comment(s"Input file: ${Verifier.inputFile.getOrElse("<unknown>")}")
+    allProvers.comment(s"Input file: ${inputFile.getOrElse("<unknown>")}")
     allProvers.comment(s"Verifier id: $uniqueId")
     allProvers.comment("-" * 60)
     allProvers.comment("Begin preamble")
@@ -174,7 +193,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     allProvers.comment("/" * 10 + " Static preamble")
     emitStaticPreamble(allProvers)
 
-    analyzeProgramAndEmitPreambleContributions(program, allProvers) // TODO: Add support for cfgs.
+    val (functionData, predicateData) = analyzeProgramAndEmitPreambleContributions(program, allProvers) // TODO: Add support for cfgs.
 
     allProvers.comment("End preamble")
     allProvers.comment("-" * 60)
@@ -190,7 +209,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
-      val results = functionsSupporter.verify(createInitialState(function, program), function)
+      val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -199,7 +218,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
-      val results = predicateSupporter.verify(createInitialState(predicate, program), predicate)
+      val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -221,7 +240,9 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
-        val s = createInitialState(method, program)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
+
+        val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
+          Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
@@ -234,7 +255,7 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           setErrorScope(results, method)
         })
       }) ++ cfgs.map(cfg => {
-        val s = createInitialState(cfg, program)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
+        val s = createInitialState(cfg, program, functionData, predicateData).copy(parallelizeBranches = true) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
@@ -262,12 +283,18 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
      ++ methodVerificationResults)
   }
 
-  private def createInitialState(member: ast.Member, program: ast.Program): State = {
+  private def createInitialState(member: ast.Member,
+                                 program: ast.Program,
+                                 functionData: Map[ast.Function, FunctionData],
+                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
 
-    State(qpFields = quantifiedFields,
+    State(program = program,
+          functionData = functionData,
+          predicateData = predicateData,
+          qpFields = quantifiedFields,
           qpPredicates = quantifiedPredicates,
           qpMagicWands = quantifiedMagicWands,
           predicateSnapMap = predSnapGenerator.snapMap,
@@ -275,12 +302,19 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
           isMethodVerification = member.isInstanceOf[ast.Member])
   }
 
-  private def createInitialState(@unused cfg: SilverCfg, program: ast.Program): State = {
+  private def createInitialState(@unused cfg: SilverCfg,
+                                 program: ast.Program,
+                                 functionData: Map[ast.Function, FunctionData],
+                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(program.fields)
     val quantifiedPredicates = InsertionOrderedSet(program.predicates)
     val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.
 
-    State(qpFields = quantifiedFields,
+    State(
+      program = program,
+      functionData = functionData,
+      predicateData = predicateData,
+      qpFields = quantifiedFields,
       qpPredicates = quantifiedPredicates,
       qpMagicWands = quantifiedMagicWands,
       predicateSnapMap = predSnapGenerator.snapMap,
@@ -295,14 +329,14 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
 
   private def emitStaticPreamble(sink: ProverLike): Unit = {
     sink.comment(s"\n; ${decider.prover.staticPreamble}")
-    preambleReader.emitPreamble(decider.prover.staticPreamble, sink)
+    preambleReader.emitPreamble(decider.prover.staticPreamble, sink, true)
 
     if (config.proverRandomizeSeeds) {
       sink.comment(s"\n; Randomise seeds [--${config.rawProverRandomizeSeeds.name}]")
       val options = decider.prover.randomizeSeedsOptions
         .map (key => s"(set-option :$key ${Random.nextInt(10000)})")
 
-      preambleReader.emitPreamble(options, sink)
+      preambleReader.emitPreamble(options, sink, true)
     }
 
     val smt2ConfigOptions =
@@ -313,11 +347,11 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
       val msg = s"Additional prover configuration options are '${config.proverConfigArgs}'"
       reporter report ConfigurationConfirmation(msg)
       logger info msg
-      preambleReader.emitPreamble(smt2ConfigOptions, sink)
+      preambleReader.emitPreamble(smt2ConfigOptions, sink, true)
     }
 
     sink.comment("\n; /preamble.smt2")
-    preambleReader.emitPreamble("/preamble.smt2", sink)
+    preambleReader.emitPreamble("/preamble.smt2", sink, false)
   }
 
   /* Prover preamble: After program analysis */
@@ -387,11 +421,13 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     predicateSupporter
   )
 
-  private def analyzeProgramAndEmitPreambleContributions(program: ast.Program, sink: ProverLike): Unit = {
+  private def analyzeProgramAndEmitPreambleContributions(program: ast.Program, sink: ProverLike) = {
     analysisOrder foreach (component => {
       component.analyze(program)
-      component.updateGlobalStateAfterAnalysis()
     })
+    val predicateData = predicateSupporter.predicateData
+    val functionData = functionsSupporter.functionData
+    functionsSupporter.predicateData = predicateData
 
     sink.comment("/" * 10 + " Sorts")
     sortDeclarationOrder foreach (component =>
@@ -424,6 +460,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
     sink.comment("/" * 10 + " Axioms")
     axiomDeclarationOrder foreach (component =>
       component.emitAxiomsAfterAnalysis(sink))
+
+    (functionData, predicateData)
   }
 
   private def emitSortWrappers(ss: Iterable[Sort], sink: ProverLike): Unit = {

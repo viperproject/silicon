@@ -19,13 +19,12 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
   private val numberOfSlaveVerifiers: Int = Verifier.config.numberOfParallelVerifiers()
 
   /*private*/ var slaveVerifiers: Seq[SlaveVerifier] = _
-  /*private*/ var slaveVerifierExecutor: ExecutorService = _
+  /*private*/ var slaveVerifierExecutor: ForkJoinPool = _
   /*private*/ var slaveVerifierPool: ObjectPool[SlaveVerifier] = _
-
-  /* private */ var runningVerificationTasks: ConcurrentHashMap[AnyRef, Boolean] = _
 
   private[verifier] object pooledVerifiers extends ProverLike {
     def emit(content: String): Unit = slaveVerifiers foreach (_.decider.prover.emit(content))
+    override def emit(contents: Iterable[String]): Unit = slaveVerifiers foreach (_.decider.prover.emit(contents))
     def assume(term: Term): Unit = slaveVerifiers foreach (_.decider.prover.assume(term))
     def declare(decl: Decl): Unit =  slaveVerifiers foreach (_.decider.prover.declare(decl))
     def comment(content: String): Unit = slaveVerifiers foreach (_.decider.prover.comment(content))
@@ -35,13 +34,15 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
     def saturate(timeout: Int, comment: String): Unit =
       slaveVerifiers foreach (_.decider.prover.saturate(timeout, comment))
+
+    override def emitSettings(contents: Iterable[String]): Unit =
+      slaveVerifiers foreach (_.decider.prover.emitSettings(contents))
   }
 
   /* Verifier pool management */
 
   private def setupSlaveVerifierPool(): Unit = {
     slaveVerifiers = Vector.empty
-    runningVerificationTasks = new ConcurrentHashMap()
 
     val poolConfig: GenericObjectPoolConfig[SlaveVerifier] = new GenericObjectPoolConfig()
     poolConfig.setMaxTotal(numberOfSlaveVerifiers)
@@ -50,29 +51,24 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
     val factory = PoolUtils.synchronizedPooledFactory(slaveVerifierPoolableObjectFactory)
 
-    slaveVerifierPool =
-    //    PoolUtils.synchronizedPool(
-    new GenericObjectPool[SlaveVerifier](factory, poolConfig)
-    //    )
+    slaveVerifierPool = new GenericObjectPool[SlaveVerifier](factory, poolConfig)
 
     slaveVerifierPool.addObjects(poolConfig.getMaxTotal)
-    //  Thread.sleep(2000)
 
     assert(slaveVerifiers.length == poolConfig.getMaxTotal)
     slaveVerifiers foreach (_.start())
 
-    slaveVerifierExecutor = Executors.newFixedThreadPool(poolConfig.getMaxTotal)
-//    slaveVerifierExecutor = Executors.newWorkStealingPool(poolConfig.getMaxTotal)
+    slaveVerifierExecutor = new ForkJoinPool(poolConfig.getMaxTotal, new SlaveBorrowingForkJoinThreadFactory(), null, false)
   }
 
   private def resetSlaveVerifierPool(): Unit = {
+    slaveVerifierExecutor.awaitQuiescence(10, TimeUnit.SECONDS)
     slaveVerifiers foreach (_.reset())
-
-    runningVerificationTasks.clear()
   }
 
   private def teardownSlaveVerifierPool(): Unit = {
     if (slaveVerifiers != null) {
+      slaveVerifierExecutor.awaitQuiescence(10, TimeUnit.SECONDS)
       slaveVerifiers foreach (_.stop())
 
       slaveVerifierExecutor.shutdown()
@@ -97,28 +93,15 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
   /* Verification task management */
 
-  private final class SlaveBorrowingVerificationTask(task: SlaveVerifier => Seq[VerificationResult])
-      extends Callable[Seq[VerificationResult]] {
-
-    def call(): Seq[VerificationResult] = {
-      var slave: SlaveVerifier = null
-
-      try {
-        slave = slaveVerifierPool.borrowObject()
-
-        task(slave)
-      } finally {
-        if (slave != null) {
-          slaveVerifierPool.returnObject(slave)
-        }
-      }
-    }
-  }
 
   def queueVerificationTask(task: SlaveVerifier => Seq[VerificationResult])
                            : Future[Seq[VerificationResult]] = {
-
-    slaveVerifierExecutor.submit(new SlaveBorrowingVerificationTask(task))
+    val thread = Thread.currentThread()
+    if (thread.isInstanceOf[SlaveBorrowingForkJoinWorkerThread]){
+      new SlaveAwareForkJoinTask(task).fork
+    }else{
+      slaveVerifierExecutor.submit(new SlaveAwareForkJoinTask(task))
+    }
   }
 
   /* Lifetime */
@@ -134,4 +117,39 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
   def stop(): Unit = {
     teardownSlaveVerifierPool()
   }
+
+  class SlaveBorrowingForkJoinThreadFactory extends ForkJoinPool.ForkJoinWorkerThreadFactory {
+    override def newThread(forkJoinPool: ForkJoinPool): ForkJoinWorkerThread = {
+      new SlaveBorrowingForkJoinWorkerThread(forkJoinPool)
+    }
+  }
+
+  class SlaveBorrowingForkJoinWorkerThread(pool: ForkJoinPool) extends ForkJoinWorkerThread(pool) {
+    // each thread has its own slave verifier that does not change.
+    var slave: SlaveVerifier = null
+
+    override def onStart(): Unit = {
+      slave = slaveVerifierPool.borrowObject()
+    }
+
+    override def onTermination(exception: Throwable): Unit = {
+      if (slave != null) {
+        slaveVerifierPool.returnObject(slave)
+      }
+    }
+
+  }
+
+  class SlaveAwareForkJoinTask(task: SlaveVerifier => Seq[VerificationResult])
+    extends RecursiveTask[Seq[VerificationResult]]{
+
+    override def compute(): Seq[VerificationResult] = {
+      // get the slave verifier of the current thread
+      val worker = Thread.currentThread().asInstanceOf[SlaveBorrowingForkJoinWorkerThread]
+      val slave = worker.slave
+      task(slave)
+    }
+  }
 }
+
+
