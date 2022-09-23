@@ -582,7 +582,7 @@ object Quantification
             isGlobal: Boolean)
            : Quantification = {
 
-    val rewrittenTriggers = triggers.flatMap(transformSeqTerms(_))
+    val rewrittenTriggers = if (Verifier.config.useOldAxiomatization()) triggers else triggers.flatMap(transformSeqTerms(_))
 
 //    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")
 //    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
@@ -1457,8 +1457,10 @@ object SeqUpdate extends ((Term, Term, Term) => SeqTerm) {
     utils.assertSort(t1, "second operand", sorts.Int)
     utils.assertSort(t2, "third operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
 
-
-    SeqAppend(SeqTake(t0,t1),SeqAppend(SeqSingleton(t2),SeqDrop(t0,Plus(t1,IntLiteral(1)))))
+    if (Verifier.config.useOldAxiomatization())
+      new SeqUpdate(t0, t1, t2)
+    else
+      SeqAppend(SeqTake(t0,t1),SeqAppend(SeqSingleton(t2),SeqDrop(t0,Plus(t1,IntLiteral(1)))))
   }
 
   def unapply(su: SeqUpdate) = Some((su.t0, su.t1, su.t2))

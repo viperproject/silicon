@@ -9,6 +9,7 @@ package viper.silicon.supporters
 import scala.reflect.{ClassTag, classTag}
 import viper.silicon.Config
 import viper.silicon.state.terms.{Sort, Term, sorts}
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
 class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
@@ -17,7 +18,12 @@ class DefaultSequencesContributor(val domainTranslator: DomainsTranslator[Term],
   type BuiltinDomainType = ast.SeqType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.SeqType]
 
-  val defaultSourceResource: String = "/dafny_axioms/sequences.vpr"
+  lazy val defaultSourceResource: String = {
+    if (Verifier.config.useOldAxiomatization())
+      "/dafny_axioms/sequences_old.vpr"
+    else
+      "/dafny_axioms/sequences.vpr"
+  }
   val userProvidedSourceFilepath: Option[String] = config.sequenceAxiomatizationFile.toOption
   val sourceDomainName: String = "$Seq"
 

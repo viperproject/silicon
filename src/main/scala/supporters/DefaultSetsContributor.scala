@@ -11,6 +11,7 @@ import viper.silicon.Config
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, sorts}
+import viper.silicon.verifier.Verifier
 
 class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
     extends BuiltinDomainsContributor {
@@ -18,7 +19,12 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
   type BuiltinDomainType = ast.SetType
   val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.SetType]
 
-  val defaultSourceResource: String = "/dafny_axioms/sets.vpr"
+  lazy val defaultSourceResource: String = {
+    if (Verifier.config.useOldAxiomatization())
+      "/dafny_axioms/sets_old.vpr"
+    else
+      "/dafny_axioms/sets.vpr"
+  }
   val userProvidedSourceFilepath: Option[String] = config.setAxiomatizationFile.toOption
   val sourceDomainName: String = "$Set"
 
