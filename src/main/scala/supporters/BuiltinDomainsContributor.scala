@@ -8,6 +8,7 @@ package viper.silicon.supporters
 
 import java.io.File
 import java.net.URL
+
 import scala.annotation.unused
 import scala.reflect.ClassTag
 import viper.silver.ast
@@ -16,6 +17,7 @@ import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
+import viper.silver.ast.LineCol
 
 abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
   type BuiltinDomainType <: ast.GenericType
@@ -87,7 +89,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
     val sourceDomainInstantiations = sourceDomainInstantiationsWithType.map(x => x._2)
 
     collectSorts(sourceDomainTypeInstances)
-    collectFunctions(sourceDomainInstantiations)
+    collectFunctions(sourceDomainInstantiations, program)
     collectAxioms(sourceDomainInstantiationsWithType)
   }
 
@@ -109,10 +111,10 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
     })
   }
 
-  protected def collectFunctions(domains: Set[ast.Domain]): Unit = {
+  protected def collectFunctions(domains: Set[ast.Domain], program: ast.Program): Unit = {
     domains foreach (
       _.functions foreach (df =>
-        collectedFunctions += symbolConverter.toFunction(df)))
+        collectedFunctions += symbolConverter.toFunction(df, program)))
   }
 
   protected def collectAxioms(domains: Set[(ast.DomainType, ast.Domain)]): Unit = {
@@ -127,7 +129,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
      * are preserved.
      */
     val domainName = f"${d.domainName}[${d.typVarsMap.values.map(t => symbolConverter.toSort(t)).mkString(",")}]"
-    domainTranslator.translateAxiom(ax, symbolConverter.toSort).transform {
+    domainTranslator.translateAxiom(ax, symbolConverter.toSort, true).transform {
       case q@Quantification(_,_,_,_,name,_) if name != "" =>
         q.copy(name = f"${domainName}_${name}")
       case Equals(t1, t2) => BuiltinEquals(t1, t2)
@@ -190,7 +192,9 @@ private object utils {
         source.close()
       }
 
-    viper.silver.parser.FastParser.parse(content, fromPath) match {
+    val fp = new viper.silver.parser.FastParser()
+    val lc = new LineCol(fp)
+    fp.parse(content, fromPath) match {
       case fastparse.Parsed.Success(parsedProgram: viper.silver.parser.PProgram, _) =>
         assert(parsedProgram.errors.isEmpty, s"Unexpected parsing errors: ${parsedProgram.errors}")
 
@@ -202,7 +206,7 @@ private object utils {
         program
 
       case fastparse.Parsed.Failure(msg, index, _) =>
-        val (line, col) = ast.LineCol(index)
+        val (line, col) = lc.getPos(index)
         sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, line, col)}")
         //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
         //? sys.error(s"Failure: $msg, at ${viper.silver.ast.FilePosition(fromPath, pos(0), pos(1))}")

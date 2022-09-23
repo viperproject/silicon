@@ -12,7 +12,7 @@ import scala.util.matching.Regex
 import scala.util.Properties._
 import org.rogach.scallop._
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
-import viper.silicon.decider.{Z3ProverStdIO, Cvc5ProverStdIO}
+import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
 import viper.silver.frontend.SilFrontendConfig
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
@@ -635,6 +635,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val parallelizeBranches= opt[Boolean]("parallelizeBranches",
+    descr = "Verify different branches in parallel.",
+    default = Some(false),
+    noshort = true
+  )
+
   val printTranslatedProgram: ScallopOption[Boolean] = opt[Boolean]("printTranslatedProgram",
     descr ="Print the final program that is going to be verified to stdout.",
     default = Some(false),
@@ -717,7 +723,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val prover: ScallopOption[String] = opt[String]("prover",
-    descr = s"One of the provers ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}. " +
+    descr = s"One of the provers ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}, ${Z3ProverAPI.name}. " +
             s"(default: ${Z3ProverStdIO.name}).",
     default = Some(Z3ProverStdIO.name),
     noshort = true
@@ -726,8 +732,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
-    case Some(Z3ProverStdIO.name) | Some(Cvc5ProverStdIO.name) => Right(())
-    case prover => Left(s"Unknown prover '$prover' provided. Expected one of ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}.")
+    case Some(Z3ProverStdIO.name) | Some(Cvc5ProverStdIO.name) | Some(Z3ProverAPI.name) => Right(())
+    case prover => Left(s"Unknown prover '$prover' provided. Expected one of ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}, ${Z3ProverAPI.name}.")
   }
 
   validateOpt(timeout) {

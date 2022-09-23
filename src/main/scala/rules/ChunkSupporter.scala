@@ -101,7 +101,7 @@ object chunkSupporter extends ChunkSupportRules {
                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                       : VerificationResult = {
 
-    val id = ChunkIdentifier(resource, Verifier.program)
+    val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s)
       magicWandSupporter.transfer(s, perms, failure, v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
@@ -213,7 +213,7 @@ object chunkSupporter extends ChunkSupportRules {
                           (Q: (State, Term, Verifier) => VerificationResult)
                           : VerificationResult = {
 
-    val id = ChunkIdentifier(resource, Verifier.program)
+    val id = ChunkIdentifier(resource, s.program)
 
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
