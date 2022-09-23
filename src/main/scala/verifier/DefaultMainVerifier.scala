@@ -34,19 +34,19 @@ import viper.silver.cfg.silver.SilverCfg
 import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, WarningsDuringTypechecking}
 import viper.silver.verifier.TypecheckerWarning
 
-/* TODO: Extract a suitable MasterVerifier interface, probably including
+/* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
  *         - def uniqueIdCounter: String)
  */
 
-trait MasterVerifier extends Verifier {
+trait MainVerifier extends Verifier {
   def nextUniqueVerifierId(): String
   def verificationPoolManager: VerificationPoolManager
 }
 
-class DefaultMasterVerifier(config: Config, override val reporter: Reporter)
+class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     extends BaseVerifier(config, "00")
-       with MasterVerifier
+       with MainVerifier
        with DefaultFunctionVerificationUnitProvider
        with DefaultPredicateVerificationUnitProvider {
 
