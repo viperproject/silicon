@@ -1,4 +1,4 @@
-package state
+package viper.silicon.state
 
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.terms.{And, App, HeapDepFun, Implies, Ite, Let, Literal, Not, Or, Quantification, Term, True}

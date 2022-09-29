@@ -22,6 +22,7 @@ import viper.silicon.utils.ast.flattenOperator
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
+import viper.silicon.state.PreconditionPropagationTransformer
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 
@@ -643,6 +644,7 @@ object evaluator extends EvaluationRules {
             v1.decider.assume(tlq)
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
+            v1.decider.assume(PreconditionPropagationTransformer.transform(tQuant))
             Q(s1, tQuant, v1)
         }
 
