@@ -718,6 +718,8 @@ object evaluator extends EvaluationRules {
                              smDomainNeeded = true)
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
               val snap1 = snap.convert(sorts.Snap)
+              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
+              v3.decider.assume(preFApp)
               val tFApp = App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
               val fr5 =
                 s4.functionRecorder.changeDepthBy(-1)
