@@ -6,5 +6,5 @@ field f: Int
 method foo(x: Ref, b1: Bool, b2: Bool, b3: Bool)
 {
     //:: ExpectedOutput(typechecker.error)
-    havoc b1 ==> b2 ==> b3 ==> x.f
+    quasihavoc b1 ==> b2 ==> b3 ==> x.f
 }

@@ -4,12 +4,12 @@ predicate Pair(x: Ref, y: Ref) {
     acc(x.f) && acc(y.f) && x.f == y.f
 }
 
-// Test havoc with predicates
+// Test quasihavoc with predicates
 method foo(x: Ref, y: Ref, b: Bool)
     requires Pair(x, y)
     requires unfolding Pair(x, y) in x.f == 3
 {
-    havoc b ==> Pair(x, y)
+    quasihavoc b ==> Pair(x, y)
     unfold Pair(x, y)
 
     assume b == false

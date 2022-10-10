@@ -4,6 +4,6 @@ method foo(x: Ref, xs: Set[Ref])
     requires acc(x.f) && x.f == 3
     requires !(x in xs)
 {
-    havocall z: Ref :: z in xs ==> z.f
+    quasihavocall z: Ref :: z in xs ==> z.f
     assert x.f == 3
 }

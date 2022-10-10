@@ -13,7 +13,7 @@ method foo(xs: Seq[Ref], ys: Seq[Ref])
 {
     assert unfolding Pred(xs[0], ys[0]) in xs[0].f == 3
 
-    havocall i: Int :: 1 <= i && i < |xs| ==> Pred(xs[i], ys[i])
+    quasihavocall i: Int :: 1 <= i && i < |xs| ==> Pred(xs[i], ys[i])
     unfold Pred(xs[0], ys[0])
     assert xs[0].f == ys[0].f
     assert !(xs[0] in xs[1..])

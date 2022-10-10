@@ -1,4 +1,4 @@
-// havocking every instance of a multi-argument predicate
+// quasihavocking every instance of a multi-argument predicate
 
 field f: Int
 
@@ -29,7 +29,7 @@ method foo(a: Ref, b: Ref)
     requires acc(a.f) && acc(b.f) && a.f == 3
 {
     fold pred(a, b)
-    havocall i: Int :: pred(fst(i), snd(i))
+    quasihavocall i: Int :: pred(fst(i), snd(i))
     
     unfold pred(a, b)
     //:: ExpectedOutput(assert.failed:assertion.false)

@@ -6,7 +6,7 @@
 
 package viper.silicon.tests
 
-class SiliconTestsHavoc extends SiliconTests {
+class SiliconTestsQuasihavoc extends SiliconTests {
   override val testDirectories: Seq[String] = Seq("quasihavoc")
 
   override val commandLineArguments: Seq[String] = Seq(

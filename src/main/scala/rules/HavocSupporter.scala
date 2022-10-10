@@ -17,8 +17,8 @@ import viper.silicon.state.terms.predef.{`?r`, `?s`}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.verifier.errors.{HavocFailed, HavocallFailed}
-import viper.silver.verifier.reasons.HavocallNotInjective
+import viper.silver.verifier.errors.{QuasihavocFailed, HavocallFailed}
+import viper.silver.verifier.reasons.QuasihavocallNotInjective
 
 object havocSupporter extends SymbolicExecutionRules {
 
@@ -35,13 +35,13 @@ object havocSupporter extends SymbolicExecutionRules {
     * Evaluates the necessary expressions, then calls necessary helper function depending
     * on if our heap contains quantified or non-quantified permissions.
     */
-  def execHavoc(havoc: ast.Havoc,
+  def execHavoc(havoc: ast.Quasihavoc,
                 v: Verifier,
                 s: State)
                 (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
 
-    val pve = HavocFailed(havoc)
+    val pve = QuasihavocFailed(havoc)
 
     // If there is no havoc condition, use True as the condition
     val lhsExpr = havoc.lhs.getOrElse(ast.TrueLit()(havoc.pos))
@@ -75,14 +75,14 @@ object havocSupporter extends SymbolicExecutionRules {
     * 1. Verify that e is injective (fail otherwise)
     * 2. Axiomatize the inverse function e'. We use helper functions from quantified resources.
     */
-  def execHavocall(havocall: ast.Havocall,
+  def execHavocall(havocall: ast.Quasihavocall,
                    v: Verifier,
                    s: State)
                    (Q: (State, Verifier) => VerificationResult)
                   : VerificationResult = {
 
     val pve = HavocallFailed(havocall)
-    val ast.Havocall(vars, lhs, eRsc) = havocall
+    val ast.Quasihavocall(vars, lhs, eRsc) = havocall
     val qid = resourceName(s, eRsc)
 
     // If there is no havoc condition, use True as the condition
@@ -122,7 +122,7 @@ object havocSupporter extends SymbolicExecutionRules {
             qidPrefix = qid)
 
         v.decider.prover.comment("Check havocall receiver injectivity")
-        val notInjectiveReason = HavocallNotInjective(havocall)
+        val notInjectiveReason = QuasihavocallNotInjective(havocall)
 
         v.decider.assert(receiverInjectivityCheck) {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1)

@@ -9,7 +9,7 @@ method foo(x: Ref, s: Set[Ref])
     requires x in s
     requires unfolding Pred(x) in x.f == 3
 {
-    havoc Pred(x)
+    quasihavoc Pred(x)
     unfold Pred(x)
 
     assert x.f >= 3

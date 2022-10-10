@@ -1,6 +1,6 @@
 field f: Int
 
-// test that we don't havoc if the arguments are equal
+// test that we don't quasihavoc if the arguments are equal
 
 predicate p(x: Ref, y: Ref) {
     acc(x.f) && acc(y.f)
@@ -14,7 +14,7 @@ method foo(x: Ref, y: Ref, a: Ref, b: Ref)
 
     fold p(x, y)
 
-    havoc p(true ? a : b, b)
+    quasihavoc p(true ? a : b, b)
 
     unfold p(x, y)
 

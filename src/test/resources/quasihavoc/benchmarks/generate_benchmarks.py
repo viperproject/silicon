@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 
 script_file = Path(__file__).resolve()
-# we are currently in silicon/src/test/resources/havoc/benchmarks
+# we are currently in silicon/src/test/resources/quasihavoc/benchmarks
 top_dir = script_file.parent
 os.chdir(top_dir)
 os.makedirs('autogen', exist_ok=True)
@@ -126,7 +126,7 @@ common_body = [
     "assert y.f == 3",
 ]
 
-body = ["havoc x{0}.f"] + common_body
+body = ["quasihavoc x{0}.f"] + common_body
 alt_body = ["exhale acc(x{0}.f); inhale acc(x{0}.f)"] + common_body
 
 alias_method = method(args, requires, body, alt_body)
@@ -147,14 +147,14 @@ common_body = [
     "assert y.f == 42",
 ]
 
-havoc_body = ["havoc y == x{0} ==> y.f"] + common_body
+havoc_body = ["quasihavoc y == x{0} ==> y.f"] + common_body
 alt_body = ["exhale y == x{0} ==> acc(y.f); inhale y == x{0} ==> acc(y.f)"] + common_body
 
 impl_method = method(args, requires, havoc_body, alt_body)
 impl_test = testcase(prelude, [impl_method])
 
 #######################
-# havocall_test.py
+# quasihavocall_test.py
 
 prelude = """
 field f: Int
@@ -165,7 +165,7 @@ requires = ["forall z: Ref :: z in s ==> acc(z.f) && z.f == 42",
             "x in s"]
 
 
-havoc_body = ["havocall z: Ref :: z in s && z != x ==> z.f // {0}"]
+havoc_body = ["quasihavocall z: Ref :: z in s && z != x ==> z.f // {0}"]
 alt_body = ["exhale forall z: Ref :: z in s && z != x ==> acc(z.f); inhale forall z: Ref :: z in s && z != x ==> acc(z.f) // {0}"]
 
 common_body = [
@@ -193,7 +193,7 @@ args = [arg("x", "Ref")]
 
 requires = ["Pred(x)"]
 
-havoc_body = ["havocall z: Ref :: Pred(z) // {0}"]
+havoc_body = ["quasihavocall z: Ref :: Pred(z) // {0}"]
 alt_body = ["___silicon_hack407_havoc_all_Pred() // {0}"]
 
 havocall_no_cond_method = method(args, requires, havoc_body, alt_body)
@@ -214,7 +214,7 @@ requires = ["forall z: Ref :: z in s{0} ==> acc(z.f)",
             "x in t ==> x.f == 43",
 ]
 
-havoc_body = ["havocall z: Ref :: z in s{0} ==> z.f"]
+havoc_body = ["quasihavocall z: Ref :: z in s{0} ==> z.f"]
 alt_body = ["exhale forall z: Ref :: z in s{0} ==> acc(z.f); inhale forall z: Ref :: z in s{0} ==> acc(z.f)"]
 
 common_body = ["assume !(x in s{0})",
@@ -239,7 +239,7 @@ requires = [
     "acc(z.f, 1/1000) && z.f == 1234",
 ]
 
-havoc_body = ["havoc y.f"]
+havoc_body = ["quasihavoc y.f"]
 alt_body = ["label L; var py: Perm := perm(y.f); exhale acc(y.f, py); inhale acc(y.f, py)"]
 
 common_body = [

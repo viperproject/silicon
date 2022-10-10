@@ -5,6 +5,6 @@ method foo(s: Set[Ref], a: Ref)
     requires forall x: Ref :: x in s ==> acc(x.f)
     requires acc(a.f) && a.f == 3
 {
-    havocall x: Ref :: x in s ==> x.f
+    quasihavocall x: Ref :: x in s ==> x.f
     assert a.f == 3
 }

@@ -12,7 +12,7 @@ method foo(x: Ref)
         fold p(x)
     }
 
-    havoc acc(x.f2) --* p(x)
+    quasihavoc acc(x.f2) --* p(x)
 
     inhale acc(x.f2)
     apply acc(x.f2) --* p(x)

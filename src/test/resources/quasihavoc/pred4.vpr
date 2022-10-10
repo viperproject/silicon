@@ -8,7 +8,7 @@ method foo(x: Ref, y: Ref)
     requires acc(x.f) && x.f == 42
 {
     fold p(x)
-    havoc x != y ==> p(y)
+    quasihavoc x != y ==> p(y)
 
     assume x != y
     unfold p(x)

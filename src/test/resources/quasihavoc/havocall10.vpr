@@ -12,7 +12,7 @@
 //         fold Pred(x)
 //     }
 
-//     // havocall z: Ref :: true ==> acc(z.g) --* Pred(z)
+//     // quasihavocall z: Ref :: true ==> acc(z.g) --* Pred(z)
 
 //     apply acc(x.g) --* Pred(x)
 //     assert x.f == 3
@@ -32,7 +32,7 @@ method foo(x: Ref)
         fold p(x)
     }
 
-    havocall z: Ref :: true ==> acc(z.f2) --* p(z)
+    quasihavocall z: Ref :: true ==> acc(z.f2) --* p(z)
 
     inhale acc(x.f2)
     apply acc(x.f2) --* p(x)

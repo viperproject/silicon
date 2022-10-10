@@ -17,8 +17,8 @@ method foo(s: Set[Ref])
     // This assert passes
     assert forall z: Ref :: z in s ==> applying (R(z) --* acc(z.f)) in z.f > 2
 
-    // Havoc all the magic wands
-    havocall z: Ref :: z in s ==> R(z) --* acc(z.f)
+    // quasihavoc all the magic wands
+    quasihavocall z: Ref :: z in s ==> R(z) --* acc(z.f)
 
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert forall z: Ref :: z in s ==> applying (R(z) --* acc(z.f)) in z.f > 2

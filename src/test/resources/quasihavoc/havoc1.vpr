@@ -1,13 +1,13 @@
 field f: Int
 
-// Basic havoc tests on fields.
+// Basic quasihavoc tests on fields.
 // All of the following tests should verify.
 
 method foo1(x: Ref, y: Ref)
     requires acc(x.f) && x.f == 3
     requires x != y
 {
-    havoc y.f   // does nothing. we have no permission
+    quasihavoc y.f   // does nothing. we have no permission
     assert x.f == 3
 }
 
@@ -15,7 +15,7 @@ method foo2(x: Ref, y: Ref)
     requires acc(x.f) && acc(y.f)
     requires x.f == 42
 {
-    havoc y.f   // y is known to be distinct from x
+    quasihavoc y.f   // y is known to be distinct from x
     assert x.f == 42
 }
 
@@ -24,7 +24,7 @@ method foo3(x: Ref, s: Seq[Ref])
     requires acc(x.f) && x.f == 42
     requires !(x in s)
 {
-    havoc s[0].f
+    quasihavoc s[0].f
     assert x.f == 42
 }
 
@@ -33,7 +33,7 @@ method foo4(x: Ref, y1: Ref, y2: Ref)
     requires y1.f == 1 && y2.f == 2
     requires x == y1 || x == y2
 {
-    havoc x.f
+    quasihavoc x.f
     assert y1.f == 1 || y2.f == 2
     if (x == y1) {
         assert y2.f == 2
@@ -49,7 +49,7 @@ field b2: Bool
 method foo5(x: Ref)
     requires acc(x.b1) && acc(x.b2)
 {
-    havoc x.b1
-    havoc x.b2
+    quasihavoc x.b1
+    quasihavoc x.b2
     assert x.b1 == x.b2 || x.b1 == !x.b2
 }

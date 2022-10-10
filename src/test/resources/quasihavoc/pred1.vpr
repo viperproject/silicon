@@ -9,7 +9,7 @@ method foo(x: Ref)
     x.f := 4
     fold p(x)
 
-    havoc p(x)
+    quasihavoc p(x)
 
     unfold p(x)
     assert x.f >= 3

@@ -17,8 +17,8 @@ method foo(y: Ref, x0: Ref, x1: Ref)
         fold p(x1)
     }
 
-    havoc acc(x0.g) --* p(x0)
-    havoc acc(x1.g) --* p(x1)
+    quasihavoc acc(x0.g) --* p(x0)
+    quasihavoc acc(x1.g) --* p(x1)
 
     apply acc(x0.g) --* p(x0)
     apply acc(x1.g) --* p(x1)

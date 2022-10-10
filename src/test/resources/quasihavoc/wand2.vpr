@@ -19,7 +19,7 @@ method foo(x: Ref, y: Ref, n: Int)
     requires list(y) --* list(x)
     requires applying (list(y) --* list(x)) in length(x) == n
 {
-    havoc list(y) --* list(x)
+    quasihavoc list(y) --* list(x)
     apply list(y) --* list(x)
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert length(x) == n

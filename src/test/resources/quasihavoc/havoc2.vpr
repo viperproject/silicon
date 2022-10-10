@@ -4,7 +4,7 @@ method foo(x: Ref)
     requires acc(x.f)
     requires x.f == 42
 {
-    havoc x.f
+    quasihavoc x.f
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert x.f == 42
 }

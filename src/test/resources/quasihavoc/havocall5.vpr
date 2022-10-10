@@ -4,7 +4,7 @@ method foo(s: Set[Ref], z: Ref)
     requires forall x: Ref :: x in s ==> acc(x.f) && x.f == 3
     requires z in s
 {
-    havocall y: Ref :: false ==> y.f
+    quasihavocall y: Ref :: false ==> y.f
     assert z.f == 3
     assert forall x: Ref :: x in s ==> x.f == 3
 }

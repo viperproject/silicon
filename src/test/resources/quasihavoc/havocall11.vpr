@@ -2,6 +2,6 @@ field f: Int
 
 method foo(s: Seq[Ref])
 {
-    //:: ExpectedOutput(havocall.failed:havocall.not.injective)
-    havocall i: Int :: 0 <= i && i < |s| ==> s[i].f
+    //:: ExpectedOutput(quasihavocall.failed:quasihavocall.not.injective)
+    quasihavocall i: Int :: 0 <= i && i < |s| ==> s[i].f
 }

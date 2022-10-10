@@ -7,7 +7,7 @@ method foo(xs: Set[Ref], x: Ref)
     requires forall z: Ref :: z in xs ==> Pred(z)
     requires x in xs
 {
-    havocall z: Ref :: z in xs ==> Pred(z)
+    quasihavocall z: Ref :: z in xs ==> Pred(z)
     unfold Pred(x)
     assert x.f == 3
 }
