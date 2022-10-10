@@ -48,7 +48,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     @unused private var program: ast.Program = _
     /*private*/ var functionData: Map[ast.Function, FunctionData] = Map.empty
-    private var emittedFunctionAxioms: Vector[Term] = Vector.empty
+    private var emittedFunctionAxioms: Map[String, Seq[Term]] = Map.empty
     private var freshVars: Vector[Var] = Vector.empty
     private var postConditionAxioms: Vector[Term] = Vector.empty
 
@@ -170,9 +170,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           result1
 
         case (result1, phase1data) =>
-          emitAndRecordFunctionAxioms(data.limitedAxiom)
-          emitAndRecordFunctionAxioms(data.triggerAxiom)
-          emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
+          emitAndRecordFunctionAxioms(Seq(data.limitedAxiom, data.triggerAxiom) ++ data.postAxiom.toSeq, s"Declaration and postcondition of function ${function.name}")
+          //emitAndRecordFunctionAxioms(data.triggerAxiom)
+          //emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
 
           if (function.body.isEmpty)
@@ -185,7 +185,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               case fatalResult: FatalResult =>
                 data.verificationFailures = data.verificationFailures :+ fatalResult
               case _ =>
-                emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq: _*)
+                emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq, s"Definition of function ${function.name}")
             }
 
             result1 && result2
@@ -245,10 +245,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (intermediateResult, Phase1Data(sPre, bcsPre, pcsPre)) =>
           intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
             decider.setCurrentBranchCondition(And(bcsPre))
-            decider.assume(pcsPre)
+            decider.assume(pcsPre, Some(s"Phase 1 data from verification of function ${function.name}"), false)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, _) => {
-              decider.assume(data.formalResult === tBody)
+              decider.assume(data.formalResult === tBody, Some("Function result definition"))
               consumes(s2, posts, postconditionViolated, v)((s3, _, _) => {
                 recorders :+= s3.functionRecorder
                 Success()})})})}
@@ -258,9 +258,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       result
     }
 
-    private def emitAndRecordFunctionAxioms(axiom: Term*): Unit = {
-      axiom foreach decider.prover.assume
-      emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
+    private def emitAndRecordFunctionAxioms(axioms: Seq[Term], name: String): Unit = {
+      decider.prover.assume(axioms, Some(name))
+      emittedFunctionAxioms = emittedFunctionAxioms + (name -> axioms)
     }
 
     private def generateFunctionSymbolsAfterVerification: Iterable[Either[String, Decl]] = {
@@ -292,10 +292,12 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       freshVars foreach (x => sink.declare(ConstDecl(x)))
     }
 
-    val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms
+    val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms.values.flatten
 
     def emitAxiomsAfterVerification(sink: ProverLike): Unit = {
-      emittedFunctionAxioms foreach sink.assume
+      for ((name, axioms) <- emittedFunctionAxioms){
+        sink.assume(axioms, Some(name))
+      }
     }
 
     /* Lifetime */
@@ -305,7 +307,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     def reset(): Unit = {
       program = null
       functionData = Map.empty
-      emittedFunctionAxioms = Vector.empty
+      emittedFunctionAxioms = Map.empty
       freshVars = Vector.empty
     }
 

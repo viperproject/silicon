@@ -216,7 +216,7 @@ object executor extends ExecutionRules {
                       val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
                       intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
-                        v2.decider.assume(pcs.assumptions)
+                        v2.decider.assume(pcs.assumptions, Some("Loop invariant"), false)
                         v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
                         if (v2.decider.checkSmoke())
                           Success()
@@ -374,7 +374,7 @@ object executor extends ExecutionRules {
         })
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
         val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
-        v.decider.assume(ts)
+        v.decider.assume(ts, Some(s"Reference disjointness for statement ${stmt}"), false)
         Q(s1, v)
 
       case inhale @ ast.Inhale(a) => a match {

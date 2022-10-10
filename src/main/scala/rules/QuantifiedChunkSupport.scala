@@ -585,13 +585,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     Verifier.config.mapCache(s.pmCache.get(resource, relevantChunks)) match {
       case Some(pmDef) =>
-        v.decider.assume(pmDef.valueDefinitions)
+        v.decider.assume(pmDef.valueDefinitions, Some(s"Value definitions for resource ${resource}"), false)
         (pmDef, s.pmCache)
       case _ =>
         val (pm, valueDef) =
           quantifiedChunkSupporter.summarisePerm(s, relevantChunks, formalQVars, resource, smDef, v)
         val pmDef = PermMapDefinition(resource, pm, valueDef)
-        v.decider.assume(valueDef)
+        v.decider.assume(valueDef, Some(s"Value definitions for resource ${resource}"), false)
         (pmDef, s.pmCache + ((resource, relevantChunks) -> pmDef))
     }
   }
@@ -631,8 +631,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       if (s.smDomainNeeded) {
         optQVarsInstantiations match {
           case None =>
-            v.decider.prover.comment("Definitional axioms for snapshot map domain")
-            v.decider.assume(smDef.domainDefinitions)
+            //v.decider.prover.comment("Definitional axioms for snapshot map domain")
+            v.decider.assume(smDef.domainDefinitions, Some("Definitional axioms for snapshot map domain"), false)
           case Some(_instantiations) =>
             // TODO: Avoid pattern matching on resource
             val instantiations = resource match {
@@ -640,16 +640,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               case _: ast.Field => _instantiations
             }
 
-            v.decider.prover.comment("Definitional axioms for snapshot map domain (instantiated)")
+            //v.decider.prover.comment("Definitional axioms for snapshot map domain (instantiated)")
             // TODO: Avoid cast to Quantification
-            v.decider.assume(smDef.domainDefinitions.map(_.asInstanceOf[Quantification].instantiate(instantiations)))
+            v.decider.assume(smDef.domainDefinitions.map(_.asInstanceOf[Quantification].instantiate(instantiations)), Some("Definitional axioms for snapshot map domain (instantiated)"), false)
         }
       }
 
       optQVarsInstantiations match {
         case None =>
-          v.decider.prover.comment("Definitional axioms for snapshot map values")
-          v.decider.assume(smDef.valueDefinitions)
+          //v.decider.prover.comment("Definitional axioms for snapshot map values")
+          v.decider.assume(smDef.valueDefinitions, Some("Definitional axioms for snapshot map values"), false)
         case Some(_instantiations) =>
           // TODO: Avoid pattern matching on resource
           val instantiations = resource match {
@@ -657,9 +657,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             case _: ast.Field => _instantiations
           }
 
-          v.decider.prover.comment("Definitional axioms for snapshot map values (instantiated)")
+          //v.decider.prover.comment("Definitional axioms for snapshot map values (instantiated)")
           // TODO: Avoid cast to Quantification
-          v.decider.assume(smDef.valueDefinitions.map(_.asInstanceOf[Quantification].instantiate(instantiations)))
+          v.decider.assume(smDef.valueDefinitions.map(_.asInstanceOf[Quantification].instantiate(instantiations)), Some("Definitional axioms for snapshot map values (instantiated)"), false)
       }
     }
 
@@ -793,16 +793,17 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       v.logger warn msg
     }
 
-    v.decider.prover.comment("Nested auxiliary terms: globals")
-    v.decider.assume(auxGlobals)
-    v.decider.prover.comment("Nested auxiliary terms: non-globals")
+    //v.decider.prover.comment("Nested auxiliary terms: globals")
+    v.decider.assume(auxGlobals, Some("Nested auxiliary terms: globals"), false)
+    //v.decider.prover.comment("Nested auxiliary terms: non-globals")
     v.decider.assume(
       auxNonGlobals.map(_.copy(
         vars = effectiveTriggersQVars,
-        triggers = effectiveTriggers)))
+        triggers = effectiveTriggers)),
+      Some("Nested auxiliary terms: non-globals"), false)
 
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
+    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil), s) {
       case true =>
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
@@ -820,14 +821,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             True()
           }
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assert(receiverInjectivityCheck) {
+        v.decider.assert(receiverInjectivityCheck, s) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
 
-            v.decider.prover.comment("Definitional axioms for inverse functions")
+            //v.decider.prover.comment("Definitional axioms for inverse functions")
             val definitionalAxiomMark = v.decider.setPathConditionMark()
-            v.decider.assume(inv.definitionalAxioms)
+            v.decider.assume(inv.definitionalAxioms, Some(s"Definitional axioms for inverse functions resulting from producing ${forall}"), false)
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
               else s.conservedPcs
@@ -903,7 +904,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val interpreter = new NonQuantifiedPropertyInterpreter(h1.values, v)
     val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
     val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties)
-    v.decider.assume(pcs)
+    v.decider.assume(pcs, Some(s"PCs resulting from producing ${resource}"), false)
 
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h1, ch.id )
@@ -965,22 +966,23 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         (inverseFunctions.axiomInversesOfInvertibles.triggers,
          inverseFunctions.axiomInversesOfInvertibles.vars)
     }
-    v.decider.prover.comment("Nested auxiliary terms: globals")
-    v.decider.assume(auxGlobals)
-    v.decider.prover.comment("Nested auxiliary terms: non-globals")
+    //v.decider.prover.comment("Nested auxiliary terms: globals")
+    v.decider.assume(auxGlobals, Some(s"Consuming ${resource}: Nested auxiliary terms: globals"), false)
+    //v.decider.prover.comment("Nested auxiliary terms: non-globals")
     optTrigger match {
       case None =>
         /* No explicit triggers provided */
         v.decider.assume(
           auxNonGlobals.map(_.copy(
             vars = effectiveTriggersQVars,
-            triggers = effectiveTriggers)))
+            triggers = effectiveTriggers)),
+          Some(s"Consuming ${resource}: Nested auxiliary terms: non-globals"), false)
       case Some(_) =>
         /* Explicit triggers were provided. */
-        v.decider.assume(auxNonGlobals)
+        v.decider.assume(auxNonGlobals, Some(s"Consuming ${resource}: Nested auxiliary terms: non-globals"), false)
     }
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
+    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil), s) {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
@@ -1003,14 +1005,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             triggers  = Nil,
             qidPrefix = qid)
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assert(receiverInjectivityCheck) {
+        v.decider.assert(receiverInjectivityCheck, s) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
 
-            v.decider.prover.comment("Definitional axioms for inverse functions")
-            v.decider.assume(inverseFunctions.definitionalAxioms)
+            //v.decider.prover.comment("Definitional axioms for inverse functions")
+            v.decider.assume(inverseFunctions.definitionalAxioms,
+              Some(s"consumind ${resource}: Definitional axioms for inverse functions"), false)
 
             v.decider.assume(
               Forall(

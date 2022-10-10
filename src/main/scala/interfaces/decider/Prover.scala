@@ -8,6 +8,7 @@ package viper.silicon.interfaces.decider
 
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.VerificationResult
+import viper.silicon.state.State
 import viper.silver.components.StatefulComponent
 import viper.silicon.{Config, Map}
 import viper.silicon.state.terms._
@@ -23,7 +24,7 @@ trait ProverLike {
   def emit(content: String): Unit
   def emit(contents: Iterable[String]): Unit = { contents foreach emit }
   def emitSettings(contents: Iterable[String]): Unit
-  def assume(term: Term): Unit
+  def assume(terms: Seq[Term], description: Option[String] = None): Unit
   def declare(decl: Decl): Unit
   def comment(content: String): Unit
   def saturate(timeout: Int, comment: String): Unit
@@ -31,7 +32,7 @@ trait ProverLike {
 }
 
 trait Prover extends ProverLike with StatefulComponent {
-  def assert(goal: Term, timeout: Option[Int] = None, error: Option[Boolean => VerificationResult] = None): Boolean
+  def assert(goal: Term, s: Option[State], timeout: Option[Int] = None, error: Option[Boolean => VerificationResult] = None): Boolean
   def check(timeout: Option[Int] = None): Result
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def statistics(): Map[String, String]

@@ -113,9 +113,9 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
       _verificationPoolManager.pooledVerifiers.emit(contents)
     }
 
-    def assume(term: Term): Unit = {
-      decider.prover.assume(term)
-      _verificationPoolManager.pooledVerifiers.assume(term)
+    def assume(terms: Seq[Term], description: Option[String] = None): Unit = {
+      decider.prover.assume(terms, description)
+      _verificationPoolManager.pooledVerifiers.assume(terms, description)
     }
 
     def declare(decl: Decl): Unit = {
@@ -292,6 +292,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
 
     State(program = program,
+          member = member,
           functionData = functionData,
           predicateData = predicateData,
           qpFields = quantifiedFields,
@@ -312,6 +313,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
 
     State(
       program = program,
+      member = null,
       functionData = functionData,
       predicateData = predicateData,
       qpFields = quantifiedFields,

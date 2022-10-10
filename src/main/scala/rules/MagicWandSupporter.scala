@@ -378,7 +378,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
           /*branchConditions = c.branchConditions*/)
         executionFlowController.locally(s1, v)((s2, v1) => {
           v1.decider.setCurrentBranchCondition(And(branchConditions), Some(viper.silicon.utils.ast.BigAnd(branchConditionsExp.flatten)))
-          conservedPcs.foreach(pcs => v1.decider.assume(pcs.conditionalized))
+          conservedPcs.foreach(pcs => v1.decider.assume(pcs.conditionalized, None, false))
           Q(s2, magicWandChunk, v1)})}})
   }
 

@@ -152,7 +152,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   def axiomsAfterAnalysis: Iterable[Term] = collectedAxioms
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {
-    collectedAxioms foreach (ax => sink.assume(ax))
+    sink.assume(collectedAxioms.toSeq, Some(s"Builtin ${sourceDomainName} axioms"))
   }
 
   def updateGlobalStateAfterAnalysis(): Unit = { /* Nothing to contribute*/ }

@@ -80,7 +80,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
           val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
 
-          snapEqs foreach v.decider.assume
+          v.decider.assume(snapEqs, Some("Consolidation equalities"), false)
 
           functionRecorder = _functionRecorder
           mergedChunks = _mergedChunks
@@ -97,11 +97,11 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
         mergedChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
-          v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+          v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties), Some("Consolidation: merged chunk PCs"), false)
         }
 
         Resources.resourceDescriptions foreach { case (id, desc) =>
-          v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
+          v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties), Some("Consolidation: resource PCs"), false)
         }
 
         SymbExLogger.currentLog().closeScope(sepIdentifier)
@@ -132,12 +132,12 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, nonQuantifiedChunks, newNonQuantifiedChunks, v)
 
-    v.decider.assume(snapEqs)
+    v.decider.assume(snapEqs, Some("Merging heaps, equalities"), false)
 
     val interpreter = new NonQuantifiedPropertyInterpreter(mergedChunks, v)
     newlyAddedChunks foreach { ch =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
-      v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+      v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties), Some("Merging heaps, new chunk PCs"), false)
     }
 
     SymbExLogger.currentLog().closeScope(sepIdentifier)

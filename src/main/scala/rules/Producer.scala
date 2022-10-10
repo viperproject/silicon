@@ -422,7 +422,7 @@ object producer extends ProductionRules {
       case _ =>
         v.decider.assume(sf(sorts.Snap, v) === Unit) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, v1) => {
-          v1.decider.assume(t)
+          v1.decider.assume(t, Some(a.toString()))
           Q(s1, v1)})
     }
 

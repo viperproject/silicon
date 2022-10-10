@@ -152,7 +152,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       }
     } else {
       summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
-        v.decider.assert(IsPositive(permSum)) {
+        v.decider.assert(IsPositive(permSum), s1) {
           case true =>
             Q(s1, snap, v1)
           case false =>
@@ -190,7 +190,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
     summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
-      v.decider.assert(IsPositive(permSum)) {
+      v.decider.assert(IsPositive(permSum), s1) {
         case true =>
           Q(s1, h, Some(snap), v1)
         case false =>
@@ -276,7 +276,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val interpreter = new NonQuantifiedPropertyInterpreter(allChunks, v)
         newChunks foreach { ch =>
           val resource = Resources.resourceDescriptions(ch.resourceID)
-          v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+          v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties), Some(s"New chunk properties after consuming ${resource}"), false)
         }
         val newHeap = Heap(allChunks)
 
@@ -286,7 +286,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (!moreNeeded) {
             Q(s1, newHeap, Some(snap), v1)
           } else {
-            v1.decider.assert(pNeeded === NoPerm()) {
+            v1.decider.assert(pNeeded === NoPerm(), s1) {
               case true =>
                 Q(s1, newHeap, Some(snap), v1)
               case false =>
@@ -325,7 +325,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           PermAtMost(permTaken, ch.perm),
           Implies(Not(eq), permTaken === NoPerm()),
           Implies(permTaken !== NoPerm(), snap === ch.snap.convert(sorts.Snap))
-        ))
+        ), Some(s"Permission math after consuming ${relevantChunks}"), false)
 
         ch.withPerm(PermMinus(ch.perm, permTaken))
       })
@@ -337,7 +337,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           PermLess(NoPerm(), totalPermTaken),
           PermLess(totalPermTaken, totalPermSum))))
 
-    v.decider.assert(totalPermTaken !== NoPerm()) {
+    v.decider.assert(totalPermTaken !== NoPerm(), s) {
       case true =>
         v.decider.assume(perms === totalPermTaken)
         Q(s, updatedChunks, Some(snap), v)

@@ -9,16 +9,16 @@ package viper.silicon.decider
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
-import viper.silicon.state.IdentifierFactory
+import viper.silicon.state.{IdentifierFactory, State}
 import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Sort, SortDecl, SortWrapperDecl, Term, sorts}
 import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
 import viper.silver.verifier.{MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
+
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
-
 import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_ast_print_mode
@@ -223,6 +223,10 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
+  def assume(terms: Seq[Term], description: Option[String]): Unit = {
+    terms foreach assume
+  }
+
   def assume(term: Term): Unit = {
     try {
       if (preamblePhaseOver)
@@ -233,7 +237,7 @@ class Z3ProverAPI(uniqueId: String,
       case e: Z3Exception => reporter.report(InternalWarningMessage("Z3 error: " + e.getMessage))
     }
   }
-  def assert(goal: Term, timeout: Option[Int], error: Option[Boolean => VerificationResult] = None ): Boolean = {
+  def assert(goal: Term, s: Option[State], timeout: Option[Int], error: Option[Boolean => VerificationResult] = None ): Boolean = {
     endPreamblePhase()
     setTimeout(timeout)
 

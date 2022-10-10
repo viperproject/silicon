@@ -140,7 +140,7 @@ object chunkSupporter extends ChunkSupportRules {
     def assumeProperties(chunk: NonQuantifiedChunk, heap: Heap): Unit = {
       val interpreter = new NonQuantifiedPropertyInterpreter(heap.values, v)
       val resource = Resources.resourceDescriptions(chunk.resourceID)
-      v.decider.assume(interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties))
+      v.decider.assume(interpreter.buildPathConditionsForChunk(chunk, resource.instanceProperties), Some(s"Properties of chunk ${chunk}"), false)
     }
 
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {

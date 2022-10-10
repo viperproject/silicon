@@ -66,8 +66,8 @@ object joiner extends JoiningRules {
 
         entries foreach (entry => {
           val pcs = entry.pathConditions.conditionalized
-          v.decider.prover.comment("Joined path conditions")
-          v.decider.assume(pcs)
+          //v.decider.prover.comment("Joined path conditions")
+          v.decider.assume(pcs, Some("Joined path conditions"), false)
         })
 
         Q(sJoined, dataJoined, v)

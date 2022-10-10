@@ -20,6 +20,7 @@ import viper.silicon.{Map, Stack}
 final case class State(g: Store = Store(),
                        h: Heap = Heap(),
                        program: ast.Program,
+                       member: ast.Member,
                        predicateData: Map[ast.Predicate, PredicateData],
                        functionData: Map[ast.Function, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
@@ -125,7 +126,7 @@ object State {
   def merge(s1: State, s2: State): State = {
     s1 match {
       /* Decompose state s1 */
-      case State(g1, h1, program,
+      case State(g1, h1, program, member,
                  predicateData,
                  functionData,
                  oldHeaps1,
@@ -150,7 +151,7 @@ object State {
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
           case State(`g1`, `h1`,
-                     `program`,
+                     `program`, `member`,
                      `predicateData`, `functionData`,
                      `oldHeaps1`,
                      `parallelizeBranches1`,

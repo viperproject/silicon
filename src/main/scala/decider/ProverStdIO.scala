@@ -9,13 +9,12 @@ package viper.silicon.decider
 import java.io._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
-
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
-import viper.silicon.state.IdentifierFactory
+import viper.silicon.state.{IdentifierFactory, State}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
@@ -196,7 +195,7 @@ abstract class ProverStdIO(uniqueId: String,
 
 //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
-  def assume(term: Term): Unit = {
+  def assume(terms: Seq[Term], description: Option[String]): Unit = {
 //    /* Detect certain simple problems with quantifiers.
 //     * Note that the current checks don't take in account whether or not a
 //     * quantification occurs in positive or negative position.
@@ -211,7 +210,7 @@ abstract class ProverStdIO(uniqueId: String,
 //      }
 //    })
 
-    assume(termConverter.convert(term))
+    terms.foreach(term => assume(termConverter.convert(term)))
   }
 
   def assume(term: String): Unit = {
@@ -221,7 +220,7 @@ abstract class ProverStdIO(uniqueId: String,
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None, error: Option[Boolean => VerificationResult] = None): Boolean =
+  def assert(goal: Term, s: Option[State], timeout: Option[Int] = None, error: Option[Boolean => VerificationResult] = None): Boolean =
     assert(termConverter.convert(goal), timeout)
 
   def assert(goal: String, timeout: Option[Int]): Boolean = {

@@ -38,9 +38,9 @@ trait Decider {
   def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit
   def setPathConditionMark(): Mark
 
-  def assume(t: Term): Unit
-  def assume(ts: InsertionOrderedSet[Term], enforceAssumption: Boolean = false): Unit
-  def assume(ts: Iterable[Term]): Unit
+  def assume(t: Term, description: Option[String] = None): Unit
+  def assume(ts: InsertionOrderedSet[Term], description: Option[String], enforceAssumption: Boolean): Unit
+  def assume(ts: Iterable[Term], description: Option[String], enforceAssumption: Boolean): Unit
 
   def check(t: Term, timeout: Int): Boolean
 
@@ -48,7 +48,7 @@ trait Decider {
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, state: State, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -108,7 +108,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       // TODO: Change interface to make the cast unnecessary?
       val layeredStack = other.asInstanceOf[LayeredPathConditionStack]
       layeredStack.layers.reverse.foreach(l => {
-        l.assumptions foreach prover.assume
+        prover.assume(l.assumptions.toSeq)
         prover.push()
       })
     }
@@ -200,29 +200,29 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit = {
       pathConditions.setCurrentBranchCondition(t, te)
-      assume(InsertionOrderedSet(Seq(t)))
+      assume(InsertionOrderedSet(Seq(t)), te.map(e => s"Branch condition ${e.toString()}"), false)
     }
 
     def setPathConditionMark(): Mark = pathConditions.mark()
 
     /* Assuming facts */
 
-    def assume(t: Term): Unit = {
-      assume(InsertionOrderedSet(Seq(t)), false)
+    def assume(t: Term, description: Option[String] = None): Unit = {
+      assume(InsertionOrderedSet(Seq(t)), description, false)
     }
 
-    def assume(terms: Iterable[Term]): Unit =
-      assume(InsertionOrderedSet(terms), false)
+    def assume(terms: Iterable[Term], description: Option[String], enforceAssumption: Boolean): Unit =
+      assume(InsertionOrderedSet(terms), description, enforceAssumption)
 
-    def assume(terms: InsertionOrderedSet[Term], enforceAssumption: Boolean = false): Unit = {
+    def assume(terms: InsertionOrderedSet[Term], description: Option[String], enforceAssumption: Boolean): Unit = {
       val filteredTerms =
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
 
-      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(filteredTerms)
+      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(filteredTerms, description)
     }
 
-    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term]) = {
+    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term], description: Option[String] = None) = {
       val assumeRecord = new DeciderAssumeRecord(terms)
       val sepIdentifier = SymbExLogger.currentLog().openScope(assumeRecord)
 
@@ -230,7 +230,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       terms foreach pathConditions.add
 
       /* Add terms to the prover's assumptions */
-      terms foreach prover.assume
+      prover.assume(terms.toSeq, description)
 
       SymbExLogger.currentLog().closeScope(sepIdentifier)
       None
@@ -240,13 +240,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def checkSmoke(): Boolean = prover.check(Verifier.config.checkTimeout.toOption) == Unsat
 
-    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout), None)
+    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, None, Some(timeout), None)
 
-    def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
+    def assert(t: Term, s: State, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
               (Q: Boolean => VerificationResult)
               : VerificationResult = {
 
-      val success = deciderAssert(t, timeout, Some(Q))
+      val success = deciderAssert(t, Some(s), timeout, Some(Q))
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -260,12 +260,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, timeout: Option[Int], Q: Option[Boolean => VerificationResult]) = {
+    private def deciderAssert(t: Term, s: Option[State], timeout: Option[Int], Q: Option[Boolean => VerificationResult]) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
 
       val asserted = isKnownToBeTrue(t)
-      val result = asserted || proverAssert(t, timeout, Q)
+      val result = asserted || proverAssert(t, s, timeout, Q)
 
       SymbExLogger.currentLog().closeScope(sepIdentifier)
       result
@@ -279,11 +279,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       case _ => false
     }
 
-    private def proverAssert(t: Term, timeout: Option[Int], Q: Option[Boolean => VerificationResult]) = {
+    private def proverAssert(t: Term, s: Option[State], timeout: Option[Int], Q: Option[Boolean => VerificationResult]) = {
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
 
-      val result = prover.assert(t, timeout, Q)
+      val result = prover.assert(t, s, timeout, Q)
 
       if (SymbExLogger.enabled) {
         val statistics = prover.statistics()
@@ -383,7 +383,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def statistics(): Map[String, String] = prover.statistics()
 
-    override def generateModel(): Unit = proverAssert(False(), None, None)
+    override def generateModel(): Unit = proverAssert(False(), None, None, None)
 
     override def getModel(): Model = prover.getModel()
 
