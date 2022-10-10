@@ -254,7 +254,7 @@ object evaluator extends EvaluationRules {
       case fa: ast.FieldAccess =>
         evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
-          val resource = fa.res(Verifier.program)
+          val resource = fa.res(s.program)
           chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
@@ -416,7 +416,7 @@ object evaluator extends EvaluationRules {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) => {
           val inSorts = tArgs map (_.sort)
           val outSort = v1.symbolConverter.toSort(dfa.typ)
-          val fi = v1.symbolConverter.toFunction(Verifier.program.findDomainFunction(funcName), inSorts :+ outSort)
+          val fi = v1.symbolConverter.toFunction(s.program.findDomainFunction(funcName), inSorts :+ outSort, s.program)
           Q(s1, App(fi, tArgs), v1)})
 
       case ast.BackendFuncApp(func, eArgs) =>
@@ -427,7 +427,7 @@ object evaluator extends EvaluationRules {
       case ast.CurrentPerm(resacc) =>
         val h = s.partiallyConsumedHeap.getOrElse(s.h)
         evalResourceAccess(s, resacc, pve, v)((s1, identifier, args, v1) => {
-          val res = resacc.res(Verifier.program)
+          val res = resacc.res(s.program)
           /* It is assumed that, for a given field/predicate/wand identifier (res)
            * either only quantified or only non-quantified chunks are used.
            */
@@ -441,7 +441,7 @@ object evaluator extends EvaluationRules {
                 case wand: ast.MagicWand =>
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, identifier)
-                  val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+                  val bodyVars = wand.subexpressionsToEvaluate(s.program)
                   val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
                   val (s2, smDef, pmDef) =
                     quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
@@ -577,13 +577,13 @@ object evaluator extends EvaluationRules {
 
         val s1 = s.copy(h = s.partiallyConsumedHeap.getOrElse(s.h))
 
-        val resIdent = ChunkIdentifier(resourceAccess.res(Verifier.program), Verifier.program)
+        val resIdent = ChunkIdentifier(resourceAccess.res(s.program), s.program)
         val args = resourceAccess match {
           case fa: ast.FieldAccess => Seq(fa.rcv)
           case pa: ast.PredicateAccess => pa.args
-          case w: ast.MagicWand => w.subexpressionsToEvaluate(Verifier.program)
+          case w: ast.MagicWand => w.subexpressionsToEvaluate(s.program)
         }
-        val usesQPChunks = resourceAccess.res(Verifier.program) match {
+        val usesQPChunks = resourceAccess.res(s.program) match {
           case _: ast.MagicWand => s1.qpMagicWands.contains(resIdent.asInstanceOf[MagicWandIdentifier])
           case field: ast.Field => s1.qpFields.contains(field)
           case pred: ast.Predicate => s1.qpPredicates.contains(pred)
@@ -647,7 +647,7 @@ object evaluator extends EvaluationRules {
         }
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
-        val func = Verifier.program.findFunction(funcName)
+        val func = s.program.findFunction(funcName)
         val s0 = s.copy(hackIssue387DisablePermissionConsumption = Verifier.config.enableMoreCompleteExhale())
         evals2(s0, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
 //          bookkeeper.functionApplications += 1
@@ -738,7 +738,7 @@ object evaluator extends EvaluationRules {
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
               eIn) =>
 
-        val predicate = Verifier.program.findPredicate(predicateName)
+        val predicate = s.program.findPredicate(predicateName)
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
           evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
             eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
@@ -767,7 +767,7 @@ object evaluator extends EvaluationRules {
                          * to the function arguments and the predicate snapshot
                          * (see 'predicateTriggers' in FunctionData.scala).
                          */
-                      v4.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
+                      v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
@@ -1094,7 +1094,7 @@ object evaluator extends EvaluationRules {
     resacc match {
       case wand : ast.MagicWand =>
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) =>
-        Q(s1, MagicWandIdentifier(wand, Verifier.program), tArgs, v1))
+        Q(s1, MagicWandIdentifier(wand, s.program), tArgs, v1))
       case ast.FieldAccess(eRcvr, field) =>
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           Q(s1, BasicChunkIdentifier(field.name), tRcvr :: Nil, v1))
@@ -1414,7 +1414,7 @@ object evaluator extends EvaluationRules {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
-    val codomainQVars = s.predicateFormalVarMap(pa.loc(Verifier.program))
+    val codomainQVars = s.predicateFormalVarMap(pa.loc(s.program))
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(pa.predicateName))
     val optSmDomainDefinitionCondition =
@@ -1422,7 +1422,7 @@ object evaluator extends EvaluationRules {
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
-        s, pa.loc(Verifier.program), codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
+        s, pa.loc(s.program), codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
     val s1 = s.copy(smCache = smCache1)
 
     evals(s1, pa.args, _ => pve, v)((_, tArgs, _) => {
@@ -1440,11 +1440,11 @@ object evaluator extends EvaluationRules {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
-    val wandHoles = wand.subexpressionsToEvaluate(Verifier.program)
+    val wandHoles = wand.subexpressionsToEvaluate(s.program)
     val codomainQVars =
       wandHoles.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(wandHoles(i).typ)))
     val (relevantChunks, _) =
-      quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s.h, MagicWandIdentifier(wand, Verifier.program))
+      quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s.h, MagicWandIdentifier(wand, s.program))
     val optSmDomainDefinitionCondition =
       if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
       else None
@@ -1453,9 +1453,9 @@ object evaluator extends EvaluationRules {
         s, wand, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
     val s1 = s.copy(smCache = smCache1)
 
-    evals(s1, wand.subexpressionsToEvaluate(Verifier.program), _ => pve, v)((_, tArgs, _) => {
+    evals(s1, wand.subexpressionsToEvaluate(s.program), _ => pve, v)((_, tArgs, _) => {
       axioms = axioms ++ smDef1.valueDefinitions
-      mostRecentTrig = PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, smDef1.sm, tArgs)
+      mostRecentTrig = PredicateTrigger(MagicWandIdentifier(wand, s.program).toString, smDef1.sm, tArgs)
       triggers = triggers :+ mostRecentTrig
       Success()
     })

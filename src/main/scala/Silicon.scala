@@ -9,6 +9,7 @@ package viper.silicon
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
+
 import scala.collection.immutable.ArraySeq
 import scala.util.{Left, Right}
 import ch.qos.logback.classic.{Level, Logger}
@@ -20,11 +21,12 @@ import viper.silver.reporter._
 import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.interfaces.Failure
 import viper.silicon.logger.SymbExLogger
-import viper.silicon.reporting.condenseToViperResult
-import viper.silicon.verifier.DefaultMasterVerifier
-import viper.silicon.decider.{Z3ProverStdIO, Cvc5ProverStdIO}
+import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
+import viper.silicon.verifier.DefaultMainVerifier
+import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.logger.ViperStdOutLogger
+
 import scala.util.chaining._
 
 object Silicon {
@@ -102,7 +104,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   }
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
-  private var verifier: DefaultMasterVerifier = _
+  private var verifier: DefaultMainVerifier = _
 
   private var startTime: Long = _
   private var elapsedMillis: Long = _
@@ -128,7 +130,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     setLogLevelsFromConfig()
 
-    verifier = new DefaultMasterVerifier(config, reporter)
+    verifier = new DefaultMainVerifier(config, reporter)
     verifier.start()
   }
 
@@ -167,20 +169,16 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     logger.debug(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
-    /* If available, save the filename corresponding to the program under verification in Verifier.inputFile.
-     * See also src/test/scala/SiliconTests.scala, where the analogous happens if Silicon is executed while
-     * running the test suite.
-     * Do not save the filename if the filename corresponds to the dummy one or `--ignoreFile` has been specified.
+    /* Do not save the filename if the filename corresponds to the dummy one or `--ignoreFile` has been specified.
      * Clients assume that the filename is ignored if `--ignoreFile` is used but calling `Paths.get` on it effectively
      * tries to parse the given string as path. For example, the following string causes an exception on Windows (and
      * only on Windows): `_programID_d:\a\test`
      *
      * TODO: Figure out what happens when ViperServer is used. */
-    config.file.foreach(filename => {
-      if (filename != Silicon.dummyInputFilename && !config.ignoreFile.getOrElse(false)) {
-        viper.silicon.verifier.Verifier.inputFile = Some(Paths.get(filename))
-      }
-    })
+    val inputFile: Option[String] =
+      if (config.file() != Silicon.dummyInputFilename && !config.ignoreFile.getOrElse(false)) Some(config.file())
+      else None
+    MultiRunRecorders.source = inputFile
 
     // TODO: Check consistency of cfgs.
     val consistencyErrors = utils.consistency.check(program)
@@ -192,7 +190,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
       val executor = Executors.newSingleThreadExecutor()
 
       val future = executor.submit(new Callable[List[Failure]] {
-        def call(): List[Failure] = runVerifier(program, cfgs)
+        def call(): List[Failure] = runVerifier(program, cfgs, inputFile)
       })
 
       try {
@@ -235,11 +233,11 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     }
   }
 
-  private def runVerifier(program: ast.Program, cfgs: Seq[SilverCfg]): List[Failure] = {
+  private def runVerifier(program: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[Failure] = {
 //    verifier.bookkeeper.branches = 1
     /*verifier.bookkeeper.*/startTime = System.currentTimeMillis()
 
-    val results = verifier.verify(program, cfgs)
+    val results = verifier.verify(program, cfgs, inputFile)
 
     /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 
@@ -373,8 +371,14 @@ class SiliconFrontend(override val reporter: Reporter,
   }
 }
 
-object SiliconRunner extends SiliconFrontend(StdIOReporter()) {
+object SiliconRunner extends SiliconRunnerInstance {
   def main(args: Array[String]): Unit = {
+    runMain(args)
+  }
+}
+
+class SiliconRunnerInstance extends SiliconFrontend(StdIOReporter()) {
+  def runMain(args: Array[String]): Unit = {
     var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
 
     try {

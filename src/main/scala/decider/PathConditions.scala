@@ -142,12 +142,19 @@ private trait LayeredPathConditionStackLike {
   protected def conditionalized(layers: Stack[PathConditionStackLayer]): Seq[Term] = {
     var unconditionalTerms = Vector.empty[Term]
     var conditionalTerms = Vector.empty[Term]
+    var implicationLHS: Term = True()
 
-    for (layer <- layers) {
+    for (layer <- layers.reverseIterator) {
       unconditionalTerms ++= layer.globalAssumptions
 
+      layer.branchCondition match {
+        case Some(condition) =>
+          implicationLHS = And(implicationLHS, condition)
+        case None =>
+      }
+
       conditionalTerms :+=
-        Implies(layer.branchCondition.getOrElse(True()), And(layer.nonGlobalAssumptions))
+        Implies(implicationLHS, And(layer.nonGlobalAssumptions))
     }
 
     unconditionalTerms ++ conditionalTerms
@@ -214,7 +221,7 @@ private[decider] class LayeredPathConditionStack
        with PathConditionStack
        with Cloneable {
 
-  private var layers: Stack[PathConditionStackLayer] = Stack.empty
+  /* private */ var layers: Stack[PathConditionStackLayer] = Stack.empty
   private var markToLength: Map[Mark, Int] = Map.empty
   private var scopeMarks: List[Mark] = List.empty
   private var markCounter = new Counter(0)

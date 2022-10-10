@@ -1,0 +1,19 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method client(a: Ref)
+  requires acc(a.f)
+{
+  //:: ExpectedCounterexample(call.precondition:assertion.false, (a.f == 5))
+  set(a, 5)
+  a.f := 6
+}
+
+method set(x: Ref, i: Int)
+  requires acc(x.f) && x.f != i
+  ensures  acc(x.f) && x.f == i
+{
+  x.f := i
+}

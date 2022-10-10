@@ -1,0 +1,27 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field x: Int
+field y: Int
+
+predicate StructA(this: Ref) {
+  acc(this.x) && acc(this.y)
+}
+
+predicate StructB(this: Ref) {
+  acc(this.x) && acc(this.y)
+}
+
+method foo(a: Ref, b: Ref)
+  requires StructA(a)
+  requires StructB(b)
+  //:: ExpectedCounterexample(postcondition.violated:assertion.false, (a.x == 3))
+  ensures  acc(a.x) && a.x == 42
+{
+  unfold StructA(a)
+  unfold StructB(b)
+  a.x := 3
+  a.y := 4
+  b.x := 5
+  b.y := 6
+}

@@ -8,15 +8,13 @@ package viper.silicon.decider
 
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
-import viper.silicon.decider.TermToSMTLib2Converter
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
-import viper.silicon.reporting.{ExternalToolError, ProverInteractionFailed}
 import viper.silicon.state.IdentifierFactory
-import viper.silicon.state.terms.{Decl, Fun, FunctionDecl, MacroDecl, Sort, SortDecl, SortWrapperDecl, Term, sorts}
-import viper.silicon.{Config, Map, toMap}
+import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Sort, SortDecl, SortWrapperDecl, Term, sorts}
+import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
-import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
+import viper.silver.verifier.{MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
@@ -25,56 +23,57 @@ import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_ast_print_mode
 import viper.silicon.interfaces.VerificationResult
+import viper.silicon.reporting.ExternalToolError
 
-import scala.jdk.CollectionConverters
+import scala.collection.immutable.ListMap
 import scala.jdk.CollectionConverters.MapHasAsJava
+import scala.util.Random
 
 
 object Z3ProverAPI {
   val name = "Z3-API"
-  val minVersion = Version("4.5.0")
-  val maxVersion = None // Some(Version("4.5.0")) /* X.Y.Z if that is the *last supported* version */
+  val minVersion = Version("4.8.6.0")
+  val maxVersion = Some(Version("4.8.7.0")) /* X.Y.Z if that is the *last supported* version */
+
+  // these are not actually used, but since there is a lot of code that expects command line parameters and a
+  // config file, we just supply this information here (whose contents will then be ignored)
   val exeEnvironmentalVariable = "Z3_EXE"
   val dependencies = Seq(SilDefaultDependency("Z3", minVersion.version, "https://github.com/Z3Prover/z3"))
   val staticPreamble = "/z3config.smt2"
   val startUpArgs = Seq("-smt2", "-in")
-  val randomizeSeedsOptions = Seq("sat.random_seed", "nlsat.seed", "fp.spacer.random_seed", "smt.random_seed", "sls.random_seed")
-/*
-(set-option :smt.arith.random_initial_value true) ; Boogie: true
-(set-option :smt.random_seed 0)
-(set-option :sls.random_offset true)
-(set-option :sls.random_seed 0)
-(set-option :sls.restart_init false)
-(set-option :sls.walksat_ucb true)
 
- */
+  val randomizeSeedsSetting = "RANDOMIZE_SEEDS"
+
+  // All options taken from z3config.smt2 and split up according to argument type and time when it has to be set.
+  // I removed all options that (no longer?) exist, since those result in errors from Z3.
+  val randomizeSeedsOptions = Seq("random_seed")
   val initialOptions = Map("auto_config" -> "false", "type_check" -> "true")
   val boolParams = Map(
     "smt.delay_units" -> true,
+    "delay_units" -> true,
     "nnf.sk_hack" -> true,
-  //  "type_check" -> true,
- //   "smt.bv_reflect" -> true,
-  //  "global-decls" -> true,
     "smt.mbqi" -> false,
- //   "model.v2" -> true,
+    "mbqi" -> false,
     "nlsat.randomize" -> true,
     "nlsat.shuffle_vars" -> false,
     "smt.arith.random_initial_value" -> true,
- //   "sls.random_offset" -> true
- //   "sls.restart_init" -> false,
-  //  "sls.walksat_ucb" -> true
+    "arith.random_initial_value" -> true,
+    "bv.reflect" -> true,
   )
-  val intParams = Map("smt.restart_strategy" -> 0,
+  val intParams = Map(
+    "smt.restart_strategy" -> 0,
+    "restart_strategy" -> 0,
     "smt.case_split" -> 3,
+    "case_split" -> 3,
     "smt.delay_units_threshold" -> 16,
+    "delay_units_threshold" -> 16,
     "smt.qi.max_multi_patterns" -> 1000,
+    "qi.max_multi_patterns" -> 1000,
     "smt.phase_selection" -> 0,
+    "phase_selection" -> 0,
     "sat.random_seed" -> 0,
     "nlsat.seed" -> 0,
- //   "fp.spacer.order_children" -> 0,
- //   "fp.spacer.random_seed" -> 0
     "random_seed" -> 0,
- //   "sls.random_seed" -> 0
   )
   val stringParams = Map(
     //"smt.qi.cost" -> "(+ weight generation)", // cannot set this for some reason, but this is the default value anyway.
@@ -82,14 +81,11 @@ object Z3ProverAPI {
   )
   val doubleParams = Map(
     "smt.restart_factor" -> 1.5,
+    "restart_factor" -> 1.5,
     "smt.qi.eager_threshold" -> 100.0,
+    "qi.eager_threshold" -> 100.0,
   )
 }
-
-/*
-
-TODO: missing randomness-related options
- */
 
 
 class Z3ProverAPI(uniqueId: String,
@@ -100,14 +96,14 @@ class Z3ProverAPI(uniqueId: String,
       with LazyLogging
 {
 
-  protected var pushPopScopeDepth = 0
+  /* protected */ var pushPopScopeDepth = 0
   protected var lastTimeout: Int = -1
   protected var logfileWriter: PrintWriter = _
   protected var prover: Solver = _
   protected var ctx: Context = _
 
   var proverPath: Path = _
-  var lastModel : String = _
+  var lastModel : Model = _
 
   var emittedPreambleString = mutable.Queue[String]()
   var preamblePhaseOver = false
@@ -117,27 +113,24 @@ class Z3ProverAPI(uniqueId: String,
   val emittedFuncs = mutable.LinkedHashSet[FuncDecl]()
   val emittedFuncSymbols = mutable.Queue[Symbol]()
 
-
+  // If true, we do not define macros on the Z3 level, but perform macro expansion ourselves on Silicon Terms.
+  // Otherwise, we define a function on the Z3 level and axiomatize it according to the macro definition.
+  // In terms of performance, I could not measure any substantial difference.
+  val expandMacros = true
 
 
 
   def version(): Version = {
-    val versString = com.microsoft.z3.Version.getFullVersion
-    if (!versString.startsWith("Z3 "))
-      Version(versString)
-    else
-      Version(versString.substring(3))
+    var versString = com.microsoft.z3.Version.getFullVersion
+    if (versString.startsWith("Z3 "))
+      versString = versString.substring(3)
+    Version(versString)
   }
 
   def start(): Unit = {
-//    // Calling `start()` multiple times in a row would leak memory and prover processes.
-//    if (proverShutdownHook != null) {
-//      throw new AssertionError("stop() should be called between any pair of start() calls")
-//    }
     pushPopScopeDepth = 0
     lastTimeout = -1
     logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
-    //proverPath = getProverPath
     ctx = new Context(Z3ProverAPI.initialOptions.asJava)
     val params = ctx.mkParams()
     Z3ProverAPI.boolParams.foreach{
@@ -164,109 +157,43 @@ class Z3ProverAPI(uniqueId: String,
     emittedSortSymbols.clear()
   }
 
-//  protected def createProverInstance(): Process = {
-//    // One can pass some options. This allows to check whether they have been received.
-//    val msg = s"Starting prover at location '$proverPath'"
-//    reporter report ConfigurationConfirmation(msg)
-//    logger debug msg
-//
-//    val proverFile = proverPath.toFile
-//
-//    if (!proverFile.isFile)
-//      throw ExternalToolError("Prover", s"Cannot run prover at location '$proverFile': not a file.")
-//
-//    if (!proverFile.canExecute)
-//      throw ExternalToolError("Prover", s"Cannot run prover at location '$proverFile': file is not executable.")
-//
-//    val userProvidedArgs: Array[String] = Verifier.config.proverArgs match {
-//      case None =>
-//        Array()
-//
-//      case Some(args) =>
-//        // One can pass some options. This allows to check whether they have been received.
-//        val msg = s"Additional command-line arguments are $args"
-//        reporter report ConfigurationConfirmation(msg)
-//        logger debug msg
-//        args.split(' ').map(_.trim)
-//    }
-//
-//    val builder = new ProcessBuilder(proverPath.toFile.getPath +: startUpArgs ++: userProvidedArgs :_*)
-//    builder.redirectErrorStream(true)
-//
-//    builder.start()
-//  }
-
   def reset(): Unit = {
-    stop()
     termConverter.reset()
+    stop()
     start()
   }
 
-  /* The statement input.close() does not always terminate (e.g. if there is data left to be read).
-   * It therefore makes sense to first kill the prover process because then the channel is closed from
-   * the other side first, resulting in the close() method to terminate.
-   */
   def stop(): Unit = {
-//    this.synchronized {
-//      if (logfileWriter != null) {
-//        logfileWriter.flush()
-//      }
-//      if (output != null) {
-//        output.flush()
-//      }
-//      if (prover != null) {
-//        prover.destroyForcibly()
-//        prover.waitFor(10, TimeUnit.SECONDS) /* Makes the current thread wait until the process has been shut down */
-//      }
-//
-//      if (logfileWriter != null) {
-//        logfileWriter.close()
-//      }
-//      if (input != null) {
-//        input.close()
-//      }
-//      if (output != null) {
-//        output.close()
-//      }
-//
-//      if (proverShutdownHook != null) {
-//        // Deregister the shutdown hook, otherwise the prover process that has been stopped cannot be garbage collected.
-//        // Explanation: https://blog.creekorful.org/2020/03/classloader-and-memory-leaks/
-//        // Bug report: https://github.com/viperproject/silicon/issues/579
-//        Runtime.getRuntime.removeShutdownHook(proverShutdownHook)
-//        proverShutdownHook = null
-//      }
-//    }
+    emittedPreambleString.clear()
+    preamblePhaseOver = false
+    emittedFuncs.clear()
+    emittedSorts.clear()
+    emittedFuncSymbols.clear()
+    emittedSortSymbols.clear()
+    prover = null
+    lastModel = null
     if (ctx != null){
       ctx.close()
       ctx = null
-      emittedPreambleString.clear()
-      preamblePhaseOver = false
-      emittedFuncs.clear()
-      emittedSorts.clear()
-      emittedFuncSymbols.clear()
-      emittedSortSymbols.clear()
     }
   }
 
   def push(n: Int = 1): Unit = {
     endPreamblePhase()
     pushPopScopeDepth += n
-//    val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + pushPopScopeDepth
-//    writeLine(cmd)
-//    readSuccess()
-    if (n != 1)
-      sys.error("wtf")
-    prover.push()
+    if (n == 1) {
+      // the normal case; we handle this without invoking a bunch of higher order functions
+      prover.push()
+    } else {
+      // this might never actually happen
+      (0 until n).foreach(_ => prover.push())
+    }
   }
 
   def pop(n: Int = 1): Unit = {
     endPreamblePhase()
     prover.pop(n)
-//    val cmd = (if (n == 1) "(pop)" else "(pop " + n + ")") + " ; " + pushPopScopeDepth
     pushPopScopeDepth -= n
-//    writeLine(cmd)
-//    readSuccess()
   }
 
   def emit(content: String): Unit = {
@@ -285,31 +212,40 @@ class Z3ProverAPI(uniqueId: String,
 
   override def emitSettings(contents: Iterable[String]): Unit = {
     // we ignore this, don't know any better solution atm.
-    //emittedSettingsString.addAll(contents)
+    // our settings are defined in this class (see above).
+    // except we check if someone gives us our custom randomization string, in which
+    // case we'll directly set the options to randomize.
+    val optionSetString = s"(set-option :${Z3ProverAPI.randomizeSeedsSetting}"
+    if (contents.exists(s => s.startsWith(optionSetString))) {
+      val params = ctx.mkParams()
+      Z3ProverAPI.randomizeSeedsOptions.foreach(o => params.add(o, Random.nextInt(10000)))
+      prover.setParameters(params)
+    }
   }
-
-  //  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
   def assume(term: Term): Unit = {
-    if (preamblePhaseOver)
-      prover.add(termConverter.convert(term).asInstanceOf[BoolExpr])
-    else
-      preambleAssumes.add(termConverter.convert(term).asInstanceOf[BoolExpr])
+    try {
+      if (preamblePhaseOver)
+        prover.add(termConverter.convert(term).asInstanceOf[BoolExpr])
+      else
+        preambleAssumes.add(termConverter.convert(term).asInstanceOf[BoolExpr])
+    } catch {
+      case e: Z3Exception => reporter.report(InternalWarningMessage("Z3 error: " + e.getMessage))
+    }
   }
-
-
-
-
-
   def assert(goal: Term, timeout: Option[Int], error: Option[Boolean => VerificationResult] = None ): Boolean = {
     endPreamblePhase()
     setTimeout(timeout)
 
-    val (result, duration) = Verifier.config.assertionMode() match {
-      case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
-      case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
+    try {
+      val (result, _) = Verifier.config.assertionMode() match {
+        case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
+        case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
+      }
+      result
+    } catch {
+      case e: Z3Exception => throw ExternalToolError("Prover", "Z3 error: " + e.getMessage)
     }
-    result
   }
 
   protected def assertUsingPushPop(goal: Term): (Boolean, Long) = {
@@ -320,15 +256,15 @@ class Z3ProverAPI(uniqueId: String,
     prover.add(negatedGoal)
     val startTime = System.currentTimeMillis()
     val res = prover.check()
-    ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL)
     val endTime = System.currentTimeMillis()
+    val result = res == Status.UNSATISFIABLE
     pop()
 
-    //    if (!result) {
-    //      retrieveAndSaveModel()
-    //    }
+    if (!result) {
+      retrieveAndSaveModel()
+    }
 
-    (res == Status.UNSATISFIABLE, endTime - startTime)
+    (result, endTime - startTime)
   }
 
   def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
@@ -341,42 +277,34 @@ class Z3ProverAPI(uniqueId: String,
 
   def saturate(timeout: Int, comment: String): Unit = {
     endPreamblePhase()
-//    this.comment(s"State saturation: $comment")
     setTimeout(Some(timeout))
     prover.check()
   }
 
   protected def retrieveAndSaveModel(): Unit = {
-//    if (Verifier.config.counterexample.toOption.isDefined) {
-//      writeLine("(get-model)")
-//
-//      var model = readModel("\n").trim()
-//      if (model.startsWith("\"")) {
-//        model = model.replaceAll("\"", "")
-//      }
-//      lastModel = model
-//    }
-    null
+    if (Verifier.config.counterexample.toOption.isDefined) {
+      val model = prover.getModel
+      lastModel = model
+    }
   }
 
   protected def assertUsingSoftConstraints(goal: Term): (Boolean, Long) = {
     endPreamblePhase()
-//    val guard = fresh("grd", Nil, sorts.Bool)
-//
-//    writeLine(s"(assert (=> $guard (not $goal)))")
-//    readSuccess()
-//
-//    val startTime = System.currentTimeMillis()
-//    writeLine(s"(check-sat $guard)")
-//    val result = readUnsat()
-//    val endTime = System.currentTimeMillis()
-//
-//    if (!result) {
-//      retrieveAndSaveModel()
-//    }
-//
-//    (result, endTime - startTime)
-    ???
+    val guard = fresh("grd", Nil, sorts.Bool)
+    val guardApp = App(guard, Nil)
+    val goalImplication = Implies(guardApp, goal)
+
+    prover.add(termConverter.convertTerm(goalImplication).asInstanceOf[BoolExpr])
+
+    val startTime = System.currentTimeMillis()
+    val res = prover.check(termConverter.convertTerm(guardApp))
+    val endTime = System.currentTimeMillis()
+    val result = res == Status.UNSATISFIABLE
+    if (!result) {
+      retrieveAndSaveModel()
+    }
+
+    (result, endTime - startTime)
   }
 
   def check(timeout: Option[Int] = None): Result = {
@@ -392,9 +320,7 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  def endPreamblePhase() =  {
-
-
+  def endPreamblePhase(): Unit =  {
     if (!preamblePhaseOver) {
       preamblePhaseOver = true
 
@@ -407,37 +333,16 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def statistics(): Map[String, String] = {
-//    var repeat = true
-//    var line = ""
-//    var stats = scala.collection.immutable.SortedMap[String, String]()
-//    val entryPattern = """\(?\s*:([A-za-z\-]+)\s+((?:\d+\.)?\d+)\)?""".r
-//
-//    writeLine("(get-info :all-statistics)")
-//
-//    do {
-//      line = readLineFromInput()
-//      comment(line)
-//
-//      /* Check that the first line starts with "(:". */
-//      if (line.isEmpty && !line.startsWith("(:"))
-//        throw ProverInteractionFailed(uniqueId, s"Unexpected output of prover while reading statistics: $line")
-//
-//      line match {
-//        case entryPattern(entryName, entryNumber) =>
-//          stats = stats + (entryName -> entryNumber)
-//        case _ =>
-//      }
-//
-//      repeat = !line.endsWith(")")
-//    } while (repeat)
-//
-//    toMap(stats)
-    Map.empty
+    val statistics = prover.getStatistics
+    val result = mutable.HashMap[String, String]()
+    for (e <- statistics.getEntries()) {
+      result.update(e.Key, e.getValueString)
+    }
+    ListMap.from(result)
   }
 
   def comment(str: String): Unit = {
-    if (!preamblePhaseOver && str == "End preamble")
-      endPreamblePhase()
+    // ignore
   }
 
   def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort): Fun = {
@@ -451,61 +356,44 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def declare(decl: Decl): Unit = {
-    // just creating the term is enough.
+    // We convert the declaration into a Z3-level declaration (which is automatically added to Z3's
+    // current state) and record it in out collection(s) of emmitted declarations.
+    // Special handling for macro declarations if expandMacros is true; in that case,
+    // nothing is declared on the Z3 level, and we simply remember the definition ourselves.
     decl match {
-      case SortDecl(s) => {
+      case SortDecl(s) =>
         val convertedSort = termConverter.convertSort(s)
         val convertedSortSymbol = termConverter.convertSortSymbol(s)
         if (convertedSortSymbol.isDefined) {
           emittedSortSymbols.add(convertedSortSymbol.get)
           emittedSorts.add(convertedSort)
         }
-      }
-      case fd@FunctionDecl(f) => {
+      case fd: FunctionDecl =>
         val converted = termConverter.convert(fd)
         if (!emittedFuncs.contains(converted)){
           emittedFuncs.add(converted)
           emittedFuncSymbols.append(termConverter.convertFuncSymbol(fd))
         }
-      }
-      case md@MacroDecl(id, args, body) => termConverter.macros.update(id.name, (args, body))
-      case swd@SortWrapperDecl(from, to) => {
+      case MacroDecl(id, args, body) if expandMacros => termConverter.macros.update(id.name, (args, body))
+      case md: MacroDecl if !expandMacros =>
+        val (convertedFunc, axiom) = termConverter.convert(md)
+        if (!emittedFuncs.contains(convertedFunc)){
+          emittedFuncs.add(convertedFunc)
+          emittedFuncSymbols.append(convertedFunc.getName)
+        }
+        if (preamblePhaseOver){
+          prover.add(axiom)
+        }else{
+          preambleAssumes.add(axiom)
+        }
+      case swd: SortWrapperDecl =>
         val converted = termConverter.convert(swd)
         if (!emittedFuncs.contains(converted)){
           emittedFuncs.add(converted)
           emittedFuncSymbols.append(termConverter.convertSortWrapperSymbol(swd))
         }
-      }
     }
   }
-
-
-
-
-
-  protected def readModel(separator: String): String = {
-//    try {
-//      var endFound = false
-//      val result = new mutable.StringBuilder
-//      var firstTime = true
-//      while (!endFound) {
-//        val nextLine = readLineFromInput()
-//        if (nextLine.trim().endsWith("\"") || (firstTime && !nextLine.startsWith("\""))) {
-//          endFound = true
-//        }
-//        result.append(separator).append(nextLine)
-//        firstTime = false
-//      }
-//      result.result()
-//    } catch {
-//      case e: Exception =>
-//        println("Error reading model: " + e)
-//        ""
-//    }
-    null
-  }
-
-
 
   protected def logToFile(str: String): Unit = {
     if (logfileWriter != null) {
@@ -513,8 +401,35 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
+  override def getModel(): ViperModel = {
+    val entries = new mutable.HashMap[String, ModelEntry]()
+    for (constDecl <- lastModel.getConstDecls){
+      val constInterp = lastModel.getConstInterp(constDecl)
+      val constName = constDecl.getName.toString
+      val entry = fastparse.parse(constInterp.toString, ModelParser.value(_)).get.value
+      entries.update(constName, entry)
+    }
+    for (funcDecl <- lastModel.getFuncDecls) {
+      val funcInterp = lastModel.getFuncInterp(funcDecl)
+      val options = new mutable.HashMap[Seq[ValueEntry], ValueEntry]()
+      for (entry <- funcInterp.getEntries) {
+        val args = entry.getArgs.map(arg => fastparse.parse(arg.toString, ModelParser.value(_)).get.value)
+        val value = fastparse.parse(entry.getValue.toString, ModelParser.value(_)).get.value
+        options.update(args.toIndexedSeq, value)
+      }
+      val els = fastparse.parse(funcInterp.getElse.toString, ModelParser.value(_)).get.value
+      entries.update(funcDecl.getName.toString, MapEntry(options.toMap, els))
+    }
+    ViperModel(entries.toMap)
+  }
 
-  override def getLastModel(): String = lastModel
+  override def hasModel(): Boolean = {
+    lastModel != null
+  }
+
+  override def isModelValid(): Boolean = {
+    lastModel != null
+  }
 
   override def clearLastModel(): Unit = lastModel = null
 
@@ -537,13 +452,15 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  override def name: String = Z3ProverAPI.name
+  lazy val name: String = Z3ProverAPI.name
 
-  override def minVersion: Version = Z3ProverAPI.minVersion
+  lazy val minVersion: Version = Z3ProverAPI.minVersion
 
-  override def maxVersion: Option[Version] = Z3ProverAPI.maxVersion
+  lazy val maxVersion: Option[Version] = Z3ProverAPI.maxVersion
 
-  override def staticPreamble: String = Z3ProverAPI.staticPreamble
+  lazy val staticPreamble: String = Z3ProverAPI.staticPreamble
 
-  override def randomizeSeedsOptions: Seq[String] = Z3ProverAPI.randomizeSeedsOptions
+  lazy val randomizeSeedsOptions: Seq[String] = {
+    Seq(Z3ProverAPI.randomizeSeedsSetting)
+  }
 }
