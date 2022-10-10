@@ -13,11 +13,15 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
-import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
+import viper.silicon.supporters.PredicateData
+import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.{Map, Stack}
 
 final case class State(g: Store = Store(),
                        h: Heap = Heap(),
+                       program: ast.Program,
+                       predicateData: Map[ast.Predicate, PredicateData],
+                       functionData: Map[ast.Function, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
 
                        parallelizeBranches: Boolean = false,
@@ -121,7 +125,10 @@ object State {
   def merge(s1: State, s2: State): State = {
     s1 match {
       /* Decompose state s1 */
-      case State(g1, h1, oldHeaps1,
+      case State(g1, h1, program,
+                 predicateData,
+                 functionData,
+                 oldHeaps1,
                  parallelizeBranches1,
                  recordVisited1, visited1,
                  methodCfg1, invariantContexts1,
@@ -142,7 +149,10 @@ object State {
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
-          case State(`g1`, `h1`, `oldHeaps1`,
+          case State(`g1`, `h1`,
+                     `program`,
+                     `predicateData`, `functionData`,
+                     `oldHeaps1`,
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,

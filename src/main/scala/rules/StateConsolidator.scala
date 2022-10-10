@@ -236,7 +236,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
          for each field. Nearly identical to what the evaluator does for perm(x.f) if f is
          a QP field */
       chunksPerField.foldLeft(si) { case (si, (fieldName, fieldChunks)) =>
-        val field = Verifier.program.findField(fieldName)
+        val field = s.program.findField(fieldName)
         val (sn, smDef, pmDef) =
           quantifiedChunkSupporter.heapSummarisingMaps(si, field, args, fieldChunks, v)
         val trigger = FieldTrigger(field.name, smDef.sm, receiver)

@@ -509,7 +509,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   private val rawProverConfigArgs: ScallopOption[Map[String, String]] = opt[Map[String, String]]("proverConfigArgs",
     descr = (  "Configuration options which should be forwarded to the prover. "
              + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
-             + "including the quotation marks. "
+             + "excluding the quotation marks. "
              + "The configuration options given here will override those from Silicon's prover preamble."),
     default = Some(Map()),
     noshort = true
@@ -632,6 +632,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
              + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
     default = Some(Runtime.getRuntime.availableProcessors()),
+    noshort = true
+  )
+
+  val parallelizeBranches= opt[Boolean]("parallelizeBranches",
+    descr = "Verify different branches in parallel.",
+    default = Some(false),
     noshort = true
   )
 
