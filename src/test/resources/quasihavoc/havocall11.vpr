@@ -1,0 +1,7 @@
+field f: Int
+
+method foo(s: Seq[Ref])
+{
+    //:: ExpectedOutput(quasihavocall.failed:quasihavocall.not.injective)
+    quasihavocall i: Int :: 0 <= i && i < |s| ==> s[i].f
+}

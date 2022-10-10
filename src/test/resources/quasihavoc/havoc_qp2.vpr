@@ -1,0 +1,14 @@
+field f: Int
+
+method foo(x: Ref, y: Ref, s: Set[Ref])
+    requires forall a: Ref :: a in s ==> acc(a.f) && a.f == 3
+    requires x in s
+    requires y in s         // x and y might alias
+{
+    assert acc(y.f) && y.f == 3
+    quasihavoc x.f
+
+    assert acc(y.f)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert y.f == 3
+}

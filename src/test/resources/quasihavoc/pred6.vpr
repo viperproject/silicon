@@ -1,0 +1,37 @@
+// quasihavocking every instance of a multi-argument predicate
+
+field f: Int
+
+predicate pred(a: Ref, b: Ref) {
+    acc(a.f) && acc(b.f)
+}
+
+domain MyDomain {
+    function fst(i: Int): Ref
+    function snd(i: Int): Ref
+    function index(a: Ref, b: Ref): Int
+
+    axiom index_ax {
+        forall i: Int :: {fst(i), snd(i)}
+            index(fst(i), snd(i)) == i
+    }
+    axiom fst_ax {
+        forall a: Ref, b: Ref :: {index(a, b)}
+            fst(index(a, b)) == a
+    }
+    axiom snd_ax {
+        forall a: Ref, b: Ref :: {index(a, b)}
+            snd(index(a, b)) == b
+    }
+}
+
+method foo(a: Ref, b: Ref)
+    requires acc(a.f) && acc(b.f) && a.f == 3
+{
+    fold pred(a, b)
+    quasihavocall i: Int :: pred(fst(i), snd(i))
+    
+    unfold pred(a, b)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert a.f == 3
+}

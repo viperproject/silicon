@@ -1,0 +1,26 @@
+field f: Int
+
+predicate Pred(x: Ref, i: Int) {
+    acc(x.f) && x.f >= i
+}
+
+// This method contains two sets, "as" and "bs". We quasihavoc all of the
+// elements in "bs". We then assert that an element from "as" remains
+// unchanged, but the element from "bs" is not.
+method foo(as: Set[Ref], bs: Set[Ref], x: Ref, y: Ref)
+    requires forall a: Ref :: a in as ==> Pred(a, 3)
+    requires forall b: Ref :: b in bs ==> Pred(b, 3)
+    requires x in as && !(x in bs)
+    requires y in bs
+    requires unfolding Pred(x, 3) in x.f == 42
+    requires unfolding Pred(y, 3) in y.f == 42
+{
+    quasihavocall z: Ref :: z in bs ==> Pred(z, 3)
+
+    unfold Pred(x, 3)
+    assert x.f == 42
+
+    unfold Pred(y, 3)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert y.f == 42  
+}

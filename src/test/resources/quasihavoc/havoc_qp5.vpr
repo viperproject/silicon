@@ -1,0 +1,23 @@
+field f: Int
+
+predicate Pair(x: Ref, y: Ref) {
+    acc(x.f) && acc(y.f) && x.f == y.f
+}
+
+// Test quasihavoc with predicates
+method foo(x: Ref, y: Ref, s: Seq[Ref], t: Seq[Ref])
+    requires |s| == |t| && |s| >= 2
+    requires forall i: Int, j: Int :: 0 <= i && i < j && j < |s| ==> s[i] != s[j]
+    requires forall i: Int :: 0 <= i && i < |s| ==>
+                Pair(s[i], t[i])
+    requires forall i: Int :: 0 <= i && i < |s| ==>
+                unfolding Pair(s[i], t[i]) in s[i].f == i
+    requires x == s[0] && y == t[0]
+{
+    quasihavoc Pair(x, y)
+    unfold Pair(x, y)
+
+    assert forall i: Int :: 1 <= i && i < |s| ==>
+            unfolding Pair(s[i], t[i]) in s[i].f == i
+    
+}

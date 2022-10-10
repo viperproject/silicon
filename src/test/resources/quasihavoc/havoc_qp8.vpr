@@ -1,0 +1,32 @@
+// Quantified permission with a magic wand, where we apply it step-by-step.
+// We quasihavoc each individual wand before we apply.
+
+field f: Int
+predicate P(x: Ref) {
+    acc(x.f) && x.f == 3
+}
+
+method foo(s: Seq[Ref])
+    requires forall i: Int, j: Int :: 0 <= i && i < j && j < |s| ==> s[i] != s[j]
+    requires forall i: Int :: 0 <= i && i < |s| ==> acc(s[i].f)
+    requires forall i: Int :: 0 <= i && i < |s| ==> acc(s[i].f) && s[i].f == 3 --* P(s[i])
+{
+    var i: Int := 0
+    while (i < |s|)
+        invariant 0 <= i && i <= |s|
+        invariant forall k: Int :: i <= k && k < |s| ==> acc(s[k].f)
+        invariant forall k: Int :: i <= k && k < |s| ==> acc(s[k].f) && s[k].f == 3 --* P(s[k])
+        invariant forall k: Int :: 0 <= k && k < i ==> P(s[k])
+    {
+        // quasihavoc the wand. Doesn't actually quasihavoc any memory, since this wand
+        // has no footprint
+        quasihavoc acc(s[i].f) && s[i].f == 3 --* P(s[i])
+
+        s[i].f := 3
+
+        // Check that we can still apply the wand
+        apply acc(s[i].f) && s[i].f == 3 --* P(s[i])
+
+        i := i + 1
+    }
+}

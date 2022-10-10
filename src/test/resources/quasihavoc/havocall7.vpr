@@ -1,0 +1,27 @@
+field f: Int
+predicate Pred(x: Ref, y: Ref) {
+    acc(x.f) && acc(y.f) && x.f == y.f
+}
+
+method foo(xs: Seq[Ref], ys: Seq[Ref])
+    requires |xs| == |ys| && |xs| > 2
+    // Needed for injectivity check
+    requires forall i: Int, j: Int :: 0 <= i && i < j && j < |xs| ==> xs[i] != xs[j]
+    requires forall i: Int :: 0 <= i && i < |xs| ==> Pred(xs[i], ys[i])
+    requires unfolding Pred(xs[0], ys[0]) in xs[0].f == 3
+    requires unfolding Pred(xs[1], ys[1]) in xs[1].f == 3
+{
+    assert unfolding Pred(xs[0], ys[0]) in xs[0].f == 3
+
+    quasihavocall i: Int :: 1 <= i && i < |xs| ==> Pred(xs[i], ys[i])
+    unfold Pred(xs[0], ys[0])
+    assert xs[0].f == ys[0].f
+    assert !(xs[0] in xs[1..])
+    assert xs[0].f == 3
+
+    unfold Pred(xs[1], ys[1])
+    assert xs[1].f == ys[1].f
+    // This is false:
+    // assert xs[1].f == 3
+
+}

@@ -1,0 +1,19 @@
+field f: Int
+predicate p(x: Ref) {
+    acc(x.f) && x.f >= 3
+}
+
+method foo(x: Ref)
+    requires acc(x.f)
+{
+    x.f := 4
+    fold p(x)
+
+    quasihavoc p(x)
+
+    unfold p(x)
+    assert x.f >= 3
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert x.f == 4
+}
+

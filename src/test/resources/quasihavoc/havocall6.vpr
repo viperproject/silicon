@@ -1,0 +1,13 @@
+field f: Int
+predicate Pred(x: Ref) {
+    acc(x.f) && x.f == 3
+}
+
+method foo(xs: Set[Ref], x: Ref)
+    requires forall z: Ref :: z in xs ==> Pred(z)
+    requires x in xs
+{
+    quasihavocall z: Ref :: z in xs ==> Pred(z)
+    unfold Pred(x)
+    assert x.f == 3
+}

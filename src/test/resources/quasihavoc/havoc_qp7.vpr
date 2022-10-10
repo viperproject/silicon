@@ -1,0 +1,25 @@
+// Test magic wands with quantified permissions.
+
+field f: Int
+predicate R(x: Ref) {
+    acc(x.f)
+}
+
+method foo(s: Set[Ref])
+{
+    // Create a quantified magic wand
+    inhale forall z: Ref :: z in s ==> R(z) --* acc(z.f)
+    inhale forall z: Ref :: z in s ==> R(z)
+
+    // Introduce a fact about the magic wand
+    assume forall z: Ref :: z in s ==> applying (R(z) --* acc(z.f)) in z.f == 3
+
+    // This assert passes
+    assert forall z: Ref :: z in s ==> applying (R(z) --* acc(z.f)) in z.f > 2
+
+    // quasihavoc all the magic wands
+    quasihavocall z: Ref :: z in s ==> R(z) --* acc(z.f)
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert forall z: Ref :: z in s ==> applying (R(z) --* acc(z.f)) in z.f > 2
+}

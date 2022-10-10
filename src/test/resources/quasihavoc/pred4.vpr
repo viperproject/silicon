@@ -1,0 +1,16 @@
+field f: Int
+
+predicate p(x: Ref) {
+    acc(x.f)
+}
+
+method foo(x: Ref, y: Ref)
+    requires acc(x.f) && x.f == 42
+{
+    fold p(x)
+    quasihavoc x != y ==> p(y)
+
+    assume x != y
+    unfold p(x)
+    assert x.f == 42
+}

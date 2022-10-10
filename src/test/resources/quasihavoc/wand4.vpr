@@ -1,0 +1,27 @@
+field f1: Int
+field f2: Int
+
+predicate p(x: Ref) {
+    acc(x.f1) && acc(x.f2)
+}
+
+method foo(x: Ref, y: Ref)
+    requires acc(x.f1) && acc(x.f2)
+    requires x.f1 == 3
+{
+    package acc(x.f2) --* p(x) {
+        fold p(x)
+    }
+
+    assert acc(x.f2)
+
+    quasihavoc x == y ==> acc(y.f2) --* p(y)
+    
+    apply acc(x.f2) --* p(x)
+    unfold p(x)
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert x.f1 == 3
+}
+
+

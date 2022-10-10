@@ -1,0 +1,9 @@
+field f: Int
+
+method foo(x: Ref)
+    requires acc(x.f) && x.f == 42
+{
+    quasihavocall z: Ref :: z.f
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert x.f == 42
+} 

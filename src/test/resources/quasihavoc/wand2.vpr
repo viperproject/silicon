@@ -1,0 +1,26 @@
+field data: Int
+field next: Ref
+
+predicate list(x: Ref) {
+    x != null ==>
+        acc(x.data) && acc(x.next) && list(x.next)
+}
+
+function length(x: Ref): Int
+    requires list(x)
+{
+    x == null
+        ? 0
+        : 1 + unfolding list(x) in length(x.next)
+}
+
+method foo(x: Ref, y: Ref, n: Int)
+    requires list(y)
+    requires list(y) --* list(x)
+    requires applying (list(y) --* list(x)) in length(x) == n
+{
+    quasihavoc list(y) --* list(x)
+    apply list(y) --* list(x)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert length(x) == n
+}

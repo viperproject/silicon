@@ -1,0 +1,35 @@
+field f: Int
+field g: Int
+
+predicate p(x: Ref) {
+    acc(x.f) && acc(x.g)
+}
+
+method foo(y: Ref, x0: Ref, x1: Ref)
+    requires acc(x0.f) && acc(x0.g) && x0.f == 0
+    requires acc(x1.f) && acc(x1.g) && x1.f == 1
+    requires y == x0 || y == x1
+{
+    package acc(x0.g) --* p(x0) {
+        fold p(x0)
+    }
+    package acc(x1.g) --* p(x1) {
+        fold p(x1)
+    }
+
+    quasihavoc acc(x0.g) --* p(x0)
+    quasihavoc acc(x1.g) --* p(x1)
+
+    apply acc(x0.g) --* p(x0)
+    apply acc(x1.g) --* p(x1)
+    
+    unfold p(x0)
+    unfold p(x1)
+
+    assert acc(y.f)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert y.f == 0 || y.f == 1
+
+}
+
+

@@ -1,0 +1,10 @@
+field f: Int
+
+method foo(s: Set[Ref], x: Ref)
+    requires forall z: Ref :: z in s ==> acc(z.f) && z.f == 42
+    requires x in s
+{
+    quasihavocall z: Ref :: z.f
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert x.f == 42
+} 

@@ -1,0 +1,9 @@
+field f: Int
+
+method foo(x: Ref, s: Set[Ref])
+	requires forall z: Ref :: z in s ==> acc(z.f) && z.f == 3
+	requires x in s
+{
+	quasihavoc false ==> x.f
+	assert x.f == 3
+}

@@ -1,0 +1,10 @@
+field f: Int
+
+// sets s and t are seperate. quasihavocking t should not affect s
+method foo(s: Set[Ref], t: Set[Ref])
+    requires forall x: Ref :: x in s ==> acc(x.f) && x.f == 3
+    requires forall x: Ref :: x in t ==> acc(x.f)
+{
+    quasihavocall x: Ref :: x in t ==> x.f
+    assert forall q: Ref :: q in s ==> q.f == 3
+}

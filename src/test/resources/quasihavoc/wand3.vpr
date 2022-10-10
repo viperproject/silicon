@@ -1,0 +1,21 @@
+field f: Int
+
+method foo(x: Ref, y: Ref)
+    requires acc(x.f) && x.f == 3
+{
+    // package half of x.f into a magic wand
+    package acc(x.f, 1/2) --* acc(x.f)
+
+    // we can still refer to the other half
+    assert acc(x.f, 1/2) && x.f == 3
+
+    quasihavoc acc(x.f, 1/2) --* acc(x.f)
+
+    // still remembers this
+    assert x.f == 3
+
+    apply acc(x.f, 1/2) --* acc(x.f)
+
+    // but now this is forgotten
+    // assert x.f == 3
+}

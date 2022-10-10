@@ -1,0 +1,11 @@
+field f: Int
+
+method foo(x: Ref)
+    requires acc(x.f)
+    requires x.f == 42
+{
+    quasihavoc x.f
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert x.f == 42
+}
+

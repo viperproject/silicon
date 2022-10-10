@@ -1,0 +1,9 @@
+field f: Int
+
+method foo(x: Ref)
+    requires acc(x.f) && x.f == 2
+{
+    quasihavoc x.f == 2 ==> x.f
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert x.f == 2
+}
