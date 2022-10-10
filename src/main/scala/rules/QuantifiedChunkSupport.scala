@@ -6,7 +6,6 @@
 
 package viper.silicon.rules
 
-import scala.annotation.unused
 import scala.collection.immutable.ArraySeq
 import scala.reflect.ClassTag
 import viper.silver.ast
@@ -1379,11 +1378,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   /* Misc */
 
   /* ATTENTION: Never create a snapshot map without calling this method! */
-  private def freshSnapshotMap(s: State,
-                               resource: ast.Resource,
-                               appliedArgs: Seq[Term],
-                               v: Verifier)
-                              : Term = {
+  /*private*/ def freshSnapshotMap(s: State,
+                                   resource: ast.Resource,
+                                   appliedArgs: Seq[Term],
+                                   v: Verifier)
+                                  : Term = {
 
     /* TODO: Snapshot maps *not* used in snapshots, e.g. those used in chunks, could
      *       be encoded as (total, underconstrained) SMT functions since their domains

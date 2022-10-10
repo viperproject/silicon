@@ -247,6 +247,29 @@ object chunkSupporter extends ChunkSupportRules {
     }
   }
 
+/** Extract the chunks with resource matching id.
+ * Return two sequences of chunks -- one with resource id, and the
+ * other with the remaining resources.
+ */
+  def splitHeap[CH <: NonQuantifiedChunk : ClassTag](h: Heap, id: ChunkIdentifer)
+                                                   : (Seq[CH], Seq[Chunk]) = {
+
+    var relevantChunks = Seq[CH]()
+    var otherChunks = Seq[Chunk]()
+
+    h.values foreach {
+      case ch: CH if ch.id == id =>
+        relevantChunks +:= ch
+      case ch: QuantifiedChunk if ch.id == id =>
+        sys.error(
+          s"I did not expect quantified chunks on the heap for resource $id, "
+            + s"but found $ch")
+      case ch =>
+        otherChunks +:= ch
+    }
+
+    (relevantChunks, otherChunks)
+  }
   private def findChunkLiterally[CH <: NonQuantifiedChunk](chunks: Iterable[CH], args: Iterable[Term]) = {
     chunks find (ch => ch.args == args)
   }
