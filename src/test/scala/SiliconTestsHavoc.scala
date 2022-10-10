@@ -7,7 +7,7 @@
 package viper.silicon.tests
 
 class SiliconTestsHavoc extends SiliconTests {
-  override val testDirectories: Seq[String] = Seq("havoc")
+  override val testDirectories: Seq[String] = Seq("quasihavoc")
 
   override val commandLineArguments: Seq[String] = Seq(
     "--timeout", "300" /* seconds */,
