@@ -56,7 +56,7 @@ trait PathConditionStack extends RecordedPathConditions {
  * Implementations (mostly mutable!)
  */
 
-private class PathConditionStackLayer
+class PathConditionStackLayer
     extends Cloneable {
 
   private var _branchCondition: Option[Term] = None
@@ -123,7 +123,7 @@ private class PathConditionStackLayer
   }
 }
 
-private trait LayeredPathConditionStackLike {
+trait LayeredPathConditionStackLike {
   protected def branchConditions(layers: Stack[PathConditionStackLayer]): Stack[Term] =
     layers.flatMap(_.branchCondition)
 
@@ -216,7 +216,7 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   }
 }
 
-private[decider] class LayeredPathConditionStack
+class LayeredPathConditionStack
     extends LayeredPathConditionStackLike
        with PathConditionStack
        with Cloneable {

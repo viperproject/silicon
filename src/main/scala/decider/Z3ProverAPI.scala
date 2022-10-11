@@ -24,6 +24,7 @@ import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_ast_print_mode
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.reporting.ExternalToolError
+import viper.silver.ast
 
 import scala.collection.immutable.ListMap
 import scala.jdk.CollectionConverters.MapHasAsJava
@@ -237,7 +238,7 @@ class Z3ProverAPI(uniqueId: String,
       case e: Z3Exception => reporter.report(InternalWarningMessage("Z3 error: " + e.getMessage))
     }
   }
-  def assert(goal: Term, s: Option[State], timeout: Option[Int], error: Option[Boolean => VerificationResult] = None ): Boolean = {
+  def assert(goal: Term, e: Option[ast.Exp], s: Option[State], v: Option[Verifier], timeout: Option[Int], error: Option[Boolean => VerificationResult] = None ): Boolean = {
     endPreamblePhase()
     setTimeout(timeout)
 

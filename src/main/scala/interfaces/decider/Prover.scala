@@ -12,7 +12,9 @@ import viper.silicon.state.State
 import viper.silver.components.StatefulComponent
 import viper.silicon.{Config, Map}
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 import viper.silver.verifier.Model
+import viper.silver.ast
 
 sealed abstract class Result
 object Sat extends Result
@@ -32,7 +34,7 @@ trait ProverLike {
 }
 
 trait Prover extends ProverLike with StatefulComponent {
-  def assert(goal: Term, s: Option[State], timeout: Option[Int] = None, error: Option[Boolean => VerificationResult] = None): Boolean
+  def assert(goal: Term, e: Option[ast.Exp], s: Option[State], v: Option[Verifier], timeout: Option[Int] = None, error: Option[Boolean => VerificationResult] = None): Boolean
   def check(timeout: Option[Int] = None): Result
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def statistics(): Map[String, String]

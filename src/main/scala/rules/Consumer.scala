@@ -460,7 +460,7 @@ object consumer extends ConsumptionRules {
 
     executionFlowController.tryOrFail0(s1, v)((s2, v1, QS) => {
       eval(s2, e, pve, v1)((s3, t, v2) => {
-        v2.decider.assert(t, s2) {
+        v2.decider.assert(t, Some(e), s2, v1) {
           case true =>
             v2.decider.assume(t)
             QS(s3, v2)

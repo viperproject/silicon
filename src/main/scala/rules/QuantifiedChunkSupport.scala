@@ -803,7 +803,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       Some("Nested auxiliary terms: non-globals"), false)
 
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil), s) {
+    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil), None, s, v) {
       case true =>
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
@@ -821,7 +821,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             True()
           }
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assert(receiverInjectivityCheck, s) {
+        v.decider.assert(receiverInjectivityCheck, None, s, v) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
             val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
@@ -982,7 +982,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assume(auxNonGlobals, Some(s"Consuming ${resource}: Nested auxiliary terms: non-globals"), false)
     }
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil), s) {
+    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil), None, s, v) {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
@@ -1005,7 +1005,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             triggers  = Nil,
             qidPrefix = qid)
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assert(receiverInjectivityCheck, s) {
+        v.decider.assert(receiverInjectivityCheck, None, s, v) {
           case true =>
             val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
             val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)

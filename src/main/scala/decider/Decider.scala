@@ -48,7 +48,7 @@ trait Decider {
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, state: State, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+  def assert(t: Term, e: Option[ast.Exp], state: State, v: Verifier, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -240,13 +240,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def checkSmoke(): Boolean = prover.check(Verifier.config.checkTimeout.toOption) == Unsat
 
-    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, None, Some(timeout), None)
+    def check(t: Term, timeout: Int): Boolean = deciderAssert(t, None, None, None, Some(timeout), None)
 
-    def assert(t: Term, s: State, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
+    def assert(t: Term, e: Option[ast.Exp], s: State, v: Verifier, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
               (Q: Boolean => VerificationResult)
               : VerificationResult = {
 
-      val success = deciderAssert(t, Some(s), timeout, Some(Q))
+      val success = deciderAssert(t, e, Some(s), Some(v), timeout, Some(Q))
 
       // If the SMT query was not successful, store it (possibly "overwriting"
       // any previously saved query), otherwise discard any query we had saved
@@ -260,12 +260,12 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       Q(success)
     }
 
-    private def deciderAssert(t: Term, s: Option[State], timeout: Option[Int], Q: Option[Boolean => VerificationResult]) = {
+    private def deciderAssert(t: Term, e: Option[ast.Exp], s: Option[State], v: Option[Verifier], timeout: Option[Int], Q: Option[Boolean => VerificationResult]) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
       val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
 
       val asserted = isKnownToBeTrue(t)
-      val result = asserted || proverAssert(t, s, timeout, Q)
+      val result = asserted || proverAssert(t, e, s, v, timeout, Q)
 
       SymbExLogger.currentLog().closeScope(sepIdentifier)
       result
@@ -279,11 +279,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       case _ => false
     }
 
-    private def proverAssert(t: Term, s: Option[State], timeout: Option[Int], Q: Option[Boolean => VerificationResult]) = {
+    private def proverAssert(t: Term, e: Option[ast.Exp], s: Option[State], v: Option[Verifier], timeout: Option[Int], Q: Option[Boolean => VerificationResult]) = {
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
 
-      val result = prover.assert(t, s, timeout, Q)
+      val result = prover.assert(t, e, s, v, timeout, Q)
 
       if (SymbExLogger.enabled) {
         val statistics = prover.statistics()
@@ -383,7 +383,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def statistics(): Map[String, String] = prover.statistics()
 
-    override def generateModel(): Unit = proverAssert(False(), None, None, None)
+    override def generateModel(): Unit = proverAssert(False(), None, None, None, None, None)
 
     override def getModel(): Model = prover.getModel()
 

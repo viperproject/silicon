@@ -23,7 +23,7 @@ object permissionSupporter extends SymbolicExecutionRules {
       case k: Var if s.constrainableARPs.contains(k) =>
         Q(s, v)
       case _ =>
-        v.decider.assert(perms.IsNonNegative(tPerm), s) {
+        v.decider.assert(perms.IsNonNegative(tPerm), Some(ast.GeCmp(ePerm, ast.NoPerm()())()), s, v) {
           case true => Q(s, v)
           case false => createFailure(pve dueTo NegativePermission(ePerm), v, s)
         }

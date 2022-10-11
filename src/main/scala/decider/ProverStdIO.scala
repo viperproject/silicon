@@ -21,6 +21,7 @@ import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
 import viper.silver.verifier.Model
+import viper.silver.ast
 
 import scala.collection.mutable
 
@@ -220,7 +221,7 @@ abstract class ProverStdIO(uniqueId: String,
     readSuccess()
   }
 
-  def assert(goal: Term, s: Option[State], timeout: Option[Int] = None, error: Option[Boolean => VerificationResult] = None): Boolean =
+  def assert(goal: Term, e: Option[ast.Exp], s: Option[State], v: Option[Verifier], timeout: Option[Int] = None, error: Option[Boolean => VerificationResult] = None): Boolean =
     assert(termConverter.convert(goal), timeout)
 
   def assert(goal: String, timeout: Option[Int]): Boolean = {
