@@ -240,11 +240,10 @@ abstract class ProverStdIO(uniqueId: String,
 
   protected def assertUsingPushPop(goal: String, timeout: Option[Int]): (Boolean, Long) = {
     push()
+    setTimeout(timeout)
 
     writeLine("(assert (not " + goal + "))")
     readSuccess()
-
-    setTimeout(timeout)
 
     val startTime = System.currentTimeMillis()
     writeLine("(check-sat)")
@@ -295,12 +294,12 @@ abstract class ProverStdIO(uniqueId: String,
   }
 
   protected def assertUsingSoftConstraints(goal: String, timeout: Option[Int]): (Boolean, Long) = {
+    setTimeout(timeout)
+
     val guard = fresh("grd", Nil, sorts.Bool)
 
     writeLine(s"(assert (=> $guard (not $goal)))")
     readSuccess()
-
-    setTimeout(timeout)
 
     val startTime = System.currentTimeMillis()
     writeLine(s"(check-sat $guard)")
