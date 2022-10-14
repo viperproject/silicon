@@ -174,7 +174,8 @@ abstract class ProverStdIO(uniqueId: String,
     }
   }
 
-  def push(n: Int = 1): Unit = {
+  def push(n: Int = 1, timeout: Option[Int] = None): Unit = {
+    setTimeout(timeout)
     pushPopScopeDepth += n
     val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + pushPopScopeDepth
     writeLine(cmd)
@@ -226,11 +227,9 @@ abstract class ProverStdIO(uniqueId: String,
   def assert(goal: String, timeout: Option[Int]): Boolean = {
 //    bookkeeper.assertionCounter += 1
 
-    setTimeout(timeout)
-
     val (result, duration) = Verifier.config.assertionMode() match {
-      case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
-      case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
+      case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout)
+      case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout)
     }
 
     comment(s"${viper.silver.reporter.format.formatMillisReadably(duration)}")
@@ -239,8 +238,9 @@ abstract class ProverStdIO(uniqueId: String,
     result
   }
 
-  protected def assertUsingPushPop(goal: String): (Boolean, Long) = {
+  protected def assertUsingPushPop(goal: String, timeout: Option[Int]): (Boolean, Long) = {
     push()
+    setTimeout(timeout)
 
     writeLine("(assert (not " + goal + "))")
     readSuccess()
@@ -293,7 +293,9 @@ abstract class ProverStdIO(uniqueId: String,
     lastModel != null && !lastModel.contains("model is not available")
   }
 
-  protected def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
+  protected def assertUsingSoftConstraints(goal: String, timeout: Option[Int]): (Boolean, Long) = {
+    setTimeout(timeout)
+
     val guard = fresh("grd", Nil, sorts.Bool)
 
     writeLine(s"(assert (=> $guard (not $goal)))")

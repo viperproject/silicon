@@ -48,7 +48,7 @@ trait Prover extends ProverLike with StatefulComponent {
 
   def pushPopScopeDepth: Int
 
-  def push(n: Int = 1): Unit
+  def push(n: Int = 1, timeout: Option[Int] = None): Unit
 
   def pop(n: Int = 1): Unit
 }
