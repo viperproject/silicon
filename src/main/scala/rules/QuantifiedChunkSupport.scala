@@ -801,8 +801,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         vars = effectiveTriggersQVars,
         triggers = effectiveTriggers)))
 
+    val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
+    val nonNegTerm = Forall(qvars, Implies(PreconditionPropagationTransformer.transform(nonNegImplication), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
+    v.decider.assert(nonNegTerm) {
       case true =>
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
@@ -820,6 +822,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             True()
           }
         v.decider.prover.comment("Check receiver injectivity")
+        v.decider.assume(PreconditionPropagationTransformer.transform(receiverInjectivityCheck))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
@@ -979,8 +982,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         /* Explicit triggers were provided. */
         v.decider.assume(auxNonGlobals)
     }
+
+    val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
+    val nonNegTerm = Forall(qvars, Implies(PreconditionPropagationTransformer.transform(nonNegImplication), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
+    v.decider.assert(nonNegTerm) {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
