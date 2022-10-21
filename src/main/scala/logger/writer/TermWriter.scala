@@ -49,8 +49,10 @@ object TermWriter {
       case sorts.Set(elementsSort) => s("Set", elementsSort)
       case sorts.Multiset(elementsSort) => s("Multiset", elementsSort)
       case sorts.UserSort(id) => JsObject("id" -> JsString("UserSort"), "name" -> JsString(id.name))
-      case sorts.FieldValueFunction(codomainSort) => s("FVF", codomainSort)
-      case sorts.PredicateSnapFunction(codomainSort) => s("PSF", codomainSort)
+      case sorts.FieldValueFunction(codomainSort, fieldName) => JsObject("id" -> JsString("FVF"),
+        "fieldName" -> JsString(fieldName), "elementSort" -> toJSON(codomainSort))
+      case sorts.PredicateSnapFunction(codomainSort, predName) => JsObject("id" -> JsString("PSF"),
+        "predName" -> JsString(predName), "elementSort" -> toJSON(codomainSort))
       case simple => JsObject("id" -> JsString(simple.id.name))
     }
   }

@@ -1394,12 +1394,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val snapshotMapSort =
       resource match {
         case field: ast.Field =>
-          sorts.FieldValueFunction(v.symbolConverter.toSort(field.typ))
+          sorts.FieldValueFunction(v.symbolConverter.toSort(field.typ), field.name)
         case predicate: ast.Predicate =>
           // TODO: Reconsider use of and general design behind s.predicateSnapMap
-          sorts.PredicateSnapFunction(s.predicateSnapMap(predicate))
-        case _: ast.MagicWand =>
-          sorts.PredicateSnapFunction(sorts.Snap)
+          sorts.PredicateSnapFunction(s.predicateSnapMap(predicate), predicate.name)
+        case w: ast.MagicWand =>
+          sorts.PredicateSnapFunction(sorts.Snap, MagicWandIdentifier(w, s.program).toString)
         case _ =>
           sys.error(s"Found yet unsupported resource $resource (${resource.getClass.getSimpleName})")
       }

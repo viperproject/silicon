@@ -7,9 +7,9 @@
 ;   - $S$ is the sort corresponding to the type of the field
 ;   - $T$ is the sanitized name of the sort corresponding to the type of the field
 
-(declare-fun $FVF.domain_$FLD$ ($FVF<$T$>) Set<$Ref>)
-(declare-fun $FVF.lookup_$FLD$ ($FVF<$T$> $Ref) $S$)
-(declare-fun $FVF.after_$FLD$ ($FVF<$T$> $FVF<$T$>) Bool)
+(declare-fun $FVF.domain_$FLD$ ($FVF<$FLD$>) Set<$Ref>)
+(declare-fun $FVF.lookup_$FLD$ ($FVF<$FLD$> $Ref) $S$)
+(declare-fun $FVF.after_$FLD$ ($FVF<$FLD$> $FVF<$FLD$>) Bool)
 (declare-fun $FVF.loc_$FLD$ ($S$ $Ref) Bool)
 (declare-fun $FVF.perm_$FLD$ ($FPM $Ref) $Perm)
-(declare-const $fvfTOP_$FLD$ $FVF<$T$>)
+(declare-const $fvfTOP_$FLD$ $FVF<$FLD$>)
