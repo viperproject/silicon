@@ -118,11 +118,7 @@ object chunkSupporter extends ChunkSupportRules {
             case (Complete(), s2, h2, optCh2) =>
               QS(s2.copy(h = s.h), h2, optCh2.map(_.snap), v1)
             case _ if v1.decider.checkSmoke() =>
-              v1.decider.assume(False())
-              if (s1.underJoin)
-                QS(s1, s1.h, None, v1)
-              else
-                Success() // TODO: Mark branch as dead?
+              Success() // TODO: Mark branch as dead?
             case _ =>
               createFailure(ve, v1, s1, true)
           }
