@@ -431,7 +431,7 @@ class TermToZ3APIConverter
         createApp(convertId(SortWrapperId(t.sort, to)), Seq(t), to)
 
       case Distinct(symbols) =>
-        ctx.mkDistinct(symbols.map(s => ctx.mkConst(convertId(s.id), convertSort(s.resultSort))).toSeq: _*)
+        ??? // ctx.mkDistinct(symbols.map(s => ctx.mkConst(convertId(s), convertSort(s.resultSort))).toSeq: _*)
 
       case Let(bindings, body) =>
         convert(body.replace(bindings))

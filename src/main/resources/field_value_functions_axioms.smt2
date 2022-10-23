@@ -11,7 +11,7 @@
 ; The axiom therefore needs to be emitted after the sort wrappers have
 ; been emitted.
 
-(assert (forall ((vs $FVF<$FLD$>) (ws $FVF<$FLD$>)) (!
+(assert (forall ((vs $FVF<$FLD$>) (ws $FVF<$FLD$>) (fc FUNCCONST)) (!
     (=>
       (and
         (Set_equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
@@ -23,8 +23,8 @@
           :qid |qp.$FVF<$FLD$>-eq-inner|
           )))
       (= vs ws))
-    :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs)
-              ($SortWrappers.$FVF<$FLD$>To$Snap ws)
+    :pattern (($SortWrappers.$FVF<$FLD$>To$Snap vs fc)
+              ($SortWrappers.$FVF<$FLD$>To$Snap ws fc)
               )
     :qid |qp.$FVF<$FLD$>-eq-outer|
     )))

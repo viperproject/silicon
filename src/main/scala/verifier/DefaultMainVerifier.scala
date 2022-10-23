@@ -8,7 +8,6 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
-
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.util.Random
@@ -23,6 +22,7 @@ import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
+import viper.silicon.state.terms.sorts.FieldValueFunction
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
@@ -473,6 +473,11 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
         val fromSnapWrapper = terms.SortWrapperDecl(sorts.Snap, sort)
 
         sink.declare(toSnapWrapper)
+        if (sort.isInstanceOf[FieldValueFunction]) {
+          val copy = terms.SortWrapperDecl(sort, sorts.Snap)
+          copy.withFuncArg = true
+          sink.declare(copy)
+        }
         sink.declare(fromSnapWrapper)
 
         val sanitizedSortString = termConverter.convertSanitized(sort)
@@ -492,9 +497,15 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
                 s"$$T$i$$" -> sortString),
             sink)
         } else {
+          if (sort.isInstanceOf[FieldValueFunction]) {
+            preambleReader.emitParametricPreamble("/sortwrappersfvf.smt2",
+              Map("$S$" -> sanitizedSortString,
+                  "$T$" -> sortString),
+              sink)
+          }
           preambleReader.emitParametricPreamble("/sortwrappers.smt2",
             Map("$S$" -> sanitizedSortString,
-                "$T$" -> sortString),
+              "$T$" -> sortString),
             sink)
         }
 

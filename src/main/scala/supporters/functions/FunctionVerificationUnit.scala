@@ -105,14 +105,17 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     }
 
     /* Function supporter generates no sorts during program analysis */
-    val sortsAfterAnalysis: Iterable[Sort] = Seq.empty
-    def declareSortsAfterAnalysis(sink: ProverLike): Unit = ()
+    val sortsAfterAnalysis: Iterable[Sort] = Seq(sorts.FUNCCONST)
+    def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
+      sink.declare(SortDecl(sorts.FUNCCONST))
+    }
 
     private def generateFunctionSymbolsAfterAnalysis: Iterable[Either[String, Decl]] = (
          Seq(Left("Declaring symbols related to program functions (from program analysis)"))
       ++ functionData.values.flatMap(data =>
             Seq(data.function, data.limitedFunction, data.statelessFunction).map(FunctionDecl)
          ).map(Right(_))
+      ++ functionData.keys.map(f => Right(ConstDecl(Var(Identifier("$$" + f.name), sorts.FUNCCONST))))
     )
 
     def symbolsAfterAnalysis: Iterable[Decl] =
@@ -135,8 +138,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     }
 
     /* Function supporter generates no axioms during program analysis */
-    val axiomsAfterAnalysis: Iterable[Term] = Seq.empty
-    def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = ()
+    val axiomsAfterAnalysis: Iterable[Term] = Seq(Distinct(functionData.keys.map(f => Var(Identifier("$$" + f.name), sorts.FUNCCONST)).toSet))
+    def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {
+      axiomsAfterAnalysis foreach sink.assume
+    }
 
     def getPostConditionAxioms() = this.postConditionAxioms
 

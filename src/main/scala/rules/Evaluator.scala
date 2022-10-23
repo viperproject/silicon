@@ -24,6 +24,7 @@ import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
+import viper.silicon.state.terms.sorts.FieldValueFunction
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -717,7 +718,11 @@ object evaluator extends EvaluationRules {
                                  */
                              smDomainNeeded = true)
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
-              val snap1 = snap.convert(sorts.Snap)
+              val snap1o = snap.convert(sorts.Snap)
+              val snap1 = snap1o.transform{
+                case SortWrapper(t, sorts.Snap) if t.sort.isInstanceOf[FieldValueFunction] =>
+                  new SortWrapper(t, sorts.Snap, Some(App(DomainFun(Identifier("$$"+func.name), Seq(), sorts.FUNCCONST), Seq())))
+              }()
               val tFApp = App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
               val fr5 =
                 s4.functionRecorder.changeDepthBy(-1)

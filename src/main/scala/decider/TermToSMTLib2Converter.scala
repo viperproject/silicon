@@ -12,6 +12,7 @@ import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silicon.state.terms._
+import viper.silicon.state.terms.sorts.FieldValueFunction
 
 class TermToSMTLib2Converter 
     extends FastPrettyPrinterBase
@@ -43,6 +44,7 @@ class TermToSMTLib2Converter
     case sorts.Perm => "$Perm"
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
+    case sorts.FUNCCONST => "FUNCCONST"
     case sorts.Map(keySort, valueSort) => text("Map") <> "<" <> doRender(keySort, true) <> "~_" <> doRender(valueSort, true) <> ">"
     case sorts.Seq(elementSort) => text("Seq<") <> doRender(elementSort, true) <> ">"
     case sorts.Set(elementSort) => text("Set<") <> doRender(elementSort, true) <> ">"
@@ -85,8 +87,11 @@ class TermToSMTLib2Converter
 //      val id = Identifier(sortWrapperName(from, to))
       val id = swd.id
       val fct = FunctionDecl(Fun(id, from, to))
+      if (swd.withFuncArg)
+        render(FunctionDecl(Fun(id, Seq(from, sorts.FUNCCONST), to)))
+      else
+        render(fct)
 
-      render(fct)
 
     case MacroDecl(id, args, body) =>
       val idDoc = render(id)
@@ -297,11 +302,14 @@ class TermToSMTLib2Converter
     case bop: Combine =>
       renderBinaryOp("$Snap.combine", bop)
 
-    case SortWrapper(t, to) =>
-      parens(text(render(SortWrapperId(t.sort, to))) <+> render(t))
+    case sw@SortWrapper(t, to) =>
+      parens(text(render(SortWrapperId(t.sort, to))) <+> render(t) <> (if (sw.fNameArg.isDefined) space <> render(sw.fNameArg.get) else nil))
+
+    case FvfMarker(t, fName) =>
+      parens(text("$FVF.marker_" + t.sort.asInstanceOf[FieldValueFunction].fieldName) <+> render(t) <+> text("$$" + fName))
 
     case Distinct(symbols) =>
-      parens(text("distinct") <+> ssep((symbols.toSeq map (s => render(s.id): Cont)).to(collection.immutable.Seq), space))
+      parens(text("distinct") <+> ssep((symbols.toSeq map (s => render(s): Cont)).to(collection.immutable.Seq), space))
 
     case Let(bindings, body) =>
       val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to(collection.immutable.Seq), space)

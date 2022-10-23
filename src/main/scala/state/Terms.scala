@@ -10,6 +10,7 @@ import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.state.terms.sorts.FieldValueFunction
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
@@ -35,6 +36,7 @@ object sorts {
   object Ref  extends Sort { val id = Identifier("Ref");  override lazy val toString = id.toString }
   object Perm extends Sort { val id = Identifier("Perm"); override lazy val toString = id.toString }
   object Unit extends Sort { val id = Identifier("()");   override lazy val toString = id.toString }
+  object FUNCCONST extends Sort { val id = Identifier("FUNCCONST"); override lazy val toString = id.toString }
 
   case class Seq(elementsSort: Sort) extends Sort {
     val id = Identifier(s"Seq[$elementsSort]")
@@ -103,6 +105,7 @@ case class FunctionDecl(func: Function) extends Decl {
 
 case class SortWrapperDecl(from: Sort, to: Sort) extends Decl {
   val id: Identifier = SortWrapperId(from, to)
+  var withFuncArg = false
 }
 
 case class MacroDecl(id: Identifier, args: Seq[Var], body: Term) extends Decl
@@ -2042,6 +2045,19 @@ object ResourcePermissionLookup {
   }
 }
 
+case class FvfMarker(val t: Term, val funcName: String)
+  extends Term
+    with StructuralEquality {
+
+  assert((t.sort.isInstanceOf[FieldValueFunction]),
+    s"TODO")
+
+  val equalityDefiningMembers = t :: Nil
+  //  override lazy val toString = s"SortWrapper($t, $to)"
+  override lazy val toString = t.toString
+  override val sort = sorts.Bool
+}
+
 /* TODO: remove
 case class PsfAfterRelation(predname: String, psf2: Term, psf1: Term) extends BooleanTerm {
   utils.assertSameSorts[sorts.PredicateSnapFunction](psf2, psf1)
@@ -2060,7 +2076,7 @@ object PsfTop extends (String => Identifier) {
 /* Note: Sort wrappers should probably not be used as (outermost) triggers
  * because they are optimised away if wrappee `t` already has sort `to`.
  */
-class SortWrapper(val t: Term, val to: Sort)
+class SortWrapper(val t: Term, val to: Sort, val fNameArg: Option[Term] = None)
     extends Term
        with StructuralEquality {
 
@@ -2085,15 +2101,15 @@ object SortWrapper {
 
 /* Other terms */
 
-class Distinct(val ts: Set[DomainFun]) extends BooleanTerm with StructuralEquality {
+class Distinct(val ts: Set[Term]) extends BooleanTerm with StructuralEquality {
   assert(ts.size >= 2, "Distinct requires at least two terms")
 
   val equalityDefiningMembers = ts :: Nil
   override lazy val toString = s"Distinct($ts)"
 }
 
-object Distinct extends (Set[DomainFun] => Term) {
-  def apply(ts: Set[DomainFun]): Term =
+object Distinct extends (Set[Term] => Term) {
+  def apply(ts: Set[Term]): Term =
     if (ts.size >= 2) new Distinct(ts)
     else True()
 

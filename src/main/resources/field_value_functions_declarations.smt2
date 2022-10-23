@@ -13,3 +13,5 @@
 (declare-fun $FVF.loc_$FLD$ ($S$ $Ref) Bool)
 (declare-fun $FVF.perm_$FLD$ ($FPM $Ref) $Perm)
 (declare-const $fvfTOP_$FLD$ $FVF<$FLD$>)
+(declare-fun $FVF.marker_$FLD$ ($FVF<$FLD$> FUNCCONST) Bool)
+

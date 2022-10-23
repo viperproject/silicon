@@ -14,6 +14,7 @@ import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.PredicateID
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.utils.consistency.makeSnapPredicateSpecific
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 
@@ -60,9 +61,13 @@ object predicateSupporter extends PredicateSupportRules {
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm)
     consume(s1, body, pve, v)((s1a, snap, v1) => {
-      val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
-                            snap.convert(terms.sorts.Snap) +: tArgs)
-      v1.decider.assume(predTrigger)
+      val fsnaps = makeSnapPredicateSpecific(snap.convert(terms.sorts.Snap), predicate, s.program)
+      for (fsnap <- fsnaps) {
+        val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
+          fsnap +: tArgs)
+        v1.decider.assume(predTrigger)
+      }
+
       val s2 = s1a.setConstrainable(constrainableWildcards, false)
       if (s2.qpPredicates.contains(predicate)) {
         val predSnap = snap.convert(s2.predicateSnapMap(predicate))
@@ -150,9 +155,13 @@ object predicateSupporter extends PredicateSupportRules {
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
-          val predicateTrigger =
-            App(s4.predicateData(predicate).triggerFunction, snap +: tArgs)
-          v2.decider.assume(predicateTrigger)
+          val snaps = makeSnapPredicateSpecific(snap, predicate, s.program)
+          for (fsnap <- snaps) {
+            val predicateTrigger =
+              App(s4.predicateData(predicate).triggerFunction, fsnap +: tArgs)
+            v2.decider.assume(predicateTrigger)
+          }
+
           val s5 = s4.copy(g = s.g,
                            permissionScalingFactor = s.permissionScalingFactor)
           Q(s5, v2)})})

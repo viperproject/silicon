@@ -13,7 +13,7 @@ import viper.silicon.toMap
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.{SymbolConverter, terms}
-import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Symbol, Term}
+import viper.silicon.state.terms.{App, Distinct, DomainFun, Sort, Symbol, Term}
 import viper.silver.ast.{NamedDomainAxiom, Program}
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
@@ -122,7 +122,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
   }
 
   def uniquenessAssumptionsAfterAnalysis: Iterable[Term] =
-    uniqueSymbols.map.values map Distinct
+    uniqueSymbols.map.values.map(v =>  Distinct(v.map(df => App(df, Seq()))))
 
   def emitUniquenessAssumptionsAfterAnalysis(sink: ProverLike): Unit = {
     uniquenessAssumptionsAfterAnalysis foreach (t => sink.assume(t))

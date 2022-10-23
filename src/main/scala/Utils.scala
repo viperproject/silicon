@@ -6,16 +6,21 @@
 
 package viper.silicon
 
+import viper.silicon.state.Identifier
+import viper.silicon.state.terms.sorts.FieldValueFunction
+
 import scala.annotation.implicitNotFound
-import scala.collection.immutable.ArraySeq
+import scala.collection.immutable.{ArraySeq, Seq}
 import viper.silver
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.{VerificationError, errors}
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silicon.state.terms.{Sort, Term, Var}
+import viper.silicon.state.terms.{App, DomainFun, Sort, SortWrapper, Term, Var, sorts}
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.utility.{Expressions, Functions}
+import viper.silver.ast.{AbstractLocalVar, FuncApp, Function, Predicate, PredicateAccess, Program, Unfolding}
 
 package object utils {
   def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort)
@@ -297,6 +302,48 @@ package object utils {
       val stackTrace = ArraySeq.unsafeWrapArray(new Throwable().getStackTrace)
 
       Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
+    }
+
+    def makeSnapFunctionSpecific(snap: Term, func: Function): Term = {
+      val snap1 = snap.transform {
+        case SortWrapper(t, sorts.Snap) if t.sort.isInstanceOf[FieldValueFunction] =>
+          new SortWrapper(t, sorts.Snap, Some(App(DomainFun(Identifier("$$" + func.name), Seq(), sorts.FUNCCONST), Seq())))
+      }()
+      snap1
+    }
+
+    def makeSnapPredicateSpecific(snap: Term, pred: Predicate, prog: Program): Seq[Term] = {
+      var results: Seq[Term] = Seq()
+      for (programFunction <- prog.functions){
+        val recursiveCallsAndUnfoldings: Seq[(FuncApp, Seq[Unfolding])] =
+          Functions.recursiveCallsAndSurroundingUnfoldings(programFunction)
+
+        val outerUnfoldings: Seq[Unfolding] =
+          recursiveCallsAndUnfoldings.flatMap(_._2.headOption)
+
+        // predicateAccesses initially contains all predicate instances unfolded by the function
+        var predicateAccesses: Seq[PredicateAccess] =
+          if (recursiveCallsAndUnfoldings.isEmpty)
+            Vector.empty
+          else
+            outerUnfoldings map (_.acc.loc)
+
+        // // Could add predicate instances from precondition as well, but currently not done (also not in Carbon)
+        // predicateAccesses ++=
+        //   programFunction.pres.flatMap(_.shallowCollect { case predAcc: ast.PredicateAccess => predAcc })
+
+        // Only keep predicate instances whose arguments do not contain free variables
+        predicateAccesses = {
+          val functionArguments: Seq[AbstractLocalVar] = programFunction.formalArgs.map(_.localVar)
+
+          predicateAccesses.filter(predAcc =>
+            predAcc.args.forall(arg => Expressions.freeVariablesExcluding(arg, functionArguments).isEmpty))
+        }
+        if (predicateAccesses.exists(p => p.predicateName == pred.name)){
+          results = results ++ Seq(makeSnapFunctionSpecific(snap, programFunction))
+        }
+      }
+      results
     }
   }
 }
