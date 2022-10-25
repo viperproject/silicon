@@ -109,7 +109,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val layeredStack = other.asInstanceOf[LayeredPathConditionStack]
       layeredStack.layers.reverse.foreach(l => {
         l.assumptions foreach prover.assume
-        prover.push()
+        prover.push(timeout = Verifier.config.pushTimeout.toOption)
       })
     }
 
@@ -180,7 +180,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       //val commentRecord = new CommentRecord("push", null, null)
       //val sepIdentifier = SymbExLogger.currentLog().openScope(commentRecord)
       pathConditions.pushScope()
-      _prover.push()
+      _prover.push(timeout = Verifier.config.pushTimeout.toOption)
       //SymbExLogger.currentLog().closeScope(sepIdentifier)
     }
 
