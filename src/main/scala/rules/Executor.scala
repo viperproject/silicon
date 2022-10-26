@@ -312,13 +312,18 @@ object executor extends ExecutionRules {
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            //val (smDef1, smCache1) =
-            //  quantifiedChunkSupporter.summarisingSnapshotMap(
-            //    s2, field, Seq(`?r`), relevantChunks, v1)
-            //v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
+            val s2p = if (!Verifier.config.disableHeapDependentTriggers()){
+              val (smDef1, smCache1) =
+                quantifiedChunkSupporter.summarisingSnapshotMap(
+                  s2, field, Seq(`?r`), relevantChunks, v1)
+              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
+              s2.copy(smCache = smCache1)
+            } else {
+              s2
+            }
             v2.decider.clearModel()
             val result = quantifiedChunkSupporter.removePermissions(
-              s2, //.copy(smCache = smCache1),
+              s2p,
               relevantChunks,
               Seq(`?r`),
               `?r` === tRcvr,
@@ -334,7 +339,8 @@ object executor extends ExecutionRules {
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 v1.decider.assume(smValueDef)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm, s.program)
-                //v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
+                if (!Verifier.config.disableHeapDependentTriggers())
+                  v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
               case (Incomplete(_), s3, _) =>
                 createFailure(pve dueTo InsufficientPermission(fa), v2, s3)}}))
@@ -510,14 +516,14 @@ object executor extends ExecutionRules {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
 
-            val smCache1 = if (s2.qpPredicates.contains(predicate)) {
-              //val (relevantChunks, _) =
-              //  quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s2.h, BasicChunkIdentifier(predicateName))
-              //val (smDef1, smCache1) =
-              //  quantifiedChunkSupporter.summarisingSnapshotMap(
-              //    s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
-              //v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
-              s2.smCache
+            val smCache1 = if (s2.qpPredicates.contains(predicate) && !Verifier.config.disableHeapDependentTriggers()) {
+              val (relevantChunks, _) =
+                quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s2.h, BasicChunkIdentifier(predicateName))
+              val (smDef1, smCache1) =
+                quantifiedChunkSupporter.summarisingSnapshotMap(
+                  s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
+              v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
+              smCache1
             } else {
               s2.smCache
             }
@@ -555,16 +561,16 @@ object executor extends ExecutionRules {
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 
             val smCache3 = chWand match {
-              case ch: QuantifiedMagicWandChunk =>
-                //val (relevantChunks, _) =
-                //  quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
-                //val bodyVars = wand.subexpressionsToEvaluate(s.program)
-                //val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
-                //val (smDef, smCache) =
-                //  quantifiedChunkSupporter.summarisingSnapshotMap(
-                //    s2, wand, formalVars, relevantChunks, v1)
-                //v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get))
-                s2.smCache
+              case ch: QuantifiedMagicWandChunk if !Verifier.config.disableHeapDependentTriggers() =>
+                val (relevantChunks, _) =
+                  quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
+                val bodyVars = wand.subexpressionsToEvaluate(s.program)
+                val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
+                val (smDef, smCache) =
+                  quantifiedChunkSupporter.summarisingSnapshotMap(
+                    s2, wand, formalVars, relevantChunks, v1)
+                v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get))
+                smCache
               case _ => s2.smCache
             }
 

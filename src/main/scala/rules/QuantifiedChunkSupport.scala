@@ -435,16 +435,19 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           isGlobal = true)
       })
 
-    /*
-    val resourceTriggerDefinition =
-      Forall(
-        codomainQVar,
-        And(relevantChunks map (chunk => FieldTrigger(field.name, chunk.snapshotMap, codomainQVar))),
-        Trigger(Lookup(field.name, sm, codomainQVar)),
-        s"qp.fvfResTrgDef${v.counter(this).next()}",
-        isGlobal = true)
+    val resourceAndValueDefinitions = if (!Verifier.config.disableHeapDependentTriggers()){
+      val resourceTriggerDefinition =
+        Forall(
+          codomainQVar,
+          And(relevantChunks map (chunk => FieldTrigger(field.name, chunk.snapshotMap, codomainQVar))),
+          Trigger(Lookup(field.name, sm, codomainQVar)),
+          s"qp.fvfResTrgDef${v.counter(this).next()}",
+          isGlobal = true)
+      valueDefinitions :+ resourceTriggerDefinition
+    } else {
+      valueDefinitions
+    }
 
-     */
 
     val optDomainDefinition =
       optSmDomainDefinitionCondition.map(condition =>
@@ -457,7 +460,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           s"qp.fvfDomDef${v.counter(this).next()}",
           isGlobal = true))
 
-    (sm, valueDefinitions /*:+ resourceTriggerDefinition*/, optDomainDefinition)
+    (sm, resourceAndValueDefinitions, optDomainDefinition)
   }
 
   private def summarise_predicate_or_wand(s: State,
@@ -518,16 +521,18 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           isGlobal = true)
       })
 
-    /*
-    val resourceTriggerDefinition =
-      Forall(
-        qvar,
-        And(relevantChunks map (chunk => ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program))),
-        Trigger(ResourceLookup(resource, sm, Seq(qvar), s.program)),
-        s"qp.psmResTrgDef${v.counter(this).next()}",
-        isGlobal = true)
-
-     */
+    val resourceAndValueDefinitions = if (!Verifier.config.disableHeapDependentTriggers()){
+      val resourceTriggerDefinition =
+        Forall(
+          qvar,
+          And(relevantChunks map (chunk => ResourceTriggerFunction(resource, chunk.snapshotMap, Seq(qvar), s.program))),
+          Trigger(ResourceLookup(resource, sm, Seq(qvar), s.program)),
+          s"qp.psmResTrgDef${v.counter(this).next()}",
+          isGlobal = true)
+      valueDefinitions :+ resourceTriggerDefinition
+    } else {
+      valueDefinitions
+    }
 
     val optDomainDefinition =
       transformedOptSmDomainDefinitionCondition.map(condition =>
@@ -541,7 +546,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           isGlobal = true
         ))
 
-    (sm, valueDefinitions /*:+ resourceTriggerDefinition*/, optDomainDefinition)
+    (sm, resourceAndValueDefinitions, optDomainDefinition)
   }
 
   private def summarisePerm(s: State,
@@ -564,7 +569,27 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s"qp.resPrmSumDef${v.counter(this).next()}",
         isGlobal = true)
 
-    (pm, Seq(valueDefinitions /*, resourceTriggerDefinition*/))
+    val resourceAndValueDefinitions = if (!Verifier.config.disableHeapDependentTriggers()){
+      val resourceTriggerFunction = ResourceTriggerFunction(resource, smDef.sm, codomainQVars, s.program)
+
+      // TODO: Quantify over snapshot if resource is predicate.
+      //       Also check other places where a similar quantifier is constructed.
+      val resourceTriggerDefinition =
+      Forall(
+        codomainQVars,
+        And(resourceTriggerFunction +:
+          relevantChunks.map(chunk =>
+            ResourceTriggerFunction(resource, chunk.snapshotMap, codomainQVars, s.program))),
+        Trigger(ResourcePermissionLookup(resource, pm, codomainQVars, s.program)),
+        s"qp.resTrgDef${v.counter(this).next()}",
+        isGlobal = true)
+
+      Seq(valueDefinitions, resourceTriggerDefinition)
+    } else {
+      Seq(valueDefinitions)
+    }
+
+    (pm, resourceAndValueDefinitions)
   }
 
   def summarisingPermissionMap(s: State,
@@ -705,13 +730,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     (s2, smDef, pmDef)
   }
 
+  /*
+   * Like heapSummarisingMaps, but does not define any snapshot maps.
+   */
   def permSummarisingMaps(s: State,
                           resource: ast.Resource,
                           codomainQVars: Seq[Var],
                           relevantChunks: Seq[QuantifiedBasicChunk],
-                          v: Verifier,
-                          optSmDomainDefinitionCondition: Option[Term] = None,
-                          optQVarsInstantiations: Option[Seq[Term]] = None)
+                          v: Verifier)
   : (State, PermMapDefinition) = {
 
     val s1 = s
@@ -861,30 +887,37 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               )
             })
 
-            // TODO: Why not formalQVars? Used as codomainVars, see above.
-            val codomainVars =
-              resource match {
-                case _: ast.Field => Seq(`?r`)
-                case p: ast.Predicate => s.predicateFormalVarMap(p)
-                case w: ast.MagicWand =>
-                  val bodyVars = w.subexpressionsToEvaluate(s.program)
-                  bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-              }
             val h1 = s.h + ch
-            //val (relevantChunks, _) =
-            //  quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, ch.id)
-            //val (smDef1, smCache1) =
-            //  quantifiedChunkSupporter.summarisingSnapshotMap(
-            //    s, resource, codomainVars, relevantChunks, v)
-            //val trigger = ResourceTriggerFunction(resource, smDef1.sm, codomainVars, s.program)
-            //val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
-            //val condOfInv = tCond.replace(qvarsToInv)
-            //v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars)))) //effectiveTriggers map (t => Trigger(t.p map (_.replace(qvarsToInv))))))
+
+            val smCache1 = if (!Verifier.config.disableHeapDependentTriggers()){
+              // TODO: Why not formalQVars? Used as codomainVars, see above.
+              val codomainVars =
+                resource match {
+                  case _: ast.Field => Seq(`?r`)
+                  case p: ast.Predicate => s.predicateFormalVarMap(p)
+                  case w: ast.MagicWand =>
+                    val bodyVars = w.subexpressionsToEvaluate(s.program)
+                    bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+                }
+
+              val (relevantChunks, _) =
+                quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, ch.id)
+              val (smDef1, smCache1) =
+                quantifiedChunkSupporter.summarisingSnapshotMap(
+                  s, resource, codomainVars, relevantChunks, v)
+              val trigger = ResourceTriggerFunction(resource, smDef1.sm, codomainVars, s.program)
+              val qvarsToInv = inv.qvarsToInversesOf(codomainVars)
+              val condOfInv = tCond.replace(qvarsToInv)
+              v.decider.assume(Forall(codomainVars, Implies(condOfInv, trigger), Trigger(inv.inversesOf(codomainVars)))) //effectiveTriggers map (t => Trigger(t.p map (_.replace(qvarsToInv))))))
+              smCache1
+            } else {
+              s.smCache
+            }
             val s1 =
               s.copy(h = h1,
                      functionRecorder = s.functionRecorder.recordFieldInv(inv),
-                     conservedPcs = conservedPcs)
-                     //smCache = smCache1)
+                     conservedPcs = conservedPcs,
+                     smCache = smCache1)
             Q(s1, v)
           case false =>
             createFailure(pve dueTo notInjectiveReason, v, s)}
@@ -918,18 +951,24 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties)
     v.decider.assume(pcs)
 
-    //val (relevantChunks, _) =
-    //  quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h1, ch.id )
-    //val (smDef1, smCache1) =
-    //  quantifiedChunkSupporter.summarisingSnapshotMap(
-    //    s, resource, formalQVars, relevantChunks, v)
-    //v.decider.assume(resourceTriggerFactory(smDef1.sm))
+    val smCache1 = if (!Verifier.config.disableHeapDependentTriggers()){
+      val (relevantChunks, _) =
+        quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h1, ch.id )
+      val (smDef1, smCache1) =
+        quantifiedChunkSupporter.summarisingSnapshotMap(
+          s, resource, formalQVars, relevantChunks, v)
+      v.decider.assume(resourceTriggerFactory(smDef1.sm))
+      smCache1
+    } else {
+      s.smCache
+    }
+
 
     val smDef2 = SnapshotMapDefinition(resource, sm, Seq(smValueDef), Seq())
     val s1 = s.copy(h = h1,
                     conservedPcs = conservedPcs,
-                    functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef2))
-                    //smCache = smCache1)
+                    functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef2),
+                    smCache = smCache1)
     Q(s1, v)
   }
 
@@ -1002,15 +1041,20 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
             h, ChunkIdentifier(resource, s.program))
-        //val (smDef1, smCache1) =
-        //  quantifiedChunkSupporter.summarisingSnapshotMap(
-        //    s, resource, formalQVars, relevantChunks, v)
+        val (newCond, smCache1, smDef1) = if (!Verifier.config.disableHeapDependentTriggers()) {
+          val (smDef1, smCache1) =
+            quantifiedChunkSupporter.summarisingSnapshotMap(
+              s, resource, formalQVars, relevantChunks, v)
+          (And(tCond, ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)), smCache1, Some(smDef1))
+        } else {
+          (tCond, s.smCache, None)
+        }
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
         val receiverInjectivityCheck =
           quantifiedChunkSupporter.injectivityAxiom(
             qvars     = qvars,
-            condition = tCond, // And(tCond, ResourceTriggerFunction(resource, smDef1.sm, tArgs, s.program)),
+            condition = newCond,
             perms     = tPerm,
             arguments = tArgs,
             triggers  = Nil,
@@ -1025,19 +1069,20 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment("Definitional axioms for inverse functions")
             v.decider.assume(inverseFunctions.definitionalAxioms)
 
-            /*
-            v.decider.assume(
-              Forall(
-                formalQVars,
-                Implies(condOfInvOfLoc, ResourceTriggerFunction(resource, smDef1.sm, formalQVars, s.program)),
-                Trigger(inverseFunctions.inversesOf(formalQVars))))
+            if (!Verifier.config.disableHeapDependentTriggers()){
+              v.decider.assume(
+                Forall(
+                  formalQVars,
+                  Implies(condOfInvOfLoc, ResourceTriggerFunction(resource, smDef1.get.sm, formalQVars, s.program)),
+                  Trigger(inverseFunctions.inversesOf(formalQVars))))
+            }
 
-             */
+
 
             /* TODO: Try to unify the upcoming if/else-block, their code is rather similar */
             if (s.exhaleExt) {
               magicWandSupporter.transfer[QuantifiedBasicChunk](
-                                          s, //.copy(smCache = smCache1),
+                                          s.copy(smCache = smCache1),
                                           lossOfInvOfLoc,
                                           createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s),
                                           v)((s2, heap, rPerm, v2) => {
@@ -1092,7 +1137,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               v.decider.clearModel()
               val permissionRemovalResult =
                 quantifiedChunkSupporter.removePermissions(
-                  s, //.copy(smCache = smCache1),
+                  s.copy(smCache = smCache1),
                   relevantChunks,
                   formalQVars,
                   condOfInvOfLoc,
