@@ -606,13 +606,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val disableHeapDependentTriggers: ScallopOption[Boolean] = opt[Boolean]("disableHeapDependentTriggers",
-    descr = ("Disable emitting heap-dependent triggers (and the snapshot maps required for them. " +
-      "Typically improves performance at the cost of expressiveness for triggers."),
-    default = Some(false),
-    noshort = true
-  )
-
   val disableCaches: ScallopOption[Boolean] = opt[Boolean]("disableCaches",
     descr = "Disables various caches in Silicon's state.",
     default = Some(false),

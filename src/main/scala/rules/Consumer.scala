@@ -320,7 +320,7 @@ object consumer extends ConsumptionRules {
 
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            val s2p = if (!Verifier.config.disableHeapDependentTriggers()){
+            val s2p = if (s2.useHeapDependentTriggers){
               val (relevantChunks, _) =
                 quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
               val (smDef1, smCache1) =
@@ -356,7 +356,7 @@ object consumer extends ConsumptionRules {
 
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            val s2p = if (!Verifier.config.disableHeapDependentTriggers()){
+            val s2p = if (s2.useHeapDependentTriggers){
               val (relevantChunks, _) =
                 quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(predname))
               val (smDef1, smCache1) =
@@ -411,7 +411,7 @@ object consumer extends ConsumptionRules {
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
 
         evals(s, bodyVars, _ => pve, v)((s1, tArgs, v1) => {
-          val s1p = if (!Verifier.config.disableHeapDependentTriggers()){
+          val s1p = if (s1.useHeapDependentTriggers){
             val (relevantChunks, _) =
               quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s1.h, MagicWandIdentifier(wand, s.program))
             val (smDef1, smCache1) =

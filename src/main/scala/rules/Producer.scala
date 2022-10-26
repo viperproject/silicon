@@ -278,8 +278,7 @@ object producer extends ProductionRules {
                 val snap1 = snap.convert(sorts.Snap)
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
                 chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
-                  if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
-                    && !Verifier.config.disableHeapDependentTriggers()) {
+                  if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder) {
                     v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs))
                   }
                   Q(s3.copy(h = h3), v3)})
@@ -300,7 +299,7 @@ object producer extends ProductionRules {
           val ch =
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm, s.program)
           val h2 = s1.h + ch
-          val smCache1 = if(!Verifier.config.disableHeapDependentTriggers()){
+          val smCache1 = if(s1.useHeapDependentTriggers){
             val (relevantChunks, _) =
               quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h2, ch.id)
             val (smDef1, smCache1) =

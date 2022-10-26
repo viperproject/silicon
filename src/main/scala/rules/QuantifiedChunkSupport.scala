@@ -435,7 +435,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           isGlobal = true)
       })
 
-    val resourceAndValueDefinitions = if (!Verifier.config.disableHeapDependentTriggers()){
+    val resourceAndValueDefinitions = if (s.useHeapDependentTriggers){
       val resourceTriggerDefinition =
         Forall(
           codomainQVar,
@@ -521,7 +521,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           isGlobal = true)
       })
 
-    val resourceAndValueDefinitions = if (!Verifier.config.disableHeapDependentTriggers()){
+    val resourceAndValueDefinitions = if (s.useHeapDependentTriggers){
       val resourceTriggerDefinition =
         Forall(
           qvar,
@@ -569,7 +569,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         s"qp.resPrmSumDef${v.counter(this).next()}",
         isGlobal = true)
 
-    val resourceAndValueDefinitions = if (!Verifier.config.disableHeapDependentTriggers()){
+    val resourceAndValueDefinitions = if (s.useHeapDependentTriggers){
       val resourceTriggerFunction = ResourceTriggerFunction(resource, smDef.sm, codomainQVars, s.program)
 
       // TODO: Quantify over snapshot if resource is predicate.
@@ -889,7 +889,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
             val h1 = s.h + ch
 
-            val smCache1 = if (!Verifier.config.disableHeapDependentTriggers()){
+            val smCache1 = if (s.useHeapDependentTriggers){
               // TODO: Why not formalQVars? Used as codomainVars, see above.
               val codomainVars =
                 resource match {
@@ -951,7 +951,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val pcs = interpreter.buildPathConditionsForChunk(ch, resourceDescription.instanceProperties)
     v.decider.assume(pcs)
 
-    val smCache1 = if (!Verifier.config.disableHeapDependentTriggers()){
+    val smCache1 = if (s.useHeapDependentTriggers){
       val (relevantChunks, _) =
         quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h1, ch.id )
       val (smDef1, smCache1) =
@@ -1041,7 +1041,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
             h, ChunkIdentifier(resource, s.program))
-        val (newCond, smCache1, smDef1) = if (!Verifier.config.disableHeapDependentTriggers()) {
+        val (newCond, smCache1, smDef1) = if (s.useHeapDependentTriggers) {
           val (smDef1, smCache1) =
             quantifiedChunkSupporter.summarisingSnapshotMap(
               s, resource, formalQVars, relevantChunks, v)
@@ -1069,7 +1069,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             v.decider.prover.comment("Definitional axioms for inverse functions")
             v.decider.assume(inverseFunctions.definitionalAxioms)
 
-            if (!Verifier.config.disableHeapDependentTriggers()){
+            if (s.useHeapDependentTriggers){
               v.decider.assume(
                 Forall(
                   formalQVars,
