@@ -66,7 +66,8 @@ final case class State(g: Store = Store(),
                        predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
                        isMethodVerification: Boolean = false,
                        retryLevel: Int = 0,
-                       useHeapDependentTriggers: Boolean = true)
+                       /* ast.Field, ast.Predicate, or MagicWandIdentifier */
+                       heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =

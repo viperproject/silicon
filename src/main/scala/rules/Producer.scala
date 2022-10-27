@@ -299,7 +299,7 @@ object producer extends ProductionRules {
           val ch =
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm, s.program)
           val h2 = s1.h + ch
-          val smCache1 = if(s1.useHeapDependentTriggers){
+          val smCache1 = if(s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))){
             val (relevantChunks, _) =
               quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h2, ch.id)
             val (smDef1, smCache1) =

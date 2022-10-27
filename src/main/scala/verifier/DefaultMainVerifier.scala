@@ -146,8 +146,6 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
   /* Program verification */
 
   def verify(originalProgram: ast.Program, cfgs: Seq[SilverCfg], inputFile: Option[String]): List[VerificationResult] = {
-    var useHeapDependentTriggers = false
-
     /** Trigger computation is currently not thread-safe; hence, all triggers are computed
       * up-front, before the program is verified in parallel.
       * This is done bottom-up to ensure that nested quantifiers are transformed as well
@@ -156,30 +154,16 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
       */
     var program: ast.Program =
       originalProgram.transform({
-        case forall: ast.Forall => {
-          val res = if (forall.isPure){
-            val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
-            if (res.triggers.isEmpty)
-              reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
-            res
-          } else {
-            forall
-          }
-          if (res.triggers.exists(t => t.exps.exists(e => e.isInstanceOf[ast.FieldAccess] ||
-            e.isInstanceOf[ast.PredicateAccess] || e.isInstanceOf[ast.MagicWand])))
-            useHeapDependentTriggers = true
+        case forall: ast.Forall if forall.isPure =>
+          val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
+          if (res.triggers.isEmpty)
+            reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
           res
-        }
         case exists: ast.Exists =>
-        {
           val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
-          if (res.triggers.exists(t => t.exps.exists(e => e.isInstanceOf[ast.FieldAccess] ||
-            e.isInstanceOf[ast.PredicateAccess] || e.isInstanceOf[ast.MagicWand])))
-            useHeapDependentTriggers = true
           res
-        }
       }, Traverse.BottomUp)
 
     // TODO: Autotrigger for cfgs.
@@ -221,7 +205,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
-      val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData, useHeapDependentTriggers), function)
+      val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -230,7 +214,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
 
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
-      val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData, useHeapDependentTriggers), predicate)
+      val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -253,7 +237,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
 
-        val s = createInitialState(method, program, functionData, predicateData, useHeapDependentTriggers).copy(parallelizeBranches =
+        val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
           Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
 
         _verificationPoolManager.queueVerificationTask(v => {
@@ -298,11 +282,14 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
   private def createInitialState(member: ast.Member,
                                  program: ast.Program,
                                  functionData: Map[ast.Function, FunctionData],
-                                 predicateData: Map[ast.Predicate, PredicateData],
-                                 useHeapDependentTriggers: Boolean): State = {
+                                 predicateData: Map[ast.Predicate, PredicateData]): State = {
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
+    val resourceTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map{
+      case wand: ast.MagicWand => MagicWandIdentifier(wand, program)
+      case r => r
+    }
 
     State(program = program,
           functionData = functionData,
@@ -313,7 +300,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
           isMethodVerification = member.isInstanceOf[ast.Member],
-          useHeapDependentTriggers = useHeapDependentTriggers)
+          heapDependentTriggers = resourceTriggers)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,

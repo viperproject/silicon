@@ -202,7 +202,7 @@ object evaluator extends EvaluationRules {
                * which is protected by a trigger term that we currently don't have.
                */
               v1.decider.assume(fvfDef.valueDefinitions)
-              if (s1.useHeapDependentTriggers){
+              if (s1.heapDependentTriggers.contains(fa.field)){
                 val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
                 v1.decider.assume(trigger)
               }
@@ -218,7 +218,7 @@ object evaluator extends EvaluationRules {
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
-                    val possTriggers = if (s1.useHeapDependentTriggers && s1.recordPossibleTriggers)
+                    val possTriggers = if (s1.heapDependentTriggers.contains(fa.field) && s1.recordPossibleTriggers)
                       s1.possibleTriggers + (fa -> FieldTrigger(fa.field.name, fvfDef.sm, tRcvr))
                     else
                       s1.possibleTriggers
@@ -235,7 +235,7 @@ object evaluator extends EvaluationRules {
                   optSmDomainDefinitionCondition =  None,
                   optQVarsInstantiations = None,
                   v = v1)
-              if (s1.useHeapDependentTriggers){
+              if (s1.heapDependentTriggers.contains(fa.field)){
                 val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
                 v1.decider.assume(trigger)
               }
@@ -451,7 +451,7 @@ object evaluator extends EvaluationRules {
                     quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, identifier)
                   val bodyVars = wand.subexpressionsToEvaluate(s.program)
                   val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
-                  val (s2, pmDef) = if (s1.useHeapDependentTriggers) {
+                  val (s2, pmDef) = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))) {
                     val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
                     v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args))
                     (s2, pmDef)
@@ -467,7 +467,7 @@ object evaluator extends EvaluationRules {
                 case field: ast.Field =>
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, identifier)
-                  val (s2, pmDef) = if (s1.useHeapDependentTriggers) {
+                  val (s2, pmDef) = if (s1.heapDependentTriggers.contains(field)) {
                     val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
                     v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head))
                     (s2, pmDef)
@@ -489,7 +489,7 @@ object evaluator extends EvaluationRules {
                   val (s2, smDef, pmDef) =
                     quantifiedChunkSupporter.heapSummarisingMaps(
                       s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
-                  if (s2.useHeapDependentTriggers){
+                  if (s2.heapDependentTriggers.contains(predicate)){
                     val trigger = PredicateTrigger(predicate.name, smDef.sm, args)
                     v1.decider.assume(trigger)
                   }
@@ -1351,15 +1351,15 @@ object evaluator extends EvaluationRules {
     var triggerAxioms: Seq[Term] = Seq()
 
     exps foreach {
-      case fa: ast.FieldAccess if s.useHeapDependentTriggers =>
+      case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) =>
         val (axioms, trigs, _) = generateFieldTrigger(fa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
-      case pa: ast.PredicateAccess if s.useHeapDependentTriggers =>
+      case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) =>
         val (axioms, trigs, _) = generatePredicateTrigger(pa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
-      case wand: ast.MagicWand if s.useHeapDependentTriggers =>
+      case wand: ast.MagicWand if s.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program)) =>
         val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
@@ -1368,8 +1368,7 @@ object evaluator extends EvaluationRules {
         Success()
       })
     }
-    if (s.useHeapDependentTriggers)
-      v.decider.assume(triggerAxioms)
+    v.decider.assume(triggerAxioms)
     Q(s, triggers, v)
   }
 

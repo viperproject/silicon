@@ -76,7 +76,7 @@ object predicateSupporter extends PredicateSupportRules {
             formalArgs, predicate, tArgs, tPerm, sm, s.program)
         val h3 = s2.h + ch
         val smDef = SnapshotMapDefinition(predicate, sm, Seq(smValueDef), Seq())
-        val smCache = if (s2.useHeapDependentTriggers) {
+        val smCache = if (s2.heapDependentTriggers.contains(predicate)) {
           val (relevantChunks, _) =
             quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](h3, BasicChunkIdentifier(predicate.name))
           val (smDef1, smCache1) =
