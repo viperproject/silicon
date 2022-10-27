@@ -27,7 +27,7 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
-import viper.silver.ast.{BackendType, FieldAccess, Member, PredicateAccess}
+import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, WarningsDuringTypechecking}
@@ -165,7 +165,8 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
           } else {
             forall
           }
-          if (res.triggers.exists(t => t.exps.exists(e => e.isInstanceOf[FieldAccess] || e.isInstanceOf[PredicateAccess])))
+          if (res.triggers.exists(t => t.exps.exists(e => e.isInstanceOf[ast.FieldAccess] ||
+            e.isInstanceOf[ast.PredicateAccess] || e.isInstanceOf[ast.MagicWand])))
             useHeapDependentTriggers = true
           res
         }
@@ -174,7 +175,8 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
           val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
-          if (res.triggers.exists(t => t.exps.exists(e => e.isInstanceOf[FieldAccess] || e.isInstanceOf[PredicateAccess])))
+          if (res.triggers.exists(t => t.exps.exists(e => e.isInstanceOf[ast.FieldAccess] ||
+            e.isInstanceOf[ast.PredicateAccess] || e.isInstanceOf[ast.MagicWand])))
             useHeapDependentTriggers = true
           res
         }
