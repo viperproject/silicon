@@ -1,7 +1,0 @@
-field f: Int
-
-method foo(x: Ref, b1: Bool, b2: Bool, b3: Bool)
-{
-    // Parser should be okay with this
-    quasihavoc (b1 ==> b2 ==> b3) ==> x.f
-}
