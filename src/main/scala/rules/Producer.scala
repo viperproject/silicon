@@ -278,7 +278,8 @@ object producer extends ProductionRules {
                 val snap1 = snap.convert(sorts.Snap)
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
                 chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
-                  if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder) {
+                  if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
+                    && !Verifier.config.disableFunctionUnfoldTrigger()) {
                     v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs))
                   }
                   Q(s3.copy(h = h3), v3)})
