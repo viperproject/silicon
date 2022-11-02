@@ -793,7 +793,8 @@ object evaluator extends EvaluationRules {
                          * to the function arguments and the predicate snapshot
                          * (see 'predicateTriggers' in FunctionData.scala).
                          */
-                      v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
+                      if (!Verifier.config.disableFunctionUnfoldTrigger())
+                        v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
