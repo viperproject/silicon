@@ -1349,12 +1349,14 @@ object evaluator extends EvaluationRules {
                              (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
     var triggers: Seq[Term] = Seq()
     var triggerAxioms: Seq[Term] = Seq()
+    var smDefs: Seq[SnapshotMapDefinition] = Seq()
 
     exps foreach {
       case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) =>
-        val (axioms, trigs, _) = generateFieldTrigger(fa, s, pve, v)
+        val (axioms, trigs, _, smDef) = generateFieldTrigger(fa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
+        smDefs = smDefs ++ smDef
       case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) =>
         val (axioms, trigs, _) = generatePredicateTrigger(pa, s, pve, v)
         triggers = triggers ++ trigs
@@ -1369,14 +1371,18 @@ object evaluator extends EvaluationRules {
       })
     }
     v.decider.assume(triggerAxioms)
-    Q(s, triggers, v)
+    var fr = s.functionRecorder
+    for (smDef <- smDefs){
+      fr = fr.recordFvfAndDomain(smDef)
+    }
+    Q(s.copy(functionRecorder = fr), triggers, v)
   }
 
   private def generateFieldTrigger(fa: ast.FieldAccess,
                                    s: State,
                                    pve: PartialVerificationError,
                                    v: Verifier)
-                                  : (Seq[Term], Seq[Term], FieldTrigger) = {
+                                  : (Seq[Term], Seq[Term], FieldTrigger, Seq[SnapshotMapDefinition]) = {
 
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
@@ -1391,6 +1397,7 @@ object evaluator extends EvaluationRules {
       quantifiedChunkSupporter.summarisingSnapshotMap(
         s, fa.field, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
 
+    var smRes = Seq(smDef1)
     /* TODO: Reduce code duplication below */
     /* TODO: Return updated snapshot caches (or let generateFieldTrigger take a continuation) */
 
@@ -1404,6 +1411,7 @@ object evaluator extends EvaluationRules {
         axioms = axioms ++ smDef1.valueDefinitions ++ rcvHelper._1
         mostRecentTrig = FieldTrigger(fa.field.name, smDef1.sm, Lookup(rcvTrig.field, rcvTrig.fvf, rcvTrig.at))
         triggers = triggers ++ rcvHelper._2 :+ mostRecentTrig
+        smRes = smRes ++ rcvHelper._4
       case rcv =>
         val s1 = s.copy(smCache = smCache1)
         val t = s1.possibleTriggers.get(fa)
@@ -1432,7 +1440,7 @@ object evaluator extends EvaluationRules {
         }
     }
 
-    (axioms, triggers, mostRecentTrig)
+    (axioms, triggers, mostRecentTrig, smRes)
   }
 
   /* TODO: Try to unify with generateFieldTrigger above, or at least with generateWandTrigger below */
