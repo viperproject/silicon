@@ -6,7 +6,6 @@
 
 package viper.silicon.rules
 
-import scala.annotation.unused
 import scala.collection.immutable.ArraySeq
 import scala.reflect.ClassTag
 import viper.silver.ast

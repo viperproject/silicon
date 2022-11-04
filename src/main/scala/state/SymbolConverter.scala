@@ -8,7 +8,6 @@ package viper.silicon.state
 
 import viper.silver.ast
 import viper.silicon.state.terms.{Sort, sorts}
-import viper.silicon.verifier.Verifier
 
 trait SymbolConverter {
   def toSort(typ: ast.Type): Sort
