@@ -258,7 +258,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
             if (chunk.singletonRcvr.isDefined){
               v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm()))
             } else {
-              val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.quantifiedVars))
+              val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))
               val triggers = chunkReceivers.map(r => Trigger(r)).toSeq
               val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
               v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
