@@ -6,7 +6,6 @@
 
 package viper.silicon
 
-import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
 

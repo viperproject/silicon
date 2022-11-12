@@ -194,7 +194,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val assertTimeout: ScallopOption[Int] = opt[Int]("assertTimeout",
-    descr = ("Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout)."
+    descr = ("Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout). "
             + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
     default = None,
     noshort = true
@@ -206,7 +206,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + "check doesn't, at least not directly. However, failing checks might result in "
              + "performance degradation, e.g. when a dead program path is nevertheless explored, "
              + "and indirectly in verification failures due to incompletenesses, e.g. when "
-             + "the held permission amount is too coarsely underapproximated (default: 10)."
+             + "the held permission amount is too coarsely underapproximated (default: 10). "
              + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
     default = Some(10),
     noshort = true
@@ -219,6 +219,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              +  "either be disabled (weights or base timeout of 0) or forced with no timeout "
              + "(positive weight and base timeout)."),
     default = Some(100),
+    noshort = true
+  )
+
+  val pushTimeout: ScallopOption[Int] = opt[Int]("pushTimeout",
+    descr = (  "Timeout (in ms) per push operation in the SMT solver. (default: 0, i.e. no timeout). "
+             + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
+    default = Some(0),
     noshort = true
   )
 
@@ -601,6 +608,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val disableCaches: ScallopOption[Boolean] = opt[Boolean]("disableCaches",
     descr = "Disables various caches in Silicon's state.",
+    default = Some(false),
+    noshort = true
+  )
+
+  val disableFunctionUnfoldTrigger: ScallopOption[Boolean] = opt[Boolean]("disableFunctionUnfoldTrigger",
+    descr = "Disables automatic triggering of function definitions when unfolding predicates they depend on.",
     default = Some(false),
     noshort = true
   )

@@ -231,7 +231,7 @@ class TermToZ3APIConverter
 
       case fapp: Application[_] =>
         fapp.applicable match {
-          case _: SMTFun => createSMTApp(convertId(fapp.applicable.id, false), fapp.args, fapp.sort)
+          case _: SMTFun => createSMTApp(convertId(fapp.applicable.id, false), fapp.args)
           case _ => {
             if (macros.contains(fapp.applicable.id.name)) {
               val (vars, body) = macros(fapp.applicable.id.name)
@@ -459,7 +459,7 @@ class TermToZ3APIConverter
 
 
   @inline
-  protected def createSMTApp(functionName: String, args: Seq[Term], outSort: Sort): Z3Expr = {
+  protected def createSMTApp(functionName: String, args: Seq[Term]): Z3Expr = {
     // workaround: since we cannot create a function application with just the name, we let Z3 parse
     // a string that uses the function, take the AST, and get the func decl from there, so that we can
     // programmatically create a func app.

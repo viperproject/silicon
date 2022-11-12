@@ -65,7 +65,9 @@ final case class State(g: Store = Store(),
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
                        predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
                        isMethodVerification: Boolean = false,
-                       retryLevel: Int = 0)
+                       retryLevel: Int = 0,
+                       /* ast.Field, ast.Predicate, or MagicWandIdentifier */
+                       heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =
@@ -145,7 +147,7 @@ object State {
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
-                 predicateSnapMap1, predicateFormalVarMap1, hack, retryLevel) =>
+                 predicateSnapMap1, predicateFormalVarMap1, hack, retryLevel, useHeapTriggers) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -169,7 +171,7 @@ object State {
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
-                     `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `retryLevel`) =>
+                     `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `retryLevel`, `useHeapTriggers`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
