@@ -612,6 +612,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableFunctionUnfoldTrigger: ScallopOption[Boolean] = opt[Boolean]("disableFunctionUnfoldTrigger",
+    descr = "Disables automatic triggering of function definitions when unfolding predicates they depend on.",
+    default = Some(false),
+    noshort = true
+  )
+
   def mapCache[A](opt: Option[A]): Option[A] = opt match {
     case Some(_) if disableCaches() => None
     case _ => opt

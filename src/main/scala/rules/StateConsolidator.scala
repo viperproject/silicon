@@ -19,6 +19,7 @@ import viper.silicon.state.terms.perms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.functions.FunctionRecorder
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
 
 trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State
@@ -239,11 +240,34 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         val field = s.program.findField(fieldName)
         val (sn, smDef, pmDef) =
           quantifiedChunkSupporter.heapSummarisingMaps(si, field, args, fieldChunks, v)
-        val trigger = FieldTrigger(field.name, smDef.sm, receiver)
-        val currentPermAmount = PermLookup(field.name, pmDef.pm, receiver)
-        v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
-        v.decider.assume(
-          Forall(receiver, PermAtMost(currentPermAmount, FullPerm()), Trigger(trigger), "qp-fld-prm-bnd"))
+
+        if (sn.heapDependentTriggers.exists(r => r.isInstanceOf[ast.Field] && r.asInstanceOf[ast.Field].name == fieldName)) {
+          val trigger = FieldTrigger(field.name, smDef.sm, receiver)
+          val currentPermAmount = PermLookup(field.name, pmDef.pm, receiver)
+          v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
+          v.decider.assume(
+            Forall(receiver, PermAtMost(currentPermAmount, FullPerm()), Trigger(trigger), "qp-fld-prm-bnd"))
+        } else {
+          /*
+          If we don't use heap-dependent triggers, the trigger x.f does not work. Instead, we assume the permission
+          bound explicitly for each singleton chunk receiver, and for each chunk, triggering on its inverse functions.
+          That is, we assume
+          forall r: Ref :: {inv(r)} perm(x.f) <= write
+           */
+          for (chunk <- fieldChunks) {
+            if (chunk.singletonRcvr.isDefined){
+              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm()))
+            } else {
+              val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))
+              val triggers = chunkReceivers.map(r => Trigger(r)).toSeq
+              val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
+              v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
+              v.decider.assume(
+                Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm()), triggers, "qp-fld-prm-bnd"))
+            }
+
+          }
+        }
 
         sn
       }
