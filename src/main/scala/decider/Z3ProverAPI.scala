@@ -376,7 +376,7 @@ class Z3ProverAPI(uniqueId: String,
           emittedFuncSymbols.append(termConverter.convertFuncSymbol(fd))
         }
       case MacroDecl(id, args, body) if expandMacros => termConverter.macros.update(id.name, (args, body))
-      case md: MacroDecl if !expandMacros =>
+      case md: MacroDecl =>
         val (convertedFunc, axiom) = termConverter.convert(md)
         if (!emittedFuncs.contains(convertedFunc)){
           emittedFuncs.add(convertedFunc)

@@ -13,8 +13,8 @@ import viper.silicon.toMap
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.{SymbolConverter, terms}
-import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Symbol, Term}
-import viper.silver.ast.{NamedDomainAxiom, Program}
+import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
+import viper.silver.ast.{NamedDomainAxiom}
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
   def uniquenessAssumptionsAfterAnalysis: Iterable[UA]
