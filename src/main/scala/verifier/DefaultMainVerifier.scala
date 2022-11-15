@@ -8,7 +8,6 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
-
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.util.Random
@@ -155,19 +154,16 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
       */
     var program: ast.Program =
       originalProgram.transform({
-        case forall: ast.Forall if forall.isPure => {
+        case forall: ast.Forall if forall.isPure =>
           val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
           res
-        }
         case exists: ast.Exists =>
-        {
           val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
           res
-        }
       }, Traverse.BottomUp)
 
     // TODO: Autotrigger for cfgs.
@@ -290,6 +286,10 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
+    val resourceTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map{
+      case wand: ast.MagicWand => MagicWandIdentifier(wand, program)
+      case r => r
+    }
 
     State(program = program,
           functionData = functionData,
@@ -299,7 +299,8 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
           qpMagicWands = quantifiedMagicWands,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
-          isMethodVerification = member.isInstanceOf[ast.Member])
+          isMethodVerification = member.isInstanceOf[ast.Member],
+          heapDependentTriggers = resourceTriggers)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,

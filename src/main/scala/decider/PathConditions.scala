@@ -181,7 +181,7 @@ private trait LayeredPathConditionStackLike {
         Quantification(
           quantifier,
           qvars,
-          And(layer.nonGlobalAssumptions -- ignores),
+          Implies(layer.branchCondition.getOrElse(True()), And(layer.nonGlobalAssumptions -- ignores)),
           triggers,
           name,
           isGlobal)
