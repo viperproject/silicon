@@ -647,26 +647,10 @@ object evaluator extends EvaluationRules {
           case (s1, tVars, _, Seq(tBody), tTriggers, (tAuxGlobal, tAux), v1) =>
             val tAuxHeapIndep = tAux.flatMap(v.quantifierSupporter.makeTriggersHeapIndependent(_, v1.decider.fresh))
 
-            // TODO: Extracted top-level quantifications (tlqGlobal) are currently assumed twice:
-            //       once directly (tlqGlobal), once nested (tAuxGlobal). It would be better to remove the nested
-            //       instances, e.g. by replacing them with "true".
-
-            val tlqGlobal: Seq[Quantification] = tAuxGlobal flatMap {
-              case q1: Quantification => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2}
-              case _ => Seq.empty
-            }
-
-            val tlq: Seq[Quantification] = tAux flatMap (q1 =>
-              q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
-
             v1.decider.prover.comment("Nested auxiliary terms: globals (aux)")
             v1.decider.assume(tAuxGlobal)
-            v1.decider.prover.comment("Nested auxiliary terms: globals (tlq)")
-            v1.decider.assume(tlqGlobal)
             v1.decider.prover.comment("Nested auxiliary terms: non-globals (aux)")
             v1.decider.assume(tAuxHeapIndep/*tAux*/)
-            v1.decider.prover.comment("Nested auxiliary terms: non-globals (tlq)")
-            v1.decider.assume(tlq)
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
             Q(s1, tQuant, v1)
