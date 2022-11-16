@@ -401,6 +401,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     rawZ3RandomizeSeeds() || rawProverRandomizeSeeds()
   }
 
+  lazy val carbonQPs: ScallopOption[Boolean] = opt[Boolean]("carbonQPs",
+    descr = "Use Carbon-like QP encoding",
+    default = Some(false),
+    noshort = true
+  )
+
   val tempDirectory: ScallopOption[String] = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: ./tmp)",
     default = Some("./tmp"),

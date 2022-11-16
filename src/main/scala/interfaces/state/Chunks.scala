@@ -13,6 +13,13 @@ trait Chunk
 
 trait ChunkIdentifer
 
+trait CarbonChunk extends Chunk {
+  val resourceID: ResourceID
+  val id: ChunkIdentifer
+  val mask: Term
+  val heap: Term
+}
+
 trait GeneralChunk extends Chunk {
   val resourceID: ResourceID
   val id: ChunkIdentifer
