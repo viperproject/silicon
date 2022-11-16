@@ -654,7 +654,6 @@ object evaluator extends EvaluationRules {
             v1.decider.assume(tAuxHeapIndep/*tAux*/)
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
-            v1.decider.assume(PreconditionPropagationTransformer.transform(tQuant))
             Q(s1, tQuant, v1)
         }
 
