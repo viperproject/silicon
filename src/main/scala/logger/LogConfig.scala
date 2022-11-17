@@ -17,7 +17,7 @@ case class LogConfig(isBlackList: Boolean,
       if (rc.kind.equals(d.toTypeString)) {
         rc.value match {
           case Some(value) => if (value.equals(d.toSimpleString)) return Some(rc)
-          case _ => return Some(rc)
+          case None => return Some(rc)
         }
       }
     }
