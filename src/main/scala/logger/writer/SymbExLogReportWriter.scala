@@ -10,7 +10,7 @@ import spray.json.{JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsT
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.logger.InMemorySymbLog
+import viper.silicon.logger.MemberSymbExLog
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
 import viper.silicon.logger.records.structural.{BranchInfo, BranchingRecord, JoiningRecord}
 import viper.silicon.logger.records.{RecordData, SymbolicRecord}
@@ -107,9 +107,9 @@ object SymbExLogReportWriter {
     * @param members A symbolic log per member to translate.
     * @return array of all records.
     */
-  def toJSON(members: Seq[InMemorySymbLog]): JsArray = {
+  def toJSON(members: Seq[MemberSymbExLog]): JsArray = {
     val records = members.foldLeft(Vector[JsValue]()) {
-      (prevVal: Vector[JsValue], member: InMemorySymbLog) => prevVal ++ toJSON(member)
+      (prevVal: Vector[JsValue], member: MemberSymbExLog) => prevVal ++ toJSON(member)
     }
     JsArray(records)
   }
@@ -119,7 +119,7 @@ object SymbExLogReportWriter {
     * @param symbLog The symbolic log to translate.
     * @return array of all records.
     */
-  def toJSON(symbLog: InMemorySymbLog): Vector[JsValue] = {
+  def toJSON(symbLog: MemberSymbExLog): Vector[JsValue] = {
     val allRecords = getAllRecords(symbLog.log)
     allRecords.map(toJSON).toVector
   }

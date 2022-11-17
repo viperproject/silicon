@@ -196,9 +196,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
 
     allProvers.saturate(config.proverSaturationTimeouts.afterPrelude)
 
-
-    SymbExLogger.resetMemberList()
-    SymbExLogger.setConfig(config)
+    ??? // make loggers here
 
     /* TODO: A workaround for Silver issue #94. toList must be before flatMap.
      *       Otherwise Set will be used internally and some error messages will be lost.

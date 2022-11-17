@@ -6,8 +6,6 @@
 
 package viper.silicon.logger
 
-import com.typesafe.scalalogging.Logger
-import org.slf4j.LoggerFactory
 import spray.json._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.logger.LogConfigProtocol._
@@ -20,19 +18,14 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.{Config, Map}
 import viper.silver.ast
-import viper.silver.ast.Exp
+import viper.silver.ast.{Exp, Member}
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Paths}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.annotation.elidable
 import scala.annotation.elidable._
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.immutable
 import scala.util.{Failure, Success, Try}
-
-/* TODO: InsertionOrderedSet is used by the logger, but the insertion order is
- *       probably irrelevant for logging. I.e. it might be ok if these sets were
- *       traversed in non-deterministic order.
- */
 
 /**
   * ================================
@@ -192,69 +185,19 @@ import scala.util.{Failure, Success, Try}
   * // SymbExLogger.currentLog().markReachable(uidBranchPoint)
   */
 
-object SymbExLogger {
-  /** Collection of logged Method/Predicates/Functions. **/
-  val memberList: ArrayBuffer[SymbLog] = ArrayBuffer()
-  var _currentLog: ThreadLocal[Option[SymbLog]] = ThreadLocal.withInitial(() => None)
+case object SymbExLogger {
+  def currentLog(): MemberSymbExLog = ???
+  def memberList: Seq[SymbExLog] = ???
+  def logConfig: LogConfig = ???
+  def openMemberScope(x: Any, y: Any, z: Any): Unit = ???
+  def closeMemberScope(): Unit = ???
+  def enabled: Boolean = ???
 
-  private val uidCounter = new AtomicInteger(0)
-
-  var enabled = false
-  var logConfig: LogConfig = LogConfig.default()
-  var listenerProvider: LogConfig => SymbLogListener = new InMemorySymbLog(_)
-
-  def freshUid(): Int = uidCounter.getAndIncrement()
-
-  /** Add a new log for a method, function or predicate (member).
-    *
-    * @param member Either a MethodRecord, PredicateRecord or a FunctionRecord.
-    * @param s      Current state. Since the body of the method (predicate/function) is not yet
-    *               executed/logged, this is usually the empty state (use Σ(Ø, Ø, Ø) for empty
-    *               state).
-    * @param pcs    Current path conditions.
-    */
-  @elidable(INFO)
-  def openMemberScope(member: ast.Member, s: State, pcs: PathConditionStack): Unit = {
-    val log = new SymbLog(listenerProvider(logConfig), member, s, pcs)
-    memberList.synchronized { memberList += log }
-    _currentLog.set(Some(log))
-  }
-
-  /** Use this method to access the current log, e.g., to access the log of the method
-    * that gets currently symbolically executed.
-    *
-    * @return Returns the current method, predicate or function that is being logged.
-    */
-  def currentLog(): SymbLog = {
-    if (enabled)
-      _currentLog.get.get
-    else NoopSymbLog
-  }
-
-  @elidable(INFO)
-  def closeMemberScope(): Unit = {
-    if (enabled) {
-      currentLog().closeMemberScope()
-      _currentLog.set(None)
-    }
-  }
-
-  /**
-    * Passes config from Silicon to SymbExLogger.
-    *
-    * @param c Config of Silicon.
-    */
-  def setConfig(c: Config): Unit = {
-    setEnabled(c.ideModeAdvanced())
-    logConfig = parseLogConfig(c)
-  }
-
-  def setListenerProvider(listener: LogConfig => SymbLogListener): Unit =
-    listenerProvider = listener
-
-  @elidable(INFO)
-  private def setEnabled(b: Boolean): Unit = {
-    enabled = b
+  def ofConfig(c: Config): SymbExLogger[_] = {
+    if(c.ideModeAdvanced())
+      SymbExLog(parseLogConfig(c))
+    else
+      NoopSymbExLog
   }
 
   private def parseLogConfig(c: Config): LogConfig = {
@@ -269,129 +212,75 @@ object SymbExLogger {
       case Failure(_) => LogConfig.default()
     }
   }
+}
+
+abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
+  /** Collection of logged Method/Predicates/Functions. */
+  protected var members: immutable.Map[ast.Member, Log] = Map.empty
+  protected val uidCounter: AtomicInteger = new AtomicInteger(0)
+
+  def newEntityLogger(member: ast.Member, s: State, pcs: PathConditionStack): Log
+  def config: LogConfig
+
+  def freshUid(): Int = uidCounter.getAndIncrement()
+
+  def whenEnabled(f: => Unit): Unit = f
+
+  def logs: Iterable[Log] = members.values
+
+  /** Add a new log for a method, function or predicate (member).
+    *
+    * @param member Either a MethodRecord, PredicateRecord or a FunctionRecord.
+    * @param s      Current state. Since the body of the method (predicate/function) is not yet
+    *               executed/logged, this is usually the empty state (use Σ(Ø, Ø, Ø) for empty
+    *               state).
+    * @param pcs    Current path conditions.
+    */
+  @elidable(INFO)
+  def openMemberScope(member: ast.Member, s: State, pcs: PathConditionStack): Log = {
+    val log = newEntityLogger(member, s, pcs)
+
+    members.synchronized {
+      members += member -> log
+    }
+
+    log
+  }
+}
+
+case object NoopSymbExLog extends SymbExLogger[NoopMemberSymbExLog.type] {
+  override def newEntityLogger(member: Member, s: State, pcs: PathConditionStack): NoopMemberSymbExLog.type =
+    NoopMemberSymbExLog
+
+  override def config: LogConfig = null
+
+  override def whenEnabled(f: => Unit): Unit = {}
+}
+
+case class SymbExLog(config: LogConfig) extends SymbExLogger[MemberSymbExLog]() {
+  override def newEntityLogger(member: ast.Member, s: State, pcs: PathConditionStack): MemberSymbExLog =
+    new MemberSymbExLog(this, member, s, pcs)
 
   /**
     * Simple string representation of the logs.
     */
   def toSimpleTreeString: String = {
-    if (enabled) {
-      val simpleTreeRenderer = new SimpleTreeRenderer()
-      simpleTreeRenderer.render(memberList.map(_.listener).collect { case l: InMemorySymbLog => l })
-    } else ""
-  }
-
-  /** Path to the file that is being executed. Is used for UnitTesting. **/
-  var filePath: Path = _
-
-  /**
-    * Resets the SymbExLogger-object, to make it ready for a new file.
-    * Only needed when several files are verified together (e.g., sbt test).
-    */
-  def reset(): Unit = {
-    memberList.clear()
-    uidCounter.set(0)
-    filePath = null
-    logConfig = LogConfig.default()
-    listenerProvider = new InMemorySymbLog(_)
-  }
-
-  def resetMemberList(): Unit = {
-    memberList.clear()
+    val simpleTreeRenderer = new SimpleTreeRenderer()
+    simpleTreeRenderer.render(members.values)
   }
 }
 
-//========================= SymbLog ========================
+abstract class MemberSymbExLogger(log: SymbExLogger[_],
+                                  val member: ast.Member,
+                                  val state: State,
+                                  val pcs: PathConditionStack) {
+  def appendDataRecord(r: DataRecord): Unit
+  def appendScopingRecord(r: ScopingRecord, ignoreBranchingStack: Boolean = false): Unit
+  def appendBranchingRecord(r: BranchingRecord): Unit
 
-trait SymbLogListener {
-  def appendDataRecord(symbLog: SymbLog, r: DataRecord): Unit
-  def appendScopingRecord(symbLog: SymbLog, r: ScopingRecord, ignoreBranchingStack: Boolean = false): Unit
-  def appendBranchingRecord(symbLog: SymbLog, r: BranchingRecord): Unit
-
-  def switchToNextBranch(symbLog: SymbLog, uidBranchPoint: Int): Unit
-  def markBranchReachable(symbLog: SymbLog, uidBranchPoint: Int): Unit
-  def endBranchPoint(symbLog: SymbLog, uidBranchPoint: Int): Unit
-}
-
-class InMemorySymbLog(config: LogConfig) extends SymbLogListener {
-  /** top level log entries for this member; these log entries were recorded consecutively without branching;
-   * in case branching occured, one of these records is a BranchingRecord with all branches as field attached to it */
-  var log: Vector[SymbolicRecord] = Vector[SymbolicRecord]()
-
-  /** this stack keeps track of BranchingRecords while adding records to the log; as soon as all branches of a
-   * BranchingRecord are done, logging has to switch back to the previous BranchingRecord */
-  var branchingStack: List[BranchingRecord] = List[BranchingRecord]()
-
-  /** if a record was ignored due to the logConfig, its ID is tracked here and corresponding open and close scope
-   * records will be ignored too */
-  var ignoredDataRecords: Set[Int] = Set()
-
-  def appendRecord(r: SymbolicRecord, ignoreBranchingStack: Boolean = false): Unit = {
-    if (branchingStack.isEmpty || ignoreBranchingStack) {
-      log = log :+ r
-    } else {
-      branchingStack.head.appendLog(r)
-    }
-  }
-
-  override def appendDataRecord(symbLog: SymbLog, r: DataRecord): Unit = {
-    val shouldIgnore = config.getRecordConfig(r) match {
-      case Some(_) => config.isBlackList
-      case None => !config.isBlackList
-    }
-
-    if(shouldIgnore) {
-      ignoredDataRecords = ignoredDataRecords + r.id
-    } else {
-      appendRecord(r)
-    }
-  }
-
-  override def appendScopingRecord(symbLog: SymbLog, r: ScopingRecord, ignoreBranchingStack: Boolean): Unit = {
-    if(!ignoredDataRecords.contains(r.refId)) {
-      if(ignoreBranchingStack) {
-        log = log :+ r
-      } else {
-        appendRecord(r)
-      }
-    }
-  }
-
-  override def appendBranchingRecord(symbLog: SymbLog, r: BranchingRecord): Unit = {
-    appendRecord(r)
-    branchingStack +:= r
-  }
-
-  override def switchToNextBranch(symbLog: SymbLog, uidBranchPoint: Int): Unit = {
-    assert(branchingStack.nonEmpty)
-    val branchingRecord = branchingStack.head
-    assert(branchingRecord.id == uidBranchPoint)
-    // no close scope is inserted because branches are not considered scopes
-    branchingRecord.switchToNextBranch()
-  }
-
-  override def markBranchReachable(symbLog: SymbLog, uidBranchPoint: Int): Unit = {
-    assert(branchingStack.nonEmpty)
-    val branchingRecord = branchingStack.head
-    assert(branchingRecord.id == uidBranchPoint)
-    branchingRecord.markReachable()
-  }
-
-  override def endBranchPoint(symbLog: SymbLog, uidBranchPoint: Int): Unit = {
-    assert(branchingStack.nonEmpty)
-    val branchingRecord = branchingStack.head
-    assert(branchingRecord.id == uidBranchPoint)
-    // no close scope is inserted because branches are not considered scopes
-    branchingStack = branchingStack.tail
-  }
-}
-
-/**
-  * Concept: One object of SymbLog per Method/Predicate/Function. SymbLog
-  * is used in the SymbExLogger-object.
-  */
-class SymbLog(val listener: SymbLogListener, val v: ast.Member, val s: State, val pcs: PathConditionStack) {
-  val logger: Logger =
-    Logger(LoggerFactory.getLogger(s"${this.getClass.getName}"))
+  def switchToNextBranch(uidBranchPoint: Int): Unit
+  def markBranchReachable(uidBranchPoint: Int): Unit
+  def endBranchPoint(uidBranchPoint: Int): Unit
 
   /**
     * indicates whether this member's close was already closed
@@ -406,39 +295,41 @@ class SymbLog(val listener: SymbLogListener, val v: ast.Member, val s: State, va
   // Maps macros to their body
   private var _macros = Map[App, Term]()
 
-  val main: MemberRecord = v match {
-    case m: ast.Method => new MethodRecord(m, s, pcs)
-    case p: ast.Predicate => new PredicateRecord(p, s, pcs)
-    case f: ast.Function => new FunctionRecord(f, s, pcs)
-    case _ => null
+  val main: MemberRecord = member match {
+    case m: ast.Method => new MethodRecord(m, state, pcs)
+    case p: ast.Predicate => new PredicateRecord(p, state, pcs)
+    case f: ast.Function => new FunctionRecord(f, state, pcs)
+    case _ => ???
   }
 
   openScope(main)
 
   /**
     * Inserts the record as well as a corresponding open scope record into the log
+    *
     * @param s non-null record
     * @return id with which closeScope should be called
     */
   @elidable(INFO)
   def openScope(s: DataRecord): Int = {
-    s.id = SymbExLogger.freshUid()
-    listener.appendDataRecord(this, s)
+    s.id = log.freshUid()
+    appendDataRecord(s)
     insert(new OpenScopeRecord(s))
     s.id
   }
 
   /**
     * Appends a scoping record to the log unless it's referenced data record is ignored
-    * @param s non-null scoping record
+    *
+    * @param s                    non-null scoping record
     * @param ignoreBranchingStack true if the record should always be inserted in the root level
     * @return id of the scoping record
     */
   @elidable(INFO)
   private def insert(s: ScopingRecord, ignoreBranchingStack: Boolean = false): Int = {
-    s.id = SymbExLogger.freshUid()
+    s.id = log.freshUid()
     s.timeMs = System.currentTimeMillis()
-    listener.appendScopingRecord(this, s, ignoreBranchingStack)
+    appendScopingRecord(s, ignoreBranchingStack)
     s.id
   }
 
@@ -446,53 +337,38 @@ class SymbLog(val listener: SymbLogListener, val v: ast.Member, val s: State, va
     * Creates and appends a branching record to the log. Branching records do not cause scopes.
     * Use `switchToNextBranch` to change from the current to the next branch and `endBranchPoint` to conclude the
     * branch point after all branches were visited.
+    *
     * @param possibleBranchesCount number of branches that this branch point has but are not necessarily all reachable
-    * @param condition branch condition
+    * @param condition             branch condition
     * @return id of the branching record
     */
   @elidable(INFO)
   def insertBranchPoint(possibleBranchesCount: Int, condition: Option[Term] = None, conditionExp: Option[Exp] = None): Int = {
     val branchingRecord = new BranchingRecord(possibleBranchesCount, condition, conditionExp)
-    branchingRecord.id = SymbExLogger.freshUid()
-    listener.appendBranchingRecord(this, branchingRecord)
+    branchingRecord.id = log.freshUid()
+    appendBranchingRecord(branchingRecord)
     branchingRecord.id
   }
 
   /**
-    * Changes from the current to the next branch of a specific branch point
-    * @param uidBranchPoint id of the branching record
-    */
-  @elidable(INFO)
-  def switchToNextBranch(uidBranchPoint: Int): Unit = {
-    listener.switchToNextBranch(this, uidBranchPoint)
-  }
-
-  /**
     * Marks the current branch of a specific branch point as being reachable
+    *
     * @param uidBranchPoint id of the branching record
     */
   @elidable(INFO)
   def markReachable(uidBranchPoint: Int): Unit = {
-    listener.markBranchReachable(this, uidBranchPoint)
+    markBranchReachable(uidBranchPoint)
   }
 
   /**
     * Ends the scope of a specific data record by inserting a corresponding close scope record into the log
+    *
     * @param n id of the data record
     */
   @elidable(INFO)
   def closeScope(n: Int): Unit = {
     val closeRecord = new CloseScopeRecord(n)
     insert(closeRecord)
-  }
-
-  /**
-    * Concludes a specific branch point (which normaly happens after visiting all branches belonging to the branch point)
-    * @param uidBranchPoint id of the branch point
-    */
-  @elidable(INFO)
-  def endBranchPoint(uidBranchPoint: Int): Unit = {
-    listener.endBranchPoint(this, uidBranchPoint)
   }
 
   /**
@@ -540,6 +416,7 @@ class SymbLog(val listener: SymbLogListener, val v: ast.Member, val s: State, va
   /**
     * Calculates the diff between the current and last statistics query.
     * The difference is calculated if value can be converted to an int or double
+    *
     * @return map with the current statistics, and the differences (only containing values that could be converted)
     *         and keys with appended "-delta"
     */
@@ -576,19 +453,94 @@ class SymbLog(val listener: SymbLogListener, val v: ast.Member, val s: State, va
   def addMacro(m: App, body: Term): Unit = {
     _macros = _macros + (m -> body)
   }
-
-  override def toString: String = listener match {
-    case log: InMemorySymbLog => new SimpleTreeRenderer().renderMember(log)
-    case _ => super.toString
-  }
 }
 
-object NoopSymbLog extends SymbLog(null, null, null, null) {
-  override def openScope(s: DataRecord): Int = 0
-  override def insertBranchPoint(possibleBranchesCount: Int, condition: Option[Term], conditionExp: Option[Exp]): Int = 0
+case object NoopMemberSymbExLog extends MemberSymbExLogger(null, null, null, null) {
+  override def appendDataRecord(r: DataRecord): Unit = {}
+  override def appendScopingRecord(r: ScopingRecord, ignoreBranchingStack: Boolean): Unit = {}
+  override def appendBranchingRecord(r: BranchingRecord): Unit = {}
+  override def markBranchReachable(uidBranchPoint: Int): Unit = {}
   override def switchToNextBranch(uidBranchPoint: Int): Unit = {}
-  override def markReachable(uidBranchPoint: Int): Unit = {}
-  override def closeScope(n: Int): Unit = {}
   override def endBranchPoint(uidBranchPoint: Int): Unit = {}
-  override def closeMemberScope(): Unit = {}
+}
+
+class MemberSymbExLog(rootLog: SymbExLogger[MemberSymbExLog],
+                      member: ast.Member,
+                      state: State,
+                      pcs: PathConditionStack) extends MemberSymbExLogger(rootLog, member, state, pcs) {
+  def close(): Unit = ??? // clear from log, add close record?
+
+  /** top level log entries for this member; these log entries were recorded consecutively without branching;
+    * in case branching occured, one of these records is a BranchingRecord with all branches as field attached to it */
+  var log: Vector[SymbolicRecord] = Vector[SymbolicRecord]()
+
+  /** this stack keeps track of BranchingRecords while adding records to the log; as soon as all branches of a
+    * BranchingRecord are done, logging has to switch back to the previous BranchingRecord */
+  var branchingStack: List[BranchingRecord] = List[BranchingRecord]()
+
+  /** if a record was ignored due to the logConfig, its ID is tracked here and corresponding open and close scope
+    * records will be ignored too */
+  var ignoredDataRecords: Set[Int] = Set()
+
+  override def toString: String =
+    new SimpleTreeRenderer().renderMember(this)
+
+  def appendRecord(r: SymbolicRecord, ignoreBranchingStack: Boolean = false): Unit = {
+    if (branchingStack.isEmpty || ignoreBranchingStack) {
+      log = log :+ r
+    } else {
+      branchingStack.head.appendLog(r)
+    }
+  }
+
+  override def appendDataRecord(r: DataRecord): Unit = {
+    val shouldIgnore = rootLog.config.getRecordConfig(r) match {
+      case Some(_) => rootLog.config.isBlackList
+      case None => !rootLog.config.isBlackList
+    }
+
+    if (shouldIgnore) {
+      ignoredDataRecords = ignoredDataRecords + r.id
+    } else {
+      appendRecord(r)
+    }
+  }
+
+  override def appendScopingRecord(r: ScopingRecord, ignoreBranchingStack: Boolean): Unit = {
+    if (!ignoredDataRecords.contains(r.refId)) {
+      if (ignoreBranchingStack) {
+        log = log :+ r
+      } else {
+        appendRecord(r)
+      }
+    }
+  }
+
+  override def appendBranchingRecord(r: BranchingRecord): Unit = {
+    appendRecord(r)
+    branchingStack +:= r
+  }
+
+  override def switchToNextBranch(uidBranchPoint: Int): Unit = {
+    assert(branchingStack.nonEmpty)
+    val branchingRecord = branchingStack.head
+    assert(branchingRecord.id == uidBranchPoint)
+    // no close scope is inserted because branches are not considered scopes
+    branchingRecord.switchToNextBranch()
+  }
+
+  override def markBranchReachable(uidBranchPoint: Int): Unit = {
+    assert(branchingStack.nonEmpty)
+    val branchingRecord = branchingStack.head
+    assert(branchingRecord.id == uidBranchPoint)
+    branchingRecord.markReachable()
+  }
+
+  override def endBranchPoint(uidBranchPoint: Int): Unit = {
+    assert(branchingStack.nonEmpty)
+    val branchingRecord = branchingStack.head
+    assert(branchingRecord.id == uidBranchPoint)
+    // no close scope is inserted because branches are not considered scopes
+    branchingStack = branchingStack.tail
+  }
 }
