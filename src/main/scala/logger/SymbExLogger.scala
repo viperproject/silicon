@@ -302,14 +302,16 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   // Maps macros to their body
   private var _macros = Map[App, Term]()
 
-  val main: MemberRecord = member match {
-    case m: ast.Method => new MethodRecord(m, state, pcs)
-    case p: ast.Predicate => new PredicateRecord(p, state, pcs)
-    case f: ast.Function => new FunctionRecord(f, state, pcs)
-    case _ => ???
-  }
+  var main: MemberRecord = _
 
   def openMemberScope(): Unit = {
+    main = member match {
+      case m: ast.Method => new MethodRecord(m, state, pcs)
+      case p: ast.Predicate => new PredicateRecord(p, state, pcs)
+      case f: ast.Function => new FunctionRecord(f, state, pcs)
+      case _ => ???
+    }
+
     openScope(main)
   }
 
@@ -471,6 +473,15 @@ case object NoopMemberSymbExLog extends MemberSymbExLogger(null, null, null, nul
   override def markBranchReachable(uidBranchPoint: Int): Unit = {}
   override def switchToNextBranch(uidBranchPoint: Int): Unit = {}
   override def endBranchPoint(uidBranchPoint: Int): Unit = {}
+
+  override def openMemberScope(): Unit = {}
+  override def openScope(s: DataRecord): Int = 0
+  override def insertBranchPoint(possibleBranchesCount: Int, condition: Option[Term] = None, conditionExp: Option[Exp] = None): Int = 0
+  override def markReachable(uidBranchPoint: Int): Unit = {}
+  override def closeScope(n: Int): Unit = {}
+  override def closeMemberScope(): Unit = {}
+  override def setSMTQuery(query: Term): Unit = {}
+  override def discardSMTQuery(): Unit = {}
 }
 
 class MemberSymbExLog(rootLog: SymbExLogger[MemberSymbExLog],
