@@ -45,7 +45,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      SymbExLogger.openMemberScope(method, null, v.decider.pcs)
+      openSymbExLogger(method)
 
       val pres = method.pres
       val posts = method.posts
@@ -84,9 +84,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
                   val s4 = s3.copy(h = Heap())
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
-                  val sepIdentifier = SymbExLogger.currentLog().openScope(impLog)
+                  val sepIdentifier = symbExLog.openScope(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
-                    SymbExLogger.currentLog().closeScope(sepIdentifier)
+                    symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
@@ -94,7 +94,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     consumes(s4, posts, postViolated, v4)((_, _, _) =>
                       Success()))}) }  )})})
 
-      SymbExLogger.closeMemberScope()
+      symbExLog.closeMemberScope()
       Seq(result)
     }
 

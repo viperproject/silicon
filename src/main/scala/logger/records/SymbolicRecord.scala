@@ -6,6 +6,8 @@
 
 package viper.silicon.logger.records
 
+import viper.silicon.logger.LogConfig
+
 trait SymbolicRecord {
   var id: Int = -1
 
@@ -17,7 +19,7 @@ trait SymbolicRecord {
 
   def toSimpleString: String
 
-  def getData: RecordData = {
+  def getData(config: LogConfig): RecordData = {
     new RecordData()
   }
 }

@@ -10,7 +10,7 @@ import spray.json.{JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsT
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.logger.MemberSymbExLog
+import viper.silicon.logger.{LogConfig, MemberSymbExLog}
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord}
 import viper.silicon.logger.records.structural.{BranchInfo, BranchingRecord, JoiningRecord}
 import viper.silicon.logger.records.{RecordData, SymbolicRecord}
@@ -107,9 +107,9 @@ object SymbExLogReportWriter {
     * @param members A symbolic log per member to translate.
     * @return array of all records.
     */
-  def toJSON(members: Seq[MemberSymbExLog]): JsArray = {
+  def toJSON(members: Seq[MemberSymbExLog], config: LogConfig): JsArray = {
     val records = members.foldLeft(Vector[JsValue]()) {
-      (prevVal: Vector[JsValue], member: MemberSymbExLog) => prevVal ++ toJSON(member)
+      (prevVal: Vector[JsValue], member: MemberSymbExLog) => prevVal ++ toJSON(member, config)
     }
     JsArray(records)
   }
@@ -119,9 +119,9 @@ object SymbExLogReportWriter {
     * @param symbLog The symbolic log to translate.
     * @return array of all records.
     */
-  def toJSON(symbLog: MemberSymbExLog): Vector[JsValue] = {
+  def toJSON(symbLog: MemberSymbExLog, config: LogConfig): Vector[JsValue] = {
     val allRecords = getAllRecords(symbLog.log)
-    allRecords.map(toJSON).toVector
+    allRecords.map(toJSON(_, config)).toVector
   }
 
   def getAllRecords(logs: Seq[SymbolicRecord]): Seq[SymbolicRecord] = {
@@ -143,13 +143,13 @@ object SymbExLogReportWriter {
     * @param record The symbolic to translate.
     * @return The record translated as a JsValue.
     */
-  def toJSON(record: SymbolicRecord): JsValue = {
+  def toJSON(record: SymbolicRecord, config: LogConfig): JsValue = {
     var isJoinPoint: Boolean = false
     var isScopeOpen: Boolean = false
     var isScopeClose: Boolean = false
     val isSyntactic: Boolean = false
     var branches: Option[JsArray] = None
-    val data: Option[JsObject] = toJSON(record.getData)
+    val data: Option[JsObject] = toJSON(record.getData(config))
     record match {
       case br: BranchingRecord => branches = Some(JsArray(br.getBranchInfos.map(toJSON)))
       case _: JoiningRecord => isJoinPoint = true

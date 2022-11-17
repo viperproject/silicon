@@ -80,7 +80,7 @@ object brancher extends BranchingRules {
     v.decider.prover.comment(thenBranchComment)
     v.decider.prover.comment(elseBranchComment)
 
-    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition), conditionExp)
+    val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), conditionExp)
     var functionsOfCurrentDecider: immutable.InsertionOrderedSet[FunctionDecl] = null
     var macrosOfCurrentDecider: Vector[MacroDecl] = null
     var pcsOfCurrentDecider: PathConditionStack = null
@@ -102,8 +102,8 @@ object brancher extends BranchingRules {
         }
 
         (v0: Verifier) => {
-          SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-          SymbExLogger.currentLog().markReachable(uidBranchPoint)
+          v.symbExLog.switchToNextBranch(uidBranchPoint)
+          v.symbExLog.markReachable(uidBranchPoint)
           if (v.uniqueId != v0.uniqueId){
             /* [BRANCH-PARALLELISATION] */
             // executing the else branch on a different verifier, need to adapt the state
@@ -154,7 +154,7 @@ object brancher extends BranchingRules {
       }
 
     val res = (if (executeThenBranch) {
-      SymbExLogger.currentLog().markReachable(uidBranchPoint)
+      v.symbExLog.markReachable(uidBranchPoint)
       executionFlowController.locally(s, v)((s1, v1) => {
         v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
         v1.decider.setCurrentBranchCondition(condition, conditionExp)
@@ -194,7 +194,7 @@ object brancher extends BranchingRules {
       rs.head
 
     }, alwaysWaitForOther = parallelizeElseBranch)
-    SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+    v.symbExLog.endBranchPoint(uidBranchPoint)
     res
   }
 }

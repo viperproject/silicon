@@ -188,10 +188,6 @@ import scala.util.{Failure, Success, Try}
 case object SymbExLogger {
   def currentLog(): MemberSymbExLog = ???
   def memberList: Seq[SymbExLog] = ???
-  def logConfig: LogConfig = ???
-  def openMemberScope(x: Any, y: Any, z: Any): Unit = ???
-  def closeMemberScope(): Unit = ???
-  def enabled: Boolean = ???
 
   def ofConfig(c: Config): SymbExLogger[_ <: MemberSymbExLogger] = {
     if(c.ideModeAdvanced())
@@ -253,8 +249,10 @@ case object NoopSymbExLog extends SymbExLogger[NoopMemberSymbExLog.type] {
     NoopMemberSymbExLog
 
   override def config: LogConfig = null
-
   override def whenEnabled(f: => Unit): Unit = {}
+
+  override def openMemberScope(member: Member, s: State, pcs: PathConditionStack): NoopMemberSymbExLog.type =
+    NoopMemberSymbExLog
 }
 
 case class SymbExLog(config: LogConfig) extends SymbExLogger[MemberSymbExLog]() {
@@ -281,6 +279,8 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   def switchToNextBranch(uidBranchPoint: Int): Unit
   def markBranchReachable(uidBranchPoint: Int): Unit
   def endBranchPoint(uidBranchPoint: Int): Unit
+
+  def whenEnabled(f: => Unit): Unit = log.whenEnabled(f)
 
   /**
     * indicates whether this member's close was already closed

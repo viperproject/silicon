@@ -33,7 +33,7 @@ object joiner extends JoiningRules {
     var entries: Seq[JoinDataEntry[D]] = Vector.empty
 
     val joiningRecord = new JoiningRecord(s, v.decider.pcs)
-    val uidJoin = SymbExLogger.currentLog().openScope(joiningRecord)
+    val uidJoin = v.symbExLog.openScope(joiningRecord)
 
     executionFlowController.locally(s, v)((s1, v1) => {
       val preMark = v1.decider.setPathConditionMark()
@@ -54,7 +54,7 @@ object joiner extends JoiningRules {
         Success()
       })
     }) combine {
-      SymbExLogger.currentLog().closeScope(uidJoin)
+      v.symbExLog.closeScope(uidJoin)
       if (entries.isEmpty) {
         /* No block data was collected, which we interpret as all branches through
          * the block being infeasible. In turn, we assume that the overall verification path

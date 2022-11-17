@@ -7,7 +7,7 @@
 package viper.silicon.logger.records.data
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.{LogConfig, SymbExLogger}
 import viper.silicon.logger.records.{RecordData, SymbolicRecord}
 import viper.silicon.state.State
 import viper.silicon.state.terms.Term
@@ -35,24 +35,24 @@ trait DataRecord extends SymbolicRecord {
     else "null"
   }
 
-  override def getData: RecordData = {
-    val data = super.getData
+  override def getData(config: LogConfig): RecordData = {
+    val data = super.getData(config)
     value match {
       case posValue: ast.Node with Positioned => data.pos = Some(utils.ast.sourceLineColumn(posValue))
       case _ =>
     }
     if (state != null) {
-      if (SymbExLogger.logConfig.includeStore) {
+      if (config.includeStore) {
         data.store = Some(state.g)
       }
-      if (SymbExLogger.logConfig.includeHeap) {
+      if (config.includeHeap) {
         data.heap = Some(state.h)
       }
-      if (SymbExLogger.logConfig.includeOldHeap) {
+      if (config.includeOldHeap) {
         data.oldHeap = state.oldHeaps.get(Verifier.PRE_STATE_LABEL)
       }
     }
-    if (pcs != null && SymbExLogger.logConfig.includePcs) {
+    if (pcs != null && config.includePcs) {
       data.pcs = Some(pcs)
     }
     data

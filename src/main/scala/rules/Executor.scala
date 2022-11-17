@@ -67,7 +67,7 @@ object executor extends ExecutionRules {
     edge match {
       case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
         val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
-        val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
+        val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
         val s1 = handleOutEdge(s, edge, v)
         eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
           /* Using branch(...) here ensures that the edge condition is recorded
@@ -76,11 +76,11 @@ object executor extends ExecutionRules {
           brancher.branch(s2, tCond, Some(ce.condition), v1)(
             (s3, v3) =>
               exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
-                SymbExLogger.currentLog().closeScope(sepIdentifier)
+                v.symbExLog.closeScope(sepIdentifier)
                 Q(s4, v4)
               }),
             (_, _)  => {
-              SymbExLogger.currentLog().closeScope(sepIdentifier)
+              v.symbExLog.closeScope(sepIdentifier)
               Success()
             }))
 
@@ -106,32 +106,32 @@ object executor extends ExecutionRules {
         case Seq(thenEdge@ConditionalEdge(cond1, _, _, Kind.Normal), elseEdge@ConditionalEdge(cond2, _, _, Kind.Normal))
             if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)()  =>
           val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
-          val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
+          val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, v1) =>
             brancher.branch(s2, tCond, Some(thenEdge.condition), v1)(
               (s3, v3) =>
                 exec(s3, thenEdge.target, thenEdge.kind, v3)((s4, v4) => {
-                  SymbExLogger.currentLog().closeScope(sepIdentifier)
+                  v.symbExLog.closeScope(sepIdentifier)
                   val branchRes = Q(s4, v4)
                   branchRes
                 }),
               (s3, v3) =>
                 exec(s3, elseEdge.target, elseEdge.kind, v3)((s4, v4) => {
-                  SymbExLogger.currentLog().closeScope(sepIdentifier)
+                  v.symbExLog.closeScope(sepIdentifier)
                   Q(s4, v4)
                 })))
           res
         case _ =>
-          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
+          val uidBranchPoint = v.symbExLog.insertBranchPoint(edges.length)
           val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
             case (result: VerificationResult, (edge, edgeIndex)) =>
               if (edgeIndex != 0) {
-                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+                v.symbExLog.switchToNextBranch(uidBranchPoint)
               }
-              SymbExLogger.currentLog().markReachable(uidBranchPoint)
+              v.symbExLog.markReachable(uidBranchPoint)
               result combine follow(s, edge, v)(Q)
           }
-          SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+          v.symbExLog.endBranchPoint(uidBranchPoint)
           res
       }
     }
@@ -250,9 +250,9 @@ object executor extends ExecutionRules {
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
-    val sepIdentifier = SymbExLogger.currentLog().openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
+    val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
-      SymbExLogger.currentLog().closeScope(sepIdentifier)
+      v.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -468,7 +468,7 @@ object executor extends ExecutionRules {
         val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
-        val currentLog = SymbExLogger.currentLog()
+        val currentLog = v.symbExLog
         val sepIdentifier = currentLog.openScope(mcLog)
         val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
         val paramId = currentLog.openScope(paramLog)

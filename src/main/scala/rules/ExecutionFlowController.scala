@@ -128,9 +128,9 @@ object executionFlowController extends ExecutionFlowRules {
         val s0 = v.stateConsolidator.consolidate(s, v)
 
         val comLog = new CommentRecord("Retry", s0, v.decider.pcs)
-        val sepIdentifier = SymbExLogger.currentLog().openScope(comLog)
+        val sepIdentifier = v.symbExLog.openScope(comLog)
         action(s0.copy(retrying = true, retryLevel = s.retryLevel), v, (s1, r, v1) => {
-          SymbExLogger.currentLog().closeScope(sepIdentifier)
+          v.symbExLog.closeScope(sepIdentifier)
           Q(s1.copy(retrying = false), r, v1)
         })
       }

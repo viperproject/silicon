@@ -272,7 +272,7 @@ class DefaultMainVerifier(config: Config,
 
     if (config.ideModeAdvanced()) {
       reporter report ExecutionTraceReport(
-        SymbExLogger.memberList.toIndexedSeq,
+        rootSymbExLogger.logs.toIndexedSeq,
         this.axiomsAfterAnalysis().toList,
         this.postConditionAxioms().toList)
     }

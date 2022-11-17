@@ -255,7 +255,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             val pTaken = App(pTakenMacro, pTakenArgs)
 
             currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(pTakenDecl)
-            SymbExLogger.currentLog().addMacro(pTaken, pTakenBody)
+            v.symbExLog.addMacro(pTaken, pTakenBody)
 
             val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
             pNeeded = PermMinus(pNeeded, pTaken)

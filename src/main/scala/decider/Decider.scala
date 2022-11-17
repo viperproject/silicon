@@ -178,18 +178,18 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def pushScope(): Unit = {
       //val commentRecord = new CommentRecord("push", null, null)
-      //val sepIdentifier = SymbExLogger.currentLog().openScope(commentRecord)
+      //val sepIdentifier = symbExLog.openScope(commentRecord)
       pathConditions.pushScope()
       _prover.push(timeout = Verifier.config.pushTimeout.toOption)
-      //SymbExLogger.currentLog().closeScope(sepIdentifier)
+      //symbExLog.closeScope(sepIdentifier)
     }
 
     def popScope(): Unit = {
       //val commentRecord = new CommentRecord("pop", null, null)
-      //val sepIdentifier = SymbExLogger.currentLog().openScope(commentRecord)
+      //val sepIdentifier = symbExLog.openScope(commentRecord)
       _prover.pop()
       pathConditions.popScope()
-      //SymbExLogger.currentLog().closeScope(sepIdentifier)
+      //symbExLog.closeScope(sepIdentifier)
     }
 
     def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit = {
@@ -218,7 +218,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term]) = {
       val assumeRecord = new DeciderAssumeRecord(terms)
-      val sepIdentifier = SymbExLogger.currentLog().openScope(assumeRecord)
+      val sepIdentifier = symbExLog.openScope(assumeRecord)
 
       /* Add terms to Silicon-managed path conditions */
       terms foreach pathConditions.add
@@ -226,7 +226,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       /* Add terms to the prover's assumptions */
       terms foreach prover.assume
 
-      SymbExLogger.currentLog().closeScope(sepIdentifier)
+      symbExLog.closeScope(sepIdentifier)
       None
     }
 
@@ -247,21 +247,21 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       // previously (it did not cause a verification failure) and ignore the
       // current one, because it cannot cause a verification error.
       if (success)
-        SymbExLogger.currentLog().discardSMTQuery()
+        symbExLog.discardSMTQuery()
       else
-        SymbExLogger.currentLog().setSMTQuery(t)
+        symbExLog.setSMTQuery(t)
 
       Q(success)
     }
 
     private def deciderAssert(t: Term, timeout: Option[Int]) = {
       val assertRecord = new DeciderAssertRecord(t, timeout)
-      val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
+      val sepIdentifier = symbExLog.openScope(assertRecord)
 
       val asserted = isKnownToBeTrue(t)
       val result = asserted || proverAssert(t, timeout)
 
-      SymbExLogger.currentLog().closeScope(sepIdentifier)
+      symbExLog.closeScope(sepIdentifier)
       result
     }
 
@@ -275,15 +275,15 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     private def proverAssert(t: Term, timeout: Option[Int]) = {
       val assertRecord = new ProverAssertRecord(t, timeout)
-      val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
+      val sepIdentifier = symbExLog.openScope(assertRecord)
 
       val result = prover.assert(t, timeout)
 
-      if (SymbExLogger.enabled) {
-        assertRecord.statistics = Some(SymbExLogger.currentLog().deltaStatistics(prover.statistics()))
+      symbExLog.whenEnabled {
+        assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))
       }
 
-      SymbExLogger.currentLog().closeScope(sepIdentifier)
+      symbExLog.closeScope(sepIdentifier)
 
       result
     }
