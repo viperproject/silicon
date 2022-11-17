@@ -19,7 +19,7 @@ import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
@@ -53,6 +53,8 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
 
   private val uniqueIdCounter = new Counter(1)
   def nextUniqueVerifierId(): String = f"${uniqueIdCounter.next()}%02d"
+
+  val rootSymbExLogger: SymbExLogger[_] = SymbExLogger.ofConfig(config)
 
   protected val preambleReader = new SMTLib2PreambleReader
 
