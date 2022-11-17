@@ -215,7 +215,7 @@ abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
   protected var members: immutable.Map[ast.Member, Log] = Map.empty
   protected val uidCounter: AtomicInteger = new AtomicInteger(0)
 
-  def newEntityLogger(member: ast.Member, s: State, pcs: PathConditionStack): Log
+  protected def newEntityLogger(member: ast.Member, s: State, pcs: PathConditionStack): Log
   def config: LogConfig
 
   def freshUid(): Int = uidCounter.getAndIncrement()
@@ -234,13 +234,20 @@ abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
     */
   @elidable(INFO)
   def openMemberScope(member: ast.Member, s: State, pcs: PathConditionStack): Log = {
-    val log = newEntityLogger(member, s, pcs)
+    try {
+      val log = newEntityLogger(member, s, pcs)
 
-    members.synchronized {
-      members += member -> log
+      synchronized {
+        members += member -> log
+      }
+
+      log.openMemberScope()
+      log
+    } catch {
+      case anything: Throwable =>
+        println(anything)
+        throw anything
     }
-
-    log
   }
 }
 
@@ -302,7 +309,9 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
     case _ => ???
   }
 
-  openScope(main)
+  def openMemberScope(): Unit = {
+    openScope(main)
+  }
 
   /**
     * Inserts the record as well as a corresponding open scope record into the log
@@ -468,8 +477,6 @@ class MemberSymbExLog(rootLog: SymbExLogger[MemberSymbExLog],
                       member: ast.Member,
                       state: State,
                       pcs: PathConditionStack) extends MemberSymbExLogger(rootLog, member, state, pcs) {
-  def close(): Unit = ??? // clear from log, add close record?
-
   /** top level log entries for this member; these log entries were recorded consecutively without branching;
     * in case branching occured, one of these records is a BranchingRecord with all branches as field attached to it */
   var log: Vector[SymbolicRecord] = Vector[SymbolicRecord]()

@@ -58,7 +58,7 @@ class DefaultMainVerifier(config: Config,
   def nextUniqueVerifierId(): String = f"${uniqueIdCounter.next()}%02d"
 
   override def openSymbExLogger(member: Member): Unit = {
-    symbExLog = rootSymbExLogger.newEntityLogger(member, null, decider.pcs)
+    symbExLog = rootSymbExLogger.openMemberScope(member, null, decider.pcs)
   }
 
   protected val preambleReader = new SMTLib2PreambleReader
