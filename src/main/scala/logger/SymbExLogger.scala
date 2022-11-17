@@ -474,6 +474,8 @@ case object NoopMemberSymbExLog extends MemberSymbExLogger(null, null, null, nul
   override def switchToNextBranch(uidBranchPoint: Int): Unit = {}
   override def endBranchPoint(uidBranchPoint: Int): Unit = {}
 
+  override def whenEnabled(f: => Unit): Unit = {}
+
   override def openMemberScope(): Unit = {}
   override def openScope(s: DataRecord): Int = 0
   override def insertBranchPoint(possibleBranchesCount: Int, condition: Option[Term] = None, conditionExp: Option[Exp] = None): Int = 0
