@@ -25,7 +25,7 @@ trait Verifier {
   def uniqueId: String
 
   def symbExLog: MemberSymbExLogger
-  def symbExLog_=(logger: MemberSymbExLogger): Unit
+  def openSymbExLogger(member: ast.Member): Unit
   def logger: Logger
   def reporter: Reporter
   def counter(id: AnyRef): Counter

@@ -41,9 +41,12 @@ import viper.silver.verifier.TypecheckerWarning
 trait MainVerifier extends Verifier {
   def nextUniqueVerifierId(): String
   def verificationPoolManager: VerificationPoolManager
+  def rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger]
 }
 
-class DefaultMainVerifier(config: Config, override val reporter: Reporter)
+class DefaultMainVerifier(config: Config,
+                          override val reporter: Reporter,
+                          override val rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger])
     extends BaseVerifier(config, "00")
        with MainVerifier
        with DefaultFunctionVerificationUnitProvider
@@ -54,7 +57,9 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
   private val uniqueIdCounter = new Counter(1)
   def nextUniqueVerifierId(): String = f"${uniqueIdCounter.next()}%02d"
 
-  val rootSymbExLogger: SymbExLogger[_] = SymbExLogger.ofConfig(config)
+  override def openSymbExLogger(member: Member): Unit = {
+    symbExLog = rootSymbExLogger.newEntityLogger(member, null, decider.pcs)
+  }
 
   protected val preambleReader = new SMTLib2PreambleReader
 
@@ -197,8 +202,6 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     allProvers.comment("-" * 60)
 
     allProvers.saturate(config.proverSaturationTimeouts.afterPrelude)
-
-    ??? // make loggers here
 
     /* TODO: A workaround for Silver issue #94. toList must be before flatMap.
      *       Otherwise Set will be used internally and some error messages will be lost.

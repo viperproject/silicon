@@ -36,9 +36,9 @@ abstract class BaseVerifier(val config: Config,
   val logger: Logger =
     Logger(LoggerFactory.getLogger(s"${this.getClass.getName}-$uniqueId"))
 
-  private var currentSymbExLog: Option[MemberSymbExLogger] = None
+  private var currentSymbExLog: Option[_ <: MemberSymbExLogger] = None
   override def symbExLog: MemberSymbExLogger = currentSymbExLog.get
-  override def symbExLog_=(logger: MemberSymbExLogger): Unit = { currentSymbExLog = Some(logger) }
+  protected def symbExLog_=(logger: MemberSymbExLogger): Unit = { currentSymbExLog = Some(logger) }
 
   private val counters = mutable.Map[AnyRef, Counter]()
 

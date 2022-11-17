@@ -8,7 +8,6 @@ package viper.silicon
 
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
-
 import scala.collection.immutable.ArraySeq
 import scala.util.{Left, Right}
 import ch.qos.logback.classic.{Level, Logger}
@@ -19,7 +18,7 @@ import viper.silver.frontend.{DefaultStates, SilFrontend}
 import viper.silver.reporter._
 import viper.silver.verifier.{AbstractVerificationError => SilAbstractVerificationError, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silicon.interfaces.Failure
-import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.verifier.DefaultMainVerifier
 import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverStdIO}
@@ -93,6 +92,10 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
   private var _config: Config = _
   final def config = _config
 
+  private var _symbExLog: SymbExLogger[_ <: MemberSymbExLogger] = _
+  final def symbExLog = _symbExLog
+  final def symbExLog_=(log: SymbExLogger[_ <: MemberSymbExLogger]) = { _symbExLog = log }
+
   private sealed trait LifetimeState
 
   private object LifetimeState {
@@ -113,6 +116,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     lifetimeState = LifetimeState.Configured
 
     _config = new Config(args)
+    _symbExLog = SymbExLogger.ofConfig(_config)
   }
 
   def debugInfo(debugInfo: Seq[(String, Any)]): Unit = { this.debugInfo = debugInfo }
@@ -129,7 +133,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     setLogLevelsFromConfig()
 
-    verifier = new DefaultMainVerifier(config, reporter)
+    verifier = new DefaultMainVerifier(config, reporter, symbExLog)
     verifier.start()
   }
 

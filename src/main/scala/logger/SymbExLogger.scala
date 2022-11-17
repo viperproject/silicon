@@ -193,7 +193,7 @@ case object SymbExLogger {
   def closeMemberScope(): Unit = ???
   def enabled: Boolean = ???
 
-  def ofConfig(c: Config): SymbExLogger[_] = {
+  def ofConfig(c: Config): SymbExLogger[_ <: MemberSymbExLogger] = {
     if(c.ideModeAdvanced())
       SymbExLog(parseLogConfig(c))
     else

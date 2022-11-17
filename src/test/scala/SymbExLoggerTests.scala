@@ -8,8 +8,7 @@ package viper.silicon.tests
 
 import java.io.File
 import java.nio.file.{Files, Path, Paths}
-
-import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.{SymbExLog, SymbExLogger}
 import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
 import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
 import viper.silicon.{Silicon, SiliconFrontend}
@@ -28,8 +27,6 @@ class SymbExLoggerTests extends SilSuite {
     // to be tested must be known, which is why it's passed here to the SymbExLogger-Object.
     // SymbExLogger.reset() cleans the logging object (only relevant for verifying multiple
     // tests at once, e.g. with the 'test'-sbt-command.
-    SymbExLogger.reset()
-    SymbExLogger.filePath = files.head
     val fe = new SiliconFrontendWithUnitTesting(files.head)
     fe.init(verifier)
     fe.reset(files.head)
@@ -90,7 +87,7 @@ class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopRep
 
     if (testIsExecuted) {
       val pw = new java.io.PrintWriter(new File(actualPath))
-      try pw.write(SymbExLogger.toSimpleTreeString) finally pw.close()
+      try pw.write(siliconInstance.symbExLog.asInstanceOf[SymbExLog].toSimpleTreeString) finally pw.close()
 
       val expectedSource = scala.io.Source.fromFile(expectedPath)
       val expected = expectedSource.getLines()
