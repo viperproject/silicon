@@ -12,7 +12,7 @@ import viper.silicon.Config.StateConsolidationMode
 import viper.silver.components.StatefulComponent
 import viper.silicon.{utils, _}
 import viper.silicon.decider.{DefaultDeciderProvider, TermToSMTLib2Converter}
-import viper.silicon.logger.MemberSymbExLogger
+import viper.silicon.logger.{MemberSymbExLogger, NoopMemberSymbExLog}
 import viper.silicon.state._
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
@@ -37,7 +37,7 @@ abstract class BaseVerifier(val config: Config,
     Logger(LoggerFactory.getLogger(s"${this.getClass.getName}-$uniqueId"))
 
   private var currentSymbExLog: Option[_ <: MemberSymbExLogger] = None
-  override def symbExLog: MemberSymbExLogger = currentSymbExLog.get
+  override def symbExLog: MemberSymbExLogger = currentSymbExLog.getOrElse(NoopMemberSymbExLog)
   protected def symbExLog_=(logger: MemberSymbExLogger): Unit = { currentSymbExLog = Some(logger) }
 
   private val counters = mutable.Map[AnyRef, Counter]()
