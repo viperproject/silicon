@@ -213,6 +213,8 @@ case object SymbExLogger {
 abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
   /** Collection of logged Method/Predicates/Functions. */
   protected var members: immutable.Map[ast.Member, Log] = Map.empty
+  protected var closed: Boolean = false
+  def isClosed: Boolean = closed
   protected val uidCounter: AtomicInteger = new AtomicInteger(0)
 
   protected def newEntityLogger(member: ast.Member, s: State, pcs: PathConditionStack): Log
@@ -238,7 +240,13 @@ abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
       val log = newEntityLogger(member, s, pcs)
 
       synchronized {
-        members += member -> log
+        if(closed) {
+          // If we time out and close the log, but somehow manage to race to move on to a new member in time, the log is
+          // closed so the records are not vacuously recorded, and the log is not added to the map of logs.
+          log.close()
+        } else {
+          members += member -> log
+        }
       }
 
       log.openMemberScope()
@@ -279,20 +287,21 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
                                   val member: ast.Member,
                                   val state: State,
                                   val pcs: PathConditionStack) {
-  def appendDataRecord(r: DataRecord): Unit
-  def appendScopingRecord(r: ScopingRecord, ignoreBranchingStack: Boolean = false): Unit
-  def appendBranchingRecord(r: BranchingRecord): Unit
+  protected def appendDataRecord(r: DataRecord): Unit
+  protected def appendScopingRecord(r: ScopingRecord, ignoreBranchingStack: Boolean = false): Unit
+  protected def appendBranchingRecord(r: BranchingRecord): Unit
 
-  def switchToNextBranch(uidBranchPoint: Int): Unit
-  def markBranchReachable(uidBranchPoint: Int): Unit
-  def endBranchPoint(uidBranchPoint: Int): Unit
+  protected def doSwitchToNextBranch(uidBranchPoint: Int): Unit
+  protected def markBranchReachable(uidBranchPoint: Int): Unit
+  protected def doEndBranchPoint(uidBranchPoint: Int): Unit
 
   def whenEnabled(f: => Unit): Unit = log.whenEnabled(f)
 
   /**
     * indicates whether this member's close was already closed
     */
-  private var isClosed: Boolean = false
+  private var closed: Boolean = false
+  def isClosed: Boolean = closed
 
   /**
     * Most recent output of (get-info :all-statistics) from the underlying prover
@@ -301,6 +310,16 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
 
   // Maps macros to their body
   private var _macros = Map[App, Term]()
+
+  def close(): Unit =
+    synchronized {
+      closed = true
+    }
+
+  def whenOpen(f: => Unit): Unit =
+    synchronized {
+      if(!isClosed) f else ()
+    }
 
   var main: MemberRecord = _
 
@@ -324,7 +343,7 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   @elidable(INFO)
   def openScope(s: DataRecord): Int = {
     s.id = log.freshUid()
-    appendDataRecord(s)
+    whenOpen { appendDataRecord(s) }
     insert(new OpenScopeRecord(s))
     s.id
   }
@@ -340,7 +359,7 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   private def insert(s: ScopingRecord, ignoreBranchingStack: Boolean = false): Int = {
     s.id = log.freshUid()
     s.timeMs = System.currentTimeMillis()
-    appendScopingRecord(s, ignoreBranchingStack)
+    whenOpen { appendScopingRecord(s, ignoreBranchingStack) }
     s.id
   }
 
@@ -357,8 +376,13 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   def insertBranchPoint(possibleBranchesCount: Int, condition: Option[Term] = None, conditionExp: Option[Exp] = None): Int = {
     val branchingRecord = new BranchingRecord(possibleBranchesCount, condition, conditionExp)
     branchingRecord.id = log.freshUid()
-    appendBranchingRecord(branchingRecord)
+    whenOpen { appendBranchingRecord(branchingRecord) }
     branchingRecord.id
+  }
+
+  @elidable(INFO)
+  def switchToNextBranch(uidBranchPoint: Int): Unit = {
+    whenEnabled { doSwitchToNextBranch(uidBranchPoint) }
   }
 
   /**
@@ -368,7 +392,12 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
     */
   @elidable(INFO)
   def markReachable(uidBranchPoint: Int): Unit = {
-    markBranchReachable(uidBranchPoint)
+    whenEnabled { markBranchReachable(uidBranchPoint) }
+  }
+
+  @elidable(INFO)
+  def endBranchPoint(uidBranchPoint: Int): Unit = {
+    whenEnabled { doEndBranchPoint(uidBranchPoint) }
   }
 
   /**
@@ -386,13 +415,9 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
     * Ends the scope of the member (i.e. main) by inserting a corresponding close scope record into the log
     */
   def closeMemberScope(): Unit = {
-    if (isClosed) {
-      return
-    }
     val closeRecord = new CloseScopeRecord(main.id)
     // always insert this close scope record on the root log instead of at the correct place depending on branching stack:
     insert(closeRecord, ignoreBranchingStack = true)
-    isClosed = true
   }
 
   /** Record the last prover query that failed.
@@ -436,7 +461,7 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
       case (key, Some(value)) => (key + "-delta", value)
       case other => sys.error(s"Unexpected result pair $other")
     }
-    lastStatistics = lastStatistics ++ currentStatistics
+    whenEnabled { lastStatistics = lastStatistics ++ currentStatistics }
     currentStatistics ++ deltaStatistics
   }
 
@@ -461,7 +486,7 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   def macros(): Map[App, Term] = _macros
 
   @elidable(INFO)
-  def addMacro(m: App, body: Term): Unit = {
+  def addMacro(m: App, body: Term): Unit = whenEnabled {
     _macros = _macros + (m -> body)
   }
 }
@@ -471,8 +496,8 @@ case object NoopMemberSymbExLog extends MemberSymbExLogger(null, null, null, nul
   override def appendScopingRecord(r: ScopingRecord, ignoreBranchingStack: Boolean): Unit = {}
   override def appendBranchingRecord(r: BranchingRecord): Unit = {}
   override def markBranchReachable(uidBranchPoint: Int): Unit = {}
-  override def switchToNextBranch(uidBranchPoint: Int): Unit = {}
-  override def endBranchPoint(uidBranchPoint: Int): Unit = {}
+  override def doSwitchToNextBranch(uidBranchPoint: Int): Unit = {}
+  override def doEndBranchPoint(uidBranchPoint: Int): Unit = {}
 
   override def whenEnabled(f: => Unit): Unit = {}
 
@@ -541,7 +566,7 @@ class MemberSymbExLog(rootLog: SymbExLogger[MemberSymbExLog],
     branchingStack +:= r
   }
 
-  override def switchToNextBranch(uidBranchPoint: Int): Unit = {
+  override def doSwitchToNextBranch(uidBranchPoint: Int): Unit = {
     assert(branchingStack.nonEmpty)
     val branchingRecord = branchingStack.head
     assert(branchingRecord.id == uidBranchPoint)
@@ -556,7 +581,7 @@ class MemberSymbExLog(rootLog: SymbExLogger[MemberSymbExLog],
     branchingRecord.markReachable()
   }
 
-  override def endBranchPoint(uidBranchPoint: Int): Unit = {
+  override def doEndBranchPoint(uidBranchPoint: Int): Unit = {
     assert(branchingStack.nonEmpty)
     val branchingRecord = branchingStack.head
     assert(branchingRecord.id == uidBranchPoint)

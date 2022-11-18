@@ -6,16 +6,17 @@
 
 package viper.silicon.tests
 
-import java.io.File
-import java.nio.file.{Files, Path, Paths}
-import viper.silicon.logger.{SymbExLog, SymbExLogger}
-import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
-import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
+import viper.silicon.logger.SymbExLog
 import viper.silicon.{Silicon, SiliconFrontend}
 import viper.silver.ast
 import viper.silver.ast.Position
 import viper.silver.frontend.{DefaultStates, Frontend}
 import viper.silver.reporter.NoopReporter
+import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
+import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
+
+import java.io.File
+import java.nio.file.{Files, Path, Paths}
 
 class SymbExLoggerTests extends SilSuite {
   val testDirectories = Seq("symbExLogTests")
