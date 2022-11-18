@@ -18,7 +18,6 @@ import viper.silver.ast.Positioned
 
 trait DataRecord extends SymbolicRecord {
   val value: ast.Node
-  val state: State
   // TODO: It would be nicer to use the PathConditionStack instead of the
   // Decider's internal representation for the pcs.
   // However, the recording happens to early such that the wrong
@@ -40,17 +39,6 @@ trait DataRecord extends SymbolicRecord {
     value match {
       case posValue: ast.Node with Positioned => data.pos = Some(utils.ast.sourceLineColumn(posValue))
       case _ =>
-    }
-    if (state != null) {
-      if (config.includeStore) {
-        data.store = Some(state.g)
-      }
-      if (config.includeHeap) {
-        data.heap = Some(state.h)
-      }
-      if (config.includeOldHeap) {
-        data.oldHeap = state.oldHeaps.get(Verifier.PRE_STATE_LABEL)
-      }
     }
     if (pcs != null && config.includePcs) {
       data.pcs = Some(pcs)

@@ -214,8 +214,7 @@ abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
   def isClosed: Boolean = closed
   protected val uidCounter: AtomicInteger = new AtomicInteger(0)
 
-  protected def newEntityLogger(member: ast.Member, s: State, pcs: PathConditionStack): Log
-  def config: LogConfig
+  protected def newEntityLogger(member: ast.Member, pcs: PathConditionStack): Log
 
   def freshUid(): Int = uidCounter.getAndIncrement()
 
@@ -232,9 +231,9 @@ abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
     * @param pcs    Current path conditions.
     */
   @elidable(INFO)
-  def openMemberScope(member: ast.Member, s: State, pcs: PathConditionStack): Log = {
+  def openMemberScope(member: ast.Member, pcs: PathConditionStack): Log = {
     try {
-      val log = newEntityLogger(member, s, pcs)
+      val log = newEntityLogger(member, pcs)
 
       synchronized {
         if(isClosed) {
@@ -262,19 +261,18 @@ abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
 }
 
 case object NoopSymbExLog extends SymbExLogger[NoopMemberSymbExLog.type] {
-  override def newEntityLogger(member: Member, s: State, pcs: PathConditionStack): NoopMemberSymbExLog.type =
+  override def newEntityLogger(member: Member, pcs: PathConditionStack): NoopMemberSymbExLog.type =
     NoopMemberSymbExLog
 
-  override def config: LogConfig = null
   override def whenEnabled(f: => Unit): Unit = {}
 
-  override def openMemberScope(member: Member, s: State, pcs: PathConditionStack): NoopMemberSymbExLog.type =
+  override def openMemberScope(member: Member, pcs: PathConditionStack): NoopMemberSymbExLog.type =
     NoopMemberSymbExLog
 }
 
 case class SymbExLog(config: LogConfig) extends SymbExLogger[MemberSymbExLog]() {
-  override def newEntityLogger(member: ast.Member, s: State, pcs: PathConditionStack): MemberSymbExLog =
-    new MemberSymbExLog(this, member, s, pcs)
+  override def newEntityLogger(member: ast.Member, pcs: PathConditionStack): MemberSymbExLog =
+    new MemberSymbExLog(this, config, member, pcs)
 
   /**
     * Simple string representation of the logs.
@@ -287,7 +285,6 @@ case class SymbExLog(config: LogConfig) extends SymbExLogger[MemberSymbExLog]() 
 
 abstract class MemberSymbExLogger(log: SymbExLogger[_],
                                   val member: ast.Member,
-                                  val state: State,
                                   val pcs: PathConditionStack) {
   protected def appendDataRecord(r: DataRecord): Unit
   protected def appendScopingRecord(r: ScopingRecord, ignoreBranchingStack: Boolean = false): Unit
@@ -327,9 +324,9 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
 
   def openMemberScope(): Unit = {
     main = member match {
-      case m: ast.Method => new MethodRecord(m, state, pcs)
-      case p: ast.Predicate => new PredicateRecord(p, state, pcs)
-      case f: ast.Function => new FunctionRecord(f, state, pcs)
+      case m: ast.Method => new MethodRecord(m, pcs)
+      case p: ast.Predicate => new PredicateRecord(p, pcs)
+      case f: ast.Function => new FunctionRecord(f, pcs)
       case _ => ???
     }
 
@@ -493,7 +490,7 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   }
 }
 
-case object NoopMemberSymbExLog extends MemberSymbExLogger(null, null, null, null) {
+case object NoopMemberSymbExLog extends MemberSymbExLogger(null, null, null) {
   override def appendDataRecord(r: DataRecord): Unit = {}
   override def appendScopingRecord(r: ScopingRecord, ignoreBranchingStack: Boolean): Unit = {}
   override def appendBranchingRecord(r: BranchingRecord): Unit = {}
@@ -514,9 +511,9 @@ case object NoopMemberSymbExLog extends MemberSymbExLogger(null, null, null, nul
 }
 
 class MemberSymbExLog(rootLog: SymbExLogger[MemberSymbExLog],
+                      config: LogConfig,
                       member: ast.Member,
-                      state: State,
-                      pcs: PathConditionStack) extends MemberSymbExLogger(rootLog, member, state, pcs) {
+                      pcs: PathConditionStack) extends MemberSymbExLogger(rootLog, member, pcs) {
   /** top level log entries for this member; these log entries were recorded consecutively without branching;
     * in case branching occured, one of these records is a BranchingRecord with all branches as field attached to it */
   var log: Vector[SymbolicRecord] = Vector[SymbolicRecord]()
@@ -541,9 +538,9 @@ class MemberSymbExLog(rootLog: SymbExLogger[MemberSymbExLog],
   }
 
   override def appendDataRecord(r: DataRecord): Unit = {
-    val shouldIgnore = rootLog.config.getRecordConfig(r) match {
-      case Some(_) => rootLog.config.isBlackList
-      case None => !rootLog.config.isBlackList
+    val shouldIgnore = config.getRecordConfig(r) match {
+      case Some(_) => config.isBlackList
+      case None => !config.isBlackList
     }
 
     if (shouldIgnore) {

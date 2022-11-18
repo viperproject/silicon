@@ -26,7 +26,7 @@ class WorkerVerifier(mainVerifier: MainVerifier,
   def verificationPoolManager: VerificationPoolManager = mainVerifier.verificationPoolManager
 
   override def openSymbExLogger(member: Member): Unit = {
-    symbExLog = mainVerifier.rootSymbExLogger.openMemberScope(member, null, decider.pcs)
+    symbExLog = mainVerifier.rootSymbExLogger.openMemberScope(member, decider.pcs)
   }
 
   /* Lifetime */

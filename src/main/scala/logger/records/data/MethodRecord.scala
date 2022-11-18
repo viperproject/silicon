@@ -12,9 +12,8 @@ import viper.silicon.state._
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 
-class MethodRecord(v: ast.Method, s: State, p: PathConditionStack) extends MemberRecord {
+class MethodRecord(v: ast.Method, p: PathConditionStack) extends MemberRecord {
   val value: ast.Method = v
-  val state: State = s
   val pcs: InsertionOrderedSet[Term] = if (p != null) p.assumptions else null
 
   override val toTypeString: String = "method"
