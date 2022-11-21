@@ -22,7 +22,7 @@ import viper.silicon.state.terms._
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 
-import scala.collection.immutable.{HashSet, ListSet}
+import scala.collection.immutable.HashSet
 
 /*
  * Interfaces
@@ -163,7 +163,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def start(): Unit = {
       pathConditions = new LayeredPathConditionStack()
-      _freshFunctions = if (Verifier.config.parallelizeBranches()) HashSet.empty else ListSet.empty /* [BRANCH-PARALLELISATION] */
+      _freshFunctions = if (Verifier.config.parallelizeBranches()) HashSet.empty else InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
       _freshMacros = Vector.empty
       createProver()
     }
@@ -171,7 +171,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def reset(): Unit = {
       _prover.reset()
       pathConditions = new LayeredPathConditionStack()
-      _freshFunctions = if (Verifier.config.parallelizeBranches()) HashSet.empty else ListSet.empty /* [BRANCH-PARALLELISATION] */
+      _freshFunctions = if (Verifier.config.parallelizeBranches()) HashSet.empty else InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
       _freshMacros = Vector.empty
     }
 

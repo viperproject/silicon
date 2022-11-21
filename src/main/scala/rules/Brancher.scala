@@ -123,7 +123,8 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
 
-            v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+            if (v.uniqueId != v0.uniqueId)
+              v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
 
             fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
           })
