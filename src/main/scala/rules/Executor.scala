@@ -26,8 +26,6 @@ import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.cfg.ConditionalEdge
 
-import scala.collection.immutable.HashSet
-
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
            cfg: SilverCfg,
@@ -195,7 +193,7 @@ object executor extends ExecutionRules {
             val edgeConditions = sortedEdges.collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
                                             .distinct
 
-            type PhaseData = (State, RecordedPathConditions, HashSet[FunctionDecl])
+            type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl])
             var phase1data: Vector[PhaseData] = Vector.empty
 
             (executionFlowController.locally(sBody, v)((s0, v0) => {

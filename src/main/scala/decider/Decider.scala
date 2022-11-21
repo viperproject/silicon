@@ -22,7 +22,7 @@ import viper.silicon.state.terms._
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 
-import scala.collection.immutable.HashSet
+import scala.collection.immutable.{HashSet, ListSet}
 
 /*
  * Interfaces
@@ -71,9 +71,9 @@ trait Decider {
   // HashSets lead to non-deterministic order, but branch parallelization leads to highly non-deterministic prover
   // states anyway (and Scala does not seem to have efficient order-preserving sets). ListSets are significantly
   // slower, so this tradeoff seems worth it.
-  def freshFunctions: HashSet[FunctionDecl]
+  def freshFunctions: Set[FunctionDecl]
   def freshMacros: Vector[MacroDecl]
-  def declareAndRecordAsFreshFunctions(functions: HashSet[FunctionDecl]): Unit
+  def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl]): Unit
   def declareAndRecordAsFreshMacros(functions: Vector[MacroDecl]): Unit
   def setPcs(other: PathConditionStack): Unit
 
@@ -97,7 +97,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var _prover: Prover = _
     private var pathConditions: PathConditionStack = _
 
-    private var _freshFunctions: HashSet[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
+    private var _freshFunctions: Set[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
     private var _freshMacros: Vector[MacroDecl] = _
 
     def prover: Prover = _prover
@@ -163,7 +163,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def start(): Unit = {
       pathConditions = new LayeredPathConditionStack()
-      _freshFunctions = HashSet.empty /* [BRANCH-PARALLELISATION] */
+      _freshFunctions = if (Verifier.config.parallelizeBranches()) HashSet.empty else ListSet.empty /* [BRANCH-PARALLELISATION] */
       _freshMacros = Vector.empty
       createProver()
     }
@@ -171,7 +171,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def reset(): Unit = {
       _prover.reset()
       pathConditions = new LayeredPathConditionStack()
-      _freshFunctions = HashSet.empty /* [BRANCH-PARALLELISATION] */
+      _freshFunctions = if (Verifier.config.parallelizeBranches()) HashSet.empty else ListSet.empty /* [BRANCH-PARALLELISATION] */
       _freshMacros = Vector.empty
     }
 
@@ -363,10 +363,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
 
 /* [BRANCH-PARALLELISATION] */
-    def freshFunctions: HashSet[FunctionDecl] = _freshFunctions
+    def freshFunctions: Set[FunctionDecl] = _freshFunctions
     def freshMacros: Vector[MacroDecl] = _freshMacros
 
-    def declareAndRecordAsFreshFunctions(functions: HashSet[FunctionDecl]): Unit = {
+    def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl]): Unit = {
       functions foreach prover.declare
 
       _freshFunctions = _freshFunctions ++ functions

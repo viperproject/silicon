@@ -7,7 +7,6 @@
 package viper.silicon.rules
 
 import java.util.concurrent._
-import viper.silicon.common.collections.immutable
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
@@ -16,8 +15,6 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-
-import scala.collection.immutable.HashSet
 
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
@@ -82,7 +79,7 @@ object brancher extends BranchingRules {
     v.decider.prover.comment(elseBranchComment)
 
     val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition))
-    var functionsOfCurrentDecider: HashSet[FunctionDecl] = null
+    var functionsOfCurrentDecider: Set[FunctionDecl] = null
     var macrosOfCurrentDecider: Vector[MacroDecl] = null
     var pcsOfCurrentDecider: PathConditionStack = null
 
