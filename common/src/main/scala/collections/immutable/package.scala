@@ -6,9 +6,14 @@
 
 package viper.silicon.common.collections
 
+import viper.silicon.common.collections
+import viper.silicon.common.collections.immutable.InternalInsertionOrderedSet
+
 import scala.collection.{IterableFactory, IterableFactoryDefaults}
 import scala.collection.generic.DefaultSerializable
+import scala.collection.immutable.ListSet.empty
 import scala.collection.immutable.{AbstractSet, ListSet, StrictOptimizedSetOps}
+import scala.collection.mutable.ImmutableBuilder
 
 package object immutable {
   import scala.collection.mutable
@@ -39,7 +44,7 @@ package object immutable {
 
     override def contains(elem: E): Boolean = s.contains(elem)
 
-    override def iterableFactory: IterableFactory[InternalInsertionOrderedSet] = ???
+    override def iterableFactory: IterableFactory[InternalInsertionOrderedSet] = InternalInsertionOrderedSet
 
     override def iterator: Iterator[E] = s.iterator
 
@@ -55,9 +60,20 @@ package object immutable {
     }
   }
 
-  case object InternalInsertionOrderedSet {
-    def empty[E]: InternalInsertionOrderedSet[E] = InternalInsertionOrderedSet(mutable.LinkedHashSet.empty)
+
+  final case object InternalInsertionOrderedSet extends IterableFactory[InternalInsertionOrderedSet] {
+    override def from[A](source: IterableOnce[A]): collections.immutable.InsertionOrderedSet[A] = empty.concat(source)
+
+    override def empty[A]: collections.immutable.InsertionOrderedSet[A] =
+      InternalInsertionOrderedSet[A](mutable.LinkedHashSet.empty[A])
+
+    override def newBuilder[A]: mutable.Builder[A, collections.immutable.InsertionOrderedSet[A]] = {
+      new ImmutableBuilder[A, InternalInsertionOrderedSet[A]](empty) {
+        def addOne(elem: A): this.type = { elems = elems + elem; this }
+      }
+    }
   }
+
 
   type InsertionOrderedSet[E] = InternalInsertionOrderedSet[E] // ListSet[E]
 
