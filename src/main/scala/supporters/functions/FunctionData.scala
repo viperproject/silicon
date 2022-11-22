@@ -184,7 +184,7 @@ class FunctionData(val programFunction: ast.Function,
       val freshSymbols: Set[Identifier] = freshSymbolsAcrossAllPhases.map(_.id)
       val filteredPosts = posts.filter(term => {
         val freeVars = term.freeVariables -- arguments
-        val unknownVars = freeVars.filterNot(v => freshSymbols.contains(v.id))
+        val unknownVars = freeVars.filterNot(v => freshSymbols.contains(v.id) || v == formalResult)
 
         unknownVars.isEmpty
       })
