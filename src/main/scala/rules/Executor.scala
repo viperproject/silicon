@@ -24,7 +24,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.cfg.{ConditionalEdge, Kind}
+import viper.silver.cfg.ConditionalEdge
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -50,19 +50,6 @@ object executor extends ExecutionRules {
   private def follow(s: State, edge: SilverEdge, v: Verifier)
                     (Q: (State, Verifier) => VerificationResult)
                     : VerificationResult = {
-
-    def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
-      edge.kind match {
-        case cfg.Kind.Out =>
-          val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
-          val s1 = s.copy(functionRecorder = fr1, h = h1,
-                          invariantContexts = s.invariantContexts.tail)
-          s1
-        case _ =>
-          /* No need to do anything special. See also the handling of loop heads in exec below. */
-          s
-      }
-    }
 
     edge match {
       case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
@@ -90,6 +77,19 @@ object executor extends ExecutionRules {
     }
   }
 
+  def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
+    edge.kind match {
+      case cfg.Kind.Out =>
+        val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+        val s1 = s.copy(functionRecorder = fr1, h = h1,
+          invariantContexts = s.invariantContexts.tail)
+        s1
+      case _ =>
+        /* No need to do anything special. See also the handling of loop heads in exec below. */
+        s
+    }
+  }
+
   private def follows(s: State,
                       edges: Seq[SilverEdge],
                       @unused pvef: ast.Exp => PartialVerificationError,
@@ -103,23 +103,27 @@ object executor extends ExecutionRules {
       follow(s, edges.head, v)(Q)
     } else {
       edges match {
-        case Seq(thenEdge@ConditionalEdge(cond1, _, _, Kind.Normal), elseEdge@ConditionalEdge(cond2, _, _, Kind.Normal))
+        case Seq(thenEdge@ConditionalEdge(cond1, _, _, _), elseEdge@ConditionalEdge(cond2, _, _, _))
             if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)()  =>
           val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
           val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
           val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, v1) =>
             brancher.branch(s2, tCond, Some(thenEdge.condition), v1)(
-              (s3, v3) =>
-                exec(s3, thenEdge.target, thenEdge.kind, v3)((s4, v4) => {
+              (s3, v3) => {
+                val s3p = handleOutEdge(s3, thenEdge, v3)
+                exec(s3p, thenEdge.target, thenEdge.kind, v3)((s4, v4) => {
                   SymbExLogger.currentLog().closeScope(sepIdentifier)
                   val branchRes = Q(s4, v4)
                   branchRes
-                }),
-              (s3, v3) =>
-                exec(s3, elseEdge.target, elseEdge.kind, v3)((s4, v4) => {
+                })
+              },
+              (s3, v3) => {
+                val s3p = handleOutEdge(s3, elseEdge, v3)
+                exec(s3p, elseEdge.target, elseEdge.kind, v3)((s4, v4) => {
                   SymbExLogger.currentLog().closeScope(sepIdentifier)
                   Q(s4, v4)
-                })))
+                })
+              }))
           res
         case _ =>
           val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
@@ -189,7 +193,7 @@ object executor extends ExecutionRules {
             val edgeConditions = sortedEdges.collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
                                             .distinct
 
-            type PhaseData = (State, RecordedPathConditions, InsertionOrderedSet[FunctionDecl])
+            type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl])
             var phase1data: Vector[PhaseData] = Vector.empty
 
             (executionFlowController.locally(sBody, v)((s0, v0) => {
