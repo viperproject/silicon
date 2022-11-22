@@ -181,9 +181,16 @@ class FunctionData(val programFunction: ast.Function,
     if (programFunction.posts.nonEmpty) {
       val posts =
         expressionTranslator.translatePostcondition(program, programFunction.posts, this)
+      val freshSymbols: Set[Identifier] = freshSymbolsAcrossAllPhases.map(_.id)
+      val filteredPosts = posts.filter(term => {
+        val freeVars = term.freeVariables -- arguments
+        val unknownVars = freeVars.filterNot(v => freshSymbols.contains(v.id))
+
+        unknownVars.isEmpty
+      })
 
       val pre = And(translatedPres)
-      val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(posts))))
+      val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(filteredPosts))))
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val body = Let(toMap(bodyBindings), innermostBody)
 

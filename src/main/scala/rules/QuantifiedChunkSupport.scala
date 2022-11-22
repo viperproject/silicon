@@ -656,7 +656,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         optQVarsInstantiations match {
           case None =>
             v.decider.prover.comment("Definitional axioms for snapshot map domain")
-            v.decider.assume(smDef.domainDefinitions)
+            val domainDefinitions = smDef.domainDefinitions
+            val potentiallyLocalDomainDefinitions = domainDefinitions.map {
+              case q@Quantification(_, _, body, _, _, true) if s.quantifiedVariables.exists(v => body.contains(v)) =>
+                q.copy(isGlobal = false)
+              case e => e
+            }
+            v.decider.assume(potentiallyLocalDomainDefinitions)
           case Some(_instantiations) =>
             // TODO: Avoid pattern matching on resource
             val instantiations = resource match {
@@ -673,7 +679,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       optQVarsInstantiations match {
         case None =>
           v.decider.prover.comment("Definitional axioms for snapshot map values")
-          v.decider.assume(smDef.valueDefinitions)
+          val valueDefinitions = smDef.valueDefinitions
+          val potentiallyLocalValueDefinitions = valueDefinitions.map {
+            case q@Quantification(_, _, body, _, _, true) if s.quantifiedVariables.exists(v => body.contains(v)) =>
+              q.copy(isGlobal = false)
+            case e => e
+          }
+          v.decider.assume(potentiallyLocalValueDefinitions)
         case Some(_instantiations) =>
           // TODO: Avoid pattern matching on resource
           val instantiations = resource match {
@@ -1086,7 +1098,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
-            v.decider.assume(inverseFunctions.definitionalAxioms)
+            val definitionalAxioms = inverseFunctions.definitionalAxioms
+            val potentiallyLocalDefinitionalAxioms = definitionalAxioms.map{
+              case q@Quantification(_, _, body, _, _, true) if s.quantifiedVariables.exists(v => body.contains(v)) =>
+                q.copy(isGlobal = false)
+              case e => e
+            }
+            v.decider.assume(potentiallyLocalDefinitionalAxioms)
 
             if (s.heapDependentTriggers.contains(resourceIdentifier)){
               v.decider.assume(
