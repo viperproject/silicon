@@ -876,6 +876,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
             val definitionalAxiomMark = v.decider.setPathConditionMark()
+            v.decider.assume(inv.definitionalAxioms.map(a => PreconditionPropagationTransformer.transform(a)))
             v.decider.assume(inv.definitionalAxioms)
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
@@ -1092,6 +1093,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
+            v.decider.assume(inverseFunctions.definitionalAxioms.map(a => PreconditionPropagationTransformer.transform(a)))
             v.decider.assume(inverseFunctions.definitionalAxioms)
 
             if (s.heapDependentTriggers.contains(resourceIdentifier)){
@@ -1552,9 +1554,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           argsEqual),
         varsEqual)
 
+    val functionPres = PreconditionPropagationTransformer.transform(implies)
+
     Forall(
       qvars1 ++ qvars2,
-      implies,
+      Implies(functionPres, implies),
       triggers,
       s"$qidPrefix-rcvrInj")
   }

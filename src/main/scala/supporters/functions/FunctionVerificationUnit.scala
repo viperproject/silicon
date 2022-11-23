@@ -175,9 +175,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
 
-          if (function.body.isEmpty)
+          if (function.body.isEmpty) {
+            emitAndRecordFunctionAxioms(data.preconditionPropagationAxiom.toSeq: _*)
             result1
-          else {
+          } else {
             /* Phase 2: Verify the function's postcondition */
             val result2 = verify(function, phase1data)
 

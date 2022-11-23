@@ -476,7 +476,9 @@ object consumer extends ConsumptionRules {
       eval(s2, e, pve, v1)((s3, t, v2) => {
         val termToAssert = t match {
           case Quantification(q, vars, body, trgs, name, isGlob) =>
-            Quantification(q, vars, Implies(PreconditionPropagationTransformer.transform(body), body), trgs, name, isGlob)
+            val transformed = PreconditionPropagationTransformer.transform(body)
+            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob))
+            Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob)
           case _ => t
         }
         v2.decider.assert(termToAssert) {
