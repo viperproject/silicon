@@ -191,7 +191,7 @@ class FunctionData(val programFunction: ast.Function,
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
 
     if (programFunction.posts.nonEmpty) {
-      val pre = preconditionFunctionApplication
+      val pre = if (programFunction.pres.nonEmpty) preconditionFunctionApplication else True()
       val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val body = Let(toMap(bodyBindings), innermostBody)
@@ -256,7 +256,7 @@ class FunctionData(val programFunction: ast.Function,
     assert(phase == 2, s"Definitional axiom must be generated in phase 2, current phase is $phase")
 
     optBody.map(translatedBody => {
-      val pre = preconditionFunctionApplication
+      val pre = if (programFunction.pres.nonEmpty) preconditionFunctionApplication else True()
       val nestedDefinitionalAxioms = generateNestedDefinitionalAxioms
       val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
       val allTriggers = (
@@ -267,14 +267,14 @@ class FunctionData(val programFunction: ast.Function,
   }
 
   lazy val preconditionPropagationAxiom: Seq[Term] = {
-    val pre = preconditionFunctionApplication
+    val pre = if (programFunction.pres.nonEmpty) preconditionFunctionApplication else True()
     val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
-      val body = Implies(pre, PreconditionPropagationTransformer.transform(translatedBody))
+      val body = Implies(pre, PreconditionPropagationTransformer.transform(translatedBody, program))
       Forall(arguments, body, Seq(Trigger(functionApplication)))
     }) else None
     val postPreconditions = if (programFunction.posts.nonEmpty) {
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
-      val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, PreconditionPropagationTransformer.transform(tPost))))
+      val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, PreconditionPropagationTransformer.transform(tPost, program))))
       bodies.map(b => Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))))
     } else Seq()
     bodyPreconditions.toSeq ++ postPreconditions

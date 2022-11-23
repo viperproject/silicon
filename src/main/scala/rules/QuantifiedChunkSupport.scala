@@ -142,7 +142,8 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                        perms: Term,
                        arguments: Seq[Term],
                        triggers: Seq[Trigger],
-                       qidPrefix: String)
+                       qidPrefix: String,
+                       program: ast.Program)
                       : Quantification
 
   def createSingletonQuantifiedChunk(codomainQVars: Seq[Var],
@@ -848,7 +849,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         triggers = effectiveTriggers)))
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
-    val nonNegTerm = Forall(qvars, Implies(PreconditionPropagationTransformer.transform(nonNegImplication), nonNegImplication), Nil)
+    val nonNegTerm = Forall(qvars, Implies(PreconditionPropagationTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
     v.decider.assert(nonNegTerm) {
       case true =>
@@ -863,12 +864,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               perms     = tPerm,
               arguments = tArgs,
               triggers  = Nil,
-              qidPrefix = qid)
+              qidPrefix = qid,
+              program   = s.program)
           } else {
             True()
           }
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assume(PreconditionPropagationTransformer.transform(receiverInjectivityCheck))
+        v.decider.assume(PreconditionPropagationTransformer.transform(receiverInjectivityCheck, s.program))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
@@ -876,7 +878,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
             val definitionalAxiomMark = v.decider.setPathConditionMark()
-            v.decider.assume(inv.definitionalAxioms.map(a => PreconditionPropagationTransformer.transform(a)))
+            v.decider.assume(inv.definitionalAxioms.map(a => PreconditionPropagationTransformer.transform(a, s.program)))
             v.decider.assume(inv.definitionalAxioms)
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
@@ -1052,7 +1054,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
-    val nonNegTerm = Forall(qvars, Implies(PreconditionPropagationTransformer.transform(nonNegImplication), nonNegImplication), Nil)
+    val nonNegTerm = Forall(qvars, Implies(PreconditionPropagationTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
     v.decider.assert(nonNegTerm) {
       case true =>
@@ -1084,7 +1086,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             perms     = tPerm,
             arguments = tArgs,
             triggers  = Nil,
-            qidPrefix = qid)
+            qidPrefix = qid,
+            program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
@@ -1093,7 +1096,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
-            v.decider.assume(inverseFunctions.definitionalAxioms.map(a => PreconditionPropagationTransformer.transform(a)))
+            v.decider.assume(inverseFunctions.definitionalAxioms.map(a => PreconditionPropagationTransformer.transform(a, s.program)))
             v.decider.assume(inverseFunctions.definitionalAxioms)
 
             if (s.heapDependentTriggers.contains(resourceIdentifier)){
@@ -1518,7 +1521,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                        perms: Term,
                        arguments: Seq[Term],
                        triggers: Seq[Trigger],
-                       qidPrefix: String)
+                       qidPrefix: String,
+                       program: ast.Program)
                       : Quantification = {
 
     val qvars1 = qvars.map(x => x.copy(id = x.id.rename(id => s"${id}1")))
@@ -1554,7 +1558,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           argsEqual),
         varsEqual)
 
-    val functionPres = PreconditionPropagationTransformer.transform(implies)
+    val functionPres = PreconditionPropagationTransformer.transform(implies, program)
 
     Forall(
       qvars1 ++ qvars2,
