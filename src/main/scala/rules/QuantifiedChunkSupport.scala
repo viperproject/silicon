@@ -96,6 +96,8 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
   /** Creates `n` fresh (partial) inverse functions `inv_i` that invert an `n`-ary
     * function `fct`, where `n == qvars.length`, and returns the inverse functions as
     * well as the definitional axioms.
+    * If the types of the quantified variables could be finite, additionally creates n fresh
+    * functions `img_i` denoting the domain of the respective inverse functions.
     *
     * Let
     *   - `x_1: T_1`, ..., `x_n: T_n` denote the quantified variables (argument `qvars`)
@@ -106,17 +108,20 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     *     the partial inverses are defined
     *
     * The following definitional axioms will be returned, in addition to the fresh
-    * inverse functions `inv_1`, ..., `inv_n`:
+    * inverse functions `inv_1`, ..., `inv_n` and the respective image functions:
     *
     *   forall x_1: T_1, ..., x_n: T_n :: {fct(x_1, ..., x_n)}
     *     c(x_1, ..., x_n) ==>
-    *          inv_1(fct(x_1, ..., x_n)) == x_1
+    *          inv_1(fct(x_1, ..., x_n)) == x_1 && img_1(fct(x_1, ..., x_n))
     *       && ...
-    *       && inv_n(fct(x_1, ..., x_n)) == x_n
+    *       && inv_n(fct(x_1, ..., x_n)) == x_n && img_n(fct(x_1, ..., x_n))
     *
     *   forall r: R :: {inv_1(r), ..., inv_n(r)}
-    *     c(inv_1(r), ..., inv_n(r)) ==>
+    *     c(inv_1(r), ..., inv_n(r)) && img_1(r) && ... && img_n(r) ==>
     *       fct(inv_1(r), ..., inv_n(r)) == r
+    *
+    *  For all i where x_i is of type Bool or Int, we do not generate the img_i constraints in
+    *  either axiom, since those types are known to have the same domain as Ref.
     *
     * @param qvars Quantified variables that occur in the invertible function and for
     *              which partial inverse functions are to be defined..
@@ -128,7 +133,10 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     * @param additionalInvArgs Additional arguments on which `inv` depends (typically
     *                          quantified variables bound by some surrounding scope).
     *                          Currently omitted from the axioms shown above.
-    * @return The generated partial inverse functions and corresponding definitional axioms.
+    * @return The generated partial inverse functions and corresponding definitional axioms, and
+    *         the images of the given codomain variables (returned separately, since nothing else
+    *         in the returned InverseFunctions object references or contains the codomain
+    *         variables, and thus they only have meaning for the caller).
     */
   def getFreshInverseFunctions(qvars: Seq[Var],
                                condition: Term,
@@ -1583,8 +1591,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val inverseFunctions = Array.ofDim[Function](qvars.length) /* inv_i */
     val imageFunctions = Array.ofDim[Function](qvars.length) /* img_i */
-    val imagesOfFcts = Array.ofDim[Term](qvars.length) // TODO
-    val imagesOfCodomains = Array.ofDim[Term](qvars.length) // TODO
+    val imagesOfFcts = Array.ofDim[Term](qvars.length) // /* img_i(f_1(xs), ..., f_m(xs)) */
+    val imagesOfCodomains = Array.ofDim[Term](qvars.length) /* img_i(rs) */
     val inversesOfFcts = Array.ofDim[Term](qvars.length)       /* inv_i(f_1(xs), ..., f_m(xs)) */
     val inversesOfCodomains = Array.ofDim[Term](qvars.length)  /* inv_i(rs) */
 
@@ -1597,6 +1605,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       inversesOfCodomains(idx) = inv(codomainQVars)
 
       if (qvar.sort != sorts.Int && qvar.sort != sorts.Ref) {
+        // Types known to be infinite, thus there is no need to constrain the domain using image functions.
         val imgFun = v.decider.fresh("img", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), sorts.Bool)
         val img = (ts: Seq[Term]) => App(imgFun, additionalInvArgs ++ ts)
 
@@ -1618,9 +1627,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       condition.replace(qvars, ArraySeq.unsafeWrapArray(inversesOfCodomains))
 
     /* c(xs) ==>
-     *       inv_1(f_1(xs), ..., f_m(xs)) == x_1
+     *       inv_1(f_1(xs), ..., f_m(xs)) == x_1 && img_1(f_1(xs), ..., f_m(xs)) &&
      *   &&  ...
-     *   &&  inv_n(f_1(xs), ..., f_m(xs)) == x_n
+     *   &&  inv_n(f_1(xs), ..., f_m(xs)) == x_n && img_n(f_1(xs), ..., f_m(xs))
      */
     val axInvsOfFctsBody =
       Implies(
@@ -1649,7 +1658,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             s"$qidPrefix-invOfFct")
       }
 
-    /* c(inv_1(rs), ..., inv_n(rs)) ==>
+    /* c(inv_1(rs), ..., inv_n(rs)) && img_1(rs) && ... && img_n(rs) ==>
      *    f_1(inv_1(rs), ..., inv_n(rs)) == r_1
      */
     val axFctsOfInvsBody =
