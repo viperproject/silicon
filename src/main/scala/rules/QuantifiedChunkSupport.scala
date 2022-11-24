@@ -32,9 +32,12 @@ case class InverseFunctions(condition: Term,
                             additionalArguments: Vector[Var],
                             axiomInversesOfInvertibles: Quantification,
                             axiomInvertiblesOfInverses: Quantification,
-                            qvarsToInverses: Map[Var, Function]) {
+                            qvarsToInverses: Map[Var, Function],
+                            qvarsToImages: Map[Var, Function]) {
 
   val inverses: Iterable[Function] = qvarsToInverses.values
+
+  val images: Iterable[Function] = qvarsToImages.values
 
   val definitionalAxioms: Vector[Quantification] =
     Vector(axiomInversesOfInvertibles, axiomInvertiblesOfInverses)
@@ -135,7 +138,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
                                v: Verifier)
-                              : InverseFunctions
+                              : (InverseFunctions, Seq[Term])
 
   def injectivityAxiom(qvars: Seq[Var],
                        condition: Term,
@@ -246,7 +249,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             program: ast.Program)
                            : (QuantifiedBasicChunk, InverseFunctions) = {
 
-    val inverseFunctions =
+    val (inverseFunctions, imagesOfCodomain) =
       getFreshInverseFunctions(
         qvars,
         And(condition, IsPositive(permissions)),
@@ -261,7 +264,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val conditionalizedPermissions =
       Ite(
-        condition.replace(qvarsToInversesOfCodomain),
+        And(And(imagesOfCodomain), condition.replace(qvarsToInversesOfCodomain)),
         permissions.replace(qvarsToInversesOfCodomain),
         NoPerm())
 
@@ -1008,7 +1011,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    val inverseFunctions =
+    val (inverseFunctions, imagesOfFormalQVars) =
       quantifiedChunkSupporter.getFreshInverseFunctions(
         qvars,
         And(tCond, IsPositive(tPerm)),
@@ -1113,7 +1116,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     s2,
                     relevantChunks,
                     formalQVars,
-                    condOfInvOfLoc,
+                    And(condOfInvOfLoc, And(imagesOfFormalQVars)),
                     resource,
                     rPerm,
                     chunkOrderHeuristics,
@@ -1159,7 +1162,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   s.copy(smCache = smCache1),
                   relevantChunks,
                   formalQVars,
-                  condOfInvOfLoc,
+                  And(condOfInvOfLoc, And(imagesOfFormalQVars)),
                   resource,
                   lossOfInvOfLoc,
                   chunkOrderHeuristics,
@@ -1563,7 +1566,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
                                v: Verifier)
-                              : InverseFunctions = {
+                              : (InverseFunctions, Seq[Term]) = {
 
     assert(
       invertibles.length == codomainQVars.length,
@@ -1579,6 +1582,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val qvarsWithIndices = qvars.zipWithIndex
 
     val inverseFunctions = Array.ofDim[Function](qvars.length) /* inv_i */
+    val inverseImageFunctions = Array.ofDim[Function](qvars.length)  /* img_i */
+    val imageFunctions = Array.ofDim[Function](qvars.length) // TODO
+    val imagesOfFcts = Array.ofDim[Term](qvars.length) // TODO
+    val imagesOfCodomains = Array.ofDim[Term](qvars.length) // TODO
     val inversesOfFcts = Array.ofDim[Term](qvars.length)       /* inv_i(f_1(xs), ..., f_m(xs)) */
     val inversesOfCodomains = Array.ofDim[Term](qvars.length)  /* inv_i(rs) */
 
@@ -1586,9 +1593,17 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       val fun = v.decider.fresh("inv", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), qvar.sort)
       val inv = (ts: Seq[Term]) => App(fun, additionalInvArgs ++ ts)
 
+      val imgFun = v.decider.fresh("img", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), sorts.Bool)
+      val img = (ts: Seq[Term]) => App(imgFun, additionalInvArgs ++ ts)
+
+
       inverseFunctions(idx) = fun
       inversesOfFcts(idx) = inv(invertibles)
+      imageFunctions(idx) = imgFun
+      imagesOfFcts(idx) = img(invertibles)
+      imagesOfCodomains(idx) = img(codomainQVars)
       inversesOfCodomains(idx) = inv(codomainQVars)
+      inverseImageFunctions(idx) = imgFun
     }
 
     /* f_1(inv_1(rs), ..., inv_n(rs)), ...,  f_m(inv_1(rs), ..., inv_n(rs)) */
@@ -1607,7 +1622,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val axInvsOfFctsBody =
       Implies(
         condition,
-        And(qvarsWithIndices map { case (qvar, idx) => inversesOfFcts(idx) === qvar }))
+        And(And(qvarsWithIndices map { case (qvar, idx) => inversesOfFcts(idx) === qvar }),
+            And(qvarsWithIndices map { case (_, idx) => imagesOfFcts(idx) })))
 
     val axInvsOfFct =
       userProvidedTriggers match {
@@ -1635,7 +1651,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
      */
     val axFctsOfInvsBody =
       Implies(
-        conditionOfInverses,
+        And(And(imagesOfCodomains), conditionOfInverses),
         And(
           fctsOfInversesOfCodomain
             .zip(codomainQVars)
@@ -1655,13 +1671,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         isGlobal = true,
         v.axiomRewriter)
 
-    InverseFunctions(
+    val res = InverseFunctions(
       condition,
       invertibles,
       additionalInvArgs.toVector,
       axInvsOfFct,
       axFctsOfInvs,
-      qvars.zip(inverseFunctions).to(Map))
+      qvars.zip(inverseFunctions).to(Map),
+      qvars.zip(imageFunctions).to(Map)
+    )
+    (res, imagesOfCodomains)
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])

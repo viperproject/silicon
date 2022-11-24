@@ -121,7 +121,7 @@ class FunctionData(val programFunction: ast.Function,
     freshSymbolsAcrossAllPhases ++= freshPathSymbols map FunctionDecl
     freshSymbolsAcrossAllPhases ++= freshArps.map(pair => FunctionDecl(pair._1))
     freshSymbolsAcrossAllPhases ++= freshSnapshots map FunctionDecl
-    freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(_.inverses map FunctionDecl)
+    freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(i => (i.inverses ++ i.images) map FunctionDecl)
     freshSymbolsAcrossAllPhases ++= freshMacros
 
     freshSymbolsAcrossAllPhases ++= freshFvfsAndDomains map (fvfDef =>
