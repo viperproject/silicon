@@ -1122,7 +1122,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     chunkOrderHeuristics,
                     v2)
                 val optSmDomainDefinitionCondition2 =
-                    if (s3.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc)))
+                    if (s3.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(imagesOfFormalQVars)))
                     else None
                   val (smDef2, smCache2) =
                     quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1172,7 +1172,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 case (Complete(), s2, remainingChunks) =>
                   val h3 = Heap(remainingChunks ++ otherChunks)
                   val optSmDomainDefinitionCondition2 =
-                    if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc)))
+                    if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
                     else None
                   val (smDef2, smCache2) =
                     quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1582,8 +1582,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val qvarsWithIndices = qvars.zipWithIndex
 
     val inverseFunctions = Array.ofDim[Function](qvars.length) /* inv_i */
-    val inverseImageFunctions = Array.ofDim[Function](qvars.length)  /* img_i */
-    val imageFunctions = Array.ofDim[Function](qvars.length) // TODO
+    val imageFunctions = Array.ofDim[Function](qvars.length) /* img_i */
     val imagesOfFcts = Array.ofDim[Term](qvars.length) // TODO
     val imagesOfCodomains = Array.ofDim[Term](qvars.length) // TODO
     val inversesOfFcts = Array.ofDim[Term](qvars.length)       /* inv_i(f_1(xs), ..., f_m(xs)) */
@@ -1593,17 +1592,21 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       val fun = v.decider.fresh("inv", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), qvar.sort)
       val inv = (ts: Seq[Term]) => App(fun, additionalInvArgs ++ ts)
 
-      val imgFun = v.decider.fresh("img", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), sorts.Bool)
-      val img = (ts: Seq[Term]) => App(imgFun, additionalInvArgs ++ ts)
-
-
       inverseFunctions(idx) = fun
       inversesOfFcts(idx) = inv(invertibles)
-      imageFunctions(idx) = imgFun
-      imagesOfFcts(idx) = img(invertibles)
-      imagesOfCodomains(idx) = img(codomainQVars)
       inversesOfCodomains(idx) = inv(codomainQVars)
-      inverseImageFunctions(idx) = imgFun
+
+      if (qvar.sort != sorts.Int && qvar.sort != sorts.Ref) {
+        val imgFun = v.decider.fresh("img", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), sorts.Bool)
+        val img = (ts: Seq[Term]) => App(imgFun, additionalInvArgs ++ ts)
+
+        imageFunctions(idx) = imgFun
+        imagesOfFcts(idx) = img(invertibles)
+        imagesOfCodomains(idx) = img(codomainQVars)
+      } else {
+        imagesOfFcts(idx) = True()
+        imagesOfCodomains(idx) = True()
+      }
     }
 
     /* f_1(inv_1(rs), ..., inv_n(rs)), ...,  f_m(inv_1(rs), ..., inv_n(rs)) */
@@ -1678,7 +1681,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       axInvsOfFct,
       axFctsOfInvs,
       qvars.zip(inverseFunctions).to(Map),
-      qvars.zip(imageFunctions).to(Map)
+      qvars.zip(imageFunctions).filter(_._2 != null).to(Map)
     )
     (res, imagesOfCodomains)
   }
