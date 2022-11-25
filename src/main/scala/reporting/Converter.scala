@@ -604,7 +604,7 @@ object Converter {
     * extracts domains from a program. only the ones that are used in the program... no generics
     * it also extracts all instances (translates the generics to concrete values)
     */
-  def getDomains(model: Model, heap: ExtractedHeap, program: ast.Program): Seq[DomainEntry] = {
+  def getDomains(model: Model, program: ast.Program): Seq[DomainEntry] = {
     val domains = program.collect {
       case a: ast.Domain => a
     }
@@ -622,7 +622,7 @@ object Converter {
       } catch {
         case _: Throwable => Seq()
       }
-      val translatedFunctions = x._1.functions.map(y => translateFunction(model, heap, y, x._2, program))
+      val translatedFunctions = x._1.functions.map(y => translateFunction(model, y, x._2, program))
       DomainEntry(x._1.name, types, translatedFunctions)
     }).toSeq
   }
@@ -630,11 +630,11 @@ object Converter {
   def containsTypeVar(s: Seq[ast.Type]): Boolean = s.exists(x => x.isInstanceOf[ast.TypeVar])
 
   // extract all non domain internal functions
-  def getFunctions(model: Model, heap: ExtractedHeap, program: ast.Program): Seq[ExtractedFunction] = {
+  def getFunctions(model: Model, program: ast.Program): Seq[ExtractedFunction] = {
     val funcs = program.collect {
       case f: ast.Function => f
     }
-    funcs.map(x => translateFunction(model, heap, x, silicon.toMap(Nil), program)).toSeq
+    funcs.map(x => translateFunction(model, x, silicon.toMap(Nil), program)).toSeq
   }
 
   def errorfunc(problem: String): ExtractedFunction =
@@ -648,7 +648,7 @@ object Converter {
     * @param genmap map of generic types to concrete types
     * @return
     */
-  def translateFunction(model: Model, heap: ExtractedHeap, func: ast.FuncLike, genmap: Map[ast.TypeVar, ast.Type], program: ast.Program): ExtractedFunction = {
+  def translateFunction(model: Model, func: ast.FuncLike, genmap: Map[ast.TypeVar, ast.Type], program: ast.Program): ExtractedFunction = {
     def toSort(typ: ast.Type): Either[Throwable, Sort] = Try(symbolConverter.toSort(typ)).toEither
     def toSortWithSubstitutions(typ: ast.Type, typeErrorMsg: String): Either[String, Sort] = {
       toSort(typ)
@@ -730,8 +730,8 @@ case class Converter(model: Model,
   lazy val modelAtLabel: Map[String, ExtractedModel] = extractedHeaps.map(x =>
     x._1 -> Converter.mapHeapToStore(store, x._2, model)
   )
-  lazy val domains: Seq[DomainEntry] = {Converter.getDomains(model, extractedHeap, program)}
-  lazy val nonDomainFunctions: Seq[ExtractedFunction] = Converter.getFunctions(model, extractedHeap, program)
+  lazy val domains: Seq[DomainEntry] = Converter.getDomains(model, program)
+  lazy val nonDomainFunctions: Seq[ExtractedFunction] = Converter.getFunctions(model, program)
   def extractVal(x: VarEntry): ExtractedModelEntry =
     Converter.mapLocalVar(
       model = model,
