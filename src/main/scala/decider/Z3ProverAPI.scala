@@ -22,7 +22,6 @@ import scala.collection.mutable
 import com.microsoft.z3._
 import viper.silicon.reporting.ExternalToolError
 
-import scala.collection.immutable.ListMap
 import scala.jdk.CollectionConverters.MapHasAsJava
 import scala.util.Random
 
@@ -339,7 +338,7 @@ class Z3ProverAPI(uniqueId: String,
     for (e <- statistics.getEntries()) {
       result.update(e.Key, e.getValueString)
     }
-    ListMap.from(result)
+    Map.from(result)
   }
 
   def comment(str: String): Unit = {
