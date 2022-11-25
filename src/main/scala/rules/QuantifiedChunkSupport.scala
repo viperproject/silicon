@@ -97,7 +97,7 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     * function `fct`, where `n == qvars.length`, and returns the inverse functions as
     * well as the definitional axioms.
     * If the types of the quantified variables could be finite, additionally creates n fresh
-    * functions `img_i` denoting the domain of the respective inverse functions.
+    * boolean functions `img_i` denoting the domain of the respective inverse functions.
     *
     * Let
     *   - `x_1: T_1`, ..., `x_n: T_n` denote the quantified variables (argument `qvars`)
@@ -120,8 +120,8 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     *     c(inv_1(r), ..., inv_n(r)) && img_1(r) && ... && img_n(r) ==>
     *       fct(inv_1(r), ..., inv_n(r)) == r
     *
-    *  For all i where x_i is of type Bool or Int, we do not generate the img_i constraints in
-    *  either axiom, since those types are known to have the same domain as Ref.
+    *  For all i where x_i is of type Ref or Int, we do not generate the img_i constraints in
+    *  either axiom, since those types are known to have the same cardinality as Ref.
     *
     * @param qvars Quantified variables that occur in the invertible function and for
     *              which partial inverse functions are to be defined..
@@ -1613,6 +1613,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         imagesOfFcts(idx) = img(invertibles)
         imagesOfCodomains(idx) = img(codomainQVars)
       } else {
+        // imageFunctions(idx) remains null, will be filtered out later.
         imagesOfFcts(idx) = True()
         imagesOfCodomains(idx) = True()
       }
