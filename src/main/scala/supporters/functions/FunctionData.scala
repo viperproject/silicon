@@ -8,7 +8,7 @@ package viper.silicon.supporters.functions
 
 import scala.annotation.unused
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.state.PreconditionPropagationTransformer
+import viper.silicon.state.FunctionPreconditionTransformer
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -269,12 +269,12 @@ class FunctionData(val programFunction: ast.Function,
   lazy val preconditionPropagationAxiom: Seq[Term] = {
     val pre = if (programFunction.pres.nonEmpty) preconditionFunctionApplication else True()
     val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
-      val body = Implies(pre, PreconditionPropagationTransformer.transform(translatedBody, program))
+      val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
       Forall(arguments, body, Seq(Trigger(functionApplication)))
     }) else None
     val postPreconditions = if (programFunction.posts.nonEmpty) {
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
-      val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, PreconditionPropagationTransformer.transform(tPost, program))))
+      val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
       bodies.map(b => Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))))
     } else Seq()
     bodyPreconditions.toSeq ++ postPreconditions

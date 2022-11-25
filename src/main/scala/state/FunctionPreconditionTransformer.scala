@@ -4,7 +4,23 @@ import viper.silicon.rules.functionSupporter
 import viper.silicon.state.terms.{And, App, HeapDepFun, Implies, Ite, Let, Literal, Not, Or, Quantification, Term, True}
 import viper.silver.ast
 
-object PreconditionPropagationTransformer {
+
+/**
+  * Given a term t, returns a new term tr(t) that expresses that all applications of heap-dependent functions are
+  * well-defined (in particular, that the abstract functions that represent their preconditions hold).
+  * In general, after checking that t is well-defined, it is sound to assume tr(t).
+  *
+  * I.e., given
+  *   fun(e1, ..., en)
+  * where fun is a heap-dependent function with a precondition, it returns
+  *   tr(e1) && ... && tr(en) && fun%precondition(e1, ..., en)
+  * where the tr(ei) terms express that all function applications in the argument terms are well-defined.
+  *
+  * For &&, ||, and ==>, the transformation takes into account short-circuit semantics:
+  * If A && B is well-defined, that means that A is well-defined, and if A is true, then B is well-defined as well.
+  * Thus, the transformation of A && B is tr(A) && (A ==> tr(B)).
+  */
+object FunctionPreconditionTransformer {
   def transform(t: Term, p: ast.Program): Term = {
     val res = t match {
       case _:Literal => True()
@@ -16,7 +32,7 @@ object PreconditionPropagationTransformer {
       case Quantification(q, vars, body, triggers, name, isGlobal) =>
         val tBody = transform(body, p)
         if (tBody == True())
-          True()
+          tBody
         else
           Quantification(q, vars, tBody, triggers, name, isGlobal)
       case App(hdf@HeapDepFun(id, _, _), args)  =>

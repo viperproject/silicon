@@ -849,7 +849,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         triggers = effectiveTriggers)))
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
-    val nonNegTerm = Forall(qvars, Implies(PreconditionPropagationTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
+    val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
     v.decider.assert(nonNegTerm) {
       case true =>
@@ -870,7 +870,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             True()
           }
         v.decider.prover.comment("Check receiver injectivity")
-        v.decider.assume(PreconditionPropagationTransformer.transform(receiverInjectivityCheck, s.program))
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
@@ -878,7 +878,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
             val definitionalAxiomMark = v.decider.setPathConditionMark()
-            v.decider.assume(inv.definitionalAxioms.map(a => PreconditionPropagationTransformer.transform(a, s.program)))
+            v.decider.assume(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)))
             v.decider.assume(inv.definitionalAxioms)
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
@@ -1054,7 +1054,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
 
     val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
-    val nonNegTerm = Forall(qvars, Implies(PreconditionPropagationTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
+    val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
     v.decider.assert(nonNegTerm) {
       case true =>
@@ -1096,7 +1096,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
-            v.decider.assume(inverseFunctions.definitionalAxioms.map(a => PreconditionPropagationTransformer.transform(a, s.program)))
+            v.decider.assume(inverseFunctions.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)))
             v.decider.assume(inverseFunctions.definitionalAxioms)
 
             if (s.heapDependentTriggers.contains(resourceIdentifier)){
@@ -1558,7 +1558,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           argsEqual),
         varsEqual)
 
-    val functionPres = PreconditionPropagationTransformer.transform(implies, program)
+    val functionPres = FunctionPreconditionTransformer.transform(implies, program)
 
     Forall(
       qvars1 ++ qvars2,
