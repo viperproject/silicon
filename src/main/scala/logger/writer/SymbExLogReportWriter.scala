@@ -158,7 +158,7 @@ object SymbExLogReportWriter {
       case _ =>
     }
 
-    var fields: Map[String, JsValue] = new Map()
+    var fields: Map[String, JsValue] = Map.empty
 
     fields = fields + ("id" -> JsNumber(record.id))
     fields = fields + ("kind" -> JsString(record.toTypeString))
@@ -188,7 +188,7 @@ object SymbExLogReportWriter {
   }
 
   def toJSON(data: RecordData): Option[JsObject] = {
-    var fields: Map[String, JsValue] = new Map()
+    var fields: Map[String, JsValue] = Map.empty
 
     data.refId.foreach(refId => fields = fields + ("refId" -> JsNumber(refId)))
 
