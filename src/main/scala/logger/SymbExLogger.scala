@@ -221,7 +221,7 @@ object SymbExLogger {
   /**
     * stores the last SMT solver statistics to calculate the diff
     */
-  private var prevSmtStatistics: Map[String, String] = new Map()
+  private var prevSmtStatistics: Map[String, String] = Map.empty
 
   /** Add a new log for a method, function or predicate (member).
     *
@@ -304,13 +304,13 @@ object SymbExLogger {
     uidCounter = 0
     filePath = null
     logConfig = LogConfig.default()
-    prevSmtStatistics = new Map()
+    prevSmtStatistics = Map.empty
   }
 
   def resetMemberList(): Unit = {
     memberList = Seq[SymbLog]()
     // or reset by calling it from Decider.reset
-    prevSmtStatistics = new Map()
+    prevSmtStatistics = Map.empty
   }
 
   /**
