@@ -35,15 +35,8 @@ object FunctionPreconditionTransformer {
           tBody
         else
           Quantification(q, vars, tBody, triggers, name, isGlobal)
-      case App(hdf@HeapDepFun(id, _, _), args)  =>
-        val funcName = id match {
-          case SuffixedIdentifier(prefix, _, _) => prefix.name
-          case _ => id.name
-        }
-        if (p.findFunction(funcName).pres.nonEmpty)
+      case App(hdf@HeapDepFun(_, _, _), args)  =>
           And(args.map(transform(_, p)) :+ App(functionSupporter.preconditionVersion(hdf), args))
-        else
-          And(args.map(transform(_, p)))
       case other => And(other.subterms.map(transform(_, p)))
     }
     res
