@@ -652,6 +652,16 @@ object evaluator extends EvaluationRules {
             v1.decider.prover.comment("Nested auxiliary terms: non-globals (aux)")
             v1.decider.assume(tAuxHeapIndep/*tAux*/)
 
+            if (qantOp == Exists) {
+              // For universal quantification, the non-global auxiliary assumptions will contain the information that
+              // forall vars :: all function preconditions are fulfilled.
+              // However, if this quantifier is existential, they will only assume that there exist values s.t.
+              // all function preconditions hold. This is not enough: We need to know (and have checked that)
+              // function preconditions hold for *all* possible values of the quantified variables.
+              // So we explicitly add this assumption here.
+              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program), tTriggers, name))
+            }
+
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
             Q(s1, tQuant, v1)
         }
