@@ -14,6 +14,7 @@ import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.{Sort, SortDecl, sorts}
+import viper.silicon.verifier.Verifier
 import viper.silver.ast.{FieldAccess, Forall}
 
 
@@ -46,20 +47,22 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
   /* Functionality */
 
   def analyze(program: ast.Program): Unit = {
-    collectedFields ++= program.fields
-    collectedFields ++= program.predicates
+    if (Verifier.config.carbonQPs()) {
+      collectedFields ++= program.fields
+      collectedFields ++= program.predicates
 
-    // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over fields
+      // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over fields
 
-    collectedSorts = (
-        collectedFields.map{
+      collectedSorts = (
+        collectedFields.map {
           case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))
           case _: ast.Predicate => sorts.HeapSort(sorts.Snap)
         }
-      + sorts.MaskSort)
+          + sorts.MaskSort)
 
-    collectedFunctionDecls = generateFunctionDecls
-    collectedAxioms = generateAxioms
+      collectedFunctionDecls = generateFunctionDecls
+      collectedAxioms = generateAxioms
+    }
   }
 
   private def extractPreambleLines(from: Iterable[PreambleBlock]*): Iterable[String] =

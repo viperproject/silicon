@@ -21,7 +21,9 @@ import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
 import viper.silicon.logger.SymbExLogger
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
+import viper.silicon.state.terms.sorts.HeapSort
 import viper.silicon.supporters.PredicateData
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
@@ -153,7 +155,15 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
-      val res = Seq(handleFunction(sInit, function))
+      val heap = if (Verifier.config.carbonQPs()) {
+        val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
+        val predChunks = sInit.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, ZeroMask(), decider.fresh("hInit", HeapSort(sorts.Snap))))
+        Heap(fieldChunks ++ predChunks)
+      } else {
+        sInit.h
+      }
+
+      val res = Seq(handleFunction(sInit.copy(h = heap), function))
       SymbExLogger.closeMemberScope()
       res
     }
@@ -206,7 +216,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val pres = function.pres
       val posts = function.posts
       val g = Store(data.formalArgs + (function.result -> data.formalResult))
-      val s = sInit.copy(g = g, h = Heap(), oldHeaps = OldHeaps())
+      val s = sInit.copy(g = g, oldHeaps = OldHeaps())
 
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty

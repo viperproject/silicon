@@ -195,7 +195,10 @@ object evaluator extends EvaluationRules {
           v1.decider.assert(perms.IsPositive(maskValue)){
             case true =>
               val heapValue = HeapLookup(resChunk.heap, tRcvr)
-              Q(s1, heapValue, v1)
+              val tSnap = heapValue.convert(sorts.Snap)
+              val fr = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, tSnap)
+              val s2 = s1.copy(functionRecorder = fr)
+              Q(s2, heapValue, v1)
             case false => createFailure(ve, v, s)
           }
         })
