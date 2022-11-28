@@ -9,11 +9,12 @@ package viper.silicon.rules
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.rules.quantifiedChunkSupporter.createFailure
-import viper.silicon.state.terms.{Term, Var}
-import viper.silicon.state.{ChunkIdentifier, Heap, State}
+import viper.silicon.state.terms.{AtLeast, FullPerm, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, PermAtMost, PermMinus, PermPlus, Term, True, Var, sorts}
+import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, Heap, State}
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.ast
+import viper.silver.ast.PermAdd
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 
 class CarbonQuantifiedChunkSupport extends SymbolicExecutionRules {
@@ -32,6 +33,42 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                             v: Verifier)
                            (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
+    val resource = resourceAccess.res(s.program)
+
+    // assert enough
+    val failure = resourceAccess match {
+      case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
+      case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
+      case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
+    }
+
+    if (s.exhaleExt) {
+      ???
+    } else {
+      val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == resource).get.asInstanceOf[BasicCarbonChunk]
+      val maskValue = HeapLookup(resChunk.mask, arguments(0))
+      v.decider.assert(AtLeast(maskValue, permissions)) {
+        case true =>
+          // remove, set up new heap
+          val freshHeap = v.decider.fresh("heap", resChunk.heap.sort)
+          // TODO: predicates!!
+          val newMask = HeapUpdate(resChunk.mask, arguments(0), PermMinus(HeapLookup(resChunk.mask, arguments(0)), permissions))
+          val newChunk = resChunk.copy(mask = newMask, heap = freshHeap)
+          v.decider.assume(IdenticalOnKnownLocations(resChunk.heap, freshHeap, newMask))
+
+          val snap = HeapLookup(resChunk.heap, arguments(0)).convert(sorts.Snap)
+          // set up partially consumed heap
+          Q(s, s.h - resChunk + newChunk, snap, v)
+        case false => failure
+      }
+    }
+
+
+
+    // set up partially consumed heap
+
+
+    /*
     val resource = resourceAccess.res(s.program)
     val failure = resourceAccess match {
       case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
@@ -54,5 +91,28 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
       // create snapshot :( can i do this without droping lots of
     }
+
+     */
+  }
+
+  def produceSingleLocation(s: State,
+                            resource: ast.Resource,
+                            tArgs: Seq[Term],
+                            tPerm: Term,
+                            v: Verifier)
+                           (Q: (State, Verifier) => VerificationResult)
+  : VerificationResult = {
+
+    val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == resource).get.asInstanceOf[BasicCarbonChunk]
+    val ch = resChunk.copy(mask = HeapUpdate(resChunk.mask, tArgs(0), PermPlus(HeapLookup(resChunk.mask, tArgs(0)), tPerm)))
+    val h1 = s.h - resChunk + ch
+
+    val permConstraint = if (resource.isInstanceOf[ast.Field]) PermAtMost(HeapLookup(ch.mask, tArgs(0)), FullPerm()) else True()
+    v.decider.assume(permConstraint)
+
+    //TODO: assume trigger
+
+    val s1 = s.copy(h = h1)
+    Q(s1, v)
   }
 }

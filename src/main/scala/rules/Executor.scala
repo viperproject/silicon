@@ -16,6 +16,7 @@ import viper.silver.{ast, cfg}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.resources.FieldID
@@ -297,6 +298,24 @@ object executor extends ExecutionRules {
         eval(s, rhs, AssignmentFailed(ass), v)((s1, tRhs, v1) => {
           val t = ssaifyRhs(tRhs, x.name, x.typ, v)
           Q(s1.copy(g = s1.g + (x, t)), v1)})
+
+      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) if Verifier.config.carbonQPs() =>
+        assert(!s.exhaleExt)
+        val pve = AssignmentFailed(ass)
+        eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
+          eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
+            val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == field).get.asInstanceOf[BasicCarbonChunk]
+            val ve = pve dueTo InsufficientPermission(fa)
+            val maskValue = HeapLookup(resChunk.mask, tRcvr)
+            v2.decider.assert(AtLeast(maskValue, FullPerm())) {
+              case true =>
+                val heapUpdated = HeapUpdate(resChunk.heap, tRcvr, tRhs)
+                val newChunk = resChunk.copy(heap = heapUpdated)
+                Q(s2.copy(h = s2.h - resChunk + newChunk), v1)
+              case false => createFailure(ve, v, s)
+            }
+          })
+        )
 
       /* TODO: Encode assignments e1.f := e2 as
        *         exhale acc(e1.f)

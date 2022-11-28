@@ -18,6 +18,16 @@
     )))
 
 
+(assert (forall ((oh $Mp<$T$>) (nh $Mp<$T$>) (m $Mp<$Perm>) (r $Ref)) (!
+      (=> ($Mp.identicalOnKnown_$T$ oh nh m)
+       (=>
+        (> ($Mp.get_$Perm m r) $Perm.No)
+        (= ($Mp.get_$T$ oh r) ($Mp.get_$T$ nh r))))
+    :pattern (($Mp.identicalOnKnown_$T$ oh nh m) ($Mp.get_$T$ nh r))
+    :qid |qp.$Mp.update_$T$-def|
+    )))
+
+
 
 
 

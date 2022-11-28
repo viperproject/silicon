@@ -12,6 +12,7 @@ import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silicon.state.terms._
+import viper.silicon.state.terms.sorts.HeapSort
 
 class TermToSMTLib2Converter 
     extends FastPrettyPrinterBase
@@ -274,10 +275,13 @@ class TermToSMTLib2Converter
     case PermLookup(field, pm, at) => parens(text("$FVF.perm_") <> field <+> render(pm) <+> render(at))
 
     case HeapLookup(heap, at) =>
-      parens(text("$Mp.get_") <> doRender(heap.sort, true) <+> render(heap) <+> render(at))
+      parens(text("$Mp.get_") <> doRender(heap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(heap) <+> render(at))
 
     case HeapUpdate(heap, at, value) =>
-      parens(text("$Mp.update_") <> doRender(heap.sort, true) <+> render(heap) <+> render(at) <+> render(value))
+      parens(text("$Mp.update_") <> doRender(heap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(heap) <+> render(at) <+> render(value))
+
+    case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
+      parens(text("$Mp.identicalOnKnown_") <> doRender(newHeap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(oldHeap) <+> render(newHeap) <+> render(mask))
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 

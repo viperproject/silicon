@@ -9,7 +9,7 @@
 
 ;tosnap_f(heap_f, set<r>): snap
 
-(declare-fun $SortWrappers.$Heap<FLD>To$Snap ($Mp<$T$> $Set<$Ref>) $Snap)
+(declare-fun $SortWrappers.$Heap<FLD>To$Snap ($Mp<$T$> Set<$Ref>) $Snap)
 
 (declare-fun $SortWrappers.$SnapTo$Heap<FLD> ($Snap) $Mp<$T$>)
 

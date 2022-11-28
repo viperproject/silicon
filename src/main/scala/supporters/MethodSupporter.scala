@@ -12,11 +12,15 @@ import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
+import viper.silicon.interfaces.state.Chunk
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.WellformednessCheckRecord
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.state.{BasicCarbonChunk, Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
+import viper.silicon.state.terms.{ZeroMask, sorts}
+import viper.silicon.state.terms.sorts.HeapSort
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
 
@@ -47,6 +51,14 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       SymbExLogger.openMemberScope(method, null, v.decider.pcs)
 
+      val heap = if (Verifier.config.carbonQPs()) {
+        val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
+        val predChunks = sInit.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, ZeroMask(), decider.fresh("hInit", HeapSort(sorts.Snap))))
+        Heap(fieldChunks ++ predChunks)
+      } else {
+        sInit.h
+      }
+
       val pres = method.pres
       val posts = method.posts
 
@@ -63,7 +75,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
 
       val s = sInit.copy(g = g,
-                         h = Heap(),
+                         h = heap,
                          oldHeaps = OldHeaps(),
                          methodCfg = body)
 

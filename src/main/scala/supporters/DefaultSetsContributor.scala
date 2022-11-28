@@ -11,6 +11,7 @@ import viper.silicon.Config
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, sorts}
+import viper.silicon.verifier.Verifier
 
 class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], config: Config)
     extends BuiltinDomainsContributor {
@@ -45,6 +46,10 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
        * Hence, we use an embedding of Silicon's sorts.Snap into Viper's type system, via a Viper
        * extension type. */
       setTypeInstances += ast.SetType(viper.silicon.utils.ast.ViperEmbedding(sorts.Snap))
+    }
+
+    if (Verifier.config.carbonQPs()) {
+      setTypeInstances += ast.SetType(ast.Ref)
     }
 
     /* The domain of maps depend on sets, for representing the domain and codomain/range of any map.

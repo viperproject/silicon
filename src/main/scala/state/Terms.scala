@@ -10,7 +10,7 @@ import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.state.terms.sorts.HeapSort
+import viper.silicon.state.terms.sorts.{HeapSort, MaskSort}
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
@@ -1899,6 +1899,14 @@ case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
   utils.assertSort(value, "value", heap.sort.asInstanceOf[HeapSort].valueSort)
 
   val sort = heap.sort
+}
+
+case class IdenticalOnKnownLocations(oldHeap: Term, newHeap: Term, mask: Term) extends Term {
+  utils.assertSort(oldHeap, "old heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
+  utils.assertSort(newHeap, "new heap", oldHeap.sort)
+  utils.assertSort(mask, "heap", MaskSort)
+
+  val sort = sorts.Bool
 }
 
 case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {

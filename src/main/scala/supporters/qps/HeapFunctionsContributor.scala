@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package supporters.qps
+package viper.silicon.supporters.qps
 
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
@@ -20,7 +20,8 @@ import viper.silver.ast.{FieldAccess, Forall}
 class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
                                             symbolConverter: SymbolConverter,
                                             termConverter: TermConverter[String, String, String],
-                                            config: Config) {
+                                            config: Config)
+  extends PreambleContributor[sorts.HeapSort, String, String]{
 
   /* PreambleBlock = Comment x Lines */
   private type PreambleBlock = (String, Iterable[String])
@@ -72,34 +73,70 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
   }
 
   def generateFunctionDecls: Iterable[PreambleBlock] = {
-    val templateFile = "/field_value_functions_declarations.smt2"
+    // maps
+    val mapsFile = "/maps_functions.smt2"
+    val mapsResults = collectedSorts.map(heapSort => {
+      val sort = heapSort.valueSort
+      val substitutions = Map("$S$" -> termConverter.convert(sort), "$T$" -> termConverter.convertSanitized(sort))
+      val declarations = preambleReader.readParametricPreamble(mapsFile, substitutions)
 
-    collectedFields map (f => {
-      val sort = symbolConverter.toSort(f.typ)
-      val id = f.name
-      val substitutions = Map("$FLD$" -> id, "$S$" -> termConverter.convert(sort), "$T$" -> termConverter.convertSanitized(sort))
-      val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
-
-      (s"$templateFile [$id: $sort]", declarations)
+      (s"$mapsFile [sort: $sort]", declarations)
     })
+
+    // zeroMask
+    val maskFile = "/mask_functions.smt2"
+    val maskDeclarations = preambleReader.readParametricPreamble(maskFile, Map())
+    val maskResult = (s"$maskFile", maskDeclarations)
+
+    // wrappers
+    val wrapperFile = "/heapwrappers_functions.smt2"
+    val wrapperResults = collectedFields.map(resource => {
+      val (sort, id) = resource match {
+        case f: ast.Field => (symbolConverter.toSort(f.typ), f.name)
+        case p: ast.Predicate => (sorts.Snap, p.name)
+      }
+      val substitutions = Map("$FLD$" -> id, "$S$" -> termConverter.convert(sort), "$T$" -> termConverter.convertSanitized(sort))
+      val declarations = preambleReader.readParametricPreamble(wrapperFile, substitutions)
+
+      (s"$wrapperFile [id: $id, sort: $sort]", declarations)
+    })
+
+    mapsResults ++ Seq(maskResult) ++ wrapperResults
   }
 
   def generateAxioms: Iterable[PreambleBlock] = {
-    val templateFile =
-      if (config.disableISCTriggers()) "/field_value_functions_axioms_no_triggers.smt2"
-      else "/field_value_functions_axioms.smt2"
+    // maps
+    val mapsFile = "/maps_axioms.smt2"
+    val mapsResults = collectedSorts.map(heapSort => {
+      val sort = heapSort.valueSort
+      val substitutions = Map("$S$" -> termConverter.convert(sort), "$T$" -> termConverter.convertSanitized(sort))
+      val declarations = preambleReader.readParametricPreamble(mapsFile, substitutions)
 
-    collectedFields map (f => {
-      val sort = symbolConverter.toSort(f.typ)
-      val id = f.name
-      val substitutions = Map("$FLD$" -> id, "$S$" -> termConverter.convert(sort), "$T$" -> termConverter.convertSanitized(sort))
-      val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
-
-      (s"$templateFile [$id: $sort]", declarations)
+      (s"$mapsFile [sort: $sort]", declarations)
     })
+
+    // zeroMask
+    val maskFile = "/mask_axioms.smt2"
+    val maskDeclarations = preambleReader.readParametricPreamble(maskFile, Map())
+    val maskResult = (s"$maskFile", maskDeclarations)
+
+    // wrappers
+    val wrapperFile = "/heapwrappers_axioms.smt2"
+    val wrapperResults = collectedFields.map(resource => {
+      val (sort, id) = resource match {
+        case f: ast.Field => (symbolConverter.toSort(f.typ), f.name)
+        case p: ast.Predicate => (sorts.Snap, p.name)
+      }
+      val substitutions = Map("$FLD$" -> id, "$S$" -> termConverter.convert(sort), "$T$" -> termConverter.convertSanitized(sort))
+      val declarations = preambleReader.readParametricPreamble(wrapperFile, substitutions)
+
+      (s"$wrapperFile [id: $id, sort: $sort]", declarations)
+    })
+
+    mapsResults ++ Seq(maskResult) ++ wrapperResults
   }
 
-  def sortsAfterAnalysis: InsertionOrderedSet[sorts.FieldValueFunction] = collectedSorts
+  def sortsAfterAnalysis: InsertionOrderedSet[sorts.HeapSort] = collectedSorts
 
   def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
     sortsAfterAnalysis foreach (s => sink.declare(SortDecl(s)))

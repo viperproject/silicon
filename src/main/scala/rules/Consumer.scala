@@ -316,7 +316,7 @@ object consumer extends ConsumptionRules {
         }
 
       case ast.AccessPredicate(loc@ast.FieldAccess(eRcvr, field), ePerm)
-        if s.qpFields.contains(field) && Verifier.config.carbonQPs() =>
+        if Verifier.config.carbonQPs() =>
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
             // TODO: assume field trigger
@@ -339,7 +339,7 @@ object consumer extends ConsumptionRules {
           }))
 
       case ast.AccessPredicate(loc @ ast.FieldAccess(eRcvr, field), ePerm)
-              if (s.qpFields.contains(field) && !Verifier.config.carbonQPs()) =>
+              if s.qpFields.contains(field) =>
 
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {

@@ -21,7 +21,7 @@ import viper.silicon.utils.toSf
 import viper.silicon.utils.ast.flattenOperator
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
-import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
+import viper.silicon.interfaces.state.{CarbonChunk, ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 
@@ -186,6 +186,21 @@ object evaluator extends EvaluationRules {
           s.copy(functionRecorder = s.functionRecorder.recordArp(tVar, tConstraints))
            .setConstrainable(Seq(tVar), true)
         Q(s1, tVar, v)
+
+      case fa: ast.FieldAccess if Verifier.config.carbonQPs() =>
+        eval(s, fa.rcv, pve, v)((s1, tRcvr, v1) => {
+          val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == fa.field).get.asInstanceOf[BasicCarbonChunk]
+          val ve = pve dueTo InsufficientPermission(fa)
+          val maskValue = HeapLookup(resChunk.mask, tRcvr)
+          v1.decider.assert(perms.IsPositive(maskValue)){
+            case true =>
+              val heapValue = HeapLookup(resChunk.heap, tRcvr)
+              Q(s1, heapValue, v1)
+            case false => createFailure(ve, v, s)
+          }
+        })
+
+
 
       case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, v1) => {

@@ -11,7 +11,7 @@
 
 (assert (forall ((h $Mp<$T$>) (s Set<$Ref>) (r $Ref)) (!
       (=>
-        (Set_in s r)
+        (Set_in r s)
         (= ($Mp.get_$T$ ($SortWrappers.$SnapTo$Heap<FLD> ($SortWrappers.$Heap<FLD>To$Snap h s)) r) ($Mp.get_$T$ h r))
         )
     :pattern (($Mp.get_$T$ ($SortWrappers.$SnapTo$Heap<FLD> ($SortWrappers.$Heap<FLD>To$Snap h s)) r))

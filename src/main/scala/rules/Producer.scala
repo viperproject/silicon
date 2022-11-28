@@ -249,16 +249,21 @@ object producer extends ProductionRules {
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) =>
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
-              val snap = sf(v3.symbolConverter.toSort(field.typ), v3)
               val gain = PermTimes(tPerm, s3.permissionScalingFactor)
-              if (s3.qpFields.contains(field)) {
-                val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
-                quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Seq(tRcvr), snap, gain, trigger, v3)(Q)
+              if (Verifier.config.carbonQPs()) {
+                carbonQuantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(tRcvr), gain, v3)(Q)
               } else {
-                val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, gain)
-                chunkSupporter.produce(s3, s3.h, ch, v3)((s4, h4, v4) =>
-                  Q(s4.copy(h = h4), v4))
-              }})))
+                val snap = sf(v3.symbolConverter.toSort(field.typ), v3)
+                if (s3.qpFields.contains(field)) {
+                  val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
+                  quantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(`?r`), Seq(tRcvr), snap, gain, trigger, v3)(Q)
+                } else {
+                  val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, gain)
+                  chunkSupporter.produce(s3, s3.h, ch, v3)((s4, h4, v4) =>
+                    Q(s4.copy(h = h4), v4))
+                }
+              }
+              })))
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
         val predicate = s.program.findPredicate(predicateName)

@@ -12,6 +12,8 @@
 (declare-fun $Mp.get_$T$ ($Mp<$T$> $Ref) $S$)
 (declare-fun $Mp.update_$T$ ($Mp<$T$> $Ref $S$) $Mp<$T$>)
 
+(declare-fun $Mp.identicalOnKnown_$T$ ($Mp<$T$> $Mp<$T$> $Mp<$Perm>) Bool)
+
 
 
 

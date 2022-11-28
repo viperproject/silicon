@@ -25,7 +25,8 @@ import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
-import viper.silicon.supporters.qps._
+import viper.silicon.supporters.qps.{DefaultFieldValueFunctionsContributor, DefaultPredicateAndWandSnapFunctionsContributor, HeapFunctionsContributor, PredicateSnapGenerator}
+import viper.silicon.utils.Counter
 import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
@@ -62,6 +63,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
   protected val mapsContributor = new DefaultMapsContributor(domainTranslator, config)
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
+  protected val heapFunctionsContributor = new HeapFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
 
@@ -72,6 +74,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     uniqueIdCounter,
     sequencesContributor, setsContributor, multisetsContributor, mapsContributor, domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predSnapGenerator, predicateAndWandSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     _verificationPoolManager,
@@ -364,6 +367,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
@@ -376,6 +380,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
@@ -388,6 +393,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
@@ -405,6 +411,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
@@ -417,6 +424,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     mapsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
+    heapFunctionsContributor,
     predicateAndWandSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
