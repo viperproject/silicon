@@ -7,8 +7,6 @@
 package viper.silicon.rules
 
 import java.util.concurrent._
-
-import viper.silicon.common.collections.immutable
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
@@ -81,7 +79,7 @@ object brancher extends BranchingRules {
     v.decider.prover.comment(elseBranchComment)
 
     val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition))
-    var functionsOfCurrentDecider: immutable.InsertionOrderedSet[FunctionDecl] = null
+    var functionsOfCurrentDecider: Set[FunctionDecl] = null
     var macrosOfCurrentDecider: Vector[MacroDecl] = null
     var pcsOfCurrentDecider: PathConditionStack = null
 
@@ -108,7 +106,6 @@ object brancher extends BranchingRules {
             /* [BRANCH-PARALLELISATION] */
             // executing the else branch on a different verifier, need to adapt the state
 
-            // TODO: These seem to be ListSets, for which subtraction is O(n^2). Maybe replace with LinkedHashSets?
             val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
             val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
 
@@ -126,9 +123,8 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
 
-            // TODO: we should saturate here to some degree; which option fits best?
-            // Tried out afterContract, got reduced performance on a few examples, need to test probably.
-            //v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+            if (v.uniqueId != v0.uniqueId)
+              v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
 
             fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
           })
@@ -177,9 +173,9 @@ object brancher extends BranchingRules {
 
           if (v.decider.pcs != pcsBefore){
             // we have done other work during the join, need to reset
+            v.decider.prover.comment(s"Resetting path conditions after interruption")
             v.decider.setPcs(pcsOfCurrentDecider)
-            // TODO: we should saturate here to some degree; which option fits best?
-            //v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+            v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
           }
         }else{
           rs = elseBranchFuture.get()

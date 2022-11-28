@@ -111,7 +111,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     private def generateFunctionSymbolsAfterAnalysis: Iterable[Either[String, Decl]] = (
          Seq(Left("Declaring symbols related to program functions (from program analysis)"))
       ++ functionData.values.flatMap(data =>
-            Seq(data.function, data.limitedFunction, data.statelessFunction).map(FunctionDecl)
+            Seq(data.function, data.limitedFunction, data.statelessFunction, data.preconditionFunction).map(FunctionDecl)
          ).map(Right(_))
     )
 
@@ -175,9 +175,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
 
-          if (function.body.isEmpty)
+          if (function.body.isEmpty) {
+            emitAndRecordFunctionAxioms(data.preconditionPropagationAxiom.toSeq: _*)
             result1
-          else {
+          } else {
             /* Phase 2: Verify the function's postcondition */
             val result2 = verify(function, phase1data)
 
@@ -186,6 +187,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
                 data.verificationFailures = data.verificationFailures :+ fatalResult
               case _ =>
                 emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq: _*)
+                emitAndRecordFunctionAxioms(data.preconditionPropagationAxiom.toSeq: _*)
             }
 
             result1 && result2
