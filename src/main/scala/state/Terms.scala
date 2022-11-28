@@ -10,6 +10,7 @@ import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.state.terms.sorts.HeapSort
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
@@ -35,6 +36,8 @@ object sorts {
   object Ref  extends Sort { val id = Identifier("Ref");  override lazy val toString = id.toString }
   object Perm extends Sort { val id = Identifier("Perm"); override lazy val toString = id.toString }
   object Unit extends Sort { val id = Identifier("()");   override lazy val toString = id.toString }
+
+  object MaskSort extends HeapSort(Perm)
 
   case class Seq(elementsSort: Sort) extends Sort {
     val id = Identifier(s"Seq[$elementsSort]")
@@ -66,6 +69,11 @@ object sorts {
 
   case class FieldValueFunction(codomainSort: Sort) extends Sort {
     val id = Identifier(s"FVF[$codomainSort]")
+    override lazy val toString = id.toString
+  }
+
+  case class HeapSort(valueSort: Sort) extends Sort {
+    val id = Identifier(s"Mp[$valueSort]")
     override lazy val toString = id.toString
   }
 
@@ -433,6 +441,11 @@ case class IntLiteral(n: BigInt) extends ArithmeticTerm with Literal {
 case class Null() extends Term with Literal {
   val sort = sorts.Ref
   override lazy val toString = "Null"
+}
+
+case class ZeroMask() extends Term with Literal {
+  val sort = sorts.MaskSort
+  override lazy val toString = "ZeroMask"
 }
 
 sealed trait BooleanLiteral extends BooleanTerm with Literal {
@@ -1871,6 +1884,21 @@ case class PermLookup(field: String, pm: Term, at: Term) extends Term {
   utils.assertSort(at, "receiver", sorts.Ref)
 
   val sort = sorts.Perm
+}
+
+case class HeapLookup(heap: Term, at: Term) extends Term {
+  utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
+  utils.assertSort(at, "receiver", sorts.Ref)
+
+  val sort = heap.sort.asInstanceOf[sorts.HeapSort].valueSort
+}
+
+case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
+  utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
+  utils.assertSort(at, "receiver", sorts.Ref)
+  utils.assertSort(value, "value", heap.sort.asInstanceOf[HeapSort].valueSort)
+
+  val sort = heap.sort
 }
 
 case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {
