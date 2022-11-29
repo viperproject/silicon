@@ -186,15 +186,15 @@ import scala.util.{Failure, Success, Try}
   */
 
 case object SymbExLogger {
-  def ofConfig(c: Config): SymbExLogger[_ <: MemberSymbExLogger] = {
-    if(c.ideModeAdvanced())
-      SymbExLog(parseLogConfig(c))
+  def ofConfig(config: Config): SymbExLogger[_ <: MemberSymbExLogger] = {
+    if(config.ideModeAdvanced())
+      SymbExLog(parseLogConfig(config))
     else
       NoopSymbExLog
   }
 
-  private def parseLogConfig(c: Config): LogConfig = {
-    var logConfigPath = Try(c.logConfig())
+  private def parseLogConfig(config: Config): LogConfig = {
+    var logConfigPath = Try(config.logConfig())
     logConfigPath = logConfigPath.filter(path => Files.exists(Paths.get(path)))
     val source = logConfigPath.map(path => scala.io.Source.fromFile(path))
     val fileContent = source.map(s => s.getLines().mkString)
@@ -264,9 +264,9 @@ case object NoopSymbExLog extends SymbExLogger[NoopMemberSymbExLog.type] {
     NoopMemberSymbExLog
 }
 
-case class SymbExLog(config: LogConfig) extends SymbExLogger[MemberSymbExLog]() {
+case class SymbExLog(logConfig: LogConfig) extends SymbExLogger[MemberSymbExLog]() {
   override def newEntityLogger(member: ast.Member, pcs: PathConditionStack): MemberSymbExLog =
-    new MemberSymbExLog(this, config, member, pcs)
+    new MemberSymbExLog(this, logConfig, member, pcs)
 
   /**
     * Simple string representation of the logs.
@@ -505,7 +505,7 @@ case object NoopMemberSymbExLog extends MemberSymbExLogger(null, null, null) {
 }
 
 class MemberSymbExLog(rootLog: SymbExLogger[MemberSymbExLog],
-                      config: LogConfig,
+                      logConfig: LogConfig,
                       member: ast.Member,
                       pcs: PathConditionStack) extends MemberSymbExLogger(rootLog, member, pcs) {
   /** top level log entries for this member; these log entries were recorded consecutively without branching;
@@ -532,9 +532,9 @@ class MemberSymbExLog(rootLog: SymbExLogger[MemberSymbExLog],
   }
 
   override def appendDataRecord(r: DataRecord): Unit = {
-    val shouldIgnore = config.getRecordConfig(r) match {
-      case Some(_) => config.isBlackList
-      case None => !config.isBlackList
+    val shouldIgnore = logConfig.getRecordConfig(r) match {
+      case Some(_) => logConfig.isBlackList
+      case None => !logConfig.isBlackList
     }
 
     if (shouldIgnore) {
