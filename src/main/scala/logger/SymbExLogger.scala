@@ -218,7 +218,7 @@ abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
 
   def freshUid(): Int = uidCounter.getAndIncrement()
 
-  def whenEnabled(f: () => Unit): Unit = f()
+  def whenEnabled(f: => Unit): Unit = f
 
   def logs: Iterable[Log] = members.values
 
@@ -258,7 +258,7 @@ case object NoopSymbExLog extends SymbExLogger[NoopMemberSymbExLog.type] {
   override def newEntityLogger(member: Member, pcs: PathConditionStack): NoopMemberSymbExLog.type =
     NoopMemberSymbExLog
 
-  override def whenEnabled(f: () => Unit): Unit = {}
+  override def whenEnabled(f: => Unit): Unit = {}
 
   override def openMemberScope(member: Member, pcs: PathConditionStack): NoopMemberSymbExLog.type =
     NoopMemberSymbExLog
@@ -288,7 +288,7 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   protected def markBranchReachable(uidBranchPoint: Int): Unit
   protected def doEndBranchPoint(uidBranchPoint: Int): Unit
 
-  def whenEnabled(f: () => Unit): Unit = log.whenEnabled(f)
+  def whenEnabled(f: => Unit): Unit = log.whenEnabled(f)
 
   /**
     * indicates whether this member's close was already closed
@@ -309,9 +309,9 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
       closed = true
     }
 
-  def whenOpen(f: () => Unit): Unit =
+  def whenOpen(f: => Unit): Unit =
     synchronized {
-      if(!isClosed) f() else ()
+      if(!isClosed) f else ()
     }
 
   var main: MemberRecord = _
@@ -336,7 +336,7 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   @elidable(INFO)
   def openScope(s: DataRecord): Int = {
     s.id = log.freshUid()
-    whenOpen { () => appendDataRecord(s) }
+    whenOpen { appendDataRecord(s) }
     insert(new OpenScopeRecord(s))
     s.id
   }
@@ -352,7 +352,7 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   private def insert(s: ScopingRecord, ignoreBranchingStack: Boolean = false): Int = {
     s.id = log.freshUid()
     s.timeMs = System.currentTimeMillis()
-    whenOpen { () => appendScopingRecord(s, ignoreBranchingStack) }
+    whenOpen { appendScopingRecord(s, ignoreBranchingStack) }
     s.id
   }
 
@@ -369,13 +369,13 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   def insertBranchPoint(possibleBranchesCount: Int, condition: Option[Term] = None, conditionExp: Option[Exp] = None): Int = {
     val branchingRecord = new BranchingRecord(possibleBranchesCount, condition, conditionExp)
     branchingRecord.id = log.freshUid()
-    whenOpen { () => appendBranchingRecord(branchingRecord) }
+    whenOpen { appendBranchingRecord(branchingRecord) }
     branchingRecord.id
   }
 
   @elidable(INFO)
   def switchToNextBranch(uidBranchPoint: Int): Unit = {
-    whenEnabled { () => doSwitchToNextBranch(uidBranchPoint) }
+    whenEnabled { doSwitchToNextBranch(uidBranchPoint) }
   }
 
   /**
@@ -385,12 +385,12 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
     */
   @elidable(INFO)
   def markReachable(uidBranchPoint: Int): Unit = {
-    whenEnabled { () => markBranchReachable(uidBranchPoint) }
+    whenEnabled { markBranchReachable(uidBranchPoint) }
   }
 
   @elidable(INFO)
   def endBranchPoint(uidBranchPoint: Int): Unit = {
-    whenEnabled { () => doEndBranchPoint(uidBranchPoint) }
+    whenEnabled { doEndBranchPoint(uidBranchPoint) }
   }
 
   /**
@@ -454,7 +454,7 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
       case (key, Some(value)) => (key + "-delta", value)
       case other => sys.error(s"Unexpected result pair $other")
     }
-    whenEnabled { () => lastStatistics = lastStatistics ++ currentStatistics }
+    whenEnabled { lastStatistics = lastStatistics ++ currentStatistics }
     currentStatistics ++ deltaStatistics
   }
 
@@ -479,7 +479,7 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   def macros(): Map[App, Term] = _macros
 
   @elidable(INFO)
-  def addMacro(m: App, body: Term): Unit = whenEnabled { () =>
+  def addMacro(m: App, body: Term): Unit = whenEnabled {
     _macros = _macros + (m -> body)
   }
 }
@@ -492,7 +492,7 @@ case object NoopMemberSymbExLog extends MemberSymbExLogger(null, null, null) {
   override def doSwitchToNextBranch(uidBranchPoint: Int): Unit = {}
   override def doEndBranchPoint(uidBranchPoint: Int): Unit = {}
 
-  override def whenEnabled(f: () => Unit): Unit = {}
+  override def whenEnabled(f: => Unit): Unit = {}
 
   override def openMemberScope(): Unit = {}
   override def openScope(s: DataRecord): Int = 0
