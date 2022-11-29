@@ -232,26 +232,20 @@ abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
     */
   @elidable(INFO)
   def openMemberScope(member: ast.Member, pcs: PathConditionStack): Log = {
-    try {
-      val log = newEntityLogger(member, pcs)
+    val log = newEntityLogger(member, pcs)
 
-      synchronized {
-        if(isClosed) {
-          // If we time out and close the log, but somehow manage to race to move on to a new member in time, the log is
-          // closed so the records are not vacuously recorded, and the log is not added to the map of logs.
-          log.close()
-        } else {
-          members += member -> log
-        }
+    synchronized {
+      if(isClosed) {
+        // If we time out and close the log, but somehow manage to race to move on to a new member in time, the log is
+        // closed so the records are not vacuously recorded, and the log is not added to the map of logs.
+        log.close()
+      } else {
+        members += member -> log
       }
-
-      log.openMemberScope()
-      log
-    } catch {
-      case anything: Throwable =>
-        println(anything)
-        throw anything
     }
+
+    log.openMemberScope()
+    log
   }
 
   def close(): Unit =
