@@ -299,7 +299,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
           qpMagicWands = quantifiedMagicWands,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
-          isMethodVerification = member.isInstanceOf[ast.Member],
+          isMethodVerification = member.isInstanceOf[ast.Method],
           heapDependentTriggers = resourceTriggers)
   }
 
