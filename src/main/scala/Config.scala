@@ -754,19 +754,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case _ => Right(())
   }
 
-  validateOpt(ideModeAdvanced, numberOfParallelVerifiers) {
-    case (Some(false), _) =>
-      Right(())
-    case (Some(true), Some(n)) =>
-      if (n == 1)
-        Right(())
-      else
-        Left(  s"Option ${ideModeAdvanced.name} requires setting "
-             + s"${numberOfParallelVerifiers.name} to 1")
+  validateOpt(ideModeAdvanced, parallelizeBranches) {
+    case (Some(false), _) => Right(())
+    case (_, Some(false)) => Right(())
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${ideModeAdvanced.name} is not supported in combination with ${parallelizeBranches.name}")
     case other =>
       sys.error(s"Unexpected combination: $other")
   }
-  
+
   validateOpt(counterexample, enableMoreCompleteExhale) {
     case (Some(_), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
                                         + s"flag ${enableMoreCompleteExhale.name}")
