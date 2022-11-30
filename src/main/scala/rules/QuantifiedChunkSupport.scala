@@ -14,7 +14,6 @@ import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotF
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._

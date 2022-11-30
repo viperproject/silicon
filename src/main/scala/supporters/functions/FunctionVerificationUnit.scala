@@ -20,7 +20,6 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.Decider
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.verifier.{Verifier, VerifierComponent}

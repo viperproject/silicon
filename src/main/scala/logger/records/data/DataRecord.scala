@@ -7,12 +7,10 @@
 package viper.silicon.logger.records.data
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.logger.{LogConfig, SymbExLogger}
+import viper.silicon.logger.LogConfig
 import viper.silicon.logger.records.{RecordData, SymbolicRecord}
-import viper.silicon.state.State
 import viper.silicon.state.terms.Term
 import viper.silicon.utils
-import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Positioned
 

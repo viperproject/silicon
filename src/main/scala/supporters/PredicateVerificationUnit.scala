@@ -18,7 +18,6 @@ import viper.silicon.state._
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms._
 import viper.silicon.interfaces._
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.rules.executionFlowController
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap

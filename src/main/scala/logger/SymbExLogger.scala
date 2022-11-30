@@ -15,13 +15,11 @@ import viper.silicon.logger.records.data._
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
 import viper.silicon.logger.records.structural.BranchingRecord
 import viper.silicon.logger.renderer.SimpleTreeRenderer
-import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.{Config, Map}
 import viper.silver.ast
 import viper.silver.ast.{Exp, Member}
 
-import java.nio.file.{Files, Paths}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.annotation.elidable
 import scala.annotation.elidable._
