@@ -88,7 +88,7 @@ object evaluator extends EvaluationRules {
 
     val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
     eval3(s, e, pve, v)((s1, t, v1) => {
-      v.symbExLog.closeScope(sepIdentifier)
+      v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, t, v1)})
   }
 
@@ -316,7 +316,7 @@ object evaluator extends EvaluationRules {
         val uidImplies = v.symbExLog.openScope(impliesRecord)
         eval(s, e0, pve, v)((s1, t0, v1) =>
           evalImplies(s1, t0, Some(e0), e1, implies.info == FromShortCircuitingAnd, pve, v1)((s2, t1, v2) => {
-            v.symbExLog.closeScope(uidImplies)
+            v2.symbExLog.closeScope(uidImplies)
             Q(s2, t1, v2)
           }))
 
@@ -340,7 +340,7 @@ object evaluator extends EvaluationRules {
                 sys.error(s"Unexpected join data entries: $entries")}
             (s2, result)
           })((s4, t3, v3) => {
-            v.symbExLog.closeScope(uidCondExp)
+            v3.symbExLog.closeScope(uidCondExp)
             Q(s4, t3, v3)
           }))
 
@@ -556,7 +556,7 @@ object evaluator extends EvaluationRules {
 
               evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), None,body, false, pve, v1) ((s4, tImplies, v2) =>
                 bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, v2)((s5, ts1, v3) => {
-                  v.symbExLog.closeScope(uidImplies)
+                  v3.symbExLog.closeScope(uidImplies)
                   Q(s5, ts1, v3)
                 }))
             })
@@ -594,7 +594,7 @@ object evaluator extends EvaluationRules {
               evalImplies(s2, And(trig, bc), None, body, false, pve, v1)((s3, tImplies, v2) => {
                 val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
                 bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, v2)((s4, ts2, v3) => {
-                  v.symbExLog.closeScope(uidImplies)
+                  v3.symbExLog.closeScope(uidImplies)
                   Q(s4, ts2, v3)
                 })})
             })

@@ -187,7 +187,7 @@ object producer extends ProductionRules {
 
     val sepIdentifier = v.symbExLog.openScope(new ProduceRecord(a, s, v.decider.pcs))
     produceTlc(s, sf, a, pve, v)((s1, v1) => {
-      v.symbExLog.closeScope(sepIdentifier)
+      v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -213,7 +213,7 @@ object producer extends ProductionRules {
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
             (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
-              v.symbExLog.closeScope(uidImplies)
+              v3.symbExLog.closeScope(uidImplies)
               Q(s3, v3)
             }),
             (s2, v2) => {
@@ -222,7 +222,7 @@ object producer extends ProductionRules {
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                    */
-                v.symbExLog.closeScope(uidImplies)
+                v2.symbExLog.closeScope(uidImplies)
                 Q(s2, v2)
             }))
 
@@ -233,11 +233,11 @@ object producer extends ProductionRules {
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
             (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
-              v.symbExLog.closeScope(uidCondExp)
+              v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)
             }),
             (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
-              v.symbExLog.closeScope(uidCondExp)
+              v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)
             })))
 

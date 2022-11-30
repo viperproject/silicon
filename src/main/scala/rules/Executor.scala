@@ -63,11 +63,11 @@ object executor extends ExecutionRules {
           brancher.branch(s2, tCond, Some(ce.condition), v1)(
             (s3, v3) =>
               exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
-                v.symbExLog.closeScope(sepIdentifier)
+                v4.symbExLog.closeScope(sepIdentifier)
                 Q(s4, v4)
               }),
-            (_, _)  => {
-              v.symbExLog.closeScope(sepIdentifier)
+            (_, v3)  => {
+              v3.symbExLog.closeScope(sepIdentifier)
               Success()
             }))
 
@@ -112,7 +112,7 @@ object executor extends ExecutionRules {
               (s3, v3) => {
                 val s3p = handleOutEdge(s3, thenEdge, v3)
                 exec(s3p, thenEdge.target, thenEdge.kind, v3)((s4, v4) => {
-                  v.symbExLog.closeScope(sepIdentifier)
+                  v4.symbExLog.closeScope(sepIdentifier)
                   val branchRes = Q(s4, v4)
                   branchRes
                 })
@@ -120,7 +120,7 @@ object executor extends ExecutionRules {
               (s3, v3) => {
                 val s3p = handleOutEdge(s3, elseEdge, v3)
                 exec(s3p, elseEdge.target, elseEdge.kind, v3)((s4, v4) => {
-                  v.symbExLog.closeScope(sepIdentifier)
+                  v4.symbExLog.closeScope(sepIdentifier)
                   Q(s4, v4)
                 })
               }))
@@ -256,7 +256,7 @@ object executor extends ExecutionRules {
           : VerificationResult = {
     val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
-      v.symbExLog.closeScope(sepIdentifier)
+      v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -472,37 +472,36 @@ object executor extends ExecutionRules {
         val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
-        val currentLog = v.symbExLog
-        val sepIdentifier = currentLog.openScope(mcLog)
+        val sepIdentifier = v.symbExLog.openScope(mcLog)
         val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
-        val paramId = currentLog.openScope(paramLog)
+        val paramId = v.symbExLog.openScope(paramLog)
         evals(s, eArgs, _ => pveCall, v)((s1, tArgs, v1) => {
-          currentLog.closeScope(paramId)
+          v1.symbExLog.closeScope(paramId)
           val exampleTrafo = CounterexampleTransformer({
             case ce: SiliconCounterexample => ce.withStore(s1.g)
             case ce => ce
           })
           val pvePre = ErrorWrapperWithExampleTransformer(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
           val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
-          val preCondId = currentLog.openScope(preCondLog)
+          val preCondId = v1.symbExLog.openScope(preCondLog)
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
                            recordVisited = true)
           consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
-            currentLog.closeScope(preCondId)
+            v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
-            val postCondId = currentLog.openScope(postCondLog)
+            val postCondId = v2.symbExLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
-              currentLog.closeScope(postCondId)
+              v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
                               .map(p => (p._1, s5.g(p._2))).toMap)
               val s6 = s5.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
-              currentLog.closeScope(sepIdentifier)
+              v3.symbExLog.closeScope(sepIdentifier)
               Q(s6, v3)})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>

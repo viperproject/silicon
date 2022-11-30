@@ -158,10 +158,10 @@ object consumer extends ConsumptionRules {
       val h0 = s0.h /* h0 is h, but potentially consolidated */
       val s1 = s0.copy(h = s.h) /* s1 is s, but the retrying flag might be set */
 
-      val sepIdentifier = v.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
+      val sepIdentifier = v1.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
 
       consumeTlc(s1, h0, a, pve, v1)((s2, h2, snap2, v2) => {
-        v.symbExLog.closeScope(sepIdentifier)
+        v2.symbExLog.closeScope(sepIdentifier)
         QS(s2, h2, snap2, v2)})
     })(Q)
   }
@@ -191,11 +191,11 @@ object consumer extends ConsumptionRules {
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
             (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
-              v.symbExLog.closeScope(uidImplies)
+              v3.symbExLog.closeScope(uidImplies)
               Q(s3, h1, t1, v3)
             }),
             (s2, v2) => {
-              v.symbExLog.closeScope(uidImplies)
+              v2.symbExLog.closeScope(uidImplies)
               Q(s2, h, Unit, v2)
             }))
 
@@ -206,11 +206,11 @@ object consumer extends ConsumptionRules {
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
             (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
-              v.symbExLog.closeScope(uidCondExp)
+              v3.symbExLog.closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             }),
             (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h1, t1, v3) => {
-              v.symbExLog.closeScope(uidCondExp)
+              v3.symbExLog.closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             })))
 

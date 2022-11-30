@@ -100,8 +100,8 @@ object brancher extends BranchingRules {
         }
 
         (v0: Verifier) => {
-          v.symbExLog.switchToNextBranch(uidBranchPoint)
-          v.symbExLog.markReachable(uidBranchPoint)
+          v0.symbExLog.switchToNextBranch(uidBranchPoint)
+          v0.symbExLog.markReachable(uidBranchPoint)
           if (v.uniqueId != v0.uniqueId){
             /* [BRANCH-PARALLELISATION] */
             // executing the else branch on a different verifier, need to adapt the state
