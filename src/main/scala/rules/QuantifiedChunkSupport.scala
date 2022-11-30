@@ -31,9 +31,12 @@ case class InverseFunctions(condition: Term,
                             additionalArguments: Vector[Var],
                             axiomInversesOfInvertibles: Quantification,
                             axiomInvertiblesOfInverses: Quantification,
-                            qvarsToInverses: Map[Var, Function]) {
+                            qvarsToInverses: Map[Var, Function],
+                            qvarsToImages: Map[Var, Function]) {
 
   val inverses: Iterable[Function] = qvarsToInverses.values
+
+  val images: Iterable[Function] = qvarsToImages.values
 
   val definitionalAxioms: Vector[Quantification] =
     Vector(axiomInversesOfInvertibles, axiomInvertiblesOfInverses)
@@ -92,6 +95,8 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
   /** Creates `n` fresh (partial) inverse functions `inv_i` that invert an `n`-ary
     * function `fct`, where `n == qvars.length`, and returns the inverse functions as
     * well as the definitional axioms.
+    * If the types of the quantified variables could be finite, additionally creates n fresh
+    * boolean functions `img_i` denoting the domain of the respective inverse functions.
     *
     * Let
     *   - `x_1: T_1`, ..., `x_n: T_n` denote the quantified variables (argument `qvars`)
@@ -102,17 +107,20 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     *     the partial inverses are defined
     *
     * The following definitional axioms will be returned, in addition to the fresh
-    * inverse functions `inv_1`, ..., `inv_n`:
+    * inverse functions `inv_1`, ..., `inv_n` and the respective image functions:
     *
     *   forall x_1: T_1, ..., x_n: T_n :: {fct(x_1, ..., x_n)}
     *     c(x_1, ..., x_n) ==>
-    *          inv_1(fct(x_1, ..., x_n)) == x_1
+    *          inv_1(fct(x_1, ..., x_n)) == x_1 && img_1(fct(x_1, ..., x_n))
     *       && ...
-    *       && inv_n(fct(x_1, ..., x_n)) == x_n
+    *       && inv_n(fct(x_1, ..., x_n)) == x_n && img_n(fct(x_1, ..., x_n))
     *
     *   forall r: R :: {inv_1(r), ..., inv_n(r)}
-    *     c(inv_1(r), ..., inv_n(r)) ==>
+    *     c(inv_1(r), ..., inv_n(r)) && img_1(r) && ... && img_n(r) ==>
     *       fct(inv_1(r), ..., inv_n(r)) == r
+    *
+    *  For all i where x_i is of type Ref or Int, we do not generate the img_i constraints in
+    *  either axiom, since those types are known to have the same cardinality as Ref.
     *
     * @param qvars Quantified variables that occur in the invertible function and for
     *              which partial inverse functions are to be defined..
@@ -124,7 +132,10 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
     * @param additionalInvArgs Additional arguments on which `inv` depends (typically
     *                          quantified variables bound by some surrounding scope).
     *                          Currently omitted from the axioms shown above.
-    * @return The generated partial inverse functions and corresponding definitional axioms.
+    * @return The generated partial inverse functions and corresponding definitional axioms, and
+    *         the images of the given codomain variables (returned separately, since nothing else
+    *         in the returned InverseFunctions object references or contains the codomain
+    *         variables, and thus they only have meaning for the caller).
     */
   def getFreshInverseFunctions(qvars: Seq[Var],
                                condition: Term,
@@ -134,14 +145,15 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
                                v: Verifier)
-                              : InverseFunctions
+                              : (InverseFunctions, Seq[Term])
 
   def injectivityAxiom(qvars: Seq[Var],
                        condition: Term,
                        perms: Term,
                        arguments: Seq[Term],
                        triggers: Seq[Trigger],
-                       qidPrefix: String)
+                       qidPrefix: String,
+                       program: ast.Program)
                       : Quantification
 
   def createSingletonQuantifiedChunk(codomainQVars: Seq[Var],
@@ -245,7 +257,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                             program: ast.Program)
                            : (QuantifiedBasicChunk, InverseFunctions) = {
 
-    val inverseFunctions =
+    val (inverseFunctions, imagesOfCodomain) =
       getFreshInverseFunctions(
         qvars,
         And(condition, IsPositive(permissions)),
@@ -260,7 +272,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val conditionalizedPermissions =
       Ite(
-        condition.replace(qvarsToInversesOfCodomain),
+        And(And(imagesOfCodomain), condition.replace(qvarsToInversesOfCodomain)),
         permissions.replace(qvarsToInversesOfCodomain),
         NoPerm())
 
@@ -846,8 +858,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         vars = effectiveTriggersQVars,
         triggers = effectiveTriggers)))
 
+    val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
+    val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
+    v.decider.assert(nonNegTerm) {
       case true =>
 
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
@@ -860,11 +874,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               perms     = tPerm,
               arguments = tArgs,
               triggers  = Nil,
-              qidPrefix = qid)
+              qidPrefix = qid,
+              program   = s.program)
           } else {
             True()
           }
         v.decider.prover.comment("Check receiver injectivity")
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
@@ -872,6 +888,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
             val definitionalAxiomMark = v.decider.setPathConditionMark()
+            v.decider.assume(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)))
             v.decider.assume(inv.definitionalAxioms)
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
@@ -1007,7 +1024,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    val inverseFunctions =
+    val (inverseFunctions, imagesOfFormalQVars) =
       quantifiedChunkSupporter.getFreshInverseFunctions(
         qvars,
         And(tCond, IsPositive(tPerm)),
@@ -1045,8 +1062,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         /* Explicit triggers were provided. */
         v.decider.assume(auxNonGlobals)
     }
+
+    val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
+    val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
     // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
-    v.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
+    v.decider.assert(nonNegTerm) {
       case true =>
         val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
         val chunkOrderHeuristics =
@@ -1076,7 +1096,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             perms     = tPerm,
             arguments = tArgs,
             triggers  = Nil,
-            qidPrefix = qid)
+            qidPrefix = qid,
+            program = s.program)
         v.decider.prover.comment("Check receiver injectivity")
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
@@ -1085,6 +1106,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
+            v.decider.assume(inverseFunctions.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)))
             v.decider.assume(inverseFunctions.definitionalAxioms)
 
             if (s.heapDependentTriggers.contains(resourceIdentifier)){
@@ -1112,13 +1134,13 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                     s2,
                     relevantChunks,
                     formalQVars,
-                    condOfInvOfLoc,
+                    And(condOfInvOfLoc, And(imagesOfFormalQVars)),
                     resource,
                     rPerm,
                     chunkOrderHeuristics,
                     v2)
                 val optSmDomainDefinitionCondition2 =
-                    if (s3.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc)))
+                    if (s3.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(imagesOfFormalQVars)))
                     else None
                   val (smDef2, smCache2) =
                     quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1158,7 +1180,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   s.copy(smCache = smCache1),
                   relevantChunks,
                   formalQVars,
-                  condOfInvOfLoc,
+                  And(condOfInvOfLoc, And(imagesOfFormalQVars)),
                   resource,
                   lossOfInvOfLoc,
                   chunkOrderHeuristics,
@@ -1168,7 +1190,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 case (Complete(), s2, remainingChunks) =>
                   val h3 = Heap(remainingChunks ++ otherChunks)
                   val optSmDomainDefinitionCondition2 =
-                    if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc)))
+                    if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
                     else None
                   val (smDef2, smCache2) =
                     quantifiedChunkSupporter.summarisingSnapshotMap(
@@ -1509,7 +1531,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                        perms: Term,
                        arguments: Seq[Term],
                        triggers: Seq[Trigger],
-                       qidPrefix: String)
+                       qidPrefix: String,
+                       program: ast.Program)
                       : Quantification = {
 
     val qvars1 = qvars.map(x => x.copy(id = x.id.rename(id => s"${id}1")))
@@ -1545,9 +1568,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           argsEqual),
         varsEqual)
 
+    val functionPres = FunctionPreconditionTransformer.transform(implies, program)
+
     Forall(
       qvars1 ++ qvars2,
-      implies,
+      Implies(functionPres, implies),
       triggers,
       s"$qidPrefix-rcvrInj")
   }
@@ -1562,7 +1587,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                userProvidedTriggers: Option[Seq[Trigger]],
                                qidPrefix: String,
                                v: Verifier)
-                              : InverseFunctions = {
+                              : (InverseFunctions, Seq[Term]) = {
 
     assert(
       invertibles.length == codomainQVars.length,
@@ -1578,6 +1603,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val qvarsWithIndices = qvars.zipWithIndex
 
     val inverseFunctions = Array.ofDim[Function](qvars.length) /* inv_i */
+    val imageFunctions = Array.ofDim[Function](qvars.length) /* img_i */
+    val imagesOfFcts = Array.ofDim[Term](qvars.length) // /* img_i(f_1(xs), ..., f_m(xs)) */
+    val imagesOfCodomains = Array.ofDim[Term](qvars.length) /* img_i(rs) */
     val inversesOfFcts = Array.ofDim[Term](qvars.length)       /* inv_i(f_1(xs), ..., f_m(xs)) */
     val inversesOfCodomains = Array.ofDim[Term](qvars.length)  /* inv_i(rs) */
 
@@ -1588,6 +1616,20 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       inverseFunctions(idx) = fun
       inversesOfFcts(idx) = inv(invertibles)
       inversesOfCodomains(idx) = inv(codomainQVars)
+
+      if (qvar.sort != sorts.Int && qvar.sort != sorts.Ref) {
+        // Types known to be infinite, thus there is no need to constrain the domain using image functions.
+        val imgFun = v.decider.fresh("img", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), sorts.Bool)
+        val img = (ts: Seq[Term]) => App(imgFun, additionalInvArgs ++ ts)
+
+        imageFunctions(idx) = imgFun
+        imagesOfFcts(idx) = img(invertibles)
+        imagesOfCodomains(idx) = img(codomainQVars)
+      } else {
+        // imageFunctions(idx) remains null, will be filtered out later.
+        imagesOfFcts(idx) = True()
+        imagesOfCodomains(idx) = True()
+      }
     }
 
     /* f_1(inv_1(rs), ..., inv_n(rs)), ...,  f_m(inv_1(rs), ..., inv_n(rs)) */
@@ -1599,14 +1641,15 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       condition.replace(qvars, ArraySeq.unsafeWrapArray(inversesOfCodomains))
 
     /* c(xs) ==>
-     *       inv_1(f_1(xs), ..., f_m(xs)) == x_1
+     *       inv_1(f_1(xs), ..., f_m(xs)) == x_1 && img_1(f_1(xs), ..., f_m(xs)) &&
      *   &&  ...
-     *   &&  inv_n(f_1(xs), ..., f_m(xs)) == x_n
+     *   &&  inv_n(f_1(xs), ..., f_m(xs)) == x_n && img_n(f_1(xs), ..., f_m(xs))
      */
     val axInvsOfFctsBody =
       Implies(
         condition,
-        And(qvarsWithIndices map { case (qvar, idx) => inversesOfFcts(idx) === qvar }))
+        And(And(qvarsWithIndices map { case (qvar, idx) => inversesOfFcts(idx) === qvar }),
+            And(qvarsWithIndices map { case (_, idx) => imagesOfFcts(idx) })))
 
     val axInvsOfFct =
       userProvidedTriggers match {
@@ -1629,12 +1672,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             s"$qidPrefix-invOfFct")
       }
 
-    /* c(inv_1(rs), ..., inv_n(rs)) ==>
+    /* c(inv_1(rs), ..., inv_n(rs)) && img_1(rs) && ... && img_n(rs) ==>
      *    f_1(inv_1(rs), ..., inv_n(rs)) == r_1
      */
     val axFctsOfInvsBody =
       Implies(
-        conditionOfInverses,
+        And(And(imagesOfCodomains), conditionOfInverses),
         And(
           fctsOfInversesOfCodomain
             .zip(codomainQVars)
@@ -1654,13 +1697,16 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         isGlobal = true,
         v.axiomRewriter)
 
-    InverseFunctions(
+    val res = InverseFunctions(
       condition,
       invertibles,
       additionalInvArgs.toVector,
       axInvsOfFct,
       axFctsOfInvs,
-      qvars.zip(inverseFunctions).to(Map))
+      qvars.zip(inverseFunctions).to(Map),
+      qvars.zip(imageFunctions).filter(_._2 != null).to(Map)
+    )
+    (res, imagesOfCodomains)
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term])
