@@ -26,34 +26,56 @@ sealed trait Symbol extends Node {
  * Sorts
  */
 
-sealed trait Sort extends Symbol
+sealed trait Sort extends Symbol {
+  val isKnownToBeInfinite: Boolean = false
+}
 
 object sorts {
-  object Snap extends Sort { val id = Identifier("Snap"); override lazy val toString = id.toString }
-  object Int  extends Sort { val id = Identifier("Int");  override lazy val toString = id.toString }
+  object Snap extends Sort {
+    val id = Identifier("Snap");
+    override lazy val toString = id.toString
+    override val isKnownToBeInfinite: Boolean = true
+  }
+  object Int  extends Sort {
+    val id = Identifier("Int");
+    override lazy val toString = id.toString
+    override val isKnownToBeInfinite: Boolean = true
+  }
   object Bool extends Sort { val id = Identifier("Bool"); override lazy val toString = id.toString }
-  object Ref  extends Sort { val id = Identifier("Ref");  override lazy val toString = id.toString }
-  object Perm extends Sort { val id = Identifier("Perm"); override lazy val toString = id.toString }
+  object Ref  extends Sort {
+    val id = Identifier("Ref");
+    override lazy val toString = id.toString
+    override val isKnownToBeInfinite: Boolean = true
+  }
+  object Perm extends Sort {
+    val id = Identifier("Perm");
+    override lazy val toString = id.toString
+    override val isKnownToBeInfinite: Boolean = true
+  }
   object Unit extends Sort { val id = Identifier("()");   override lazy val toString = id.toString }
 
   case class Seq(elementsSort: Sort) extends Sort {
     val id = Identifier(s"Seq[$elementsSort]")
     override lazy val toString = id.toString
+    override val isKnownToBeInfinite: Boolean = true
   }
 
   case class Set(elementsSort: Sort) extends Sort {
     val id = Identifier(s"Set[$elementsSort]")
     override lazy val toString = id.toString
+    override val isKnownToBeInfinite: Boolean = elementsSort.isKnownToBeInfinite
   }
 
   case class Multiset(elementsSort: Sort) extends Sort {
     val id = Identifier(s"Multiset[$elementsSort]")
     override lazy val toString = id.toString
+    override val isKnownToBeInfinite: Boolean = true
   }
 
   case class Map(keySort: Sort, valueSort: Sort) extends Sort {
     val id = Identifier(s"Map[$keySort,$valueSort]")
     override lazy val toString = id.toString
+    override val isKnownToBeInfinite: Boolean = keySort.isKnownToBeInfinite
   }
 
   case class UserSort(id: Identifier) extends Sort {

@@ -21,23 +21,30 @@ import viper.silver.ast
   * Thus, the transformation of A && B is tr(A) && (A ==> tr(B)).
   */
 object FunctionPreconditionTransformer {
-  def transform(t: Term, p: ast.Program): Term = {
+  def transform(t: Term, p: ast.Program, functionVerification: Boolean): Term = {
     val res = t match {
       case _:Literal => True()
-      case And(ts) => And(transform(ts.head, p), Implies(ts.head, transform(And(ts.tail), p)))
-      case Or(ts) => And(transform(ts.head, p), Implies(Not(ts.head), transform(Or(ts.tail), p)))
-      case Implies(t0, t1) => And(transform(t0, p), Implies(t0, transform(t1, p)))
-      case Ite(t, t1, t2) => And(transform(t, p), Ite(t, transform(t1, p), transform(t2, p)))
-      case Let(bindings, body) => Let(bindings, transform(body, p))
+      case And(ts) => And(transform(ts.head, p, functionVerification), Implies(ts.head, transform(And(ts.tail), p, functionVerification)))
+      case Or(ts) => And(transform(ts.head, p, functionVerification), Implies(Not(ts.head), transform(Or(ts.tail), p, functionVerification)))
+      case Implies(t0, t1) => And(transform(t0, p, functionVerification), Implies(t0, transform(t1, p, functionVerification)))
+      case Ite(t, t1, t2) => And(transform(t, p, functionVerification), Ite(t, transform(t1, p, functionVerification), transform(t2, p, functionVerification)))
+      case Let(bindings, body) => Let(bindings, transform(body, p, functionVerification))
       case Quantification(q, vars, body, triggers, name, isGlobal) =>
-        val tBody = transform(body, p)
+        val tBody = transform(body, p, functionVerification)
         if (tBody == True())
           tBody
         else
           Quantification(q, vars, tBody, triggers, name, isGlobal)
-      case App(hdf@HeapDepFun(_, _, _), args)  =>
-          And(args.map(transform(_, p)) :+ App(functionSupporter.preconditionVersion(hdf), args))
-      case other => And(other.subterms.map(transform(_, p)))
+      case App(hdf@HeapDepFun(id, _, _), args)  =>
+        val funcName = id match {
+          case SuffixedIdentifier(prefix, _, _) => prefix.name
+          case _ => id.name
+        }
+        if (functionVerification || !p.findFunction(funcName).isPure)
+          And(args.map(transform(_, p, functionVerification)) :+ App(functionSupporter.preconditionVersion(hdf), args))
+        else
+          And(args.map(transform(_, p, functionVerification)))
+      case other => And(other.subterms.map(transform(_, p, functionVerification)))
     }
     res
   }

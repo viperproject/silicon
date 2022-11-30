@@ -172,11 +172,13 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
-          emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
-          this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
+          emitFunctionAxiomsForFunctionVerification(data.postAxiomForFunctionVerification.toSeq: _*)
+          emitFunctionAxiomsForMethodVerification(data.postAxiomForMethodVerification.toSeq: _*)
+          this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiomForMethodVerification.toSeq
 
           if (function.body.isEmpty) {
-            emitAndRecordFunctionAxioms(data.preconditionPropagationAxiom.toSeq: _*)
+            emitFunctionAxiomsForFunctionVerification(data.preconditionPropagationAxiomForFunctionVerification: _*)
+            emitFunctionAxiomsForMethodVerification(data.preconditionPropagationAxiomForMethodVerification: _*)
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
@@ -186,8 +188,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               case fatalResult: FatalResult =>
                 data.verificationFailures = data.verificationFailures :+ fatalResult
               case _ =>
-                emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq: _*)
-                emitAndRecordFunctionAxioms(data.preconditionPropagationAxiom.toSeq: _*)
+                emitFunctionAxiomsForFunctionVerification(data.definitionalAxiomForFunctionVerification.toSeq: _*)
+                emitFunctionAxiomsForMethodVerification(data.definitionalAxiomForMethodVerification.toSeq: _*)
+                emitFunctionAxiomsForFunctionVerification(data.preconditionPropagationAxiomForFunctionVerification: _*)
+                emitFunctionAxiomsForMethodVerification(data.preconditionPropagationAxiomForMethodVerification: _*)
             }
 
             result1 && result2
@@ -262,6 +266,14 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     private def emitAndRecordFunctionAxioms(axiom: Term*): Unit = {
       axiom foreach decider.prover.assume
+      emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
+    }
+
+    private def emitFunctionAxiomsForFunctionVerification(axiom: Term*): Unit = {
+      axiom foreach decider.prover.assume
+    }
+
+    private def emitFunctionAxiomsForMethodVerification(axiom: Term*): Unit = {
       emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
     }
 
