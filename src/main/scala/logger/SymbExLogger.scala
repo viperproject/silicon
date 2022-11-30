@@ -6,6 +6,7 @@
 
 package viper.silicon.logger
 
+import org.slf4j.LoggerFactory
 import spray.json._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.logger.LogConfigProtocol._
@@ -193,15 +194,21 @@ case object SymbExLogger {
       NoopSymbExLog
   }
 
+  private lazy val textLogger = LoggerFactory.getLogger(classOf[SymbExLogger[_]])
+
   private def parseLogConfig(config: Config): LogConfig = {
-    val logConfigPath = Try(config.logConfig())
-    val source = logConfigPath.map(path => scala.io.Source.fromFile(path))
+    val logConfigPath = config.logConfig.getOrElse(return LogConfig.default())
+    val source = Success(logConfigPath).map(path => scala.io.Source.fromFile(path))
     val fileContent = source.map(s => s.getLines().mkString)
     val jsonAst = fileContent.flatMap(content => Try(content.parseJson))
     val logConfig = jsonAst.flatMap(ast => Try(ast.convertTo[LogConfig]))
     logConfig match {
       case Success(convertedConfig) => convertedConfig
-      case Failure(_) => LogConfig.default()
+      case Failure(err) =>
+        textLogger.warn(
+          s"Could not parse the configuration for the symbolic execution logger at $logConfigPath: " +
+          s"${err.getMessage} The default configuration will be used instead.")
+        LogConfig.default()
     }
   }
 }
