@@ -276,70 +276,8 @@ case class SymbExLog(logConfig: LogConfig) extends SymbExLogger[MemberSymbExLog]
     * Simple string representation of the logs.
     */
   def toSimpleTreeString: String = {
-<<<<<<< HEAD
     val simpleTreeRenderer = new SimpleTreeRenderer()
     simpleTreeRenderer.render(members.values)
-=======
-    if (enabled) {
-      val simpleTreeRenderer = new SimpleTreeRenderer()
-      simpleTreeRenderer.render(memberList)
-    } else ""
-  }
-
-  /** Path to the file that is being executed. Is used for UnitTesting. **/
-  var filePath: Path = _
-
-  /**
-    * Resets the SymbExLogger-object, to make it ready for a new file.
-    * Only needed when several files are verified together (e.g., sbt test).
-    */
-  def reset(): Unit = {
-    memberList = Seq[SymbLog]()
-    uidCounter = 0
-    filePath = null
-    logConfig = LogConfig.default()
-    prevSmtStatistics = Map.empty
-  }
-
-  def resetMemberList(): Unit = {
-    memberList = Seq[SymbLog]()
-    // or reset by calling it from Decider.reset
-    prevSmtStatistics = Map.empty
-  }
-
-  /**
-    * Calculates diff between `currentStatistics` and the statistics from a previous call.
-    * The difference is calculated if value can be converted to an int or double
-    * @param currentStatistics most recent statistics from the SMT solver
-    * @return map with differences (only containing values that could be converted) and keys with appended "-delta"
-    */
-  def getDeltaSmtStatistics(currentStatistics: Map[String, String]) : Map[String, String] = {
-    val deltaStatistics = currentStatistics map getDelta filter { case (_, value) => value.nonEmpty } map {
-      case (key, Some(value)) => (key + "-delta", value)
-      case other => sys.error(s"Unexpected result pair $other")
-    }
-    // set prevStatistics (i.e. override values with same key or add):
-    prevSmtStatistics = prevSmtStatistics ++ currentStatistics
-    deltaStatistics
-  }
-
-  private def getDelta(pair: (String, String)): (String, Option[String]) = {
-    val curValInt = pair._2.toIntOption
-    val prevValInt = prevSmtStatistics.get(pair._1) match {
-      case Some(value) => value.toIntOption
-      case _ => Some(0) // value not found
-    }
-    val curValDouble = pair._2.toDoubleOption
-    val prevValDouble = prevSmtStatistics.get(pair._1) match {
-      case Some(value) => value.toDoubleOption
-      case _ => Some(0.0) // value not found
-    }
-    (curValInt, prevValInt, curValDouble, prevValDouble) match {
-      case (Some(curInt), Some(prevInt), _, _) => (pair._1, Some((curInt - prevInt).toString))
-      case (_, _, Some(curDouble), Some(prevDouble)) => (pair._1, Some((curDouble - prevDouble).toString))
-      case _ => (pair._1, None)
-    }
->>>>>>> upstream-master
   }
 }
 
