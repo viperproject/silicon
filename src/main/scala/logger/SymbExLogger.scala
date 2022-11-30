@@ -194,8 +194,7 @@ case object SymbExLogger {
   }
 
   private def parseLogConfig(config: Config): LogConfig = {
-    var logConfigPath = Try(config.logConfig())
-    logConfigPath = logConfigPath.filter(path => Files.exists(Paths.get(path)))
+    val logConfigPath = Try(config.logConfig())
     val source = logConfigPath.map(path => scala.io.Source.fromFile(path))
     val fileContent = source.map(s => s.getLines().mkString)
     val jsonAst = fileContent.flatMap(content => Try(content.parseJson))
