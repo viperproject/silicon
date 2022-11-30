@@ -465,21 +465,11 @@ abstract class MemberSymbExLogger(log: SymbExLogger[_],
   }
 
   private def getDelta(pair: (String, String)): (String, Option[String]) = {
-    val curValInt = pair._2.toIntOption
-    val prevValInt = lastStatistics.get(pair._1) match {
-      case Some(value) => value.toIntOption
-      case _ => Some(0) // value not found
-    }
-    val curValDouble = pair._2.toDoubleOption
-    val prevValDouble = lastStatistics.get(pair._1) match {
-      case Some(value) => value.toDoubleOption
-      case _ => Some(0.0) // value not found
-    }
-    (curValInt, prevValInt, curValDouble, prevValDouble) match {
-      case (Some(curInt), Some(prevInt), _, _) => (pair._1, Some((curInt - prevInt).toString))
-      case (_, _, Some(curDouble), Some(prevDouble)) => (pair._1, Some((curDouble - prevDouble).toString))
-      case _ => (pair._1, None)
-    }
+    val delta =
+      Try { (pair._2.toInt - lastStatistics(pair._1).toInt).toString } orElse
+      Try { (pair._2.toDouble - lastStatistics(pair._1).toDouble).toString }
+
+    pair._1 -> delta.toOption
   }
 
   def macros(): Map[App, Term] = _macros
