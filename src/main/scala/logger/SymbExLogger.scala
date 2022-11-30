@@ -68,23 +68,30 @@ import scala.util.{Failure, Success, Try}
   *   well as any ExecuteRecord with statement "a := 1" (all other ExecuteRecords will be omitted)
   */
 
-/*
+/**
  * ================================
  * SymbExLogger Architecture
  * ================================
  * Overall concept:
- * 1) SymbExLogger Object:
- *    Is used as interface to access the logs. Code from this file that is used in Silicon
- *    should only be used via SymbExLogger. Contains a list of SymbLog, one SymbLog
- *    per method/function/predicate (member). The method 'currentLog()' gives access to the log
- *    of the currently executed member.
- * 2) SymbLog:
- *    Contains the log for a member. Most important methods: openScope/closeScope/insertBranchPoint. To 'start'
+ * 1) [[SymbExLogger]]:
+ *    SymbExLogger is the root log for a verification run. Implementers of SymbExLogger define how to make a
+ *    [[MemberSymbExLogger]]: the log for a method/function/predicate (member). Contains a map of members logs.
+ *    The default implementation is [[NoopSymbExLog]], which ignores all log records. When the symbolic execution logger
+ *    is enabled, [[SymbExLog]] is used instead. It instantiates the member loggers as MemberSymbExLog, which records
+ *    all log records in memory.
+ *    [[viper.silicon.verifier.MainVerifier]] owns the root SymbExLogger, from which member logs can be created.
+ * 2) [[MemberSymbExLogger]]:
+ *    Handles the log for a member. Most important methods: openScope/closeScope/insertBranchPoint. To 'start'
  *    a record use openScope, to finish the recording use closeScope. For each execution path, there should be a
  *    closeScope for each openScope. Due to branching this means that there might be multiple closeScopes for a
  *    openScope, because the scope has to be closed on each branch. However to support verification failures, the log
  *    does not have to be complete. In case of a missing close scope record, the scope will be closed immediately
  *    before an outer close scope record.
+ *    The default implementation is [[NoopMemberSymbExLog]], which ignores all log records. When the symbolic execution
+ *    logger is enabled, [[MemberSymbExLog]] is used instead, which records all log records in memory.
+ *    Each [[viper.silicon.verifier.Verifier]] owns a [[MemberSymbExLog]] for the member it is currently verifying.
+ *    [[viper.silicon.verifier.DefaultMainVerifier]] also owns a [[MemberSymbExLog]], since it also verifies members
+ *    itself.
  * 3) Records:
  *    There are scoping records representing open and close scope in the log. These records will be automatically
  *    inserted in the log by SymbExLogger depending on other records.
@@ -145,8 +152,8 @@ import scala.util.{Failure, Success, Try}
   *
   * Use of CommentRecord (1):
   * At the point in the code where you want to add the comment, call
-  * //val id = SymbExLogger.currentLog().openScope(new CommentRecord(my_info, σ, c)
-  * //SymbExLogger.currentLog().closeScope(id)
+  * //val id = symbExLog.openScope(new CommentRecord(my_info, σ, c)
+  * //symbExLog.closeScope(id)
   * σ is the current state (AnyRef, but should be of type State[_,_,_] usually), my_info
   * is a string that contains the information you want to store, c is the current
   * context. If you want to store more information than just a string, consider (2).
@@ -159,10 +166,10 @@ import scala.util.{Failure, Success, Try}
   * As an example, the joining (e.g. occurring in pure conditional expressions) is discussed next:
   * Silicon uses Joiner to join execution after an execution block. A JoiningRecord is created at the beginning of the
   * Joiner and added to the log by calling:
-  * // val uidJoin = SymbExLogger.currentLog().openScope(joiningRecord)
+  * // val uidJoin = symbExLog.openScope(joiningRecord)
   * After executing the block and joining the execution, the following call to the SymbExLogger is made to close the
   * join scope:
-  * // SymbExLogger.currentLog().closeScope(uidJoin)
+  * // symbExLog.closeScope(uidJoin)
   * Although JoiningRecord is a structural record and joining in symbolic execution has significant impact on the
   * execution structure, JoiningRecord behalves almost as a data record in SymbExLogger:
   * Due to the design that each data record (and joining record) causes a scope and the scope contains all
@@ -173,15 +180,15 @@ import scala.util.{Failure, Success, Try}
   * logger has to be informed about it in order that records on the individual branches are correctly logged.
   * To do so, the following call creates a new branch point with a number of branches that result out of it (but aren't
   * necessarily all reachable):
-  * // val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition))
+  * // val uidBranchPoint = symbExLog.insertBranchPoint(2, Some(condition))
   * All records that will subsequently be inserted will be assigned to the first branch.
   * As soon as the execution of the first branch is complete, the logger needs to switch to the next branch:
-  * // SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+  * // symbExLog.switchToNextBranch(uidBranchPoint)
   * When the execution of all branches is done, the branch point is concluded:
-  * // SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+  * // symbExLog.endBranchPoint(uidBranchPoint)
   * Because the existence as well as non-existence of records on a branch does not imply reachability, the logger
   * needs to be explicitly informed for each branch that is reachable:
-  * // SymbExLogger.currentLog().markReachable(uidBranchPoint)
+  * // symbExLog.markReachable(uidBranchPoint)
   */
 
 case object SymbExLogger {
@@ -229,9 +236,6 @@ abstract class SymbExLogger[Log <: MemberSymbExLogger]() {
   /** Add a new log for a method, function or predicate (member).
     *
     * @param member Either a MethodRecord, PredicateRecord or a FunctionRecord.
-    * @param s      Current state. Since the body of the method (predicate/function) is not yet
-    *               executed/logged, this is usually the empty state (use Σ(Ø, Ø, Ø) for empty
-    *               state).
     * @param pcs    Current path conditions.
     */
   @elidable(INFO)

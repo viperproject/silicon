@@ -114,7 +114,7 @@ object SymbExLogReportWriter {
     JsArray(records)
   }
 
-  /** Translates a InMemorySymbLog to a vector of JsValues.
+  /** Translates a MemberSymbExLog to a vector of JsValues.
     *
     * @param symbLog The symbolic log to translate.
     * @return array of all records.
