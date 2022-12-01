@@ -565,7 +565,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val assertionMode: ScallopOption[AssertionMode] = opt[AssertionMode]("assertionMode",
     descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
-             + "'pp' (push-pop) and 'cs' (soft constraints) (default: cs)."),
+             + "'pp' (push-pop) and 'cs' (soft constraints) (default: pp)."),
     default = Some(AssertionMode.PushPop),
     noshort = true
   )(assertionModeConverter)
@@ -643,7 +643,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val numberOfParallelVerifiers: ScallopOption[Int] = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
-             + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
+             + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()})"),
     default = Some(Runtime.getRuntime.availableProcessors()),
     noshort = true
   )

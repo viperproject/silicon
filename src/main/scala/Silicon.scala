@@ -347,7 +347,7 @@ class SiliconFrontend(override val reporter: Reporter,
   def configureVerifier(args: Seq[String]) = {
     siliconInstance.parseCommandLine(args)
 
-    if (siliconInstance.config.error.isEmpty) {
+    if (siliconInstance.config.error.isEmpty && !siliconInstance.config.exit) {
       /** Parsing the provided command-line options might fail, in which the resulting error
         * is recorded in `siliconInstance.config.error`
         * (see also [[viper.silver.frontend.SilFrontendConfig.onError]]).
