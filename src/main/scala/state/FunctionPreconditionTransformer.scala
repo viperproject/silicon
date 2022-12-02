@@ -1,7 +1,7 @@
 package viper.silicon.state
 
 import viper.silicon.rules.functionSupporter
-import viper.silicon.state.terms.{And, App, HeapDepFun, Implies, Ite, Let, Literal, Not, Or, Quantification, Term, True}
+import viper.silicon.state.terms.{And, App, Forall, HeapDepFun, Implies, Ite, Let, Literal, Not, Or, Quantification, Term, True}
 import viper.silver.ast
 
 
@@ -28,13 +28,17 @@ object FunctionPreconditionTransformer {
       case Or(ts) => And(transform(ts.head, p, functionVerification), Implies(Not(ts.head), transform(Or(ts.tail), p, functionVerification)))
       case Implies(t0, t1) => And(transform(t0, p, functionVerification), Implies(t0, transform(t1, p, functionVerification)))
       case Ite(t, t1, t2) => And(transform(t, p, functionVerification), Ite(t, transform(t1, p, functionVerification), transform(t2, p, functionVerification)))
-      case Let(bindings, body) => Let(bindings, transform(body, p, functionVerification))
-      case Quantification(q, vars, body, triggers, name, isGlobal) =>
+      case Let(bindings, body) =>
+        And(And(bindings.map(b => transform(b._2, p, functionVerification))), Let(bindings, transform(body, p, functionVerification)))
+      case Quantification(_, vars, body, triggers, name, isGlobal) =>
         val tBody = transform(body, p, functionVerification)
-        if (tBody == True())
+        if (tBody == True()) {
           tBody
-        else
-          Quantification(q, vars, tBody, triggers, name, isGlobal)
+        } else {
+          // We assume well-definedness for *all* possible values even for existential quantifiers
+          // (since that is also what we check).
+          Quantification(Forall, vars, tBody, triggers, name, isGlobal)
+        }
       case App(hdf@HeapDepFun(id, _, _), args)  =>
         val funcName = id match {
           case SuffixedIdentifier(prefix, _, _) => prefix.name
