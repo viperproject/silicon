@@ -658,7 +658,7 @@ object evaluator extends EvaluationRules {
               // all function preconditions hold. This is not enough: We need to know (and have checked that)
               // function preconditions hold for *all* possible values of the quantified variables.
               // So we explicitly add this assumption here.
-              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program), tTriggers, name))
+              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program, !s1.isMethodVerification), tTriggers, name))
             }
 
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
