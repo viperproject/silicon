@@ -33,6 +33,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
                                  : (Sort, Boolean) =
 
     a match {
+      case _ => (sorts.Snap, false)
       case _: ast.And if a.isPure =>
         (sorts.Snap, false)
 

@@ -48,7 +48,7 @@ class TermToSMTLib2Converter
     case sorts.Seq(elementSort) => text("Seq<") <> doRender(elementSort, true) <> ">"
     case sorts.Set(elementSort) => text("Set<") <> doRender(elementSort, true) <> ">"
     case sorts.Multiset(elementSort) => text("Multiset<") <> doRender(elementSort, true) <> ">"
-    case sorts.HeapSort(valueSort) => text("$Mp<") <> doRender(valueSort, true) <> ">"
+    case sorts.HeapSort(valueSort) => text("$Hp<") <> doRender(valueSort, true) <> ">"
     case sorts.UserSort(id) => render(id)
     case sorts.SMTSort(id) => if (alwaysSanitize) render(id) else id.name
 
@@ -275,13 +275,13 @@ class TermToSMTLib2Converter
     case PermLookup(field, pm, at) => parens(text("$FVF.perm_") <> field <+> render(pm) <+> render(at))
 
     case HeapLookup(heap, at) =>
-      parens(text("$Mp.get_") <> doRender(heap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(heap) <+> render(at))
+      parens(text("$Hp.get_") <> doRender(heap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(heap) <+> render(at))
 
     case HeapUpdate(heap, at, value) =>
-      parens(text("$Mp.update_") <> doRender(heap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(heap) <+> render(at) <+> render(value))
+      parens(text("$Hp.update_") <> doRender(heap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(heap) <+> render(at) <+> render(value))
 
     case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
-      parens(text("$Mp.identicalOnKnown_") <> doRender(newHeap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(oldHeap) <+> render(newHeap) <+> render(mask))
+      parens(text("$Hp.identicalOnKnown_") <> doRender(newHeap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(oldHeap) <+> render(newHeap) <+> render(mask))
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
@@ -379,7 +379,7 @@ class TermToSMTLib2Converter
     case True() => "true"
     case False() => "false"
     case Null() => "$Ref.null"
-    case ZeroMask() => "$Mp.zeroMask"
+    case ZeroMask() => "$Hp.zeroMask"
     case _: SeqNil => renderApp("Seq_empty", Seq(), literal.sort)
     case _: EmptySet => renderApp("Set_empty", Seq(), literal.sort)
     case _: EmptyMultiset => renderApp("Multiset_empty", Seq(), literal.sort)

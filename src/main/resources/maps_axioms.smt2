@@ -9,26 +9,37 @@
 
 
 
-(assert (forall ((m1 $Mp<$T$>) (r1 $Ref) (v $S$) (r2 $Ref)) (!
+(assert (forall ((m1 $Hp<$T$>) (r1 $Ref) (v $S$) (r2 $Ref)) (!
       (=
-        ($Mp.get_$T$ ($Mp.update_$T$ m1 r1 v) r2)
-        (ite (= r1 r2) v ($Mp.get_$T$ m1 r2)))
-    :pattern (($Mp.get_$T$ ($Mp.update_$T$ m1 r1 v) r2))
-    :qid |qp.$Mp.update_$T$-def|
+        ($Hp.get_$T$ ($Hp.update_$T$ m1 r1 v) r2)
+        (ite (= r1 r2) v ($Hp.get_$T$ m1 r2)))
+    :pattern (($Hp.get_$T$ ($Hp.update_$T$ m1 r1 v) r2))
+    :qid |qp.$Hp.update_$T$-def|
     )))
 
 
-(assert (forall ((oh $Mp<$T$>) (nh $Mp<$T$>) (m $Mp<$Perm>) (r $Ref)) (!
-      (=> ($Mp.identicalOnKnown_$T$ oh nh m)
+(assert (forall ((oh $Hp<$T$>) (nh $Hp<$T$>) (m $Hp<$Perm>) (r $Ref)) (!
+      (=> ($Hp.identicalOnKnown_$T$ oh nh m)
        (=>
-        (> ($Mp.get_$Perm m r) $Perm.No)
-        (= ($Mp.get_$T$ oh r) ($Mp.get_$T$ nh r))))
-    :pattern (($Mp.identicalOnKnown_$T$ oh nh m) ($Mp.get_$T$ nh r))
-    :qid |qp.$Mp.update_$T$-def|
+        (> ($Hp.get_$Perm m r) $Perm.No)
+        (= ($Hp.get_$T$ oh r) ($Hp.get_$T$ nh r))))
+    :pattern (($Hp.identicalOnKnown_$T$ oh nh m) ($Hp.get_$T$ nh r))
+    :qid |qp.$Hp.update_$T$-def|
     )))
 
 
+(assert (forall ((oh $Hp<$T$>) (nh $Hp<$T$>) (m $Hp<$Perm>) (r $Ref)) (!
+       (and
+        (=> (> ($Hp.get_$Perm m r) $Perm.No) (= ($Hp.get_$T$ nh r) ($Hp.get_$T$ ($Hp.merge_$T$ oh nh m) r)))
+        (= ($Hp.get_$T$ oh r) ($Hp.get_$T$ ($Hp.merge_$T$ oh nh m) r)))
+    :pattern (($Hp.get_$T$ ($Hp.merge_$T$ oh nh m) r))
+    :qid |qp.$Hp.update_$T$-def|
+    )))
 
-
-
-
+(assert (forall ((oh $Hp<$T$>) (r $Ref) (v $S$)) (!
+       (and
+        (= ($Hp.merge_single_$T$ oh r v) oh)
+        (= ($Hp.get_$T$ oh rp) v))
+    :pattern (($Hp.merge_single_$T$ oh r v))
+    :qid |qp.$Hp.update_$T$-def|
+    )))

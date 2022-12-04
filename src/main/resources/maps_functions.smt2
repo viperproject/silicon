@@ -9,11 +9,17 @@
 
 
 
-(declare-fun $Mp.get_$T$ ($Mp<$T$> $Ref) $S$)
-(declare-fun $Mp.update_$T$ ($Mp<$T$> $Ref $S$) $Mp<$T$>)
+(declare-fun $Hp.get_$T$ ($Hp<$T$> $Ref) $S$)
+(declare-fun $Hp.update_$T$ ($Hp<$T$> $Ref $S$) $Hp<$T$>)
 
-(declare-fun $Mp.identicalOnKnown_$T$ ($Mp<$T$> $Mp<$T$> $Mp<$Perm>) Bool)
+(declare-fun $Hp.identicalOnKnown_$T$ ($Hp<$T$> $Hp<$T$> $Hp<$Perm>) Bool)
 
+
+(declare-fun $Hp.merge_$T$ ($Hp<$T$> $Hp<$T$> $Hp<$Perm>) $Hp<$T$>)
+(declare-fun $Hp.merge_single_$T$ ($Hp<$T$> $Ref $S$) $Hp<$T$>)
+
+
+(declare-const $Hp.default_$T$ $Hp<$T$>)
 
 
 

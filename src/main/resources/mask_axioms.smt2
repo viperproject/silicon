@@ -4,8 +4,8 @@
 
 (assert (forall ((r $Ref)) (!
       (=
-        ($Mp.get_$Perm $Mp.zeroMask r)
+        ($Hp.get_$Perm $Hp.zeroMask r)
         $Perm.No)
-    :pattern (($Mp.get_$Perm $Mp.zeroMask r))
-    :qid |qp.$Mp.zeroMask-def|
+    :pattern (($Hp.get_$Perm $Hp.zeroMask r))
+    :qid |qp.$Hp.zeroMask-def|
     )))

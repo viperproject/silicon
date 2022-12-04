@@ -73,7 +73,7 @@ object sorts {
   }
 
   case class HeapSort(valueSort: Sort) extends Sort {
-    val id = Identifier(s"Mp[$valueSort]")
+    val id = Identifier(s"Hp[$valueSort]")
     override lazy val toString = id.toString
   }
 
