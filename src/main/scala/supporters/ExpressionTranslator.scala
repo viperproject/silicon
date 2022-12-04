@@ -93,8 +93,8 @@ trait ExpressionTranslator {
                        f(body),
                        translatedTriggers)
 
-      case _: ast.TrueLit => True()
-      case _: ast.FalseLit => False()
+      case _: ast.TrueLit => True
+      case _: ast.FalseLit => False
       case ast.Not(e0) => Not(f(e0))
       case ast.And(e0, e1) => And(f(e0), f(e1))
       case ast.Or(e0, e1) => Or(f(e0), f(e1))
@@ -117,7 +117,7 @@ trait ExpressionTranslator {
       case ast.LeCmp(e0, e1) => AtMost(f(e0), f(e1))
       case ast.LtCmp(e0, e1) => Less(f(e0), f(e1))
 
-      case _: ast.NullLit => Null()
+      case _: ast.NullLit => Null
 
       case v: ast.AbstractLocalVar => Var(Identifier(v.name), toSort(v.typ))
 

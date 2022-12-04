@@ -14,10 +14,10 @@ abstract class PropertyInterpreter {
 
   protected def buildPathCondition[K <: Kind](expression: PropertyExpression[K], info: Info): Term = expression match {
     // Literals
-    case True() => terms.True()
-    case False() => terms.False()
+    case True() => terms.True
+    case False() => terms.False
     case PermissionLiteral(numerator, denominator) => buildPermissionLiteral(numerator, denominator)
-    case Null() => terms.Null()
+    case Null() => terms.Null
 
     // Boolean operators
     case Not(expr) => terms.Not(buildPathCondition(expr, info))
@@ -62,7 +62,7 @@ abstract class PropertyInterpreter {
    the right-hand side is not evaluated. */
   protected def buildAnd(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
-      case leftTerm: terms.False => leftTerm
+      case terms.False => terms.False
       case leftTerm => terms.And(leftTerm, buildPathCondition(right, info))
     }
   }
@@ -71,7 +71,7 @@ abstract class PropertyInterpreter {
    the right-hand side is not evaluated. */
   protected def buildOr(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
-      case leftTerm: terms.True => leftTerm
+      case terms.True => terms.True
       case leftTerm => terms.Or(leftTerm, buildPathCondition(right, info))
     }
   }
@@ -80,26 +80,26 @@ abstract class PropertyInterpreter {
    the right-hand side is not evaluated. */
   protected def buildImplies(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
-      case terms.False() => terms.True()
+      case terms.False => terms.True
       case leftTerm => terms.Implies(leftTerm, buildPathCondition(right, info))
     }
   }
 
   protected def buildEquals[K <: EquatableKind](left: PropertyExpression[K], right: PropertyExpression[K], info: Info) = {
     (left, right) match {
-      case (Null(), Null()) => terms.True()
+      case (Null(), Null()) => terms.True
       case (ArgumentAccess(cv1), ArgumentAccess(cv2)) =>
         val args1 = extractArguments(cv1, info)
         val args2 = extractArguments(cv2, info)
         if (args1 == args2) {
           // if all arguments are the same, they are definitely equal
-          terms.True()
+          terms.True
         } else {
           // else return argument-wise equal
           terms.And(args1.zip(args2).map{ case (t1, t2) => t1 === t2 })
         }
-      case (ArgumentAccess(cv), Null()) => terms.And(extractArguments(cv, info).map(_ === terms.Null()))
-      case (Null(), ArgumentAccess(cv)) => terms.And(extractArguments(cv, info).map(_ === terms.Null()))
+      case (ArgumentAccess(cv), Null()) => terms.And(extractArguments(cv, info).map(_ === terms.Null))
+      case (Null(), ArgumentAccess(cv)) => terms.And(extractArguments(cv, info).map(_ === terms.Null))
       case _ => terms.Equals(buildPathCondition(left, info), buildPathCondition(right, info))
     }
   }

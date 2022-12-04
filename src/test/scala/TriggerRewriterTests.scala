@@ -40,7 +40,7 @@ class TriggerRewriterTests extends AnyFunSuite with Matchers {
   import rewriter.rewrite
 
   test("No-ops") {
-    val forall1 = Forall(x, True(), Trigger(f(x)), "forall1")
+    val forall1 = Forall(x, True, Trigger(f(x)), "forall1")
     val forall2 = Forall(x, f(x), Trigger(f(x)), "forall2")
     val forall3 = Forall(Seq(x, y, b), f(x), Trigger(f(x)), "forall3")
 
@@ -86,15 +86,15 @@ class TriggerRewriterTests extends AnyFunSuite with Matchers {
 
   test("Failures") {
     rewrite(
-      Forall(x, True(), Trigger(f(x * n)))
+      Forall(x, True, Trigger(f(x * n)))
     ) should be (None) /* Multiplication is currently not handled */
 
     rewrite(
-      Forall(x, True(), Trigger(f(x / n)))
+      Forall(x, True, Trigger(f(x / n)))
     ) should be (None) /* Division is currently not handled */
 
     rewrite(
-      Forall(Seq(x, y), True(), Trigger(f(x + y)))
+      Forall(Seq(x, y), True, Trigger(f(x + y)))
     ) should be (None) /* Invalid triggers that mention more than one quantified variable are currently not handled */
   }
 }

@@ -207,8 +207,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     */
   private def combineSnapshots(fr: FunctionRecorder, t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
     (IsPositive(p1), IsPositive(p2)) match {
-      case (True(), b2) => (fr, t1, Implies(b2, t1 === t2))
-      case (b1, True()) => (fr, t2, Implies(b1, t2 === t1))
+      case (True, b2) => (fr, t1, Implies(b2, t1 === t2))
+      case (b1, True) => (fr, t2, Implies(b1, t2 === t1))
       case (b1, b2) =>
         /*
          * Since it is not definitely known whether p1 and p2 are positive,

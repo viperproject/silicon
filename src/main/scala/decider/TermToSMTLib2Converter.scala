@@ -365,9 +365,9 @@ class TermToSMTLib2Converter
       else parens(text("- 0") <+> value(-n))
 
     case Unit => "$Snap.unit"
-    case True() => "true"
-    case False() => "false"
-    case Null() => "$Ref.null"
+    case True => "true"
+    case False => "false"
+    case Null => "$Ref.null"
     case _: SeqNil => renderApp("Seq_empty", Seq(), literal.sort)
     case _: EmptySet => renderApp("Set_empty", Seq(), literal.sort)
     case _: EmptyMultiset => renderApp("Multiset_empty", Seq(), literal.sort)
