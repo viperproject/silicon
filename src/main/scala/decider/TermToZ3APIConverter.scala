@@ -13,6 +13,7 @@ import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, S
 import viper.silver.components.StatefulComponent
 import com.microsoft.z3.{ArithExpr, BoolExpr, Context, DatatypeSort, IntExpr, RealExpr, Expr => Z3Expr, FuncDecl => Z3FuncDecl, Sort => Z3Sort, Symbol => Z3Symbol}
 
+import java.util
 import scala.collection.mutable
 
 class TermToZ3APIConverter
@@ -30,6 +31,7 @@ class TermToZ3APIConverter
 
   val sortCache = mutable.HashMap[Sort, Z3Sort]()
   val funcDeclCache = mutable.HashMap[(String, Seq[Sort], Sort), Z3FuncDecl]()
+  val termCache = new util.IdentityHashMap[Term, Z3Expr]()
 
   def convert(s: Sort): Z3Sort = convertSort(s)
 
@@ -204,6 +206,9 @@ class TermToZ3APIConverter
 
 
   def convertTerm(term: Term): Z3Expr = {
+    val cached = termCache.getOrDefault(term, null)
+    if (cached != null)
+      return cached
     val res = term match {
       case l: Literal => {
         l match {
@@ -441,6 +446,7 @@ class TermToZ3APIConverter
          | _: Quantification =>
         sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
     }
+    termCache.put(term, res)
     res
   }
 
@@ -516,6 +522,7 @@ class TermToZ3APIConverter
     macros.clear()
     funcDeclCache.clear()
     sortCache.clear()
+    termCache.clear()
     unitConstructor = null
     combineConstructor = null
     firstFunc = null
