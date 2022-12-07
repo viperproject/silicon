@@ -281,24 +281,36 @@ class FunctionData(val programFunction: ast.Function,
     })
   }
 
-  lazy val preconditionPropagationAxiomForFunctionVerification: Seq[Term] = {
-    generatePreconditionPropagationAxiom(preconditionFunctionApplication, true)
+  lazy val postPreconditionPropagationAxiomForFunctionVerification: Seq[Term] = {
+    generatePostPreconditionPropagationAxiom(preconditionFunctionApplication, true)
   }
 
-  lazy val preconditionPropagationAxiomForMethodVerification: Seq[Term] = {
-    generatePreconditionPropagationAxiom(if (programFunction.isPure) And(translatedPres) else preconditionFunctionApplication, false)
+  lazy val postPreconditionPropagationAxiomForMethodVerification: Seq[Term] = {
+    generatePostPreconditionPropagationAxiom(if (programFunction.isPure) And(translatedPres) else preconditionFunctionApplication, false)
   }
 
-  def generatePreconditionPropagationAxiom(pre: Term, functionVerification: Boolean): Seq[Term] = {
-    val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
-      val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program, functionVerification))
-      Forall(arguments, body, Seq(Trigger(functionApplication)))
-    }) else None
+  lazy val bodyPreconditionPropagationAxiomForFunctionVerification: Seq[Term] = {
+    generateBodyPreconditionPropagationAxiom(preconditionFunctionApplication, true)
+  }
+
+  lazy val bodyPreconditionPropagationAxiomForMethodVerification: Seq[Term] = {
+    generateBodyPreconditionPropagationAxiom(if (programFunction.isPure) And(translatedPres) else preconditionFunctionApplication, false)
+  }
+
+  def generatePostPreconditionPropagationAxiom(pre: Term, functionVerification: Boolean): Seq[Term] = {
     val postPreconditions = if (programFunction.posts.nonEmpty) {
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program, functionVerification))))
       bodies.map(b => Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))))
     } else Seq()
-    bodyPreconditions.toSeq ++ postPreconditions
+    postPreconditions
+  }
+
+  def generateBodyPreconditionPropagationAxiom(pre: Term, functionVerification: Boolean): Seq[Term] = {
+    val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
+      val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program, functionVerification))
+      Forall(arguments, body, Seq(Trigger(functionApplication)))
+    }) else None
+    bodyPreconditions.toSeq
   }
 }

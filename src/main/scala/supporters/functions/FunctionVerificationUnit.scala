@@ -173,11 +173,12 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
           emitAndRecordFunctionAxioms(data.triggerAxiom)
           emitFunctionAxiomsForFunctionVerification(data.postAxiomForFunctionVerification.toSeq: _*)
           emitFunctionAxiomsForMethodVerification(data.postAxiomForMethodVerification.toSeq: _*)
+          emitFunctionAxiomsForFunctionVerification(data.postPreconditionPropagationAxiomForFunctionVerification: _*)
+          emitFunctionAxiomsForMethodVerification(data.postPreconditionPropagationAxiomForMethodVerification: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiomForMethodVerification.toSeq
 
           if (function.body.isEmpty) {
-            emitFunctionAxiomsForFunctionVerification(data.preconditionPropagationAxiomForFunctionVerification: _*)
-            emitFunctionAxiomsForMethodVerification(data.preconditionPropagationAxiomForMethodVerification: _*)
+
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
@@ -189,8 +190,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
               case _ =>
                 emitFunctionAxiomsForFunctionVerification(data.definitionalAxiomForFunctionVerification.toSeq: _*)
                 emitFunctionAxiomsForMethodVerification(data.definitionalAxiomForMethodVerification.toSeq: _*)
-                emitFunctionAxiomsForFunctionVerification(data.preconditionPropagationAxiomForFunctionVerification: _*)
-                emitFunctionAxiomsForMethodVerification(data.preconditionPropagationAxiomForMethodVerification: _*)
+                emitFunctionAxiomsForFunctionVerification(data.bodyPreconditionPropagationAxiomForFunctionVerification: _*)
+                emitFunctionAxiomsForMethodVerification(data.bodyPreconditionPropagationAxiomForMethodVerification: _*)
             }
 
             result1 && result2
