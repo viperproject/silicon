@@ -462,7 +462,7 @@ sealed trait Quantifier
 
 case object Forall extends Quantifier {
 
-  val qidCounter = new AtomicInteger()
+  private val qidCounter = new AtomicInteger()
 
   def defaultName = s"quant-u-${qidCounter.getAndIncrement()}"
 
@@ -562,7 +562,7 @@ class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
 object Quantification
     extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean) => Quantification) {
 
-  val qidCounter = new AtomicInteger()
+  private val qidCounter = new AtomicInteger()
 
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
     apply(q, vars, tBody, triggers, s"quant-${qidCounter.getAndIncrement()}")
