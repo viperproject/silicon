@@ -6,6 +6,8 @@
 
 package viper.silicon.state.terms
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import viper.silver.ast
@@ -459,8 +461,13 @@ case class False() extends BooleanLiteral {
 sealed trait Quantifier
 
 case object Forall extends Quantifier {
+
+  private val qidCounter = new AtomicInteger()
+
+  def defaultName = s"quant-u-${qidCounter.getAndIncrement()}"
+
   def apply(qvar: Var, tBody: Term, trigger: Trigger): Quantification =
-    apply(qvar, tBody, trigger, "")
+    apply(qvar, tBody, trigger, defaultName)
 
   def apply(qvar: Var, tBody: Term, trigger: Trigger, name: String) =
     Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil, name)
@@ -469,7 +476,7 @@ case object Forall extends Quantifier {
     Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil, name, isGlobal)
 
   def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]): Quantification =
-    apply(qvar, tBody, triggers, "")
+    apply(qvar, tBody, triggers, defaultName)
 
   def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger], name: String) =
     Quantification(Forall, qvar :: Nil, tBody, triggers, name)
@@ -478,7 +485,7 @@ case object Forall extends Quantifier {
     Quantification(Forall, qvar :: Nil, tBody, triggers, name, isGlobal)
 
   def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger): Quantification =
-    apply(qvars, tBody, trigger, "")
+    apply(qvars, tBody, trigger, defaultName)
 
   def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger, name: String) =
     Quantification(Forall, qvars, tBody, trigger :: Nil, name)
@@ -487,7 +494,7 @@ case object Forall extends Quantifier {
     Quantification(Forall, qvars, tBody, trigger :: Nil, name, isGlobal)
 
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
-    apply(qvars, tBody, triggers, "")
+    apply(qvars, tBody, triggers, defaultName)
 
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) =
     Quantification(Forall, qvars, tBody, triggers, name)
@@ -555,8 +562,10 @@ class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
 object Quantification
     extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean) => Quantification) {
 
+  private val qidCounter = new AtomicInteger()
+
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
-    apply(q, vars, tBody, triggers, "")
+    apply(q, vars, tBody, triggers, s"quant-${qidCounter.getAndIncrement()}")
 
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String)
            : Quantification = {
