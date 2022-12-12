@@ -13,6 +13,7 @@ import viper.silicon.{Config, Map}
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConverter
+import viper.silicon.state.terms.sorts.{PredHeapSort, PredMaskSort}
 import viper.silicon.state.terms.{Sort, SortDecl, sorts}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.{FieldAccess, Forall}
@@ -22,13 +23,16 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
                                             symbolConverter: SymbolConverter,
                                             termConverter: TermConverter[String, String, String],
                                             config: Config)
-  extends PreambleContributor[sorts.HeapSort, String, String]{
+  extends PreambleContributor[Sort, String, String]{
 
   /* PreambleBlock = Comment x Lines */
   private type PreambleBlock = (String, Iterable[String])
 
-  private var collectedFields: InsertionOrderedSet[ast.Resource] = InsertionOrderedSet.empty
+  private var collectedFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty
+  private var collectedPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty
+
   private var collectedSorts: InsertionOrderedSet[sorts.HeapSort] = InsertionOrderedSet.empty
+  private var predicateSorts: InsertionOrderedSet[Sort] = InsertionOrderedSet.empty
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
 
@@ -37,6 +41,7 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
   def reset(): Unit = {
     collectedFields = InsertionOrderedSet.empty
     collectedSorts = InsertionOrderedSet.empty
+    predicateSorts = InsertionOrderedSet.empty
     collectedFunctionDecls = Seq.empty
     collectedAxioms = Seq.empty
   }
@@ -49,16 +54,17 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
   def analyze(program: ast.Program): Unit = {
     if (Verifier.config.carbonQPs()) {
       collectedFields ++= program.fields
-      collectedFields ++= program.predicates
+      collectedPredicates ++= program.predicates
 
       // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over fields
 
       collectedSorts = (
         collectedFields.map {
           case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))
-          case _: ast.Predicate => sorts.HeapSort(sorts.Snap)
         }
           + sorts.MaskSort)
+      if (collectedPredicates.nonEmpty)
+        predicateSorts = InsertionOrderedSet(Seq(PredHeapSort(), PredMaskSort()))
 
       collectedFunctionDecls = generateFunctionDecls
       collectedAxioms = generateAxioms
@@ -91,20 +97,37 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
     val maskDeclarations = preambleReader.readParametricPreamble(maskFile, Map())
     val maskResult = (s"$maskFile", maskDeclarations)
 
+    val predResults = if (collectedPredicates.nonEmpty) {
+      val substitutions = Map("$S$" -> termConverter.convert(sorts.Snap), "$T$" -> "$Pred", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
+      val declarations = preambleReader.readParametricPreamble(mapsFile, substitutions)
+
+      val predMapsResult = (s"$mapsFile [Pred]", declarations)
+
+      val predMaskDeclarations = preambleReader.readParametricPreamble(maskFile, Map(termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap), termConverter.convert(sorts.Perm) -> "$PredMask"))
+      val predMaskResult = (s"$maskFile", predMaskDeclarations)
+      Seq(predMapsResult, predMaskResult)
+    } else Seq()
+
     // wrappers
     val wrapperFile = "/heapwrappers_functions.smt2"
     val wrapperResults = collectedFields.map(resource => {
       val (sort, id) = resource match {
         case f: ast.Field => (symbolConverter.toSort(f.typ), f.name)
-        case p: ast.Predicate => (sorts.Snap, p.name)
       }
       val substitutions = Map("$FLD$" -> id, "$S$" -> termConverter.convert(sort), "$T$" -> termConverter.convertSanitized(sort))
       val declarations = preambleReader.readParametricPreamble(wrapperFile, substitutions)
 
       (s"$wrapperFile [id: $id, sort: $sort]", declarations)
     })
+    val predWrapperResults = collectedPredicates.map(pred => {
+      val substitutions = Map("$FLD$" -> pred.name, "$S$" -> termConverter.convert(sorts.Snap), "$T$" -> "$Pred")
+      val declarations = preambleReader.readParametricPreamble(wrapperFile, substitutions)
 
-    mapsResults ++ Seq(maskResult) ++ wrapperResults
+      (s"$wrapperFile [predicate: $pred.name,]", declarations)
+    })
+
+
+    mapsResults ++ Seq(maskResult) ++ predResults ++ wrapperResults ++ predWrapperResults
   }
 
   def generateAxioms: Iterable[PreambleBlock] = {
@@ -139,7 +162,7 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
     mapsResults ++ Seq(maskResult) ++ wrapperResults
   }
 
-  def sortsAfterAnalysis: InsertionOrderedSet[sorts.HeapSort] = collectedSorts
+  def sortsAfterAnalysis: InsertionOrderedSet[Sort] = collectedSorts ++ predicateSorts
 
   def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
     sortsAfterAnalysis foreach (s => sink.declare(SortDecl(s)))

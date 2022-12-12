@@ -77,6 +77,16 @@ object sorts {
     override lazy val toString = id.toString
   }
 
+  case object PredHeapSort() extends Sort {
+    override def id: Identifier = Identifier("Hp[Pred]")
+    override lazy val toString = id.toString
+  }
+
+  case object PredMaskSort() extends Sort {
+    override def id: Identifier = Identifier("Hp[PredMask]")
+    override lazy val toString = id.toString
+  }
+
   case class PredicateSnapFunction(codomainSort: Sort) extends Sort {
     val id = Identifier(s"PSF[$codomainSort]")
     override lazy val toString = id.toString
@@ -445,6 +455,11 @@ case class Null() extends Term with Literal {
 
 case class ZeroMask() extends Term with Literal {
   val sort = sorts.MaskSort
+  override lazy val toString = "ZeroMask"
+}
+
+case class PredZeroMask() extends Term with Literal {
+  val sort = sorts.PredMaskSort
   override lazy val toString = "ZeroMask"
 }
 

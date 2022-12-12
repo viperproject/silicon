@@ -12,9 +12,9 @@
 (assert (forall ((h $Mp<$T$>) (s Set<$Ref>) (r $Ref)) (!
       (=>
         (Set_in r s)
-        (= ($Mp.get_$T$ ($SortWrappers.$SnapTo$Heap<FLD> ($SortWrappers.$Heap<FLD>To$Snap h s)) r) ($Mp.get_$T$ h r))
+        (= ($Hp.get_$T$ ($SortWrappers.$SnapTo$Heap<FLD> ($SortWrappers.$Heap<FLD>To$Snap h s)) r) ($Hp.get_$T$ h r))
         )
-    :pattern (($Mp.get_$T$ ($SortWrappers.$SnapTo$Heap<FLD> ($SortWrappers.$Heap<FLD>To$Snap h s)) r))
+    :pattern (($Hp.get_$T$ ($SortWrappers.$SnapTo$Heap<FLD> ($SortWrappers.$Heap<FLD>To$Snap h s)) r))
     :qid |qp.$SnapTo$Heap<FLD>-def|
     )))
 
@@ -23,8 +23,8 @@
         (and (Set_equal s1 s2) (forall ((x $Ref)) (!
                                           (=>
                                             (Set_in x s1)
-                                            (= ($Mp.get_$T$ h1 x) ($Mp.get_$T$ h2 x)))
-                                          :pattern (($Mp.get_$T$ h1 x) ($Mp.get_$T$ h2 x))
+                                            (= ($Hp.get_$T$ h1 x) ($Hp.get_$T$ h2 x)))
+                                          :pattern (($Hp.get_$T$ h1 x) ($Hp.get_$T$ h2 x))
                                           :qid |qp.$SnapTo$Heap<FLD>-ext-inner|
                                           )))
         (= ($SortWrappers.$Heap<FLD>To$Snap h1 s1) ($SortWrappers.$Heap<FLD>To$Snap h2 s2))

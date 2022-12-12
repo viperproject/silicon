@@ -49,6 +49,8 @@ class TermToSMTLib2Converter
     case sorts.Set(elementSort) => text("Set<") <> doRender(elementSort, true) <> ">"
     case sorts.Multiset(elementSort) => text("Multiset<") <> doRender(elementSort, true) <> ">"
     case sorts.HeapSort(valueSort) => text("$Hp<") <> doRender(valueSort, true) <> ">"
+    case sorts.PredHeapSort() => text("$Hp<$Pred>")
+    case sorts.PredMaskSort() => text("$Hp<$PredMask>")
     case sorts.UserSort(id) => render(id)
     case sorts.SMTSort(id) => if (alwaysSanitize) render(id) else id.name
 

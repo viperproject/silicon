@@ -39,7 +39,7 @@
 (assert (forall ((oh $Hp<$T$>) (r $Ref) (v $S$)) (!
        (and
         (= ($Hp.merge_single_$T$ oh r v) oh)
-        (= ($Hp.get_$T$ oh rp) v))
+        (= ($Hp.get_$T$ oh r) v))
     :pattern (($Hp.merge_single_$T$ oh r v))
     :qid |qp.$Hp.update_$T$-def|
     )))
