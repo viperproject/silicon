@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon
+
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
@@ -111,6 +113,41 @@ object consumer extends ConsumptionRules {
                           v: Verifier)
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
+    if (Verifier.config.carbonQPs()) {
+      val resources = tlcs.map(_.deepCollect{
+        case r: ast.Resource => r
+      }).flatten.distinct.sortWith((r1, r2) => {
+        val r1Name = r1 match {
+          case f: ast.Field => f.name
+          case p: ast.Predicate => p.name
+        }
+        val r2Name = r2 match {
+          case f: ast.Field => f.name
+          case p: ast.Predicate => p.name
+        }
+        r1Name < r2Name
+      })
+      val resMap: Seq[(ast.Resource, Term)] = resources.map(r => (r, (if (true) ZeroMask() else ZeroPredMask())))
+      val term = FakeMaskMapTerm(silicon.Map(resMap: _*))
+      internalConsumeTlcs(s, h, tlcs, pves, v, Some(term))((s2, h2, resMapTerm, v2) => {
+        val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks
+        val snapTerms = resources.map(r => HeapToSnap(carbonQuantifiedChunkSupporter.findCarbonChunk(h, r).heap, resMap(r)))
+        Q(s2, h2, toSnapTree(snapTerms), v2)
+      })
+      null
+    } else {
+      internalConsumeTlcs(s, h, tlcs, pves, v, None)(Q)
+    }
+  }
+
+  private def internalConsumeTlcs(s: State,
+                                  h: Heap,
+                                  tlcs: Seq[ast.Exp],
+                                  pves: Seq[PartialVerificationError],
+                                  v: Verifier,
+                                  resMap: Option[Term])
+                                  (Q: (State, Heap, Term, Verifier) => VerificationResult)
+  : VerificationResult = {
 
     if (tlcs.isEmpty)
       Q(s, h, Unit, v)
@@ -119,11 +156,15 @@ object consumer extends ConsumptionRules {
       val pve = pves.head
 
       if (tlcs.tail.isEmpty)
-        wrappedConsumeTlc(s, h, a, pve, v)(Q)
+        wrappedConsumeTlc(s, h, a, pve, v, resMap)(Q)
       else
-        wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) =>
-          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, snap2, v2) =>
-            Q(s2, h2, Combine(snap1, snap2), v2)))
+        wrappedConsumeTlc(s, h, a, pve, v, resMap)((s1, h1, snap1, v1) =>
+          internalConsumeTlcs(s1, h1, tlcs.tail, pves.tail, v1, Some(snap1))((s2, h2, snap2, v2) => {
+            if (Verifier.config.carbonQPs())
+              Q(s2, h2, snap2, v2)
+            else
+              Q(s2, h2, Combine(snap1, snap2), v2)
+          }))
     }
   }
 
@@ -145,7 +186,8 @@ object consumer extends ConsumptionRules {
                                   h: Heap,
                                   a: ast.Exp,
                                   pve: PartialVerificationError,
-                                  v: Verifier)
+                                  v: Verifier,
+                                  resMap: Option[Term])
                                  (Q: (State, Heap, Term, Verifier) => VerificationResult)
                                  : VerificationResult = {
 
@@ -160,13 +202,13 @@ object consumer extends ConsumptionRules {
 
       val sepIdentifier = SymbExLogger.currentLog().openScope(new ConsumeRecord(a, s1, v.decider.pcs))
 
-      consumeTlc(s1, h0, a, pve, v1)((s2, h2, snap2, v2) => {
+      consumeTlc(s1, h0, a, pve, v1, resMap)((s2, h2, snap2, v2) => {
         SymbExLogger.currentLog().closeScope(sepIdentifier)
         QS(s2, h2, snap2, v2)})
     })(Q)
   }
 
-  private def consumeTlc(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  private def consumeTlc(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier, resMap: Option[Term])
                         (Q: (State, Heap, Term, Verifier) => VerificationResult)
                         : VerificationResult = {
 

@@ -1918,6 +1918,10 @@ case class HeapLookup(heap: Term, at: Term) extends Term {
   }
 }
 
+case class HeapToSnap(heap: Term, mask: Term) extends Term {
+  val sort = sorts.Snap
+}
+
 case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
  // utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
  // utils.assertSort(at, "receiver", sorts.Ref)
@@ -1932,6 +1936,10 @@ case class IdenticalOnKnownLocations(oldHeap: Term, newHeap: Term, mask: Term) e
  // utils.assertSort(mask, "heap", MaskSort)
 
   val sort = sorts.Bool
+}
+
+case class FakeMaskMapTerm(masks: Map[ast.Resource, Term]) extends Term {
+  val sort = sorts.Snap // sure, why not
 }
 
 case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {

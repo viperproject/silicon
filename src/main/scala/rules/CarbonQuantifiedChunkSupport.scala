@@ -23,6 +23,8 @@ class CarbonQuantifiedChunkSupport extends SymbolicExecutionRules {
 
 object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
+  def findCarbonChunk(h: Heap, r: ast.Resource) = h.values.find(c => c.asInstanceOf[CarbonChunk].resource == r).get.asInstanceOf[BasicCarbonChunk]
+
   def consumeSingleLocation(s: State,
                             h: Heap,
                             codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
@@ -30,7 +32,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                             resourceAccess: ast.ResourceAccess,
                             permissions: Term, /* p */
                             pve: PartialVerificationError,
-                            v: Verifier)
+                            v: Verifier,
+                            resMap: Map[ast.Resource, Term])
                            (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     val resource = resourceAccess.res(s.program)
@@ -45,7 +48,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     if (s.exhaleExt) {
       ???
     } else {
-      val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == resource).get.asInstanceOf[BasicCarbonChunk]
+      val resChunk = findCarbonChunk(s.h, resource)
 
       val argTerm = resource match {
         case _: ast.Field => arguments(0)
