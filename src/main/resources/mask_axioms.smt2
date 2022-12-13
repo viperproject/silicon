@@ -5,7 +5,7 @@
 (assert (forall ((r $Ref)) (!
       (=
         ($Hp.get_$Perm $Hp.zeroMask r)
-        $Perm.No)
+        0.0)
     :pattern (($Hp.get_$Perm $Hp.zeroMask r))
     :qid |qp.$Hp.zeroMask-def|
     )))

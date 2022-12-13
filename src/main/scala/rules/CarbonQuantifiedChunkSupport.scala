@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.rules.quantifiedChunkSupporter.createFailure
-import viper.silicon.state.terms.{AtLeast, FullPerm, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, PermAtMost, PermMinus, PermPlus, Term, True, Var, sorts}
+import viper.silicon.state.terms.{AtLeast, FullPerm, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, PermAtMost, PermMinus, PermPlus, Term, True, Var, sorts, toSnapTree}
 import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, Heap, State}
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.PartialVerificationError
@@ -46,17 +46,23 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       ???
     } else {
       val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == resource).get.asInstanceOf[BasicCarbonChunk]
-      val maskValue = HeapLookup(resChunk.mask, arguments(0))
+
+      val argTerm = resource match {
+        case _: ast.Field => arguments(0)
+        case _: ast.Predicate => toSnapTree(arguments)
+      }
+
+      val maskValue = HeapLookup(resChunk.mask, argTerm)
       v.decider.assert(AtLeast(maskValue, permissions)) {
         case true =>
           // remove, set up new heap
           val freshHeap = v.decider.fresh("heap", resChunk.heap.sort)
           // TODO: predicates!!
-          val newMask = HeapUpdate(resChunk.mask, arguments(0), PermMinus(HeapLookup(resChunk.mask, arguments(0)), permissions))
+          val newMask = HeapUpdate(resChunk.mask, argTerm, PermMinus(HeapLookup(resChunk.mask, argTerm), permissions))
           val newChunk = resChunk.copy(mask = newMask, heap = freshHeap)
           v.decider.assume(IdenticalOnKnownLocations(resChunk.heap, freshHeap, newMask))
 
-          val snap = HeapLookup(resChunk.heap, arguments(0)).convert(sorts.Snap)
+          val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
           // set up partially consumed heap
           Q(s, s.h - resChunk + newChunk, snap, v)
         case false => failure
@@ -104,10 +110,14 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
   : VerificationResult = {
 
     val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == resource).get.asInstanceOf[BasicCarbonChunk]
-    val ch = resChunk.copy(mask = HeapUpdate(resChunk.mask, tArgs(0), PermPlus(HeapLookup(resChunk.mask, tArgs(0)), tPerm)))
+    val argTerm = resource match {
+      case _: ast.Field => tArgs(0)
+      case _: ast.Predicate => toSnapTree(tArgs)
+    }
+    val ch = resChunk.copy(mask = HeapUpdate(resChunk.mask, argTerm, PermPlus(HeapLookup(resChunk.mask, argTerm), tPerm)))
     val h1 = s.h - resChunk + ch
 
-    val permConstraint = if (resource.isInstanceOf[ast.Field]) PermAtMost(HeapLookup(ch.mask, tArgs(0)), FullPerm()) else True()
+    val permConstraint = if (resource.isInstanceOf[ast.Field]) PermAtMost(HeapLookup(ch.mask, argTerm), FullPerm()) else True()
     v.decider.assume(permConstraint)
 
     //TODO: assume trigger

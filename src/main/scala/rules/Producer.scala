@@ -270,10 +270,13 @@ object producer extends ProductionRules {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s1a, tPerm, v1a) =>
             permissionSupporter.assertNotNegative(s1a, tPerm, perm, pve, v1a)((s2, v2) => {
+              val gain = PermTimes(tPerm, s2.permissionScalingFactor)
+              if (Verifier.config.carbonQPs()) {
+                carbonQuantifiedChunkSupporter.produceSingleLocation(s2, predicate, tArgs, gain, v2)(Q)
+              } else {
               val snap = sf(
                 predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
                               .getOrElse(sorts.Snap), v2)
-              val gain = PermTimes(tPerm, s2.permissionScalingFactor)
               if (s2.qpPredicates.contains(predicate)) {
                 val formalArgs = s2.predicateFormalVarMap(predicate)
                 val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
@@ -288,7 +291,7 @@ object producer extends ProductionRules {
                     v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs))
                   }
                   Q(s3.copy(h = h3), v3)})
-              }})))
+              }}})))
 
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)

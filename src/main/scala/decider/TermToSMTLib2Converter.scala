@@ -12,7 +12,7 @@ import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.sorts.HeapSort
+import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort, PredMaskSort}
 
 class TermToSMTLib2Converter 
     extends FastPrettyPrinterBase
@@ -49,8 +49,8 @@ class TermToSMTLib2Converter
     case sorts.Set(elementSort) => text("Set<") <> doRender(elementSort, true) <> ">"
     case sorts.Multiset(elementSort) => text("Multiset<") <> doRender(elementSort, true) <> ">"
     case sorts.HeapSort(valueSort) => text("$Hp<") <> doRender(valueSort, true) <> ">"
-    case sorts.PredHeapSort() => text("$Hp<$Pred>")
-    case sorts.PredMaskSort() => text("$Hp<$PredMask>")
+    case sorts.PredHeapSort => text("$Hp<$Pred>")
+    case sorts.PredMaskSort => text("$Hp<$PredMask>")
     case sorts.UserSort(id) => render(id)
     case sorts.SMTSort(id) => if (alwaysSanitize) render(id) else id.name
 
@@ -103,6 +103,12 @@ class TermToSMTLib2Converter
 
   def convert(t: Term): String = {
     super.pretty(defaultWidth, render(t))
+  }
+
+  private def renderHeapType(s: Sort) = s match {
+    case HeapSort(valueSort) => doRender(valueSort, true)
+    case PredHeapSort => text("$Pred")
+    case PredMaskSort => text("$PredMask")
   }
 
   protected def render(term: Term): Cont = term match {
@@ -277,13 +283,13 @@ class TermToSMTLib2Converter
     case PermLookup(field, pm, at) => parens(text("$FVF.perm_") <> field <+> render(pm) <+> render(at))
 
     case HeapLookup(heap, at) =>
-      parens(text("$Hp.get_") <> doRender(heap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(heap) <+> render(at))
+      parens(text("$Hp.get_") <> renderHeapType(heap.sort) <+> render(heap) <+> render(at))
 
     case HeapUpdate(heap, at, value) =>
-      parens(text("$Hp.update_") <> doRender(heap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(heap) <+> render(at) <+> render(value))
+      parens(text("$Hp.update_") <> renderHeapType(heap.sort) <+> render(heap) <+> render(at) <+> render(value))
 
     case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
-      parens(text("$Hp.identicalOnKnown_") <> doRender(newHeap.sort.asInstanceOf[HeapSort].valueSort, true) <+> render(oldHeap) <+> render(newHeap) <+> render(mask))
+      parens(text("$Hp.identicalOnKnown_") <> renderHeapType(newHeap.sort) <+> render(oldHeap) <+> render(newHeap) <+> render(mask))
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
@@ -382,6 +388,7 @@ class TermToSMTLib2Converter
     case False() => "false"
     case Null() => "$Ref.null"
     case ZeroMask() => "$Hp.zeroMask"
+    case ZeroPredMask() => "$Hp.zeroPredMask"
     case _: SeqNil => renderApp("Seq_empty", Seq(), literal.sort)
     case _: EmptySet => renderApp("Set_empty", Seq(), literal.sort)
     case _: EmptyMultiset => renderApp("Multiset_empty", Seq(), literal.sort)

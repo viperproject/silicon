@@ -50,6 +50,7 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
 
     if (Verifier.config.carbonQPs()) {
       setTypeInstances += ast.SetType(ast.Ref)
+      setTypeInstances += ast.SetType(ast.Snap)
     }
 
     /* The domain of maps depend on sets, for representing the domain and codomain/range of any map.

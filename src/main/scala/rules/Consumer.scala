@@ -371,6 +371,29 @@ object consumer extends ConsumptionRules {
                                partiallyConsumedHeap = Some(h3))
               Q(s4, h3, snap, v3)})}))
 
+      case ast.AccessPredicate(loc@ast.PredicateAccess(eArgs, predname), ePerm)
+        if Verifier.config.carbonQPs() =>
+        evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
+          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
+            // TODO: assume field trigger
+
+            val loss = PermTimes(tPerm, s2.permissionScalingFactor)
+            carbonQuantifiedChunkSupporter.consumeSingleLocation(
+              s2,
+              h,
+              Seq(`?r`),
+              tArgs,
+              loc,
+              loss,
+              pve,
+              v2
+            )((s3, h3, snap, v3) => {
+              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
+                partiallyConsumedHeap = Some(h3))
+              Q(s4, h3, snap, v3)
+            })
+          }))
+
       case ast.AccessPredicate(loc @ ast.PredicateAccess(eArgs, predname), ePerm)
               if s.qpPredicates.contains(s.program.findPredicate(predname)) =>
 

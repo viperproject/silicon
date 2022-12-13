@@ -77,12 +77,12 @@ object sorts {
     override lazy val toString = id.toString
   }
 
-  case object PredHeapSort() extends Sort {
+  case object PredHeapSort extends Sort {
     override def id: Identifier = Identifier("Hp[Pred]")
     override lazy val toString = id.toString
   }
 
-  case object PredMaskSort() extends Sort {
+  case object PredMaskSort extends Sort {
     override def id: Identifier = Identifier("Hp[PredMask]")
     override lazy val toString = id.toString
   }
@@ -455,6 +455,11 @@ case class Null() extends Term with Literal {
 
 case class ZeroMask() extends Term with Literal {
   val sort = sorts.MaskSort
+  override lazy val toString = "ZeroMask"
+}
+
+case class ZeroPredMask() extends Term with Literal {
+  val sort = sorts.PredMaskSort
   override lazy val toString = "ZeroMask"
 }
 
@@ -1903,24 +1908,28 @@ case class PermLookup(field: String, pm: Term, at: Term) extends Term {
 }
 
 case class HeapLookup(heap: Term, at: Term) extends Term {
-  utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
-  utils.assertSort(at, "receiver", sorts.Ref)
+ // utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
+ // utils.assertSort(at, "receiver", sorts.Ref)
 
-  val sort = heap.sort.asInstanceOf[sorts.HeapSort].valueSort
+  val sort = heap.sort match {
+    case sorts.PredHeapSort => sorts.Snap
+    case sorts.PredMaskSort => sorts.Perm
+    case sorts.HeapSort(valueSort) => valueSort
+  }
 }
 
 case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
-  utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
-  utils.assertSort(at, "receiver", sorts.Ref)
-  utils.assertSort(value, "value", heap.sort.asInstanceOf[HeapSort].valueSort)
+ // utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
+ // utils.assertSort(at, "receiver", sorts.Ref)
+ // utils.assertSort(value, "value", heap.sort.asInstanceOf[HeapSort].valueSort)
 
   val sort = heap.sort
 }
 
 case class IdenticalOnKnownLocations(oldHeap: Term, newHeap: Term, mask: Term) extends Term {
-  utils.assertSort(oldHeap, "old heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
-  utils.assertSort(newHeap, "new heap", oldHeap.sort)
-  utils.assertSort(mask, "heap", MaskSort)
+ // utils.assertSort(oldHeap, "old heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
+ // utils.assertSort(newHeap, "new heap", oldHeap.sort)
+ // utils.assertSort(mask, "heap", MaskSort)
 
   val sort = sorts.Bool
 }
