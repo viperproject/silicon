@@ -23,6 +23,7 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
+import viper.silver.ast.WeightedQuantifier
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -639,6 +640,10 @@ object evaluator extends EvaluationRules {
             (exists, Exists, exists.triggers)
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
+        val quantWeight = sourceQuant.info match {
+          case w: WeightedQuantifier => Some(w.weight)
+          case _ => None
+        }
 
         val body = eQuant.exp
         val name = s"prog.l${viper.silicon.utils.ast.sourceLine(sourceQuant)}"
@@ -658,10 +663,10 @@ object evaluator extends EvaluationRules {
               // all function preconditions hold. This is not enough: We need to know (and have checked that)
               // function preconditions hold for *all* possible values of the quantified variables.
               // So we explicitly add this assumption here.
-              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program), tTriggers, name))
+              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program), tTriggers, name, quantWeight))
             }
 
-            val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
+            val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name, quantWeight)
             Q(s1, tQuant, v1)
         }
 

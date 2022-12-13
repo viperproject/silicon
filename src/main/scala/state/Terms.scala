@@ -526,20 +526,22 @@ class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
                                      val body: Term,
                                      val triggers: Seq[Trigger],
                                      val name: String,
-                                     val isGlobal: Boolean)
+                                     val isGlobal: Boolean,
+                                     val weight: Option[Int])
     extends BooleanTerm
        with StructuralEquality {
 
-  val equalityDefiningMembers = q :: vars :: body :: triggers :: Nil
+  val equalityDefiningMembers = q :: vars :: body :: triggers :: weight :: Nil
 
   def copy(q: Quantifier = q,
            vars: Seq[Var] = vars,
            body: Term = body,
            triggers: Seq[Trigger] = triggers,
            name: String = name,
-           isGlobal: Boolean = isGlobal) = {
+           isGlobal: Boolean = isGlobal,
+           weight: Option[Int] = weight) = {
 
-    Quantification(q, vars, body, triggers, name, isGlobal)
+    Quantification(q, vars, body, triggers, name, isGlobal, weight)
   }
 
   def instantiate(terms: Seq[Term]): Term = {
@@ -560,7 +562,7 @@ class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
 }
 
 object Quantification
-    extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean) => Quantification) {
+    extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean, Option[Int]) => Quantification) {
 
   private val qidCounter = new AtomicInteger()
 
@@ -568,9 +570,15 @@ object Quantification
     apply(q, vars, tBody, triggers, s"quant-${qidCounter.getAndIncrement()}")
 
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String)
-           : Quantification = {
+  : Quantification = {
 
     apply(q, vars, tBody, triggers, name, false)
+  }
+
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String, weight: Option[Int])
+  : Quantification = {
+
+    apply(q, vars, tBody, triggers, name, false, weight)
   }
 
   def apply(q: Quantifier,
@@ -579,6 +587,17 @@ object Quantification
             triggers: Seq[Trigger],
             name: String,
             isGlobal: Boolean)
+  : Quantification = {
+    apply(q, vars, tBody, triggers, name, isGlobal, None)
+  }
+
+  def apply(q: Quantifier,
+            vars: Seq[Var],
+            tBody: Term,
+            triggers: Seq[Trigger],
+            name: String,
+            isGlobal: Boolean,
+            weight: Option[Int])
            : Quantification = {
 
 //    assert(vars.nonEmpty, s"Cannot construct quantifier $q with no quantified variable")
@@ -588,7 +607,7 @@ object Quantification
     /* TODO: If we optimise away a quantifier, we cannot, for example, access
      *       autoTrigger on the returned object.
      */
-    new Quantification(q, vars, tBody, triggers, name, isGlobal)
+    new Quantification(q, vars, tBody, triggers, name, isGlobal, weight)
 //    tBody match {
 //    case True() | False() => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
@@ -596,9 +615,9 @@ object Quantification
   }
 
   def unapply(q: Quantification)
-             : Some[(Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean)] = {
+             : Some[(Quantifier, Seq[Var], Term, Seq[Trigger], String, Boolean, Option[Int])] = {
 
-    Some((q.q, q.vars, q.body, q.triggers, q.name, q.isGlobal))
+    Some((q.q, q.vars, q.body, q.triggers, q.name, q.isGlobal, q.weight))
   }
 }
 
