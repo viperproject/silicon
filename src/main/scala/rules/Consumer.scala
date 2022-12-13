@@ -475,10 +475,10 @@ object consumer extends ConsumptionRules {
     executionFlowController.tryOrFail0(s1, v)((s2, v1, QS) => {
       eval(s2, e, pve, v1)((s3, t, v2) => {
         val termToAssert = t match {
-          case Quantification(q, vars, body, trgs, name, isGlob) =>
+          case Quantification(q, vars, body, trgs, name, isGlob, weight) =>
             val transformed = FunctionPreconditionTransformer.transform(body, s3.program)
-            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob))
-            Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob)
+            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight))
+            Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
         v2.decider.assert(termToAssert) {
