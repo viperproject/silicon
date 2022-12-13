@@ -148,7 +148,7 @@ class DefaultDomainsTranslator()
           case _ => ""
         }
 
-        terms.Quantification(q, vars, body, triggers, qid, false, weight)
+        terms.Quantification(q, vars, body, triggers, qid, weight)
 
       case other => other
     }

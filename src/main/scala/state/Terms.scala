@@ -566,6 +566,12 @@ object Quantification
     apply(q, vars, tBody, triggers, name, false)
   }
 
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String, weight: Option[Int])
+  : Quantification = {
+
+    apply(q, vars, tBody, triggers, name, false, weight)
+  }
+
   def apply(q: Quantifier,
             vars: Seq[Var],
             tBody: Term,
