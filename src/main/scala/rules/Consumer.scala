@@ -115,7 +115,7 @@ object consumer extends ConsumptionRules {
                          : VerificationResult = {
     if (Verifier.config.carbonQPs()) {
       val resources = tlcs.map(_.deepCollect{
-        case r: ast.Resource => r
+        case ast.LocationAccess(l) => l(s.program)
       }).flatten.distinct.sortWith((r1, r2) => {
         val r1Name = r1 match {
           case f: ast.Field => f.name
@@ -134,7 +134,6 @@ object consumer extends ConsumptionRules {
         val snapTerms = resources.map(r => HeapToSnap(carbonQuantifiedChunkSupporter.findCarbonChunk(h, r).heap, resMap(r)))
         Q(s2, h2, toSnapTree(snapTerms), v2)
       })
-      null
     } else {
       internalConsumeTlcs(s, h, tlcs, pves, v, None)(Q)
     }
@@ -149,9 +148,12 @@ object consumer extends ConsumptionRules {
                                   (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
 
-    if (tlcs.isEmpty)
-      Q(s, h, Unit, v)
-    else {
+    if (tlcs.isEmpty) {
+      if (Verifier.config.carbonQPs())
+        Q(s, h, resMap.get, v)
+      else
+        Q(s, h, Unit, v)
+    } else {
       val a = tlcs.head
       val pve = pves.head
 
@@ -372,7 +374,8 @@ object consumer extends ConsumptionRules {
               loc,
               loss,
               pve,
-              v2
+              v2,
+              resMap.get.asInstanceOf[FakeMaskMapTerm].masks
             )((s3, h3, snap, v3) => {
               val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
                 partiallyConsumedHeap = Some(h3))
@@ -428,7 +431,8 @@ object consumer extends ConsumptionRules {
               loc,
               loss,
               pve,
-              v2
+              v2,
+              resMap.get.asInstanceOf[FakeMaskMapTerm].masks
             )((s3, h3, snap, v3) => {
               val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
                 partiallyConsumedHeap = Some(h3))

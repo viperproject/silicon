@@ -15,6 +15,8 @@ import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
 
+import scala.collection.immutable
+
 sealed trait Node {
   def toString: String
 }
@@ -1938,7 +1940,7 @@ case class IdenticalOnKnownLocations(oldHeap: Term, newHeap: Term, mask: Term) e
   val sort = sorts.Bool
 }
 
-case class FakeMaskMapTerm(masks: Map[ast.Resource, Term]) extends Term {
+case class FakeMaskMapTerm(masks: immutable.Map[ast.Resource, Term]) extends Term {
   val sort = sorts.Snap // sure, why not
 }
 

@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.rules.quantifiedChunkSupporter.createFailure
-import viper.silicon.state.terms.{AtLeast, FullPerm, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, PermAtMost, PermMinus, PermPlus, Term, True, Var, sorts, toSnapTree}
+import viper.silicon.state.terms.{AtLeast, FakeMaskMapTerm, FullPerm, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, PermAtMost, PermMinus, PermPlus, Term, True, Var, sorts, toSnapTree}
 import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, Heap, State}
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.PartialVerificationError
@@ -65,7 +65,9 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
           val newChunk = resChunk.copy(mask = newMask, heap = freshHeap)
           v.decider.assume(IdenticalOnKnownLocations(resChunk.heap, freshHeap, newMask))
 
-          val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
+          //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
+          val newSnapMask = HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
+          val snap = FakeMaskMapTerm(resMap.updated(resource, newSnapMask))
           // set up partially consumed heap
           Q(s, s.h - resChunk + newChunk, snap, v)
         case false => failure
