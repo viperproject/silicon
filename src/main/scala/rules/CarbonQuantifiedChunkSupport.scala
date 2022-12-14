@@ -49,7 +49,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     if (s.exhaleExt) {
       ???
     } else {
-      val resChunk = findCarbonChunk(s.h, resource)
+      val resChunk = findCarbonChunk(h, resource)
 
       val argTerm = resource match {
         case _: ast.Field => arguments(0)
@@ -73,7 +73,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
           val newSnapMask = HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
           val snap = FakeMaskMapTerm(resMap.updated(resource, newSnapMask))
           // set up partially consumed heap
-          Q(s, s.h - resChunk + newChunk, snap, v)
+          Q(s, h - resChunk + newChunk, snap, v)
         case false => failure
       }
     }

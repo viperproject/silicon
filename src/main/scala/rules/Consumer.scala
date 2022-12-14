@@ -181,13 +181,14 @@ object consumer extends ConsumptionRules {
       if (tlcs.tail.isEmpty)
         wrappedConsumeTlc(s, h, a, pve, v, resMap)(Q)
       else
-        wrappedConsumeTlc(s, h, a, pve, v, resMap)((s1, h1, snap1, v1) =>
+        wrappedConsumeTlc(s, h, a, pve, v, resMap)((s1, h1, snap1, v1) => {
           internalConsumeTlcs(s1, h1, tlcs.tail, pves.tail, v1, Some(snap1))((s2, h2, snap2, v2) => {
             if (Verifier.config.carbonQPs())
               Q(s2, h2, snap2, v2)
             else
               Q(s2, h2, Combine(snap1, snap2), v2)
-          }))
+          })
+        })
     }
   }
 

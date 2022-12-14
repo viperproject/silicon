@@ -24,6 +24,7 @@ import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{CarbonChunk, ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
+import viper.silicon.rules.evaluator.evalResourceAccess
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -449,6 +450,19 @@ object evaluator extends EvaluationRules {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) => {
           val fi = v1.symbolConverter.toFunction(func)
           Q(s1, App(fi, tArgs), v1)})
+
+      case ast.CurrentPerm(resacc) if Verifier.config.carbonQPs() =>
+        val h = s.partiallyConsumedHeap.getOrElse(s.h)
+        evalResourceAccess(s, resacc, pve, v)((s1, _, args, v1) => {
+          val res = resacc.res(s.program)
+          val argTerm = res match {
+            case f: ast.Field => args(0)
+            case _: ast.Predicate => toSnapTree(args)
+          }
+          val chunk = carbonQuantifiedChunkSupporter.findCarbonChunk(h, res)
+          val result = HeapLookup(chunk.mask, argTerm)
+          Q(s1, result, v1)
+        })
 
       case ast.CurrentPerm(resacc) =>
         val h = s.partiallyConsumedHeap.getOrElse(s.h)
