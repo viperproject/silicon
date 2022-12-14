@@ -17,6 +17,7 @@ import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms._
 import viper.silicon.state._
+import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
@@ -136,6 +137,43 @@ object producer extends ProductionRules {
                           v: Verifier)
                          (Q: (State, Verifier) => VerificationResult)
                          : VerificationResult = {
+    if (Verifier.config.carbonQPs()) {
+      val givenSnap = sf(sorts.Snap, v)
+      val fakeTerm = if (!givenSnap.isInstanceOf[FakeMaskMapTerm]) {
+        val resources = as.map(_.deepCollect {
+          case ast.LocationAccess(l) => l(s.program)
+        }).flatten.distinct.sortWith((r1, r2) => {
+          val r1Name = r1 match {
+            case f: ast.Field => f.name
+            case p: ast.Predicate => p.name
+          }
+          val r2Name = r2 match {
+            case f: ast.Field => f.name
+            case p: ast.Predicate => p.name
+          }
+          r1Name < r2Name
+        })
+        val snapParts = fromSnapTree(givenSnap, resources.size)
+        val heapParts = snapParts.zip(resources).map(tpl => (tpl._2, SnapToHeap(tpl._1, tpl._2, if (tpl._2.isInstanceOf[ast.Field]) HeapSort(v.symbolConverter.toSort(tpl._2.asInstanceOf[ast.Field].typ)) else PredHeapSort)))
+        FakeMaskMapTerm(heapParts.toMap)
+      } else {
+        givenSnap
+      }
+
+      val newSf = (_: Sort, _: Verifier) => fakeTerm
+      internalProduceTlcs(s, newSf, as, pves, v)(Q)
+    } else {
+      internalProduceTlcs(s, sf, as, pves, v)(Q)
+    }
+  }
+
+  private def internalProduceTlcs(s: State,
+                          sf: (Sort, Verifier) => Term,
+                          as: Seq[ast.Exp],
+                          pves: Seq[PartialVerificationError],
+                          v: Verifier)
+                         (Q: (State, Verifier) => VerificationResult)
+  : VerificationResult = {
 
     if (as.isEmpty)
       Q(s, v)
@@ -146,16 +184,21 @@ object producer extends ProductionRules {
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v)(Q)
       else {
-        val (sf0, sf1) =
-          v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
+        if (Verifier.config.carbonQPs()) {
+          wrappedProduceTlc(s, sf, a, pve, v)((s1, v1) =>
+            internalProduceTlcs(s1, sf, as.tail, pves.tail, v1)(Q))
+        } else {
+          val (sf0, sf1) =
+            v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
           /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
            *       then remove use of BigAnd; for one it is not efficient since
            *       the tail of the (decreasing list parameter as) is BigAnd-ed
            *       over and over again.
            */
 
-        wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
-          produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
+          wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
+            internalProduceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
+        }
       }
     }
   }
@@ -217,7 +260,8 @@ object producer extends ProductionRules {
               Q(s3, v3)
             }),
             (s2, v2) => {
-                v2.decider.assume(sf(sorts.Snap, v2) === Unit)
+                if (!Verifier.config.carbonQPs())
+                  v2.decider.assume(sf(sorts.Snap, v2) === Unit)
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -251,7 +295,7 @@ object producer extends ProductionRules {
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
               val gain = PermTimes(tPerm, s3.permissionScalingFactor)
               if (Verifier.config.carbonQPs()) {
-                carbonQuantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(tRcvr), gain, v3)(Q)
+                carbonQuantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(tRcvr), gain, v3, sf(null, null))(Q)
               } else {
                 val snap = sf(v3.symbolConverter.toSort(field.typ), v3)
                 if (s3.qpFields.contains(field)) {
@@ -271,12 +315,12 @@ object producer extends ProductionRules {
           eval(s1, perm, pve, v1)((s1a, tPerm, v1a) =>
             permissionSupporter.assertNotNegative(s1a, tPerm, perm, pve, v1a)((s2, v2) => {
               val gain = PermTimes(tPerm, s2.permissionScalingFactor)
-              if (Verifier.config.carbonQPs()) {
-                carbonQuantifiedChunkSupporter.produceSingleLocation(s2, predicate, tArgs, gain, v2)(Q)
-              } else {
               val snap = sf(
                 predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
-                              .getOrElse(sorts.Snap), v2)
+                  .getOrElse(sorts.Snap), v2)
+              if (Verifier.config.carbonQPs()) {
+                carbonQuantifiedChunkSupporter.produceSingleLocation(s2, predicate, tArgs, gain, v2, snap)(Q)
+              } else {
               if (s2.qpPredicates.contains(predicate)) {
                 val formalArgs = s2.predicateFormalVarMap(predicate)
                 val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
@@ -434,7 +478,8 @@ object producer extends ProductionRules {
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
-        v.decider.assume(sf(sorts.Snap, v) === Unit) /* TODO: See comment for case ast.Implies above */
+        if (!Verifier.config.carbonQPs())
+          v.decider.assume(sf(sorts.Snap, v) === Unit) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, v1) => {
           v1.decider.assume(t)
           Q(s1, v1)})

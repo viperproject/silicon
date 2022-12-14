@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.rules.quantifiedChunkSupporter.createFailure
-import viper.silicon.state.terms.{AtLeast, FakeMaskMapTerm, FullPerm, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, PermAtMost, PermMinus, PermPlus, Term, True, Var, sorts, toSnapTree}
+import viper.silicon.state.terms.{AtLeast, FakeMaskMapTerm, FullPerm, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, MergeSingle, PermAtMost, PermMinus, PermPlus, Term, True, Var, sorts, toSnapTree}
 import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, Heap, State}
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.PartialVerificationError
@@ -110,7 +110,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                             resource: ast.Resource,
                             tArgs: Seq[Term],
                             tPerm: Term,
-                            v: Verifier)
+                            v: Verifier,
+                            snap: Term)
                            (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
 
@@ -119,7 +120,10 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       case _: ast.Field => tArgs(0)
       case _: ast.Predicate => toSnapTree(tArgs)
     }
-    val ch = resChunk.copy(mask = HeapUpdate(resChunk.mask, argTerm, PermPlus(HeapLookup(resChunk.mask, argTerm), tPerm)))
+    val newMask = HeapUpdate(resChunk.mask, argTerm, PermPlus(HeapLookup(resChunk.mask, argTerm), tPerm))
+    val snapHeapMap = snap.asInstanceOf[FakeMaskMapTerm].masks
+    val newHeap = MergeSingle(resChunk.heap, argTerm, HeapLookup(snapHeapMap(resource), argTerm))
+    val ch = resChunk.copy(mask = newMask, heap = newHeap)
     val h1 = s.h - resChunk + ch
 
     val permConstraint = if (resource.isInstanceOf[ast.Field]) PermAtMost(HeapLookup(ch.mask, argTerm), FullPerm()) else True()

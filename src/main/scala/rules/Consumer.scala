@@ -127,11 +127,11 @@ object consumer extends ConsumptionRules {
         }
         r1Name < r2Name
       })
-      val resMap: Seq[(ast.Resource, Term)] = resources.map(r => (r, (if (true) ZeroMask() else ZeroPredMask())))
+      val resMap: Seq[(ast.Resource, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask() else ZeroPredMask())))
       val term = FakeMaskMapTerm(silicon.Map(resMap: _*))
       internalConsumeTlcs(s, h, tlcs, pves, v, Some(term))((s2, h2, resMapTerm, v2) => {
         val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks
-        val snapTerms = resources.map(r => HeapToSnap(carbonQuantifiedChunkSupporter.findCarbonChunk(h, r).heap, resMap(r)))
+        val snapTerms = resources.map(r => HeapToSnap(carbonQuantifiedChunkSupporter.findCarbonChunk(h, r).heap, resMap(r), r))
         Q(s2, h2, toSnapTree(snapTerms), v2)
       })
     } else {
@@ -240,7 +240,7 @@ object consumer extends ConsumptionRules {
             }),
             (s2, v2) => {
               SymbExLogger.currentLog().closeScope(uidImplies)
-              Q(s2, h, Unit, v2)
+              Q(s2, h, if (Verifier.config.carbonQPs()) resMap.get else Unit, v2)
             }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
@@ -538,7 +538,7 @@ object consumer extends ConsumptionRules {
         })
 
       case _ =>
-        evalAndAssert(s, a, pve, v)((s1, t, v1) => {
+        evalAndAssert(s, a, pve, v, resMap)((s1, t, v1) => {
           Q(s1, h, t, v1)
         })
     }
@@ -546,7 +546,7 @@ object consumer extends ConsumptionRules {
     consumed
   }
 
-  private def evalAndAssert(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  private def evalAndAssert(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier, resMap: Option[Term])
                            (Q: (State, Term, Verifier) => VerificationResult)
                            : VerificationResult = {
 
@@ -587,7 +587,7 @@ object consumer extends ConsumptionRules {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt)
-      Q(s5, Unit, v4)
+      Q(s5, if (Verifier.config.carbonQPs()) resMap.get else Unit, v4)
     })
   }
 }

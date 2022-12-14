@@ -1910,6 +1910,9 @@ case class PermLookup(field: String, pm: Term, at: Term) extends Term {
 }
 
 case class HeapLookup(heap: Term, at: Term) extends Term {
+  if (heap == ZeroMask() && at.sort == sorts.Snap) {
+    println("11")
+  }
  // utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
  // utils.assertSort(at, "receiver", sorts.Ref)
 
@@ -1920,9 +1923,11 @@ case class HeapLookup(heap: Term, at: Term) extends Term {
   }
 }
 
-case class HeapToSnap(heap: Term, mask: Term) extends Term {
+case class HeapToSnap(heap: Term, mask: Term, r: ast.Resource) extends Term {
   val sort = sorts.Snap
 }
+
+case class SnapToHeap(snap: Term, r: ast.Resource, sort: Sort) extends Term
 
 case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
  // utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
@@ -1942,6 +1947,10 @@ case class IdenticalOnKnownLocations(oldHeap: Term, newHeap: Term, mask: Term) e
 
 case class FakeMaskMapTerm(masks: immutable.Map[ast.Resource, Term]) extends Term {
   val sort = sorts.Snap // sure, why not
+}
+
+case class MergeSingle(heap: Term, location: Term, value: Term) extends Term {
+  val sort = heap.sort
 }
 
 case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {

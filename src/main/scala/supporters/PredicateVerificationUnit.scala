@@ -19,7 +19,9 @@ import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms._
 import viper.silicon.interfaces._
 import viper.silicon.logger.SymbExLogger
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.executionFlowController
+import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
 
@@ -87,9 +89,17 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
 
       SymbExLogger.openMemberScope(predicate, null, v.decider.pcs)
 
+      val heap = if (Verifier.config.carbonQPs()) {
+        val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
+        val predChunks = sInit.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, ZeroPredMask(), decider.fresh("hInit", PredHeapSort)))
+        Heap(fieldChunks ++ predChunks)
+      } else {
+        sInit.h
+      }
+
       val ins = predicate.formalArgs.map(_.localVar)
       val s = sInit.copy(g = Store(ins.map(x => (x, decider.fresh(x)))),
-                         h = Heap(),
+                         h = heap,
                          oldHeaps = OldHeaps())
       val err = PredicateNotWellformed(predicate)
 

@@ -33,7 +33,7 @@
         (=> (> ($Hp.get_$Perm m r) $Perm.No) (= ($Hp.get_$T$ nh r) ($Hp.get_$T$ ($Hp.merge_$T$ oh nh m) r)))
         (= ($Hp.get_$T$ oh r) ($Hp.get_$T$ ($Hp.merge_$T$ oh nh m) r)))
     :pattern (($Hp.get_$T$ ($Hp.merge_$T$ oh nh m) r))
-    :qid |qp.$Hp.update_$T$-def|
+    :qid |qp.$Hp.merge_$T$-def|
     )))
 
 (assert (forall ((oh $Hp<$T$>) (r $Ref) (v $S$)) (!
@@ -41,5 +41,5 @@
         (= ($Hp.merge_single_$T$ oh r v) oh)
         (= ($Hp.get_$T$ oh r) v))
     :pattern (($Hp.merge_single_$T$ oh r v))
-    :qid |qp.$Hp.update_$T$-def|
+    :qid |qp.$Hp.merge_single_$T$-def|
     )))

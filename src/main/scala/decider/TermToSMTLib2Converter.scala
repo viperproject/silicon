@@ -13,6 +13,7 @@ import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort, PredMaskSort}
+import viper.silver.ast
 
 class TermToSMTLib2Converter 
     extends FastPrettyPrinterBase
@@ -290,6 +291,21 @@ class TermToSMTLib2Converter
 
     case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
       parens(text("$Hp.identicalOnKnown_") <> renderHeapType(newHeap.sort) <+> render(oldHeap) <+> render(newHeap) <+> render(mask))
+
+    case MergeSingle(heap, location, value) =>
+      parens(text("$Hp.merge_single_") <> renderHeapType(heap.sort) <+> render(heap) <+> render(location) <+> render(value))
+
+    case SnapToHeap(snap, resource, _) =>
+      parens(text("$SortWrappers.$SnapTo$Heap<") <> (resource match {
+        case f: ast.Field => f.name
+        case p: ast.Predicate => p.name
+      }) <> ">" <+> render(snap))
+
+    case HeapToSnap(heap, mask, resource) =>
+      parens(text("$SortWrappers.$Heap<") <> (resource match {
+        case f: ast.Field => f.name
+        case p: ast.Predicate => p.name
+      }) <> ">To$Snap" <+> render(heap) <+> render(mask))
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
