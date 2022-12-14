@@ -127,16 +127,27 @@ object consumer extends ConsumptionRules {
         }
         r1Name < r2Name
       })
-      val resMap: Seq[(ast.Resource, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask() else ZeroPredMask())))
-      val term = FakeMaskMapTerm(silicon.Map(resMap: _*))
-      internalConsumeTlcs(s, h, tlcs, pves, v, Some(term))((s2, h2, resMapTerm, v2) => {
-        val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks
-        val snapTerms = resources.map(r => HeapToSnap(carbonQuantifiedChunkSupporter.findCarbonChunk(h, r).heap, resMap(r), r))
-        Q(s2, h2, toSnapTree(snapTerms), v2)
-      })
+      carbonConsumeTlcs(s, h, tlcs, pves, v, resources)(Q)
     } else {
       internalConsumeTlcs(s, h, tlcs, pves, v, None)(Q)
     }
+  }
+
+  def carbonConsumeTlcs(s: State,
+                        h: Heap,
+                        tlcs: Seq[ast.Exp],
+                        pves: Seq[PartialVerificationError],
+                        v: Verifier,
+                        resources: Seq[ast.Location])
+                       (Q: (State, Heap, Term, Verifier) => VerificationResult)
+  : VerificationResult = {
+    val resMap: Seq[(ast.Resource, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask() else ZeroPredMask())))
+    val term = FakeMaskMapTerm(silicon.Map(resMap: _*))
+    internalConsumeTlcs(s, h, tlcs, pves, v, Some(term))((s2, h2, resMapTerm, v2) => {
+      val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks
+      val snapTerms = resources.map(r => HeapToSnap(carbonQuantifiedChunkSupporter.findCarbonChunk(h, r).heap, resMap(r), r))
+      Q(s2, h2, toSnapTree(snapTerms), v2)
+    })
   }
 
   private def internalConsumeTlcs(s: State,
