@@ -803,7 +803,9 @@ object evaluator extends EvaluationRules {
                       val s7 = s6.scalePermissionFactor(tPerm)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
                       val s7a = s7.copy(g = insg)
-                      produce(s7a, toSf(snap), body, pve, v4)((s8, v5) => {
+                      val predSnap = HeapLookup(snap.asInstanceOf[HeapToSnap].heap, toSnapTree(tArgs))
+                      val predSnapFunc = (_: Sort, _: Verifier) => predSnap
+                      produce(s7a, predSnapFunc, body, pve, v4)((s8, v5) => {
                         val s9 = s8.copy(g = s7.g,
                                          functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                          recordVisited = s3.recordVisited,

@@ -141,7 +141,7 @@ object consumer extends ConsumptionRules {
                         resources: Seq[ast.Location])
                        (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
-    val resMap: Seq[(ast.Resource, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask() else ZeroPredMask())))
+    val resMap: Seq[(ast.Resource, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask() else PredZeroMask())))
     val term = FakeMaskMapTerm(silicon.Map(resMap: _*))
     internalConsumeTlcs(s, h, tlcs, pves, v, Some(term))((s2, h2, resMapTerm, v2) => {
       val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks

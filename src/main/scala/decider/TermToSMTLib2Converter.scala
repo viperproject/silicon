@@ -289,6 +289,9 @@ class TermToSMTLib2Converter
     case HeapUpdate(heap, at, value) =>
       parens(text("$Hp.update_") <> renderHeapType(heap.sort) <+> render(heap) <+> render(at) <+> render(value))
 
+    case HeapSingleton(at, value, r) =>
+      parens(text("$Hp.singleton_") <> renderHeapType(term.sort) <+> render(at) <+> render(value))
+
     case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
       parens(text("$Hp.identicalOnKnown_") <> renderHeapType(newHeap.sort) <+> render(oldHeap) <+> render(newHeap) <+> render(mask))
 
@@ -404,7 +407,7 @@ class TermToSMTLib2Converter
     case False() => "false"
     case Null() => "$Ref.null"
     case ZeroMask() => "$Hp.zeroMask"
-    case ZeroPredMask() => "$Hp.zeroPredMask"
+    case PredZeroMask() => "$Hp.zeroPredMask"
     case _: SeqNil => renderApp("Seq_empty", Seq(), literal.sort)
     case _: EmptySet => renderApp("Set_empty", Seq(), literal.sort)
     case _: EmptyMultiset => renderApp("Multiset_empty", Seq(), literal.sort)

@@ -17,6 +17,14 @@
     :qid |qp.$Hp.update_$T$-def|
     )))
 
+(assert (forall ((r1 $Ref) (v $S$)) (!
+      (=
+        ($Hp.get_$T$ ($Hp.singleton_$T$ r1 v) r1)
+        v)
+    :pattern (($Hp.get_$T$ ($Hp.singleton_$T$ r1 v) r1))
+    :qid |qp.$Hp.signleton_$T$-def|
+    )))
+
 
 (assert (forall ((oh $Hp<$T$>) (nh $Hp<$T$>) (m $Hp<$Perm>) (r $Ref)) (!
       (=> ($Hp.identicalOnKnown_$T$ oh nh m)

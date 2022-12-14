@@ -10,7 +10,7 @@ import scala.annotation.tailrec
 import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.state.terms.sorts.{HeapSort, MaskSort}
+import viper.silicon.state.terms.sorts.{HeapSort, MaskSort, PredHeapSort}
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
@@ -457,11 +457,6 @@ case class Null() extends Term with Literal {
 
 case class ZeroMask() extends Term with Literal {
   val sort = sorts.MaskSort
-  override lazy val toString = "ZeroMask"
-}
-
-case class ZeroPredMask() extends Term with Literal {
-  val sort = sorts.PredMaskSort
   override lazy val toString = "ZeroMask"
 }
 
@@ -1927,7 +1922,14 @@ case class HeapToSnap(heap: Term, mask: Term, r: ast.Resource) extends Term {
   val sort = sorts.Snap
 }
 
-case class SnapToHeap(snap: Term, r: ast.Resource, sort: Sort) extends Term
+case class SnapToHeap(snap: Term, r: ast.Resource, sort: Sort) extends Term {
+  snap match {
+    case HeapToSnap(hp, msk, rr) =>
+      if (r != rr)
+        println("wtf")
+    case _ =>
+  }
+}
 
 case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
  // utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
@@ -1935,6 +1937,13 @@ case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
  // utils.assertSort(value, "value", heap.sort.asInstanceOf[HeapSort].valueSort)
 
   val sort = heap.sort
+}
+
+case class HeapSingleton(at: Term, value: Term, r: ast.Resource) extends Term {
+  val sort = r match {
+    case f: ast.Field => HeapSort(value.sort)
+    case _: ast.Predicate => PredHeapSort
+  }
 }
 
 case class IdenticalOnKnownLocations(oldHeap: Term, newHeap: Term, mask: Term) extends Term {

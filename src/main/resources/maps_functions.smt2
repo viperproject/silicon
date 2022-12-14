@@ -8,6 +8,7 @@
 
 
 
+(declare-fun $Hp.singleton_$T$ ($Ref $S$) $Hp<$T$>)
 
 (declare-fun $Hp.get_$T$ ($Hp<$T$> $Ref) $S$)
 (declare-fun $Hp.update_$T$ ($Hp<$T$> $Ref $S$) $Hp<$T$>)

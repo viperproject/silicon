@@ -73,7 +73,7 @@ object predicateSupporter extends PredicateSupportRules {
         val s3 = s2.copy(g = s.g,
           smDomainNeeded = s.smDomainNeeded,
           permissionScalingFactor = s.permissionScalingFactor)
-        val newSf = (_: Sort, _: Verifier) => snap
+        val newSf = (_: Sort, _: Verifier) => HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap, predicate), HeapUpdate(PredZeroMask(), toSnapTree(tArgs), FullPerm()), predicate)
         produce(s3, newSf, pap, pve, v1)((s4, v2) =>
           Q(s4, v2))
       } else {
@@ -141,7 +141,9 @@ object predicateSupporter extends PredicateSupportRules {
       carbonConsumeTlcs(s1, s1.h, Seq(pap), Seq(pve), v, Seq(predicate))((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
           .setConstrainable(constrainableWildcards, false)
-        produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
+        val predSnap = HeapLookup(snap.asInstanceOf[HeapToSnap].heap, toSnapTree(tArgs))
+        val predSnapFunc = (_: Sort, _: Verifier) => predSnap
+        produce(s3, predSnapFunc, body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =

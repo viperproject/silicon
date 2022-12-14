@@ -48,11 +48,6 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
       setTypeInstances += ast.SetType(viper.silicon.utils.ast.ViperEmbedding(sorts.Snap))
     }
 
-    if (Verifier.config.carbonQPs()) {
-      setTypeInstances += ast.SetType(ast.Ref)
-      setTypeInstances += ast.SetType(ast.Snap)
-    }
-
     /* The domain of maps depend on sets, for representing the domain and codomain/range of any map.
      * Hence, for every instance of a map type found in the program, we add the appropriate set types.
      *
