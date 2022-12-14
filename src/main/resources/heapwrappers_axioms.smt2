@@ -9,24 +9,26 @@
 
 
 
-(assert (forall ((h $Hp<$T$>) (s Set<$Ref>) (r $Ref)) (!
+(assert (forall ((h $Hp<$T$>) (s $Hp<$Perm>) (r $Ref)) (!
       (=>
-        (Set_in r s)
+        (> ($Hp.get_$Perm s r) $Perm.No)
         (= ($Hp.get_$T$ ($SortWrappers.$SnapTo$Heap<$FLD$> ($SortWrappers.$Heap<$FLD$>To$Snap h s)) r) ($Hp.get_$T$ h r))
         )
     :pattern (($Hp.get_$T$ ($SortWrappers.$SnapTo$Heap<$FLD$> ($SortWrappers.$Heap<$FLD$>To$Snap h s)) r))
     :qid |qp.$SnapTo$Heap<$FLD$>-def|
     )))
 
-(assert (forall ((h1 $Hp<$T$>) (s1 Set<$Ref>) (h2 $Hp<$T$>) (s2 Set<$Ref>)) (!
+(assert (forall ((h1 $Hp<$T$>) (s1 $Hp<$Perm>) (h2 $Hp<$T$>) (s2 $Hp<$Perm>)) (!
       (=>
-        (and (Set_equal s1 s2) (forall ((x $Ref)) (!
+        (forall ((x $Ref)) (!
+        (and (= (> ($Hp.get_$Perm s1 x) $Perm.No) (> ($Hp.get_$Perm s2 x) $Perm.No))
                                           (=>
-                                            (Set_in x s1)
+                                            (> ($Hp.get_$Perm s1 x) $Perm.No)
                                             (= ($Hp.get_$T$ h1 x) ($Hp.get_$T$ h2 x)))
+                                            )
                                           :pattern (($Hp.get_$T$ h1 x) ($Hp.get_$T$ h2 x))
                                           :qid |qp.$SnapTo$Heap<$FLD$>-ext-inner|
-                                          )))
+                                          ))
         (= ($SortWrappers.$Heap<$FLD$>To$Snap h1 s1) ($SortWrappers.$Heap<$FLD$>To$Snap h2 s2))
         )
     :pattern (($SortWrappers.$Heap<$FLD$>To$Snap h1 s1) ($SortWrappers.$Heap<$FLD$>To$Snap h2 s2))

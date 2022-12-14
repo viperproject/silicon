@@ -125,7 +125,7 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
       (s"$wrapperFile [id: $id, sort: $sort]", declarations)
     })
     val predWrapperResults = collectedPredicates.map(pred => {
-      val substitutions = Map("$FLD$" -> pred.name, "$S$" -> termConverter.convert(sorts.Snap), "$T$" -> "$Pred", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
+      val substitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$PredMask", "$Hp<$Perm>" -> "$Hp<$PredMask>", "$FLD$" -> pred.name, "$S$" -> termConverter.convert(sorts.Snap), "$T$" -> "$Pred", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
       val declarations = preambleReader.readParametricPreamble(wrapperFile, substitutions)
 
       (s"$wrapperFile [predicate: $pred.name,]", declarations)
@@ -179,7 +179,7 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
       (s"$wrapperFile [id: $id, sort: $sort]", declarations)
     })
     val predWrapperResults = collectedPredicates.map(pred => {
-      val substitutions = Map("$FLD$" -> pred.name, "$S$" -> termConverter.convert(sorts.Snap), "$T$" -> "$Pred", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
+      val substitutions = Map("$Hp.get_$Perm" -> "$Hp.get_$PredMask", "$Hp<$Perm>" -> "$Hp<$PredMask>", "$FLD$" -> pred.name, "$S$" -> termConverter.convert(sorts.Snap), "$T$" -> "$Pred", termConverter.convert(sorts.Ref) -> termConverter.convert(sorts.Snap))
       val declarations = preambleReader.readParametricPreamble(wrapperFile, substitutions)
 
       (s"$wrapperFile [predicate: $pred.name,]", declarations)
