@@ -295,8 +295,11 @@ class TermToSMTLib2Converter
     case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
       parens(text("$Hp.identicalOnKnown_") <> renderHeapType(newHeap.sort) <+> render(oldHeap) <+> render(newHeap) <+> render(mask))
 
-    case MergeSingle(heap, location, value) =>
-      parens(text("$Hp.merge_single_") <> renderHeapType(heap.sort) <+> render(heap) <+> render(location) <+> render(value))
+    case DummyHeap(sort) =>
+      text("$Hp.default_") <> renderHeapType(sort)
+
+    case MergeSingle(heap, mask, location, value) =>
+      parens(text("$Hp.merge_single_") <> renderHeapType(heap.sort) <+> render(heap) <+> render(mask) <+> render(location) <+> render(value))
 
     case SnapToHeap(snap, resource, _) =>
       parens(text("$SortWrappers.$SnapTo$Heap<") <> (resource match {

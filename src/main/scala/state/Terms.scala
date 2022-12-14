@@ -1920,7 +1920,7 @@ object HeapLookup extends ((Term, Term) => Term) {
     case (PredZeroMask(), _) => NoPerm()
     case (HeapSingleton(r1, v, _), r2) if r1 == r2 => v
     case (HeapUpdate(_, r1, v), r2) if r1 == r2 => v
-    case (MergeSingle(_, r1, v), r2) if r1 == r2 => v
+    case (MergeSingle(_, _, r1, v), r2) if r1 == r2 => v
     case _ => new HeapLookup(heap, at)
   }
 
@@ -1973,9 +1973,11 @@ case class FakeMaskMapTerm(masks: immutable.Map[ast.Resource, Term]) extends Ter
   val sort = sorts.Snap // sure, why not
 }
 
-case class MergeSingle(heap: Term, location: Term, value: Term) extends Term {
+case class MergeSingle(heap: Term, mask: Term, location: Term, value: Term) extends Term {
   val sort = heap.sort
 }
+
+case class DummyHeap(sort: Sort) extends Term
 
 case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])

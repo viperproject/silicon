@@ -97,7 +97,8 @@ package object utils {
     case SnapToHeap(sn, _, _) => sn :: Nil
     case HeapToSnap(hp, msk, _) => hp :: msk :: Nil
     case HeapSingleton(at, vl, _) => at :: vl :: Nil
-    case MergeSingle(heap, _, value) => heap :: value :: Nil
+    case MergeSingle(heap, mask, _, value) => heap :: mask :: value :: Nil
+    case DummyHeap(_) => Nil
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.simplify()]] */

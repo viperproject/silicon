@@ -156,8 +156,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       decider.prover.declare(ConstDecl(data.formalResult))
 
       val heap = if (Verifier.config.carbonQPs()) {
-        val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
-        val predChunks = sInit.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, ZeroMask(), decider.fresh("hInit", PredHeapSort)))
+        val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), DummyHeap(HeapSort(symbolConverter.toSort(f.typ)))))
+        val predChunks = sInit.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, ZeroMask(), DummyHeap(PredHeapSort)))
         Heap(fieldChunks ++ predChunks)
       } else {
         sInit.h

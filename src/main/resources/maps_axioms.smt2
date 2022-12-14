@@ -44,10 +44,10 @@
     :qid |qp.$Hp.merge_$T$-def|
     )))
 
-(assert (forall ((oh $Hp<$T$>) (r $Ref) (v $S$)) (!
+(assert (forall ((oh $Hp<$T$>) (om $Hp<$Perm>) (r $Ref) (v $S$) (r2 $Ref)) (!
        (and
-        (= ($Hp.merge_single_$T$ oh r v) oh)
-        (= ($Hp.get_$T$ oh r) v))
-    :pattern (($Hp.merge_single_$T$ oh r v))
+        (=> (= r r2) (= ($Hp.get_$T$ ($Hp.merge_single_$T$ oh om r v) r2) v))
+        (=> (> ($Hp.get_$Perm om r2) 0.0) (= ($Hp.get_$T$ ($Hp.merge_single_$T$ oh om r v) r2) ($Hp.get_$T$ oh r2))))
+    :pattern (($Hp.get_$T$ ($Hp.merge_single_$T$ oh om r v) r2))
     :qid |qp.$Hp.merge_single_$T$-def|
     )))

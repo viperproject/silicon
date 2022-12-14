@@ -122,7 +122,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     }
     val newMask = HeapUpdate(resChunk.mask, argTerm, PermPlus(HeapLookup(resChunk.mask, argTerm), tPerm))
     val snapHeapMap = snap.asInstanceOf[FakeMaskMapTerm].masks
-    val newHeap = MergeSingle(resChunk.heap, argTerm, HeapLookup(snapHeapMap(resource), argTerm))
+
+    val newHeap = MergeSingle(resChunk.heap, resChunk.mask, argTerm, HeapLookup(snapHeapMap(resource), argTerm))
     val ch = resChunk.copy(mask = newMask, heap = newHeap)
     val h1 = s.h - resChunk + ch
 
