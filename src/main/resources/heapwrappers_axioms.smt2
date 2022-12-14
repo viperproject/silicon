@@ -20,15 +20,13 @@
 
 (assert (forall ((h1 $Hp<$T$>) (s1 $Hp<$Perm>) (h2 $Hp<$T$>) (s2 $Hp<$Perm>)) (!
       (=>
-        (forall ((x $Ref)) (!
-        (and (= (> ($Hp.get_$Perm s1 x) $Perm.No) (> ($Hp.get_$Perm s2 x) $Perm.No))
+        (and ($Hp.maskDomainIdentical s1 s2) (forall ((x $Ref)) (!
                                           (=>
-                                            (> ($Hp.get_$Perm s1 x) $Perm.No)
+                                            (> ($Hp.get_$Perm s1 x) 0.0)
                                             (= ($Hp.get_$T$ h1 x) ($Hp.get_$T$ h2 x)))
-                                            )
                                           :pattern (($Hp.get_$T$ h1 x) ($Hp.get_$T$ h2 x))
                                           :qid |qp.$SnapTo$Heap<$FLD$>-ext-inner|
-                                          ))
+                                          )))
         (= ($SortWrappers.$Heap<$FLD$>To$Snap h1 s1) ($SortWrappers.$Heap<$FLD$>To$Snap h2 s2))
         )
     :pattern (($SortWrappers.$Heap<$FLD$>To$Snap h1 s1) ($SortWrappers.$Heap<$FLD$>To$Snap h2 s2))

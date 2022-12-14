@@ -3,3 +3,4 @@
 ; file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 (declare-const $Hp.zeroMask $Hp<$Perm>)
+(declare-fun $Hp.maskDomainIdentical ($Hp<$Perm> $Hp<$Perm>) Bool)
