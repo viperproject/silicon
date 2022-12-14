@@ -40,6 +40,7 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
 
   def reset(): Unit = {
     collectedFields = InsertionOrderedSet.empty
+    collectedPredicates = InsertionOrderedSet.empty
     collectedSorts = InsertionOrderedSet.empty
     predicateSorts = InsertionOrderedSet.empty
     collectedFunctionDecls = Seq.empty

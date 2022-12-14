@@ -94,6 +94,10 @@ package object utils {
     case HeapLookup(h, at) => h :: at :: Nil
     case HeapUpdate(h, at, v) => h :: at :: v :: Nil
     case IdenticalOnKnownLocations(oh, nh, m) => oh :: nh :: m :: Nil
+    case SnapToHeap(sn, _, _) => sn :: Nil
+    case HeapToSnap(hp, msk, _) => hp :: msk :: Nil
+    case HeapSingleton(at, vl, _) => at :: vl :: Nil
+    case MergeSingle(heap, _, value) => heap :: value :: Nil
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.simplify()]] */

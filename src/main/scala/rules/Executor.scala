@@ -19,10 +19,11 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
-import viper.silicon.resources.FieldID
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.cfg.ConditionalEdge
@@ -186,7 +187,16 @@ object executor extends ExecutionRules {
               /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
-            val sBody = s.copy(g = gBody, h = Heap())
+
+            val bodyHeap = if (Verifier.config.carbonQPs()) {
+              val fieldChunks = s.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
+              val predChunks = s.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, PredZeroMask(), v.decider.fresh("hInit", PredHeapSort)))
+              Heap(fieldChunks ++ predChunks)
+            } else {
+              Heap()
+            }
+
+            val sBody = s.copy(g = gBody, h = bodyHeap)
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)

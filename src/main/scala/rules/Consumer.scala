@@ -20,6 +20,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.{FieldAccessPredicate, PredicateAccessPredicate}
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 
@@ -99,7 +100,7 @@ object consumer extends ConsumptionRules {
       allPves ++= pves
     })
 
-    consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, h1, snap1, v1) => {
+    consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v, None)((s1, h1, snap1, v1) => {
       val s2 = s1.copy(h = h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap1, v1)
@@ -110,12 +111,14 @@ object consumer extends ConsumptionRules {
                           h: Heap,
                           tlcs: Seq[ast.Exp],
                           pves: Seq[PartialVerificationError],
-                          v: Verifier)
+                          v: Verifier,
+                          ot: Option[Term])
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
     if (Verifier.config.carbonQPs()) {
       val resources = tlcs.map(_.deepCollect{
-        case ast.LocationAccess(l) => l(s.program)
+        case PredicateAccessPredicate(pa, _) => pa.loc(s.program)
+        case FieldAccessPredicate(fa, _) => fa.loc(s.program)
       }).flatten.distinct.sortWith((r1, r2) => {
         val r1Name = r1 match {
           case f: ast.Field => f.name
@@ -127,7 +130,7 @@ object consumer extends ConsumptionRules {
         }
         r1Name < r2Name
       })
-      carbonConsumeTlcs(s, h, tlcs, pves, v, resources)(Q)
+      carbonConsumeTlcs(s, h, tlcs, pves, v, resources, ot)(Q)
     } else {
       internalConsumeTlcs(s, h, tlcs, pves, v, None)(Q)
     }
@@ -138,15 +141,22 @@ object consumer extends ConsumptionRules {
                         tlcs: Seq[ast.Exp],
                         pves: Seq[PartialVerificationError],
                         v: Verifier,
-                        resources: Seq[ast.Location])
+                        resources: Seq[ast.Location],
+                        ot: Option[Term])
                        (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
-    val resMap: Seq[(ast.Resource, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask() else PredZeroMask())))
-    val term = FakeMaskMapTerm(silicon.Map(resMap: _*))
+    val term = if (ot.isDefined) ot.get else {
+      val resMap: Seq[(ast.Resource, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask() else PredZeroMask())))
+      FakeMaskMapTerm(silicon.Map(resMap: _*))
+    }
     internalConsumeTlcs(s, h, tlcs, pves, v, Some(term))((s2, h2, resMapTerm, v2) => {
-      val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks
-      val snapTerms = resources.map(r => HeapToSnap(carbonQuantifiedChunkSupporter.findCarbonChunk(h, r).heap, resMap(r), r))
-      Q(s2, h2, toSnapTree(snapTerms), v2)
+      if (ot.isDefined) {
+        Q(s2, h2, resMapTerm, v2)
+      } else {
+        val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks
+        val snapTerms = resources.map(r => HeapToSnap(carbonQuantifiedChunkSupporter.findCarbonChunk(h, r).heap, resMap(r), r))
+        Q(s2, h2, toSnapTree(snapTerms), v2)
+      }
     })
   }
 
@@ -181,14 +191,14 @@ object consumer extends ConsumptionRules {
     }
   }
 
-  private def consumeR(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  private def consumeR(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier, ot: Option[Term] = None)
                       (Q: (State, Heap, Term, Verifier) => VerificationResult)
                       : VerificationResult = {
 
     val tlcs = a.topLevelConjuncts
     val pves = Seq.fill(tlcs.length)(pve)
 
-    consumeTlcs(s, h, tlcs, pves, v)(Q)
+    consumeTlcs(s, h, tlcs, pves, v, ot)(Q)
   }
 
   /** Wrapper/decorator for consume that injects the following operations:
@@ -245,7 +255,7 @@ object consumer extends ConsumptionRules {
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
-            (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a0, pve, v2, resMap)((s3, h1, t1, v3) => {
               SymbExLogger.currentLog().closeScope(uidImplies)
               Q(s3, h1, t1, v3)
             }),

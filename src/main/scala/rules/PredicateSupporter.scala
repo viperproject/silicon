@@ -138,7 +138,7 @@ object predicateSupporter extends PredicateSupportRules {
 
       val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
-      carbonConsumeTlcs(s1, s1.h, Seq(pap), Seq(pve), v, Seq(predicate))((s2, h1, snap, v1) => {
+      carbonConsumeTlcs(s1, s1.h, Seq(pap), Seq(pve), v, Seq(predicate), None)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
           .setConstrainable(constrainableWildcards, false)
         val predSnap = HeapLookup(snap.asInstanceOf[HeapToSnap].heap, toSnapTree(tArgs))

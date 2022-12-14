@@ -1858,7 +1858,6 @@ object Combine extends ((Term, Term) => Term) {
 class First(val p: Term) extends SnapshotTerm
     with StructuralEqualityUnaryOp[Term]
     /*with PossibleTrigger*/ {
-  println("++")
 
   utils.assertSort(p, "term", sorts.Snap)
 }

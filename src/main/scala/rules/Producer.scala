@@ -20,6 +20,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.{FieldAccessPredicate, PredicateAccessPredicate}
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
 
 trait ProductionRules extends SymbolicExecutionRules {
@@ -141,7 +142,8 @@ object producer extends ProductionRules {
       val givenSnap = sf(sorts.Snap, v)
       val fakeTerm = if (!givenSnap.isInstanceOf[FakeMaskMapTerm]) {
         val resources = as.map(_.deepCollect {
-          case ast.LocationAccess(l) => l(s.program)
+          case PredicateAccessPredicate(pa, _) => pa.loc(s.program)
+          case FieldAccessPredicate(fa, _) => fa.loc(s.program)
         }).flatten.distinct.sortWith((r1, r2) => {
           val r1Name = r1 match {
             case f: ast.Field => f.name

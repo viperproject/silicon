@@ -23,7 +23,7 @@ import viper.silicon.decider.Decider
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
-import viper.silicon.state.terms.sorts.HeapSort
+import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
@@ -157,7 +157,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val heap = if (Verifier.config.carbonQPs()) {
         val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
-        val predChunks = sInit.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, ZeroMask(), decider.fresh("hInit", HeapSort(sorts.Snap))))
+        val predChunks = sInit.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, ZeroMask(), decider.fresh("hInit", PredHeapSort)))
         Heap(fieldChunks ++ predChunks)
       } else {
         sInit.h
