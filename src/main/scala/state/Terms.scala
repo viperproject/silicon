@@ -462,7 +462,7 @@ case class ZeroMask() extends Term with Literal {
 
 case class PredZeroMask() extends Term with Literal {
   val sort = sorts.PredMaskSort
-  override lazy val toString = "ZeroMask"
+  override lazy val toString = "PredZeroMask"
 }
 
 sealed trait BooleanLiteral extends BooleanTerm with Literal {

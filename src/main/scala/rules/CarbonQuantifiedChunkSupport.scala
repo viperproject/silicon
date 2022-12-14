@@ -11,6 +11,7 @@ import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.rules.quantifiedChunkSupporter.createFailure
 import viper.silicon.state.terms.{AtLeast, FakeMaskMapTerm, FullPerm, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, MergeSingle, PermAtMost, PermMinus, PermPlus, Term, True, Var, sorts, toSnapTree}
 import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, Heap, State}
+import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.ast
@@ -58,12 +59,15 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       val maskValue = HeapLookup(resChunk.mask, argTerm)
       v.decider.assert(AtLeast(maskValue, permissions)) {
         case true =>
-          // remove, set up new heap
-          val freshHeap = v.decider.fresh("heap", resChunk.heap.sort)
-          // TODO: predicates!!
           val newMask = HeapUpdate(resChunk.mask, argTerm, PermMinus(HeapLookup(resChunk.mask, argTerm), permissions))
-          val newChunk = resChunk.copy(mask = newMask, heap = freshHeap)
-          v.decider.assume(IdenticalOnKnownLocations(resChunk.heap, freshHeap, newMask))
+          val newChunk = if (s.functionRecorder != NoopFunctionRecorder) {
+            // no need to havoc
+            resChunk.copy(mask = newMask)
+          } else {
+            val freshHeap = v.decider.fresh("heap", resChunk.heap.sort)
+            v.decider.assume(IdenticalOnKnownLocations(resChunk.heap, freshHeap, newMask))
+            resChunk.copy(mask = newMask, heap = freshHeap)
+          }
 
           //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
           val newSnapMask = HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))

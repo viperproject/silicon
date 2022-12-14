@@ -396,6 +396,23 @@ object executor extends ExecutionRules {
           })
         )
 
+      case ast.NewStmt(x, fields) if Verifier.config.carbonQPs() =>
+        val tRcvr = v.decider.fresh(x)
+        v.decider.assume(tRcvr !== Null())
+        var heap = s.h
+        for (field <- fields) {
+          // assume currently none
+          val fieldChunk = carbonQuantifiedChunkSupporter.findCarbonChunk(heap, field)
+          v.decider.assume(HeapLookup(fieldChunk.mask, tRcvr) === NoPerm())
+          // add one
+          val newFieldChunk = fieldChunk.copy(mask = HeapUpdate(fieldChunk.mask, tRcvr, FullPerm()))
+          heap = heap - fieldChunk + newFieldChunk
+        }
+        val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
+        val s1 = s.copy(g = s.g + (x, tRcvr), h = heap)
+        v.decider.assume(ts)
+        Q(s1, v)
+
       case ast.NewStmt(x, fields) =>
         val tRcvr = v.decider.fresh(x)
         v.decider.assume(tRcvr !== Null())
