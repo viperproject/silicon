@@ -1904,10 +1904,7 @@ case class PermLookup(field: String, pm: Term, at: Term) extends Term {
   val sort = sorts.Perm
 }
 
-case class HeapLookup(heap: Term, at: Term) extends Term {
-  if (heap == ZeroMask() && at.sort == sorts.Snap) {
-    println("11")
-  }
+class HeapLookup(val heap: Term, val at: Term) extends Term {
  // utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
  // utils.assertSort(at, "receiver", sorts.Ref)
 
@@ -1918,17 +1915,36 @@ case class HeapLookup(heap: Term, at: Term) extends Term {
   }
 }
 
+object HeapLookup extends ((Term, Term) => Term) {
+  def apply(heap: Term, at: Term) = (heap, at) match {
+    case (ZeroMask(), _) => NoPerm()
+    case (PredZeroMask(), _) => NoPerm()
+    case (HeapSingleton(r1, v, _), r2) if r1 == r2 => v
+    case (HeapUpdate(_, r1, v), r2) if r1 == r2 => v
+    case (MergeSingle(_, r1, v), r2) if r1 == r2 => v
+    case _ => new HeapLookup(heap, at)
+  }
+
+  def unapply(hl: HeapLookup) = Some((hl.heap, hl.at))
+}
+
+
 case class HeapToSnap(heap: Term, mask: Term, r: ast.Resource) extends Term {
   val sort = sorts.Snap
 }
 
-case class SnapToHeap(snap: Term, r: ast.Resource, sort: Sort) extends Term {
-  snap match {
-    case HeapToSnap(hp, msk, rr) =>
-      if (r != rr)
-        println("wtf")
-    case _ =>
+class SnapToHeap(val snap: Term, val r: ast.Resource, val sort: Sort) extends Term
+
+object SnapToHeap extends ((Term, ast.Resource, Sort) => Term) {
+  def apply(snap: Term, r: ast.Resource, sort: Sort) = snap match {
+    case HeapToSnap(hp, _, r2) => {
+      assert(r == r2)
+      hp
+    }
+    case _ => new SnapToHeap(snap, r, sort)
   }
+
+  def unapply(sth: SnapToHeap) = Some((sth.snap, sth.r, sth.sort))
 }
 
 case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
