@@ -9,8 +9,8 @@ package viper.silicon.rules
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.rules.quantifiedChunkSupporter.createFailure
-import viper.silicon.state.terms.{AtLeast, FakeMaskMapTerm, FullPerm, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, MergeSingle, PermAtMost, PermMinus, PermPlus, Term, True, Var, sorts, toSnapTree}
-import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, Heap, State}
+import viper.silicon.state.terms.{AtLeast, FakeMaskMapTerm, FullPerm, Greater, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, MergeSingle, NoPerm, PermAtMost, PermLess, PermMinus, PermPlus, Term, True, Var, sorts, toSnapTree}
+import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, Heap, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.PartialVerificationError
@@ -56,10 +56,19 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
         case _: ast.Predicate => toSnapTree(arguments)
       }
 
+      val consumeExact = terms.utils.consumeExactRead(permissions, s.constrainableARPs)
+
       val maskValue = HeapLookup(resChunk.mask, argTerm)
-      v.decider.assert(AtLeast(maskValue, permissions)) {
+
+      val toCheck = if (consumeExact) AtLeast(maskValue, permissions) else Greater(maskValue, NoPerm())
+
+      v.decider.assert(toCheck) {
         case true =>
-          val newMask = HeapUpdate(resChunk.mask, argTerm, PermMinus(HeapLookup(resChunk.mask, argTerm), permissions))
+          if (!consumeExact) {
+            // constrain wildcard
+            v.decider.assume(PermLess(permissions, maskValue))
+          }
+          val newMask = HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
           val newChunk = if (s.functionRecorder != NoopFunctionRecorder) {
             // no need to havoc
             resChunk.copy(mask = newMask)
