@@ -381,27 +381,29 @@ object consumer extends ConsumptionRules {
               v1)(Q)
         }
 
-      case ast.AccessPredicate(loc@ast.FieldAccess(eRcvr, field), ePerm)
+      case ast.AccessPredicate(locAcc: ast.LocationAccess, ePerm)
         if Verifier.config.carbonQPs() =>
-        eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
+        evalLocationAccess(s, locAcc, pve, v)((s1, _, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            // TODO: assume field trigger
+            permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
+              // TODO: assume field trigger
 
-            val loss = PermTimes(tPerm, s2.permissionScalingFactor)
-            carbonQuantifiedChunkSupporter.consumeSingleLocation(
-              s2,
-              h,
-              Seq(`?r`),
-              Seq(tRcvr),
-              loc,
-              loss,
-              pve,
-              v2,
-              resMap.get.asInstanceOf[FakeMaskMapTerm].masks
-            )((s3, h3, snap, v3) => {
-              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
-                partiallyConsumedHeap = Some(h3))
-              Q(s4, h3, snap, v3)
+              val loss = PermTimes(tPerm, s3.permissionScalingFactor)
+              carbonQuantifiedChunkSupporter.consumeSingleLocation(
+                s3,
+                h,
+                Seq(`?r`),
+                tArgs,
+                locAcc,
+                loss,
+                pve,
+                v3,
+                resMap.get.asInstanceOf[FakeMaskMapTerm].masks
+              )((s4, h4, snap, v4) => {
+                val s5 = s4.copy(constrainableARPs = s1.constrainableARPs,
+                  partiallyConsumedHeap = Some(h4))
+                Q(s5, h4, snap, v4)
+              })
             })
           }))
 
@@ -437,30 +439,6 @@ object consumer extends ConsumptionRules {
               val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
                                partiallyConsumedHeap = Some(h3))
               Q(s4, h3, snap, v3)})}))
-
-      case ast.AccessPredicate(loc@ast.PredicateAccess(eArgs, predname), ePerm)
-        if Verifier.config.carbonQPs() =>
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            // TODO: assume field trigger
-
-            val loss = PermTimes(tPerm, s2.permissionScalingFactor)
-            carbonQuantifiedChunkSupporter.consumeSingleLocation(
-              s2,
-              h,
-              Seq(`?r`),
-              tArgs,
-              loc,
-              loss,
-              pve,
-              v2,
-              resMap.get.asInstanceOf[FakeMaskMapTerm].masks
-            )((s3, h3, snap, v3) => {
-              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs,
-                partiallyConsumedHeap = Some(h3))
-              Q(s4, h3, snap, v3)
-            })
-          }))
 
       case ast.AccessPredicate(loc @ ast.PredicateAccess(eArgs, predname), ePerm)
               if s.qpPredicates.contains(s.program.findPredicate(predname)) =>

@@ -1920,7 +1920,7 @@ object HeapLookup extends ((Term, Term) => Term) {
     case (PredZeroMask(), _) => NoPerm()
     case (HeapSingleton(r1, v, _), r2) if r1 == r2 => v
     case (HeapUpdate(_, r1, v), r2) if r1 == r2 => v
-    case (MergeSingle(_, _, r1, v), r2) if r1 == r2 => v
+    //case (MergeSingle(_, _, r1, v), r2) if r1 == r2 => v // incomplete, ignores info from merged heap
     case _ => new HeapLookup(heap, at)
   }
 
