@@ -22,3 +22,13 @@
     :pattern (($Hp.maskDomainIdentical m1 m2))
     :qid |qp.$Hp.maskDomainIdentical-def|
     )))
+
+
+(assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>) (r $Ref)) (!
+      (=
+        (+ ($Hp.get_$Perm m1 r) ($Hp.get_$Perm m2 r))
+        ($Hp.get_$Perm ($Hp.maskSum m1 m2) r)
+        )
+    :pattern (($Hp.get_$Perm ($Hp.maskSum m1 m2) r))
+    :qid |qp.$Hp.maskSum-def|
+    )))

@@ -51,6 +51,23 @@ class MinimalStateConsolidator extends StateConsolidationRules {
   protected def assumeUpperPermissionBoundForQPFields(s: State, @unused heaps: Seq[Heap], @unused v: Verifier): State = s
 }
 
+class CarbonQPStateConsolidator extends MinimalStateConsolidator {
+  override def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) = ???
+
+  override def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
+    val mergedChunks = h.values.map(c => {
+      val cChunk = c.asInstanceOf[BasicCarbonChunk]
+      val otherChunk = carbonQuantifiedChunkSupporter.findCarbonChunk(newH, cChunk.resource)
+
+      val newMask = MaskSum(cChunk.mask, otherChunk.mask)
+      val newHeap = MergeHeaps(cChunk.heap, cChunk.mask, otherChunk.heap, otherChunk.mask)
+      cChunk.copy(mask = newMask, heap = newHeap)
+    })
+    val mergedHeap = Heap(mergedChunks)
+    (fr, mergedHeap)
+  }
+}
+
 /** Default implementation that merges as many known-alias chunks as possible, and deduces various
   * additional properties from and about permissions, (non)aliasing, and field values.
   */

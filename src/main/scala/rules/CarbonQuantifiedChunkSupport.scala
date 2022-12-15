@@ -40,6 +40,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     val resource = resourceAccess.res(s.program)
 
     // assert enough
+    // TODO: create failures only when needed? This can lead to CE extraction, which is expensive.
     val failure = resourceAccess match {
       case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
       case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)

@@ -301,6 +301,12 @@ class TermToSMTLib2Converter
     case MergeSingle(heap, mask, location, value) =>
       parens(text("$Hp.merge_single_") <> renderHeapType(heap.sort) <+> render(heap) <+> render(mask) <+> render(location) <+> render(value))
 
+    case MaskSum(m1, m2) =>
+      parens(text("$Hp.maskSum") <+> render(m1) <+> render(m2))
+
+    case MergeHeaps(h1, m1, h2, m2) =>
+      parens(text("$Hp.merge_") <> renderHeapType(h1.sort) <+> render(h1) <+> render(m1) <+> render(h2) <+> render(m2))
+
     case SnapToHeap(snap, resource, _) =>
       parens(text("$SortWrappers.$SnapTo$Heap<") <> (resource match {
         case f: ast.Field => f.name

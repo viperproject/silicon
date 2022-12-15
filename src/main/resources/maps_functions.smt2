@@ -16,7 +16,7 @@
 (declare-fun $Hp.identicalOnKnown_$T$ ($Hp<$T$> $Hp<$T$> $Hp<$Perm>) Bool)
 
 
-(declare-fun $Hp.merge_$T$ ($Hp<$T$> $Hp<$T$> $Hp<$Perm>) $Hp<$T$>)
+(declare-fun $Hp.merge_$T$ ($Hp<$T$> $Hp<$Perm> $Hp<$T$> $Hp<$Perm>) $Hp<$T$>)
 (declare-fun $Hp.merge_single_$T$ ($Hp<$T$> $Hp<$Perm> $Ref $S$) $Hp<$T$>)
 
 

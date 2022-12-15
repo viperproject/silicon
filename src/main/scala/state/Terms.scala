@@ -1977,6 +1977,14 @@ case class MergeSingle(heap: Term, mask: Term, location: Term, value: Term) exte
   val sort = heap.sort
 }
 
+case class MergeHeaps(h1: Term, m1: Term, h2: Term, m2: Term) extends Term {
+  val sort = h1.sort
+}
+
+case class MaskSum(m1: Term, m2: Term) extends Term {
+  val sort = m1.sort
+}
+
 case class DummyHeap(sort: Sort) extends Term
 
 case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {

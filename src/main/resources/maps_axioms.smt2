@@ -36,11 +36,11 @@
     )))
 
 
-(assert (forall ((oh $Hp<$T$>) (nh $Hp<$T$>) (m $Hp<$Perm>) (r $Ref)) (!
+(assert (forall ((h1 $Hp<$T$>) (m1 $Hp<$Perm>) (h2 $Hp<$T$>) (m2 $Hp<$Perm>) (r $Ref)) (!
        (and
-        (=> (> ($Hp.get_$Perm m r) $Perm.No) (= ($Hp.get_$T$ nh r) ($Hp.get_$T$ ($Hp.merge_$T$ oh nh m) r)))
-        (= ($Hp.get_$T$ oh r) ($Hp.get_$T$ ($Hp.merge_$T$ oh nh m) r)))
-    :pattern (($Hp.get_$T$ ($Hp.merge_$T$ oh nh m) r))
+        (=> (> ($Hp.get_$Perm m1 r) $Perm.No) (= ($Hp.get_$T$ h1 r) ($Hp.get_$T$ ($Hp.merge_$T$ h1 m1 h2 m2) r)))
+        (=> (> ($Hp.get_$Perm m2 r) $Perm.No) (= ($Hp.get_$T$ h2 r) ($Hp.get_$T$ ($Hp.merge_$T$ h1 m1 h2 m2) r))))
+    :pattern (($Hp.get_$T$ ($Hp.merge_$T$ h1 m1 h2 m2) r))
     :qid |qp.$Hp.merge_$T$-def|
     )))
 
