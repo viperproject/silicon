@@ -271,11 +271,11 @@ object consumer extends ConsumptionRules {
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
-            (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a1, pve, v2, resMap)((s3, h1, t1, v3) => {
               SymbExLogger.currentLog().closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             }),
-            (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a2, pve, v2, resMap)((s3, h1, t1, v3) => {
               SymbExLogger.currentLog().closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             })))
