@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.rules.quantifiedChunkSupporter.createFailure
-import viper.silicon.state.terms.{AtLeast, FakeMaskMapTerm, FullPerm, Greater, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, MergeSingle, NoPerm, PermAtMost, PermLess, PermMinus, PermPlus, Term, True, Var, sorts, toSnapTree}
+import viper.silicon.state.terms.{AtLeast, FakeMaskMapTerm, FullPerm, Greater, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, MaskAdd, MergeSingle, NoPerm, PermAtMost, PermLess, PermMinus, PermPlus, Term, True, Var, sorts, toSnapTree}
 import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, Heap, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -69,7 +69,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
             // constrain wildcard
             v.decider.assume(PermLess(permissions, maskValue))
           }
-          val newMask = HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
+          val newMask = MaskAdd(resChunk.mask, argTerm, PermMinus(NoPerm(), permissions))//HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
           val newChunk = if (s.functionRecorder != NoopFunctionRecorder) {
             // no need to havoc
             resChunk.copy(mask = newMask)
@@ -80,7 +80,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
           }
 
           //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
-          val newSnapMask = HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
+          val newSnapMask = MaskAdd(resMap(resource), argTerm, permissions) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
           val snap = FakeMaskMapTerm(resMap.updated(resource, newSnapMask))
           // set up partially consumed heap
           Q(s, h - resChunk + newChunk, snap, v)
@@ -134,7 +134,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       case _: ast.Field => tArgs(0)
       case _: ast.Predicate => toSnapTree(tArgs)
     }
-    val newMask = HeapUpdate(resChunk.mask, argTerm, PermPlus(HeapLookup(resChunk.mask, argTerm), tPerm))
+    val newMask = MaskAdd(resChunk.mask, argTerm, tPerm) // HeapUpdate(resChunk.mask, argTerm, PermPlus(HeapLookup(resChunk.mask, argTerm), tPerm))
     val snapHeapMap = snap.asInstanceOf[FakeMaskMapTerm].masks
 
     val newHeap = MergeSingle(resChunk.heap, resChunk.mask, argTerm, HeapLookup(snapHeapMap(resource), argTerm))

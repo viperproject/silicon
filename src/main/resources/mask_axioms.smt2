@@ -32,3 +32,13 @@
     :pattern (($Hp.get_$Perm ($Hp.maskSum m1 m2) r))
     :qid |qp.$Hp.maskSum-def|
     )))
+
+;(declare-fun $Hp.maskAdd ($Hp<$Perm> $Ref $Perm) $Hp<$Perm>)
+
+(assert (forall ((m $Hp<$Perm>) (r1 $Ref) (v Real) (r2 $Ref)) (!
+      (=
+        ($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2)
+        (ite (= r1 r2) (+ v ($Hp.get_$Perm m r2)) ($Hp.get_$Perm m r2)))
+    :pattern (($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2))
+    :qid |qp.$Hp.maskAdd-def|
+    )))

@@ -99,6 +99,9 @@ package object utils {
     case HeapSingleton(at, vl, _) => at :: vl :: Nil
     case MergeSingle(heap, mask, _, value) => heap :: mask :: value :: Nil
     case DummyHeap(_) => Nil
+    case MaskSum(m1, m2) => m1 :: m2 :: Nil
+    case MaskAdd(mask, at, addition) => mask :: at :: addition :: Nil
+    case MergeHeaps(h1, m1, h2, m2) => h1 :: m1 :: h2 :: m2 :: Nil
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.simplify()]] */

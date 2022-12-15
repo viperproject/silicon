@@ -1954,6 +1954,10 @@ case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
   val sort = heap.sort
 }
 
+case class MaskAdd(mask: Term, at: Term, addition: Term) extends Term {
+  val sort = mask.sort
+}
+
 case class HeapSingleton(at: Term, value: Term, r: ast.Resource) extends Term {
   val sort = r match {
     case f: ast.Field => HeapSort(value.sort)

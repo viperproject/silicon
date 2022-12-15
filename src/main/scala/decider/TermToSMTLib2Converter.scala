@@ -304,6 +304,9 @@ class TermToSMTLib2Converter
     case MaskSum(m1, m2) =>
       parens(text("$Hp.maskSum") <+> render(m1) <+> render(m2))
 
+    case MaskAdd(m, at, value) =>
+      parens(text("$Hp.maskAdd") <+> render(m) <+> render(at) <+> render(value))
+
     case MergeHeaps(h1, m1, h2, m2) =>
       parens(text("$Hp.merge_") <> renderHeapType(h1.sort) <+> render(h1) <+> render(m1) <+> render(h2) <+> render(m2))
 
