@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.rules.quantifiedChunkSupporter.createFailure
-import viper.silicon.state.terms.{AtLeast, FakeMaskMapTerm, FullPerm, Greater, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, MaskAdd, MergeSingle, NoPerm, PermAtMost, PermLess, PermMinus, PermNegation, PermPlus, Term, True, Var, sorts, toSnapTree}
+import viper.silicon.state.terms.{And, AtLeast, FakeMaskMapTerm, FullPerm, Greater, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, Implies, MaskAdd, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMinus, PermNegation, PermPlus, Term, True, Var, perms, sorts, toSnapTree}
 import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, Heap, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -141,11 +141,11 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     val ch = resChunk.copy(mask = newMask, heap = newHeap)
     val h1 = s.h - resChunk + ch
 
-    val permConstraint = if (resource.isInstanceOf[ast.Field]) PermAtMost(HeapLookup(ch.mask, argTerm), FullPerm()) else True()
+    val permConstraint = if (resource.isInstanceOf[ast.Field])
+      And(Implies(perms.IsPositive(tPerm), argTerm !== Null()), PermAtMost(HeapLookup(ch.mask, argTerm), FullPerm()))
+    else True()
     v.decider.assume(permConstraint)
-
-    //TODO: assume trigger
-
+    
     val s1 = s.copy(h = h1)
     Q(s1, v)
   }
