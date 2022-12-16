@@ -1987,12 +1987,7 @@ object MaskAdd extends ((Term, Term, Term) => Term) {
   def unapply(ma: MaskAdd) = Some((ma.mask, ma.at, ma.addition))
 }
 
-case class HeapSingleton(at: Term, value: Term, r: ast.Resource) extends Term {
-  val sort = r match {
-    case f: ast.Field => HeapSort(value.sort)
-    case _: ast.Predicate => PredHeapSort
-  }
-}
+case class HeapSingleton(at: Term, value: Term, sort: Sort) extends Term
 
 case class IdenticalOnKnownLocations(oldHeap: Term, newHeap: Term, mask: Term) extends Term {
  // utils.assertSort(oldHeap, "old heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
@@ -2006,12 +2001,35 @@ case class FakeMaskMapTerm(masks: immutable.Map[ast.Resource, Term]) extends Ter
   val sort = sorts.Snap // sure, why not
 }
 
-case class MergeSingle(heap: Term, mask: Term, location: Term, value: Term) extends Term {
+class MergeSingle(val heap: Term, val mask: Term, val location: Term, val value: Term) extends Term {
   val sort = heap.sort
 }
 
-case class MergeHeaps(h1: Term, m1: Term, h2: Term, m2: Term) extends Term {
+object MergeSingle extends ((Term, Term, Term, Term) => Term) {
+
+  def apply(heap: Term, mask: Term, location: Term, value: Term) = mask match {
+    case ZeroMask() => HeapSingleton(location, value, heap.sort)
+    case PredZeroMask() => HeapSingleton(location, value, heap.sort)
+    case _ => new MergeSingle(heap, mask, location, value)
+  }
+
+  def unapply(ms: MergeSingle) = Some((ms.heap, ms.mask, ms.location, ms.value))
+}
+
+class MergeHeaps(val h1: Term, val m1: Term, val h2: Term, val m2: Term) extends Term {
   val sort = h1.sort
+}
+
+object MergeHeaps extends ((Term, Term, Term, Term) => Term) {
+  def apply(h1: Term, m1: Term, h2: Term, m2: Term) = (m1, m2) match {
+    case (ZeroMask(), _) => h2
+    case (PredZeroMask(), _) => h2
+    case (_, ZeroMask()) => h1
+    case (_, PredZeroMask()) => h1
+    case _ => new MergeHeaps(h1, m1, h2, m2)
+  }
+
+  def unapply(mh: MergeHeaps) = Some((mh.h1, mh.m1, mh.h2, mh.m2))
 }
 
 class MaskSum(val m1: Term, val m2: Term) extends Term {
