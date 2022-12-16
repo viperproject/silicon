@@ -167,6 +167,7 @@ class TermToSMTLib2Converter
     /* Booleans */
 
     case uop: Not => renderUnaryOp("not", uop)
+    case pn: PermNegation => renderUnaryOp("-", pn)
     case And(ts) => renderNAryOp("and", ts: _*)
     case Or(ts) => renderNAryOp("or", ts: _*)
     case bop: Implies => renderBinaryOp("=>", bop)

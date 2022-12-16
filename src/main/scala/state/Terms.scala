@@ -1209,6 +1209,8 @@ object PermPlus extends ((Term, Term) => Term) {
     case (FractionPerm(n1, d1), FractionPerm(n2, d2)) if d1 == d2 => FractionPerm(Plus(n1, n2), d1)
     case (PermMinus(t00, t01), _) if t01 == t1 => t00
     case (_, PermMinus(t10, t11)) if t11 == t0 => t10
+    case (PermNegation(p0), p1) => PermMinus(p1, p0)
+    case (p0, PermNegation(p1)) => PermMinus(p0, p1)
 
     case (_, _) => new PermPlus(t0, t1)
   }
@@ -1237,11 +1239,28 @@ object PermMinus extends ((Term, Term) => Term) {
     case (p0, PermMinus(p1, p2)) if p0 == p1 => p2
     case (PermPlus(p0, p1), p2) if p0 == p2 => p1
     case (PermPlus(p0, p1), p2) if p1 == p2 => p0
+    case (p0, PermNegation(p1)) => PermPlus(p0, p1)
     case (_, _) => new PermMinus(t0, t1)
   }
 
   def unapply(pm: PermMinus) = Some((pm.p0, pm.p1))
 }
+
+class PermNegation(val p: Term) extends  ArithmeticTerm
+  with StructuralEqualityUnaryOp[Term] {
+
+  override val op = "-"
+}
+
+object PermNegation extends (Term => Term) {
+  def apply(p: Term) = p match {
+    case PermNegation(pp) => pp
+    case _ => new PermNegation(p)
+  }
+
+  def unapply(pm: PermNegation) = Some(pm.p)
+}
+
 
 class PermLess(val p0: Term, val p1: Term)
     extends BooleanTerm
@@ -1920,7 +1939,7 @@ object HeapLookup extends ((Term, Term) => Term) {
     case (PredZeroMask(), _) => NoPerm()
     case (HeapSingleton(r1, v, _), r2) if r1 == r2 => v
     case (HeapUpdate(_, r1, v), r2) if r1 == r2 => v
-    //case (MergeSingle(_, _, r1, v), r2) if r1 == r2 => v // incomplete, ignores info from merged heap
+    case (MergeSingle(_, msk, r1, v), r2) if r1 == r2 && (msk == ZeroMask() || msk == PredZeroMask()) => v // incomplete for anything but zeromasks, ignores info from merged heap
     case _ => new HeapLookup(heap, at)
   }
 
@@ -1954,8 +1973,18 @@ case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
   val sort = heap.sort
 }
 
-case class MaskAdd(mask: Term, at: Term, addition: Term) extends Term {
+class MaskAdd(val mask: Term, val at: Term, val addition: Term) extends Term {
   val sort = mask.sort
+}
+
+object MaskAdd extends ((Term, Term, Term) => Term) {
+  def apply(mask: Term, at: Term, addition: Term) = (mask, addition) match {
+    case (_, NoPerm()) => mask
+    case (MaskAdd(m2, at2, add2), _) if at2 == at => MaskAdd(m2, at, PermPlus(addition, add2))
+    case _ => new MaskAdd(mask, at, addition)
+  }
+
+  def unapply(ma: MaskAdd) = Some((ma.mask, ma.at, ma.addition))
 }
 
 case class HeapSingleton(at: Term, value: Term, r: ast.Resource) extends Term {
@@ -1985,8 +2014,19 @@ case class MergeHeaps(h1: Term, m1: Term, h2: Term, m2: Term) extends Term {
   val sort = h1.sort
 }
 
-case class MaskSum(m1: Term, m2: Term) extends Term {
+class MaskSum(val m1: Term, val m2: Term) extends Term {
   val sort = m1.sort
+}
+
+object MaskSum extends ((Term, Term) => Term) {
+  def apply(m1: Term, m2: Term) = (m1, m2) match {
+    case (ZeroMask(), _) => m2
+    case (PredZeroMask(), _) => m2
+    case (_, ZeroMask()) => m1
+    case (_, PredZeroMask()) => m1
+  }
+
+  def unapply(ms: MaskSum) = Some((ms.m1, ms.m2))
 }
 
 case class DummyHeap(sort: Sort) extends Term

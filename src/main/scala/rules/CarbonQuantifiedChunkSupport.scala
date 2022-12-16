@@ -9,7 +9,7 @@ package viper.silicon.rules
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.rules.quantifiedChunkSupporter.createFailure
-import viper.silicon.state.terms.{AtLeast, FakeMaskMapTerm, FullPerm, Greater, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, MaskAdd, MergeSingle, NoPerm, PermAtMost, PermLess, PermMinus, PermPlus, Term, True, Var, sorts, toSnapTree}
+import viper.silicon.state.terms.{AtLeast, FakeMaskMapTerm, FullPerm, Greater, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, MaskAdd, MergeSingle, NoPerm, PermAtMost, PermLess, PermMinus, PermNegation, PermPlus, Term, True, Var, sorts, toSnapTree}
 import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, Heap, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -69,7 +69,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
             // constrain wildcard
             v.decider.assume(PermLess(permissions, maskValue))
           }
-          val newMask = MaskAdd(resChunk.mask, argTerm, PermMinus(NoPerm(), permissions))//HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
+          val newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(permissions))//HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
           val newChunk = if (s.functionRecorder != NoopFunctionRecorder) {
             // no need to havoc
             resChunk.copy(mask = newMask)
