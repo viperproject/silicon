@@ -2024,6 +2024,7 @@ object MaskSum extends ((Term, Term) => Term) {
     case (PredZeroMask(), _) => m2
     case (_, ZeroMask()) => m1
     case (_, PredZeroMask()) => m1
+    case _ => new MaskSum(m1, m2)
   }
 
   def unapply(ms: MaskSum) = Some((ms.m1, ms.m2))
