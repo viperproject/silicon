@@ -7,10 +7,23 @@
 package viper.silicon.logger
 
 import spray.json._
+import viper.silicon.logger.records.data.DataRecord
 
 case class LogConfig(isBlackList: Boolean,
                      includeStore: Boolean, includeHeap: Boolean, includeOldHeap: Boolean, includePcs: Boolean,
-                     recordConfigs: List[RecordConfig])
+                     recordConfigs: List[RecordConfig]) {
+  def getRecordConfig(d: DataRecord): Option[RecordConfig] = {
+    for (rc <- recordConfigs) {
+      if (rc.kind.equals(d.toTypeString)) {
+        rc.value match {
+          case Some(value) => if (value.equals(d.toSimpleString)) return Some(rc)
+          case None => return Some(rc)
+        }
+      }
+    }
+    None
+  }
+}
 
 object LogConfig {
   def default(): LogConfig = LogConfig(

@@ -8,6 +8,7 @@ package viper.silicon.supporters.functions
 
 import scala.annotation.unused
 import com.typesafe.scalalogging.LazyLogging
+import viper.silicon.state.FunctionPreconditionTransformer
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -51,6 +52,7 @@ class FunctionData(val programFunction: ast.Function,
   val function: HeapDepFun = symbolConverter.toFunction(programFunction)
   val limitedFunction = functionSupporter.limitedVersion(function)
   val statelessFunction = functionSupporter.statelessVersion(function)
+  val preconditionFunction = functionSupporter.preconditionVersion(function)
 
   val formalArgs: Map[ast.AbstractLocalVar, Var] = toMap(
     for (arg <- programFunction.formalArgs;
@@ -67,6 +69,7 @@ class FunctionData(val programFunction: ast.Function,
   val functionApplication = App(function, `?s` +: formalArgs.values.toSeq)
   val limitedFunctionApplication = App(limitedFunction, `?s` +: formalArgs.values.toSeq)
   val triggerFunctionApplication = App(statelessFunction, formalArgs.values.toSeq)
+  val preconditionFunctionApplication = App(preconditionFunction, `?s` +: formalArgs.values.toSeq)
 
   val limitedAxiom =
     Forall(arguments,
@@ -121,7 +124,7 @@ class FunctionData(val programFunction: ast.Function,
     freshSymbolsAcrossAllPhases ++= freshPathSymbols map FunctionDecl
     freshSymbolsAcrossAllPhases ++= freshArps.map(pair => FunctionDecl(pair._1))
     freshSymbolsAcrossAllPhases ++= freshSnapshots map FunctionDecl
-    freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(_.inverses map FunctionDecl)
+    freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(i => (i.inverses ++ i.images) map FunctionDecl)
     freshSymbolsAcrossAllPhases ++= freshMacros
 
     freshSymbolsAcrossAllPhases ++= freshFvfsAndDomains map (fvfDef =>
@@ -175,15 +178,21 @@ class FunctionData(val programFunction: ast.Function,
     expressionTranslator.translatePrecondition(program, programFunction.pres, this)
   }
 
+  lazy val translatedPosts = {
+    assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
+    if (programFunction.posts.nonEmpty) {
+      expressionTranslator.translatePostcondition(program, programFunction.posts, this)
+    }else{
+      Seq()
+    }
+  }
+
   lazy val postAxiom: Option[Term] = {
     assert(phase == 1, s"Postcondition axiom must be generated in phase 1, current phase is $phase")
 
     if (programFunction.posts.nonEmpty) {
-      val posts =
-        expressionTranslator.translatePostcondition(program, programFunction.posts, this)
-
-      val pre = And(translatedPres)
-      val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(posts))))
+      val pre = preconditionFunctionApplication
+      val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(translatedPosts))))
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val body = Let(toMap(bodyBindings), innermostBody)
 
@@ -237,13 +246,17 @@ class FunctionData(val programFunction: ast.Function,
     }))
   }
 
+  lazy val optBody: Option[Term] = {
+    assert(phase == 2, s"Definitional axiom must be generated in phase 2, current phase is $phase")
+
+    expressionTranslator.translate(program, programFunction, this)
+  }
+
   lazy val definitionalAxiom: Option[Term] = {
     assert(phase == 2, s"Definitional axiom must be generated in phase 2, current phase is $phase")
 
-    val optBody = expressionTranslator.translate(program, programFunction, this)
-
     optBody.map(translatedBody => {
-      val pre = And(translatedPres)
+      val pre = preconditionFunctionApplication
       val nestedDefinitionalAxioms = generateNestedDefinitionalAxioms
       val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
       val allTriggers = (
@@ -251,5 +264,19 @@ class FunctionData(val programFunction: ast.Function,
         ++ predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt))))
 
       Forall(arguments, body, allTriggers)})
+  }
+
+  lazy val preconditionPropagationAxiom: Seq[Term] = {
+    val pre = preconditionFunctionApplication
+    val bodyPreconditions = if (programFunction.body.isDefined) optBody.map(translatedBody => {
+      val body = Implies(pre, FunctionPreconditionTransformer.transform(translatedBody, program))
+      Forall(arguments, body, Seq(Trigger(functionApplication)))
+    }) else None
+    val postPreconditions = if (programFunction.posts.nonEmpty) {
+      val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
+      val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
+      bodies.map(b => Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))))
+    } else Seq()
+    bodyPreconditions.toSeq ++ postPreconditions
   }
 }

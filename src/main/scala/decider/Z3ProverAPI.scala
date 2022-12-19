@@ -22,7 +22,6 @@ import scala.collection.mutable
 import com.microsoft.z3._
 import viper.silicon.reporting.ExternalToolError
 
-import scala.collection.immutable.ListMap
 import scala.jdk.CollectionConverters.MapHasAsJava
 import scala.util.Random
 
@@ -339,7 +338,7 @@ class Z3ProverAPI(uniqueId: String,
     for (e <- statistics.getEntries()) {
       result.update(e.Key, e.getValueString)
     }
-    ListMap.from(result)
+    Map.from(result)
   }
 
   def comment(str: String): Unit = {
@@ -376,7 +375,7 @@ class Z3ProverAPI(uniqueId: String,
           emittedFuncSymbols.append(termConverter.convertFuncSymbol(fd))
         }
       case MacroDecl(id, args, body) if expandMacros => termConverter.macros.update(id.name, (args, body))
-      case md: MacroDecl if !expandMacros =>
+      case md: MacroDecl =>
         val (convertedFunc, axiom) = termConverter.convert(md)
         if (!emittedFuncs.contains(convertedFunc)){
           emittedFuncs.add(convertedFunc)

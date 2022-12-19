@@ -13,10 +13,8 @@ import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationErro
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
@@ -24,7 +22,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.cfg.{ConditionalEdge, Kind}
+import viper.silver.cfg.ConditionalEdge
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -51,23 +49,10 @@ object executor extends ExecutionRules {
                     (Q: (State, Verifier) => VerificationResult)
                     : VerificationResult = {
 
-    def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
-      edge.kind match {
-        case cfg.Kind.Out =>
-          val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
-          val s1 = s.copy(functionRecorder = fr1, h = h1,
-                          invariantContexts = s.invariantContexts.tail)
-          s1
-        case _ =>
-          /* No need to do anything special. See also the handling of loop heads in exec below. */
-          s
-      }
-    }
-
     edge match {
       case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
         val condEdgeRecord = new ConditionalEdgeRecord(ce.condition, s, v.decider.pcs)
-        val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
+        val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
         val s1 = handleOutEdge(s, edge, v)
         eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
           /* Using branch(...) here ensures that the edge condition is recorded
@@ -76,17 +61,30 @@ object executor extends ExecutionRules {
           brancher.branch(s2, tCond, Some(ce.condition), v1)(
             (s3, v3) =>
               exec(s3, ce.target, ce.kind, v3)((s4, v4) => {
-                SymbExLogger.currentLog().closeScope(sepIdentifier)
+                v4.symbExLog.closeScope(sepIdentifier)
                 Q(s4, v4)
               }),
-            (_, _)  => {
-              SymbExLogger.currentLog().closeScope(sepIdentifier)
+            (_, v3)  => {
+              v3.symbExLog.closeScope(sepIdentifier)
               Success()
             }))
 
       case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
         val s1 = handleOutEdge(s, edge, v)
         exec(s1, ue.target, ue.kind, v)(Q)
+    }
+  }
+
+  def handleOutEdge(s: State, edge: SilverEdge, v: Verifier): State = {
+    edge.kind match {
+      case cfg.Kind.Out =>
+        val (fr1, h1) = v.stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+        val s1 = s.copy(functionRecorder = fr1, h = h1,
+          invariantContexts = s.invariantContexts.tail)
+        s1
+      case _ =>
+        /* No need to do anything special. See also the handling of loop heads in exec below. */
+        s
     }
   }
 
@@ -103,35 +101,39 @@ object executor extends ExecutionRules {
       follow(s, edges.head, v)(Q)
     } else {
       edges match {
-        case Seq(thenEdge@ConditionalEdge(cond1, _, _, Kind.Normal), elseEdge@ConditionalEdge(cond2, _, _, Kind.Normal))
+        case Seq(thenEdge@ConditionalEdge(cond1, _, _, _), elseEdge@ConditionalEdge(cond2, _, _, _))
             if Verifier.config.parallelizeBranches() && cond2 == ast.Not(cond1)()  =>
           val condEdgeRecord = new ConditionalEdgeRecord(thenEdge.condition, s, v.decider.pcs)
-          val sepIdentifier = SymbExLogger.currentLog().openScope(condEdgeRecord)
+          val sepIdentifier = v.symbExLog.openScope(condEdgeRecord)
           val res = eval(s, thenEdge.condition, IfFailed(thenEdge.condition), v)((s2, tCond, v1) =>
             brancher.branch(s2, tCond, Some(thenEdge.condition), v1)(
-              (s3, v3) =>
-                exec(s3, thenEdge.target, thenEdge.kind, v3)((s4, v4) => {
-                  SymbExLogger.currentLog().closeScope(sepIdentifier)
+              (s3, v3) => {
+                val s3p = handleOutEdge(s3, thenEdge, v3)
+                exec(s3p, thenEdge.target, thenEdge.kind, v3)((s4, v4) => {
+                  v4.symbExLog.closeScope(sepIdentifier)
                   val branchRes = Q(s4, v4)
                   branchRes
-                }),
-              (s3, v3) =>
-                exec(s3, elseEdge.target, elseEdge.kind, v3)((s4, v4) => {
-                  SymbExLogger.currentLog().closeScope(sepIdentifier)
+                })
+              },
+              (s3, v3) => {
+                val s3p = handleOutEdge(s3, elseEdge, v3)
+                exec(s3p, elseEdge.target, elseEdge.kind, v3)((s4, v4) => {
+                  v4.symbExLog.closeScope(sepIdentifier)
                   Q(s4, v4)
-                })))
+                })
+              }))
           res
         case _ =>
-          val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(edges.length)
+          val uidBranchPoint = v.symbExLog.insertBranchPoint(edges.length)
           val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
             case (result: VerificationResult, (edge, edgeIndex)) =>
               if (edgeIndex != 0) {
-                SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+                v.symbExLog.switchToNextBranch(uidBranchPoint)
               }
-              SymbExLogger.currentLog().markReachable(uidBranchPoint)
+              v.symbExLog.markReachable(uidBranchPoint)
               result combine follow(s, edge, v)(Q)
           }
-          SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+          v.symbExLog.endBranchPoint(uidBranchPoint)
           res
       }
     }
@@ -189,7 +191,7 @@ object executor extends ExecutionRules {
             val edgeConditions = sortedEdges.collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
                                             .distinct
 
-            type PhaseData = (State, RecordedPathConditions, InsertionOrderedSet[FunctionDecl])
+            type PhaseData = (State, RecordedPathConditions, Set[FunctionDecl])
             var phase1data: Vector[PhaseData] = Vector.empty
 
             (executionFlowController.locally(sBody, v)((s0, v0) => {
@@ -250,9 +252,9 @@ object executor extends ExecutionRules {
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
-    val sepIdentifier = SymbExLogger.currentLog().openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
+    val sepIdentifier = v.symbExLog.openScope(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
-      SymbExLogger.currentLog().closeScope(sepIdentifier)
+      v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -312,13 +314,18 @@ object executor extends ExecutionRules {
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            val (smDef1, smCache1) =
-              quantifiedChunkSupporter.summarisingSnapshotMap(
-                s2, field, Seq(`?r`), relevantChunks, v1)
-            v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
+            val s2p = if (s2.heapDependentTriggers.contains(field)){
+              val (smDef1, smCache1) =
+                quantifiedChunkSupporter.summarisingSnapshotMap(
+                  s2, field, Seq(`?r`), relevantChunks, v1)
+              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
+              s2.copy(smCache = smCache1)
+            } else {
+              s2
+            }
             v2.decider.clearModel()
             val result = quantifiedChunkSupporter.removePermissions(
-              s2.copy(smCache = smCache1),
+              s2p,
               relevantChunks,
               Seq(`?r`),
               `?r` === tRcvr,
@@ -334,7 +341,8 @@ object executor extends ExecutionRules {
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 v1.decider.assume(smValueDef)
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm, s.program)
-                v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
+                if (s3.heapDependentTriggers.contains(field))
+                  v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
               case (Incomplete(_), s3, _) =>
                 createFailure(pve dueTo InsufficientPermission(fa), v2, s3)}}))
@@ -462,37 +470,36 @@ object executor extends ExecutionRules {
         val pveCall = CallFailed(call).withReasonNodeTransformed(reasonTransformer)
 
         val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
-        val currentLog = SymbExLogger.currentLog()
-        val sepIdentifier = currentLog.openScope(mcLog)
+        val sepIdentifier = v.symbExLog.openScope(mcLog)
         val paramLog = new CommentRecord("Parameters", s, v.decider.pcs)
-        val paramId = currentLog.openScope(paramLog)
+        val paramId = v.symbExLog.openScope(paramLog)
         evals(s, eArgs, _ => pveCall, v)((s1, tArgs, v1) => {
-          currentLog.closeScope(paramId)
+          v1.symbExLog.closeScope(paramId)
           val exampleTrafo = CounterexampleTransformer({
             case ce: SiliconCounterexample => ce.withStore(s1.g)
             case ce => ce
           })
           val pvePre = ErrorWrapperWithExampleTransformer(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
           val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
-          val preCondId = currentLog.openScope(preCondLog)
+          val preCondId = v1.symbExLog.openScope(preCondLog)
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
                            recordVisited = true)
           consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
-            currentLog.closeScope(preCondId)
+            v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
-            val postCondId = currentLog.openScope(postCondLog)
+            val postCondId = v2.symbExLog.openScope(postCondLog)
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
-              currentLog.closeScope(postCondId)
+              v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val gLhs = Store(lhs.zip(outs)
                               .map(p => (p._1, s5.g(p._2))).toMap)
               val s6 = s5.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
-              currentLog.closeScope(sepIdentifier)
+              v3.symbExLog.closeScope(sepIdentifier)
               Q(s6, v3)})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
@@ -510,7 +517,7 @@ object executor extends ExecutionRules {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
 
-            val smCache1 = if (s2.qpPredicates.contains(predicate)) {
+            val smCache1 = if (s2.qpPredicates.contains(predicate) && s2.heapDependentTriggers.contains(predicate)) {
               val (relevantChunks, _) =
                 quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s2.h, BasicChunkIdentifier(predicateName))
               val (smDef1, smCache1) =
@@ -555,7 +562,7 @@ object executor extends ExecutionRules {
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 
             val smCache3 = chWand match {
-              case ch: QuantifiedMagicWandChunk =>
+              case ch: QuantifiedMagicWandChunk if s2.heapDependentTriggers.contains(MagicWandIdentifier(wand, s2.program)) =>
                 val (relevantChunks, _) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
                 val bodyVars = wand.subexpressionsToEvaluate(s.program)

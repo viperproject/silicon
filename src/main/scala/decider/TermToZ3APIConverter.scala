@@ -232,7 +232,7 @@ class TermToZ3APIConverter
 
       case fapp: Application[_] =>
         fapp.applicable match {
-          case _: SMTFun => createSMTApp(convertId(fapp.applicable.id, false), fapp.args, fapp.sort)
+          case _: SMTFun => createSMTApp(convertId(fapp.applicable.id, false), fapp.args)
           case _ => {
             if (macros.contains(fapp.applicable.id.name)) {
               val (vars, body) = macros(fapp.applicable.id.name)
@@ -249,7 +249,7 @@ class TermToZ3APIConverter
 
 
       /* Handle quantifiers that have at most one trigger set */
-      case Quantification(quant, vars, body, triggers, name, _) => {
+      case Quantification(quant, vars, body, triggers, name, _, weight) => {
         if (vars.isEmpty) {
           convertTerm(body)
         } else{
@@ -260,10 +260,11 @@ class TermToZ3APIConverter
               // triggers valid that would otherwise be rejected.
               nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(trm => convertTerm(trm).simplify()): _*)).toArray
             else null
+          val weightValue = weight.getOrElse(1)
           if (quant == Forall) {
-            ctx.mkForall(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
+            ctx.mkForall(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
           }else{
-            ctx.mkExists(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
+            ctx.mkExists(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
           }
         }
       }
@@ -460,7 +461,7 @@ class TermToZ3APIConverter
 
 
   @inline
-  protected def createSMTApp(functionName: String, args: Seq[Term], outSort: Sort): Z3Expr = {
+  protected def createSMTApp(functionName: String, args: Seq[Term]): Z3Expr = {
     // workaround: since we cannot create a function application with just the name, we let Z3 parse
     // a string that uses the function, take the AST, and get the func decl from there, so that we can
     // programmatically create a func app.
