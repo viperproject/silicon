@@ -119,7 +119,8 @@ object havocSupporter extends SymbolicExecutionRules {
             perms     = FullPerm(),
             arguments = tArgs,
             triggers  = Nil,
-            qidPrefix = qid)
+            qidPrefix = qid,
+            program   = s1.program)
 
         v.decider.prover.comment("Check havocall receiver injectivity")
         val notInjectiveReason = QuasihavocallNotInjective(havocall)
@@ -139,16 +140,16 @@ object havocSupporter extends SymbolicExecutionRules {
               v = v1
             )
             v.decider.prover.comment("Definitional axioms for havocall inverse functions")
-            v.decider.assume(inverseFunctions.definitionalAxioms)
+            v.decider.assume(inverseFunctions._2)
 
             // Call the havoc helper function, which returns a new set of chunks, some of
             // which may be havocked. Since we are executing a Havocall statement, we wrap
             // the HavocHelperData inside of a HavocAllData case.
             val newChunks =
               if (usesQPChunks(s1, resource))
-                havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions), v1)
+                havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions._1), v1)
               else
-                havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions), v1)
+                havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions._1), v1)
 
             Q(s1.copy(h = Heap(newChunks)), v1)
         }
