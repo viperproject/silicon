@@ -675,8 +675,8 @@ object Converter {
 
     val smtfunc = func match {
       case t: ast.Function => symbolConverter.toFunction(t).id
+      case t@ast.BackendFunc(_, _, _, _) => symbolConverter.toFunction(t, program).id
       case t: ast.DomainFunc => symbolConverter.toFunction(t, argSort :+ resSort, program).id
-      case t: ast.BackendFunc => symbolConverter.toFunction(t).id
     }
     val kek = smtfunc.toString
       .replace("[", "<")
