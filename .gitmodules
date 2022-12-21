@@ -1,4 +1,3 @@
 [submodule "silver"]
 	path = silver
 	url = https://github.com/viperproject/silver.git
-	branch = scmalte_quasihavoc
