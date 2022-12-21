@@ -16,10 +16,10 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.resources.{FieldID, PredicateID}
-import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
+import viper.silicon.rules.{consumer, executionFlowController, executor, producer, quantifiedChunkSupporter}
 import viper.silicon.state.{BasicCarbonChunk, Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms.{ZeroMask, PredZeroMask, sorts}
+import viper.silicon.state.terms.{PredZeroMask, ZeroMask, sorts}
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
@@ -57,6 +57,25 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
         Heap(fieldChunks ++ predChunks)
       } else {
         sInit.h
+      }
+
+      if (Verifier.config.carbonQPs()) {
+        val qps = ast.utility.QuantifiedPermissions.quantifiedPermissionAssertions(method, sInit.program)
+        for (qp <- qps) {
+          // find qvars
+
+          // find all other vars
+
+          // create vars for other vars
+          // create vars for required heaps
+
+          // set up artificial state
+
+          // eval
+          // TODO: what if not welldef in general? can we collect these conditions?
+          // TODO: would need a different expression translator
+          //quantifiedChunkSupporter.getFreshInverseFunctions(qvars, condition, invertibles, codomainQVars, additionalInvArgs, userProvidedTriggers, qidPrefix, v)
+        }
       }
 
       val pres = method.pres
