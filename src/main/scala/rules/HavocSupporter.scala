@@ -129,7 +129,8 @@ object havocSupporter extends SymbolicExecutionRules {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1)
           case true =>
             // Generate the inverse axioms
-            val inverseFunctions = quantifiedChunkSupporter.getFreshInverseFunctions(
+            // TODO: Second return value (imagesOfCodomain) currently not used — OK?
+            val (inverseFunctions, _) = quantifiedChunkSupporter.getFreshInverseFunctions(
               qvars = tVars,
               condition = tCond,
               invertibles = tArgs,
@@ -140,16 +141,16 @@ object havocSupporter extends SymbolicExecutionRules {
               v = v1
             )
             v.decider.prover.comment("Definitional axioms for havocall inverse functions")
-            v.decider.assume(inverseFunctions._2)
+            v.decider.assume(inverseFunctions.definitionalAxioms)
 
             // Call the havoc helper function, which returns a new set of chunks, some of
             // which may be havocked. Since we are executing a Havocall statement, we wrap
             // the HavocHelperData inside of a HavocAllData case.
             val newChunks =
               if (usesQPChunks(s1, resource))
-                havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions._1), v1)
+                havocQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions), v1)
               else
-                havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions._1), v1)
+                havocNonQuantifiedResource(s1, tCond, resource, HavocallData(inverseFunctions), v1)
 
             Q(s1.copy(h = Heap(newChunks)), v1)
         }
