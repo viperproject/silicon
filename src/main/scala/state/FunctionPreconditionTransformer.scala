@@ -30,14 +30,14 @@ object FunctionPreconditionTransformer {
       case Ite(t, t1, t2) => And(transform(t, p), Ite(t, transform(t1, p), transform(t2, p)))
       case Let(bindings, body) =>
         And(And(bindings.map(b => transform(b._2, p))), Let(bindings, transform(body, p)))
-      case Quantification(_, vars, body, triggers, name, isGlobal) =>
+      case Quantification(_, vars, body, triggers, name, isGlobal, weight) =>
         val tBody = transform(body, p)
         if (tBody == True) {
           tBody
         } else {
           // We assume well-definedness for *all* possible values even for existential quantifiers
           // (since that is also what we check).
-          Quantification(Forall, vars, tBody, triggers, name, isGlobal)
+          Quantification(Forall, vars, tBody, triggers, name, isGlobal, weight)
         }
       case App(hdf@HeapDepFun(_, _, _), args)  =>
           And(args.map(transform(_, p)) :+ App(functionSupporter.preconditionVersion(hdf), args))

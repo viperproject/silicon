@@ -61,7 +61,7 @@ object TermWriter {
     case u: UnaryOp[Term@unchecked] => unary(u.op, toJSON(u.p))
 
     // TODO: do we need triggers and isGlobal?
-    case Quantification(quantifier, vars, body, _, name, _) =>
+    case Quantification(quantifier, vars, body, _, name, _, _) =>
       JsObject(
         "type" -> JsString("quantification"),
         "quantifier" -> JsString(quantifier.toString),
