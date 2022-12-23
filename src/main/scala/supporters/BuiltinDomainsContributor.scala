@@ -114,7 +114,8 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   protected def collectFunctions(domains: Set[ast.Domain], program: ast.Program): Unit = {
     domains foreach (
       _.functions foreach (df =>
-        collectedFunctions += symbolConverter.toFunction(df, program)))
+        if (df.interpretation.isEmpty)
+          collectedFunctions += symbolConverter.toFunction(df, program).asInstanceOf[DomainFun]))
   }
 
   protected def collectAxioms(domains: Set[(ast.DomainType, ast.Domain)]): Unit = {
