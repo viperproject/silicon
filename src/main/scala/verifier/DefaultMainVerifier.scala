@@ -303,7 +303,8 @@ class DefaultMainVerifier(config: Config,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
           isMethodVerification = member.isInstanceOf[ast.Member],
-          heapDependentTriggers = resourceTriggers)
+          heapDependentTriggers = resourceTriggers,
+          moreCompleteExhale = Verifier.config.enableMoreCompleteExhale())
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -322,7 +323,8 @@ class DefaultMainVerifier(config: Config,
       qpPredicates = quantifiedPredicates,
       qpMagicWands = quantifiedMagicWands,
       predicateSnapMap = predSnapGenerator.snapMap,
-      predicateFormalVarMap = predSnapGenerator.formalVarMap)
+      predicateFormalVarMap = predSnapGenerator.formalVarMap,
+      moreCompleteExhale = Verifier.config.enableMoreCompleteExhale())
   }
 
   private def excludeMethod(method: ast.Method) = (
