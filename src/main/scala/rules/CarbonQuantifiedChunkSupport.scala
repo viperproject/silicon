@@ -90,37 +90,150 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
         case false => failure
       }
     }
+  }
 
+  def consume(s: State,
+              h: Heap,
+              resource: ast.Resource,
+              qvars: Seq[Var],
+              formalQVars: Seq[Var],
+              qid: String,
+              optTrigger: Option[Seq[ast.Trigger]],
+              tTriggers: Seq[Trigger],
+              auxGlobals: Seq[Term],
+              auxNonGlobals: Seq[Quantification],
+              tCond: Term,
+              tArgs: Seq[Term],
+              tPerm: Term,
+              pve: PartialVerificationError,
+              negativePermissionReason: => ErrorReason,
+              notInjectiveReason: => ErrorReason,
+              insufficientPermissionReason: => ErrorReason,
+              v: Verifier)
+             (Q: (State, Heap, Term, Verifier) => VerificationResult)
+  : VerificationResult = {
 
-
-    // set up partially consumed heap
-
-
-    /*
-    val resource = resourceAccess.res(s.program)
-    val failure = resourceAccess match {
-      case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
-      case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
-      case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
-    }
-
-    val chunkIdentifier = ChunkIdentifier(resource, s.program)
-    if (s.exhaleExt) {
-      ???
-    } else {
-      // find chunk
-      h.values.find {
-        case cc: CarbonChunk if cc.id == chunkIdentifier => true
-        case _ => false
+    val (inverseFunctions, imagesOfFormalQVars) =
+      quantifiedChunkSupporter.getFreshInverseFunctions(
+        qvars,
+        And(tCond, IsPositive(tPerm)),
+        tArgs,
+        formalQVars,
+        s.relevantQuantifiedVariables(tArgs),
+        optTrigger.map(_ => tTriggers),
+        qid,
+        v)
+    val (effectiveTriggers, effectiveTriggersQVars) =
+      optTrigger match {
+        case Some(_) =>
+          /* Explicit triggers were provided */
+          (tTriggers, qvars)
+        case None =>
+          /* No explicit triggers were provided and we resort to those from the inverse
+            * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
+            * Note that the trigger generation code might have added quantified variables
+            * to that axiom.
+            */
+          (inverseFunctions.axiomInversesOfInvertibles.triggers,
+            inverseFunctions.axiomInversesOfInvertibles.vars)
       }
-
-      // assert sufficient
-      v.decider.assert()
-
-      // create snapshot :( can i do this without droping lots of
+    v.decider.prover.comment("Nested auxiliary terms: globals")
+    v.decider.assume(auxGlobals)
+    v.decider.prover.comment("Nested auxiliary terms: non-globals")
+    optTrigger match {
+      case None =>
+        /* No explicit triggers provided */
+        v.decider.assume(
+          auxNonGlobals.map(_.copy(
+            vars = effectiveTriggersQVars,
+            triggers = effectiveTriggers)))
+      case Some(_) =>
+        /* Explicit triggers were provided. */
+        v.decider.assume(auxNonGlobals)
     }
 
-     */
+    val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
+    val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
+    // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
+    v.decider.assert(nonNegTerm) {
+      case true =>
+        val loss = PermTimes(tPerm, s.permissionScalingFactor)
+
+        /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+        val receiverInjectivityCheck =
+          quantifiedChunkSupporter.injectivityAxiom(
+            qvars     = qvars,
+            condition = tCond,
+            perms     = tPerm,
+            arguments = tArgs,
+            triggers  = Nil,
+            qidPrefix = qid,
+            program = s.program)
+        v.decider.prover.comment("Check receiver injectivity")
+        v.decider.assert(receiverInjectivityCheck) {
+          case true =>
+            val qvarsToInvOfLoc = inverseFunctions.qvarsToInversesOf(formalQVars)
+            val condOfInvOfLoc = tCond.replace(qvarsToInvOfLoc)
+            val lossOfInvOfLoc = loss.replace(qvarsToInvOfLoc)
+
+            v.decider.prover.comment("Definitional axioms for inverse functions")
+            v.decider.assume(inverseFunctions.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)))
+            v.decider.assume(inverseFunctions.definitionalAxioms)
+
+            /*
+            if (s.heapDependentTriggers.contains(resourceIdentifier)){
+              v.decider.assume(
+                Forall(
+                  formalQVars,
+                  Implies(condOfInvOfLoc, ResourceTriggerFunction(resource, smDef1.get.sm, formalQVars, s.program)),
+                  Trigger(inverseFunctions.inversesOf(formalQVars))))
+            }
+             */
+
+            /* TODO: Try to unify the upcoming if/else-block, their code is rather similar */
+            if (s.exhaleExt) {
+              ???
+            } else {
+              // assert enough permissions
+
+              // remove permissions
+
+              // create snap
+              v.decider.clearModel()
+              val permissionRemovalResult =
+                quantifiedChunkSupporter.removePermissions(
+                  s.copy(smCache = smCache1),
+                  relevantChunks,
+                  formalQVars,
+                  And(condOfInvOfLoc, And(imagesOfFormalQVars)),
+                  resource,
+                  lossOfInvOfLoc,
+                  chunkOrderHeuristics,
+                  v
+                )
+              permissionRemovalResult match {
+                case (Complete(), s2, remainingChunks) =>
+                  val h3 = Heap(remainingChunks ++ otherChunks)
+                  val optSmDomainDefinitionCondition2 =
+                    if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
+                    else None
+                  val (smDef2, smCache2) =
+                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                      s2, resource, formalQVars, relevantChunks, v, optSmDomainDefinitionCondition2)
+                  val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
+                    .recordFieldInv(inverseFunctions)
+                  val s3 = s2.copy(functionRecorder = fr3,
+                    partiallyConsumedHeap = Some(h3),
+                    constrainableARPs = s.constrainableARPs,
+                    smCache = smCache2)
+                  Q(s3, h3, smDef2.sm.convert(sorts.Snap), v)
+                case (Incomplete(_), s2, _) =>
+                  createFailure(pve dueTo insufficientPermissionReason, v, s2)}
+            }
+          case false =>
+            createFailure(pve dueTo notInjectiveReason, v, s)}
+      case false =>
+        createFailure(pve dueTo negativePermissionReason, v, s)}
   }
 
   def produceSingleLocation(s: State,
