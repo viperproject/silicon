@@ -382,6 +382,35 @@ object producer extends ProductionRules {
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.
        */
+      case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.carbonQPs() =>
+        val qid = acc.loc.field.name
+        val optTrigger =
+          if (forall.triggers.isEmpty) None
+          else Some(forall.triggers)
+        evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
+          case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+            val tSnap = sf(null, null) //sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
+            //            v.decider.assume(PermAtMost(tPerm, FullPerm()))
+            carbonQuantifiedChunkSupporter.produce(
+              s1,
+              forall,
+              acc.loc.field,
+              qvars, Seq(`?r`),
+              qid, optTrigger,
+              tTriggers,
+              auxGlobals,
+              auxNonGlobals,
+              tCond,
+              Seq(tRcvr),
+              tSnap,
+              tPerm,
+              pve,
+              NegativePermission(acc.perm),
+              QPAssertionNotInjective(acc.loc),
+              v1
+            )(Q)
+        }
+
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) =>
         val qid = acc.loc.field.name
         val optTrigger =
@@ -402,6 +431,38 @@ object producer extends ProductionRules {
               auxNonGlobals,
               tCond,
               Seq(tRcvr),
+              tSnap,
+              tPerm,
+              pve,
+              NegativePermission(acc.perm),
+              QPAssertionNotInjective(acc.loc),
+              v1
+            )(Q)
+        }
+
+      case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.carbonQPs() =>
+        val predicate = s.program.findPredicate(acc.loc.predicateName)
+        val formalVars = s.predicateFormalVarMap(predicate)
+        val qid = acc.loc.predicateName
+        val optTrigger =
+          if (forall.triggers.isEmpty) None
+          else Some(forall.triggers)
+        evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
+          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+            val tSnap = sf(null, null) //sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
+            carbonQuantifiedChunkSupporter.produce(
+              s1,
+              forall,
+              predicate,
+              qvars,
+              formalVars,
+              qid,
+              optTrigger,
+              tTriggers,
+              auxGlobals,
+              auxNonGlobals,
+              tCond,
+              tArgs,
               tSnap,
               tPerm,
               pve,

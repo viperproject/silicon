@@ -8,14 +8,17 @@ package viper.silicon.rules
 
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.CarbonChunk
-import viper.silicon.rules.quantifiedChunkSupporter.createFailure
-import viper.silicon.state.terms.{And, AtLeast, FakeMaskMapTerm, FullPerm, Greater, HeapLookup, HeapUpdate, IdenticalOnKnownLocations, Implies, MaskAdd, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMinus, PermNegation, PermPlus, Term, True, Var, perms, sorts, toSnapTree}
-import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, Heap, State, terms}
+import viper.silicon.rules.quantifiedChunkSupporter.{createFailure, getFreshInverseFunctions}
+import viper.silicon.state.terms.perms.IsPositive
+import viper.silicon.state.terms.sorts.{MaskSort, PredMaskSort}
+import viper.silicon.state.terms.{And, AtLeast, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMinus, PermNegation, PermPlus, PermTimes, Quantification, Term, Trigger, True, Var, perms, sorts, toSnapTree}
+import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, FunctionPreconditionTransformer, Heap, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
-import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.ast
 import viper.silver.ast.PermAdd
+import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 
 class CarbonQuantifiedChunkSupport extends SymbolicExecutionRules {
@@ -148,5 +151,183 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     
     val s1 = s.copy(h = h1)
     Q(s1, v)
+  }
+
+  def produce(s: State,
+              forall: ast.Forall,
+              resource: ast.Resource,
+              qvars: Seq[Var],
+              formalQVars: Seq[Var],
+              qid: String,
+              optTrigger: Option[Seq[ast.Trigger]],
+              tTriggers: Seq[Trigger],
+              auxGlobals: Seq[Term],
+              auxNonGlobals: Seq[Quantification],
+              tCond: Term,
+              tArgs: Seq[Term],
+              tSnap: Term,
+              tPerm: Term,
+              pve: PartialVerificationError,
+              negativePermissionReason: => ErrorReason,
+              notInjectiveReason: => ErrorReason,
+              v: Verifier)
+             (Q: (State, Verifier) => VerificationResult)
+  : VerificationResult = {
+
+    val gain = PermTimes(tPerm, s.permissionScalingFactor)
+    /*
+    val (ch: QuantifiedBasicChunk, inverseFunctions) =
+      quantifiedChunkSupporter.createQuantifiedChunk(
+        qvars                = qvars,
+        condition            = tCond,
+        resource             = resource,
+        arguments            = tArgs,
+        permissions          = gain,
+        codomainQVars        = formalQVars,
+        sm                   = tSnap,
+        additionalInvArgs    = s.relevantQuantifiedVariables(tArgs),
+        userProvidedTriggers = optTrigger.map(_ => tTriggers),
+        qidPrefix            = qid,
+        v                    = v,
+        program              = s.program)
+
+     */
+
+    val (inverseFunctions, imagesOfCodomain) =
+      getFreshInverseFunctions(
+        qvars,
+        And(tCond, IsPositive(gain)),
+        tArgs,
+        formalQVars,
+        s.relevantQuantifiedVariables(tArgs),
+        optTrigger.map(_ => tTriggers),
+        qid,
+        v)
+
+    val qvarsToInversesOfCodomain = inverseFunctions.qvarsToInversesOf(formalQVars)
+
+    val conditionalizedPermissions =
+      Ite(
+        And(And(imagesOfCodomain), tCond.replace(qvarsToInversesOfCodomain)),
+        gain.replace(qvarsToInversesOfCodomain),
+        NoPerm())
+
+    val qpMask = v.decider.fresh("heap", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+    // forall r :: { get(qpMask, r) } get(qpMask, r) == conditionalizedPermissions
+    val argTerm = resource match {
+      case _: ast.Field => formalQVars(0)
+      case _: ast.Predicate => toSnapTree(formalQVars)
+    }
+    val qpMaskGet = HeapLookup(qpMask, argTerm)
+    val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+    v.decider.assume(qpMaskConstraint)
+
+    val currentChunk = findCarbonChunk(s.h, resource)
+    val newMask =  MaskSum(currentChunk.mask, qpMask)
+    val snapHeapMap = tSnap.asInstanceOf[FakeMaskMapTerm].masks
+    val newHeap = MergeHeaps(currentChunk.heap, currentChunk.mask, snapHeapMap(resource), qpMask)
+    val newChunk = currentChunk.copy(mask = newMask, heap = newHeap)
+    val newMaskGet = HeapLookup(newMask, argTerm)
+
+
+    val permBoundConstraint = resource match {
+      case _: ast.Field => Forall(formalQVars, PermAtMost(newMaskGet, FullPerm()), Seq(Trigger(newMaskGet)), "qp_produce_upper_bound")
+      case _ => True()
+    }
+
+    val (effectiveTriggers, effectiveTriggersQVars) =
+      optTrigger match {
+        case Some(_) =>
+          (tTriggers, qvars)
+        case None =>
+          /* No explicit triggers were provided and we resort to those from the inverse
+           * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
+           * Note that the trigger generation code might have added quantified variables
+           * to that axiom.
+           */
+          (inverseFunctions.axiomInversesOfInvertibles.triggers,
+            inverseFunctions.axiomInversesOfInvertibles.vars)
+      }
+
+    if (effectiveTriggers.isEmpty) {
+      val msg = s"No triggers available for quantifier at ${forall.pos}"
+      v.reporter report InternalWarningMessage(msg)
+      v.logger warn msg
+    }
+
+    v.decider.prover.comment("Nested auxiliary terms: globals")
+    v.decider.assume(auxGlobals)
+    v.decider.prover.comment("Nested auxiliary terms: non-globals")
+    v.decider.assume(
+      auxNonGlobals.map(_.copy(
+        vars = effectiveTriggersQVars,
+        triggers = effectiveTriggers)))
+
+    val nonNegImplication = Implies(tCond, perms.IsNonNegative(tPerm))
+    val nonNegTerm = Forall(qvars, Implies(FunctionPreconditionTransformer.transform(nonNegImplication, s.program), nonNegImplication), Nil)
+    // TODO: Replace by QP-analogue of permissionSupporter.assertNotNegative
+    v.decider.assert(nonNegTerm) {
+      case true =>
+
+        /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+        val receiverInjectivityCheck =
+          if (!Verifier.config.assumeInjectivityOnInhale()) {
+            quantifiedChunkSupporter.injectivityAxiom(
+              qvars     = qvars,
+              // TODO: Adding ResourceTriggerFunction requires a summarising snapshot map of the current heap
+              condition = tCond, // And(tCond, ResourceTriggerFunction(resource, smDef1.sm, tArgs)),
+              perms     = tPerm,
+              arguments = tArgs,
+              triggers  = Nil,
+              qidPrefix = qid,
+              program   = s.program)
+          } else {
+            True()
+          }
+        v.decider.prover.comment("Check receiver injectivity")
+        v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
+        v.decider.assert(receiverInjectivityCheck) {
+          case true =>
+            val ax = inverseFunctions.axiomInversesOfInvertibles
+            val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
+
+            v.decider.prover.comment("Definitional axioms for inverse functions")
+            val definitionalAxiomMark = v.decider.setPathConditionMark()
+            v.decider.assume(inv.definitionalAxioms.map(a => FunctionPreconditionTransformer.transform(a, s.program)))
+            v.decider.assume(inv.definitionalAxioms)
+            val conservedPcs =
+              if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
+              else s.conservedPcs
+            /*
+            val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
+            val interpreter = new QuantifiedPropertyInterpreter
+            resourceDescription.instanceProperties.foreach (property => {
+              v.decider.prover.comment(property.description)
+              v.decider.assume(interpreter.buildPathConditionForChunk(
+                chunk = ch,
+                property = property,
+                qvars = effectiveTriggersQVars,
+                args = tArgs,
+                perms = gain,
+                condition = tCond,
+                triggers = effectiveTriggers,
+                qidPrefix = qid)
+              )
+            })
+
+             */
+
+            val h1 = s.h - currentChunk + newChunk
+            v.decider.assume(permBoundConstraint)
+
+            val s1 =
+              s.copy(h = h1,
+                functionRecorder = s.functionRecorder.recordFieldInv(inv),
+                conservedPcs = conservedPcs)
+            Q(s1, v)
+          case false =>
+            createFailure(pve dueTo notInjectiveReason, v, s)}
+      case false =>
+        createFailure(pve dueTo negativePermissionReason, v, s)}
   }
 }

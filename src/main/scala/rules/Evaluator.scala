@@ -1376,16 +1376,16 @@ object evaluator extends EvaluationRules {
     var smDefs: Seq[SnapshotMapDefinition] = Seq()
 
     exps foreach {
-      case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) =>
+      case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) && !Verifier.config.carbonQPs() =>
         val (axioms, trigs, _, smDef) = generateFieldTrigger(fa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
-      case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) =>
+      case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) && !Verifier.config.carbonQPs() =>
         val (axioms, trigs, _) = generatePredicateTrigger(pa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
-      case wand: ast.MagicWand if s.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program)) =>
+      case wand: ast.MagicWand if s.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program)) && !Verifier.config.carbonQPs() =>
         val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms

@@ -14,6 +14,7 @@ import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.{SortDecl, sorts}
+import viper.silicon.verifier.Verifier
 import viper.silver.ast.{FieldAccess, Forall}
 
 trait FieldValueFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
@@ -47,6 +48,9 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
   /* Functionality */
 
   def analyze(program: ast.Program): Unit = {
+    if (Verifier.config.carbonQPs())
+      return
+
     /* TODO: Use viper.silver.ast.utility.QuantifiedPermissions.quantifiedFields instead? */
     program visit {
       case QuantifiedPermissionAssertion(_, _, acc: ast.FieldAccessPredicate) =>
