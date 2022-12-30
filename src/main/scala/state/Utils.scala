@@ -100,6 +100,7 @@ package object utils {
     case MergeSingle(heap, mask, _, value) => heap :: mask :: value :: Nil
     case DummyHeap(_) => Nil
     case MaskSum(m1, m2) => m1 :: m2 :: Nil
+    case MaskDiff(m1, m2) => m1 :: m2 :: Nil
     case MaskAdd(mask, at, addition) => mask :: at :: addition :: Nil
     case MergeHeaps(h1, m1, h2, m2) => h1 :: m1 :: h2 :: m2 :: Nil
   }
@@ -221,7 +222,19 @@ package object utils {
       case PredicateLookup(p, psf, args) => PredicateLookup(p, go(psf), args map go)
       case PredicatePermLookup(predname, pm, args) => PredicatePermLookup(predname, go(pm), args map go)
       case PredicateTrigger(p, psf, args) => PredicateTrigger(p, go(psf), args map go)
-
+      case HeapLookup(hp, at) => HeapLookup(go(hp), go(at))
+      case HeapUpdate(hp, at, vl) => HeapUpdate(go(hp), go(at), go(vl))
+      case ZeroMask() => ZeroMask()
+      case PredZeroMask() => PredZeroMask()
+      case MaskSum(m1, m2) => MaskSum(go(m1), go(m2))
+      case MaskAdd(m, at, add) => MaskAdd(go(m), go(at), go(add))
+      case MaskDiff(m1, m2) => MaskDiff(go(m1), go(m2))
+      case SnapToHeap(snp, r, s) => SnapToHeap(go(snp), r, s)
+      case HeapSingleton(at, vl, s) => HeapSingleton(go(at), go(vl), s)
+      case HeapToSnap(hp, msk, r) => HeapToSnap(go(hp), go(msk), r)
+      case MergeHeaps(h1, m1, h2, m2) => MergeHeaps(go(h1), go(m1), go(h2), go(m2))
+      case MergeSingle(hp, msk, at, vl) => MergeSingle(go(hp), go(msk), go(at), go(vl))
+      case PermNegation(p) => PermNegation(go(p))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

@@ -305,6 +305,9 @@ class TermToSMTLib2Converter
     case MaskSum(m1, m2) =>
       parens(text("$Hp.maskSum") <+> render(m1) <+> render(m2))
 
+    case MaskDiff(m1, m2) =>
+      parens(text("$Hp.maskDiff") <+> render(m1) <+> render(m2))
+
     case MaskAdd(m, at, value) =>
       parens(text("$Hp.maskAdd") <+> render(m) <+> render(at) <+> render(value))
 

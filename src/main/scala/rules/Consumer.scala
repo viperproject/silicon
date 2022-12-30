@@ -283,6 +283,36 @@ object consumer extends ConsumptionRules {
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.
        */
+      case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.carbonQPs() =>
+        val field = acc.loc.field
+        val qid = BasicChunkIdentifier(acc.loc.field.name)
+        val optTrigger =
+          if (forall.triggers.isEmpty) None
+          else Some(forall.triggers)
+        evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
+          case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+            carbonQuantifiedChunkSupporter.consume(
+              s = s1,
+              h = h,
+              resource = field,
+              qvars = qvars,
+              formalQVars = Seq(`?r`),
+              qid = qid.name,
+              optTrigger = optTrigger,
+              tTriggers = tTriggers,
+              auxGlobals = auxGlobals,
+              auxNonGlobals = auxNonGlobals,
+              tCond = tCond,
+              tArgs = Seq(tRcvr),
+              tPerm = tPerm,
+              pve = pve,
+              negativePermissionReason = NegativePermission(acc.perm),
+              notInjectiveReason = QPAssertionNotInjective(acc.loc),
+              insufficientPermissionReason = InsufficientPermission(acc.loc),
+              v1,
+              resMap.get.asInstanceOf[FakeMaskMapTerm].masks)(Q)
+        }
+
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) =>
         val field = acc.loc.field
         val qid = BasicChunkIdentifier(acc.loc.field.name)
@@ -310,6 +340,44 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
+        }
+
+      case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.carbonQPs() =>
+        val predicate = s.program.findPredicate(acc.loc.predicateName)
+        /* TODO: Quantified codomain variables are used in axioms and chunks (analogous to `?r`)
+         *       and need to be instantiated in several places. Hence, they need to be known,
+         *       which is more complicated if fresh identifiers are used.
+         *       At least two options:
+         *         1. Choose fresh identifiers each time; remember/restore, e.g. by storing these variables in chunks
+         *         2. Choose fresh identifiers once; store in and take from state (or from object Verifier)
+         */
+        val formalVars = s.predicateFormalVarMap(predicate)
+        val qid = BasicChunkIdentifier(acc.loc.predicateName)
+        val optTrigger =
+          if (forall.triggers.isEmpty) None
+          else Some(forall.triggers)
+        evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pve, v) {
+          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs@_*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+            carbonQuantifiedChunkSupporter.consume(
+              s = s1,
+              h = h,
+              resource = predicate,
+              qvars = qvars,
+              formalQVars = formalVars,
+              qid = qid.name,
+              optTrigger = optTrigger,
+              tTriggers = tTriggers,
+              auxGlobals = auxGlobals,
+              auxNonGlobals = auxNonGlobals,
+              tCond = tCond,
+              tArgs = tArgs,
+              tPerm = tPerm,
+              pve = pve,
+              negativePermissionReason = NegativePermission(acc.perm),
+              notInjectiveReason = QPAssertionNotInjective(acc.loc),
+              insufficientPermissionReason = InsufficientPermission(acc.loc),
+              v1,
+              resMap.get.asInstanceOf[FakeMaskMapTerm].masks)(Q)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>

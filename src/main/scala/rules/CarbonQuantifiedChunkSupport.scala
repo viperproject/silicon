@@ -11,7 +11,7 @@ import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.rules.quantifiedChunkSupporter.{createFailure, getFreshInverseFunctions}
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{MaskSort, PredMaskSort}
-import viper.silicon.state.terms.{And, AtLeast, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMinus, PermNegation, PermPlus, PermTimes, Quantification, Term, Trigger, True, Var, perms, sorts, toSnapTree}
+import viper.silicon.state.terms.{And, AtLeast, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMinus, PermNegation, PermPlus, PermTimes, Quantification, Term, Trigger, True, Var, perms, sorts, toSnapTree}
 import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, FunctionPreconditionTransformer, Heap, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -109,7 +109,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
-              v: Verifier)
+              v: Verifier,
+              resMap: Map[ast.Resource, Term])
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
 
@@ -194,41 +195,35 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
             if (s.exhaleExt) {
               ???
             } else {
+              val currentChunk = findCarbonChunk(h, resource)
+              val argTerm = resource match {
+                case _: ast.Field => formalQVars(0)
+                case _: ast.Predicate => toSnapTree(formalQVars)
+              }
               // assert enough permissions
+              val currentPerm = HeapLookup(currentChunk.mask, argTerm)
+              v.decider.assert(Forall(formalQVars, Implies(condOfInvOfLoc, PermAtMost(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms"))(r => r match {
+              case true =>
+                // remove permissions
+                val qpMask = v.decider.fresh("heap", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+                val qpMaskGet = HeapLookup(qpMask, argTerm)
+                val conditionalizedPermissions = Ite(condOfInvOfLoc, lossOfInvOfLoc, NoPerm())
+                val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+                v.decider.assume(qpMaskConstraint)
+                val newMask = MaskDiff(currentChunk.mask, qpMask)
+                val newChunk = currentChunk.copy(mask = newMask)
+                // create snap
 
-              // remove permissions
-
-              // create snap
-              v.decider.clearModel()
-              val permissionRemovalResult =
-                quantifiedChunkSupporter.removePermissions(
-                  s.copy(smCache = smCache1),
-                  relevantChunks,
-                  formalQVars,
-                  And(condOfInvOfLoc, And(imagesOfFormalQVars)),
-                  resource,
-                  lossOfInvOfLoc,
-                  chunkOrderHeuristics,
-                  v
-                )
-              permissionRemovalResult match {
-                case (Complete(), s2, remainingChunks) =>
-                  val h3 = Heap(remainingChunks ++ otherChunks)
-                  val optSmDomainDefinitionCondition2 =
-                    if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
-                    else None
-                  val (smDef2, smCache2) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(
-                      s2, resource, formalQVars, relevantChunks, v, optSmDomainDefinitionCondition2)
-                  val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
-                    .recordFieldInv(inverseFunctions)
-                  val s3 = s2.copy(functionRecorder = fr3,
-                    partiallyConsumedHeap = Some(h3),
-                    constrainableARPs = s.constrainableARPs,
-                    smCache = smCache2)
-                  Q(s3, h3, smDef2.sm.convert(sorts.Snap), v)
-                case (Incomplete(_), s2, _) =>
-                  createFailure(pve dueTo insufficientPermissionReason, v, s2)}
+                // continue
+                val newFr = s.functionRecorder.recordFieldInv (inverseFunctions).recordArp(qpMask, qpMaskConstraint)
+                val newHeap = h - currentChunk + newChunk
+                val s2 = s.copy(functionRecorder = newFr, partiallyConsumedHeap = Some(newHeap))
+                val newSnapMask = MaskSum(resMap(resource), qpMask)
+                val snap = FakeMaskMapTerm(resMap.updated(resource, newSnapMask))
+                Q(s2, newHeap, snap, v)
+              case false =>
+                createFailure (pve dueTo insufficientPermissionReason, v, s)
+              })
             }
           case false =>
             createFailure(pve dueTo notInjectiveReason, v, s)}
@@ -435,7 +430,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
             val s1 =
               s.copy(h = h1,
-                functionRecorder = s.functionRecorder.recordFieldInv(inv),
+                functionRecorder = s.functionRecorder.recordFieldInv(inv).recordArp(qpMask, qpMaskConstraint),
                 conservedPcs = conservedPcs)
             Q(s1, v)
           case false =>

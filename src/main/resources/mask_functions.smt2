@@ -5,6 +5,7 @@
 (declare-const $Hp.zeroMask $Hp<$Perm>)
 (declare-fun $Hp.maskDomainIdentical ($Hp<$Perm> $Hp<$Perm>) Bool)
 (declare-fun $Hp.maskSum ($Hp<$Perm> $Hp<$Perm>) $Hp<$Perm>)
+(declare-fun $Hp.maskDiff ($Hp<$Perm> $Hp<$Perm>) $Hp<$Perm>)
 (declare-fun $Hp.maskAdd ($Hp<$Perm> $Ref Real) $Hp<$Perm>)
 
 

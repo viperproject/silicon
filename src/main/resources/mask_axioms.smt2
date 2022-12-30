@@ -33,6 +33,15 @@
     :qid |qp.$Hp.maskSum-def|
     )))
 
+(assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>) (r $Ref)) (!
+      (=
+        (- ($Hp.get_$Perm m1 r) ($Hp.get_$Perm m2 r))
+        ($Hp.get_$Perm ($Hp.maskDiff m1 m2) r)
+        )
+    :pattern (($Hp.get_$Perm ($Hp.maskDiff m1 m2) r))
+    :qid |qp.$Hp.maskDiff-def|
+    )))
+
 ;(declare-fun $Hp.maskAdd ($Hp<$Perm> $Ref $Perm) $Hp<$Perm>)
 
 (assert (forall ((m $Hp<$Perm>) (r1 $Ref) (v Real) (r2 $Ref)) (!

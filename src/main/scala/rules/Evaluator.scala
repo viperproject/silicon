@@ -204,7 +204,22 @@ object evaluator extends EvaluationRules {
           }
         })
 
-
+      case pa: ast.PredicateAccess if Verifier.config.carbonQPs() =>
+        val pvef: ast.Exp => PartialVerificationError = _ => pve
+        evals(s, pa.args, pvef, v)((s1, tArgs, v1) => {
+          val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == pa.res(s.program)).get.asInstanceOf[BasicCarbonChunk]
+          val ve = pve dueTo InsufficientPermission(pa)
+          val maskValue = HeapLookup(resChunk.mask, toSnapTree(tArgs))
+          v1.decider.assert(perms.IsPositive(maskValue)) {
+            case true =>
+              val heapValue = HeapLookup(resChunk.heap, toSnapTree(tArgs))
+              val tSnap = heapValue.convert(sorts.Snap)
+              val fr = s1.functionRecorder.recordSnapshot(pa, v1.decider.pcs.branchConditions, tSnap)
+              val s2 = s1.copy(functionRecorder = fr)
+              Q(s2, heapValue, v1)
+            case false => createFailure(ve, v, s)
+          }
+        })
 
       case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, v1) => {

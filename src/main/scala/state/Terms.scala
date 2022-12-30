@@ -2048,6 +2048,21 @@ object MaskSum extends ((Term, Term) => Term) {
   def unapply(ms: MaskSum) = Some((ms.m1, ms.m2))
 }
 
+class MaskDiff(val m1: Term, val m2: Term) extends Term {
+  val sort = m1.sort
+}
+
+object MaskDiff extends ((Term, Term) => Term) {
+  def apply(m1: Term, m2: Term) = (m1, m2) match {
+    case (_, ZeroMask()) => m1
+    case (_, PredZeroMask()) => m1
+    case (MaskSum(m, m2p), _) if m2p == m2 => m
+    case _ => new MaskDiff(m1, m2)
+  }
+
+  def unapply(ms: MaskDiff) = Some((ms.m1, ms.m2))
+}
+
 case class DummyHeap(sort: Sort) extends Term
 
 case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {
