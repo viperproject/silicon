@@ -12,39 +12,6 @@
 ; been emitted.
 
 
-(declare-fun $FVF.tosnap_$FLD$ ($FVF<$T$> Set<$Ref>) $Snap)
-(declare-fun $FVF.fromsnap_$FLD$ ($Snap) $FVF<$T$>)
-
-(assert (forall ((fvf1 $FVF<$T$>) (s1 Set<$Ref>) (r $Ref)) (!
-      (=>
-        (Set_contains s1 r)
-        (= ($FVF.lookup_$FLD$ ($FVF.fromsnap_$FLD$ ($FVF.tosnap_$FLD$ fvf1 s1)) r) ($FVF.lookup_$FLD$ fvf1 r))
-    :pattern (($FVF.lookup_$FLD$ ($FVF.fromsnap_$FLD$ ($FVF.tosnap_$FLD$ fvf1 s1)) r)
-              )
-    :qid |qp.$FVF.fromsnap_$FLD$-def|
-    )))
-
-
-(assert (forall ((fvf1 $FVF<$T$>) (fvf2 $FVF<$T$>) (s1 Set<$Ref>) (s2 Set<$Ref>)) (!
-    (=>
-      (and
-        (Set_equal s1 s2)
-        (forall ((x $Ref)) (!
-          (=>
-            (Set_in x s1)
-            (= ($FVF.lookup_$FLD$ fvf1 x) ($FVF.lookup_$FLD$ fvf2 x)))
-          ; :pattern ((Set_in x ($FVF.domain_$FLD$ vs)))
-          :pattern (($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x))
-          :qid |qp.$FVF.tosnap_$FLD$-eq-inner|
-          )))
-      (= vs ws))
-    :pattern (($FVF.tosnap_$FLD$ fvf1 s1)
-              ($FVF.tosnap_$FLD$ fvf2 s2)
-              )
-    :qid |qp.$FVF.tosnap_$FLD$-eq-outer|
-    )))
-
-
 (assert (forall ((vs $FVF<$T$>) (ws $FVF<$T$>)) (!
     (=>
       (and
