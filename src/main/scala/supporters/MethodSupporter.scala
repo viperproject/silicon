@@ -59,25 +59,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
         sInit.h
       }
 
-      if (Verifier.config.carbonQPs()) {
-        val qps = ast.utility.QuantifiedPermissions.quantifiedPermissionAssertions(method, sInit.program)
-        for (qp <- qps) {
-          // find qvars
-
-          // find all other vars
-
-          // create vars for other vars
-          // create vars for required heaps
-
-          // set up artificial state
-
-          // eval
-          // TODO: what if not welldef in general? can we collect these conditions?
-          // TODO: would need a different expression translator
-          //quantifiedChunkSupporter.getFreshInverseFunctions(qvars, condition, invertibles, codomainQVars, additionalInvArgs, userProvidedTriggers, qidPrefix, v)
-        }
-      }
-
       val pres = method.pres
       val posts = method.posts
 

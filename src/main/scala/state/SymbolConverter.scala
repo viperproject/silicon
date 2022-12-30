@@ -28,7 +28,6 @@ class DefaultSymbolConverter extends SymbolConverter {
     case ast.Int => sorts.Int
     case ast.Perm => sorts.Perm
     case ast.Ref => sorts.Ref
-    case ast.Snap => sorts.Snap
 
     case ast.SeqType(elementType) => sorts.Seq(toSort(elementType))
     case ast.SetType(elementType) => sorts.Set(toSort(elementType))
