@@ -1249,7 +1249,7 @@ object evaluator extends EvaluationRules {
     else {
       if (eTriggerSets.head.collect{case fa: ast.FieldAccess => fa; case pa: ast.PredicateAccess => pa; case wand: ast.MagicWand => wand }.nonEmpty ) {
         evalHeapTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
-          evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
+          evalTriggers(s1, eTriggerSets.tail, tTriggersSets ++ ts, pve, v1)(Q))
       } else {
         evalTrigger(s, eTriggerSets.head, pve, v)((s1, ts, v1) =>
           evalTriggers(s1, eTriggerSets.tail, tTriggersSets :+ ts, pve, v1)(Q))
@@ -1385,27 +1385,44 @@ object evaluator extends EvaluationRules {
   }
 
   private def evalHeapTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier)
-                             (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
-    var triggers: Seq[Term] = Seq()
+                             (Q: (State, Seq[Seq[Term]], Verifier) => VerificationResult) : VerificationResult = {
+    var triggers: Seq[Seq[Term]] = Seq(Seq())
     var triggerAxioms: Seq[Term] = Seq()
     var smDefs: Seq[SnapshotMapDefinition] = Seq()
 
     exps foreach {
       case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) && !Verifier.config.carbonQPs() =>
         val (axioms, trigs, _, smDef) = generateFieldTrigger(fa, s, pve, v)
-        triggers = triggers ++ trigs
+        triggers = triggers.map(ts => ts ++ trigs)
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
+      case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) =>
+        val chunk = carbonQuantifiedChunkSupporter.findCarbonChunk(s.h, fa.res(s.program))
+        eval(s.copy(triggerExp = true), fa.rcv, pve, v)((_, tRcv, _) => {
+          val heapAccess = new HeapLookup(chunk.heap, tRcv)
+          val maskAccess = new HeapLookup(chunk.mask, tRcv)
+          triggers = triggers.map(ts => ts ++ Seq(heapAccess)) ++  triggers.map(ts => ts ++ Seq(maskAccess))
+          null
+        })
       case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) && !Verifier.config.carbonQPs() =>
         val (axioms, trigs, _) = generatePredicateTrigger(pa, s, pve, v)
-        triggers = triggers ++ trigs
+        triggers = triggers.map(ts => ts ++ trigs)
         triggerAxioms = triggerAxioms ++ axioms
+      case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) =>
+        val chunk = carbonQuantifiedChunkSupporter.findCarbonChunk(s.h, pa.res(s.program))
+        evals(s.copy(triggerExp = true), pa.args, _ => pve, v)((_, tArgs, _) => {
+          val tRcv = toSnapTree(tArgs)
+          val heapAccess = new HeapLookup(chunk.heap, tRcv)
+          val maskAccess = new HeapLookup(chunk.mask, tRcv)
+          triggers = triggers.map(ts => ts ++ Seq(heapAccess)) ++ triggers.map(ts => ts ++ Seq(maskAccess))
+          null
+        })
       case wand: ast.MagicWand if s.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program)) && !Verifier.config.carbonQPs() =>
         val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
-        triggers = triggers ++ trigs
+        triggers = triggers.map(ts => ts ++ trigs)
         triggerAxioms = triggerAxioms ++ axioms
       case e => evalTrigger(s, Seq(e), pve, v)((_, t, _) => {
-        triggers = triggers ++ t
+        triggers = triggers.map(ts => ts ++ t)
         Success()
       })
     }

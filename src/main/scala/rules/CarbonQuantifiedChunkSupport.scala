@@ -361,7 +361,17 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     val (effectiveTriggers, effectiveTriggersQVars) =
       optTrigger match {
         case Some(_) =>
-          (tTriggers, qvars)
+          // triggers were translated with the old heap and mask, but we actually want to trigger on accesses on the new heap and mask.
+          val newHeapTriggers = tTriggers.map(t => {
+            val newTerms: Seq[Term] = t.p.map(trm => trm match {
+              case HeapLookup(currentChunk.heap, r) => HeapLookup(newHeap, r)
+              case HeapLookup(currentChunk.mask, r) => HeapLookup(newMask, r)
+              case _ => trm
+            })
+
+            Trigger(newTerms)
+          })
+          (newHeapTriggers, qvars)
         case None =>
           /* No explicit triggers were provided and we resort to those from the inverse
            * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
