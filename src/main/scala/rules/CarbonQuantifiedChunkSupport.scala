@@ -11,6 +11,7 @@ import viper.silicon.interfaces.state.CarbonChunk
 import viper.silicon.rules.quantifiedChunkSupporter.{createFailure, getFreshInverseFunctions}
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{MaskSort, PredMaskSort}
+import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.state.terms.{And, AtLeast, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMinus, PermNegation, PermPlus, PermTimes, Quantification, Term, Trigger, True, Var, perms, sorts, toSnapTree}
 import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, FunctionPreconditionTransformer, Heap, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
@@ -160,6 +161,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       case true =>
         val loss = PermTimes(tPerm, s.permissionScalingFactor)
 
+        val constrainPermissions = !consumeExactRead(loss, s.constrainableARPs)
+
         /* TODO: Can we omit/simplify the injectivity check in certain situations? */
         val receiverInjectivityCheck =
           quantifiedChunkSupporter.injectivityAxiom(
@@ -202,8 +205,19 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
               }
               // assert enough permissions
               val currentPerm = HeapLookup(currentChunk.mask, argTerm)
-              v.decider.assert(Forall(formalQVars, Implies(condOfInvOfLoc, PermAtMost(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms"))(r => r match {
+
+              val sufficientPerm = if (constrainPermissions) {
+                Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(NoPerm(), currentPerm)), Seq(), "sufficientPerms")
+              } else {
+                Forall(formalQVars, Implies(condOfInvOfLoc, PermAtMost(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms")
+              }
+              v.decider.assert(sufficientPerm)(r => r match {
               case true =>
+                if (constrainPermissions) {
+                  // constrain wildcards
+                  v.decider.assume(Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms"))
+                }
+
                 // remove permissions
                 val qpMask = v.decider.fresh("heap", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
                 val qpMaskGet = HeapLookup(qpMask, argTerm)
