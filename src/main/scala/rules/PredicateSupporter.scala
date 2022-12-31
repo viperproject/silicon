@@ -63,7 +63,7 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm)
-    consume(s1, body, pve, v, havoc = false)((s1a, snap, v1) => {
+    consume(s1, body, pve, v)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
           snap.convert(terms.sorts.Snap) +: tArgs)
@@ -140,7 +140,7 @@ object predicateSupporter extends PredicateSupportRules {
       val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
       val permAssertion = pap.copy(perm = ast.FullPerm()())(pap.pos, pap.info, pap.errT) // we've already set permission scaling.
-      carbonConsumeTlcs(s1, s1.h, Seq(permAssertion), Seq(pve), v, Seq(predicate), None, false)((s2, h1, snap, v1) => {
+      carbonConsumeTlcs(s1, s1.h, Seq(permAssertion), Seq(pve), v, Seq(predicate), None)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1, partiallyConsumedHeap = None)
           .setConstrainable(constrainableWildcards, false)
         val predSnap = HeapLookup(snap.asInstanceOf[HeapToSnap].heap, toSnapTree(tArgs))

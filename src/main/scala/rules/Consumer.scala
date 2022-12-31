@@ -144,7 +144,7 @@ object consumer extends ConsumptionRules {
                         v: Verifier,
                         resources: Seq[ast.Location],
                         ot: Option[Term],
-                        havoc: Boolean)
+                        havoc: Boolean = true)
                        (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     val term = if (ot.isDefined) ot.get else {
