@@ -1246,7 +1246,7 @@ object PermMinus extends ((Term, Term) => Term) {
   def unapply(pm: PermMinus) = Some((pm.p0, pm.p1))
 }
 
-class PermNegation(val p: Term) extends  ArithmeticTerm
+class PermNegation(val p: Term) extends  Permissions
   with StructuralEqualityUnaryOp[Term] {
 
   override val op = "-"
