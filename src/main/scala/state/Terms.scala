@@ -1940,6 +1940,8 @@ object HeapLookup extends ((Term, Term) => Term) {
     case (HeapSingleton(r1, v, _), r2) if r1 == r2 => v
     case (HeapUpdate(_, r1, v), r2) if r1 == r2 => v
     case (MergeSingle(_, msk, r1, v), r2) if r1 == r2 && (msk == ZeroMask() || msk == PredZeroMask()) => v // incomplete for anything but zeromasks, ignores info from merged heap
+    case (MaskAdd(ZeroMask(), r1, v), r2) if r1 == r2 => v
+    case (MaskAdd(PredZeroMask(), r1, v), r2) if r1 == r2 => v
     case _ => new HeapLookup(heap, at)
   }
 
@@ -1989,12 +1991,22 @@ object MaskAdd extends ((Term, Term, Term) => Term) {
 
 case class HeapSingleton(at: Term, value: Term, sort: Sort) extends Term
 
-case class IdenticalOnKnownLocations(oldHeap: Term, newHeap: Term, mask: Term) extends Term {
+class IdenticalOnKnownLocations(val oldHeap: Term, val newHeap: Term, val mask: Term) extends Term {
  // utils.assertSort(oldHeap, "old heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
  // utils.assertSort(newHeap, "new heap", oldHeap.sort)
  // utils.assertSort(mask, "heap", MaskSort)
 
   val sort = sorts.Bool
+}
+
+object IdenticalOnKnownLocations extends ((Term, Term, Term) => Term) {
+  def apply (oh: Term, nh: Term, msk: Term) = msk match {
+    case ZeroMask() => True()
+    case PredZeroMask() => True()
+    case _ => new IdenticalOnKnownLocations(oh, nh, msk)
+  }
+
+  def unapply(iok: IdenticalOnKnownLocations) = Some((iok.oldHeap, iok.newHeap, iok.mask))
 }
 
 case class FakeMaskMapTerm(masks: immutable.Map[ast.Resource, Term]) extends Term {
