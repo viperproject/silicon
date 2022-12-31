@@ -558,6 +558,11 @@ object evaluator extends EvaluationRules {
 
           Q(s2, currentPermAmount, v1)})
 
+      case fp@ast.ForPerm(vars, resourceAccess, body) if Verifier.config.carbonQPs() =>
+        // Quick and dirty
+        val equivalent = ast.Forall(vars, Seq(), ast.Implies(ast.PermGtCmp(ast.CurrentPerm(resourceAccess)(fp.pos), ast.NoPerm()())(fp.pos), body)())(fp.pos)
+        eval2(s, equivalent, pve, v)(Q)
+
       case ast.ForPerm(vars, resourceAccess, body) =>
 
         /* Iterate over the list of relevant chunks in continuation passing style (very similar
