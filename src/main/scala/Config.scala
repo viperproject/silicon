@@ -773,8 +773,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
   
-  validateOpt(counterexample, enableMoreCompleteExhale) {
-    case (Some(_), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
+  validateOpt(counterexample, enableMoreCompleteExhale, carbonQPs) {
+    case (Some(_), Some(false), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
                                         + s"flag ${enableMoreCompleteExhale.name}")
     case _ => Right(())
   }

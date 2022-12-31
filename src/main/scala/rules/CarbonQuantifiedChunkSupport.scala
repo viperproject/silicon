@@ -38,7 +38,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                             permissions: Term, /* p */
                             pve: PartialVerificationError,
                             v: Verifier,
-                            resMap: Map[ast.Resource, Term])
+                            resMap: Map[ast.Resource, Term],
+                            havoc: Boolean)
                            (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     val resource = resourceAccess.res(s.program)
@@ -74,7 +75,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
             v.decider.assume(PermLess(permissions, maskValue))
           }
           val newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(permissions))//HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
-          val newChunk = if (s.functionRecorder != NoopFunctionRecorder) {
+          val newChunk = if (!havoc || s.functionRecorder != NoopFunctionRecorder) {
             // no need to havoc
             resChunk.copy(mask = newMask)
           } else {
@@ -111,7 +112,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
               v: Verifier,
-              resMap: Map[ast.Resource, Term])
+              resMap: Map[ast.Resource, Term],
+              havoc: Boolean)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
 
@@ -225,8 +227,15 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                 val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
                 v.decider.assume(qpMaskConstraint)
                 val newMask = MaskDiff(currentChunk.mask, qpMask)
-                val newChunk = currentChunk.copy(mask = newMask)
-                // create snap
+
+                val newChunk = if (!havoc || s.functionRecorder != NoopFunctionRecorder) {
+                  // no need to havoc
+                  currentChunk.copy(mask = newMask)
+                } else {
+                  val freshHeap = v.decider.fresh("heap", currentChunk.heap.sort)
+                  v.decider.assume(IdenticalOnKnownLocations(currentChunk.heap, freshHeap, newMask))
+                  currentChunk.copy(mask = newMask, heap = freshHeap)
+                }
 
                 // continue
                 val newFr = s.functionRecorder.recordFieldInv (inverseFunctions).recordArp(qpMask, qpMaskConstraint)
