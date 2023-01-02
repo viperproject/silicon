@@ -84,15 +84,17 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
     instantiatedDomains foreach (domain => {
       domain.functions foreach (function => {
-        val fct = symbolConverter.toFunction(function, program)
+        if (function.interpretation.isEmpty) {
+          val fct = symbolConverter.toFunction(function, program).asInstanceOf[DomainFun]
 
-        collectedFunctions += fct
+          collectedFunctions += fct
 
-        if (function.unique) {
-          assert(function.formalArgs.isEmpty,
-            s"Expected unique domain functions to not take arguments, but found $function")
+          if (function.unique) {
+            assert(function.formalArgs.isEmpty,
+              s"Expected unique domain functions to not take arguments, but found $function")
 
-          uniqueSymbols = uniqueSymbols.addBinding(fct.resultSort, fct)
+            uniqueSymbols = uniqueSymbols.addBinding(fct.resultSort, fct)
+          }
         }
       })
 

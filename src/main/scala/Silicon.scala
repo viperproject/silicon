@@ -338,6 +338,8 @@ class SiliconFrontend(override val reporter: Reporter,
 
   protected var siliconInstance: Silicon = _
 
+  override def backendTypeFormat: Option[String] = Some("SMTLIB")
+
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(reporter, Seq("args" -> fullCmd))
 

@@ -138,11 +138,11 @@ trait ExpressionTranslator {
         val df = Fun(id, inSorts, outSort)
         App(df, tArgs)
 
-      case ast.BackendFuncApp(func, args) =>
+      case bfa@ast.BackendFuncApp(func, args) =>
         val tArgs = args map f
         val inSorts = tArgs map (_.sort)
-        val outSort = toSort(func.typ)
-        val id = Identifier(func.smtName)
+        val outSort = toSort(bfa.typ)
+        val id = Identifier(bfa.interpretation)
         val sf = SMTFun(id, inSorts, outSort)
         App(sf, tArgs)
 
