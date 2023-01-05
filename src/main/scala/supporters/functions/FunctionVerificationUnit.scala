@@ -223,7 +223,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
-        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, _) => {
+        produces(s0.copy(isProducingFunctionPre = Some(function)), toSf(`?s`), pres, ContractNotWellformed, v)((s1a, _) => {
+          val s1 = s1a.copy(isProducingFunctionPre = None)
           val relevantPathConditionStack = decider.pcs.after(preMark)
           phase1Data :+= Phase1Data(s1, relevantPathConditionStack.branchConditions, relevantPathConditionStack.assumptions)
           // The postcondition must be produced with a fresh snapshot (different from `?s`) because

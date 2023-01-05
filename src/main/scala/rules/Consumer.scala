@@ -287,7 +287,7 @@ object consumer extends ConsumptionRules {
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.
        */
-      case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.carbonQPs() =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.carbonQPs() =>
         val field = acc.loc.field
         val qid = BasicChunkIdentifier(acc.loc.field.name)
         val optTrigger =
@@ -315,7 +315,8 @@ object consumer extends ConsumptionRules {
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1,
               resMap.get.asInstanceOf[FakeMaskMapTerm].masks,
-              havoc)(Q)
+              havoc,
+              qpa)(Q)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) =>
@@ -347,7 +348,7 @@ object consumer extends ConsumptionRules {
               v1)(Q)
         }
 
-      case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.carbonQPs() =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.carbonQPs() =>
         val predicate = s.program.findPredicate(acc.loc.predicateName)
         /* TODO: Quantified codomain variables are used in axioms and chunks (analogous to `?r`)
          *       and need to be instantiated in several places. Hence, they need to be known,
@@ -383,7 +384,8 @@ object consumer extends ConsumptionRules {
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1,
               resMap.get.asInstanceOf[FakeMaskMapTerm].masks,
-              havoc)(Q)
+              havoc,
+              qpa)(Q)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>

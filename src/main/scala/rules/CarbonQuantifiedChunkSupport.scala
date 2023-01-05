@@ -12,13 +12,13 @@ import viper.silicon.rules.quantifiedChunkSupporter.{createFailure, getFreshInve
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{MaskSort, PredMaskSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, AtLeast, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMinus, PermNegation, PermPlus, PermTimes, Quantification, Term, Trigger, True, Var, perms, sorts, toSnapTree}
+import viper.silicon.state.terms.{And, App, AtLeast, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMinus, PermNegation, PermPlus, PermTimes, Quantification, Term, Trigger, True, Var, perms, sorts, toSnapTree}
 import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, FunctionPreconditionTransformer, Heap, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.ast
-import viper.silver.ast.PermAdd
+import viper.silver.ast.{LocationAccess, PermAdd}
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 
@@ -85,7 +85,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
           }
 
           //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
-          val snapPermTerm = if (!consumeExact && s.isTranslatingFunctionPre) FullPerm() else permissions
+          val snapPermTerm = if (!consumeExact && s.isConsumingFunctionPre.isDefined) FullPerm() else permissions
           val newSnapMask = MaskAdd(resMap(resource), argTerm, snapPermTerm) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
           val snap = FakeMaskMapTerm(resMap.updated(resource, newSnapMask))
           // set up partially consumed heap
@@ -114,7 +114,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
               insufficientPermissionReason: => ErrorReason,
               v: Verifier,
               resMap: Map[ast.Resource, Term],
-              havoc: Boolean)
+              havoc: Boolean,
+              qpExp: ast.Exp)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
 
@@ -222,12 +223,27 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                 }
 
                 // remove permissions
-                val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+                val (qpMask, newFr) = if (s.isConsumingFunctionPre.isDefined) {
+                  val (qpMaskFunc, _) = s.functionData.get(s.isConsumingFunctionPre.get).get.preQPMasks.get(qpExp).get
 
-                val qpMaskGet = HeapLookup(qpMask, argTerm)
-                val conditionalizedPermissions = Ite(condOfInvOfLoc, lossOfInvOfLoc, NoPerm())
-                val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
-                v.decider.assume(qpMaskConstraint)
+                  val paramArgs = s.isConsumingFunctionPre.get.formalArgs.map(fa => s.g.get(fa.localVar).get)
+                  //val paramArgSorts = paramArgs.map(_.sort)
+                  val heapArgs = qpExp.deepCollect {
+                    case la: ast.LocationAccess => la.res(s.program)
+                  }.distinct.map(r => findCarbonChunk(s.h, r).heap)
+                  //val heapArgSorts = heapArgs.map(_.sort)
+
+                  (App(qpMaskFunc, paramArgs ++ heapArgs), s.functionRecorder.recordFieldInv (inverseFunctions))
+                } else {
+                  val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+                  val qpMaskGet = HeapLookup(qpMask, argTerm)
+                  val conditionalizedPermissions = Ite(condOfInvOfLoc, lossOfInvOfLoc, NoPerm())
+                  val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+                  v.decider.assume(qpMaskConstraint)
+                  (qpMask, s.functionRecorder.recordFieldInv (inverseFunctions).recordArp(qpMask, qpMaskConstraint))
+                }
+
+
                 val newMask = MaskDiff(currentChunk.mask, qpMask)
 
                 val newChunk = if (!havoc || s.functionRecorder != NoopFunctionRecorder) {
@@ -240,7 +256,6 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                 }
 
                 // continue
-                val newFr = s.functionRecorder.recordFieldInv (inverseFunctions).recordArp(qpMask, qpMaskConstraint)
                 val newHeap = h - currentChunk + newChunk
                 val s2 = s.copy(functionRecorder = newFr, partiallyConsumedHeap = Some(newHeap))
                 val newSnapMask = MaskSum(resMap(resource), qpMask)
@@ -303,28 +318,12 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
               pve: PartialVerificationError,
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
-              v: Verifier)
+              v: Verifier,
+              qpExp: ast.Exp)
              (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
 
     val gain = PermTimes(tPerm, s.permissionScalingFactor)
-    /*
-    val (ch: QuantifiedBasicChunk, inverseFunctions) =
-      quantifiedChunkSupporter.createQuantifiedChunk(
-        qvars                = qvars,
-        condition            = tCond,
-        resource             = resource,
-        arguments            = tArgs,
-        permissions          = gain,
-        codomainQVars        = formalQVars,
-        sm                   = tSnap,
-        additionalInvArgs    = s.relevantQuantifiedVariables(tArgs),
-        userProvidedTriggers = optTrigger.map(_ => tTriggers),
-        qidPrefix            = qid,
-        v                    = v,
-        program              = s.program)
-
-     */
 
     val (inverseFunctions, imagesOfCodomain) =
       getFreshInverseFunctions(
@@ -345,14 +344,29 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
         gain.replace(qvarsToInversesOfCodomain),
         NoPerm())
 
-    val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+    val (qpMask, qpMaskFunc, constraintVars) = if (s.isProducingFunctionPre.isDefined) {
+      val paramArgs = s.isProducingFunctionPre.get.formalArgs.map(fa => s.g.get(fa.localVar).get)
+      val paramArgSorts = paramArgs.map(_.sort)
+      val heapArgs = qpExp.deepCollect{
+        case la: ast.LocationAccess => la.res(s.program)
+      }.distinct.map(r => findCarbonChunk(s.h, r).heap)
+      val heapArgSorts = heapArgs.map(_.sort)
+      val maskFunc = v.decider.fresh("qpMask", paramArgSorts ++ heapArgSorts, if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+      (App(maskFunc, paramArgs ++ heapArgs), Some(maskFunc), paramArgs.asInstanceOf[Seq[Var]] ++ heapArgs.asInstanceOf[Seq[Var]])
+    } else {
+      (v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort), None, Seq())
+    }
+
     // forall r :: { get(qpMask, r) } get(qpMask, r) == conditionalizedPermissions
     val argTerm = resource match {
       case _: ast.Field => formalQVars(0)
       case _: ast.Predicate => toSnapTree(formalQVars)
     }
     val qpMaskGet = HeapLookup(qpMask, argTerm)
-    val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+    val qpMaskConstraint = if (s.isProducingFunctionPre.isDefined)
+      Forall(constraintVars ++ formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+    else
+      Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
     v.decider.assume(qpMaskConstraint)
 
     val currentChunk = findCarbonChunk(s.h, resource)
@@ -442,31 +456,17 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
             val conservedPcs =
               if (s.recordPcs) (s.conservedPcs.head :+ v.decider.pcs.after(definitionalAxiomMark)) +: s.conservedPcs.tail
               else s.conservedPcs
-            /*
-            val resourceDescription = Resources.resourceDescriptions(ch.resourceID)
-            val interpreter = new QuantifiedPropertyInterpreter
-            resourceDescription.instanceProperties.foreach (property => {
-              v.decider.prover.comment(property.description)
-              v.decider.assume(interpreter.buildPathConditionForChunk(
-                chunk = ch,
-                property = property,
-                qvars = effectiveTriggersQVars,
-                args = tArgs,
-                perms = gain,
-                condition = tCond,
-                triggers = effectiveTriggers,
-                qidPrefix = qid)
-              )
-            })
-
-             */
 
             val h1 = s.h - currentChunk + newChunk
             v.decider.assume(permBoundConstraint)
+            val newFr = if (s.isProducingFunctionPre.isEmpty)
+              s.functionRecorder.recordFieldInv(inv).recordArp(qpMask.asInstanceOf[Var], qpMaskConstraint)
+            else
+              s.functionRecorder.recordFieldInv(inv).recordPreconditionQPMask(qpExp, qpMaskFunc.get, qpMaskConstraint)
 
             val s1 =
               s.copy(h = h1,
-                functionRecorder = s.functionRecorder.recordFieldInv(inv).recordArp(qpMask, qpMaskConstraint),
+                functionRecorder = newFr,
                 conservedPcs = conservedPcs)
             Q(s1, v)
           case false =>

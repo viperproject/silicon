@@ -98,6 +98,7 @@ class FunctionData(val programFunction: ast.Function,
   private[this] var freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   private[this] var freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet.empty
   private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
+  var preQPMasks: Map[ast.Exp, (Function, Term)] = Map.empty
 
   private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunctions] = freshFieldInvs
   private[functions] def getFreshArps: InsertionOrderedSet[Var] = freshArps.map(_._1)
@@ -120,6 +121,7 @@ class FunctionData(val programFunction: ast.Function,
     freshSnapshots = mergedFunctionRecorder.freshSnapshots
     freshPathSymbols = mergedFunctionRecorder.freshPathSymbols
     freshMacros = mergedFunctionRecorder.freshMacros
+    preQPMasks = Map.from(mergedFunctionRecorder.freshQPMasks.map(m => m._1 -> (m._2, m._3)))
 
     freshSymbolsAcrossAllPhases ++= freshPathSymbols map FunctionDecl
     freshSymbolsAcrossAllPhases ++= freshArps.map(pair => FunctionDecl(pair._1))
@@ -133,6 +135,7 @@ class FunctionData(val programFunction: ast.Function,
         case App(f: Function, _) => FunctionDecl(f)
         case other => sys.error(s"Unexpected SM $other of type ${other.getClass.getSimpleName}")
       })
+    freshSymbolsAcrossAllPhases ++= mergedFunctionRecorder.freshQPMasks.map(qpm => FunctionDecl(qpm._2))
 
     phase += 1
   }
@@ -143,7 +146,8 @@ class FunctionData(val programFunction: ast.Function,
     val nested = (
          freshFieldInvs.flatMap(_.definitionalAxioms)
       ++ freshFvfsAndDomains.flatMap (fvfDef => fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
-      ++ freshArps.map(_._2))
+      ++ freshArps.map(_._2)
+      ++ preQPMasks.map(_._2._2))
 
     // Filter out nested definitions that contain free variables.
     // This should not happen, but currently can, due to bugs in the function axiomatisation code.

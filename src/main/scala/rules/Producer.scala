@@ -382,7 +382,7 @@ object producer extends ProductionRules {
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.
        */
-      case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.carbonQPs() =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.carbonQPs() =>
         val qid = acc.loc.field.name
         val optTrigger =
           if (forall.triggers.isEmpty) None
@@ -407,7 +407,8 @@ object producer extends ProductionRules {
               pve,
               NegativePermission(acc.perm),
               QPAssertionNotInjective(acc.loc),
-              v1
+              v1,
+              qpa
             )(Q)
         }
 
@@ -440,7 +441,7 @@ object producer extends ProductionRules {
             )(Q)
         }
 
-      case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.carbonQPs() =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.carbonQPs() =>
         val predicate = s.program.findPredicate(acc.loc.predicateName)
         val formalVars = s.predicateFormalVarMap(predicate)
         val qid = acc.loc.predicateName
@@ -468,7 +469,8 @@ object producer extends ProductionRules {
               pve,
               NegativePermission(acc.perm),
               QPAssertionNotInjective(acc.loc),
-              v1
+              v1,
+              qpa
             )(Q)
         }
 
