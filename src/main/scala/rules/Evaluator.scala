@@ -753,6 +753,7 @@ object evaluator extends EvaluationRules {
               ErrorWrapperWithExampleTransformer(PreconditionInAppFalse(fapp).withReasonNodeTransformed(reasonOffendingNode =>
                 reasonOffendingNode.replace(formalsToActuals)), exampleTrafo)
             val s3 = s2.copy(g = Store(fargs.zip(tArgs)),
+                             isTranslatingFunctionPre = true,
                              recordVisited = true,
                              functionRecorder = s2.functionRecorder.changeDepthBy(+1),
                                 /* Temporarily disable the recorder: when recording (to later on
@@ -788,6 +789,7 @@ object evaluator extends EvaluationRules {
                                    .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
               val s5 = s4.copy(g = s2.g,
                                h = s2.h,
+                               isTranslatingFunctionPre = false,
                                recordVisited = s2.recordVisited,
                                functionRecorder = fr5,
                                smDomainNeeded = s2.smDomainNeeded,

@@ -85,7 +85,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
           }
 
           //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
-          val newSnapMask = MaskAdd(resMap(resource), argTerm, permissions) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
+          val snapPermTerm = if (!consumeExact && s.isTranslatingFunctionPre) FullPerm() else permissions
+          val newSnapMask = MaskAdd(resMap(resource), argTerm, snapPermTerm) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
           val snap = FakeMaskMapTerm(resMap.updated(resource, newSnapMask))
           // set up partially consumed heap
           Q(s, h - resChunk + newChunk, snap, v)
@@ -221,7 +222,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                 }
 
                 // remove permissions
-                val qpMask = v.decider.fresh("heap", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+                val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+
                 val qpMaskGet = HeapLookup(qpMask, argTerm)
                 val conditionalizedPermissions = Ite(condOfInvOfLoc, lossOfInvOfLoc, NoPerm())
                 val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
@@ -343,7 +345,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
         gain.replace(qvarsToInversesOfCodomain),
         NoPerm())
 
-    val qpMask = v.decider.fresh("heap", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+    val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
     // forall r :: { get(qpMask, r) } get(qpMask, r) == conditionalizedPermissions
     val argTerm = resource match {
       case _: ast.Field => formalQVars(0)
