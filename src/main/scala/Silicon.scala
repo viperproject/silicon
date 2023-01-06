@@ -243,21 +243,21 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 
-    val failures =
-      results.flatMap(r => r :: r.previous.toList)
-        .collect{ case f: Failure => f } /* Ignore successes */
-        .pipe(allResults => {
-          /* If branchconditions are to be reported we collect the different failure contexts
-          *  of all failures that report the same error (but on different branches, with different CounterExample)
-          *  and put those into one failure */
-          if (config.enableBranchconditionReporting())
-            allResults.groupBy(failureFilterAndGroupingCriterion).map{case (_: String, fs:List[Failure]) =>
-              fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
-              Failure(fs.head.message)
-            }.toList
-             else allResults.distinctBy(failureFilterAndGroupingCriterion)
-        })
-        .sortBy(failureSortingCriterion)
+    val failures = results
+      .collect{ case f: Failure => f } /* Ignore successes */
+      .pipe(allResults => {
+        /* If branchconditions are to be reported we collect the different failure contexts
+         *  of all failures that report the same error (but on different branches, with different CounterExample)
+         *  and put those into one failure
+         */
+        if (config.enableBranchconditionReporting())
+          allResults.groupBy(failureFilterAndGroupingCriterion).map{case (_: String, fs:List[Failure]) =>
+            fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
+            Failure(fs.head.message)
+          }.toList
+        else allResults.distinctBy(failureFilterAndGroupingCriterion)
+      })
+      .sortBy(failureSortingCriterion)
 
 //    if (config.showStatistics.isDefined) {
 //      val proverStats = verifier.decider.statistics()
