@@ -521,7 +521,7 @@ class DefaultMainVerifier(config: Config,
   /**
     * In case Silicon encounters an expected error (i.e. `ErrorMessage.isExpected`), Silicon continues (until at most
     * config.numberOfErrorsToReport() have been encountered (per member)).
-    * This function retrieves all errors that have been encountered and creates a verification result containing them.
+    * This function combines the verification result with verification results stored in its `previous` field.
     */
   private def extractAllVerificationResults(res: VerificationResult): Seq[VerificationResult] =
     res :: res.previous.toList
