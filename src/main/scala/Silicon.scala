@@ -244,6 +244,8 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
     /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 
     val failures = results
+      // note that we do not extract 'previous' verification errors from VerificationResult's `previous` field
+      // because this is expected to have already been done in `verifier.verify` (for each member).
       .collect{ case f: Failure => f } /* Ignore successes */
       .pipe(allResults => {
         /* If branchconditions are to be reported we collect the different failure contexts
