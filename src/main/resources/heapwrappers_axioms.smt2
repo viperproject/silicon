@@ -9,12 +9,16 @@
 
 
 
-(assert (forall ((h $Hp<$T$>) (s $Hp<$Perm>) (r $Ref)) (!
-      (=>
-        (> ($Hp.get_$Perm s r) $Perm.No)
-        (= ($Hp.get_$T$ ($SortWrappers.$SnapTo$Heap<$FLD$> ($SortWrappers.$Heap<$FLD$>To$Snap h s)) r) ($Hp.get_$T$ h r))
-        )
-    :pattern (($Hp.get_$T$ ($SortWrappers.$SnapTo$Heap<$FLD$> ($SortWrappers.$Heap<$FLD$>To$Snap h s)) r))
+(assert (forall ((h $Hp<$T$>) (s $Hp<$Perm>)) (!
+      (forall ((r $Ref)) (!
+            (=>
+              (> ($Hp.get_$Perm s r) $Perm.No)
+              (= ($Hp.get_$T$ ($SortWrappers.$SnapTo$Heap<$FLD$> ($SortWrappers.$Heap<$FLD$>To$Snap h s)) r) ($Hp.get_$T$ h r))
+              )
+          :pattern (($Hp.get_$T$ ($SortWrappers.$SnapTo$Heap<$FLD$> ($SortWrappers.$Heap<$FLD$>To$Snap h s)) r))
+          :qid |qp.$SnapTo$Heap<$FLD$>-def-inner|
+          ))
+    :pattern (($SortWrappers.$SnapTo$Heap<$FLD$> ($SortWrappers.$Heap<$FLD$>To$Snap h s)))
     :qid |qp.$SnapTo$Heap<$FLD$>-def|
     )))
 

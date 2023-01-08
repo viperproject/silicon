@@ -9,11 +9,15 @@
 
 
 
-(assert (forall ((m1 $Hp<$T$>) (r1 $Ref) (v $S$) (r2 $Ref)) (!
-      (=
-        ($Hp.get_$T$ ($Hp.update_$T$ m1 r1 v) r2)
-        (ite (= r1 r2) v ($Hp.get_$T$ m1 r2)))
-    :pattern (($Hp.get_$T$ ($Hp.update_$T$ m1 r1 v) r2))
+(assert (forall ((m1 $Hp<$T$>) (r1 $Ref) (v $S$)) (!
+      (forall ((r2 $Ref)) (!
+            (=
+              ($Hp.get_$T$ ($Hp.update_$T$ m1 r1 v) r2)
+              (ite (= r1 r2) v ($Hp.get_$T$ m1 r2)))
+          :pattern (($Hp.get_$T$ ($Hp.update_$T$ m1 r1 v) r2))
+          :qid |qp.$Hp.update_$T$-def-inner|
+          ))
+    :pattern (($Hp.update_$T$ m1 r1 v))
     :qid |qp.$Hp.update_$T$-def|
     )))
 
@@ -26,28 +30,40 @@
     )))
 
 
-(assert (forall ((oh $Hp<$T$>) (nh $Hp<$T$>) (m $Hp<$Perm>) (r $Ref)) (!
+(assert (forall ((oh $Hp<$T$>) (nh $Hp<$T$>) (m $Hp<$Perm>)) (!
       (=> ($Hp.identicalOnKnown_$T$ oh nh m)
-       (=>
-        (> ($Hp.get_$Perm m r) $Perm.No)
-        (= ($Hp.get_$T$ oh r) ($Hp.get_$T$ nh r))))
-    :pattern (($Hp.identicalOnKnown_$T$ oh nh m) ($Hp.get_$T$ nh r))
+       (forall ((r $Ref)) (!
+              (=>
+               (> ($Hp.get_$Perm m r) $Perm.No)
+               (= ($Hp.get_$T$ oh r) ($Hp.get_$T$ nh r)))
+           :pattern (($Hp.get_$T$ nh r))
+           :qid |qp.$Hp.update_$T$-def-inner|
+           )))
+    :pattern (($Hp.identicalOnKnown_$T$ oh nh m))
     :qid |qp.$Hp.update_$T$-def|
     )))
 
 
-(assert (forall ((h1 $Hp<$T$>) (m1 $Hp<$Perm>) (h2 $Hp<$T$>) (m2 $Hp<$Perm>) (r $Ref)) (!
-       (and
-        (=> (> ($Hp.get_$Perm m1 r) $Perm.No) (= ($Hp.get_$T$ h1 r) ($Hp.get_$T$ ($Hp.merge_$T$ h1 m1 h2 m2) r)))
-        (=> (> ($Hp.get_$Perm m2 r) $Perm.No) (= ($Hp.get_$T$ h2 r) ($Hp.get_$T$ ($Hp.merge_$T$ h1 m1 h2 m2) r))))
-    :pattern (($Hp.get_$T$ ($Hp.merge_$T$ h1 m1 h2 m2) r))
+(assert (forall ((h1 $Hp<$T$>) (m1 $Hp<$Perm>) (h2 $Hp<$T$>) (m2 $Hp<$Perm>)) (!
+       (forall ((r $Ref)) (!
+              (and
+               (=> (> ($Hp.get_$Perm m1 r) $Perm.No) (= ($Hp.get_$T$ h1 r) ($Hp.get_$T$ ($Hp.merge_$T$ h1 m1 h2 m2) r)))
+               (=> (> ($Hp.get_$Perm m2 r) $Perm.No) (= ($Hp.get_$T$ h2 r) ($Hp.get_$T$ ($Hp.merge_$T$ h1 m1 h2 m2) r))))
+           :pattern (($Hp.get_$T$ ($Hp.merge_$T$ h1 m1 h2 m2) r))
+           :qid |qp.$Hp.merge_$T$-def-inner|
+           ))
+    :pattern (($Hp.merge_$T$ h1 m1 h2 m2))
     :qid |qp.$Hp.merge_$T$-def|
     )))
 
-(assert (forall ((oh $Hp<$T$>) (om $Hp<$Perm>) (r $Ref) (v $S$) (r2 $Ref)) (!
-       (and
-        (=> (= r r2) (= ($Hp.get_$T$ ($Hp.merge_single_$T$ oh om r v) r2) v))
-        (=> (> ($Hp.get_$Perm om r2) 0.0) (= ($Hp.get_$T$ ($Hp.merge_single_$T$ oh om r v) r2) ($Hp.get_$T$ oh r2))))
-    :pattern (($Hp.get_$T$ ($Hp.merge_single_$T$ oh om r v) r2))
+(assert (forall ((oh $Hp<$T$>) (om $Hp<$Perm>) (r $Ref) (v $S$)) (!
+       (forall ((r2 $Ref)) (!
+              (and
+               (=> (= r r2) (= ($Hp.get_$T$ ($Hp.merge_single_$T$ oh om r v) r2) v))
+               (=> (> ($Hp.get_$Perm om r2) 0.0) (= ($Hp.get_$T$ ($Hp.merge_single_$T$ oh om r v) r2) ($Hp.get_$T$ oh r2))))
+           :pattern (($Hp.get_$T$ ($Hp.merge_single_$T$ oh om r v) r2))
+           :qid |qp.$Hp.merge_single_$T$-def-inner|
+           ))
+    :pattern (($Hp.merge_single_$T$ oh om r v))
     :qid |qp.$Hp.merge_single_$T$-def|
     )))
