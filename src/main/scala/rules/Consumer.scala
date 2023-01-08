@@ -8,7 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
@@ -149,15 +149,14 @@ object consumer extends ConsumptionRules {
   : VerificationResult = {
     val term = if (ot.isDefined) ot.get else {
       val resMap: Seq[(ast.Resource, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask() else PredZeroMask())))
-      FakeMaskMapTerm(silicon.Map(resMap: _*))
+      FakeMaskMapTerm(immutable.ListMap(resMap: _*))
     }
     internalConsumeTlcs(s, h, tlcs, pves, v, Some(term), havoc)((s2, h2, resMapTerm, v2) => {
       if (ot.isDefined) {
         Q(s2, h2, resMapTerm, v2)
       } else {
         val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks
-        val snapTerms = resources.map(r => HeapToSnap(carbonQuantifiedChunkSupporter.findCarbonChunk(h, r).heap, resMap(r), r))
-        Q(s2, h2, toSnapTree(snapTerms), v2)
+        Q(s2, h2, carbonQuantifiedChunkSupporter.convertToSnapshot(resMap, resources, h), v2)
       }
     })
   }

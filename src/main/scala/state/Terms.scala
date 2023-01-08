@@ -2009,7 +2009,7 @@ object IdenticalOnKnownLocations extends ((Term, Term, Term) => Term) {
   def unapply(iok: IdenticalOnKnownLocations) = Some((iok.oldHeap, iok.newHeap, iok.mask))
 }
 
-case class FakeMaskMapTerm(masks: immutable.Map[ast.Resource, Term]) extends Term {
+case class FakeMaskMapTerm(masks: immutable.ListMap[ast.Resource, Term]) extends Term {
   val sort = sorts.Snap // sure, why not
 }
 

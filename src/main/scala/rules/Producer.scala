@@ -6,7 +6,7 @@
 
 package viper.silicon.rules
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
@@ -157,7 +157,7 @@ object producer extends ProductionRules {
         })
         val snapParts = fromSnapTree(givenSnap, resources.size)
         val heapParts = snapParts.zip(resources).map(tpl => (tpl._2, SnapToHeap(tpl._1, tpl._2, if (tpl._2.isInstanceOf[ast.Field]) HeapSort(v.symbolConverter.toSort(tpl._2.asInstanceOf[ast.Field].typ)) else PredHeapSort)))
-        FakeMaskMapTerm(heapParts.toMap)
+        FakeMaskMapTerm(immutable.ListMap.from(heapParts))
       } else {
         givenSnap
       }

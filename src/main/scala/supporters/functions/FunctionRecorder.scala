@@ -211,7 +211,8 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
          freshArps = arps,
          freshSnapshots = snaps,
          freshPathSymbols = symbols,
-         freshMacros = macros)
+         freshMacros = macros,
+         freshQPMasks = qpMasks)
   }
 
   override lazy val toString: String = {

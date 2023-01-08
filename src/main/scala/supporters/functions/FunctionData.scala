@@ -14,12 +14,16 @@ import viper.silver.ast.utility.Functions
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, functionSupporter}
-import viper.silicon.state.terms._
+import viper.silicon.state.terms.{App, _}
 import viper.silicon.state.terms.predef._
 import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.{Config, Map, toMap}
+import viper.silver.ast.CondExp
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.reporter.Reporter
+
+import scala.collection.mutable
 
 /* TODO: Refactor FunctionData!
  *       Separate computations from "storing" the final results and sharing
@@ -98,7 +102,7 @@ class FunctionData(val programFunction: ast.Function,
   private[this] var freshPathSymbols: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
   private[this] var freshMacros: InsertionOrderedSet[MacroDecl] = InsertionOrderedSet.empty
   private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
-  var preQPMasks: Map[ast.Exp, (Function, Term)] = Map.empty
+  var preQPMasks: InsertionOrderedSet[(ast.Exp, Function, Term)] = InsertionOrderedSet.empty
 
   private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunctions] = freshFieldInvs
   private[functions] def getFreshArps: InsertionOrderedSet[Var] = freshArps.map(_._1)
@@ -121,7 +125,7 @@ class FunctionData(val programFunction: ast.Function,
     freshSnapshots = mergedFunctionRecorder.freshSnapshots
     freshPathSymbols = mergedFunctionRecorder.freshPathSymbols
     freshMacros = mergedFunctionRecorder.freshMacros
-    preQPMasks = Map.from(mergedFunctionRecorder.freshQPMasks.map(m => m._1 -> (m._2, m._3)))
+    preQPMasks = mergedFunctionRecorder.freshQPMasks
 
     freshSymbolsAcrossAllPhases ++= freshPathSymbols map FunctionDecl
     freshSymbolsAcrossAllPhases ++= freshArps.map(pair => FunctionDecl(pair._1))
@@ -147,7 +151,7 @@ class FunctionData(val programFunction: ast.Function,
          freshFieldInvs.flatMap(_.definitionalAxioms)
       ++ freshFvfsAndDomains.flatMap (fvfDef => fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
       ++ freshArps.map(_._2)
-      ++ preQPMasks.map(_._2._2))
+      ++ preQPMasks.map(_._3))
 
     // Filter out nested definitions that contain free variables.
     // This should not happen, but currently can, due to bugs in the function axiomatisation code.
@@ -189,6 +193,44 @@ class FunctionData(val programFunction: ast.Function,
     }else{
       Seq()
     }
+  }
+
+  lazy val qpMaskAxioms: Seq[Term] = {
+    var maskIdentities: List[Term] = Nil
+    var maskDefs: List[Term] = Nil
+    val handledExps = mutable.HashSet[ast.Exp]()
+    for ((exp, fnc, fncCnstrnt) <- preQPMasks) {
+      if (!handledExps.contains(exp)) {
+        handledExps.add(exp)
+        for ((expp, fncp, _) <- preQPMasks) {
+          if (exp == expp && fnc != fncp) {
+            val argVars = fnc.argSorts.zipWithIndex.map(ia => Var(Identifier("arg" + ia._2), ia._1))
+            val one = App(fnc, argVars)
+            val other = App(fncp, argVars)
+            maskIdentities = Forall(argVars, App(fnc, argVars) === App(fncp, argVars), Seq(Trigger(one), Trigger(other))) :: maskIdentities
+          }
+        }
+        /*
+        exp match {
+          case QuantifiedPermissionAssertion(forall, cond, ast.FieldAccessPredicate(loc, perm)) =>
+            val permExp = CondExp(cond, perm, ast.NoPerm()())()
+            val permTerm = expressionTranslator.translatePrecondition(program, Seq(permExp), this)(0)
+            val argVars = formalArgs.values.toSeq ++ Seq(`?s`)
+            val permQuant = Forall(argVars, App(fnc, argVars) === permTerm, Seq(Trigger(App(fnc, argVars))))
+            maskDefs = permQuant :: maskDefs
+          case QuantifiedPermissionAssertion(forall, cond, ast.PredicateAccessPredicate(loc, perm)) =>
+            val permExp = CondExp(cond, perm, ast.NoPerm()())()
+            val permTerm = expressionTranslator.translatePrecondition(program, Seq(permExp), this)(0)
+            val argVars = formalArgs.values.toSeq ++ Seq(`?s`)
+            val permQuant = Forall(argVars, App(fnc, argVars) === permTerm, Seq(Trigger(App(fnc, argVars))))
+            maskDefs = permQuant :: maskDefs
+        }
+         */
+        maskDefs = fncCnstrnt :: maskDefs
+      }
+    }
+
+    maskIdentities ++ maskDefs
   }
 
   lazy val postAxiom: Option[Term] = {
