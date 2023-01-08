@@ -340,6 +340,7 @@ object producer extends ProductionRules {
               }}})))
 
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
+        assert(!Verifier.config.carbonQPs())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         evals(s, bodyVars, _ => pve, v)((s1, args,v1) => {
@@ -374,6 +375,7 @@ object producer extends ProductionRules {
           Q(s2, v1)})
 
       case wand: ast.MagicWand =>
+        assert(!Verifier.config.carbonQPs())
         val snap = sf(sorts.Snap, v)
         magicWandSupporter.createChunk(s, wand, MagicWandSnapshot(snap), pve, v)((s1, chWand, v1) =>
           chunkSupporter.produce(s1, s1.h, chWand, v1)((s2, h2, v2) =>
@@ -507,6 +509,7 @@ object producer extends ProductionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
+        assert(!Verifier.config.carbonQPs())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val optTrigger =

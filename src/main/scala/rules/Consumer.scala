@@ -425,6 +425,7 @@ object consumer extends ConsumptionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
+        assert(!Verifier.config.carbonQPs())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val qid = MagicWandIdentifier(wand, s.program).toString
@@ -575,6 +576,7 @@ object consumer extends ConsumptionRules {
 
       /* Handle wands */
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
+        assert(!Verifier.config.carbonQPs())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
 
@@ -607,6 +609,7 @@ object consumer extends ConsumptionRules {
             Q(s4, h3, snap, v3)})})
 
       case wand: ast.MagicWand =>
+        assert(!Verifier.config.carbonQPs())
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val ve = pve dueTo MagicWandChunkNotFound(wand)
           val description = s"consume wand $wand"
