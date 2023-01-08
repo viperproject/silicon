@@ -725,17 +725,7 @@ object evaluator extends EvaluationRules {
            *       although the latter is not necessary.
            */
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) => {
-            val pres = func.pres.map(_.transform {
-              /* [Malte 2018-08-20] Two examples of the test suite, one of which is the regression
-               * for Carbon issue #210, fail if the subsequent code that strips out triggers from
-               * exhaled function preconditions, is commented. The code was originally a work-around
-               * for Silicon issue #276. Removing triggers from function preconditions is OK-ish
-               * because they are consumed (exhaled), i.e. asserted. However, the triggers are
-               * also used to internally generated quantifiers, e.g. related to QPs. My hope is that
-               * this hack is no longer needed once heap-dependent triggers are supported.
-               */
-              case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)
-            })
+            val pres = func.pres
             /* Formal function arguments are instantiated with the corresponding actual arguments
              * by adding the corresponding bindings to the store. To avoid formals in error messages
              * and to report actuals instead, we have two choices: the first is two attach a reason
