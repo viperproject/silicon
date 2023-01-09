@@ -18,6 +18,7 @@ import viper.silicon.state.terms.{App, _}
 import viper.silicon.state.terms.predef._
 import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
+import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map, toMap}
 import viper.silver.ast.CondExp
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
@@ -305,11 +306,21 @@ class FunctionData(val programFunction: ast.Function,
       val pre = preconditionFunctionApplication
       val nestedDefinitionalAxioms = generateNestedDefinitionalAxioms
       val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
-      val allTriggers = (
-           Seq(Trigger(functionApplication))
-        ++ predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt))))
+      if (Verifier.config.carbonQPs()) {
+        val predTriggers = predicateTriggers.values.map(pt => pt match {
+          case App(f, args) => Trigger(Seq(limitedFunctionApplication, App(f, `?sp` +: args.tail)))
+        }).toSeq
+        val predAxiom = Forall(`?sp` +: arguments, body, predTriggers)
+        val directAxiom = Forall(arguments, body, Seq(Trigger(functionApplication)))
+        And(predAxiom, directAxiom)
+      } else {
+        val allTriggers = (
+          Seq(Trigger(functionApplication))
+            ++ predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt))))
 
-      Forall(arguments, body, allTriggers)})
+        Forall(arguments, body, allTriggers)
+      }
+      })
   }
 
   lazy val preconditionPropagationAxiom: Seq[Term] = {

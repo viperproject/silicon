@@ -2337,6 +2337,7 @@ object Let extends ((Map[Var, Term], Term) => Term) {
 
 object predef {
   val `?s` = Var(Identifier("s@$"), sorts.Snap) // with SnapshotTerm
+  val `?sp` = Var(Identifier("sp@$"), sorts.Snap) // with SnapshotTerm
   val `?r` = Var(Identifier("r"), sorts.Ref)
 
   val Zero = IntLiteral(0)
