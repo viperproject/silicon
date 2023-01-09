@@ -373,10 +373,13 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       case _: ast.Predicate => toSnapTree(formalQVars)
     }
     val qpMaskGet = HeapLookup(qpMask, argTerm)
-    val qpMaskConstraint = if (s.isProducingFunctionPre.isDefined)
-      Forall(constraintVars ++ formalQVars, Implies(And(v.decider.pcs.assumptions), qpMaskGet === conditionalizedPermissions), Seq(Trigger(qpMaskGet)), "qpMaskdef")
-    else
+    val qpMaskConstraint = if (s.isProducingFunctionPre.isDefined) {
+      val maskDef = Forall(constraintVars ++ formalQVars, Implies(And(v.decider.pcs.assumptions), qpMaskGet === conditionalizedPermissions), Seq(Trigger(qpMaskGet)), "qpMaskdef")
+      val invDefs = Forall(constraintVars, And(inverseFunctions.definitionalAxioms), Seq(Trigger(qpMask)), "qpMaskInvDef")
+      And(maskDef, invDefs)
+    } else {
       Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+    }
     v.decider.assume(qpMaskConstraint)
 
     val currentChunk = findCarbonChunk(s.h, resource)
