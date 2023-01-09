@@ -312,7 +312,10 @@ class FunctionData(val programFunction: ast.Function,
         }).toSeq
         val predAxiom = Forall(`?sp` +: arguments, body, predTriggers)
         val directAxiom = Forall(arguments, body, Seq(Trigger(functionApplication)))
-        And(predAxiom, directAxiom)
+        if (predTriggers.nonEmpty)
+          And(predAxiom, directAxiom)
+        else
+          directAxiom
       } else {
         val allTriggers = (
           Seq(Trigger(functionApplication))
