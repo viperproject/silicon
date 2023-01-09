@@ -1989,7 +1989,15 @@ object MaskAdd extends ((Term, Term, Term) => Term) {
   def unapply(ma: MaskAdd) = Some((ma.mask, ma.at, ma.addition))
 }
 
-case class HeapSingleton(at: Term, value: Term, sort: Sort) extends Term
+class HeapSingleton(val at: Term, val value: Term, val sort: Sort) extends Term
+
+object HeapSingleton extends ((Term, Term, Sort) => Term) {
+  def apply(at: Term, value: Term, sort: Sort) = value match {
+    case HeapLookup(otherHeap, at2) if at == at2 => otherHeap
+    case _ => new HeapSingleton(at, value, sort)
+  }
+  def unapply(hs: HeapSingleton) = Some((hs.at, hs.value, hs.sort))
+}
 
 class IdenticalOnKnownLocations(val oldHeap: Term, val newHeap: Term, val mask: Term) extends Term {
  // utils.assertSort(oldHeap, "old heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
