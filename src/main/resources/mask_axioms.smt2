@@ -23,6 +23,19 @@
     :qid |qp.$Hp.maskDomainIdentical-def|
     )))
 
+(assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>)) (!
+      (=>
+        (forall ((x $Ref)) (!
+                                                    (= ($Hp.get_$Perm m1 x) ($Hp.get_$Perm m2 x))
+                                                  :pattern (($Hp.get_$Perm m1 x) ($Hp.get_$Perm m2 x))
+                                                  :qid |qp.$Hp.maskEq-def-inner|
+                                                  ))
+        ($Hp.maskEq m1 m2)
+        )
+    :pattern (($Hp.maskEq m1 m2))
+    :qid |qp.$Hp.maskEq-def|
+    )))
+
 
 (assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>)) (!
       (forall ((r $Ref)) (!

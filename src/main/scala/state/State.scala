@@ -150,7 +150,7 @@ object State {
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, hack, retryLevel, useHeapTriggers,
-                 isConsumingFunctionPre, isProducingFunctionPre) =>
+                 isConsumingFunctionPre1, isProducingFunctionPre) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -175,7 +175,7 @@ object State {
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `retryLevel`, `useHeapTriggers`,
-                     `isConsumingFunctionPre`, `isProducingFunctionPre`) =>
+                     isConsumingFunctionPre2, `isProducingFunctionPre`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -187,13 +187,16 @@ object State {
 
             val ssCache3 = ssCache1 ++ ssCache2
 
+            val isConsumingFunctionPre3 = None
+
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
                     constrainableARPs = constrainableARPs3,
                     ssCache = ssCache3,
                     smCache = smCache3,
-                    pmCache = pmCache3)
+                    pmCache = pmCache3,
+                    isConsumingFunctionPre = isConsumingFunctionPre3)
 
           case _ =>
             val err = new StringBuilder()

@@ -12,7 +12,7 @@ import viper.silicon.rules.quantifiedChunkSupporter.{createFailure, getFreshInve
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{MaskSort, PredMaskSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, App, AtLeast, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMinus, PermNegation, PermPlus, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, predef, sorts, toSnapTree}
+import viper.silicon.state.terms.{And, App, AtLeast, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskEq, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermLiteral, PermMin, PermMinus, PermNegation, PermPlus, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, predef, sorts, toSnapTree}
 import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, FunctionPreconditionTransformer, Heap, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -22,7 +22,8 @@ import viper.silver.ast.{LocationAccess, PermAdd}
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 
-import scala.collection.immutable
+import scala.collection.mutable.ListBuffer
+import scala.collection.{immutable, mutable}
 
 class CarbonQuantifiedChunkSupport extends SymbolicExecutionRules {
 
@@ -43,6 +44,80 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       }
     })
     toSnapTree(snapTerms)
+  }
+
+
+  def removeSingleAdd(origMask: Term, at: Term, amount: Term, v: Verifier): Term = {
+    val termAdditions = mutable.LinkedHashMap[Term, Term]()
+    val termRemovals = mutable.LinkedHashMap[Term, Term]()
+    val maskAdditions = mutable.LinkedHashSet[Term]()
+    val maskRemovals = mutable.LinkedHashSet[Term]()
+
+    var remainingAmount = amount
+    var done = false
+
+    def traverse(mask: Term): Unit = mask match {
+      case MaskAdd(m, r, PermNegation(v)) => termRemovals.update(r, v); traverse(m)
+      case MaskAdd(m, r, v) => termAdditions.update(r, v); traverse(m)
+      case MaskSum(m1, m2) => traverse(m1); traverse(m2)
+      case MaskDiff(m1, m2) => maskRemovals.add(m2); traverse(m1)
+      case ZeroMask() =>
+      case PredZeroMask() =>
+      case t => maskAdditions.add(t)
+    }
+    traverse(origMask)
+
+    val syntacticAdditions = termAdditions.filter(_._1 == at)
+    val directMatch = syntacticAdditions.find(_._2 == amount)
+
+    val toReplace = mutable.HashMap.from(if (directMatch.isDefined) {
+      remainingAmount = NoPerm()
+      Seq((directMatch.get, NoPerm()))
+    } else {
+      val additions = (syntacticAdditions ++ termAdditions.filterNot(_._2 == at)).toSeq.distinct
+      val result = ListBuffer[((Term, Term), Term)]()
+      for ((r, add) <- additions) {
+        if (!done) {
+          if (v.decider.check(at === r, Verifier.config.checkTimeout())) {
+            val toTake = PermMin(add, remainingAmount)
+            remainingAmount = PermMinus(remainingAmount, toTake)
+            val chunkLeft = PermMinus(add, toTake)
+            result.append(((r, add), chunkLeft))
+
+            if (v.decider.check(remainingAmount === NoPerm(), Verifier.config.checkTimeout()))
+              done = true
+          }
+        }
+      }
+      result.toSeq
+    })
+
+    if (toReplace.nonEmpty) {
+      val tmp = toReplace.toMap
+      def replace(mask: Term): Term = mask match {
+        case mask if toReplace.isEmpty => mask
+        case MaskAdd(m, r, v) if toReplace.contains((r, v)) =>
+          val newVal = toReplace((r, v))
+          toReplace.remove((r, v))
+          MaskAdd(replace(m), r, newVal)
+        case MaskAdd(m, r, v) => MaskAdd(replace(m), r, v)
+        case MaskSum(m1, m2) => MaskSum(replace(m1), replace(m2))
+        case MaskDiff(m1, m2) => MaskDiff(replace(m1), m2)
+        case ZeroMask() => mask
+        case PredZeroMask() => mask
+        case t => t
+      }
+      val replaced = replace(origMask)
+      val res = MaskAdd(replaced, at, PermNegation(remainingAmount))
+//      val check = v.decider.check(MaskEq(res, MaskAdd(origMask, at, PermNegation(amount))), Verifier.config.checkTimeout())
+//      if (!check) {
+//        val real = v.decider.check(MaskEq(res, MaskAdd(origMask, at, PermNegation(amount))), 0)
+//        println("oops")
+//      }
+      res
+    } else {
+      MaskAdd(origMask, at, PermNegation(amount))
+    }
   }
 
   def consumeSingleLocation(s: State,
@@ -89,7 +164,12 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
             // constrain wildcard
             v.decider.assume(PermLess(permissions, maskValue))
           }
-          val newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(permissions))//HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
+          var newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(permissions))//HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
+          newMask = newMask match {
+            case MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)) => removeSingleAdd(resChunk.mask, argTerm, permissions, v)
+            case _ => newMask
+          }
+
           val newChunk = if (!havoc || s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
             // no need to havoc
             resChunk.copy(mask = newMask)

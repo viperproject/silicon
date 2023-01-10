@@ -983,6 +983,7 @@ object Greater extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Te
   def apply(e0: Term, e1: Term) = (e0, e1) match {
     case (IntLiteral(n0), IntLiteral(n1)) => if (n0 > n1) True() else False()
     case (t0, t1) if t0 == t1 => False()
+    case (p1: PermLiteral, p2: PermLiteral) => if (p1.literal > p2.literal) True() else False()
     case _ => new Greater(e0, e1)
   }
 
@@ -999,6 +1000,7 @@ object AtLeast extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Te
   def apply(e0: Term, e1: Term) = (e0, e1) match {
     case (IntLiteral(n0), IntLiteral(n1)) => if (n0 >= n1) True() else False()
     case (t0, t1) if t0 == t1 => True()
+    case (p1: PermLiteral, p2: PermLiteral) => if (p1.literal >= p2.literal) True() else False()
     case _ => new AtLeast(e0, e1)
   }
 
@@ -1255,6 +1257,7 @@ class PermNegation(val p: Term) extends  Permissions
 object PermNegation extends (Term => Term) {
   def apply(p: Term) = p match {
     case PermNegation(pp) => pp
+    case NoPerm() => p
     case _ => new PermNegation(p)
   }
 
@@ -1942,6 +1945,7 @@ object HeapLookup extends ((Term, Term) => Term) {
     case (MergeSingle(_, msk, r1, v), r2) if r1 == r2 && (msk == ZeroMask() || msk == PredZeroMask()) => v // incomplete for anything but zeromasks, ignores info from merged heap
     case (MaskAdd(ZeroMask(), r1, v), r2) if r1 == r2 => v
     case (MaskAdd(PredZeroMask(), r1, v), r2) if r1 == r2 => v
+    //case (MaskAdd(m2, r1, v), r2) => PermPlus(HeapLookup(m2, r2), Ite(r1 === r2, v, NoPerm())) //TODO: is this good or bad?
     case _ => new HeapLookup(heap, at)
   }
 
@@ -1983,6 +1987,11 @@ object MaskAdd extends ((Term, Term, Term) => Term) {
   def apply(mask: Term, at: Term, addition: Term) = (mask, addition) match {
     case (_, NoPerm()) => mask
     case (MaskAdd(m2, at2, add2), _) if at2 == at => MaskAdd(m2, at, PermPlus(addition, add2))
+    case (MaskAdd(ZeroMask(), at2, cur), PermNegation(sub)) => // we must have at == at2
+      MaskAdd(ZeroMask(), at2, PermMinus(cur, sub))
+    case (MaskAdd(PredZeroMask(), at2, cur), PermNegation(sub)) =>
+      MaskAdd(PredZeroMask(), at2, PermMinus(cur, sub))
+    case (MaskAdd(MaskAdd(m1, at1, add1), at2, add2), PermNegation(sub)) if at == at1=> MaskAdd(MaskAdd(m1, at1, PermMinus(add1, sub)), at2, add2)
     case _ => new MaskAdd(mask, at, addition)
   }
 
@@ -2050,6 +2059,10 @@ object MergeHeaps extends ((Term, Term, Term, Term) => Term) {
   }
 
   def unapply(mh: MergeHeaps) = Some((mh.h1, mh.m1, mh.h2, mh.m2))
+}
+
+case class MaskEq(m1: Term, m2: Term) extends Term {
+  val sort = sorts.Bool
 }
 
 class MaskSum(val m1: Term, val m2: Term) extends Term {
