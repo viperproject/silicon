@@ -427,9 +427,10 @@ object evaluator extends EvaluationRules {
           val fi = v1.symbolConverter.toFunction(s.program.findDomainFunction(funcName), inSorts :+ outSort, s.program)
           Q(s1, App(fi, tArgs), v1)})
 
-      case ast.BackendFuncApp(func, eArgs) =>
+      case ast.BackendFuncApp(funcName, eArgs) =>
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) => {
-          val fi = v1.symbolConverter.toFunction(func)
+          val func = s.program.findDomainFunction(funcName)
+          val fi = v1.symbolConverter.toFunction(func, s.program)
           Q(s1, App(fi, tArgs), v1)})
 
       case ast.CurrentPerm(resacc) =>

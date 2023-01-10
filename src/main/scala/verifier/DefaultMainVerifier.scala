@@ -209,6 +209,7 @@ class DefaultMainVerifier(config: Config,
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
       val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
+        .flatMap(extractAllVerificationResults)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -218,6 +219,7 @@ class DefaultMainVerifier(config: Config,
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
       val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
+        .flatMap(extractAllVerificationResults)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -246,6 +248,7 @@ class DefaultMainVerifier(config: Config,
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
           val results = v.methodSupporter.verify(s, method)
+            .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
@@ -259,6 +262,7 @@ class DefaultMainVerifier(config: Config,
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
           val results = v.cfgSupporter.verify(s, cfg)
+            .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon"/*, cfg*/, elapsed, condenseToViperResult(results))
@@ -515,4 +519,12 @@ class DefaultMainVerifier(config: Config,
     }
     results
   }
+
+  /**
+    * In case Silicon encounters an expected error (i.e. `ErrorMessage.isExpected`), Silicon continues (until at most
+    * config.numberOfErrorsToReport() have been encountered (per member)).
+    * This function combines the verification result with verification results stored in its `previous` field.
+    */
+  private def extractAllVerificationResults(res: VerificationResult): Seq[VerificationResult] =
+    res :: res.previous.toList
 }

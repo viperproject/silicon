@@ -14,7 +14,6 @@ import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
-import viper.silicon.verifier.Verifier
 
 sealed trait Node {
   def toString: String
