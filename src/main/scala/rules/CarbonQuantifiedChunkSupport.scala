@@ -544,7 +544,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
           val newHeapTriggers = tTriggers.map(t => {
             val newTerms: Seq[Term] = t.p.map(trm => trm match {
               case HeapLookup(currentChunk.heap, r) => HeapLookup(newHeap, r)
-              case HeapLookup(currentChunk.mask, r) => HeapLookup(newMask, r)
+              case HeapLookup(currentChunk.mask, r) => HeapLookup(qpMask, r)
               case _ => trm
             })
 
