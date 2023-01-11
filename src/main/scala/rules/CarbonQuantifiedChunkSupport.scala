@@ -93,7 +93,6 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     })
 
     if (toReplace.nonEmpty) {
-      val tmp = toReplace.toMap
       def replace(mask: Term): Term = mask match {
         case mask if toReplace.isEmpty => mask
         case MaskAdd(m, r, v) if toReplace.contains((r, v)) =>
@@ -117,6 +116,68 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       res
     } else {
       MaskAdd(origMask, at, PermNegation(amount))
+    }
+  }
+
+  def subtractMask(origMask: Term, removedMask: Term, v: Verifier): Term = {
+    val termAdditions = mutable.LinkedHashMap[Term, Term]()
+    val termRemovals = mutable.LinkedHashMap[Term, Term]()
+    val maskAdditions = mutable.LinkedHashSet[Term]()
+    val maskRemovals = mutable.LinkedHashSet[Term]()
+
+    var done = false
+    var foundTerm: Option[Term] = None
+
+    def traverse(mask: Term): Unit = mask match {
+      case MaskAdd(m, r, PermNegation(v)) => termRemovals.update(r, v); traverse(m)
+      case MaskAdd(m, r, v) => termAdditions.update(r, v); traverse(m)
+      case MaskSum(m1, m2) => traverse(m1); traverse(m2)
+      case MaskDiff(m1, m2) => maskRemovals.add(m2); traverse(m1)
+      case ZeroMask() =>
+      case PredZeroMask() =>
+      case t => maskAdditions.add(t)
+    }
+
+    traverse(origMask)
+
+    foundTerm = maskAdditions.find(_ == removedMask)
+
+    if (!foundTerm.isDefined) {
+      val additions = maskAdditions.toSeq.distinct
+      for (add <- additions) {
+        if (!done) {
+          if (v.decider.check(MaskEq(add, removedMask), Verifier.config.checkTimeout())) {
+            foundTerm = Some(add)
+            done = true
+          }
+        }
+      }
+    }
+
+    if (foundTerm.isDefined) {
+      def replace(mask: Term): Term = mask match {
+        case mask if foundTerm.isEmpty => mask
+        case MaskAdd(m, r, v) => MaskAdd(replace(m), r, v)
+        case MaskSum(m1, m2) if m1 == foundTerm.get =>
+          foundTerm = None
+          m2
+        case MaskSum(m1, m2) if m2 == foundTerm.get =>
+          foundTerm = None
+          m1
+        case MaskSum(m1, m2) => MaskSum(replace(m1), replace(m2))
+        case MaskDiff(m1, m2) => MaskDiff(replace(m1), m2)
+        case ZeroMask() => mask
+        case PredZeroMask() => mask
+        case t if t == foundTerm.get =>
+          foundTerm = None
+          if (origMask.sort == MaskSort) ZeroMask() else PredZeroMask()
+        case t => t
+      }
+
+      val replaced = replace(origMask)
+      replaced
+    } else {
+      MaskDiff(origMask, removedMask)
     }
   }
 
@@ -166,7 +227,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
           }
           var newMask = MaskAdd(resChunk.mask, argTerm, PermNegation(permissions))//HeapUpdate(resChunk.mask, argTerm, PermMinus(maskValue, permissions))
           newMask = newMask match {
-            case MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)) => removeSingleAdd(resChunk.mask, argTerm, permissions, v)
+            case MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)) if s.isConsumingFunctionPre.isEmpty => removeSingleAdd(resChunk.mask, argTerm, permissions, v)
             case _ => newMask
           }
 
@@ -334,8 +395,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                   (qpMask, s.functionRecorder.recordFieldInv (inverseFunctions).recordArp(qpMask, qpMaskConstraint))
                 }
 
-
-                val newMask = MaskDiff(currentChunk.mask, qpMask)
+                // simplify only if this mask will be used later
+                val newMask = if (s.isConsumingFunctionPre.isDefined) MaskDiff(currentChunk.mask, qpMask) else subtractMask(currentChunk.mask, qpMask, v)
 
                 val newChunk = if (!havoc || s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
                   // no need to havoc
