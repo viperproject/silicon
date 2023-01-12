@@ -10,6 +10,7 @@ import viper.silver.ast
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
+import viper.silver.ast.WeightedQuantifier
 
 trait ExpressionTranslator {
   /* TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
@@ -88,10 +89,18 @@ trait ExpressionTranslator {
           }
         )))
 
+        val weight = sourceQuant.info match {
+          case w: WeightedQuantifier => Some(w.weight)
+          case _ => None
+        }
+
         Quantification(qantOp,
                        vars map (v => Var(Identifier(v.name), toSort(v.typ))),
                        f(body),
-                       translatedTriggers)
+                       translatedTriggers,
+                       "",
+                       false,
+                       weight)
 
       case _: ast.TrueLit => True()
       case _: ast.FalseLit => False()
@@ -129,11 +138,11 @@ trait ExpressionTranslator {
         val df = Fun(id, inSorts, outSort)
         App(df, tArgs)
 
-      case ast.BackendFuncApp(func, args) =>
+      case bfa@ast.BackendFuncApp(func, args) =>
         val tArgs = args map f
         val inSorts = tArgs map (_.sort)
-        val outSort = toSort(func.typ)
-        val id = Identifier(func.smtName)
+        val outSort = toSort(bfa.typ)
+        val id = Identifier(bfa.interpretation)
         val sf = SMTFun(id, inSorts, outSort)
         App(sf, tArgs)
 

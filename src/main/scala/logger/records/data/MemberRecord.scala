@@ -6,14 +6,15 @@
 
 package viper.silicon.logger.records.data
 
+import viper.silicon.logger.LogConfig
 import viper.silicon.logger.records.RecordData
 import viper.silicon.state.terms.Term
 
 trait MemberRecord extends DataRecord {
   var lastFailedProverQuery: Option[Term] = None
 
-  override lazy val getData: RecordData = {
-    val data = super.getData
+  override def getData(config: LogConfig): RecordData = {
+    val data = super.getData(config)
     data.lastSMTQuery = lastFailedProverQuery
     data
   }

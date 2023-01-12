@@ -10,7 +10,6 @@ import scala.annotation.unused
 import viper.silicon.Config
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CommentRecord, SingleMergeRecord}
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
@@ -74,7 +73,7 @@ class CarbonQPStateConsolidator extends MinimalStateConsolidator {
 class DefaultStateConsolidator(protected val config: Config) extends StateConsolidationRules {
   def consolidate(s: State, v: Verifier): State = {
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().openScope(comLog)
+    val sepIdentifier = v.symbExLog.openScope(comLog)
     v.decider.prover.comment("[state consolidation]")
     v.decider.prover.saturate(config.proverSaturationTimeouts.beforeIteration)
 
@@ -94,7 +93,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
         var fixedPointRound: Int = 0
         do {
           val roundLog = new CommentRecord("Round " + fixedPointRound, s, v.decider.pcs)
-          val roundSepIdentifier = SymbExLogger.currentLog().openScope(roundLog)
+          val roundSepIdentifier = v.symbExLog.openScope(roundLog)
 
           val (_functionRecorder, _mergedChunks, _, snapEqs) = singleMerge(functionRecorder, destChunks, newChunks, v)
 
@@ -106,7 +105,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           newChunks = mergedChunks
           continue = snapEqs.nonEmpty
 
-          SymbExLogger.currentLog().closeScope(roundSepIdentifier)
+          v.symbExLog.closeScope(roundSepIdentifier)
           fixedPointRound = fixedPointRound + 1
         } while (continue)
 
@@ -122,7 +121,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
         }
 
-        SymbExLogger.currentLog().closeScope(sepIdentifier)
+        v.symbExLog.closeScope(sepIdentifier)
         (functionRecorder, hs :+ Heap(allChunks))
       }
 
@@ -145,7 +144,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
 
   def merge(fr1: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
     val mergeLog = new CommentRecord("Merge", null, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().openScope(mergeLog)
+    val sepIdentifier = v.symbExLog.openScope(mergeLog)
     val (nonQuantifiedChunks, otherChunks) = partition(h)
     val (newNonQuantifiedChunks, newOtherChunk) = partition(newH)
     val (fr2, mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(fr1, nonQuantifiedChunks, newNonQuantifiedChunks, v)
@@ -158,7 +157,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
       v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
     }
 
-    SymbExLogger.currentLog().closeScope(sepIdentifier)
+    v.symbExLog.closeScope(sepIdentifier)
     (fr2, Heap(mergedChunks ++ otherChunks ++ newOtherChunk))
   }
 
@@ -172,7 +171,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
                             InsertionOrderedSet[Term]) = {
 
     val mergeLog = new SingleMergeRecord(destChunks, newChunks, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().openScope(mergeLog)
+    val sepIdentifier = v.symbExLog.openScope(mergeLog)
     // bookkeeper.heapMergeIterations += 1
 
     val initial = (fr, destChunks, Seq[NonQuantifiedChunk](), InsertionOrderedSet[Term]())
@@ -197,7 +196,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           (fr1, nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accSnapEqs)
       }
     }
-    SymbExLogger.currentLog().closeScope(sepIdentifier)
+    v.symbExLog.closeScope(sepIdentifier)
     result
   }
 

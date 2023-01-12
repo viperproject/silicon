@@ -18,7 +18,6 @@ import viper.silicon.state._
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms._
 import viper.silicon.interfaces._
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.executionFlowController
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
@@ -87,7 +86,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
-      SymbExLogger.openMemberScope(predicate, null, v.decider.pcs)
+      openSymbExLogger(predicate)
 
       val heap = if (Verifier.config.carbonQPs()) {
         val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
@@ -114,7 +113,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
                     Success())})
       }
 
-      SymbExLogger.closeMemberScope()
+      symbExLog.closeMemberScope()
       Seq(result)
     }
 

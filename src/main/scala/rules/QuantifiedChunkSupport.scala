@@ -14,7 +14,6 @@ import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotF
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
@@ -1332,7 +1331,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                        : (ConsumptionResult, State, Seq[QuantifiedBasicChunk]) = {
 
     val rmPermRecord = new CommentRecord("removePermissions", s, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().openScope(rmPermRecord)
+    val sepIdentifier = v.symbExLog.openScope(rmPermRecord)
 
     val requiredId = ChunkIdentifier(resource, s.program)
     assert(
@@ -1363,7 +1362,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       val permsTaken = App(permsTakenMacro, permsTakenArgs)
 
       currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(permsTakenDecl)
-      SymbExLogger.currentLog().addMacro(permsTaken, permsTakenBody)
+      v.symbExLog.addMacro(permsTaken, permsTakenBody)
 
       permsNeeded = PermMinus(permsNeeded, permsTaken)
 
@@ -1424,7 +1423,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         success
 
     v.decider.prover.comment("Done removing quantified permissions")
-    SymbExLogger.currentLog().closeScope(sepIdentifier)
+    v.symbExLog.closeScope(sepIdentifier)
     
     (success, s.copy(functionRecorder = currentFunctionRecorder), remainingChunks)
   }
@@ -1481,11 +1480,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
   /* Misc */
 
   /* ATTENTION: Never create a snapshot map without calling this method! */
-  private def freshSnapshotMap(s: State,
-                               resource: ast.Resource,
-                               appliedArgs: Seq[Term],
-                               v: Verifier)
-                              : Term = {
+  /*private*/ def freshSnapshotMap(s: State,
+                                   resource: ast.Resource,
+                                   appliedArgs: Seq[Term],
+                                   v: Verifier)
+                                  : Term = {
 
     /* TODO: Snapshot maps *not* used in snapshots, e.g. those used in chunks, could
      *       be encoded as (total, underconstrained) SMT functions since their domains

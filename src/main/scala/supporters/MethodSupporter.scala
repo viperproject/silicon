@@ -13,7 +13,6 @@ import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.interfaces.state.Chunk
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer, quantifiedChunkSupporter}
@@ -49,7 +48,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      SymbExLogger.openMemberScope(method, null, v.decider.pcs)
+      openSymbExLogger(method)
 
       val heap = if (Verifier.config.carbonQPs()) {
         val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
@@ -96,9 +95,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
                   val s4 = s3.copy(h = heap)
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
-                  val sepIdentifier = SymbExLogger.currentLog().openScope(impLog)
+                  val sepIdentifier = symbExLog.openScope(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, _) => {
-                    SymbExLogger.currentLog().closeScope(sepIdentifier)
+                    symbExLog.closeScope(sepIdentifier)
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
@@ -106,7 +105,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     consumes(s4, posts, postViolated, v4)((_, _, _) =>
                       Success()))}) }  )})})
 
-      SymbExLogger.closeMemberScope()
+      symbExLog.closeMemberScope()
       Seq(result)
     }
 
