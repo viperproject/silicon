@@ -118,7 +118,7 @@ class TermToSMTLib2Converter
 
 
     /* Handle quantifiers that have at most one trigger set */
-    case Quantification(quant, vars, body, triggers, name, _) =>
+    case Quantification(quant, vars, body, triggers, name, _, weight) =>
       val docBody = render(body)
 
       if (vars.nonEmpty) {
@@ -141,12 +141,17 @@ class TermToSMTLib2Converter
           if (name.isEmpty) nil
           else s":qid |$name|"
 
+        val docWeight = weight match {
+          case Some(value) => line <> text(":weight") <+> value.toString
+          case None => nil
+        }
+
         // Omit annotation for empty name and triggers since cvc5 fails
         // for annotations containing zero attributes (Z3 simply ignores it).
         if (name.isEmpty && triggers.isEmpty)
-          parens(docQuant <+> parens(docVars) <+> nest(defaultIndent, line <> docBody))
+          parens(docQuant <+> parens(docVars) <+> nest(defaultIndent, line <> docBody <> docWeight))
         else
-          parens(docQuant <+> parens(docVars) <+> parens(text("!") <> nest(defaultIndent, line <> docBody <> line <> docTriggers <> line <> docQid)))
+          parens(docQuant <+> parens(docVars) <+> parens(text("!") <> nest(defaultIndent, line <> docBody <> line <> docTriggers <> line <> docQid <> docWeight)))
       } else {
         // TODO: This seems like a hack.
         //       It would be better to avoid creating quantifications with no variables in the first place.

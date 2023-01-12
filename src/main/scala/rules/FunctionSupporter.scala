@@ -19,4 +19,9 @@ object functionSupporter {
     val id = function.id.withSuffix("%", "stateless")
     Fun(id, function.argSorts.tail, terms.sorts.Bool)
   }
+
+  def preconditionVersion(function: HeapDepFun): HeapDepFun = {
+    val id = function.id.withSuffix("%", "precondition")
+    HeapDepFun(id, function.argSorts, terms.sorts.Bool)
+  }
 }
