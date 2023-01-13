@@ -119,14 +119,17 @@ object consumer extends ConsumptionRules {
       val resources = tlcs.map(_.deepCollect{
         case PredicateAccessPredicate(pa, _) => pa.loc(s.program)
         case FieldAccessPredicate(fa, _) => fa.loc(s.program)
+        case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
       }).flatten.distinct.sortWith((r1, r2) => {
         val r1Name = r1 match {
           case f: ast.Field => f.name
           case p: ast.Predicate => p.name
+          case mwi: MagicWandIdentifier => mwi.toString
         }
         val r2Name = r2 match {
           case f: ast.Field => f.name
           case p: ast.Predicate => p.name
+          case mwi: MagicWandIdentifier => mwi.toString
         }
         r1Name < r2Name
       })
@@ -141,13 +144,13 @@ object consumer extends ConsumptionRules {
                         tlcs: Seq[ast.Exp],
                         pves: Seq[PartialVerificationError],
                         v: Verifier,
-                        resources: Seq[ast.Location],
+                        resources: Seq[Any],
                         ot: Option[Term],
                         havoc: Boolean = true)
                        (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     val term = if (ot.isDefined) ot.get else {
-      val resMap: Seq[(ast.Resource, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask() else PredZeroMask())))
+      val resMap: Seq[(Any, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask() else PredZeroMask())))
       FakeMaskMapTerm(immutable.ListMap(resMap: _*))
     }
     internalConsumeTlcs(s, h, tlcs, pves, v, Some(term), havoc)((s2, h2, resMapTerm, v2) => {
@@ -573,9 +576,16 @@ object consumer extends ConsumptionRules {
       case _: ast.InhaleExhaleExp =>
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
 
+      case wand: ast.MagicWand if Verifier.config.carbonQPs() =>
+        magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
+          val ident = MagicWandIdentifier(wand, s.program)
+          val (h1, _) = carbonQuantifiedChunkSupporter.findOrCreateCarbonChunk(s1.h, ident, v1)
+          val s2 = s1.copy(h = h1)
+          carbonQuantifiedChunkSupporter.consumeSingleLocation(s2, h1, Seq(`?r`), tArgs, wand, FullPerm(), pve, v1, resMap.get.asInstanceOf[FakeMaskMapTerm].masks, havoc)(Q)
+        })
+
       /* Handle wands */
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
-        assert(!Verifier.config.carbonQPs())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
 
@@ -608,7 +618,6 @@ object consumer extends ConsumptionRules {
             Q(s4, h3, snap, v3)})})
 
       case wand: ast.MagicWand =>
-        assert(!Verifier.config.carbonQPs())
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val ve = pve dueTo MagicWandChunkNotFound(wand)
           val description = s"consume wand $wand"

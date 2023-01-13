@@ -143,14 +143,17 @@ object producer extends ProductionRules {
         val resources = as.map(_.deepCollect {
           case PredicateAccessPredicate(pa, _) => pa.loc(s.program)
           case FieldAccessPredicate(fa, _) => fa.loc(s.program)
+          case w: ast.MagicWand => MagicWandIdentifier(w, s.program)
         }).flatten.distinct.sortWith((r1, r2) => {
           val r1Name = r1 match {
             case f: ast.Field => f.name
             case p: ast.Predicate => p.name
+            case mwi: MagicWandIdentifier => mwi.toString
           }
           val r2Name = r2 match {
             case f: ast.Field => f.name
             case p: ast.Predicate => p.name
+            case mwi: MagicWandIdentifier => mwi.toString
           }
           r1Name < r2Name
         })
@@ -338,6 +341,17 @@ object producer extends ProductionRules {
                   Q(s3.copy(h = h3), v3)})
               }}})))
 
+
+      case wand: ast.MagicWand if Verifier.config.carbonQPs() =>
+        magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
+          val snap = sf(null, null)
+          val ident = MagicWandIdentifier(wand, s.program)
+          val (h1, _) = carbonQuantifiedChunkSupporter.findOrCreateCarbonChunk(s1.h, ident, v1)
+          val s2 = s1.copy(h = h1)
+          carbonQuantifiedChunkSupporter.produceSingleLocation(s2, ident, tArgs, FullPerm(), v1, snap)(Q)
+        })
+
+
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
         assert(!Verifier.config.carbonQPs())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
@@ -374,7 +388,6 @@ object producer extends ProductionRules {
           Q(s2, v1)})
 
       case wand: ast.MagicWand =>
-        assert(!Verifier.config.carbonQPs())
         val snap = sf(sorts.Snap, v)
         magicWandSupporter.createChunk(s, wand, MagicWandSnapshot(snap), pve, v)((s1, chWand, v1) =>
           chunkSupporter.produce(s1, s1.h, chWand, v1)((s2, h2, v2) =>

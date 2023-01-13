@@ -14,7 +14,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 
 
-case class BasicCarbonChunk(resourceID: ResourceID, resource: ast.Resource, mask: Term, heap: Term) extends CarbonChunk
+case class BasicCarbonChunk(resourceID: ResourceID, resource: Any, mask: Term, heap: Term) extends CarbonChunk
 
 object ChunkIdentifier {
   def apply(from: ast.Resource, program: ast.Program): ChunkIdentifer = {

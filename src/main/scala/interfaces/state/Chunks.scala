@@ -16,7 +16,7 @@ trait ChunkIdentifer
 
 trait CarbonChunk extends Chunk {
   val resourceID: ResourceID
-  val resource: ast.Resource
+  val resource: Any
   val mask: Term
   val heap: Term
 }

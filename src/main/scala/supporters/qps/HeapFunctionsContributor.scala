@@ -56,6 +56,7 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
     if (Verifier.config.carbonQPs()) {
       collectedFields ++= program.fields
       collectedPredicates ++= program.predicates
+      collectedPredicates += ast.Predicate("WAND", Seq(), None)()
 
       // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over fields
 

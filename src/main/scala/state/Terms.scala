@@ -1980,14 +1980,14 @@ object HeapLookup extends ((Term, Term) => Term) {
 }
 
 
-case class HeapToSnap(heap: Term, mask: Term, r: ast.Resource) extends Term {
+case class HeapToSnap(heap: Term, mask: Term, r: Any) extends Term {
   val sort = sorts.Snap
 }
 
-class SnapToHeap(val snap: Term, val r: ast.Resource, val sort: Sort) extends Term
+class SnapToHeap(val snap: Term, val r: Any, val sort: Sort) extends Term
 
-object SnapToHeap extends ((Term, ast.Resource, Sort) => Term) {
-  def apply(snap: Term, r: ast.Resource, sort: Sort) = snap match {
+object SnapToHeap extends ((Term, Any, Sort) => Term) {
+  def apply(snap: Term, r: Any, sort: Sort) = snap match {
     case HeapToSnap(hp, _, r2) => {
       assert(r == r2)
       hp
@@ -2053,7 +2053,7 @@ object IdenticalOnKnownLocations extends ((Term, Term, Term) => Term) {
   def unapply(iok: IdenticalOnKnownLocations) = Some((iok.oldHeap, iok.newHeap, iok.mask))
 }
 
-case class FakeMaskMapTerm(masks: immutable.ListMap[ast.Resource, Term]) extends Term {
+case class FakeMaskMapTerm(masks: immutable.ListMap[Any, Term]) extends Term {
   val sort = sorts.Snap // sure, why not
 }
 

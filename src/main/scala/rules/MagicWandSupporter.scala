@@ -15,7 +15,9 @@ import viper.silicon._
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state._
+import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.state.terms.{MagicWandSnapshot, _}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
@@ -190,6 +192,16 @@ object magicWandSupporter extends SymbolicExecutionRules {
     }
   }
 
+  def getEmptyHeap(s: State, v: Verifier) = {
+    if (Verifier.config.carbonQPs()) {
+      val fieldChunks = s.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
+      val predChunks = s.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, PredZeroMask(), v.decider.fresh("hInit", PredHeapSort)))
+      Heap(fieldChunks ++ predChunks)
+    } else {
+      Heap()
+    }
+  }
+
 //  private var cnt = 0L
 //  private val packageLogger = LoggerFactory.getLogger("package")
 
@@ -232,7 +244,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 //    s.reserveHeaps.map(v.stateFormatter.format).foreach(str => say(str, 2))
 
     val s = if (state.exhaleExt) state else
-      state.copy(reserveHeaps = Heap() :: state.h :: Nil)
+      state.copy(reserveHeaps = getEmptyHeap(state, v) :: state.h :: Nil)
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
@@ -242,7 +254,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
      *       during some executions - since such crashes are hard to debug, branch parallelisation
      *       has been disabled for now.
      */
-    val sEmp = s.copy(h = Heap(),
+    val sEmp = s.copy(h = getEmptyHeap(state, v),
                       reserveHeaps = Nil,
                       exhaleExt = false,
                       conservedPcs = Vector[RecordedPathConditions]() +: s.conservedPcs,
@@ -289,24 +301,28 @@ object magicWandSupporter extends SymbolicExecutionRules {
       }
 
       val preMark = v3.decider.setPathConditionMark()
-      if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
-        val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {
-          val (sm, smValueDef) =
-            quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
-          v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
-          v4.decider.assume(smValueDef)
-          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm, s.program)
-          appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
-          Success()
-        })
+      if (Verifier.config.carbonQPs()) {
+
       } else {
-        magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
-//          say(s"done: create wand chunk: $ch")
-          appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
-          Success()
-        })
+        if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
+          val bodyVars = wand.subexpressionsToEvaluate(s.program)
+          val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+          evals(s4, bodyVars, _ => pve, v3)((s5, args, v4) => {
+            val (sm, smValueDef) =
+              quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
+            v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
+            v4.decider.assume(smValueDef)
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm, s.program)
+            appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
+            Success()
+          })
+        } else {
+          magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
+            //          say(s"done: create wand chunk: $ch")
+            appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
+            Success()
+          })
+        }
       }
     }
 
@@ -329,8 +345,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
          * if we are executing a package ghost operation (i.e. if we are coming from the consumer).
          */
         val s2 = sLhs.copy(g = s.g, // TODO: s1.g? And analogously, s1 instead of s further down?
-                           h = Heap(),
-                           reserveHeaps = Heap() +: Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
+                           h = getEmptyHeap(s1, v1),
+                           reserveHeaps = getEmptyHeap(s1, v1) +: getEmptyHeap(s1, v1) +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
                            reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
                            exhaleExt = true,
                            oldHeaps = s.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> sLhs.h),
@@ -362,7 +378,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       // No results mean that packaging the wand resulted in inconsistent states on all paths,
       // and thus, that no wand chunk was created. In order to continue, we create one now.
       // Moreover, we need to set reserveHeaps to structurally match [State RHS] below.
-      val s1 = sEmp.copy(reserveHeaps = Heap() +: Heap() +: Heap() +: s.reserveHeaps.tail)
+      val s1 = sEmp.copy(reserveHeaps = getEmptyHeap(s, v) +: getEmptyHeap(s, v) +: getEmptyHeap(s, v) +: s.reserveHeaps.tail)
       createWandChunkAndRecordResults(s1, freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v), v)
     }
 
@@ -429,7 +445,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 
       val usedChunks = chs2.flatten
-      val (fr4, hUsed) = v2.stateConsolidator.merge(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
+      val (fr4, hUsed) = if (Verifier.config.carbonQPs())
+        carbonQuantifiedChunkSupporter.mergeWandHeaps(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
+      else
+        v2.stateConsolidator.merge(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
 
       val s4 = s3.copy(functionRecorder = fr4, reserveHeaps = hUsed +: s3.reserveHeaps.tail)
 
@@ -475,8 +494,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * heap. After a statement is executed those permissions are transferred to hOps.
        */
       val (fr, hOpsJoinUsed) = v.stateConsolidator.merge(newState.functionRecorder, newState.reserveHeaps(1), newState.h, v)
-      newState.copy(functionRecorder = fr, h = Heap(),
-          reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
+      newState.copy(functionRecorder = fr, h = getEmptyHeap(newState, v),
+          reserveHeaps = getEmptyHeap(newState, v) +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
     } else newState
 
   def getOutEdges(s: State, b: SilverBlock): Seq[Edge[Stmt, Exp]] =

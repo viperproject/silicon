@@ -56,7 +56,12 @@ class CarbonQPStateConsolidator extends MinimalStateConsolidator {
   override def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
     val mergedChunks = h.values.map(c => {
       val cChunk = c.asInstanceOf[BasicCarbonChunk]
-      val otherChunk = carbonQuantifiedChunkSupporter.findCarbonChunk(newH, cChunk.resource)
+      val otherChunk = cChunk.resource match {
+        case mwi: MagicWandIdentifier =>
+          val (_, c) =  carbonQuantifiedChunkSupporter.findOrCreateCarbonChunk(newH, mwi, v)
+          c
+        case r: ast.Resource => carbonQuantifiedChunkSupporter.findCarbonChunk(newH, r)
+      }
 
       val newMask = MaskSum(cChunk.mask, otherChunk.mask)
       val newHeap = MergeHeaps(cChunk.heap, cChunk.mask, otherChunk.heap, otherChunk.mask)
