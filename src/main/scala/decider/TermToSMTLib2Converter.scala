@@ -322,6 +322,10 @@ class TermToSMTLib2Converter
     case MergeHeaps(h1, m1, h2, m2) =>
       parens(text("$Hp.merge_") <> renderHeapType(h1.sort) <+> render(h1) <+> render(m1) <+> render(h2) <+> render(m2))
 
+    case HeapsOverlap(h1, m1, h2, m2) =>
+      parens(text("$Hp.overlap_") <> renderHeapType(h1.sort) <+> render(h1) <+> render(m1) <+> render(h2) <+> render(m2))
+
+
     case SnapToHeap(snap, resource, _) =>
       parens(text("$SortWrappers.$SnapTo$Heap<") <> (resource match {
         case f: ast.Field => f.name

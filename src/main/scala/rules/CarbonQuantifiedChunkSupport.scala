@@ -259,9 +259,10 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
         val maskValue = HeapLookup(resChunk.mask, argTerm)
 
-        val toCheck = if (consumeExact) AtLeast(maskValue, rPerm) else Greater(maskValue, NoPerm())
+        val hasAll = if (consumeExact) AtLeast(maskValue, rPerm) else Greater(maskValue, NoPerm())
+        val hasAny = Greater(maskValue, NoPerm())
 
-        v.decider.check(toCheck, Verifier.config.splitTimeout()) match {
+        v.decider.check(hasAny, Verifier.config.splitTimeout()) match {
           case true =>
             if (!consumeExact) {
               // constrain wildcard
@@ -281,16 +282,17 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
             //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
             val taken = PermMin(maskValue, rPerm)
-            val snapPermTerm = if (!consumeExact && s.isConsumingFunctionPre.isDefined) FullPerm() else rPerm
             val remainingChunk = resChunk.copy(mask = MaskAdd(resChunk.mask, argTerm, PermNegation(taken)))
             val consumedChunk = resChunk.copy(mask = MaskAdd(if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask() else PredZeroMask(), argTerm, taken))
 
-
-            // set up partially consumed heap
-            //Q(s, h - resChunk + newChunk, snap, v)
-            (Complete(), s1, h1 - resChunk + remainingChunk, Some(consumedChunk))
+            if (v.decider.check(hasAll, Verifier.config.checkTimeout())) {
+              (Complete(), s1, h1 - resChunk + remainingChunk, Some(consumedChunk))
+            } else {
+              (Incomplete(PermMinus(rPerm, taken)), s1, h1 - resChunk + remainingChunk, Some(consumedChunk))
+            }
           case false =>
-            val remaining = PermMinus(rPerm, maskValue)
+            val remaining = rPerm
+            //val consumedChunk = resChunk.copy(mask = if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask() else PredZeroMask())
             (Incomplete(remaining), s1, h1, None)
         }
       })((s4, optCh, v2) =>

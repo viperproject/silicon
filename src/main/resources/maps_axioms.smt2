@@ -56,6 +56,18 @@
     :qid |qp.$Hp.merge_$T$-def|
     )))
 
+(assert (forall ((h1 $Hp<$T$>) (m1 $Hp<$Perm>) (h2 $Hp<$T$>) (m2 $Hp<$Perm>)) (!
+       (forall ((r $Ref)) (!
+        (=> ($Hp.overlap_$T$ h1 m1 h2 m2)
+               (=> (and (> ($Hp.get_$Perm m1 r) $Perm.No) (> ($Hp.get_$Perm m2 r) $Perm.No)) (= ($Hp.get_$T$ h1 r) ($Hp.get_$T$ h2 r))))
+           :pattern (($Hp.get_$T$ h1 r))
+           :pattern (($Hp.get_$T$ h2 r))
+           :qid |qp.$Hp.overlap_$T$-def-inner|
+           ))
+    :pattern (($Hp.overlap_$T$ h1 m1 h2 m2))
+    :qid |qp.$Hp.overlap_$T$-def|
+    )))
+
 (assert (forall ((oh $Hp<$T$>) (om $Hp<$Perm>) (r $Ref) (v $S$)) (!
        (forall ((r2 $Ref)) (!
               (and

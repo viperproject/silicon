@@ -158,7 +158,9 @@ object consumer extends ConsumptionRules {
         Q(s2, h2, resMapTerm, v2)
       } else {
         val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks
-        Q(s2, h2, carbonQuantifiedChunkSupporter.convertToSnapshot(resMap, resources, h), v2)
+
+        val heapToUse = if (s.exhaleExt) s2.reserveHeaps.head else h // TODO I'm just guessing
+        Q(s2, h2, carbonQuantifiedChunkSupporter.convertToSnapshot(resMap, resources, heapToUse), v2)
       }
     })
   }

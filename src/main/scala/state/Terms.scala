@@ -1955,6 +1955,8 @@ case class PermLookup(field: String, pm: Term, at: Term) extends Term {
 class HeapLookup(val heap: Term, val at: Term) extends Term {
  // utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
  // utils.assertSort(at, "receiver", sorts.Ref)
+  if (heap.toString.contains("hInit@21@16"))
+    println("++")
 
   val sort = heap.sort match {
     case sorts.PredHeapSort => sorts.Snap
@@ -1981,6 +1983,9 @@ object HeapLookup extends ((Term, Term) => Term) {
 
 
 case class HeapToSnap(heap: Term, mask: Term, r: Any) extends Term {
+  if (heap.toString == "hInit@15@16")
+    println("++")
+
   val sort = sorts.Snap
 }
 
@@ -2088,6 +2093,22 @@ object MergeHeaps extends ((Term, Term, Term, Term) => Term) {
   }
 
   def unapply(mh: MergeHeaps) = Some((mh.h1, mh.m1, mh.h2, mh.m2))
+}
+
+class HeapsOverlap(val h1: Term, val m1: Term, val h2: Term, val m2: Term) extends Term {
+  val sort = h1.sort
+}
+
+object HeapsOverlap extends ((Term, Term, Term, Term) => Term) {
+  def apply(h1: Term, m1: Term, h2: Term, m2: Term) = (m1, m2) match {
+    case (ZeroMask(), _) => h2
+    case (PredZeroMask(), _) => h2
+    case (_, ZeroMask()) => h1
+    case (_, PredZeroMask()) => h1
+    case _ => new HeapsOverlap(h1, m1, h2, m2)
+  }
+
+  def unapply(mh: HeapsOverlap) = Some((mh.h1, mh.m1, mh.h2, mh.m2))
 }
 
 case class MaskEq(m1: Term, m2: Term) extends Term {

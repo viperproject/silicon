@@ -160,6 +160,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
               case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True()
               case (Some(ch1: NonQuantifiedChunk), Some(ch2: NonQuantifiedChunk)) => ch1.snap === ch2.snap
               case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
+              case (Some(ch1: BasicCarbonChunk), Some(ch2: BasicCarbonChunk)) =>
+                // This is weird. Sometimes I get here and one chunk has a zero mask, but for some reason I still need
+                // to equate the heaps to some degree.
+                HeapsOverlap(ch1.heap, ch1.mask, ch2.heap, ch2.mask) // ch1.heap === ch2.heap
               case _ => True()
             }
             v.decider.assume(tEq)
@@ -412,19 +416,34 @@ object magicWandSupporter extends SymbolicExecutionRules {
                 v: Verifier)
                (Q: (State, Verifier) => VerificationResult)
                : VerificationResult = {
-        consume(s, wand, pve, v)((s1, snap, v1) => {
-          val wandSnap = MagicWandSnapshot(snap)
-          consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
-            /* It is assumed that snap and wandSnap.abstractLhs are structurally the same.
-             * Since a wand can only be applied once, equating the two snapshots is sound.
-             */
-            assert(snap.sort == sorts.Snap, s"expected snapshot but found: $snap")
-            v2.decider.assume(snap === wandSnap.abstractLhs)
-            val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1, v2)))
-            produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
-              val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
-              val s6 = v3.stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
-              Q(s6, v3)})})})}
+        consume(s, wand, pve, v)((s1a, snap, v1a) => {
+          evaluateWandArguments(s1a, wand, pve, v1a)((s1, tArgs, v1) => {
+            val wandSnap = if (Verifier.config.carbonQPs()) {
+              val mwi = MagicWandIdentifier(wand, s1.program)
+              val argTerm = toSnapTree(tArgs)
+              val res = MagicWandSnapshot(HeapLookup(SnapToHeap(snap, mwi, PredHeapSort), argTerm))
+              res
+              //snap match {
+              //  case HeapToSnap(HeapSingleton(_, wSnap, _), _, _) => MagicWandSnapshot(wSnap)
+              //}
+            } else {
+              MagicWandSnapshot(snap)
+            }
+            consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
+              /* It is assumed that snap and wandSnap.abstractLhs are structurally the same.
+               * Since a wand can only be applied once, equating the two snapshots is sound.
+               */
+              assert(snap.sort == sorts.Snap, s"expected snapshot but found: $snap")
+              v2.decider.assume(snap === wandSnap.abstractLhs)
+              val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1, v2)))
+              produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
+                val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
+                val s6 = v3.stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
+                Q(s6, v3)
+              })
+            })
+          })
+          })}
 
   def transfer[CH <: Chunk]
               (s: State,
@@ -453,9 +472,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 
       val usedChunks = chs2.flatten
-      val (fr4, hUsed) = if (Verifier.config.carbonQPs())
-        (s3.functionRecorder, carbonQuantifiedChunkSupporter.mergeWandHeaps(s2.reserveHeaps.head, Heap(usedChunks), v2))
-      else
+      val (fr4, hUsed) = if (Verifier.config.carbonQPs()) {
+        (s3.functionRecorder, usedChunks.foldLeft(s2.reserveHeaps.head)((cur, chnk) => carbonQuantifiedChunkSupporter.mergeWandHeaps(cur, Heap(Seq(chnk)), v2)))
+        //(s3.functionRecorder, carbonQuantifiedChunkSupporter.mergeWandHeaps(s2.reserveHeaps.head, Heap(usedChunks), v2))
+      } else
         v2.stateConsolidator.merge(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
 
       val s4 = s3.copy(functionRecorder = fr4, reserveHeaps = hUsed +: s3.reserveHeaps.tail)
