@@ -520,6 +520,39 @@ object producer extends ProductionRules {
             )(Q)
         }
 
+      case qpa@QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) if Verifier.config.carbonQPs() =>
+        val bodyVars = wand.subexpressionsToEvaluate(s.program)
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val optTrigger =
+          if (forall.triggers.isEmpty) None
+          else Some(forall.triggers)
+        val qid = MagicWandIdentifier(wand, s.program)
+        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
+          case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+            val tSnap = sf(null, null) //sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
+            carbonQuantifiedChunkSupporter.produce(
+              s1,
+              forall,
+              qid,
+              qvars,
+              formalVars,
+              qid.toString,
+              optTrigger,
+              tTriggers,
+              auxGlobals,
+              auxNonGlobals,
+              tCond,
+              tArgs,
+              tSnap,
+              FullPerm(),
+              pve,
+              NegativePermission(ast.FullPerm()()),
+              QPAssertionNotInjective(wand),
+              v1,
+              qpa
+            )(Q)
+        }
+
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
         assert(!Verifier.config.carbonQPs())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)

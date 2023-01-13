@@ -353,13 +353,6 @@ object consumer extends ConsumptionRules {
 
       case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.carbonQPs() =>
         val predicate = s.program.findPredicate(acc.loc.predicateName)
-        /* TODO: Quantified codomain variables are used in axioms and chunks (analogous to `?r`)
-         *       and need to be instantiated in several places. Hence, they need to be known,
-         *       which is more complicated if fresh identifiers are used.
-         *       At least two options:
-         *         1. Choose fresh identifiers each time; remember/restore, e.g. by storing these variables in chunks
-         *         2. Choose fresh identifiers once; store in and take from state (or from object Verifier)
-         */
         val formalVars = s.predicateFormalVarMap(predicate)
         val qid = BasicChunkIdentifier(acc.loc.predicateName)
         val optTrigger =
@@ -426,6 +419,41 @@ object consumer extends ConsumptionRules {
               notInjectiveReason = QPAssertionNotInjective(acc.loc),
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1)(Q)
+        }
+
+      case qpa@QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) if Verifier.config.carbonQPs() =>
+        val bodyVars = wand.subexpressionsToEvaluate(s.program)
+        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
+        val qid = MagicWandIdentifier(wand, s.program)
+        val optTrigger =
+          if (forall.triggers.isEmpty) None
+          else Some(forall.triggers)
+        val ePerm = ast.FullPerm()()
+        val tPerm = FullPerm()
+        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
+          case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
+            carbonQuantifiedChunkSupporter.consume(
+              s = s1,
+              h = h,
+              resource = qid,
+              qvars = qvars,
+              formalQVars = formalVars,
+              qid = qid.toString,
+              optTrigger = optTrigger,
+              tTriggers = tTriggers,
+              auxGlobals = auxGlobals,
+              auxNonGlobals = auxNonGlobals,
+              tCond = tCond,
+              tArgs = tArgs,
+              tPerm = tPerm,
+              pve = pve,
+              negativePermissionReason = NegativePermission(ePerm),
+              notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
+              insufficientPermissionReason = MagicWandChunkNotFound(wand),
+              v1,
+              resMap.get.asInstanceOf[FakeMaskMapTerm].masks,
+              havoc,
+              qpa)(Q)
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
