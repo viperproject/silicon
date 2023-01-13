@@ -294,7 +294,7 @@ object executor extends ExecutionRules {
         execs(s, stmts, v)(Q)
 
       case ast.Label(name, _) =>
-        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
+        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s, v)))
         Q(s1, v)
 
       case ast.LocalVarDeclStmt(decl) =>
@@ -448,7 +448,7 @@ object executor extends ExecutionRules {
 
       case assert @ ast.Assert(a: ast.FalseLit) =>
         /* "assert false" triggers a smoke check. If successful, we backtrack. */
-        executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
+        executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s, v)), v)((s1, v1, QS) => {
           if (v1.decider.checkSmoke())
             QS(s1.copy(h = s.h), v1)
           else
@@ -466,8 +466,8 @@ object executor extends ExecutionRules {
         val pve = AssertFailed(assert)
 
         if (s.exhaleExt) {
-          Predef.assert(s.h.values.isEmpty)
-          Predef.assert(s.reserveHeaps.head.values.isEmpty)
+          //Predef.assert(s.h.values.isEmpty)
+          //Predef.assert(s.reserveHeaps.head.values.isEmpty)
 
           /* When exhaleExt is set magicWandSupporter.transfer is used to transfer permissions to
            * hUsed (reserveHeaps.head) instead of consuming them. hUsed is later discarded and replaced
@@ -585,43 +585,79 @@ object executor extends ExecutionRules {
         val pve = PackageFailed(pckg)
           magicWandSupporter.packageWand(s, wand, proofScript, pve, v)((s1, chWand, v1) => {
 
-            val hOps = s1.reserveHeaps.head + chWand
-            assert(s.exhaleExt || s1.reserveHeaps.length == 1)
-            val s2 =
-              if (s.exhaleExt) {
-                s1.copy(h = Heap(),
-                        exhaleExt = true,
-                        /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
-                         * by the packageWand method. hUsed is normally used during transferring
-                         * consume to store permissions that have already been consumed. The
-                         * permissions on this heap should be discarded after a statement finishes
-                         * execution. hUsed should therefore be empty unless the package statement
-                         * was triggered by heuristics during a consume operation.
-                         */
-                        reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
-              } else {
-                /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
-                s1.copy(h = hOps,
-                        exhaleExt = false,
-                        reserveHeaps = Nil)
+            if (Verifier.config.carbonQPs()) {
+              val mwi = MagicWandIdentifier(wand, s1.program)
+              val hOps = carbonQuantifiedChunkSupporter.findCarbonChunkOptionally(s1.reserveHeaps.head, mwi) match {
+                case None => s1.reserveHeaps.head + chWand
+                case Some(curChunk) =>
+                  val newChunk = chWand.asInstanceOf[BasicCarbonChunk]
+                  val mergedMask = MaskSum(curChunk.mask, newChunk.mask)
+                  val mergedHeap = MergeHeaps(curChunk.heap, curChunk.mask, newChunk.heap, newChunk.mask)
+                  val mergedChunk = curChunk.copy(mask = mergedMask, heap = mergedHeap)
+                  s1.reserveHeaps.head - curChunk + mergedChunk
               }
-            assert(s2.reserveHeaps.length == s.reserveHeaps.length)
+              assert(s.exhaleExt || s1.reserveHeaps.length == 1)
+              val s2 =
+                if (s.exhaleExt) {
+                  s1.copy(h = magicWandSupporter.getEmptyHeap(s1, v1),
+                    exhaleExt = true,
+                    /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
+                     * by the packageWand method. hUsed is normally used during transferring
+                     * consume to store permissions that have already been consumed. The
+                     * permissions on this heap should be discarded after a statement finishes
+                     * execution. hUsed should therefore be empty unless the package statement
+                     * was triggered by heuristics during a consume operation.
+                     */
+                    reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
+                } else {
+                  /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
+                  s1.copy(h = hOps,
+                    exhaleExt = false,
+                    reserveHeaps = Nil)
+                }
+              assert(s2.reserveHeaps.length == s.reserveHeaps.length)
 
-            val smCache3 = chWand match {
-              case ch: QuantifiedMagicWandChunk if s2.heapDependentTriggers.contains(MagicWandIdentifier(wand, s2.program)) =>
-                val (relevantChunks, _) =
-                  quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
-                val bodyVars = wand.subexpressionsToEvaluate(s.program)
-                val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
-                val (smDef, smCache) =
-                  quantifiedChunkSupporter.summarisingSnapshotMap(
-                    s2, wand, formalVars, relevantChunks, v1)
-                v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get))
-                smCache
-              case _ => s2.smCache
+              continuation(s2, v1)
+            } else {
+              val hOps = s1.reserveHeaps.head + chWand
+              assert(s.exhaleExt || s1.reserveHeaps.length == 1)
+              val s2 =
+                if (s.exhaleExt) {
+                  s1.copy(h = Heap(),
+                    exhaleExt = true,
+                    /* It is assumed, that s.reserveHeaps.head (hUsed) is not used or changed
+                     * by the packageWand method. hUsed is normally used during transferring
+                     * consume to store permissions that have already been consumed. The
+                     * permissions on this heap should be discarded after a statement finishes
+                     * execution. hUsed should therefore be empty unless the package statement
+                     * was triggered by heuristics during a consume operation.
+                     */
+                    reserveHeaps = s.reserveHeaps.head +: hOps +: s1.reserveHeaps.tail)
+                } else {
+                  /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
+                  s1.copy(h = hOps,
+                    exhaleExt = false,
+                    reserveHeaps = Nil)
+                }
+              assert(s2.reserveHeaps.length == s.reserveHeaps.length)
+
+              val smCache3 = chWand match {
+                case ch: QuantifiedMagicWandChunk if s2.heapDependentTriggers.contains(MagicWandIdentifier(wand, s2.program)) =>
+                  val (relevantChunks, _) =
+                    quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s2.h, ch.id)
+                  val bodyVars = wand.subexpressionsToEvaluate(s.program)
+                  val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
+                  val (smDef, smCache) =
+                    quantifiedChunkSupporter.summarisingSnapshotMap(
+                      s2, wand, formalVars, relevantChunks, v1)
+                  v1.decider.assume(PredicateTrigger(ch.id.toString, smDef.sm, ch.singletonArgs.get))
+                  smCache
+                case _ => s2.smCache
+              }
+
+              continuation(s2.copy(smCache = smCache3), v1)
             }
 
-            continuation(s2.copy(smCache = smCache3), v1)
           })
 
       case apply @ ast.Apply(e) =>

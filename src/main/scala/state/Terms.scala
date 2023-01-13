@@ -2007,6 +2007,8 @@ case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
 }
 
 class MaskAdd(val mask: Term, val at: Term, val addition: Term) extends Term {
+  if (mask.sort == sorts.PredMaskSort) utils.assertSort(at, "at", sorts.Snap) else utils.assertSort(at, "at", sorts.Ref)
+  utils.assertSort(addition, "addition", sorts.Perm)
   val sort = mask.sort
 }
 

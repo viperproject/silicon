@@ -15,7 +15,7 @@ import viper.silicon._
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
-import viper.silicon.resources.{FieldID, PredicateID}
+import viper.silicon.resources.{FieldID, MagicWandID, PredicateID}
 import viper.silicon.state._
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silicon.state.terms.{MagicWandSnapshot, _}
@@ -302,7 +302,15 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
       val preMark = v3.decider.setPathConditionMark()
       if (Verifier.config.carbonQPs()) {
-
+        evaluateWandArguments(s4, wand, pve, v3)((s5, tArgs, v4) => {
+          val wandSnap = MagicWandSnapshot(freshSnapRoot, snap)
+          val argTerm = toSnapTree(tArgs)
+          val newMask = MaskAdd(PredZeroMask(), argTerm, FullPerm())
+          val newHeap = HeapSingleton(argTerm, wandSnap, PredHeapSort)
+          val newChunk = BasicCarbonChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
+          appendToResults(s5, newChunk, v4.decider.pcs.after(preMark), v4)
+          Success()
+        })
       } else {
         if (s4.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))) {
           val bodyVars = wand.subexpressionsToEvaluate(s.program)
@@ -412,7 +420,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
              */
             assert(snap.sort == sorts.Snap, s"expected snapshot but found: $snap")
             v2.decider.assume(snap === wandSnap.abstractLhs)
-            val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
+            val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1, v2)))
             produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
               val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
               val s6 = v3.stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
@@ -446,7 +454,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
 
       val usedChunks = chs2.flatten
       val (fr4, hUsed) = if (Verifier.config.carbonQPs())
-        carbonQuantifiedChunkSupporter.mergeWandHeaps(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
+        (s3.functionRecorder, carbonQuantifiedChunkSupporter.mergeWandHeaps(s2.reserveHeaps.head, Heap(usedChunks), v2))
       else
         v2.stateConsolidator.merge(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
 
@@ -461,7 +469,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       Q(s4, usedChunks.lastOption, v2)})
   }
 
-  def getEvalHeap(s: State): Heap = {
+  def getEvalHeap(s: State, v: Verifier): Heap = {
     if (s.exhaleExt) {
       /* s.reserveHeaps = [hUsed, hOps, sLhs, ...]
        * After a proof script statement such as fold has been executed, hUsed is empty and
@@ -476,7 +484,11 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * Since innermost assertions must be self-framing, combining hUsed, hOps and hLhs
        * is sound.
        */
-      s.reserveHeaps.head + s.reserveHeaps(1) + s.reserveHeaps(2)
+      if (Verifier.config.carbonQPs()) {
+        carbonQuantifiedChunkSupporter.mergeWandHeaps(carbonQuantifiedChunkSupporter.mergeWandHeaps(s.reserveHeaps.head, s.reserveHeaps(1), v), s.reserveHeaps(2), v)
+      } else {
+        s.reserveHeaps.head + s.reserveHeaps(1) + s.reserveHeaps(2)
+      }
     } else
       s.h
   }

@@ -140,7 +140,7 @@ object producer extends ProductionRules {
     if (Verifier.config.carbonQPs()) {
       val givenSnap = sf(sorts.Snap, v)
       val fakeTerm = if (!givenSnap.isInstanceOf[FakeMaskMapTerm]) {
-        val resources = as.map(_.deepCollect {
+        val resources = as.map(_.shallowCollect {
           case PredicateAccessPredicate(pa, _) => pa.loc(s.program)
           case FieldAccessPredicate(fa, _) => fa.loc(s.program)
           case w: ast.MagicWand => MagicWandIdentifier(w, s.program)

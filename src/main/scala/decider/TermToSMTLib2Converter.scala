@@ -10,7 +10,7 @@ import scala.collection.mutable
 import viper.silver.ast.pretty.FastPrettyPrinterBase
 import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
-import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
+import viper.silicon.state.{Identifier, MagicWandIdentifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort, PredMaskSort}
 import viper.silver.ast
@@ -326,12 +326,14 @@ class TermToSMTLib2Converter
       parens(text("$SortWrappers.$SnapTo$Heap<") <> (resource match {
         case f: ast.Field => f.name
         case p: ast.Predicate => p.name
+        case _: MagicWandIdentifier => "WAND"
       }) <> ">" <+> render(snap))
 
     case HeapToSnap(heap, mask, resource) =>
       parens(text("$SortWrappers.$Heap<") <> (resource match {
         case f: ast.Field => f.name
         case p: ast.Predicate => p.name
+        case _: MagicWandIdentifier => "WAND"
       }) <> ">To$Snap" <+> render(heap) <+> render(mask))
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))

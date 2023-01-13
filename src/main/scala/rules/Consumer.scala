@@ -116,7 +116,7 @@ object consumer extends ConsumptionRules {
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
     if (Verifier.config.carbonQPs()) {
-      val resources = tlcs.map(_.deepCollect{
+      val resources = tlcs.map(_.shallowCollect{
         case PredicateAccessPredicate(pa, _) => pa.loc(s.program)
         case FieldAccessPredicate(fa, _) => fa.loc(s.program)
         case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
@@ -647,7 +647,7 @@ object consumer extends ConsumptionRules {
      * the tryOrFail that wraps the consumption of each top-level conjunct would not consolidate
      * the right heap.
      */
-    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s),
+    val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s, v),
                     reserveHeaps = Nil,
                     exhaleExt = false)
 
