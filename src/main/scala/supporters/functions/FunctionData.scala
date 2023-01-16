@@ -126,7 +126,7 @@ class FunctionData(val programFunction: ast.Function,
     freshSnapshots = mergedFunctionRecorder.freshSnapshots
     freshPathSymbols = mergedFunctionRecorder.freshPathSymbols
     freshMacros = mergedFunctionRecorder.freshMacros
-    preQPMasks = mergedFunctionRecorder.freshQPMasks
+    preQPMasks ++= mergedFunctionRecorder.freshQPMasks
 
     freshSymbolsAcrossAllPhases ++= freshPathSymbols map FunctionDecl
     freshSymbolsAcrossAllPhases ++= freshArps.map(pair => FunctionDecl(pair._1))

@@ -520,8 +520,6 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                 }
               })
             } else {
-
-
               val (hp, currentChunk) = resourceToFind match {
                 case mwi: MagicWandIdentifier => findOrCreateCarbonChunk(h, mwi, v)
                 case r: ast.Resource => (h, findCarbonChunk(h, r))
@@ -543,7 +541,9 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                 }
 
                 // remove permissions
-                val (qpMask, newFr) = if (s.isConsumingFunctionPre.isDefined) {
+                val useExistingQPMaskFunc = s.isConsumingFunctionPre.isDefined && s.functionData.get(s.isConsumingFunctionPre.get).get.preQPMasks.find(_._1 == qpExp).isDefined
+
+                val (qpMask, newFr) = if (useExistingQPMaskFunc) {
                   val (_, qpMaskFunc, _) = s.functionData.get(s.isConsumingFunctionPre.get).get.preQPMasks.find(_._1 == qpExp).get
 
                   val paramArgs = s.isConsumingFunctionPre.get.formalArgs.map(fa => s.g.get(fa.localVar).get)
@@ -663,7 +663,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
     val snapHeapMap = tSnap.asInstanceOf[FakeMaskMapTerm].masks
 
-    val (qpMask, qpMaskFunc, constraintVars) = if (s.isProducingFunctionPre.isDefined) {
+    val creatingQPMaskFunc = false && s.isProducingFunctionPre.isDefined
+    val (qpMask, qpMaskFunc, constraintVars) = if (creatingQPMaskFunc) {
       val paramArgs = s.isProducingFunctionPre.get.formalArgs.map(fa => s.g.get(fa.localVar).get)
       val paramArgSorts = paramArgs.map(_.sort)
       val maskFunc = v.decider.fresh("qpMaskFunc", paramArgSorts :+ sorts.Snap, if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
@@ -679,7 +680,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       case _ => toSnapTree(formalQVars)
     }
     val qpMaskGet = HeapLookup(qpMask, argTerm)
-    val qpMaskConstraint = if (s.isProducingFunctionPre.isDefined) {
+    val qpMaskConstraint = if (creatingQPMaskFunc) {
       val maskDef = Forall(constraintVars ++ formalQVars, Implies(And(v.decider.pcs.assumptions), qpMaskGet === conditionalizedPermissions), Seq(Trigger(qpMaskGet)), "qpMaskdef")
       val invDefs = Forall(constraintVars, And(inverseFunctions.definitionalAxioms), Seq(Trigger(qpMask)), "qpMaskInvDef")
       And(maskDef, invDefs)
@@ -786,7 +787,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
             val h1 = hp - currentChunk + newChunk
             v.decider.assume(permBoundConstraint)
-            val newFr = if (s.isProducingFunctionPre.isEmpty)
+            val newFr = if (!creatingQPMaskFunc)
               s.functionRecorder.recordFieldInv(inv).recordArp(qpMask.asInstanceOf[Var], qpMaskConstraint)
             else
               s.functionRecorder.recordFieldInv(inv).recordPreconditionQPMask(qpExp, qpMaskFunc.get, qpMaskConstraint)
