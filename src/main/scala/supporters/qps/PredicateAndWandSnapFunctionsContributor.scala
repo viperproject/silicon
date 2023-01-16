@@ -96,10 +96,7 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
 
     collectedSorts = collectedPredicates.map(predicate =>
         sorts.PredicateSnapFunction(predicateSnapGenerator.getSnap(predicate)._1, predicate.name)) ++ collectedWandIdentifiers.map(identifier => sorts.PredicateSnapFunction(sorts.Snap, identifier.toString))
-
-    //if (collectedPredicates.nonEmpty || collectedWandIdentifiers.nonEmpty) {
-    //  collectedSorts += sorts.PredicateSnapFunction(sorts.Snap, "Wand")
-    //}
+    
 
     collectedFunctionDecls = generateFunctionDecls
     collectedAxioms = generateAxioms
