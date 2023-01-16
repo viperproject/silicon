@@ -588,7 +588,7 @@ object consumer extends ConsumptionRules {
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) => {
           val s2 = s1.copy(g = s1.g + g1)
-          consumeR(s2, h, body, pve, v1)(Q)})
+          consumeR(s2, h, body, pve, v1, resMap, havoc)(Q)})
 
       case ast.AccessPredicate(locacc: ast.LocationAccess, perm) =>
         eval(s, perm, pve, v)((s1, tPerm, v1) =>
