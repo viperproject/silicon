@@ -470,14 +470,22 @@ object evaluator extends EvaluationRules {
       case ast.CurrentPerm(resacc) if Verifier.config.carbonQPs() =>
         val h = s.partiallyConsumedHeap.getOrElse(s.h)
         evalResourceAccess(s, resacc, pve, v)((s1, _, args, v1) => {
-          val res = resacc.res(s.program)
-          val argTerm = res match {
-            case f: ast.Field => args(0)
-            case _: ast.Predicate => toSnapTree(args)
+          val res = resacc match {
+            case w: ast.MagicWand => MagicWandIdentifier(w, s.program)
+            case _ => resacc.res(s.program)
           }
-          val chunk = carbonQuantifiedChunkSupporter.findCarbonChunk(h, res)
-          val result = HeapLookup(chunk.mask, argTerm)
-          Q(s1, result, v1)
+          val argTerm = res match {
+            case _: ast.Field => args(0)
+            case _: ast.Predicate => toSnapTree(args)
+            case _: MagicWandIdentifier => toSnapTree(args)
+          }
+          carbonQuantifiedChunkSupporter.findCarbonChunkOptionally(h, res) match {
+            case Some(chunk) =>
+              val result = HeapLookup (chunk.mask, argTerm)
+              Q(s1, result, v1)
+            case None =>
+              Q(s1, NoPerm(), v1)
+          }
         })
 
       case ast.CurrentPerm(resacc) =>
@@ -1408,31 +1416,41 @@ object evaluator extends EvaluationRules {
         triggers = triggers.map(ts => ts ++ trigs)
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
-      case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) =>
+      case fa: ast.FieldAccess =>
         val chunk = carbonQuantifiedChunkSupporter.findCarbonChunk(s.h, fa.res(s.program))
         eval(s.copy(triggerExp = true), fa.rcv, pve, v)((_, tRcv, _) => {
           val heapAccess = new HeapLookup(chunk.heap, tRcv)
           val maskAccess = new HeapLookup(chunk.mask, tRcv)
           triggers = triggers.map(ts => ts ++ Seq(heapAccess)) ++  triggers.map(ts => ts ++ Seq(maskAccess))
-          null
+          Success()
         })
       case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) && !Verifier.config.carbonQPs() =>
         val (axioms, trigs, _) = generatePredicateTrigger(pa, s, pve, v)
         triggers = triggers.map(ts => ts ++ trigs)
         triggerAxioms = triggerAxioms ++ axioms
-      case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) =>
+      case pa: ast.PredicateAccess =>
         val chunk = carbonQuantifiedChunkSupporter.findCarbonChunk(s.h, pa.res(s.program))
         evals(s.copy(triggerExp = true), pa.args, _ => pve, v)((_, tArgs, _) => {
           val tRcv = toSnapTree(tArgs)
           val heapAccess = new HeapLookup(chunk.heap, tRcv)
           val maskAccess = new HeapLookup(chunk.mask, tRcv)
           triggers = triggers.map(ts => ts ++ Seq(heapAccess)) ++ triggers.map(ts => ts ++ Seq(maskAccess))
-          null
+          Success()
         })
       case wand: ast.MagicWand if s.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program)) && !Verifier.config.carbonQPs() =>
         val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
         triggers = triggers.map(ts => ts ++ trigs)
         triggerAxioms = triggerAxioms ++ axioms
+      case wand: ast.MagicWand =>
+        val mwi = MagicWandIdentifier(wand, s.program)
+        val chunk = carbonQuantifiedChunkSupporter.findCarbonChunk(s.h, mwi)
+        magicWandSupporter.evaluateWandArguments(s.copy(triggerExp = true), wand, pve, v)((_, tArgs, _) => {
+          val tRcv = toSnapTree(tArgs)
+          val heapAccess = new HeapLookup(chunk.heap, tRcv)
+          val maskAccess = new HeapLookup(chunk.mask, tRcv)
+          triggers = triggers.map(ts => ts ++ Seq(heapAccess)) ++ triggers.map(ts => ts ++ Seq(maskAccess))
+          Success()
+        })
       case e => evalTrigger(s, Seq(e), pve, v)((_, t, _) => {
         triggers = triggers.map(ts => ts ++ t)
         Success()
