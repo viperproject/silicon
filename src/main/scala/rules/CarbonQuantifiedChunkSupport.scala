@@ -207,7 +207,6 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
           if (origMask.sort == MaskSort) ZeroMask() else PredZeroMask()
         case t => t
       }
-
       val replaced = replace(origMask)
       replaced
     } else {
@@ -229,14 +228,6 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
   : VerificationResult = {
     val resource = resourceAccess.res(s.program)
 
-    // assert enough
-    // TODO: create failures only when needed? This can lead to CE extraction, which is expensive.
-    val failure = resourceAccess match {
-      case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
-      case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
-      case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
-    }
-
     val resourceToFind = resource match {
       case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
       case _ => resource
@@ -249,6 +240,11 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     }
 
     if (s.exhaleExt) {
+      val failure = resourceAccess match {
+        case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
+        case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
+        case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
+      }
       magicWandSupporter.transfer(s, permissions, failure, v)((s1, h1a, rPerm, v1) => {
         val (h1, resChunk) = resourceToFind match {
           case mwi: MagicWandIdentifier => findOrCreateCarbonChunk(h1a, mwi, v1)
@@ -342,7 +338,13 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
           val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
           // set up partially consumed heap
           Q(s, h - resChunk + newChunk, snap, v)
-        case false => failure
+        case false =>
+          val failure = resourceAccess match {
+            case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
+            case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
+            case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
+          }
+          failure
       }
     }
   }

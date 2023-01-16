@@ -2021,11 +2021,11 @@ object MaskAdd extends ((Term, Term, Term) => Term) {
   def apply(mask: Term, at: Term, addition: Term) = (mask, addition) match {
     case (_, NoPerm()) => mask
     case (MaskAdd(m2, at2, add2), _) if at2 == at => MaskAdd(m2, at, PermPlus(addition, add2))
-    case (MaskAdd(ZeroMask(), at2, cur), PermNegation(sub)) => // we must have at == at2
-      MaskAdd(ZeroMask(), at2, PermMinus(cur, sub))
-    case (MaskAdd(PredZeroMask(), at2, cur), PermNegation(sub)) =>
-      MaskAdd(PredZeroMask(), at2, PermMinus(cur, sub))
-    case (MaskAdd(MaskAdd(m1, at1, add1), at2, add2), PermNegation(sub)) if at == at1=> MaskAdd(MaskAdd(m1, at1, PermMinus(add1, sub)), at2, add2)
+    //case (MaskAdd(ZeroMask(), at2, cur), PermNegation(sub)) => // we must have at == at2 // this doesnt work if we remove things, submasks might be negative.
+    //  MaskAdd(ZeroMask(), at2, PermMinus(cur, sub))
+    //case (MaskAdd(PredZeroMask(), at2, cur), PermNegation(sub)) =>
+    //  MaskAdd(PredZeroMask(), at2, PermMinus(cur, sub))
+    case (MaskAdd(MaskAdd(m1, at1, add1), at2, add2), PermNegation(sub)) if at == at1 => MaskAdd(MaskAdd(m1, at1, PermMinus(add1, sub)), at2, add2)
     case _ => new MaskAdd(mask, at, addition)
   }
 
@@ -2125,6 +2125,8 @@ object MaskSum extends ((Term, Term) => Term) {
     case (PredZeroMask(), _) => m2
     case (_, ZeroMask()) => m1
     case (_, PredZeroMask()) => m1
+    case (MaskDiff(ZeroMask(), m3), _) => MaskDiff(m2, m3)
+    case (MaskDiff(PredZeroMask(), m3), _) => MaskDiff(m2, m3)
     case _ => new MaskSum(m1, m2)
   }
 
