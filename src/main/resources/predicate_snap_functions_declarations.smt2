@@ -6,9 +6,9 @@
 ;   - $PRD$ is a Silver predicate name
 ;   - $S$ is the sort corresponding to the type of the predicate arguments
 
-(declare-fun $PSF.domain_$PRD$ ($PSF<$S$>) Set<$Snap>)
-(declare-fun $PSF.lookup_$PRD$ ($PSF<$S$> $Snap) $S$)
-(declare-fun $PSF.after_$PRD$ ($PSF<$S$> $PSF<$S$>) Bool)
+(declare-fun $PSF.domain_$PRD$ ($PSF<$PRD$>) Set<$Snap>)
+(declare-fun $PSF.lookup_$PRD$ ($PSF<$PRD$> $Snap) $S$)
+(declare-fun $PSF.after_$PRD$ ($PSF<$PRD$> $PSF<$PRD$>) Bool)
 (declare-fun $PSF.loc_$PRD$ ($S$ $Snap) Bool)
 (declare-fun $PSF.perm_$PRD$ ($PPM $Snap) $Perm)
-(declare-const $psfTOP_$PRD$ $PSF<$S$>)
+(declare-const $psfTOP_$PRD$ $PSF<$PRD$>)
