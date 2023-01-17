@@ -56,6 +56,10 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
         case (Some(c1), Some(c2)) =>
           val newMask = MaskSum(c1.mask, c2.mask)
           val newHeap = MergeHeaps(c1.heap, c1.mask, c2.heap, c2.mask)
+          if (r.isInstanceOf[ast.Field]) {
+            if (newMask != c1.mask && newMask != c2.mask)
+              v.decider.assume(upperBoundAssertion(newMask, v))
+          }
           c1.copy(mask = newMask, heap = newHeap)
         case (Some(c1), None) => c1
         case (None, Some(c2)) => c2
@@ -80,6 +84,27 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     toSnapTree(snapTerms)
   }
 
+  def upperBoundAssertion(mask: Term, v: Verifier): Term = {
+    val receivers = mutable.LinkedHashSet[Term]()
+    val masks = mutable.LinkedHashSet[Term]()
+
+    def traverse(mask: Term): Unit = mask match {
+      case MaskAdd(m, r, v) => receivers.add(r); traverse(m)
+      case MaskSum(m1, m2) => traverse(m1); traverse(m2)
+      case MaskDiff(m1, m2) => masks.add(m2); traverse(m1)
+      case ZeroMask() =>
+      case PredZeroMask() =>
+      case t => masks.add(t)
+    }
+
+    traverse(mask)
+
+    val individualAssumes = And(receivers.map(r => PermAtMost(HeapLookup(mask, r), FullPerm())))
+    val qvar = v.decider.fresh(sorts.Ref)
+    val triggers = (masks ++ Seq(mask)).map(m => Trigger(HeapLookup(m, qvar))).toSeq
+    val maskAssume = Forall(qvar, PermAtMost(HeapLookup(mask, qvar), FullPerm()), triggers)
+    And(individualAssumes, maskAssume)
+  }
 
   def removeSingleAdd(origMask: Term, at: Term, amount: Term, v: Verifier): Term = {
     val termAdditions = mutable.LinkedHashMap[Term, Term]()
