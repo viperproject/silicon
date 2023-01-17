@@ -213,9 +213,42 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       assume(InsertionOrderedSet(terms), false)
 
     def assume(terms: InsertionOrderedSet[Term], enforceAssumption: Boolean = false): Unit = {
-      val filteredTerms =
+      var filteredTerms =
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
+
+      if (Verifier.config.carbonQPs()) {
+        filteredTerms = filteredTerms.flatMap(t => {
+          var resultTerms = Seq(t)
+          val problematicQuants = t.deepCollect {
+            case q@Quantification(_, _, _, triggers, _, _, _) if triggers.exists(t => t.p.exists(_.deepCollect {
+              case Var(id, _) if id.name.contains("BADINTRIGGER") => true
+            }.nonEmpty)) =>
+              q
+          }
+          for (q <- problematicQuants) {
+            val badTriggerVars = q.triggers.map(trg => trg.p.flatMap(_.deepCollect {
+              case v@Var(id, _) if id.name.contains("BADINTRIGGER") => v
+            }).distinct)
+            val triggersAndVars = q.triggers.zip(badTriggerVars)
+            val nonProblematicTriggers = triggersAndVars.filter(_._2.isEmpty).map(_._1)
+            var newQuants = if (nonProblematicTriggers.nonEmpty) Seq(q.copy(triggers = nonProblematicTriggers)) else Seq()
+            for (tv <- triggersAndVars) {
+              if (tv._2.nonEmpty) {
+                val replacements = tv._2.map(v => {
+                  val id = identifierFactory.fresh("wildcard")
+                  Var(id, v.sort)
+                })
+                val newTrigger = Trigger(tv._1.p.map(t => t.replace(tv._2, replacements)))
+                val newVars = q.vars ++ replacements
+                newQuants = newQuants :+ q.copy(vars = newVars, triggers = Seq(newTrigger))
+              }
+            }
+            resultTerms = resultTerms.flatMap(rt => newQuants.map(nq => rt.replace(q, nq)))
+          }
+          resultTerms
+        })
+      }
 
       if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(filteredTerms)
     }
@@ -304,7 +337,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def fresh(v: ast.AbstractLocalVar): Var =
       prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ))
 
-    def freshARP(id: String = "$k"): (Var, Term) = {
+    def freshARP(id: String = "$kBADINTRIGGER"): (Var, Term) = {
       val permVar = prover_fresh[Var](id, Nil, sorts.Perm)
       val permVarConstraints = IsReadPermVar(permVar)
 

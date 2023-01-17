@@ -103,6 +103,7 @@ package object utils {
     case MaskDiff(m1, m2) => m1 :: m2 :: Nil
     case MaskAdd(mask, at, addition) => mask :: at :: addition :: Nil
     case MergeHeaps(h1, m1, h2, m2) => h1 :: m1 :: h2 :: m2 :: Nil
+    case HeapsOverlap(h1, m1, h2, m2) => h1 :: m1 :: h2 :: m2 :: Nil
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.simplify()]] */

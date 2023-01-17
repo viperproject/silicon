@@ -1404,11 +1404,12 @@ object evaluator extends EvaluationRules {
     }
   }
 
-  private def evalHeapTrigger(s: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier)
+  private def evalHeapTrigger(s0: State, exps: Seq[ast.Exp], pve: PartialVerificationError, v: Verifier)
                              (Q: (State, Seq[Seq[Term]], Verifier) => VerificationResult) : VerificationResult = {
     var triggers: Seq[Seq[Term]] = Seq(Seq())
     var triggerAxioms: Seq[Term] = Seq()
     var smDefs: Seq[SnapshotMapDefinition] = Seq()
+    var s = s0
 
     exps foreach {
       case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) && !Verifier.config.carbonQPs() =>
@@ -1443,7 +1444,8 @@ object evaluator extends EvaluationRules {
         triggerAxioms = triggerAxioms ++ axioms
       case wand: ast.MagicWand =>
         val mwi = MagicWandIdentifier(wand, s.program)
-        val chunk = carbonQuantifiedChunkSupporter.findCarbonChunk(s.h, mwi)
+        val (hNew, chunk) = carbonQuantifiedChunkSupporter.findOrCreateCarbonChunk(s.h, mwi, v)
+        s = s.copy(h = hNew)
         magicWandSupporter.evaluateWandArguments(s.copy(triggerExp = true), wand, pve, v)((_, tArgs, _) => {
           val tRcv = toSnapTree(tArgs)
           val heapAccess = new HeapLookup(chunk.heap, tRcv)

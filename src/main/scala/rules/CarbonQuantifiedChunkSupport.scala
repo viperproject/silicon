@@ -499,7 +499,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
                 // remove permissions
                 val (qpMask, newFr) = {
-                  val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+                  val qpMask = v.decider.fresh("qpMaskBADINTRIGGER", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
                   val qpMaskGet = HeapLookup(qpMask, argTerm)
                   val conditionalizedPermissions = Ite(condOfInvOfLoc, PermMin(lossOfInvOfLoc, currentPerm), NoPerm())
                   val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
@@ -576,7 +576,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
                   (App(qpMaskFunc, paramArgs :+ snapArg), s.functionRecorder.recordFieldInv (inverseFunctions))
                 } else {
-                  val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+                  val qpMask = v.decider.fresh("qpMaskBADINTRIGGER", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
                   val qpMaskGet = HeapLookup(qpMask, argTerm)
                   val conditionalizedPermissions = Ite(condOfInvOfLoc, lossOfInvOfLoc, NoPerm())
                   val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
@@ -696,7 +696,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       //val snapTerm = convertToSnapshot(snapHeapMap, snapHeapMap.keys.toSeq, s.h)
       (App(maskFunc, paramArgs :+ predef.`?s`), Some(maskFunc), paramArgs.asInstanceOf[Seq[Var]] :+ predef.`?s`)
     } else {
-      (v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort), None, Seq())
+      (v.decider.fresh("qpMaskBADINTRIGGER", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort), None, Seq())
     }
 
     // forall r :: { get(qpMask, r) } get(qpMask, r) == conditionalizedPermissions
