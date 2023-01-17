@@ -1955,8 +1955,6 @@ case class PermLookup(field: String, pm: Term, at: Term) extends Term {
 class HeapLookup(val heap: Term, val at: Term) extends Term {
  // utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
  // utils.assertSort(at, "receiver", sorts.Ref)
-  if (heap.toString.contains("hInit@21@16"))
-    println("++")
 
   val sort = heap.sort match {
     case sorts.PredHeapSort => sorts.Snap
@@ -1983,8 +1981,6 @@ object HeapLookup extends ((Term, Term) => Term) {
 
 
 case class HeapToSnap(heap: Term, mask: Term, r: Any) extends Term {
-  if (heap.toString == "hInit@15@16")
-    println("++")
 
   val sort = sorts.Snap
 }
