@@ -217,7 +217,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
         if (enforceAssumption) terms
         else terms filterNot isKnownToBeTrue
 
-      if (Verifier.config.carbonQPs()) {
+      if (false && Verifier.config.carbonQPs()) {
         filteredTerms = filteredTerms.flatMap(t => {
           var resultTerms = Seq(t)
           val problematicQuants = t.deepCollect {
