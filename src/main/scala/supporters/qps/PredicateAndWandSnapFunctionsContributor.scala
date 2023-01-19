@@ -94,13 +94,9 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
 
     // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over predicates and wands
 
-    collectedSorts =
-      collectedPredicates.map(predicate =>
-        sorts.PredicateSnapFunction(predicateSnapGenerator.getSnap(predicate)._1))
-
-    if (collectedPredicates.nonEmpty || collectedWandIdentifiers.nonEmpty) {
-      collectedSorts += sorts.PredicateSnapFunction(sorts.Snap)
-    }
+    collectedSorts = collectedPredicates.map(predicate =>
+        sorts.PredicateSnapFunction(predicateSnapGenerator.getSnap(predicate)._1, predicate.name)) ++ collectedWandIdentifiers.map(identifier => sorts.PredicateSnapFunction(sorts.Snap, identifier.toString))
+    
 
     collectedFunctionDecls = generateFunctionDecls
     collectedAxioms = generateAxioms
