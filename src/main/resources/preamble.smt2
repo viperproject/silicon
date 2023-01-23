@@ -10,9 +10,9 @@
 
 ; --- Snapshots ---
 
-(declare-datatypes (($Snap 0)) ((
-    ($Snap.unit)
-    ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
+;(declare-datatypes (($Snap 0)) ((
+;    ($Snap.unit)
+;    ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
 
 ; --- References ---
 

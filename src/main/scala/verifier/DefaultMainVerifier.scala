@@ -441,17 +441,32 @@ class DefaultMainVerifier(config: Config,
     sortDeclarationOrder foreach (component =>
       component.declareSortsAfterAnalysis(sink))
 
-    sink.comment("/" * 10 + " Sort wrappers")
-    emitSortWrappers(Seq(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm), sink)
 
-    sortWrapperDeclarationOrder foreach (component =>
-      emitSortWrappers(component.sortsAfterAnalysis, sink))
+    val snapTypeDeclStart = """(declare-datatypes (($Snap 0)) ((
+                         |    ($Snap.unit)
+                         |    ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap))""".stripMargin
+
+    val snapTypeDeclEnd = ")))"
 
     val backendTypes = new mutable.LinkedHashSet[BackendType]
-    program.visit{
+    program.visit {
       case t: BackendType => backendTypes.add(t)
     }
-    emitSortWrappers(backendTypes map symbolConverter.toSort, sink)
+
+    val sortsInOrder = Seq(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm) ++ sortWrapperDeclarationOrder.flatMap(c => c.sortsAfterAnalysis) ++ (backendTypes map symbolConverter.toSort)
+    val sortWrapperDecls = sortsInOrder.map(s => {
+      val sanitizedSortString = termConverter.convertSanitized(s)
+      val sortString = termConverter.convert(s)
+      s"($$SortWrappers.${sanitizedSortString}To$$Snap ($$SortWrappers.$$SnapTo${sanitizedSortString} ${sortString}))"
+    })
+    val completeDecl = snapTypeDeclStart + sortWrapperDecls.mkString("\n") + snapTypeDeclEnd
+    sink.emit(completeDecl)
+
+    //sink.comment("/" * 10 + " Sort wrappers")
+    //emitSortWrappers(Seq(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm), sink)
+
+    //sortWrapperDeclarationOrder foreach (component =>
+    //  emitSortWrappers(component.sortsAfterAnalysis, sink))
 
     sink.comment("/" * 10 + " Symbols")
     symbolDeclarationOrder foreach (component =>
