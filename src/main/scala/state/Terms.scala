@@ -1952,9 +1952,11 @@ case class PermLookup(field: String, pm: Term, at: Term) extends Term {
   val sort = sorts.Perm
 }
 
-class HeapLookup(val heap: Term, val at: Term) extends Term {
+class HeapLookup(val heap: Term, val at: Term) extends Term with StructuralEquality {
  // utils.assertSort(heap, "heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
  // utils.assertSort(at, "receiver", sorts.Ref)
+
+  val equalityDefiningMembers = Seq(heap, at)
 
   val sort = heap.sort match {
     case sorts.PredHeapSort => sorts.Snap
@@ -1985,7 +1987,9 @@ case class HeapToSnap(heap: Term, mask: Term, r: Any) extends Term {
   val sort = sorts.Snap
 }
 
-class SnapToHeap(val snap: Term, val r: Any, val sort: Sort) extends Term
+class SnapToHeap(val snap: Term, val r: Any, val sort: Sort) extends Term with StructuralEquality {
+  val equalityDefiningMembers = Seq(snap, r, sort)
+}
 
 object SnapToHeap extends ((Term, Any, Sort) => Term) {
   def apply(snap: Term, r: Any, sort: Sort) = snap match {
@@ -2007,9 +2011,12 @@ case class HeapUpdate(heap: Term, at: Term, value: Term) extends Term {
   val sort = heap.sort
 }
 
-class MaskAdd(val mask: Term, val at: Term, val addition: Term) extends Term {
+class MaskAdd(val mask: Term, val at: Term, val addition: Term) extends Term with StructuralEquality {
   if (mask.sort == sorts.PredMaskSort) utils.assertSort(at, "at", sorts.Snap) else utils.assertSort(at, "at", sorts.Ref)
   utils.assertSort(addition, "addition", sorts.Perm)
+
+  val equalityDefiningMembers = Seq(mask, at, addition)
+
   val sort = mask.sort
 }
 
@@ -2028,7 +2035,9 @@ object MaskAdd extends ((Term, Term, Term) => Term) {
   def unapply(ma: MaskAdd) = Some((ma.mask, ma.at, ma.addition))
 }
 
-class HeapSingleton(val at: Term, val value: Term, val sort: Sort) extends Term
+class HeapSingleton(val at: Term, val value: Term, val sort: Sort) extends Term with StructuralEquality {
+  val equalityDefiningMembers = Seq(at, value, sort)
+}
 
 object HeapSingleton extends ((Term, Term, Sort) => Term) {
   def apply(at: Term, value: Term, sort: Sort) = value match {
@@ -2038,10 +2047,12 @@ object HeapSingleton extends ((Term, Term, Sort) => Term) {
   def unapply(hs: HeapSingleton) = Some((hs.at, hs.value, hs.sort))
 }
 
-class IdenticalOnKnownLocations(val oldHeap: Term, val newHeap: Term, val mask: Term) extends Term {
+class IdenticalOnKnownLocations(val oldHeap: Term, val newHeap: Term, val mask: Term) extends Term with StructuralEquality {
  // utils.assertSort(oldHeap, "old heap", "HeapSort", _.isInstanceOf[sorts.HeapSort])
  // utils.assertSort(newHeap, "new heap", oldHeap.sort)
  // utils.assertSort(mask, "heap", MaskSort)
+
+  val equalityDefiningMembers = Seq(oldHeap, newHeap, mask)
 
   val sort = sorts.Bool
 }
@@ -2060,7 +2071,8 @@ case class FakeMaskMapTerm(masks: immutable.ListMap[Any, Term]) extends Term {
   val sort = sorts.Snap // sure, why not
 }
 
-class MergeSingle(val heap: Term, val mask: Term, val location: Term, val value: Term) extends Term {
+class MergeSingle(val heap: Term, val mask: Term, val location: Term, val value: Term) extends Term with StructuralEquality {
+  val equalityDefiningMembers = Seq(heap, mask, location, value)
   val sort = heap.sort
 }
 
@@ -2075,7 +2087,8 @@ object MergeSingle extends ((Term, Term, Term, Term) => Term) {
   def unapply(ms: MergeSingle) = Some((ms.heap, ms.mask, ms.location, ms.value))
 }
 
-class MergeHeaps(val h1: Term, val m1: Term, val h2: Term, val m2: Term) extends Term {
+class MergeHeaps(val h1: Term, val m1: Term, val h2: Term, val m2: Term) extends Term with StructuralEquality {
+  val equalityDefiningMembers = Seq(h1, m1, h2, m2)
   val sort = h1.sort
 }
 
@@ -2091,7 +2104,8 @@ object MergeHeaps extends ((Term, Term, Term, Term) => Term) {
   def unapply(mh: MergeHeaps) = Some((mh.h1, mh.m1, mh.h2, mh.m2))
 }
 
-class HeapsOverlap(val h1: Term, val m1: Term, val h2: Term, val m2: Term) extends Term {
+class HeapsOverlap(val h1: Term, val m1: Term, val h2: Term, val m2: Term) extends Term with StructuralEquality {
+  val equalityDefiningMembers = Seq(h1, m2, h2, m2)
   val sort = h1.sort
 }
 
@@ -2111,7 +2125,8 @@ case class MaskEq(m1: Term, m2: Term) extends Term {
   val sort = sorts.Bool
 }
 
-class MaskSum(val m1: Term, val m2: Term) extends Term {
+class MaskSum(val m1: Term, val m2: Term) extends Term with StructuralEquality {
+  val equalityDefiningMembers = Seq(m1, m2)
   val sort = m1.sort
 }
 
@@ -2129,7 +2144,8 @@ object MaskSum extends ((Term, Term) => Term) {
   def unapply(ms: MaskSum) = Some((ms.m1, ms.m2))
 }
 
-class MaskDiff(val m1: Term, val m2: Term) extends Term {
+class MaskDiff(val m1: Term, val m2: Term) extends Term with StructuralEquality {
+  val equalityDefiningMembers = Seq(m1, m2)
   val sort = m1.sort
 }
 
