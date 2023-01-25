@@ -180,7 +180,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(data.limitedAxiom)
-          emitAndRecordFunctionAxioms(data.triggerAxiom)
+          if (!Verifier.config.carbonFunctions())
+            emitAndRecordFunctionAxioms(data.triggerAxiom)
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
           emitAndRecordFunctionAxioms(data.qpMaskAxioms: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq

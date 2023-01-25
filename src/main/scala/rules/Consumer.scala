@@ -116,23 +116,7 @@ object consumer extends ConsumptionRules {
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
     if (Verifier.config.carbonQPs()) {
-      val resources = tlcs.map(_.shallowCollect{
-        case PredicateAccessPredicate(pa, _) => pa.loc(s.program)
-        case FieldAccessPredicate(fa, _) => fa.loc(s.program)
-        case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
-      }).flatten.distinct.sortWith((r1, r2) => {
-        val r1Name = r1 match {
-          case f: ast.Field => f.name
-          case p: ast.Predicate => p.name
-          case mwi: MagicWandIdentifier => mwi.toString
-        }
-        val r2Name = r2 match {
-          case f: ast.Field => f.name
-          case p: ast.Predicate => p.name
-          case mwi: MagicWandIdentifier => mwi.toString
-        }
-        r1Name < r2Name
-      })
+      val resources = carbonQuantifiedChunkSupporter.getResourceSeq(tlcs, s.program)
       carbonConsumeTlcs(s, h, tlcs, pves, v, resources, ot, havoc)(Q)
     } else {
       internalConsumeTlcs(s, h, tlcs, pves, v, None)(Q)

@@ -8,6 +8,7 @@ package viper.silicon.rules
 
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 
 object functionSupporter {
   def limitedVersion(function: HeapDepFun): HeapDepFun = {
@@ -17,7 +18,7 @@ object functionSupporter {
 
   def statelessVersion(function: HeapDepFun): Fun = {
     val id = function.id.withSuffix("%", "stateless")
-    Fun(id, function.argSorts.tail, terms.sorts.Bool)
+    if (Verifier.config.carbonFunctions())Fun(id, function.argSorts, terms.sorts.Bool) else Fun(id, function.argSorts.tail, terms.sorts.Bool)
   }
 
   def preconditionVersion(function: HeapDepFun): HeapDepFun = {

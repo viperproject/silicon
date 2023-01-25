@@ -11,10 +11,11 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.annotation.unused
 import viper.silver.ast
 import viper.silicon.Map
-import viper.silicon.rules.functionSupporter
+import viper.silicon.rules.{carbonQuantifiedChunkSupporter, functionSupporter}
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
+import viper.silicon.verifier.Verifier
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
@@ -127,10 +128,29 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
-        val fun = symbolConverter.toFunction(silverFunc)
+        val fun = symbolConverter.toFunction(silverFunc, program)
         val args = eFApp.args map (arg => translate(arg))
         val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap)
-        val fapp = App(fun, snap +: args)
+        val snapArgs = if (Verifier.config.carbonFunctions()) {
+          snap match {
+            case mt: FakeMaskMapTerm => mt.masks.values.toSeq
+            case v: Var =>
+              // unresolved
+              val resources = carbonQuantifiedChunkSupporter.getResourceSeq(silverFunc.pres, program)
+              val resHeaps = fromSnapTree(v, resources.size).zip(resources).map {
+                case (s, r) =>
+                  val srt = r match {
+                    case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))
+                    case _ => sorts.PredHeapSort
+                  }
+                  SnapToHeap(s, r, srt)
+              }
+              resHeaps
+          }
+        } else {
+          Seq(snap)
+        }
+        val fapp = App(fun, snapArgs ++ args)
 
         val callerHeight = data.height
         val calleeHeight = functionData(eFApp.func(program)).height

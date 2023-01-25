@@ -402,7 +402,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   }
 
   lazy val carbonQPs: ScallopOption[Boolean] = opt[Boolean]("carbonQPs",
-    descr = "Use Carbon-like QP encoding",
+    descr = "Use Carbon-like heap encoding",
+    default = Some(false),
+    noshort = true
+  )
+
+  lazy val carbonFunctions: ScallopOption[Boolean] = opt[Boolean]("carbonFunctions",
+    descr = "Use Carbon-like function encoding",
     default = Some(false),
     noshort = true
   )

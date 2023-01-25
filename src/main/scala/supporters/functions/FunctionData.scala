@@ -8,15 +8,14 @@ package viper.silicon.supporters.functions
 
 import scala.annotation.unused
 import com.typesafe.scalalogging.LazyLogging
-import viper.silicon.state.FunctionPreconditionTransformer
+import viper.silicon.state.{FunctionPreconditionTransformer, Identifier, IdentifierFactory, MagicWandIdentifier, SymbolConverter}
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
-import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, functionSupporter}
+import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, carbonQuantifiedChunkSupporter, functionSupporter}
 import viper.silicon.state.terms.{App, _}
 import viper.silicon.state.terms.predef._
-import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Config, Map, toMap}
@@ -54,7 +53,7 @@ class FunctionData(val programFunction: ast.Function,
    * Properties computed from the constructor arguments
    */
 
-  val function: HeapDepFun = symbolConverter.toFunction(programFunction)
+  val function: HeapDepFun = symbolConverter.toFunction(programFunction, program)
   val limitedFunction = functionSupporter.limitedVersion(function)
   val statelessFunction = functionSupporter.statelessVersion(function)
   val preconditionFunction = functionSupporter.preconditionVersion(function)
@@ -69,12 +68,29 @@ class FunctionData(val programFunction: ast.Function,
   val formalResult = Var(identifierFactory.fresh(programFunction.result.name),
                          symbolConverter.toSort(programFunction.result.typ))
 
-  val arguments = Seq(`?s`) ++ formalArgs.values
+  val snapArgs = {
+    if (Verifier.config.carbonFunctions()) {
+      val resources = carbonQuantifiedChunkSupporter.getResourceSeq(programFunction.pres, program)
+      resources.map(r => {
+        val (name, sort) = r match {
+          case f: ast.Field => (f.name, sorts.HeapSort(symbolConverter.toSort(f.typ)))
+          case p: ast.Predicate => (p.name, sorts.PredHeapSort)
+          case mwi: MagicWandIdentifier => (mwi.toString, sorts.PredHeapSort)
+        }
+        Var(identifierFactory.fresh(s"heap_$name"), sort)
+      })
+    } else {
+      Seq(`?s`)
+    }
+  }
 
-  val functionApplication = App(function, `?s` +: formalArgs.values.toSeq)
-  val limitedFunctionApplication = App(limitedFunction, `?s` +: formalArgs.values.toSeq)
-  val triggerFunctionApplication = App(statelessFunction, formalArgs.values.toSeq)
-  val preconditionFunctionApplication = App(preconditionFunction, `?s` +: formalArgs.values.toSeq)
+  val arguments = snapArgs ++ formalArgs.values
+  val argumentsDuringFunctionVerification = Seq(`?s`) ++ formalArgs.values
+
+  val functionApplication = App(function, snapArgs ++ formalArgs.values.toSeq)
+  val limitedFunctionApplication = App(limitedFunction, snapArgs ++ formalArgs.values.toSeq)
+  val triggerFunctionApplication = if (Verifier.config.carbonFunctions()) null else App(statelessFunction, formalArgs.values.toSeq)
+  val preconditionFunctionApplication = App(preconditionFunction, snapArgs ++ formalArgs.values.toSeq)
 
   val limitedAxiom =
     Forall(arguments,
@@ -243,7 +259,12 @@ class FunctionData(val programFunction: ast.Function,
       val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
       val body = Let(toMap(bodyBindings), innermostBody)
 
-      Some(Forall(arguments, body, Trigger(limitedFunctionApplication)))
+      val res = Forall(arguments, body, Trigger(limitedFunctionApplication))
+      val transformedRes = if (Verifier.config.carbonFunctions())
+        transformToHeapVersion(res)
+      else
+        res
+      Some(transformedRes)
     } else
       None
   }
@@ -299,6 +320,19 @@ class FunctionData(val programFunction: ast.Function,
     expressionTranslator.translate(program, programFunction, this)
   }
 
+  def transformToHeapVersion(t: Term) = {
+    val resources = carbonQuantifiedChunkSupporter.getResourceSeq(programFunction.pres, program)
+    val resHeaps = fromSnapTree(`?s`, resources.size).zip(resources).map {
+      case (s, r) =>
+        val srt = r match {
+          case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))
+          case _ => sorts.PredHeapSort
+        }
+        SnapToHeap(s, r, srt)
+    }
+    t.replace(resHeaps, snapArgs)
+  }
+
   lazy val definitionalAxiom: Option[Term] = {
     assert(phase == 2, s"Definitional axiom must be generated in phase 2, current phase is $phase")
 
@@ -312,10 +346,14 @@ class FunctionData(val programFunction: ast.Function,
         }).toSeq
         val predAxiom = Forall(`?sp` +: arguments, body, predTriggers)
         val directAxiom = Forall(arguments, body, Seq(Trigger(functionApplication)))
-        if (predTriggers.nonEmpty)
+        val res = if (predTriggers.nonEmpty)
           And(predAxiom, directAxiom)
         else
           directAxiom
+        if (Verifier.config.carbonFunctions())
+          transformToHeapVersion(res)
+        else
+          res
       } else {
         val allTriggers = (
           Seq(Trigger(functionApplication))
@@ -337,6 +375,10 @@ class FunctionData(val programFunction: ast.Function,
       val bodies = translatedPosts.map(tPost => Let(bodyBindings, Implies(pre, FunctionPreconditionTransformer.transform(tPost, program))))
       bodies.map(b => Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))))
     } else Seq()
-    bodyPreconditions.toSeq ++ postPreconditions
+    val res = bodyPreconditions.toSeq ++ postPreconditions
+    if (Verifier.config.carbonFunctions())
+      res.map(t => transformToHeapVersion(t))
+    else
+      res
   }
 }

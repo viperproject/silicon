@@ -32,6 +32,27 @@ class CarbonQuantifiedChunkSupport extends SymbolicExecutionRules {
 
 object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
+  def getResourceSeq(tlcs: Seq[ast.Exp], program: ast.Program): Seq[Any] = {
+    val resources = tlcs.map(_.shallowCollect {
+      case ast.PredicateAccessPredicate(pa, _) => pa.loc(program)
+      case ast.FieldAccessPredicate(fa, _) => fa.loc(program)
+      case mw: ast.MagicWand => MagicWandIdentifier(mw, program)
+    }).flatten.distinct.sortWith((r1, r2) => {
+      val r1Name = r1 match {
+        case f: ast.Field => f.name
+        case p: ast.Predicate => p.name
+        case mwi: MagicWandIdentifier => mwi.toString
+      }
+      val r2Name = r2 match {
+        case f: ast.Field => f.name
+        case p: ast.Predicate => p.name
+        case mwi: MagicWandIdentifier => mwi.toString
+      }
+      r1Name < r2Name
+    })
+    resources
+  }
+
   def findCarbonChunk(h: Heap, r: Any) = findCarbonChunkOptionally(h, r).get
 
   def findCarbonChunkOptionally(h: Heap, r: Any) = h.values.find(c => c.asInstanceOf[CarbonChunk].resource == r).asInstanceOf[Option[BasicCarbonChunk]]

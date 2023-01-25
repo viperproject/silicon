@@ -26,6 +26,8 @@ import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, Implies
 import viper.silicon.rules.evaluator.evalResourceAccess
 import viper.silver.ast.WeightedQuantifier
 
+import scala.collection.immutable.ListMap
+
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
  *       of eval.
@@ -793,13 +795,22 @@ object evaluator extends EvaluationRules {
                                  */
                              smDomainNeeded = true)
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
-              val snap1 = snap.convert(sorts.Snap)
-              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
+              val (snapArgs, snapToRecord) = if (Verifier.config.carbonFunctions()) {
+                val resources = carbonQuantifiedChunkSupporter.getResourceSeq(func.pres, s4.program)
+                val args = resources.map(r => {
+                  carbonQuantifiedChunkSupporter.findCarbonChunk(s4.h, r).heap
+                })
+                (args, FakeMaskMapTerm(ListMap(resources.zip(args): _*)))
+              } else {
+                val snapToRecord = snap.convert(sorts.Snap)
+                (Seq(snapToRecord), snapToRecord)
+              }
+              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func, s4.program)), snapArgs ++ tArgs)
               v3.decider.assume(preFApp)
-              val tFApp = App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
+              val tFApp = App(v3.symbolConverter.toFunction(func, s4.program), snapArgs ++ tArgs)
               val fr5 =
                 s4.functionRecorder.changeDepthBy(-1)
-                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1)
+                                   .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snapToRecord)
               val s5 = s4.copy(g = s2.g,
                                h = s2.h,
                                isConsumingFunctionPre = None,
