@@ -2078,9 +2078,10 @@ class MergeSingle(val heap: Term, val mask: Term, val location: Term, val value:
 
 object MergeSingle extends ((Term, Term, Term, Term) => Term) {
 
-  def apply(heap: Term, mask: Term, location: Term, value: Term) = mask match {
-    case ZeroMask() => HeapSingleton(location, value, heap.sort)
-    case PredZeroMask() => HeapSingleton(location, value, heap.sort)
+  def apply(heap: Term, mask: Term, location: Term, value: Term) = (mask, value) match {
+    case (ZeroMask(), _) => HeapSingleton(location, value, heap.sort)
+    case (PredZeroMask(), _) => HeapSingleton(location, value, heap.sort)
+    case (_, HeapLookup(h, l)) if heap == h && l == location => heap
     case _ => new MergeSingle(heap, mask, location, value)
   }
 
@@ -2098,6 +2099,7 @@ object MergeHeaps extends ((Term, Term, Term, Term) => Term) {
     case (PredZeroMask(), _) => h2
     case (_, ZeroMask()) => h1
     case (_, PredZeroMask()) => h1
+    case _ if h1 == h2 => h1
     case _ => new MergeHeaps(h1, m1, h2, m2)
   }
 
@@ -2115,6 +2117,7 @@ object HeapsOverlap extends ((Term, Term, Term, Term) => Term) {
     case (PredZeroMask(), _) => h2
     case (_, ZeroMask()) => h1
     case (_, PredZeroMask()) => h1
+    case _ if h1 == h2 => True()
     case _ => new HeapsOverlap(h1, m1, h2, m2)
   }
 
