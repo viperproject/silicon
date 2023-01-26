@@ -231,7 +231,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
         case mwi: MagicWandIdentifier => mwi.ghostFreeWand.subexpressionsToEvaluate(program).map(e => v.symbolConverter.toSort(e.typ))
       }
       val args = argSorts.zipWithIndex.map(s => Var(Identifier(s"arg_v${s._2}"), s._1))
-      val argTerm = toSnapTree(args)
+      val argTerm = if (resource.isInstanceOf[ast.Field]) args(0) else toSnapTree(args)
       val removedMaskLookup = HeapLookup(removedMask, argTerm)
 
       for (add <- additions) {
