@@ -129,11 +129,19 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
         val fun = symbolConverter.toFunction(silverFunc, program)
+        val callerHeight = data.height
+        val calleeHeight = functionData(eFApp.func(program)).height
+        val funVersion = if (callerHeight < calleeHeight)
+          fun
+        else
+          functionSupporter.limitedVersion(fun)
         val args = eFApp.args map (arg => translate(arg))
         val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap)
-        val snapArgs = if (Verifier.config.carbonFunctions()) {
-          snap match {
-            case mt: FakeMaskMapTerm => mt.masks.values.toSeq
+
+        val fapp = if (Verifier.config.carbonFunctions()) {
+          def createApp(trm: Term): Term = trm match {
+            case mt: FakeMaskMapTerm => App(funVersion, mt.masks.values.toSeq ++ args)
+            case Ite(cond, e1, e2) => Ite(cond, createApp(e1), createApp(e2))
             case v: Var =>
               // unresolved
               val resources = carbonQuantifiedChunkSupporter.getResourceSeq(silverFunc.pres, program)
@@ -145,20 +153,14 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                   }
                   SnapToHeap(s, r, srt)
               }
-              resHeaps
+              App(funVersion, resHeaps ++ args)
           }
+          createApp(snap)
         } else {
-          Seq(snap)
+          App(funVersion, snap +: args)
         }
-        val fapp = App(fun, snapArgs ++ args)
 
-        val callerHeight = data.height
-        val calleeHeight = functionData(eFApp.func(program)).height
-
-        if (callerHeight < calleeHeight)
-          fapp
-        else
-          fapp.copy(applicable = functionSupporter.limitedVersion(fun))
+        fapp
 
       case _ => super.translate(symbolConverter.toSort)(e)
     }

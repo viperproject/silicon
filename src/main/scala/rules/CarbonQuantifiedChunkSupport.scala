@@ -14,7 +14,7 @@ import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{MaskSort, PredHeapSort, PredMaskSort}
 import viper.silicon.state.terms.utils.consumeExactRead
 import viper.silicon.state.terms.{And, App, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskEq, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermLiteral, PermMin, PermMinus, PermNegation, PermPlus, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, predef, sorts, toSnapTree}
-import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, FunctionPreconditionTransformer, Heap, MagicWandIdentifier, State, terms}
+import viper.silicon.state.{BasicCarbonChunk, ChunkIdentifier, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, terms}
 import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
@@ -199,7 +199,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     }
   }
 
-  def subtractMask(origMask: Term, removedMask: Term, v: Verifier): Term = {
+  def subtractMask(origMask: Term, removedMask: Term, resource: Any, program: ast.Program, v: Verifier): Term = {
     val termAdditions = mutable.LinkedHashMap[Term, Term]()
     val termRemovals = mutable.LinkedHashMap[Term, Term]()
     val maskAdditions = mutable.LinkedHashSet[Term]()
@@ -224,9 +224,20 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
     if (!foundTerm.isDefined) {
       val additions = maskAdditions.toSeq.distinct
+
+      val argSorts = resource match {
+        case _: ast.Field => Seq(sorts.Ref)
+        case p: ast.Predicate => p.formalArgs.map(l => v.symbolConverter.toSort(l.typ))
+        case mwi: MagicWandIdentifier => mwi.ghostFreeWand.subexpressionsToEvaluate(program).map(e => v.symbolConverter.toSort(e.typ))
+      }
+      val args = argSorts.zipWithIndex.map(s => Var(Identifier(s"arg_v${s._2}"), s._1))
+      val argTerm = toSnapTree(args)
+      val removedMaskLookup = HeapLookup(removedMask, argTerm)
+
       for (add <- additions) {
         if (!done) {
-          if (v.decider.check(MaskEq(add, removedMask), Verifier.config.checkTimeout())) {
+          val equality = Forall(args, HeapLookup(add, argTerm) === removedMaskLookup, Trigger(removedMaskLookup))
+          if (v.decider.check(equality, 0)) {
             foundTerm = Some(add)
             done = true
           }
@@ -606,7 +617,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                 }
 
                 // simplify only if this mask will be used later
-                val newMask = if (s.isConsumingFunctionPre.isDefined) MaskDiff(currentChunk.mask, qpMask) else subtractMask(currentChunk.mask, qpMask, v)
+                val newMask = if (s.isConsumingFunctionPre.isDefined) MaskDiff(currentChunk.mask, qpMask) else subtractMask(currentChunk.mask, qpMask, resource, s.program, v)
 
                 val newChunk = if (!havoc || s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
                   // no need to havoc

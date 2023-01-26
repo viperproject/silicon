@@ -24,6 +24,7 @@ import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{CarbonChunk, ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silicon.rules.evaluator.evalResourceAccess
+import viper.silicon.state.terms.sorts.PredHeapSort
 import viper.silver.ast.WeightedQuantifier
 
 import scala.collection.immutable.ListMap
@@ -865,7 +866,10 @@ object evaluator extends EvaluationRules {
                       val s7a = s7.copy(g = insg)
 
                       val predSnapFunc = if (Verifier.config.carbonQPs()) {
-                        val predSnap = HeapLookup(snap.asInstanceOf[HeapToSnap].heap, toSnapTree(tArgs))
+                        val predSnap = snap match {
+                          case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
+                          case _ => HeapLookup(SnapToHeap(snap, predicate, PredHeapSort), toSnapTree(tArgs))
+                        }
                         (_: Sort, _: Verifier) => predSnap
                       } else toSf(snap)
                       produce(s7a, predSnapFunc, body, pve, v4)((s8, v5) => {

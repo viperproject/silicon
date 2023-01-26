@@ -1982,9 +1982,22 @@ object HeapLookup extends ((Term, Term) => Term) {
 }
 
 
-case class HeapToSnap(heap: Term, mask: Term, r: Any) extends Term {
+class HeapToSnap(val heap: Term, val mask: Term, val r: Any) extends Term with StructuralEquality {
+  val equalityDefiningMembers = Seq(heap, mask, r)
 
   val sort = sorts.Snap
+}
+
+object HeapToSnap extends ((Term, Term, Any) => Term) {
+
+  def apply(heap: Term, mask: Term, r: Any) = heap match {
+    //case SnapToHeap(snap, r2, _) =>
+    //  assert(r == r2)
+    //  snap
+    case _ => new HeapToSnap(heap, mask, r)
+  }
+
+  def unapply(hs: HeapToSnap) = Some((hs.heap, hs.mask, hs.r))
 }
 
 class SnapToHeap(val snap: Term, val r: Any, val sort: Sort) extends Term with StructuralEquality {

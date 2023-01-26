@@ -143,7 +143,10 @@ object predicateSupporter extends PredicateSupportRules {
       carbonConsumeTlcs(s1, s1.h, Seq(permAssertion), Seq(pve), v, Seq(predicate), None)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1, partiallyConsumedHeap = None)
           .setConstrainable(constrainableWildcards, false)
-        val predSnap = HeapLookup(snap.asInstanceOf[HeapToSnap].heap, toSnapTree(tArgs))
+        val predSnap = snap match {
+          case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
+          case _ => HeapLookup(SnapToHeap(snap, predicate, PredHeapSort), toSnapTree(tArgs))
+        }
         val predSnapFunc = (_: Sort, _: Verifier) => predSnap
         produce(s3, predSnapFunc, body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
