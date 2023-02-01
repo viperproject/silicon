@@ -14,7 +14,7 @@ import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.{SortDecl, sorts}
-import viper.silver.ast.{FieldAccess, Forall}
+import viper.silver.ast.{Exists, FieldAccess, Forall}
 
 trait FieldValueFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 
@@ -54,6 +54,10 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
       case Forall(_, triggers, _) =>
         val trigExps = triggers flatMap (_.exps)
         val fieldAccesses = trigExps flatMap (e => e.deepCollect {case fa: FieldAccess => fa})
+        collectedFields ++= (fieldAccesses map (_.field))
+      case Exists(_, triggers, _) =>
+        val trigExps = triggers flatMap (_.exps)
+        val fieldAccesses = trigExps flatMap (e => e.deepCollect { case fa: FieldAccess => fa })
         collectedFields ++= (fieldAccesses map (_.field))
     }
 

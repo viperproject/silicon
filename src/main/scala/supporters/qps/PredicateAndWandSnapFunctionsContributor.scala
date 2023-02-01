@@ -85,6 +85,10 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
         val trigExps = triggers flatMap (_.exps)
         val predicateAccesses = trigExps flatMap (e => e.deepCollect {case pa: PredicateAccess => pa})
         collectedPredicates ++= (predicateAccesses map (_.loc(program)))
+      case ast.Exists(_, triggers, _) =>
+        val trigExps = triggers flatMap (_.exps)
+        val predicateAccesses = trigExps flatMap (e => e.deepCollect { case pa: PredicateAccess => pa })
+        collectedPredicates ++= (predicateAccesses map (_.loc(program)))
     }
 
     collectedWandIdentifiers =
