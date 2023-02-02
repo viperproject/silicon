@@ -763,6 +763,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
+  validateOpt(assertionMode, parallelizeBranches) {
+    case (Some(AssertionMode.SoftConstraints), Some(true)) =>
+      Left(s"Assertion mode SoftConstraints is not supported in combination with ${parallelizeBranches.name}")
+    case _ => Right()
+  }
+
   validateOpt(counterexample, enableMoreCompleteExhale) {
     case (Some(_), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
                                         + s"flag ${enableMoreCompleteExhale.name}")
