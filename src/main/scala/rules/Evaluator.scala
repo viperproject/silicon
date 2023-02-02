@@ -655,7 +655,23 @@ object evaluator extends EvaluationRules {
             v1.decider.prover.comment("Nested auxiliary terms: globals (aux)")
             v1.decider.assume(tAuxGlobal)
             v1.decider.prover.comment("Nested auxiliary terms: non-globals (aux)")
-            v1.decider.assume(tAuxHeapIndep/*tAux*/)
+
+            tAuxHeapIndep.foreach(q => {
+              var inQuant: List[Term] = Nil
+              var outQuant: List[Term] = Nil
+              q.body.topLevelConjuncts.foreach(tlc => {
+                if (tVars.exists(tv => tlc.contains(tv))) {
+                  inQuant = tlc :: inQuant
+                } else {
+                  outQuant = tlc :: outQuant
+                }
+              })
+              v1.decider.assume(outQuant)
+              v1.decider.assume(q.copy(body = And(inQuant)))
+            })
+
+            //v1.decider.assume()
+            //v1.decider.assume(tAuxHeapIndep/*tAux*/)
 
             if (qantOp == Exists) {
               // For universal quantification, the non-global auxiliary assumptions will contain the information that
@@ -673,7 +689,7 @@ object evaluator extends EvaluationRules {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
-        val s0 = s.copy(hackIssue387DisablePermissionConsumption = s.moreCompleteExhale)
+        val s0 = s
         evals2(s0, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
