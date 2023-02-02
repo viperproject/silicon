@@ -565,7 +565,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val assertionMode: ScallopOption[AssertionMode] = opt[AssertionMode]("assertionMode",
     descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
-             + "'pp' (push-pop) and 'cs' (soft constraints) (default: pp)."),
+             + "'pp' (push-pop) and 'sc' (soft constraints) (default: pp)."),
     default = Some(AssertionMode.PushPop),
     noshort = true
   )(assertionModeConverter)
