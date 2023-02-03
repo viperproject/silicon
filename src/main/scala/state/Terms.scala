@@ -876,6 +876,11 @@ object Equals extends ((Term, Term) => BooleanTerm) {
     (e0, e1) match {
       case (`e0`, `e0`) => True()
       case (l1: Literal, l2: Literal) => BooleanLiteral(l1 == l2)
+      // TODO: describe
+      case (SortWrapper(t, _), _) if t.sort == sorts.Snap =>
+        Equals(t, SortWrapper(e1, t.sort))
+      case (_, SortWrapper(t, _)) if t.sort == sorts.Snap =>
+        Equals(t, SortWrapper(e0, t.sort))
       case _ =>
         e0.sort match {
           case sorts.Snap =>

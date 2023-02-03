@@ -454,7 +454,11 @@ class DefaultMainVerifier(config: Config,
     }
 
     val sortsInOrder = Seq(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm) ++ sortWrapperDeclarationOrder.flatMap(c => c.sortsAfterAnalysis) ++ (backendTypes map symbolConverter.toSort)
-    val sortWrapperDecls = sortsInOrder.map(s => {
+
+    val wrapperADTSorts = sortsInOrder.filterNot(s => s.isInstanceOf[sorts.FieldValueFunction] || s.isInstanceOf[sorts.PredicateSnapFunction])
+    val wrapperUninterpretedFunctionSorts = sortsInOrder.filter(s => s.isInstanceOf[sorts.FieldValueFunction] || s.isInstanceOf[sorts.PredicateSnapFunction])
+
+    val sortWrapperDecls = wrapperADTSorts.map(s => {
       val sanitizedSortString = termConverter.convertSanitized(s)
       val sortString = termConverter.convert(s)
       s"($$SortWrappers.${sanitizedSortString}To$$Snap ($$SortWrappers.$$SnapTo${sanitizedSortString} ${sortString}))"
@@ -462,8 +466,8 @@ class DefaultMainVerifier(config: Config,
     val completeDecl = snapTypeDeclStart + sortWrapperDecls.mkString("\n") + snapTypeDeclEnd
     sink.emit(completeDecl)
 
-    //sink.comment("/" * 10 + " Sort wrappers")
-    //emitSortWrappers(Seq(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm), sink)
+    sink.comment("/" * 10 + " Sort wrappers")
+    emitSortWrappers(wrapperUninterpretedFunctionSorts, sink)
 
     //sortWrapperDeclarationOrder foreach (component =>
     //  emitSortWrappers(component.sortsAfterAnalysis, sink))
