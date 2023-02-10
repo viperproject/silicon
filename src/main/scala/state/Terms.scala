@@ -1852,7 +1852,7 @@ object MapUpdate extends ((Term, Term, Term) => MapTerm) {
     new MapUpdate(t0, t1, t2)
   }
 
-  def unapply(mu: MapUpdate) = Some((mu, mu.key, mu.value))
+  def unapply(mu: MapUpdate) = Some((mu.base, mu.key, mu.value))
 }
 
 class MapDomain(val p: Term) extends SetTerm with StructuralEqualityUnaryOp[Term] {
