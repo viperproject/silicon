@@ -189,11 +189,6 @@ package object utils {
       autoTriggeredForall.asInstanceOf[T]
     }
 
-    def posID(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {
-      case pos: silver.ast.HasIdentifier => pos.id
-      case _ => node.pos.toString
-    }
-
     def sourceLine(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {
       case pos: silver.ast.HasLineColumn => pos.line.toString
       case _ => node.pos.toString
