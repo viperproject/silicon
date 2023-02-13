@@ -6,6 +6,8 @@
 
 package viper.silicon.verifier
 
+import viper.silicon.Config.ExhaleMode
+
 import java.text.SimpleDateFormat
 import java.util.concurrent._
 import scala.annotation.unused
@@ -308,7 +310,7 @@ class DefaultMainVerifier(config: Config,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
           isMethodVerification = member.isInstanceOf[ast.Member],
           heapDependentTriggers = resourceTriggers,
-          moreCompleteExhale = Verifier.config.enableMoreCompleteExhale())
+          moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -328,7 +330,7 @@ class DefaultMainVerifier(config: Config,
       qpMagicWands = quantifiedMagicWands,
       predicateSnapMap = predSnapGenerator.snapMap,
       predicateFormalVarMap = predSnapGenerator.formalVarMap,
-      moreCompleteExhale = Verifier.config.enableMoreCompleteExhale())
+      moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete)
   }
 
   private def excludeMethod(method: ast.Method) = (

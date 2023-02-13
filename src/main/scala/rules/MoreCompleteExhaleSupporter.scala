@@ -224,7 +224,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-        actualConsumeCompleteConstrainable(s, relevantChunks, args, perms, ve, v)((s1, updatedChunks, optSnap, v2) => {
+        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, perms, ve, v)((s1, updatedChunks, optSnap, v2) => {
           Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, v2)})
       } else {
         var pNeeded = perms
@@ -298,6 +298,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
   private def actualConsumeCompleteConstrainable(s: State,
                                                  relevantChunks: ListBuffer[NonQuantifiedChunk],
+                                                 resource: ast.Resource,
                                                  args: Seq[Term],
                                                  perms: Term, // Expected to be constrainable. Will be assumed to equal the consumed permission amount.
                                                  ve: VerificationError,
@@ -309,7 +310,6 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     var totalPermSum: Term = NoPerm()
     var totalPermTaken: Term = NoPerm()
-    val snap: Var = v.decider.fresh(sorts.Snap)
     var newFr = s.functionRecorder
 
     val updatedChunks =
@@ -317,15 +317,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
         val permTaken = v.decider.fresh("p", sorts.Perm)
 
-
-
         totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm()))
         totalPermTaken = PermPlus(totalPermTaken, permTaken)
 
         val constraint = And(IsValidPermVar(permTaken),
           PermAtMost(permTaken, ch.perm),
-          Implies(Not(eq), permTaken === NoPerm()),
-          Implies(eq, snap === ch.snap.convert(sorts.Snap)))
+          Implies(Not(eq), permTaken === NoPerm()))
 
         v.decider.assume(constraint)
         newFr = newFr.recordArp(permTaken, constraint)
@@ -343,9 +340,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     v.decider.assert(totalPermTaken !== NoPerm()) {
       case true =>
         v.decider.assume(perms === totalPermTaken)
-        val fr1 = s.functionRecorder.recordFreshSnapshot(snap.applicable)
-        val s1 = s.copy(functionRecorder = fr1)
-        Q(s1, updatedChunks, Some(snap), v)
+        summarise(s, relevantChunks.toSeq, resource, args, v)((s2, snap, _, _, v1) =>
+          Q(s2, updatedChunks, Some(snap), v1))
       case false =>
         createFailure(ve, v, s)
     }
