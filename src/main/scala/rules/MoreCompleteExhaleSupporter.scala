@@ -306,8 +306,6 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                                 (Q: (State, ListBuffer[NonQuantifiedChunk], Option[Term], Verifier) => VerificationResult)
                                                 : VerificationResult = {
 
-    //assert(s.functionRecorder == NoopFunctionRecorder)
-
     var totalPermSum: Term = NoPerm()
     var totalPermTaken: Term = NoPerm()
     var newFr = s.functionRecorder
@@ -322,7 +320,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         val constraint = And(IsValidPermVar(permTaken),
           PermAtMost(permTaken, ch.perm),
-          Implies(Not(eq), permTaken === NoPerm()))
+          Implies(Not(eq), permTaken === NoPerm())
+        )
 
         v.decider.assume(constraint)
         newFr = newFr.recordArp(permTaken, constraint)

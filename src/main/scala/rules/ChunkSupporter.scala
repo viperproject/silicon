@@ -197,7 +197,7 @@ object chunkSupporter extends ChunkSupportRules {
 
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction =
-        if (s.isMethodVerification &&s1.moreCompleteExhale) moreCompleteExhaleSupporter.lookupComplete _
+        if (s.isMethodVerification && s1.moreCompleteExhale) moreCompleteExhaleSupporter.lookupComplete _
         else lookupGreedy _
       lookupFunction(s1, s1.h, resource, args, ve, v1)((s2, tSnap, v2) =>
         QS(s2.copy(h = s.h), s2.h, tSnap, v2))
