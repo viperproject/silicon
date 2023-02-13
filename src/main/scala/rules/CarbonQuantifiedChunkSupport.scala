@@ -368,6 +368,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
       val toCheck = if (consumeExact) AtLeast(maskValue, permissions) else Greater(maskValue, NoPerm())
 
+      v.decider.assume(FunctionPreconditionTransformer.transform(toCheck, s.program))
       v.decider.assert(toCheck) {
         case true =>
           if (!consumeExact) {
@@ -585,11 +586,21 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
               // assert enough permissions
               val currentPerm = HeapLookup(currentChunk.mask, argTerm)
 
-              val sufficientPerm = if (constrainPermissions) {
-                Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(NoPerm(), currentPerm)), Seq(), "sufficientPerms")
-              } else {
-                Forall(formalQVars, Implies(condOfInvOfLoc, PermAtMost(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms")
+              val argTermQvars = resource match {
+                case _: ast.Field => tArgs(0)
+                case _: ast.Predicate => toSnapTree(tArgs)
+                case _ => toSnapTree(tArgs)
               }
+              val currentPermQvars = HeapLookup(currentChunk.mask, argTermQvars)
+
+              val sufficientPerm = if (constrainPermissions) {
+                //Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(NoPerm(), currentPerm)), Seq(), "sufficientPerms")
+                Forall(qvars, Implies(tCond, PermLess(NoPerm(), currentPermQvars)), tTriggers, "sufficientPerms")
+              } else {
+                //Forall(formalQVars, Implies(condOfInvOfLoc, PermAtMost(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms")
+                Forall(qvars, Implies(tCond, PermAtMost(loss, currentPermQvars)), tTriggers, "sufficientPerms")
+              }
+              v.decider.assume(FunctionPreconditionTransformer.transform(sufficientPerm, s.program))
               v.decider.assert(sufficientPerm)(r => r match {
               case true =>
                 if (constrainPermissions) {
