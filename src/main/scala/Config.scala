@@ -635,8 +635,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case _ => opt
   }
 
+  // DEPRECATED and replaced by exhaleMode.
   val moreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
-    descr = "Enable a more complete exhale version.",
+    descr =  "Warning: This option is deprecated. "
+           + "Please use 'exhaleMode' instead. "
+           + "Enables a more complete exhale version.",
     default = Some(false),
     noshort = true
   )
@@ -795,8 +798,9 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
          (Some(_), Some(_), Some(ExhaleMode.Greedy)) |
          (Some(_), Some(_), Some(ExhaleMode.MoreCompleteOnDemand)) =>
       Left(  s"Option ${counterexample.name} requires setting "
-           + s"flag ${moreCompleteExhale.name}")
-    case (_, Some(true), Some(m)) if m != ExhaleMode.MoreComplete => Left(s"Contradictory values given for options ${moreCompleteExhale.name} and ${exhaleModeOption.name}")
+           + s"${exhaleModeOption.name} to 1 (more complete)")
+    case (_, Some(true), Some(m)) if m != ExhaleMode.MoreComplete =>
+      Left(s"Contradictory values given for options ${moreCompleteExhale.name} and ${exhaleModeOption.name}")
     case _ => Right(())
   }
 
