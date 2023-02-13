@@ -39,7 +39,7 @@ class DefaultSymbolConverter extends SymbolConverter {
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
       sorts.UserSort(Identifier(dt.toString()))
 
-    case ast.BackendType(_, interpretations) if interpretations.contains("SMTLIB") != null => sorts.SMTSort(Identifier(interpretations("SMTLIB")))
+    case ast.BackendType(_, interpretations) if interpretations.contains("SMTLIB") => sorts.SMTSort(Identifier(interpretations("SMTLIB")))
     case ast.BackendType(_, _) => sys.error("Found backend type without SMTLIB name.")
     case viper.silicon.utils.ast.ViperEmbedding(sort) => sort
       

@@ -70,8 +70,8 @@ object sorts {
     override lazy val toString = id.toString
   }
 
-  case class FieldValueFunction(codomainSort: Sort) extends Sort {
-    val id = Identifier(s"FVF[$codomainSort]")
+  case class FieldValueFunction(codomainSort: Sort, fieldName: String) extends Sort {
+    val id = Identifier(s"FVF[$fieldName]")
     override lazy val toString = id.toString
   }
 
@@ -90,8 +90,8 @@ object sorts {
     override lazy val toString = id.toString
   }
 
-  case class PredicateSnapFunction(codomainSort: Sort) extends Sort {
-    val id = Identifier(s"PSF[$codomainSort]")
+  case class PredicateSnapFunction(codomainSort: Sort, predName: String) extends Sort {
+    val id = Identifier(s"PSF[$predName]")
     override lazy val toString = id.toString
   }
 

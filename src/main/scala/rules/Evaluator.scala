@@ -710,7 +710,9 @@ object evaluator extends EvaluationRules {
         }
 
         val body = eQuant.exp
-        val name = s"prog.l${viper.silicon.utils.ast.sourceLine(sourceQuant)}"
+        // Remove whitespace in identifiers to avoid parsing problems for the axiom profiler.
+        val posString = viper.silicon.utils.ast.sourceLine(sourceQuant).replaceAll(" ", "")
+        val name = s"prog.l$posString"
         evalQuantified(s, qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v){
           case (s1, tVars, _, Seq(tBody), tTriggers, (tAuxGlobal, tAux), v1) =>
             val tAuxHeapIndep = tAux.flatMap(v.quantifierSupporter.makeTriggersHeapIndependent(_, v1.decider.fresh))

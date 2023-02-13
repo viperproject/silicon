@@ -15,7 +15,7 @@ import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.{SortDecl, sorts}
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{FieldAccess, Forall}
+import viper.silver.ast.{Exists, FieldAccess, Forall}
 
 trait FieldValueFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 
@@ -59,13 +59,16 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
         val trigExps = triggers flatMap (_.exps)
         val fieldAccesses = trigExps flatMap (e => e.deepCollect {case fa: FieldAccess => fa})
         collectedFields ++= (fieldAccesses map (_.field))
+      case Exists(_, triggers, _) =>
+        val trigExps = triggers flatMap (_.exps)
+        val fieldAccesses = trigExps flatMap (e => e.deepCollect { case fa: FieldAccess => fa })
+        collectedFields ++= (fieldAccesses map (_.field))
     }
 
     // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over fields
 
     collectedSorts = (
-        collectedFields.map(f => sorts.FieldValueFunction(symbolConverter.toSort(f.typ)))
-      + sorts.FieldValueFunction(sorts.Ref))
+        collectedFields.map(f => sorts.FieldValueFunction(symbolConverter.toSort(f.typ), f.name)))
 
     collectedFunctionDecls = generateFunctionDecls
     collectedAxioms = generateAxioms

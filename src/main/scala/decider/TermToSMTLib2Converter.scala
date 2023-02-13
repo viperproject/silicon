@@ -61,8 +61,8 @@ class TermToSMTLib2Converter
        */
       ""
 
-    case sorts.FieldValueFunction(codomainSort) => text("$FVF<") <> doRender(codomainSort, true) <> ">"
-    case sorts.PredicateSnapFunction(codomainSort) => text("$PSF<") <> doRender(codomainSort, true) <> ">"
+    case sorts.FieldValueFunction(_, fieldName) => text("$FVF<") <> text(fieldName) <> ">"
+    case sorts.PredicateSnapFunction(_, predName) => text("$PSF<") <> text(predName) <> ">"
 
     case sorts.FieldPermFunction() => text("$FPM")
     case sorts.PredicatePermFunction() => text("$PPM")
@@ -283,7 +283,7 @@ class TermToSMTLib2Converter
 //    }
 
     case FieldTrigger(field, fvf, at) => parens(text("$FVF.loc_") <> field <+> (fvf.sort match {
-      case sorts.FieldValueFunction(_) => render(Lookup(field, fvf, at)) <+> render(at)
+      case sorts.FieldValueFunction(_, _) => render(Lookup(field, fvf, at)) <+> render(at)
       case _ => render(fvf) <+> render(at)
     }))
 

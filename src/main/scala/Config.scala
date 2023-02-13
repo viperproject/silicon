@@ -577,7 +577,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val assertionMode: ScallopOption[AssertionMode] = opt[AssertionMode]("assertionMode",
     descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
-             + "'pp' (push-pop) and 'cs' (soft constraints) (default: pp)."),
+             + "'pp' (push-pop) and 'sc' (soft constraints) (default: pp)."),
     default = Some(AssertionMode.PushPop),
     noshort = true
   )(assertionModeConverter)
@@ -776,9 +776,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   }
 
   validateOpt(counterexample, enableMoreCompleteExhale, carbonQPs) {
-    case (Some(_), Some(false), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
-                                        + s"flag ${enableMoreCompleteExhale.name}")
+    case (Some(_), Some(false), Some(false)) => Left(s"Option ${counterexample.name} requires setting "
+                                                   + s"flag ${enableMoreCompleteExhale.name}")
     case _ => Right(())
+  }
+
+  validateOpt(assertionMode, parallelizeBranches) {
+    case (Some(AssertionMode.SoftConstraints), Some(true)) =>
+      Left(s"Assertion mode SoftConstraints is not supported in combination with ${parallelizeBranches.name}")
+    case _ => Right()
   }
 
   validateFileOpt(logConfig)
