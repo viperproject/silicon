@@ -798,7 +798,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
          (Some(_), Some(_), Some(ExhaleMode.Greedy)) |
          (Some(_), Some(_), Some(ExhaleMode.MoreCompleteOnDemand)) =>
       Left(s"Option ${counterexample.name} requires setting "
-        + s"${exhaleModeOption.name} to 1 (more complete)")
+        + s"${exhaleModeOption.name} to 1 (more complete exhale)")
     case (_, Some(true), Some(m)) if m != ExhaleMode.MoreComplete =>
       Left(s"Contradictory values given for options ${moreCompleteExhale.name} and ${exhaleModeOption.name}")
     case _ => Right(())
