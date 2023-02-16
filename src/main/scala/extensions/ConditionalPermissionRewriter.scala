@@ -37,6 +37,16 @@ class ConditionalPermissionRewriter {
       alreadySeen.add(res._1)
       res
 
+    case (i@Implies(cond, l: Let), cc) if !l.isPure =>
+      if (Expressions.proofObligations(l.exp)(p).isEmpty) {
+        (l, cc.updateContext(cc.c &*& cond))
+      } else {
+        // bound expression might only be well-defined under context conditiond;
+        // thus, don't push conditions further in.
+        val res = (Implies(And(cc.c.exp, cond)(), l)(i.pos, i.info, i.errT), cc)
+        alreadySeen.add(res._1)
+        res
+      }
 
     case (impl: Implies, cc) if !impl.right.isPure =>
       // Entering an implication b ==> A, where A is not pure, i.e. contains an accessibility accessibility
@@ -52,6 +62,13 @@ class ConditionalPermissionRewriter {
       alreadySeen.add(res._1)
       res
 
+    case (l: Let, cc) if Expressions.proofObligations(l.exp)(p).nonEmpty =>
+      // bound expression might only be well-defined under context conditiond;
+      // thus, don't push conditions further in.
+      val res = (Implies(cc.c.exp, l)(l.pos, l.info, l.errT), cc)
+      alreadySeen.add(res._1)
+      res
+
     case (exp: Exp, cc) if cc.c.optExp.nonEmpty && exp.isPure =>
       // Found a pure expression nested under some conditionals
       val cond = cc.c.exp
@@ -59,6 +76,7 @@ class ConditionalPermissionRewriter {
   }, Condition(), Traverse.TopDown).recurseFunc({
     case exp: Exp if exp.isPure => Nil // Don't recurse into pure expressions
     case _: AccessPredicate => Nil // Don't recurse into accessibility predicates
+    case l: Let => l.body :: Nil  // Don't recurse into bound expression
     case e: Exp if alreadySeen.contains(e) => Nil
   })
 
@@ -74,7 +92,8 @@ class ConditionalPermissionRewriter {
     * predicates with suitable conditional permission expressions.
     */
   def rewrite(root: Program): Program = {
-    val res: Program = rewriter(root, new mutable.HashSet[Exp]()).execute(ternaryRewriter.execute(root))
+    val noTernaryProgram: Program = ternaryRewriter.execute(root)
+    val res: Program = rewriter(root, new mutable.HashSet[Exp]()).execute(noTernaryProgram)
     res
   }
 
