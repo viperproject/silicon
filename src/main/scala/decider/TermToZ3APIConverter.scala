@@ -121,11 +121,10 @@ class TermToZ3APIConverter
          */
         ???
 
-      case sorts.FieldValueFunction(codomainSort) => {
-        val name = convertSortName(codomainSort)
-        ctx.mkUninterpretedSort("$FVF<" + name + ">")
+      case sorts.FieldValueFunction(_, fieldName) => {
+        ctx.mkUninterpretedSort("$FVF<" + fieldName + ">")
       }
-      case sorts.PredicateSnapFunction(codomainSort) => ctx.mkUninterpretedSort("$PSF<" + convertSortName(codomainSort) + ">")
+      case sorts.PredicateSnapFunction(_, predName) => ctx.mkUninterpretedSort("$PSF<" + predName + ">")
 
       case sorts.FieldPermFunction() => ctx.mkUninterpretedSort("$FPM") // text("$FPM")
       case sorts.PredicatePermFunction() => ctx.mkUninterpretedSort("$PPM") // text("$PPM")
@@ -155,8 +154,8 @@ class TermToZ3APIConverter
          */
         ???
 
-      case sorts.FieldValueFunction(codomainSort) => Some(ctx.mkSymbol("$FVF<" + convertSortName(codomainSort) + ">")) //
-      case sorts.PredicateSnapFunction(codomainSort) => Some(ctx.mkSymbol("$PSF<" + convertSortName(codomainSort) + ">"))
+      case sorts.FieldValueFunction(_, fieldName) => Some(ctx.mkSymbol("$FVF<" + fieldName + ">")) //
+      case sorts.PredicateSnapFunction(_, predName) => Some(ctx.mkSymbol("$PSF<" + predName + ">"))
 
       case sorts.FieldPermFunction() => Some(ctx.mkSymbol("$FPM")) // text("$FPM")
       case sorts.PredicatePermFunction() => Some(ctx.mkSymbol("$PPM")) // text("$PPM")
@@ -406,7 +405,7 @@ class TermToZ3APIConverter
         createApp("$FVF.lookup_" + field, Seq(fvf, at), term.sort)
 
       case FieldTrigger(field, fvf, at) => createApp("$FVF.loc_" + field, (fvf.sort match {
-        case sorts.FieldValueFunction(_) => Seq(Lookup(field, fvf, at), at)
+        case sorts.FieldValueFunction(_, _) => Seq(Lookup(field, fvf, at), at)
         case _ => Seq(fvf, at)
       }), term.sort)
 

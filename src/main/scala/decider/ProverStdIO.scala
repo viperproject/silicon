@@ -297,12 +297,13 @@ abstract class ProverStdIO(uniqueId: String,
     setTimeout(timeout)
 
     val guard = fresh("grd", Nil, sorts.Bool)
+    val guardApp = App(guard, Nil)
 
-    writeLine(s"(assert (=> $guard (not $goal)))")
+    writeLine(s"(assert (=> $guardApp (not $goal)))")
     readSuccess()
 
     val startTime = System.currentTimeMillis()
-    writeLine(s"(check-sat $guard)")
+    writeLine(s"(check-sat $guardApp)")
     val result = readUnsat()
     val endTime = System.currentTimeMillis()
 

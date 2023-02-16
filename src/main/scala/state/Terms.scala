@@ -14,7 +14,6 @@ import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
-import viper.silicon.verifier.Verifier
 import viper.silicon.annotation.flyweight
 
 sealed trait Node {
@@ -67,13 +66,13 @@ object sorts {
     override lazy val toString = id.toString
   }
 
-  case class FieldValueFunction(codomainSort: Sort) extends Sort {
-    val id = Identifier(s"FVF[$codomainSort]")
+  case class FieldValueFunction(codomainSort: Sort, fieldName: String) extends Sort {
+    val id = Identifier(s"FVF[$fieldName]")
     override lazy val toString = id.toString
   }
 
-  case class PredicateSnapFunction(codomainSort: Sort) extends Sort {
-    val id = Identifier(s"PSF[$codomainSort]")
+  case class PredicateSnapFunction(codomainSort: Sort, predName: String) extends Sort {
+    val id = Identifier(s"PSF[$predName]")
     override lazy val toString = id.toString
   }
 
@@ -1657,6 +1656,8 @@ object MapUpdate extends ((Term, Term, Term) => MapTerm) {
     utils.assertSort(t2, "third operand", t0.sort.asInstanceOf[sorts.Map].valueSort)
     new MapUpdate(t0, t1, t2)
   }
+
+  def unapply(mu: MapUpdate) = Some((mu.base, mu.key, mu.value))
 }
 
 @flyweight
