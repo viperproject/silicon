@@ -282,7 +282,7 @@ class DefaultMainVerifier(config: Config,
         this.axiomsAfterAnalysis().toList,
         this.postConditionAxioms().toList)
     }
-    reporter report VerificationTerminationMessage();
+    reporter report VerificationTerminationMessage()
 
     (   functionVerificationResults
      ++ predicateVerificationResults
