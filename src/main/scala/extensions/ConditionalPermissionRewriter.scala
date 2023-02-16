@@ -74,10 +74,13 @@ class ConditionalPermissionRewriter {
       val cond = cc.c.exp
       (Implies(cond, exp)(cond.pos, cond.info, cond.errT), cc) // Won't recurse into exp's children
   }, Condition(), Traverse.TopDown).recurseFunc({
-    case exp: Exp if exp.isPure => Nil // Don't recurse into pure expressions
-    case _: AccessPredicate => Nil // Don't recurse into accessibility predicates
-    case l: Let => l.body :: Nil  // Don't recurse into bound expression
     case e: Exp if alreadySeen.contains(e) => Nil
+    case exp: Exp if exp.isPure => Nil  // Don't recurse into pure expressions
+    case _: AccessPredicate => Nil  // Don't recurse into accessibility predicates
+    case f: Forall => f.exp :: Nil  // Don't recurse into triggers
+    case e: Exists => e.exp :: Nil  // Don't recurse into triggers
+    case l: Let => l.body :: Nil  // Don't recurse into bound expression
+
   })
 
   // Rewrite impure ternary expressions to a conjuction of implications in order to be able to use the implication
