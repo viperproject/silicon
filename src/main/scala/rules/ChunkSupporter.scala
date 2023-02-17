@@ -116,7 +116,16 @@ object chunkSupporter extends ChunkSupportRules {
         } else {
           consumeGreedy(s1, s1.h, id, args, perms, v1) match {
             case (Complete(), s2, h2, optCh2) =>
-              QS(s2.copy(h = s.h), h2, optCh2.map(_.snap), v1)
+              val snap = optCh2 match {
+                case None => None
+                case Some(ch) =>
+                  if (v1.decider.check(Greater(perms, NoPerm()), Verifier.config.checkTimeout())) {
+                    Some(ch.snap)
+                  } else {
+                    Some(Ite(Greater(perms, NoPerm()), ch.snap.convert(sorts.Snap), Unit))
+                  }
+              }
+              QS(s2.copy(h = s.h), h2, snap, v1)
             case _ if v1.decider.checkSmoke() =>
               Success() // TODO: Mark branch as dead?
             case _ =>
