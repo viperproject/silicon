@@ -22,7 +22,6 @@ import scala.collection.mutable
 import com.microsoft.z3._
 import viper.silicon.reporting.ExternalToolError
 
-import scala.collection.immutable.ListMap
 import scala.jdk.CollectionConverters.MapHasAsJava
 import scala.util.Random
 
@@ -175,8 +174,9 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  def push(n: Int = 1): Unit = {
+  def push(n: Int = 1, timeout: Option[Int] = None): Unit = {
     endPreamblePhase()
+    setTimeout(timeout)
     pushPopScopeDepth += n
     if (n == 1) {
       // the normal case; we handle this without invoking a bunch of higher order functions
@@ -233,12 +233,11 @@ class Z3ProverAPI(uniqueId: String,
 
   def assert(goal: Term, timeout: Option[Int]): Boolean = {
     endPreamblePhase()
-    setTimeout(timeout)
 
     try {
       val (result, _) = Verifier.config.assertionMode() match {
-        case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
-        case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
+        case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout)
+        case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout)
       }
       result
     } catch {
@@ -246,9 +245,10 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  protected def assertUsingPushPop(goal: Term): (Boolean, Long) = {
+  protected def assertUsingPushPop(goal: Term, timeout: Option[Int]): (Boolean, Long) = {
     endPreamblePhase()
     push()
+    setTimeout(timeout)
 
     val negatedGoal = ctx.mkNot(termConverter.convert(goal).asInstanceOf[BoolExpr])
     prover.add(negatedGoal)
@@ -286,8 +286,10 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  protected def assertUsingSoftConstraints(goal: Term): (Boolean, Long) = {
+  protected def assertUsingSoftConstraints(goal: Term, timeout: Option[Int]): (Boolean, Long) = {
     endPreamblePhase()
+    setTimeout(timeout)
+
     val guard = fresh("grd", Nil, sorts.Bool)
     val guardApp = App(guard, Nil)
     val goalImplication = Implies(guardApp, goal)
@@ -336,7 +338,7 @@ class Z3ProverAPI(uniqueId: String,
     for (e <- statistics.getEntries()) {
       result.update(e.Key, e.getValueString)
     }
-    ListMap.from(result)
+    Map.from(result)
   }
 
   def comment(str: String): Unit = {
@@ -373,7 +375,7 @@ class Z3ProverAPI(uniqueId: String,
           emittedFuncSymbols.append(termConverter.convertFuncSymbol(fd))
         }
       case MacroDecl(id, args, body) if expandMacros => termConverter.macros.update(id.name, (args, body))
-      case md: MacroDecl if !expandMacros =>
+      case md: MacroDecl =>
         val (convertedFunc, axiom) = termConverter.convert(md)
         if (!emittedFuncs.contains(convertedFunc)){
           emittedFuncs.add(convertedFunc)

@@ -24,7 +24,7 @@ class ConcurrentInstantiationTests extends AnyFunSuite {
 
     val tasks: Seq[Future[Unit]] = for (_ <- 1 to numTasks) yield Future {
       val verifier = new Silicon()
-      verifier.parseCommandLine(Seq("--logLevel ALL", "dummy-program.sil"))
+      verifier.parseCommandLine(Seq("--logLevel", "ALL", "dummy-program.sil"))
     }
 
     val aggregated: Future[Seq[Unit]] = Future.sequence(tasks)

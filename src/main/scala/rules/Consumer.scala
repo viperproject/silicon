@@ -12,7 +12,6 @@ import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssert
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord, ImpliesRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -158,10 +157,10 @@ object consumer extends ConsumptionRules {
       val h0 = s0.h /* h0 is h, but potentially consolidated */
       val s1 = s0.copy(h = s.h) /* s1 is s, but the retrying flag might be set */
 
-      val sepIdentifier = SymbExLogger.currentLog().openScope(new ConsumeRecord(a, s1, v.decider.pcs))
+      val sepIdentifier = v1.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
 
       consumeTlc(s1, h0, a, pve, v1)((s2, h2, snap2, v2) => {
-        SymbExLogger.currentLog().closeScope(sepIdentifier)
+        v2.symbExLog.closeScope(sepIdentifier)
         QS(s2, h2, snap2, v2)})
     })(Q)
   }
@@ -186,31 +185,31 @@ object consumer extends ConsumptionRules {
     val consumed = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "consume")
-        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
+        val uidImplies = v.symbExLog.openScope(impliesRecord)
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
             (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h1, t1, v3) => {
-              SymbExLogger.currentLog().closeScope(uidImplies)
+              v3.symbExLog.closeScope(uidImplies)
               Q(s3, h1, t1, v3)
             }),
             (s2, v2) => {
-              SymbExLogger.currentLog().closeScope(uidImplies)
+              v2.symbExLog.closeScope(uidImplies)
               Q(s2, h, Unit, v2)
             }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
-        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
+        val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
             (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h1, t1, v3) => {
-              SymbExLogger.currentLog().closeScope(uidCondExp)
+              v3.symbExLog.closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             }),
             (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h1, t1, v3) => {
-              SymbExLogger.currentLog().closeScope(uidCondExp)
+              v3.symbExLog.closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             })))
 
@@ -320,16 +319,21 @@ object consumer extends ConsumptionRules {
 
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            val (relevantChunks, _) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
-            val (smDef1, smCache1) =
-              quantifiedChunkSupporter.summarisingSnapshotMap(
-                s2, field, Seq(`?r`), relevantChunks, v2)
-            v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
-//            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
+            val s2p = if (s2.heapDependentTriggers.contains(field)){
+              val (relevantChunks, _) =
+                quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
+              val (smDef1, smCache1) =
+                quantifiedChunkSupporter.summarisingSnapshotMap(
+                  s2, field, Seq(`?r`), relevantChunks, v2)
+              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
+              //            v2.decider.assume(PermAtMost(tPerm, FullPerm()))
+              s2.copy(smCache = smCache1)
+            } else {
+              s2
+            }
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
-              s2.copy(smCache = smCache1),
+              s2p,
               h,
               Seq(`?r`),
               Seq(tRcvr),
@@ -351,16 +355,21 @@ object consumer extends ConsumptionRules {
 
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
-            val (relevantChunks, _) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(predname))
-            val (smDef1, smCache1) =
-              quantifiedChunkSupporter.summarisingSnapshotMap(
-                s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
-            v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
+            val s2p = if (s2.heapDependentTriggers.contains(predicate)){
+              val (relevantChunks, _) =
+                quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(predname))
+              val (smDef1, smCache1) =
+                quantifiedChunkSupporter.summarisingSnapshotMap(
+                  s2, predicate, s2.predicateFormalVarMap(predicate), relevantChunks, v2)
+              v2.decider.assume(PredicateTrigger(predicate.name, smDef1.sm, tArgs))
+              s2.copy(smCache = smCache1)
+            } else {
+              s2
+            }
 
             val loss = PermTimes(tPerm, s2.permissionScalingFactor)
             quantifiedChunkSupporter.consumeSingleLocation(
-              s2.copy(smCache = smCache1),
+              s2p,
               h,
               formalVars,
               tArgs,
@@ -401,16 +410,20 @@ object consumer extends ConsumptionRules {
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
 
         evals(s, bodyVars, _ => pve, v)((s1, tArgs, v1) => {
-          val (relevantChunks, _) =
-            quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s1.h, MagicWandIdentifier(wand, s.program))
-          val (smDef1, smCache1) =
-            quantifiedChunkSupporter.summarisingSnapshotMap(
-              s1, wand, formalVars, relevantChunks, v1)
-          v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, s.program).toString, smDef1.sm, tArgs))
-
+          val s1p = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program))){
+            val (relevantChunks, _) =
+              quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s1.h, MagicWandIdentifier(wand, s.program))
+            val (smDef1, smCache1) =
+              quantifiedChunkSupporter.summarisingSnapshotMap(
+                s1, wand, formalVars, relevantChunks, v1)
+            v1.decider.assume(PredicateTrigger(MagicWandIdentifier(wand, s.program).toString, smDef1.sm, tArgs))
+            s1.copy(smCache = smCache1)
+          } else {
+            s1
+          }
           val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
           quantifiedChunkSupporter.consumeSingleLocation(
-            s1.copy(smCache = smCache1),
+            s1p,
             h,
             formalVars,
             tArgs,
@@ -460,7 +473,14 @@ object consumer extends ConsumptionRules {
 
     executionFlowController.tryOrFail0(s1, v)((s2, v1, QS) => {
       eval(s2, e, pve, v1)((s3, t, v2) => {
-        v2.decider.assert(t) {
+        val termToAssert = t match {
+          case Quantification(q, vars, body, trgs, name, isGlob, weight) =>
+            val transformed = FunctionPreconditionTransformer.transform(body, s3.program)
+            v2.decider.assume(Quantification(q, vars, transformed, trgs, name+"_precondition", isGlob, weight))
+            Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
+          case _ => t
+        }
+        v2.decider.assert(termToAssert) {
           case true =>
             v2.decider.assume(t)
             QS(s3, v2)

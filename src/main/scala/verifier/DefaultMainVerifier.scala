@@ -8,7 +8,6 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
-
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.util.Random
@@ -20,7 +19,7 @@ import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
@@ -42,9 +41,12 @@ import viper.silver.verifier.TypecheckerWarning
 trait MainVerifier extends Verifier {
   def nextUniqueVerifierId(): String
   def verificationPoolManager: VerificationPoolManager
+  def rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger]
 }
 
-class DefaultMainVerifier(config: Config, override val reporter: Reporter)
+class DefaultMainVerifier(config: Config,
+                          override val reporter: Reporter,
+                          override val rootSymbExLogger: SymbExLogger[_ <: MemberSymbExLogger])
     extends BaseVerifier(config, "00")
        with MainVerifier
        with DefaultFunctionVerificationUnitProvider
@@ -54,6 +56,10 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
 
   private val uniqueIdCounter = new Counter(1)
   def nextUniqueVerifierId(): String = f"${uniqueIdCounter.next()}%02d"
+
+  override def openSymbExLogger(member: Member): Unit = {
+    symbExLog = rootSymbExLogger.openMemberScope(member, decider.pcs)
+  }
 
   protected val preambleReader = new SMTLib2PreambleReader
 
@@ -155,19 +161,16 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
       */
     var program: ast.Program =
       originalProgram.transform({
-        case forall: ast.Forall if forall.isPure => {
+        case forall: ast.Forall if forall.isPure =>
           val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
           res
-        }
         case exists: ast.Exists =>
-        {
           val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
           res
-        }
       }, Traverse.BottomUp)
 
     // TODO: Autotrigger for cfgs.
@@ -200,16 +203,13 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
 
     allProvers.saturate(config.proverSaturationTimeouts.afterPrelude)
 
-
-    SymbExLogger.resetMemberList()
-    SymbExLogger.setConfig(config)
-
     /* TODO: A workaround for Silver issue #94. toList must be before flatMap.
      *       Otherwise Set will be used internally and some error messages will be lost.
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
       val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
+        .flatMap(extractAllVerificationResults)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -219,6 +219,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
       val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
+        .flatMap(extractAllVerificationResults)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -247,6 +248,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
           val results = v.methodSupporter.verify(s, method)
+            .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
@@ -260,6 +262,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
           val results = v.cfgSupporter.verify(s, cfg)
+            .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon"/*, cfg*/, elapsed, condenseToViperResult(results))
@@ -273,7 +276,7 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
 
     if (config.ideModeAdvanced()) {
       reporter report ExecutionTraceReport(
-        SymbExLogger.memberList,
+        rootSymbExLogger.logs.toIndexedSeq,
         this.axiomsAfterAnalysis().toList,
         this.postConditionAxioms().toList)
     }
@@ -290,6 +293,10 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
+    val resourceTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map{
+      case wand: ast.MagicWand => MagicWandIdentifier(wand, program)
+      case r => r
+    }
 
     State(program = program,
           functionData = functionData,
@@ -299,7 +306,8 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
           qpMagicWands = quantifiedMagicWands,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
-          isMethodVerification = member.isInstanceOf[ast.Member])
+          isMethodVerification = member.isInstanceOf[ast.Member],
+          heapDependentTriggers = resourceTriggers)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -509,4 +517,12 @@ class DefaultMainVerifier(config: Config, override val reporter: Reporter)
     }
     results
   }
+
+  /**
+    * In case Silicon encounters an expected error (i.e. `ErrorMessage.isExpected`), Silicon continues (until at most
+    * config.numberOfErrorsToReport() have been encountered (per member)).
+    * This function combines the verification result with verification results stored in its `previous` field.
+    */
+  private def extractAllVerificationResults(res: VerificationResult): Seq[VerificationResult] =
+    res :: res.previous.toList
 }

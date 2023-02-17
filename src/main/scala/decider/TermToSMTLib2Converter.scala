@@ -56,8 +56,8 @@ class TermToSMTLib2Converter
        */
       ""
 
-    case sorts.FieldValueFunction(codomainSort) => text("$FVF<") <> doRender(codomainSort, true) <> ">"
-    case sorts.PredicateSnapFunction(codomainSort) => text("$PSF<") <> doRender(codomainSort, true) <> ">"
+    case sorts.FieldValueFunction(_, fieldName) => text("$FVF<") <> text(fieldName) <> ">"
+    case sorts.PredicateSnapFunction(_, predName) => text("$PSF<") <> text(predName) <> ">"
 
     case sorts.FieldPermFunction() => text("$FPM")
     case sorts.PredicatePermFunction() => text("$PPM")
@@ -118,7 +118,7 @@ class TermToSMTLib2Converter
 
 
     /* Handle quantifiers that have at most one trigger set */
-    case Quantification(quant, vars, body, triggers, name, _) =>
+    case Quantification(quant, vars, body, triggers, name, _, weight) =>
       val docBody = render(body)
 
       if (vars.nonEmpty) {
@@ -141,12 +141,17 @@ class TermToSMTLib2Converter
           if (name.isEmpty) nil
           else s":qid |$name|"
 
+        val docWeight = weight match {
+          case Some(value) => line <> text(":weight") <+> value.toString
+          case None => nil
+        }
+
         // Omit annotation for empty name and triggers since cvc5 fails
         // for annotations containing zero attributes (Z3 simply ignores it).
         if (name.isEmpty && triggers.isEmpty)
-          parens(docQuant <+> parens(docVars) <+> nest(defaultIndent, line <> docBody))
+          parens(docQuant <+> parens(docVars) <+> nest(defaultIndent, line <> docBody <> docWeight))
         else
-          parens(docQuant <+> parens(docVars) <+> parens(text("!") <> nest(defaultIndent, line <> docBody <> line <> docTriggers <> line <> docQid)))
+          parens(docQuant <+> parens(docVars) <+> parens(text("!") <> nest(defaultIndent, line <> docBody <> line <> docTriggers <> line <> docQid <> docWeight)))
       } else {
         // TODO: This seems like a hack.
         //       It would be better to avoid creating quantifications with no variables in the first place.
@@ -267,7 +272,7 @@ class TermToSMTLib2Converter
 //    }
 
     case FieldTrigger(field, fvf, at) => parens(text("$FVF.loc_") <> field <+> (fvf.sort match {
-      case sorts.FieldValueFunction(_) => render(Lookup(field, fvf, at)) <+> render(at)
+      case sorts.FieldValueFunction(_, _) => render(Lookup(field, fvf, at)) <+> render(at)
       case _ => render(fvf) <+> render(at)
     }))
 

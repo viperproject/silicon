@@ -11,7 +11,6 @@ import viper.silicon.reporting.{Converter, DomainEntry, ExtractedFunction, Extra
 import viper.silicon.state.{State, Store}
 import viper.silver.verifier.{ApplicationEntry, ConstantEntry, Counterexample, FailureContext, Model, ValueEntry, VerificationError}
 import viper.silicon.state.terms.Term
-import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.Program
 
@@ -54,7 +53,7 @@ sealed abstract class VerificationResult {
     } else {
       if (alwaysWaitForOther) {
         // force evaluation
-        val res: VerificationResult = other
+        other: VerificationResult
       }
       this
     }

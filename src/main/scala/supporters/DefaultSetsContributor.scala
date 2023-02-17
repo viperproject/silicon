@@ -40,8 +40,11 @@ class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term], conf
      *       However, it is currently not (easily) possible for the latter to contribute instances
      *       of set axioms.
      */
-    if (program.existsDefined { case f: ast.Forall if (f.triggers flatMap (_.exps)) exists (e => e.existsDefined { case _: ast.ResourceAccess => }) =>
-      case q: ast.QuantifiedExp if !q.isPure => }) {
+    if (program.existsDefined {
+      case f: ast.Forall if (f.triggers flatMap (_.exps)) exists (e => e.existsDefined { case _: ast.ResourceAccess => }) =>
+      case q: ast.Exists if (q.triggers flatMap (_.exps)) exists (e => e.existsDefined { case _: ast.ResourceAccess => }) =>
+      case q: ast.QuantifiedExp if !q.isPure =>
+    }) {
       program.fields foreach {f => setTypeInstances += ast.SetType(f.typ)}
 
       setTypeInstances += ast.SetType(ast.Ref) /* $FVF.domain_f is of type Set[Ref] */

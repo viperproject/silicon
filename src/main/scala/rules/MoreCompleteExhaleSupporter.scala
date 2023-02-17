@@ -10,7 +10,6 @@ import scala.collection.mutable.ListBuffer
 import viper.silicon.{MList, MMap}
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Success, VerificationResult}
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.resources.{FieldID, NonQuantifiedPropertyInterpreter, Resources}
 import viper.silicon.rules.chunkSupporter.findChunksWithID
 import viper.silicon.state._
@@ -255,7 +254,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             val pTaken = App(pTakenMacro, pTakenArgs)
 
             currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(pTakenDecl)
-            SymbExLogger.currentLog().addMacro(pTaken, pTakenBody)
+            v.symbExLog.addMacro(pTaken, pTakenBody)
 
             val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
             pNeeded = PermMinus(pNeeded, pTaken)

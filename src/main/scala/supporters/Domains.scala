@@ -13,8 +13,8 @@ import viper.silicon.toMap
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.{SymbolConverter, terms}
-import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Symbol, Term}
-import viper.silver.ast.{NamedDomainAxiom, Program}
+import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
+import viper.silver.ast.{NamedDomainAxiom}
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
   def uniquenessAssumptionsAfterAnalysis: Iterable[UA]
@@ -84,15 +84,17 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
     instantiatedDomains foreach (domain => {
       domain.functions foreach (function => {
-        val fct = symbolConverter.toFunction(function, program)
+        if (function.interpretation.isEmpty) {
+          val fct = symbolConverter.toFunction(function, program).asInstanceOf[DomainFun]
 
-        collectedFunctions += fct
+          collectedFunctions += fct
 
-        if (function.unique) {
-          assert(function.formalArgs.isEmpty,
-            s"Expected unique domain functions to not take arguments, but found $function")
+          if (function.unique) {
+            assert(function.formalArgs.isEmpty,
+              s"Expected unique domain functions to not take arguments, but found $function")
 
-          uniqueSymbols = uniqueSymbols.addBinding(fct.resultSort, fct)
+            uniqueSymbols = uniqueSymbols.addBinding(fct.resultSort, fct)
+          }
         }
       })
 
@@ -142,13 +144,13 @@ class DefaultDomainsTranslator()
   def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort, builtin: Boolean = false): Term = {
     isBuiltin = builtin
     val res = translate(toSort)(ax.exp) match {
-      case terms.Quantification(q, vars, body, triggers, "", _) =>
+      case terms.Quantification(q, vars, body, triggers, "", _, weight) =>
         val qid = ax match {
           case axiom: NamedDomainAxiom => s"prog.${axiom.name}"
           case _ => ""
         }
 
-        terms.Quantification(q, vars, body, triggers, qid)
+        terms.Quantification(q, vars, body, triggers, qid, weight)
 
       case other => other
     }

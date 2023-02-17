@@ -194,7 +194,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val assertTimeout: ScallopOption[Int] = opt[Int]("assertTimeout",
-    descr = ("Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout)."
+    descr = ("Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout). "
             + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
     default = None,
     noshort = true
@@ -206,7 +206,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + "check doesn't, at least not directly. However, failing checks might result in "
              + "performance degradation, e.g. when a dead program path is nevertheless explored, "
              + "and indirectly in verification failures due to incompletenesses, e.g. when "
-             + "the held permission amount is too coarsely underapproximated (default: 10)."
+             + "the held permission amount is too coarsely underapproximated (default: 10). "
              + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
     default = Some(10),
     noshort = true
@@ -219,6 +219,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              +  "either be disabled (weights or base timeout of 0) or forced with no timeout "
              + "(positive weight and base timeout)."),
     default = Some(100),
+    noshort = true
+  )
+
+  val pushTimeout: ScallopOption[Int] = opt[Int]("pushTimeout",
+    descr = (  "Timeout (in ms) per push operation in the SMT solver. (default: 0, i.e. no timeout). "
+             + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
+    default = Some(0),
     noshort = true
   )
 
@@ -558,7 +565,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val assertionMode: ScallopOption[AssertionMode] = opt[AssertionMode]("assertionMode",
     descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
-             + "'pp' (push-pop) and 'cs' (soft constraints) (default: cs)."),
+             + "'pp' (push-pop) and 'sc' (soft constraints) (default: pp)."),
     default = Some(AssertionMode.PushPop),
     noshort = true
   )(assertionModeConverter)
@@ -605,6 +612,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableFunctionUnfoldTrigger: ScallopOption[Boolean] = opt[Boolean]("disableFunctionUnfoldTrigger",
+    descr = "Disables automatic triggering of function definitions when unfolding predicates they depend on.",
+    default = Some(false),
+    noshort = true
+  )
+
   def mapCache[A](opt: Option[A]): Option[A] = opt match {
     case Some(_) if disableCaches() => None
     case _ => opt
@@ -630,7 +643,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val numberOfParallelVerifiers: ScallopOption[Int] = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
-             + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
+             + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()})"),
     default = Some(Runtime.getRuntime.availableProcessors()),
     noshort = true
   )
@@ -748,19 +761,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case _ => Right(())
   }
 
-  validateOpt(ideModeAdvanced, numberOfParallelVerifiers) {
-    case (Some(false), _) =>
-      Right(())
-    case (Some(true), Some(n)) =>
-      if (n == 1)
-        Right(())
-      else
-        Left(  s"Option ${ideModeAdvanced.name} requires setting "
-             + s"${numberOfParallelVerifiers.name} to 1")
+  validateOpt(ideModeAdvanced, parallelizeBranches) {
+    case (Some(false), _) => Right(())
+    case (_, Some(false)) => Right(())
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${ideModeAdvanced.name} is not supported in combination with ${parallelizeBranches.name}")
     case other =>
       sys.error(s"Unexpected combination: $other")
   }
-  
+
+  validateOpt(assertionMode, parallelizeBranches) {
+    case (Some(AssertionMode.SoftConstraints), Some(true)) =>
+      Left(s"Assertion mode SoftConstraints is not supported in combination with ${parallelizeBranches.name}")
+    case _ => Right()
+  }
+
   validateOpt(counterexample, enableMoreCompleteExhale) {
     case (Some(_), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
                                         + s"flag ${enableMoreCompleteExhale.name}")
