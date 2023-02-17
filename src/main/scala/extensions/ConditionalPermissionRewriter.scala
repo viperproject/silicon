@@ -52,7 +52,7 @@ class ConditionalPermissionRewriter {
       // Entering an implication b ==> A, where A is not pure, i.e. contains an accessibility accessibility
       (impl.right, cc.updateContext(cc.c &*& impl.left))
 
-    case (acc: AccessPredicate, cc) if cc.c.optExp.nonEmpty  =>
+    case (acc: AccessPredicate, cc) if cc.c.optExp.nonEmpty =>
       // Found an accessibility predicate nested under some conditionals
       // Wildcards may cause issues, see above.
       val res = if (!acc.perm.contains[WildcardPerm])
@@ -63,7 +63,7 @@ class ConditionalPermissionRewriter {
       res
 
     case (l: Let, cc) if Expressions.proofObligations(l.exp)(p).nonEmpty =>
-      // bound expression might only be well-defined under context conditiond;
+      // Bound expression might only be well-defined under context conditions;
       // thus, don't push conditions further in.
       val res = (Implies(cc.c.exp, l)(l.pos, l.info, l.errT), cc)
       alreadySeen.add(res._1)
@@ -85,14 +85,14 @@ class ConditionalPermissionRewriter {
 
   // Rewrite impure ternary expressions to a conjuction of implications in order to be able to use the implication
   // rewriter above.
-  val ternaryRewriter = ViperStrategy.Slim{
+  private val ternaryRewriter = ViperStrategy.Slim{
     case ce@CondExp(cond, tExp, fExp) if !tExp.isPure || !fExp.isPure =>
       And(Implies(cond, tExp)(ce.pos, ce.info, ce.errT),
         Implies(Not(cond)(cond.pos, cond.info, cond.errT), fExp)(ce.pos, ce.info, ce.errT))(ce.pos, ce.info, ce.errT)
   }
 
-  /** Transforms all conditional accessibility predicates in `root` into unconditional accessibility
-    * predicates with suitable conditional permission expressions.
+  /** Conservatively transforms all conditional accessibility predicates in `root` into unconditional accessibility
+    * predicates with suitable conditional permission expressions when this is safe to do.
     */
   def rewrite(root: Program): Program = {
     val noTernaryProgram: Program = ternaryRewriter.execute(root)
