@@ -452,7 +452,7 @@ class FunctionData(val programFunction: ast.Function,
       case QuantifiedPermissionAssertion(forall, _, _: ast.AccessPredicate) => // works the same for fields and predicates
         qpPrecondId = qpPrecondId + 1
         val condName = Identifier(name + "#condqp" + qpPrecondId.toString)
-        val condFunc = Fun(condName, arguments.map(_.sort), sorts.Int)
+        val condFunc = Fun(condName, arguments.map(_.sort), sorts.Snap)
         val res = (condFunc, forall)
         qpCondFuncs += res
         frameFragment(App(condFunc, arguments))
