@@ -111,8 +111,11 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     private def generateFunctionSymbolsAfterAnalysis: Iterable[Either[String, Decl]] = (
          Seq(Left("Declaring symbols related to program functions (from program analysis)"))
-      ++ functionData.values.flatMap(data =>
-            Seq(data.function, data.limitedFunction, data.statelessFunction, data.preconditionFunction).map(FunctionDecl)
+      ++ functionData.values.flatMap(data => {
+           val alwaysUsed = Seq(data.function, data.limitedFunction, data.statelessFunction, data.preconditionFunction)
+           val frameFunc = if (Verifier.config.carbonFunctions()) Seq(data.frameFunction) else Seq()
+           (alwaysUsed ++ frameFunc).map(FunctionDecl)
+         }
          ).map(Right(_))
     )
 
@@ -180,8 +183,13 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(data.limitedAxiom)
-          if (!Verifier.config.carbonFunctions())
+          if (!Verifier.config.carbonFunctions()) {
             emitAndRecordFunctionAxioms(data.triggerAxiom)
+          } else {
+            data.qpFrameFunctionDecls map decider.prover.declare
+            emitAndRecordFunctionAxioms(data.frameAxiom)
+            emitAndRecordFunctionAxioms(data.qpFrameAxioms: _*)
+          }
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
           emitAndRecordFunctionAxioms(data.qpMaskAxioms: _*)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
