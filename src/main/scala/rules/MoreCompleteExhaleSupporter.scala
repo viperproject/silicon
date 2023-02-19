@@ -281,17 +281,22 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         val s0 = s.copy(functionRecorder = currentFunctionRecorder)
 
-        summarise(s0, relevantChunks.toSeq, resource, args, v)((s1, snap, _, _, v1) =>
+        summarise(s0, relevantChunks.toSeq, resource, args, v)((s1, snap, _, _, v1) => {
+          val condSnap = if (v1.decider.check(Greater(perms, NoPerm()), Verifier.config.checkTimeout())) {
+            snap
+          } else {
+            Ite(Greater(perms, NoPerm()), snap.convert(sorts.Snap), Unit)
+          }
           if (!moreNeeded) {
-            Q(s1, newHeap, Some(snap), v1)
+            Q(s1, newHeap, Some(condSnap), v1)
           } else {
             v1.decider.assert(pNeeded === NoPerm()) {
               case true =>
-                Q(s1, newHeap, Some(snap), v1)
+                Q(s1, newHeap, Some(condSnap), v1)
               case false =>
                 createFailure(ve, v1, s1)
             }
-          })
+          }})
       }
     }
   }
