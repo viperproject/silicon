@@ -114,7 +114,8 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   protected def collectFunctions(domains: Set[ast.Domain], program: ast.Program): Unit = {
     domains foreach (
       _.functions foreach (df =>
-        collectedFunctions += symbolConverter.toFunction(df, program)))
+        if (df.interpretation.isEmpty)
+          collectedFunctions += symbolConverter.toFunction(df, program).asInstanceOf[DomainFun]))
   }
 
   protected def collectAxioms(domains: Set[(ast.DomainType, ast.Domain)]): Unit = {
@@ -130,7 +131,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
      */
     val domainName = f"${d.domainName}[${d.typVarsMap.values.map(t => symbolConverter.toSort(t)).mkString(",")}]"
     domainTranslator.translateAxiom(ax, symbolConverter.toSort, true).transform {
-      case q@Quantification(_,_,_,_,name,_) if name != "" =>
+      case q@Quantification(_,_,_,_,name,_,_) if name != "" =>
         q.copy(name = f"${domainName}_${name}")
       case Equals(t1, t2) => BuiltinEquals(t1, t2)
     }(recursive = _ => true)

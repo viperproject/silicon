@@ -8,22 +8,23 @@ package viper.silicon.logger.records.structural
 
 import viper.silicon.logger.records.SymbolicRecord
 import viper.silicon.state.terms.Term
+import viper.silver.ast.Exp
 
-class BranchingRecord(possibleBranchesCount: Int, val condition: Option[Term]) extends StructuralRecord {
+class BranchingRecord(possibleBranchesCount: Int, val condition: Option[Term], val conditionExp: Option[Exp]) extends StructuralRecord {
   private var currentBranchIndex = 0
   private val branches: Vector[BranchInfo] = Vector.tabulate(possibleBranchesCount)(_ => new BranchInfo())
 
-  def appendLog(r: SymbolicRecord): Unit = {
-    assert(currentBranchIndex < branches.length)
-    val branch = branches(currentBranchIndex)
-    branch.records = branch.records :+ r
+  def getCurrentBranch: BranchInfo = {
+    assert(0 <= currentBranchIndex && currentBranchIndex < branches.length)
+    branches(currentBranchIndex)
   }
 
+  def appendLog(r: SymbolicRecord): Unit =
+    getCurrentBranch.records :+= r
+
   def markReachable(): Unit = {
-    assert(currentBranchIndex < branches.length)
-    val branch = branches(currentBranchIndex)
-    branch.isReachable = true
-    branch.startTimeMs = System.currentTimeMillis()
+    getCurrentBranch.isReachable = true
+    getCurrentBranch.startTimeMs = System.currentTimeMillis()
   }
 
   def switchToNextBranch(): Unit = {

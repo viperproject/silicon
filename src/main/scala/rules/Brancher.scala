@@ -10,7 +10,6 @@ import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
@@ -78,14 +77,16 @@ object brancher extends BranchingRules {
     v.decider.prover.comment(thenBranchComment)
     v.decider.prover.comment(elseBranchComment)
 
-    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition))
+    var elseBranchVerifier: String = null
+
+    val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), conditionExp)
     var functionsOfCurrentDecider: Set[FunctionDecl] = null
     var macrosOfCurrentDecider: Vector[MacroDecl] = null
-    var pcsOfCurrentDecider: PathConditionStack = null
+    var pcsForElseBranch: PathConditionStack = null
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch) {
-/* [BRANCH-PARALLELISATION] */
+        /* [BRANCH-PARALLELISATION] */
         /* Compute the following sets
          *   1. only if the else-branch needs to be explored
          *   2. right now, i.e. not when the exploration actually takes place
@@ -96,12 +97,12 @@ object brancher extends BranchingRules {
         if (parallelizeElseBranch){
           functionsOfCurrentDecider = v.decider.freshFunctions
           macrosOfCurrentDecider = v.decider.freshMacros
-          pcsOfCurrentDecider = v.decider.pcs.duplicate()
+          pcsForElseBranch = v.decider.pcs.duplicate()
         }
 
         (v0: Verifier) => {
-          SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-          SymbExLogger.currentLog().markReachable(uidBranchPoint)
+          v0.symbExLog.switchToNextBranch(uidBranchPoint)
+          v0.symbExLog.markReachable(uidBranchPoint)
           if (v.uniqueId != v0.uniqueId){
             /* [BRANCH-PARALLELISATION] */
             // executing the else branch on a different verifier, need to adapt the state
@@ -116,9 +117,10 @@ object brancher extends BranchingRules {
             v0.decider.declareAndRecordAsFreshMacros(newMacros)
 
             v0.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
-            v0.decider.setPcs(pcsOfCurrentDecider)
-
+            v0.decider.setPcs(pcsForElseBranch)
           }
+          elseBranchVerifier = v0.uniqueId
+
           executionFlowController.locally(s, v0)((s1, v1) => {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
@@ -150,7 +152,7 @@ object brancher extends BranchingRules {
       }
 
     val res = (if (executeThenBranch) {
-      SymbExLogger.currentLog().markReachable(uidBranchPoint)
+      v.symbExLog.markReachable(uidBranchPoint)
       executionFlowController.locally(s, v)((s1, v1) => {
         v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
         v1.decider.setCurrentBranchCondition(condition, conditionExp)
@@ -165,16 +167,16 @@ object brancher extends BranchingRules {
       var rs: Seq[VerificationResult] = null
       try {
         if (parallelizeElseBranch) {
-          pcsOfCurrentDecider = v.decider.pcs.duplicate()
+          val pcsAfterThenBranch = v.decider.pcs.duplicate()
 
           val pcsBefore = v.decider.pcs
 
           rs = elseBranchFuture.get()
 
-          if (v.decider.pcs != pcsBefore){
+          if (v.decider.pcs != pcsBefore && v.uniqueId != elseBranchVerifier){
             // we have done other work during the join, need to reset
             v.decider.prover.comment(s"Resetting path conditions after interruption")
-            v.decider.setPcs(pcsOfCurrentDecider)
+            v.decider.setPcs(pcsAfterThenBranch)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
           }
         }else{
@@ -190,7 +192,7 @@ object brancher extends BranchingRules {
       rs.head
 
     }, alwaysWaitForOther = parallelizeElseBranch)
-    SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
+    v.symbExLog.endBranchPoint(uidBranchPoint)
     res
   }
 }

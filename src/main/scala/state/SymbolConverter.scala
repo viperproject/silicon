@@ -14,10 +14,8 @@ trait SymbolConverter {
 
   def toSortSpecificId(name: String, sorts: Seq[Sort]): Identifier
 
-  def toFunction(function: ast.DomainFunc, prog: ast.Program): terms.DomainFun
+  def toFunction(function: ast.DomainFunc, prog: ast.Program): terms.Applicable
   def toFunction(function: ast.DomainFunc, sorts: Seq[Sort], prog: ast.Program): terms.DomainFun
-
-  def toFunction(function: ast.BackendFunc): terms.SMTFun
 
   def toFunction(function: ast.Function): terms.HeapDepFun
 }
@@ -38,7 +36,7 @@ class DefaultSymbolConverter extends SymbolConverter {
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
       sorts.UserSort(Identifier(dt.toString()))
 
-    case ast.BackendType(_, smtName) if smtName != null => sorts.SMTSort(Identifier(smtName))
+    case ast.BackendType(_, interpretations) if interpretations.contains("SMTLIB") => sorts.SMTSort(Identifier(interpretations("SMTLIB")))
     case ast.BackendType(_, _) => sys.error("Found backend type without SMTLIB name.")
     case viper.silicon.utils.ast.ViperEmbedding(sort) => sort
       
@@ -52,20 +50,14 @@ class DefaultSymbolConverter extends SymbolConverter {
   def toSortSpecificId(name: String, sorts: Seq[Sort]): Identifier =
     Identifier(name + sorts.mkString("[",",","]"))
 
-  def toFunction(function: ast.DomainFunc, program: ast.Program): terms.DomainFun = {
+  def toFunction(function: ast.DomainFunc, program: ast.Program): terms.Applicable = {
     val inSorts = function.formalArgs map (_.typ) map toSort
     val outSort = toSort(function.typ)
 
-    toFunction(function, inSorts :+ outSort, program)
-  }
-
-  def toFunction(function: ast.BackendFunc): terms.SMTFun = {
-    val inSorts = function.formalArgs map (_.typ) map toSort
-    val outSort = toSort(function.typ)
-
-    val id = Identifier(function.smtName)
-
-    terms.SMTFun(id, inSorts, outSort)
+    if (function.interpretation.isEmpty)
+      toFunction(function, inSorts :+ outSort, program)
+    else
+      terms.SMTFun(Identifier(function.interpretation.get), inSorts, outSort)
   }
 
   def toFunction(function: ast.DomainFunc, sorts: Seq[Sort], program: ast.Program): terms.DomainFun = {

@@ -7,6 +7,7 @@
 package viper.silicon.verifier
 
 import viper.silicon.supporters._
+import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.reporter.Reporter
 
@@ -23,6 +24,10 @@ class WorkerVerifier(mainVerifier: MainVerifier,
   )
 
   def verificationPoolManager: VerificationPoolManager = mainVerifier.verificationPoolManager
+
+  override def openSymbExLogger(member: ast.Member): Unit = {
+    symbExLog = mainVerifier.rootSymbExLogger.openMemberScope(member, decider.pcs)
+  }
 
   /* Lifetime */
 

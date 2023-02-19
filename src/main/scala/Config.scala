@@ -565,7 +565,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val assertionMode: ScallopOption[AssertionMode] = opt[AssertionMode]("assertionMode",
     descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
-             + "'pp' (push-pop) and 'cs' (soft constraints) (default: cs)."),
+             + "'pp' (push-pop) and 'sc' (soft constraints) (default: pp)."),
     default = Some(AssertionMode.PushPop),
     noshort = true
   )(assertionModeConverter)
@@ -643,7 +643,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val numberOfParallelVerifiers: ScallopOption[Int] = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
-             + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
+             + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()})"),
     default = Some(Runtime.getRuntime.availableProcessors()),
     noshort = true
   )
@@ -754,19 +754,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case _ => Right(())
   }
 
-  validateOpt(ideModeAdvanced, numberOfParallelVerifiers) {
-    case (Some(false), _) =>
-      Right(())
-    case (Some(true), Some(n)) =>
-      if (n == 1)
-        Right(())
-      else
-        Left(  s"Option ${ideModeAdvanced.name} requires setting "
-             + s"${numberOfParallelVerifiers.name} to 1")
+  validateOpt(ideModeAdvanced, parallelizeBranches) {
+    case (Some(false), _) => Right(())
+    case (_, Some(false)) => Right(())
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${ideModeAdvanced.name} is not supported in combination with ${parallelizeBranches.name}")
     case other =>
       sys.error(s"Unexpected combination: $other")
   }
-  
+
+  validateOpt(assertionMode, parallelizeBranches) {
+    case (Some(AssertionMode.SoftConstraints), Some(true)) =>
+      Left(s"Assertion mode SoftConstraints is not supported in combination with ${parallelizeBranches.name}")
+    case _ => Right()
+  }
+
   validateOpt(counterexample, enableMoreCompleteExhale) {
     case (Some(_), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
                                         + s"flag ${enableMoreCompleteExhale.name}")

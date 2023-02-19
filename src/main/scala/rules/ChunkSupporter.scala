@@ -116,7 +116,16 @@ object chunkSupporter extends ChunkSupportRules {
         } else {
           consumeGreedy(s1, s1.h, id, args, perms, v1) match {
             case (Complete(), s2, h2, optCh2) =>
-              QS(s2.copy(h = s.h), h2, optCh2.map(_.snap), v1)
+              val snap = optCh2 match {
+                case None => None
+                case Some(ch) =>
+                  if (v1.decider.check(Greater(perms, NoPerm()), Verifier.config.checkTimeout())) {
+                    Some(ch.snap)
+                  } else {
+                    Some(Ite(Greater(perms, NoPerm()), ch.snap.convert(sorts.Snap), Unit))
+                  }
+              }
+              QS(s2.copy(h = s.h), h2, snap, v1)
             case _ if v1.decider.checkSmoke() =>
               Success() // TODO: Mark branch as dead?
             case _ =>
@@ -247,6 +256,29 @@ object chunkSupporter extends ChunkSupportRules {
     }
   }
 
+/** Extract the chunks with resource matching id.
+ * Return two sequences of chunks -- one with resource id, and the
+ * other with the remaining resources.
+ */
+  def splitHeap[CH <: NonQuantifiedChunk : ClassTag](h: Heap, id: ChunkIdentifer)
+                                                   : (Seq[CH], Seq[Chunk]) = {
+
+    var relevantChunks = Seq[CH]()
+    var otherChunks = Seq[Chunk]()
+
+    h.values foreach {
+      case ch: CH if ch.id == id =>
+        relevantChunks +:= ch
+      case ch: QuantifiedChunk if ch.id == id =>
+        sys.error(
+          s"I did not expect quantified chunks on the heap for resource $id, "
+            + s"but found $ch")
+      case ch =>
+        otherChunks +:= ch
+    }
+
+    (relevantChunks, otherChunks)
+  }
   private def findChunkLiterally[CH <: NonQuantifiedChunk](chunks: Iterable[CH], args: Iterable[Term]) = {
     chunks find (ch => ch.args == args)
   }

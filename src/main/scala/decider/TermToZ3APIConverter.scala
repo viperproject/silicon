@@ -119,11 +119,10 @@ class TermToZ3APIConverter
          */
         ???
 
-      case sorts.FieldValueFunction(codomainSort) => {
-        val name = convertSortName(codomainSort)
-        ctx.mkUninterpretedSort("$FVF<" + name + ">")
+      case sorts.FieldValueFunction(_, fieldName) => {
+        ctx.mkUninterpretedSort("$FVF<" + fieldName + ">")
       }
-      case sorts.PredicateSnapFunction(codomainSort) => ctx.mkUninterpretedSort("$PSF<" + convertSortName(codomainSort) + ">")
+      case sorts.PredicateSnapFunction(_, predName) => ctx.mkUninterpretedSort("$PSF<" + predName + ">")
 
       case sorts.FieldPermFunction() => ctx.mkUninterpretedSort("$FPM") // text("$FPM")
       case sorts.PredicatePermFunction() => ctx.mkUninterpretedSort("$PPM") // text("$PPM")
@@ -153,8 +152,8 @@ class TermToZ3APIConverter
          */
         ???
 
-      case sorts.FieldValueFunction(codomainSort) => Some(ctx.mkSymbol("$FVF<" + convertSortName(codomainSort) + ">")) //
-      case sorts.PredicateSnapFunction(codomainSort) => Some(ctx.mkSymbol("$PSF<" + convertSortName(codomainSort) + ">"))
+      case sorts.FieldValueFunction(_, fieldName) => Some(ctx.mkSymbol("$FVF<" + fieldName + ">")) //
+      case sorts.PredicateSnapFunction(_, predName) => Some(ctx.mkSymbol("$PSF<" + predName + ">"))
 
       case sorts.FieldPermFunction() => Some(ctx.mkSymbol("$FPM")) // text("$FPM")
       case sorts.PredicatePermFunction() => Some(ctx.mkSymbol("$PPM")) // text("$PPM")
@@ -249,7 +248,7 @@ class TermToZ3APIConverter
 
 
       /* Handle quantifiers that have at most one trigger set */
-      case Quantification(quant, vars, body, triggers, name, _) => {
+      case Quantification(quant, vars, body, triggers, name, _, weight) => {
         if (vars.isEmpty) {
           convertTerm(body)
         } else{
@@ -260,10 +259,11 @@ class TermToZ3APIConverter
               // triggers valid that would otherwise be rejected.
               nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(trm => convertTerm(trm).simplify()): _*)).toArray
             else null
+          val weightValue = weight.getOrElse(1)
           if (quant == Forall) {
-            ctx.mkForall(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
+            ctx.mkForall(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
           }else{
-            ctx.mkExists(qvarExprs, convertTerm(body), 1, patterns, null, ctx.mkSymbol(name), null)
+            ctx.mkExists(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
           }
         }
       }
@@ -400,7 +400,7 @@ class TermToZ3APIConverter
         createApp("$FVF.lookup_" + field, Seq(fvf, at), term.sort)
 
       case FieldTrigger(field, fvf, at) => createApp("$FVF.loc_" + field, (fvf.sort match {
-        case sorts.FieldValueFunction(_) => Seq(Lookup(field, fvf, at), at)
+        case sorts.FieldValueFunction(_, _) => Seq(Lookup(field, fvf, at), at)
         case _ => Seq(fvf, at)
       }), term.sort)
 

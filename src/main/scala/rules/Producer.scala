@@ -11,7 +11,6 @@ import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.VerificationResult
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.predef.`?r`
@@ -185,9 +184,9 @@ object producer extends ProductionRules {
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
 
-    val sepIdentifier = SymbExLogger.currentLog().openScope(new ProduceRecord(a, s, v.decider.pcs))
+    val sepIdentifier = v.symbExLog.openScope(new ProduceRecord(a, s, v.decider.pcs))
     produceTlc(s, sf, a, pve, v)((s1, v1) => {
-      SymbExLogger.currentLog().closeScope(sepIdentifier)
+      v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -208,12 +207,12 @@ object producer extends ProductionRules {
     val produced = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
-        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
+        val uidImplies = v.symbExLog.openScope(impliesRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
             (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
-              SymbExLogger.currentLog().closeScope(uidImplies)
+              v3.symbExLog.closeScope(uidImplies)
               Q(s3, v3)
             }),
             (s2, v2) => {
@@ -222,22 +221,22 @@ object producer extends ProductionRules {
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                    */
-                SymbExLogger.currentLog().closeScope(uidImplies)
+                v2.symbExLog.closeScope(uidImplies)
                 Q(s2, v2)
             }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
-        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
+        val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
             (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
-              SymbExLogger.currentLog().closeScope(uidCondExp)
+              v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)
             }),
             (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
-              SymbExLogger.currentLog().closeScope(uidCondExp)
+              v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)
             })))
 
@@ -335,7 +334,7 @@ object producer extends ProductionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
+            val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ), acc.loc.field.name), v1)
 //            v.decider.assume(PermAtMost(tPerm, FullPerm()))
             quantifiedChunkSupporter.produce(
               s1,
@@ -366,7 +365,7 @@ object producer extends ProductionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
+            val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate), predicate.name), v1)
             quantifiedChunkSupporter.produce(
               s1,
               forall,
@@ -398,7 +397,7 @@ object producer extends ProductionRules {
         val qid = MagicWandIdentifier(wand, s.program).toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap), v1)
+            val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v1)
             quantifiedChunkSupporter.produce(
               s1,
               forall,
