@@ -9,11 +9,18 @@ package viper.silicon.tests
 import org.scalatest.matchers.should.Matchers
 import viper.silicon.state.Identifier
 import DSL._
+import org.scalatest.BeforeAndAfter
 import org.scalatest.funsuite.AnyFunSuite
+import viper.silicon.Config
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 
-class SimpleArithmeticTermSolverTests extends AnyFunSuite with Matchers {
+class SimpleArithmeticTermSolverTests extends AnyFunSuite with Matchers with BeforeAndAfter {
   import SimpleArithmeticSolver.{solve, SolverResult, SolvingSuccess, SolvingFailure}
+
+  before {
+    Verifier.config = new Config(Seq())
+  }
 
   test("Pre-solving errors") {
     assert(solve(b, y, y).isInstanceOf[SolverResult])
