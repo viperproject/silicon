@@ -149,10 +149,10 @@ object evaluator extends EvaluationRules {
                      : VerificationResult = {
 
     val resultTerm = e match {
-      case _: ast.TrueLit => Q(s, True(), v)
-      case _: ast.FalseLit => Q(s, False(), v)
+      case _: ast.TrueLit => Q(s, True, v)
+      case _: ast.FalseLit => Q(s, False, v)
 
-      case _: ast.NullLit => Q(s, Null(), v)
+      case _: ast.NullLit => Q(s, Null, v)
       case ast.IntLit(bigval) => Q(s, IntLiteral(bigval), v)
 
       case ast.EqCmp(e0, e1) => evalBinOp(s, e0, e1, Equals, pve, v)(Q)
@@ -241,7 +241,7 @@ object evaluator extends EvaluationRules {
               }
               val permCheck =
                 if (s1.triggerExp) {
-                  True()
+                  True
                 } else {
                   val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
                   IsPositive(totalPermissions)
@@ -555,7 +555,7 @@ object evaluator extends EvaluationRules {
               val zippedArgs = argsWithIndex map (ai => (ai._1, ch.args(ai._2)))
               val argsPairWiseEqual = And(zippedArgs map {case (a1, a2) => a1 === a2})
 
-              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), None,body, false, pve, v1) ((s4, tImplies, v2) =>
+              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False), None,body, false, pve, v1) ((s4, tImplies, v2) =>
                 bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, v2)((s5, ts1, v3) => {
                   v3.symbExLog.closeScope(uidImplies)
                   Q(s5, ts1, v3)
@@ -1073,11 +1073,11 @@ object evaluator extends EvaluationRules {
     joiner.join[Term, Term](s, v)((s1, v1, QB) =>
       brancher.branch(s1, tLhs, eLhs, v1, fromShortCircuitingAnd)(
         (s2, v2) => eval(s2, eRhs, pve, v2)(QB),
-        (s2, v2) => QB(s2, True(), v2))
+        (s2, v2) => QB(s2, True, v2))
     )(entries => {
       assert(entries.length <= 2)
       val s1 = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
-      val t = Implies(tLhs, entries.headOption.map(_.data).getOrElse(True()))
+      val t = Implies(tLhs, entries.headOption.map(_.data).getOrElse(True))
       (s1, t)
     })(Q)
   }
@@ -1132,6 +1132,18 @@ object evaluator extends EvaluationRules {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           Q(s1, BasicChunkIdentifier(predicateName), tArgs, v1))
     }
+  }
+
+  private def evalBinOp[T <: Term](s: State,
+                                   e0: ast.Exp,
+                                   e1: ast.Exp,
+                                   termOp: ((Term, Term)) => T,
+                                   pve: PartialVerificationError,
+                                   v: Verifier)
+                                  (Q: (State, T, Verifier) => VerificationResult)
+  : VerificationResult = {
+
+    evalBinOp(s, e0, e1, (t0, t1) => termOp((t0, t1)), pve, v)(Q)
   }
 
   private def evalBinOp[T <: Term]
@@ -1522,8 +1534,8 @@ object evaluator extends EvaluationRules {
 
     // TODO: Find out and document why swapIfAnd is needed
     val (stop, swapIfAnd) =
-      if(constructor == Or) (True(), (a: brFun, b: brFun) => (a, b))
-      else (False(), (a: brFun, b: brFun) => (b, a))
+      if(constructor == Or) (True, (a: brFun, b: brFun) => (a, b))
+      else (False, (a: brFun, b: brFun) => (b, a))
 
     eval(s, exps.head, pve, v)((s1, t0, v1) => {
       t0 match {

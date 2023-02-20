@@ -212,9 +212,9 @@ class TermToZ3APIConverter
             else
               ctx.mkUnaryMinus(ctx.mkInt((-n).toString()))
           }
-          case True() => ctx.mkTrue()
-          case False() => ctx.mkFalse()
-          case Null() => ctx.mkConst("$Ref.null", ctx.mkUninterpretedSort("$Ref"))
+          case True => ctx.mkTrue()
+          case False => ctx.mkFalse()
+          case Null => ctx.mkConst("$Ref.null", ctx.mkUninterpretedSort("$Ref"))
           case Unit => ctx.mkConst(getUnitConstructor)
           case _: SeqNil => createApp("Seq_empty", Seq(), l.sort)
           case _: EmptySet => createApp("Set_empty", Seq(), l.sort)

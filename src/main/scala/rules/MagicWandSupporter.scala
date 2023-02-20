@@ -155,10 +155,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
                * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their
                * snapshots. Also have a look at the comments in the packageWand and applyWand methods.
                */
-              case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True()
+              case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True
               case (Some(ch1: NonQuantifiedChunk), Some(ch2: NonQuantifiedChunk)) => ch1.snap === ch2.snap
               case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
-              case _ => True()
+              case _ => True
             }
             v.decider.assume(tEq)
 

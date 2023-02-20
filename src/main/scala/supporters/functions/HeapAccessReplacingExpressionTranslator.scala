@@ -87,8 +87,8 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                   : Term =
 
     e match {
-      case _: ast.AccessPredicate | _: ast.MagicWand if ignoreAccessPredicates => True()
-      case q: ast.Forall if !q.isPure && ignoreAccessPredicates => True()
+      case _: ast.AccessPredicate | _: ast.MagicWand if ignoreAccessPredicates => True
+      case q: ast.Forall if !q.isPure && ignoreAccessPredicates => True
 
       case _: ast.Result => data.formalResult
 

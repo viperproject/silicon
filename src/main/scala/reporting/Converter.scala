@@ -151,7 +151,7 @@ object Converter {
   lazy val symbolConverter: SymbolConverter = new DefaultSymbolConverter
   //some tokens used for naming model entries in a more maintainable way
   lazy val snapUnitId: String = termconverter.convert(Unit)
-  lazy val nullRefId: String = termconverter.convert(Null())
+  lazy val nullRefId: String = termconverter.convert(Null)
 
   def getFunctionValue(model: Model,
                        fname: String,
@@ -254,7 +254,7 @@ object Converter {
       case Unit              => UnprocessedModelEntry(ConstantEntry(snapUnitId))
       case IntLiteral(x)     => LitIntEntry(x)
       case t: BooleanLiteral => LitBoolEntry(t.value)
-      case Null()            => VarEntry(model.entries(nullRefId).toString, sorts.Ref)
+      case Null            => VarEntry(model.entries(nullRefId).toString, sorts.Ref)
       case Var(_, sort) =>
         val key: String = term.toString
         val entry: Option[ModelEntry] = model.entries.get(key)

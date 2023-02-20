@@ -270,10 +270,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def isKnownToBeTrue(t: Term) = t match {
-      case True() => true
+      case True => true
   //    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
       case _ if pcs.assumptions contains t => true
-      case q: Quantification if q.body == True() => true
+      case q: Quantification if q.body == True => true
       case _ => false
     }
 
@@ -379,7 +379,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def statistics(): Map[String, String] = prover.statistics()
 
-    override def generateModel(): Unit = proverAssert(False(), None)
+    override def generateModel(): Unit = proverAssert(False, None)
 
     override def getModel(): Model = prover.getModel()
 
