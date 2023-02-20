@@ -30,6 +30,7 @@ class TermToZ3APIConverter
 
   val sortCache = mutable.HashMap[Sort, Z3Sort]()
   val funcDeclCache = mutable.HashMap[(String, Seq[Sort], Sort), Z3FuncDecl]()
+  val termCache = mutable.HashMap[Term, Z3Expr]()
 
   def convert(s: Sort): Z3Sort = convertSort(s)
 
@@ -203,6 +204,9 @@ class TermToZ3APIConverter
 
 
   def convertTerm(term: Term): Z3Expr = {
+    val cached = termCache.get(term)
+    if (cached.isDefined)
+      return cached.get
     val res = term match {
       case l: Literal => {
         l match {
@@ -441,6 +445,7 @@ class TermToZ3APIConverter
          | _: Quantification =>
         sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
     }
+    termCache.put(term, res)
     res
   }
 

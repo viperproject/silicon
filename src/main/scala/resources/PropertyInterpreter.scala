@@ -116,10 +116,19 @@ abstract class PropertyInterpreter {
   }
 
   protected def buildBinary[K <: Kind]
+                           (builder: ((Term, Term)) => Term,
+                            left: PropertyExpression[K],
+                            right: PropertyExpression[K],
+                            pm: Info): Term = {
+    def wrapper(t0: Term, t1: Term): Term = builder((t0, t1))
+    buildBinary(wrapper _, left, right, pm)
+  }
+
+  protected def buildBinary[K <: Kind]
                            (builder: (Term, Term) => Term,
                             left: PropertyExpression[K],
                             right: PropertyExpression[K],
-                            pm: Info) = {
+                            pm: Info): Term = {
     val leftTerm = buildPathCondition(left, pm)
     val rightTerm = buildPathCondition(right, pm)
     builder(leftTerm, rightTerm)

@@ -550,7 +550,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
             proverArgs.flatMap(args => proverTimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
         .getOrElse(0)
 
-  lazy val useFlyweight: Boolean = true
+  lazy val useFlyweight: Boolean = true // prover() == "Z3-API"
 
   val maxHeuristicsDepth: ScallopOption[Int] = opt[Int]("maxHeuristicsDepth",
     descr = "Maximal number of nested heuristics applications (default: 3)",

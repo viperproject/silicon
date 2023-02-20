@@ -421,7 +421,7 @@ trait ConditionalFlyweightBinaryOp[T] extends BinaryOp[Term] with ConditionalFly
   override val equalityDefiningMembers = (p0,  p1)
 }
 
-trait ConditionalFlyweightUnaryOp extends UnaryOp[Term] with ConditionalFlyweight[Term, ConditionalFlyweightUnaryOp] with Term {
+trait ConditionalFlyweightUnaryOp[T] extends UnaryOp[Term] with ConditionalFlyweight[Term, T] with Term {
   override val equalityDefiningMembers = p
 }
 
@@ -489,6 +489,9 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
 
 
 trait ConditionalFlyweightFactory[T, V <: ConditionalFlyweight[T, V] with Term] extends GeneralConditionalFlyweightFactory[T, Term, V]
+
+trait PreciseConditionalFlyweightFactory[T, V <: ConditionalFlyweight[T, V] with Term] extends GeneralConditionalFlyweightFactory[T, V, V]
+
 
 trait GeneralConditionalFlyweightFactory[T, U, V <: U with ConditionalFlyweight[T, V]] extends AGeneralConditionalFlyweightFactory[T, T, U, V] {
   def apply(v1: T): U = createIfNonExistent(v1)
@@ -815,8 +818,8 @@ object Mod extends GeneralConditionalFlyweightFactory[(Term, Term), Mod, Mod] {
 sealed trait BooleanTerm extends Term { override val sort = sorts.Bool }
 
 class Not(val p: Term) extends BooleanTerm
-    with ConditionalFlyweightUnaryOp {
-
+    with ConditionalFlyweightUnaryOp[Not] {
+  assert(p.sort == sorts.Bool)
   override val op = "!"
 
   override lazy val toString = p match {
@@ -825,7 +828,7 @@ class Not(val p: Term) extends BooleanTerm
   }
 }
 
-object Not extends ConditionalFlyweightFactory[Term, ConditionalFlyweightUnaryOp] {
+object Not extends ConditionalFlyweightFactory[Term, Not] {
 
   override def apply(e0: Term) = e0 match {
     case Not(e1) => e1
@@ -1208,95 +1211,101 @@ object FractionPerm extends GeneralConditionalFlyweightFactory[(Term, Term), Per
   override def actualCreate(args: (Term, Term)): FractionPerm = new FractionPerm(args._1, args._2)
 }
 
-case class IsValidPermVar(v: Var) extends BooleanTerm {
+class IsValidPermVar(val v: Var) extends BooleanTerm with ConditionalFlyweight[Var, IsValidPermVar] {
+  override val equalityDefiningMembers: Var = v
   override lazy val toString = s"PVar($v)"
 }
 
-case class IsReadPermVar(v: Var) extends BooleanTerm {
+object IsValidPermVar extends ConditionalFlyweightFactory[Var, IsValidPermVar] {
+  override def actualCreate(args: Var): IsValidPermVar = new IsValidPermVar((args))
+}
+
+class IsReadPermVar(val v: Var) extends BooleanTerm with ConditionalFlyweight[Var, IsReadPermVar] {
+  override val equalityDefiningMembers: Var = v
   override lazy val toString = s"RdVar($v)"
+}
+
+object IsReadPermVar extends ConditionalFlyweightFactory[Var, IsReadPermVar] {
+  override def actualCreate(args: Var): IsReadPermVar = new IsReadPermVar((args))
 }
 
 class PermTimes(val p0: Term, val p1: Term)
     extends Permissions
-       with StructuralEqualityBinaryOp[Term] {
+       with ConditionalFlyweightBinaryOp[PermTimes] {
 
   override val op = "*"
 }
 
-object PermTimes extends ((Term, Term) => Term) {
-  def apply(t0: Term, t1: Term) = (t0, t1) match {
+object PermTimes extends ConditionalFlyweightFactory[(Term, Term), PermTimes] {
+  override def apply(v0: (Term, Term)) = v0 match {
     case (FullPerm(), t) => t
     case (t, FullPerm()) => t
     case (NoPerm(), _) => NoPerm()
     case (_, NoPerm()) => NoPerm()
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal * p1.literal)
-    case (_, _) => new PermTimes(t0, t1)
+    case (_, _) => createIfNonExistent(v0)
   }
 
-  def unapply(pt: PermTimes) = Some((pt.p0, pt.p1))
+  override def actualCreate(args: (Term, Term)): PermTimes = new PermTimes(args._1, args._2)
 }
 
 class IntPermTimes(val p0: Term, val p1: Term)
     extends Permissions
        with BinaryOp[Term]
-       with StructuralEqualityBinaryOp[Term] {
+       with ConditionalFlyweightBinaryOp[IntPermTimes] {
 
   override val op = "*"
 }
 
-object IntPermTimes extends ((Term, Term) => Term) {
+object IntPermTimes extends ConditionalFlyweightFactory[(Term, Term), IntPermTimes] {
   import predef.{Zero, One}
 
-  def apply(t0: Term, t1: Term) = (t0, t1) match {
+  override def apply(v0: (Term, Term)) = v0 match {
     case (Zero, _) => NoPerm()
     case (One, t) => t
     case (_, NoPerm()) => NoPerm()
     case (IntLiteral(i), p: PermLiteral) => FractionPermLiteral(Rational(i, 1) * p.literal)
-    case (_, _) => new IntPermTimes(t0, t1)
+    case (_, _) => createIfNonExistent(v0)
   }
 
-  def unapply(pt: IntPermTimes) = Some((pt.p0, pt.p1))
+  override def actualCreate(args: (Term, Term)): IntPermTimes = new IntPermTimes(args._1, args._2)
 }
 
 class PermIntDiv(val p0: Term, val p1: Term)
     extends Permissions
        with BinaryOp[Term]
-       with StructuralEqualityBinaryOp[Term] {
+       with ConditionalFlyweightBinaryOp[PermIntDiv] {
 
   utils.assertSort(p1, "Second term", sorts.Int)
 
   override val op = "/"
 }
 
-object PermIntDiv extends ((Term, Term) => Term) {
+object PermIntDiv extends ConditionalFlyweightFactory[(Term, Term), PermIntDiv] {
   import predef.One
 
-  def apply(t0: Term, t1: Term) = (t0, t1) match {
+  override def apply(v0: (Term, Term)) = v0 match {
     case (t, One) => t
     case (p: PermLiteral, IntLiteral(i)) if i != 0 => FractionPermLiteral(p.literal / Rational(i, 1))
-    case (_, _) => new PermIntDiv(t0, t1)
+    case (_, _) => createIfNonExistent(v0)
   }
 
-  def unapply(t: PermIntDiv) = Some((t.p0, t.p1))
+  override def actualCreate(args: (Term, Term)): PermIntDiv = new PermIntDiv(args._1, args._2)
 }
 
 class PermPermDiv(val p0: Term, val p1: Term)
   extends Permissions
     with BinaryOp[Term]
-    with StructuralEqualityBinaryOp[Term] {
+    with ConditionalFlyweightBinaryOp[PermPermDiv] {
 
   utils.assertSort(p1, "Second term", sorts.Perm)
 
   override val op = "/"
 }
 
-object PermPermDiv extends ((Term, Term) => Term) {
+object PermPermDiv extends ConditionalFlyweightFactory[(Term, Term), PermPermDiv] {
 
-  def apply(t0: Term, t1: Term) = (t0, t1) match {
-    case (_, _) => new PermPermDiv(t0, t1)
-  }
-
-  def unapply(t: PermPermDiv) = Some((t.p0, t.p1))
+  override def actualCreate(args: (Term, Term)): PermPermDiv = new PermPermDiv(args._1, args._2)
 }
 
 object PermDiv extends ((Term, Term) => Term) {
@@ -1308,30 +1317,30 @@ object PermDiv extends ((Term, Term) => Term) {
 class PermPlus(val p0: Term, val p1: Term)
     extends Permissions
        with BinaryOp[Term]
-       with StructuralEqualityBinaryOp[Term] {
+       with ConditionalFlyweightBinaryOp[PermPlus] {
 
   override val op = "+"
 }
 
-object PermPlus extends ((Term, Term) => Term) {
-  def apply(t0: Term, t1: Term) = (t0, t1) match {
-    case (NoPerm(), _) => t1
-    case (_, NoPerm()) => t0
+object PermPlus extends ConditionalFlyweightFactory[(Term, Term), PermPlus] {
+  override def apply(v0: (Term, Term)) = v0 match {
+    case (NoPerm(), t1) => t1
+    case (t0, NoPerm()) => t0
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal + p1.literal)
     case (FractionPerm(n1, d1), FractionPerm(n2, d2)) if d1 == d2 => FractionPerm(Plus(n1, n2), d1)
-    case (PermMinus(t00, t01), _) if t01 == t1 => t00
-    case (_, PermMinus(t10, t11)) if t11 == t0 => t10
+    case (PermMinus(t00, t01), t1) if t01 == t1 => t00
+    case (t0, PermMinus(t10, t11)) if t11 == t0 => t10
 
-    case (_, _) => new PermPlus(t0, t1)
+    case (_, _) => createIfNonExistent(v0)
   }
 
-  def unapply(pp: PermPlus) = Some((pp.p0, pp.p1))
+  override def actualCreate(args: (Term, Term)): PermPlus = new PermPlus(args._1, args._2)
 }
 
 class PermMinus(val p0: Term, val p1: Term)
     extends Permissions
        with BinaryOp[Term]
-       with StructuralEqualityBinaryOp[Term] {
+       with ConditionalFlyweightBinaryOp[PermMinus] {
 
   override val op = "-"
 
@@ -1341,68 +1350,68 @@ class PermMinus(val p0: Term, val p1: Term)
   }
 }
 
-object PermMinus extends ((Term, Term) => Term) {
-  def apply(t0: Term, t1: Term) = (t0, t1) match {
-    case (_, NoPerm()) => t0
+object PermMinus extends ConditionalFlyweightFactory[(Term, Term), PermMinus] {
+  override def apply(v0: (Term, Term)) = v0 match {
+    case (t0, NoPerm()) => t0
     case (p0, p1) if p0 == p1 => NoPerm()
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal - p1.literal)
     case (p0, PermMinus(p1, p2)) if p0 == p1 => p2
     case (PermPlus(p0, p1), p2) if p0 == p2 => p1
     case (PermPlus(p0, p1), p2) if p1 == p2 => p0
-    case (_, _) => new PermMinus(t0, t1)
+    case (_, _) => createIfNonExistent(v0)
   }
 
-  def unapply(pm: PermMinus) = Some((pm.p0, pm.p1))
+  override def actualCreate(args: (Term, Term)): PermMinus = new PermMinus(args._1, args._2)
 }
 
 class PermLess(val p0: Term, val p1: Term)
     extends BooleanTerm
        with BinaryOp[Term]
-       with StructuralEqualityBinaryOp[Term] {
+       with ConditionalFlyweightBinaryOp[PermLess] {
 
   override lazy val toString = s"($p0) < ($p1)"
 
   override val op = "<"
 }
 
-object PermLess extends ((Term, Term) => Term) {
-  def apply(t0: Term, t1: Term): Term = {
-    (t0, t1) match {
-      case _ if t0 == t1 => False
+object PermLess extends ConditionalFlyweightFactory[(Term, Term), PermLess] {
+  override def apply(v0: (Term, Term)): Term = {
+    v0 match {
+      case (t0, t1) if t0 == t1 => False
       case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal < p1.literal) True else False
 
-      case (`t0`, Ite(tCond, tIf, tElse)) =>
+      case (t0, Ite(tCond, tIf, tElse)) =>
         /* The pattern p0 < b ? p1 : p2 arises very often in the context of quantified permissions.
          * Pushing the comparisons into the ite allows further simplifications.
          */
         Ite(tCond, PermLess(t0, tIf), PermLess(t0, tElse))
 
-      case _ => new PermLess(t0, t1)
+      case _ => createIfNonExistent(v0)
     }
   }
 
-  def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
+  override def actualCreate(args: (Term, Term)): PermLess = new PermLess(args._1, args._2)
 }
 
 class PermAtMost(val p0: Term, val p1: Term) extends ComparisonTerm
-    with StructuralEqualityBinaryOp[Term] {
+    with ConditionalFlyweightBinaryOp[PermAtMost] {
 
   override val op = "<="
 }
 
-object PermAtMost extends ((Term, Term) => Term) {
-  def apply(e0: Term, e1: Term) = (e0, e1) match {
+object PermAtMost extends ConditionalFlyweightFactory[(Term, Term), PermAtMost] {
+  override def apply(v0: (Term, Term)) = v0 match {
     case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal <= p1.literal) True else False
     case (t0, t1) if t0 == t1 => True
-    case _ => new PermAtMost(e0, e1)
+    case _ => createIfNonExistent(v0)
   }
 
-  def unapply(e: PermAtMost) = Some((e.p0, e.p1))
+  override def actualCreate(args: (Term, Term)): PermAtMost = new PermAtMost(args._1, args._2)
 }
 
 class PermMin(val p0: Term, val p1: Term) extends Permissions
     with BinaryOp[Term]
-    with StructuralEqualityBinaryOp[Term] {
+    with ConditionalFlyweightBinaryOp[PermMin] {
 
   utils.assertSort(p0, "Permission 1st", sorts.Perm)
   utils.assertSort(p1, "Permission 2nd", sorts.Perm)
@@ -1410,14 +1419,14 @@ class PermMin(val p0: Term, val p1: Term) extends Permissions
   override lazy val toString = s"min ($p0, $p1)"
 }
 
-object PermMin extends ((Term, Term) => Term) {
-  def apply(e0: Term, e1: Term) = (e0, e1) match {
+object PermMin extends ConditionalFlyweightFactory[(Term, Term), PermMin] {
+  override def apply(v0: (Term, Term)) = v0 match {
     case (t0, t1) if t0 == t1 => t0
     case (p0: PermLiteral, p1: PermLiteral) => if (p0.literal > p1.literal) p1 else p0
-    case _ => new PermMin(e0, e1)
+    case _ => createIfNonExistent(v0)
   }
 
-  def unapply(e: PermMin) = Some((e.p0, e.p1))
+  override def actualCreate(args: (Term, Term)): PermMin = new PermMin(args._1, args._2)
 }
 
 /* Sequences */
@@ -1953,7 +1962,7 @@ object MapRange extends (Term => SetTerm) {
 sealed trait SnapshotTerm extends Term { val sort = sorts.Snap }
 
 class Combine(val p0: Term, val p1: Term) extends SnapshotTerm
-    with StructuralEqualityBinaryOp[Term] {
+    with ConditionalFlyweightBinaryOp[Combine] {
 
   utils.assertSort(p0, "first operand", sorts.Snap)
   utils.assertSort(p1, "second operand", sorts.Snap)
@@ -1961,103 +1970,143 @@ class Combine(val p0: Term, val p1: Term) extends SnapshotTerm
   override lazy val toString = s"($p0, $p1)"
 }
 
-object Combine extends ((Term, Term) => Term) {
-  def apply(t0: Term, t1: Term) = new Combine(t0.convert(sorts.Snap), t1.convert(sorts.Snap))
+object Combine extends ConditionalFlyweightFactory[(Term, Term), Combine] {
+  override def apply(v0: (Term, Term)) = createIfNonExistent(v0._1.convert(sorts.Snap), v0._2.convert(sorts.Snap))
 
-  def unapply(c: Combine) = Some((c.p0, c.p1))
+  override def actualCreate(args: (Term, Term)): Combine = new Combine(args._1, args._2)
 }
 
 class First(val p: Term) extends SnapshotTerm
-    with StructuralEqualityUnaryOp[Term]
+    with ConditionalFlyweightUnaryOp[First]
     /*with PossibleTrigger*/ {
 
   utils.assertSort(p, "term", sorts.Snap)
 }
 
-object First extends (Term => Term) {
-  def apply(t: Term) = t match {
+object First extends ConditionalFlyweightFactory[Term, First] {
+  override def apply(t: Term) = t match {
     case Combine(t1, _) => t1
-    case _ => new First(t)
+    case _ => createIfNonExistent(t)
   }
 
-  def unapply(f: First) = Some(f.p)
+  override def actualCreate(args: Term): First = new First(args)
 }
 
 class Second(val p: Term) extends SnapshotTerm
-    with StructuralEqualityUnaryOp[Term]
+    with ConditionalFlyweightUnaryOp[Second]
     /*with PossibleTrigger*/ {
 
   utils.assertSort(p, "term", sorts.Snap)
 }
 
-object Second extends (Term => Term) {
-  def apply(t: Term) = t match {
+object Second extends ConditionalFlyweightFactory[Term, Second] {
+  override def apply(t: Term) = t match {
     case Combine(_, t2) => t2
-    case _ => new Second(t)
+    case _ => createIfNonExistent(t)
   }
 
-  def unapply(s: Second) = Some(s.p)
+  override def actualCreate(args: Term): Second = new Second(args)
 }
 
 /* Quantified permissions */
 
-case class Lookup(field: String, fvf: Term, at: Term) extends Term {
+class Lookup(val field: String, val fvf: Term, val at: Term) extends Term with ConditionalFlyweight[(String, Term, Term), Lookup] {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
   utils.assertSort(at, "receiver", sorts.Ref)
 
+  override val equalityDefiningMembers: (String, Term, Term) = (field, fvf, at)
   val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
 }
 
-case class PermLookup(field: String, pm: Term, at: Term) extends Term {
+object Lookup extends PreciseConditionalFlyweightFactory[(String, Term, Term), Lookup] {
+  override def actualCreate(args: (String, Term, Term)): Lookup = new Lookup(args._1, args._2, args._3)
+}
+
+class PermLookup(val field: String, val pm: Term, val at: Term) extends Term with ConditionalFlyweight[(String, Term, Term), PermLookup] {
   utils.assertSort(pm, "field perm function", "FieldPermFunction", _.isInstanceOf[sorts.FieldPermFunction])
   utils.assertSort(at, "receiver", sorts.Ref)
 
+  override val equalityDefiningMembers: (String, Term, Term) = (field, pm, at)
   val sort = sorts.Perm
 }
 
-case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {
+object PermLookup extends PreciseConditionalFlyweightFactory[(String, Term, Term), PermLookup] {
+  override def actualCreate(args: (String, Term, Term)): PermLookup = new PermLookup(args._1, args._2, args._3)
+}
+
+class Domain(val field: String, val fvf: Term) extends SetTerm /*with PossibleTrigger*/ with ConditionalFlyweight[(String, Term), Domain] {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
 
   val elementsSort = sorts.Ref
   val sort = sorts.Set(elementsSort)
+  override val equalityDefiningMembers: (String, Term) = (field, fvf)
 }
 
-case class FieldTrigger(field: String, fvf: Term, at: Term) extends Term {
+object Domain extends ConditionalFlyweightFactory[(String, Term), Domain] {
+  override def actualCreate(args: (String, Term)): Domain = new Domain(args._1, args._2)
+}
+
+class FieldTrigger(val field: String, val fvf: Term, val at: Term) extends Term with ConditionalFlyweight[(String, Term, Term), FieldTrigger] {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
   utils.assertSort(at, "receiver", sorts.Ref)
 
   val sort = sorts.Bool
+  override val equalityDefiningMembers: (String, Term, Term) = (field, fvf, at)
+}
+
+object FieldTrigger extends PreciseConditionalFlyweightFactory[(String, Term, Term), FieldTrigger] {
+  override def actualCreate(args: (String, Term, Term)): FieldTrigger = new FieldTrigger(args._1, args._2, args._3)
 }
 
 /* Quantified predicates */
 
-case class PredicateLookup(predname: String, psf: Term, args: Seq[Term]) extends Term {
+class PredicateLookup(val predname: String, val psf: Term, val args: Seq[Term]) extends Term with ConditionalFlyweight[(String, Term, Seq[Term]), PredicateLookup] {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
 
   val sort = psf.sort.asInstanceOf[sorts.PredicateSnapFunction].codomainSort
+  override val equalityDefiningMembers: (String, Term, Seq[Term]) = (predname, psf, args)
 }
 
-case class PredicatePermLookup(predname: String, pm: Term, args: Seq[Term]) extends Term {
+object PredicateLookup extends PreciseConditionalFlyweightFactory[(String, Term, Seq[Term]), PredicateLookup] {
+  override def actualCreate(args: (String, Term, Seq[Term])): PredicateLookup = new PredicateLookup(args._1, args._2, args._3)
+}
+
+class PredicatePermLookup(val predname: String, val pm: Term, val args: Seq[Term]) extends Term with ConditionalFlyweight[(String, Term, Seq[Term]), PredicatePermLookup] {
   utils.assertSort(pm, "predicate perm function", "PredicatePermFunction", _.isInstanceOf[sorts.PredicatePermFunction])
 
   val sort = sorts.Perm
+  override val equalityDefiningMembers: (String, Term, Seq[Term]) = (predname, pm, args)
 }
 
-case class PredicateDomain(predname: String, psf: Term) extends SetTerm /*with PossibleTrigger*/ {
+object PredicatePermLookup extends PreciseConditionalFlyweightFactory[(String, Term, Seq[Term]), PredicatePermLookup] {
+  override def actualCreate(args: (String, Term, Seq[Term])): PredicatePermLookup = new PredicatePermLookup(args._1, args._2, args._3)
+}
+
+class PredicateDomain(val predname: String, val psf: Term) extends SetTerm /*with PossibleTrigger*/ with ConditionalFlyweight[(String, Term), PredicateDomain] {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
   val elementsSort = sorts.Snap
   val sort = sorts.Set(elementsSort)
+  override val equalityDefiningMembers: (String, Term) = (predname, psf)
 }
 
-case class PredicateTrigger(predname: String, psf: Term, args: Seq[Term]) extends Term {
+object PredicateDomain extends ConditionalFlyweightFactory[(String, Term), PredicateDomain] {
+  override def actualCreate(args: (String, Term)): PredicateDomain = new PredicateDomain(args._1, args._2)
+}
+
+class PredicateTrigger(val predname: String, val psf: Term, val args: Seq[Term]) extends Term with ConditionalFlyweight[(String, Term, Seq[Term]), PredicateTrigger] {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
 
   val sort = sorts.Bool
+  override val equalityDefiningMembers: (String, Term, Stack[Term]) = (predname, psf, args)
+}
+
+object PredicateTrigger extends PreciseConditionalFlyweightFactory[(String, Term, Seq[Term]), PredicateTrigger] {
+  override def actualCreate(args: (String, Term, Seq[Term])): PredicateTrigger = new PredicateTrigger(args._1, args._2, args._3)
 }
 
 /* Magic wands */
 
-case class MagicWandSnapshot(abstractLhs: Term, rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
+class MagicWandSnapshot(val abstractLhs: Term, val rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
   utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
   utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
 
@@ -2073,7 +2122,7 @@ case class MagicWandSnapshot(abstractLhs: Term, rhsSnapshot: Term) extends Combi
   }
 }
 
-object MagicWandSnapshot {
+object MagicWandSnapshot  {
   def apply(snapshot: Term): MagicWandSnapshot = {
     assert(snapshot.sort == sorts.Snap)
     snapshot match {
@@ -2082,20 +2131,45 @@ object MagicWandSnapshot {
         MagicWandSnapshot(First(snapshot), Second(snapshot))
     }
   }
+
+  // Since MagicWandSnapshot subclasses Combine, we apparently cannot inherit the normal subclass, so we
+  // have to copy paste the code here.
+  import scala.collection.concurrent.TrieMap
+
+  var pool = new TrieMap[(Term, Term), MagicWandSnapshot]()
+
+  def createIfNonExistent(args: (Term, Term)): MagicWandSnapshot = {
+    if (Verifier.config.useFlyweight) {
+      pool.getOrElseUpdate(args, actualCreate(args))
+    } else {
+      actualCreate(args)
+    }
+  }
+
+  def actualCreate(tuple: (Term, Term)) = new MagicWandSnapshot(tuple._1, tuple._2)
+  def apply(fst: Term, snd: Term): MagicWandSnapshot = createIfNonExistent((fst, snd))
+
+  def unapply(mws: MagicWandSnapshot) = Some((mws.abstractLhs, mws.rhsSnapshot))
 }
 
-case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
+class MagicWandChunkTerm(val chunk: MagicWandChunk) extends Term with ConditionalFlyweight[MagicWandChunk, MagicWandChunkTerm] {
   override val sort = sorts.Unit /* TODO: Does this make sense? */
   override lazy val toString = s"wand@${chunk.id.ghostFreeWand.pos}}"
+  override val equalityDefiningMembers: MagicWandChunk = chunk
+}
+
+object MagicWandChunkTerm extends ConditionalFlyweightFactory[MagicWandChunk, MagicWandChunkTerm] {
+  override def actualCreate(args: MagicWandChunk): MagicWandChunkTerm = new MagicWandChunkTerm(args)
 }
 
 /* Factory methods for all resources */
 
 object toSnapTree extends (Seq[Term] => Term) {
+  private def binaryCombine(t0: Term, t1: Term) = Combine(t0, t1)
   @inline
   def apply(args: Seq[Term]): Term = {
     if (args.isEmpty) Unit
-    else args.map(_.convert(sorts.Snap)).reduceLeft(Combine)
+    else args.map(_.convert(sorts.Snap)).reduceLeft(binaryCombine)
   }
 }
 
@@ -2204,63 +2278,64 @@ object PsfTop extends (String => Identifier) {
  */
 class SortWrapper(val t: Term, val to: Sort)
     extends Term
-       with StructuralEquality {
+       with ConditionalFlyweight[(Term, Sort), SortWrapper] {
 
   assert((t.sort == sorts.Snap || to == sorts.Snap) && t.sort != to,
          s"Unexpected sort wrapping of $t from ${t.sort} to $to")
 
-  val equalityDefiningMembers = t :: to :: Nil
+  val equalityDefiningMembers = (t, to)
 //  override lazy val toString = s"SortWrapper($t, $to)"
   override lazy val toString = t.toString
   override val sort = to
 }
 
-object SortWrapper {
-  def apply(t: Term, to: Sort) = t match {
-    case _ if t.sort == to => t
-    case sw: SortWrapper if sw.t.sort == to => sw.t
-    case _ => new SortWrapper(t, to)
+object SortWrapper extends ConditionalFlyweightFactory[(Term, Sort), SortWrapper] {
+  override def apply(v0: (Term, Sort)) = v0 match {
+    case (t, to) if t.sort == to => t
+    case (sw: SortWrapper, to) if sw.t.sort == to => sw.t
+    case _ => createIfNonExistent(v0)
   }
 
-  def unapply(sw: SortWrapper) = Some((sw.t, sw.to))
+  override def actualCreate(args: (Term, Sort)): SortWrapper = new SortWrapper(args._1, args._2)
 }
 
 /* Other terms */
 
-class Distinct(val ts: Set[DomainFun]) extends BooleanTerm with StructuralEquality {
+class Distinct(val ts: Set[DomainFun]) extends BooleanTerm with ConditionalFlyweight[Set[DomainFun], Distinct] {
   assert(ts.size >= 2, "Distinct requires at least two terms")
 
-  val equalityDefiningMembers = ts :: Nil
+  val equalityDefiningMembers = ts
   override lazy val toString = s"Distinct($ts)"
 }
 
-object Distinct extends (Set[DomainFun] => Term) {
-  def apply(ts: Set[DomainFun]): Term =
-    if (ts.size >= 2) new Distinct(ts)
+object Distinct extends ConditionalFlyweightFactory[Set[DomainFun], Distinct] {
+  override def apply(ts: Set[DomainFun]): Term =
+    if (ts.size >= 2) createIfNonExistent(ts)
     else True
 
-  def unapply(d: Distinct) = Some(d.ts)
+  override def actualCreate(args: Set[DomainFun]): Distinct = new Distinct(args)
 }
 
-class Let(val bindings: Map[Var, Term], val body: Term) extends Term with StructuralEquality {
+class Let(val bindings: Map[Var, Term], val body: Term) extends Term with ConditionalFlyweight[(Map[Var, Term], Term), Let] {
   assert(bindings.nonEmpty, "Let needs to bind at least one variable")
 
   val sort = body.sort
-  val equalityDefiningMembers = Seq(body) ++ bindings.flatMap(_.productIterator)
+  val equalityDefiningMembers = (bindings, body)
 
   override lazy val toString = s"let ${bindings.map(p => s"${p._1} = ${p._2}")} in $body"
 }
 
-object Let extends ((Map[Var, Term], Term) => Term) {
+object Let extends ConditionalFlyweightFactory[(Map[Var, Term], Term), Let] {
   def apply(v: Var, t: Term, body: Term): Term = apply(Map(v -> t), body)
   def apply(vs: Seq[Var], ts: Seq[Term], body: Term): Term = apply(toMap(vs zip ts), body)
 
-  def apply(bindings: Map[Var, Term], body: Term) = {
+  override def apply(v0: (Map[Var, Term], Term)) = {
+    val (bindings, body) = v0
     if (bindings.isEmpty) body
-    else new Let(bindings, body)
+    else createIfNonExistent(v0)
   }
 
-  def unapply(l: Let) = Some((l.bindings, l.body))
+  override def actualCreate(args: (Map[Var, Term], Term)): Let = new Let(args._1, args._2)
 }
 
 /* Predefined terms */
@@ -2292,8 +2367,10 @@ object perms {
     case _ => Or(p === NoPerm(), PermLess(p, NoPerm()))
   }
 
-  def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
-    viper.silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
+  def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term = {
+    def binaryPermPlus(t0: Term, t1: Term) = PermPlus(t0, t1)
+    viper.silicon.utils.mapReduceLeft(it, f, binaryPermPlus, NoPerm())
+  }
 }
 
 /* Utility functions */
