@@ -461,12 +461,17 @@ trait AGeneralConditionalFlyweightFactory[IF, T <: IF, U <: Term, V <: U with Co
   var pool = new TrieMap[T, V]()
 
   def createIfNonExistent(args: T): V = {
-    pool.get(args) match {
-      case Some(v) => v
-      case None =>
-        val newInstance = actualCreate(args)
-        pool.addOne(args, newInstance)
-        newInstance
+    if (Verifier.config.useFlyweight) {
+      pool.get(args) match {
+        case Some(v) =>
+          v
+        case None =>
+          val newInstance = actualCreate(args)
+          pool.addOne(args, newInstance)
+          newInstance
+      }
+    } else {
+      actualCreate(args)
     }
   }
 
