@@ -30,7 +30,7 @@ import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, WarningsDuringTypechecking}
+import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, VerificationTerminationMessage, QuantifierChosenTriggersMessage, WarningsDuringTypechecking}
 import viper.silver.verifier.TypecheckerWarning
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
@@ -165,11 +165,13 @@ class DefaultMainVerifier(config: Config,
           val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers)
           res
         case exists: ast.Exists =>
           val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers)
           res
       }, Traverse.BottomUp)
 
@@ -280,6 +282,7 @@ class DefaultMainVerifier(config: Config,
         this.axiomsAfterAnalysis().toList,
         this.postConditionAxioms().toList)
     }
+    reporter report VerificationTerminationMessage()
 
     (   functionVerificationResults
      ++ predicateVerificationResults
