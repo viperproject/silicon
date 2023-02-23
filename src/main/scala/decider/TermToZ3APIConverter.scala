@@ -314,8 +314,8 @@ class TermToZ3APIConverter
       /* Permissions */
 
 
-      case FullPerm() => ctx.mkReal(1)
-      case NoPerm() => ctx.mkReal(0)
+      case FullPerm => ctx.mkReal(1)
+      case NoPerm => ctx.mkReal(0)
       case FractionPermLiteral(r) => ctx.mkDiv(convertToReal(IntLiteral(r.numerator)), convertToReal(IntLiteral(r.denominator)))
       case FractionPerm(n, d) => ctx.mkDiv(convertToReal(n), convertToReal(d))
       case PermLess(t0, t1) => ctx.mkLt(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
@@ -521,6 +521,7 @@ class TermToZ3APIConverter
     macros.clear()
     funcDeclCache.clear()
     sortCache.clear()
+    termCache.clear()
     unitConstructor = null
     combineConstructor = null
     firstFunc = null

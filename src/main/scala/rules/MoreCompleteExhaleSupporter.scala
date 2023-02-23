@@ -59,7 +59,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     val `?s` = Var(Identifier("?s"), sort)
     var summarisingSnapshotDefinitions: Seq[Term] = Vector.empty
-    var permissionSum: Term = NoPerm()
+    var permissionSum: Term = NoPerm
 
     relevantChunks.foreach(ch => {
       val argumentEqualities =
@@ -69,7 +69,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         Implies(And(argumentEqualities, IsPositive(ch.perm)), `?s` === ch.snap)
 
       permissionSum =
-        PermPlus(permissionSum, Ite(argumentEqualities, ch.perm, NoPerm()))
+        PermPlus(permissionSum, Ite(argumentEqualities, ch.perm, NoPerm))
     })
 
     val taggedSummarisingSnapshot =
@@ -109,7 +109,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       if (v.decider.check(And(chunk.args.zip(args).map { case (t1, t2) => t1 === t2 }), Verifier.config.checkTimeout())) {
         return Q(s, chunk.snap, Seq(), chunk.perm, v)
       } else {
-        return Q(s, chunk.snap, Seq(), NoPerm(), v)
+        return Q(s, chunk.snap, Seq(), NoPerm, v)
       }
     }
     val (s1, taggedSnap, snapDefs, permSum) = summariseOnly(s, relevantChunks, resource, args, v)
@@ -217,7 +217,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       // if no permission is exhaled, return none
-      if (v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
+      if (v.decider.check(perms === NoPerm, Verifier.config.checkTimeout())) {
         Q(s, h, None, v)
       } else {
         createFailure(ve, v, s)
@@ -228,7 +228,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, v2)})
       } else {
         var pNeeded = perms
-        var pSum: Term = NoPerm()
+        var pSum: Term = NoPerm
         val newChunks = ListBuffer[NonQuantifiedChunk]()
         var moreNeeded = true
 
@@ -246,8 +246,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         relevantChunks.sortWith(sortFunction) foreach { ch =>
           if (moreNeeded) {
             val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
-            pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm()))
-            val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm())
+            pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
+            val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
             val pTakenArgs = additionalArgs
             val pTakenDecl = v.decider.freshMacro("mce_pTaken", pTakenArgs, pTakenBody)
             val pTakenMacro = Macro(pTakenDecl.id, pTakenDecl.args.map(_.sort), pTakenDecl.body.sort)
@@ -263,7 +263,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
               newChunks.append(newChunk)
             }
 
-            moreNeeded = !v.decider.check(pNeeded === NoPerm(), Verifier.config.splitTimeout())
+            moreNeeded = !v.decider.check(pNeeded === NoPerm, Verifier.config.splitTimeout())
           } else {
             newChunks.append(ch)
           }
@@ -285,7 +285,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (!moreNeeded) {
             Q(s1, newHeap, Some(snap), v1)
           } else {
-            v1.decider.assert(pNeeded === NoPerm()) {
+            v1.decider.assert(pNeeded === NoPerm) {
               case true =>
                 Q(s1, newHeap, Some(snap), v1)
               case false =>
@@ -307,8 +307,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     assert(s.functionRecorder == NoopFunctionRecorder)
 
-    var totalPermSum: Term = NoPerm()
-    var totalPermTaken: Term = NoPerm()
+    var totalPermSum: Term = NoPerm
+    var totalPermTaken: Term = NoPerm
     val snap: Term = v.decider.fresh(sorts.Snap)
 
     val updatedChunks =
@@ -316,14 +316,14 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
         val permTaken = v.decider.fresh("p", sorts.Perm)
 
-        totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm()))
+        totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm))
         totalPermTaken = PermPlus(totalPermTaken, permTaken)
 
         v.decider.assume(Seq(
           IsValidPermVar(permTaken),
           PermAtMost(permTaken, ch.perm),
-          Implies(Not(eq), permTaken === NoPerm()),
-          Implies(permTaken !== NoPerm(), snap === ch.snap.convert(sorts.Snap))
+          Implies(Not(eq), permTaken === NoPerm),
+          Implies(permTaken !== NoPerm, snap === ch.snap.convert(sorts.Snap))
         ))
 
         ch.withPerm(PermMinus(ch.perm, permTaken))
@@ -331,12 +331,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     v.decider.assume(
       Implies(
-        totalPermSum !== NoPerm(),
+        totalPermSum !== NoPerm,
         And(
-          PermLess(NoPerm(), totalPermTaken),
+          PermLess(NoPerm, totalPermTaken),
           PermLess(totalPermTaken, totalPermSum))))
 
-    v.decider.assert(totalPermTaken !== NoPerm()) {
+    v.decider.assert(totalPermTaken !== NoPerm) {
       case true =>
         v.decider.assume(perms === totalPermTaken)
         Q(s, updatedChunks, Some(snap), v)
@@ -364,14 +364,14 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     relevantChunksPerField foreach { case (_, relevantChunks) =>
       val permissionSum =
-        relevantChunks.foldLeft(NoPerm(): Term) { case (permSum, chunk) =>
+        relevantChunks.foldLeft(NoPerm: Term) { case (permSum, chunk) =>
           val eq = freeReceiver === chunk.args.head /* For field chunks, the receiver is the only argument */
-          PermPlus(permSum, Ite(eq, chunk.perm, NoPerm()))
+          PermPlus(permSum, Ite(eq, chunk.perm, NoPerm))
         }
 
       relevantChunks foreach (chunk => {
         val instantiatedPermSum = permissionSum.replace(freeReceiver, chunk.args.head)
-        v.decider.assume(PermAtMost(instantiatedPermSum, FullPerm()))
+        v.decider.assume(PermAtMost(instantiatedPermSum, FullPerm))
       })
     }
   }

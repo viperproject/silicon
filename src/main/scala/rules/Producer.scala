@@ -297,7 +297,7 @@ object producer extends ProductionRules {
             if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
             else s1.conservedPcs
           val ch =
-            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm, s.program)
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm, sm, s.program)
           val h2 = s1.h + ch
           val smCache1 = if(s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))){
             val (relevantChunks, _) =
@@ -412,7 +412,7 @@ object producer extends ProductionRules {
               tCond,
               tArgs,
               tSnap,
-              FullPerm(),
+              FullPerm,
               pve,
               NegativePermission(ast.FullPerm()()),
               QPAssertionNotInjective(wand),

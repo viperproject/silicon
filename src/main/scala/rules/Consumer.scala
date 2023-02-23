@@ -290,7 +290,7 @@ object consumer extends ConsumptionRules {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         val ePerm = ast.FullPerm()()
-        val tPerm = FullPerm()
+        val tPerm = FullPerm
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             quantifiedChunkSupporter.consume(
@@ -421,7 +421,7 @@ object consumer extends ConsumptionRules {
           } else {
             s1
           }
-          val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
+          val loss = PermTimes(FullPerm, s1.permissionScalingFactor)
           quantifiedChunkSupporter.consumeSingleLocation(
             s1p,
             h,
@@ -441,7 +441,7 @@ object consumer extends ConsumptionRules {
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val ve = pve dueTo MagicWandChunkNotFound(wand)
           val description = s"consume wand $wand"
-          chunkSupporter.consume(s1, h, wand, tArgs, FullPerm(), ve, v1, description)(Q)
+          chunkSupporter.consume(s1, h, wand, tArgs, FullPerm, ve, v1, description)(Q)
         })
 
       case _ =>

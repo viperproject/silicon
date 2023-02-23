@@ -416,8 +416,8 @@ object Converter {
         case _ => None
       }
       case App(_, _) => None
-      case NoPerm() => Some(Rational.zero)
-      case FullPerm() => Some(Rational.one)
+      case NoPerm => Some(Rational.zero)
+      case FullPerm => Some(Rational.one)
       case FractionPermLiteral(r) => Some(r)
       case _: FractionPerm => None
       case IsValidPermVar(_) => None

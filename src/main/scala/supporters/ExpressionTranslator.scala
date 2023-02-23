@@ -40,9 +40,18 @@ trait ExpressionTranslator {
       }
 
     def translateAnySetBinExp(exp: ast.AnySetBinExp,
+                              setTerm: ((Term, Term)) => Term,
+                              multisetTerm: ((Term, Term)) => Term,
+                              anysetTypedExp: ast.Exp = exp): Term = {
+      def setFun(t0: Term, t1: Term): Term = setTerm((t0, t1))
+      def multisetFun(t0: Term, t1: Term): Term = multisetTerm((t0, t1))
+      actualTranslateAnySetBinExp(exp, setFun _, multisetFun _, anysetTypedExp)
+    }
+
+    def actualTranslateAnySetBinExp(exp: ast.AnySetBinExp,
                               setTerm: (Term, Term) => Term,
                               multisetTerm: (Term, Term) => Term,
-                              anysetTypedExp: ast.Exp = exp) =
+                              anysetTypedExp: ast.Exp = exp): Term =
 
       anysetTypedExp.typ match {
         case _: ast.SetType => setTerm(f(exp.left), f(exp.right))
@@ -148,11 +157,11 @@ trait ExpressionTranslator {
 
       /* Permissions */
 
-      case _: ast.FullPerm => FullPerm()
-      case _: ast.NoPerm => NoPerm()
+      case _: ast.FullPerm => FullPerm
+      case _: ast.NoPerm => NoPerm
       case ast.FractionalPerm(e0, e1) => FractionPerm(f(e0), f(e1))
 
-      case ast.PermMinus(e0) => PermMinus(NoPerm(), f(e0))
+      case ast.PermMinus(e0) => PermMinus(NoPerm, f(e0))
       case ast.PermAdd(e0, e1) => PermPlus(f(e0), f(e1))
       case ast.PermSub(e0, e1) => PermMinus(f(e0), f(e1))
       case ast.PermMul(e0, e1) => PermTimes(f(e0), f(e1))
@@ -197,7 +206,7 @@ trait ExpressionTranslator {
       case as: ast.AnySetIntersection => translateAnySetBinExp(as, SetIntersection, MultisetIntersection)
       case as: ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset, as.left)
       case as: ast.AnySetMinus => translateAnySetBinExp(as, SetDifference, MultisetDifference)
-      case as: ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
+      case as: ast.AnySetContains => translateAnySetBinExp(as, SetIn, v0 => MultisetCount(v0._2, v0._1), as.right)
       case as: ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality, as.exp)
 
       /* Maps */

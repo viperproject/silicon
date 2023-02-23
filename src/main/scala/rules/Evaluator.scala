@@ -160,8 +160,8 @@ object evaluator extends EvaluationRules {
 
       case x: ast.AbstractLocalVar => Q(s, s.g(x), v)
 
-      case _: ast.FullPerm => Q(s, FullPerm(), v)
-      case _: ast.NoPerm => Q(s, NoPerm(), v)
+      case _: ast.FullPerm => Q(s, FullPerm, v)
+      case _: ast.NoPerm => Q(s, NoPerm, v)
 
       case ast.FractionalPerm(e0, e1) =>
         var t1: Term = null
@@ -385,7 +385,7 @@ object evaluator extends EvaluationRules {
 
       case ast.PermMinus(e0) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          Q(s1, PermMinus(NoPerm(), t0), v1))
+          Q(s1, PermMinus(NoPerm, t0), v1))
 
       case ast.PermMul(e0, e1) =>
         evalBinOp(s, e0, e1, PermTimes, pve, v)(Q)
@@ -481,7 +481,7 @@ object evaluator extends EvaluationRules {
                   }
                   val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
-                  v1.decider.assume(PermAtMost(currentPermAmount, FullPerm()))
+                  v1.decider.assume(PermAtMost(currentPermAmount, FullPerm))
                   (s2, currentPermAmount)
 
                 case predicate: ast.Predicate =>
@@ -499,9 +499,9 @@ object evaluator extends EvaluationRules {
             } else {
               val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
               val currentPermAmount =
-                chs.foldLeft(NoPerm(): Term)((q, ch) => {
+                chs.foldLeft(NoPerm: Term)((q, ch) => {
                   val argsPairWiseEqual = And(args.zip(ch.args).map { case (a1, a2) => a1 === a2 })
-                  PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm()))
+                  PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm))
                 })
               /* TODO: See todo above */
 //              v1.decider.prover.comment(s"perm($locacc)  ~~>  assume upper permission bound")

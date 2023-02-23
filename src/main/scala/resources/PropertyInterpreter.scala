@@ -109,8 +109,8 @@ abstract class PropertyInterpreter {
   protected def buildPermissionLiteral(numerator: BigInt, denominator: BigInt): Term = {
     require(denominator != 0, "Denominator of permission literal must not be 0")
     (numerator, denominator) match {
-      case (n, _) if n == 0 => terms.NoPerm()
-      case (n, d) if n == d => terms.FullPerm()
+      case (n, _) if n == 0 => terms.NoPerm
+      case (n, d) if n == d => terms.FullPerm
       case (n, d) => terms.FractionPerm(terms.IntLiteral(n), terms.IntLiteral(d))
     }
   }

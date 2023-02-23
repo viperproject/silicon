@@ -225,7 +225,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           .map { case (x, a) => x === a })
 
     val conditionalizedPermissions =
-      Ite(condition, permissions, NoPerm())
+      Ite(condition, permissions, NoPerm)
 
     val hints = extractHints(None, arguments)
 
@@ -274,7 +274,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       Ite(
         And(And(imagesOfCodomain), condition.replace(qvarsToInversesOfCodomain)),
         permissions.replace(qvarsToInversesOfCodomain),
-        NoPerm())
+        NoPerm)
 
     val hints = extractHints(Some(condition), arguments)
 
@@ -1355,7 +1355,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val precomputedData = candidates map { ch =>
       val permsProvided = ch.perm
-      val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm())
+      val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
       val permsTakenArgs = codomainQVars ++ additionalArgs
       val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenBody)
       val permsTakenMacro = Macro(permsTakenDecl.id, permsTakenDecl.args.map(_.sort), permsTakenDecl.body.sort)
@@ -1372,7 +1372,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     v.decider.prover.comment(s"Done precomputing, updating quantified chunks")
     v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.beforeIteration)
 
-    var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm()), Nil)
+    var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
 
     precomputedData foreach { case (ithChunk, ithPTaken, ithPNeeded) =>
       if (success.isComplete)
@@ -1404,7 +1404,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
          * the assertion to check is recorded by tookEnoughCheck.
          */
         tookEnoughCheck =
-          Forall(codomainQVars, Implies(condition, ithPNeeded === NoPerm()), Nil)
+          Forall(codomainQVars, Implies(condition, ithPNeeded === NoPerm), Nil)
 
         v.decider.prover.comment(s"Intermediate check if already taken enough permissions")
         success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())) {
@@ -1438,7 +1438,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                                         : (Term, Term) = {
 
     val conditionalizedPerms =
-      Ite(condition, perms, NoPerm()) // c(rs) ? p(rs) : none
+      Ite(condition, perms, NoPerm) // c(rs) ? p(rs) : none
 
     val quantifiedPermissionConstraint =
       if (!constrainPermissions) {
@@ -1449,7 +1449,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           Forall(
             codomainQVars,
             Implies(
-              ithChunk.perm !== NoPerm(),
+              ithChunk.perm !== NoPerm,
               PermLess(conditionalizedPerms, ithChunk.perm)),
             Nil,
             s"qp.srp${v.counter(this).next()}")
@@ -1462,7 +1462,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       }
 
     val quantifiedDepletedCheck =
-      Forall(codomainQVars, PermMinus(ithChunk.perm, ithPTaken) === NoPerm(), Nil)
+      Forall(codomainQVars, PermMinus(ithChunk.perm, ithPTaken) === NoPerm, Nil)
 
     val (permissionConstraint, depletedCheck) =
       ithChunk.singletonArguments match {
