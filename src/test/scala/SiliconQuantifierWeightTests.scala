@@ -15,7 +15,7 @@ import viper.silver.ast.{AnonymousDomainAxiom, Bool, Domain, DomainFunc, DomainF
 import viper.silver.reporter.NoopReporter
 import viper.silver.verifier.{Failure, Success}
 
-class QuantifierWeightTests extends AnyFunSuite {
+class SiliconQuantifierWeightTests extends AnyFunSuite {
   val symbolConverter = new DefaultSymbolConverter()
   val termConverter = new TermToSMTLib2Converter()
   val translator = new ExpressionTranslator {

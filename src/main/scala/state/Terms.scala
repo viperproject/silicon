@@ -847,6 +847,7 @@ object Less extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Term)
   def apply(e0: Term, e1: Term): BooleanTerm = (e0, e1) match {
     case (IntLiteral(n0), IntLiteral(n1)) => if (n0 < n1) True else False
     case (t0, t1) if t0 == t1 => False
+    case (pl0: PermLiteral, pl1: PermLiteral) => if (pl0.literal < pl1.literal) True else False
     case _ => new Less(e0, e1)
   }
 }
@@ -862,6 +863,7 @@ object AtMost extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Ter
   def apply(e0: Term, e1: Term): BooleanTerm = (e0, e1) match {
     case (IntLiteral(n0), IntLiteral(n1)) => if (n0 <= n1) True else False
     case (t0, t1) if t0 == t1 => True
+    case (pl0: PermLiteral, pl1: PermLiteral) => if (pl0.literal <= pl1.literal) True else False
     case _ => new AtMost(e0, e1)
   }
 }
@@ -877,6 +879,7 @@ object Greater extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Te
   def apply(e0: Term, e1: Term): BooleanTerm = (e0, e1) match {
     case (IntLiteral(n0), IntLiteral(n1)) => if (n0 > n1) True else False
     case (t0, t1) if t0 == t1 => False
+    case (pl0: PermLiteral, pl1: PermLiteral) => if (pl0.literal > pl1.literal) True else False
     case _ => new Greater(e0, e1)
   }
 }
@@ -892,6 +895,7 @@ object AtLeast extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Te
   def apply(e0: Term, e1: Term): BooleanTerm = (e0, e1) match {
     case (IntLiteral(n0), IntLiteral(n1)) => if (n0 >= n1) True else False
     case (t0, t1) if t0 == t1 => True
+    case (pl0: PermLiteral, pl1: PermLiteral) => if (pl0.literal >= pl1.literal) True else False
     case _ => new AtLeast(e0, e1)
   }
 }

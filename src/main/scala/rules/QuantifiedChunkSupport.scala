@@ -1123,7 +1123,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             if (s.exhaleExt) {
               magicWandSupporter.transfer[QuantifiedBasicChunk](
                                           s.copy(smCache = smCache1),
-                                          lossOfInvOfLoc,
+                                          loss,
                                           createFailure(pve dueTo insufficientPermissionReason/*InsufficientPermission(acc.loc)*/, v, s),
                                           v)((s2, heap, rPerm, v2) => {
                 val (relevantChunks, otherChunks) =
