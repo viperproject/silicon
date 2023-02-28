@@ -248,13 +248,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
             val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
             pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
             val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
-            val pTakenArgs = additionalArgs
-            val pTakenDecl = v.decider.freshMacro("mce_pTaken", pTakenArgs, pTakenBody)
-            val pTakenMacro = Macro(pTakenDecl.id, pTakenDecl.args.map(_.sort), pTakenDecl.body.sort)
-            val pTaken = App(pTakenMacro, pTakenArgs)
+            //val pTakenArgs = additionalArgs
+            //val pTakenDecl = v.decider.freshMacro("mce_pTaken", pTakenArgs, pTakenBody)
+            //val pTakenMacro = Macro(pTakenDecl.id, pTakenDecl.args.map(_.sort), pTakenDecl.body.sort)
+            val pTaken = pTakenBody  //App(pTakenMacro, pTakenArgs)
 
-            currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(pTakenDecl)
-            v.symbExLog.addMacro(pTaken, pTakenBody)
+            //currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(pTakenDecl)
+            //v.symbExLog.addMacro(pTaken, pTakenBody)
 
             val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
             pNeeded = PermMinus(pNeeded, pTaken)

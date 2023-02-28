@@ -10,14 +10,14 @@ import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.state.IdentifierFactory
-import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Sort, SortDecl, SortWrapperDecl, Term, sorts}
+import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, Ite, MacroDecl, Quantification, Sort, SortDecl, SortWrapperDecl, Term, sorts}
 import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 import viper.silver.verifier.{MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
+
 import java.io.PrintWriter
 import java.nio.file.Path
-
 import scala.collection.mutable
 import com.microsoft.z3._
 import viper.silicon.reporting.ExternalToolError
@@ -227,7 +227,17 @@ class Z3ProverAPI(uniqueId: String,
       else
         preambleAssumes.add(termConverter.convert(term).asInstanceOf[BoolExpr])
     } catch {
-      case e: Z3Exception => reporter.report(InternalWarningMessage("Z3 error: " + e.getMessage))
+      case e: Z3Exception =>
+        val cleanTerm = term.transform{
+          case q@Quantification(_, _, _, triggers, _, _, _) if triggers.nonEmpty =>
+            val goodTriggers = triggers.filterNot(trig => trig.p.exists(ptrn => ptrn.shallowCollect{
+              case i: Ite => i
+              case i: Implies => i
+            }.nonEmpty))
+            q.copy(triggers = goodTriggers)
+        }()
+        prover.add(termConverter.convert(cleanTerm).asInstanceOf[BoolExpr])
+        reporter.report(InternalWarningMessage("Z3 error: " + e.getMessage))
     }
   }
 
