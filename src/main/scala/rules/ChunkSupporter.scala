@@ -109,7 +109,7 @@ object chunkSupporter extends ChunkSupportRules {
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
         // 2022-05-07 MHS: MoreCompleteExhale isn't yet integrated into function verification, hence the limitation to method verification
-        if (s.isMethodVerification && Verifier.config.enableMoreCompleteExhale()) {
+        if (s.isMethodVerification && s1.moreCompleteExhale) {
           moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, perms, ve, v1)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
           })
@@ -119,10 +119,10 @@ object chunkSupporter extends ChunkSupportRules {
               val snap = optCh2 match {
                 case None => None
                 case Some(ch) =>
-                  if (v1.decider.check(Greater(perms, NoPerm()), Verifier.config.checkTimeout())) {
+                  if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
                     Some(ch.snap)
                   } else {
-                    Some(Ite(Greater(perms, NoPerm()), ch.snap.convert(sorts.Snap), Unit))
+                    Some(Ite(IsPositive(perms), ch.snap.convert(sorts.Snap), Unit))
                   }
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
@@ -206,7 +206,7 @@ object chunkSupporter extends ChunkSupportRules {
 
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction =
-        if (s.isMethodVerification && Verifier.config.enableMoreCompleteExhale()) moreCompleteExhaleSupporter.lookupComplete _
+        if (s.isMethodVerification && s1.moreCompleteExhale) moreCompleteExhaleSupporter.lookupComplete _
         else lookupGreedy _
       lookupFunction(s1, s1.h, resource, args, ve, v1)((s2, tSnap, v2) =>
         QS(s2.copy(h = s.h), s2.h, tSnap, v2))
