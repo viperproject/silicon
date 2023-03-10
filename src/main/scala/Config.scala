@@ -84,10 +84,10 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   private val exhaleModeConverter: ValueConverter[ExhaleMode] = new ValueConverter[ExhaleMode] {
     def parse(s: List[(String, List[String])]): Either[String, Option[ExhaleMode]] = s match {
-      case (_, "0" :: Nil) :: Nil => Right(Some(ExhaleMode.Greedy))
-      case (_, "1" :: Nil) :: Nil => Right(Some(ExhaleMode.MoreComplete))
-      case (_, "2" :: Nil) :: Nil => Right(Some(ExhaleMode.MoreCompleteOnDemand))
-      case Nil => Right(None)
+      case Seq((_, Seq("0"))) => Right(Some(ExhaleMode.Greedy))
+      case Seq((_, Seq("1"))) => Right(Some(ExhaleMode.MoreComplete))
+      case Seq((_, Seq("2"))) => Right(Some(ExhaleMode.MoreCompleteOnDemand))
+      case Seq() => Right(None)
       case _ => Left(s"unexpected arguments")
     }
 

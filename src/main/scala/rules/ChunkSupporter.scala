@@ -119,10 +119,10 @@ object chunkSupporter extends ChunkSupportRules {
               val snap = optCh2 match {
                 case None => None
                 case Some(ch) =>
-                  if (v1.decider.check(Greater(perms, NoPerm()), Verifier.config.checkTimeout())) {
+                  if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
                     Some(ch.snap)
                   } else {
-                    Some(Ite(Greater(perms, NoPerm()), ch.snap.convert(sorts.Snap), Unit))
+                    Some(Ite(IsPositive(perms), ch.snap.convert(sorts.Snap), Unit))
                   }
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
