@@ -46,6 +46,7 @@ trait PathConditionStack extends RecordedPathConditions {
   def pushScope(): Unit
   def popScope(): Unit
   def mark(): Mark
+  def popLayersAndRemoveMark(mark: Mark): Unit
   def after(mark: Mark): RecordedPathConditions
   def isEmpty: Boolean
   def duplicate(): PathConditionStack
@@ -272,7 +273,7 @@ private[decider] class LayeredPathConditionStack
     mark
   }
 
-  private def popLayersAndRemoveMark(mark: Mark): Unit = {
+  def popLayersAndRemoveMark(mark: Mark): Unit = {
     val targetLength = markToLength(mark)
     val dropLength = layers.length - targetLength
 

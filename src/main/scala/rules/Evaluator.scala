@@ -1309,7 +1309,7 @@ object evaluator extends EvaluationRules {
         Success()})
 
     // Pop back layer that was introduced when setting preMark layer above.
-    v.decider.pcs.popScope()
+    v.decider.pcs.popLayersAndRemoveMark(preMark)
 
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
