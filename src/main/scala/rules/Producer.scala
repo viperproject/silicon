@@ -145,12 +145,7 @@ object producer extends ProductionRules {
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v)(Q)
       else {
-        val curSnap = sf(sorts.Snap, v)
-        if (curSnap == Unit && v.decider.check(False(), 0)) {
-          // We should never get Unit here unless this branch is unreachable.
-          // We check without a timeout since we will get a runtime error if we try to continue.
-          Unreachable()
-        } else {
+        try {
           val (sf0, sf1) =
             v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
           /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
@@ -161,7 +156,11 @@ object producer extends ProductionRules {
 
           wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
             produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
+        } catch {
+          case _: IllegalArgumentException if v.decider.check(False(), 0) =>
+            Unreachable()
         }
+
       }
     }
   }
