@@ -1266,6 +1266,7 @@ object evaluator extends EvaluationRules {
      */
 
     var optRemainingTriggerTerms: Option[Seq[Term]] = None
+    // Setting a mark pushes a scope that needs to be popped again later, see below.
     val preMark = v.decider.setPathConditionMark()
     var pcDelta = InsertionOrderedSet.empty[Term]
 
@@ -1306,6 +1307,9 @@ object evaluator extends EvaluationRules {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
         pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
         Success()})
+
+    // Pop back layer that was introduced when setting preMark layer above.
+    v.decider.pcs.popScope()
 
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
