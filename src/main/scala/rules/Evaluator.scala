@@ -676,8 +676,7 @@ object evaluator extends EvaluationRules {
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val func = s.program.findFunction(funcName)
-        val s0 = s.copy(hackIssue387DisablePermissionConsumption = Verifier.config.enableMoreCompleteExhale())
-        evals2(s0, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
+        evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
@@ -1279,6 +1278,7 @@ object evaluator extends EvaluationRules {
      */
 
     var optRemainingTriggerTerms: Option[Seq[Term]] = None
+    // Setting a mark pushes a scope that needs to be popped again later, see below.
     val preMark = v.decider.setPathConditionMark()
     var pcDelta = InsertionOrderedSet.empty[Term]
 
@@ -1319,6 +1319,13 @@ object evaluator extends EvaluationRules {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
         pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
         Success()})
+
+    // Remove all assumptions resulting from evaluating the trigger.
+    // IF trigger evaluation was successful, we will assume them again (see success case below).
+    // However, they need to be removed for now since they would otherwise be assumed unconditionally
+    // (since the preMark layer has no branch conditions), and we can assume them only conditionally.
+    // See issue #688 for an example of what happens otherwise.
+    v.decider.pcs.popUntilMark(preMark)
 
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>

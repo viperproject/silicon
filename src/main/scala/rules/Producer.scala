@@ -10,7 +10,7 @@ import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.VerificationResult
+import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.predef.`?r`
@@ -145,16 +145,25 @@ object producer extends ProductionRules {
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v)(Q)
       else {
-        val (sf0, sf1) =
-          v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
+        try {
+          val (sf0, sf1) =
+            v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
           /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
            *       then remove use of BigAnd; for one it is not efficient since
            *       the tail of the (decreasing list parameter as) is BigAnd-ed
            *       over and over again.
            */
 
-        wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
-          produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
+          wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
+            produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
+        } catch {
+          // We will get an IllegalArgumentException from createSnapshotPair if sf(...) returns Unit.
+          // This should never happen if we're in a reachable state, so here we check for that
+          // (without timeout, since there is no fallback) and stop verifying the current branch.
+          case _: IllegalArgumentException if v.decider.check(False, 0) =>
+            Unreachable()
+        }
+
       }
     }
   }
