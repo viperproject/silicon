@@ -259,15 +259,11 @@ class TermToZ3APIConverter
           val qvarExprs = vars.map(v => convert(v)).toArray
           val nonEmptyTriggers = triggers.filter(_.p.nonEmpty)
           val patterns = if (nonEmptyTriggers.nonEmpty) {
-              // Simplify trigger terms; Z3 does this automatically when used via stdio, and it sometimes makes
-              // triggers valid that would otherwise be rejected.
-              val beforeSimplify = nonEmptyTriggers.map(t => t.p.map(trm => convertTerm(trm)))
-              //val afterSimplfiy = beforeSimplify.map(t => t.map(trm => trm.simplify()))
-              //if (beforeSimplify != afterSimplfiy){
-              //  println("***")
-              //}
-              beforeSimplify.map(t => ctx.mkPattern(t: _*)).toArray
-              //nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(trm => convertTerm(trm).simplify()): _*)).toArray
+              // ME: Maybe we should simplify trigger terms here? There is some evidence that Z3 does this
+              // automatically when used via stdio, and it sometimes makes triggers valid that would otherwise be
+              // rejected. On the other hand, it's not at all obvious that simplification does not change the shape
+              // of a trigger term, which would not be what we want.
+              nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(trm => convertTerm(trm)): _*)).toArray
           } else null
           val weightValue = weight.getOrElse(1)
           if (quant == Forall) {

@@ -228,6 +228,10 @@ class Z3ProverAPI(uniqueId: String,
         preambleAssumes.add(termConverter.convert(term).asInstanceOf[BoolExpr])
     } catch {
       case e: Z3Exception =>
+        // The only reason we get an exception here is that we've tried to assume a quantifier with an invalid trigger.
+        // When used via API, Z3 completely discards assumptions that contain invalid triggers (whereas it just ignores
+        // the invalid trigger when used via stdio). Thus, to make sure our assumption is not discarded, we manually
+        // walk through all quantifiers and remove invalid terms inside the trigger.
         val cleanTerm = term.transform{
           case q@Quantification(_, _, _, triggers, _, _, _) if triggers.nonEmpty =>
             val goodTriggers = triggers.filterNot(trig => trig.p.exists(ptrn => ptrn.shallowCollect{
