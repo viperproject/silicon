@@ -1308,8 +1308,12 @@ object evaluator extends EvaluationRules {
         pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
         Success()})
 
-    // Pop back layer that was introduced when setting preMark layer above.
-    v.decider.pcs.popLayersAndRemoveMark(preMark)
+    // Remove all assumptions resulting from evaluating the trigger.
+    // IF trigger evaluation was successful, we will assume them again (see success case below).
+    // However, they need to be removed for now since they would otherwise be assumed unconditionally
+    // (since the preMark layer has no branch conditions), and we can assume them only conditionally.
+    // See issue #668 for an example of what happens otherwise.
+    v.decider.pcs.popUntilMark(preMark)
 
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
