@@ -341,10 +341,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           PermLess(NoPerm(), totalPermTaken),
           PermLess(totalPermTaken, totalPermSum))))
 
+    val s1 = s.copy(functionRecorder = newFr)
+
     v.decider.assert(totalPermTaken !== NoPerm()) {
       case true =>
         v.decider.assume(perms === totalPermTaken)
-        summarise(s, relevantChunks.toSeq, resource, args, v)((s2, snap, _, _, v1) =>
+        summarise(s1, relevantChunks.toSeq, resource, args, v)((s2, snap, _, _, v1) =>
           Q(s2, updatedChunks, Some(snap), v1))
       case false =>
         createFailure(ve, v, s)
