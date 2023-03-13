@@ -1312,7 +1312,7 @@ object evaluator extends EvaluationRules {
     // IF trigger evaluation was successful, we will assume them again (see success case below).
     // However, they need to be removed for now since they would otherwise be assumed unconditionally
     // (since the preMark layer has no branch conditions), and we can assume them only conditionally.
-    // See issue #668 for an example of what happens otherwise.
+    // See issue #688 for an example of what happens otherwise.
     v.decider.pcs.popUntilMark(preMark)
 
     (r, optRemainingTriggerTerms) match {
