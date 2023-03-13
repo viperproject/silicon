@@ -46,6 +46,7 @@ trait PathConditionStack extends RecordedPathConditions {
   def pushScope(): Unit
   def popScope(): Unit
   def mark(): Mark
+  def popUntilMark(mark: Mark): Unit
   def after(mark: Mark): RecordedPathConditions
   def isEmpty: Boolean
   def duplicate(): PathConditionStack
@@ -270,6 +271,11 @@ private[decider] class LayeredPathConditionStack
     layers = new PathConditionStackLayer() +: layers
 
     mark
+  }
+
+  def popUntilMark(mark: Mark): Unit = {
+    assert(markToLength.contains(mark), "Cannot pop unknown mark")
+    popLayersAndRemoveMark(mark)
   }
 
   private def popLayersAndRemoveMark(mark: Mark): Unit = {
