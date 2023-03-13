@@ -6,6 +6,8 @@
 
 package viper.silicon.verifier
 
+import viper.silicon.Config.ExhaleMode
+
 import java.text.SimpleDateFormat
 import java.util.concurrent._
 import scala.annotation.unused
@@ -31,7 +33,7 @@ import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, WarningsDuringTypechecking}
+import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, VerificationTerminationMessage, QuantifierChosenTriggersMessage, WarningsDuringTypechecking}
 import viper.silver.verifier.TypecheckerWarning
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
@@ -168,11 +170,13 @@ class DefaultMainVerifier(config: Config,
           val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers)
           res
         case exists: ast.Exists =>
           val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers)
           res
       }, Traverse.BottomUp)
 
@@ -283,6 +287,7 @@ class DefaultMainVerifier(config: Config,
         this.axiomsAfterAnalysis().toList,
         this.postConditionAxioms().toList)
     }
+    reporter report VerificationTerminationMessage()
 
     (   functionVerificationResults
      ++ predicateVerificationResults
@@ -310,7 +315,8 @@ class DefaultMainVerifier(config: Config,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
           isMethodVerification = member.isInstanceOf[ast.Member],
-          heapDependentTriggers = resourceTriggers)
+          heapDependentTriggers = resourceTriggers,
+          moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -329,7 +335,8 @@ class DefaultMainVerifier(config: Config,
       qpPredicates = quantifiedPredicates,
       qpMagicWands = quantifiedMagicWands,
       predicateSnapMap = predSnapGenerator.snapMap,
-      predicateFormalVarMap = predSnapGenerator.formalVarMap)
+      predicateFormalVarMap = predSnapGenerator.formalVarMap,
+      moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete)
   }
 
   private def excludeMethod(method: ast.Method) = (

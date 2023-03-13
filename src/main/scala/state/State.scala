@@ -69,7 +69,8 @@ final case class State(g: Store = Store(),
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
                        isConsumingFunctionPre: Option[ast.Function] = None,
-                       isProducingFunctionPre: Option[ast.Function] = None)
+                       isProducingFunctionPre: Option[ast.Function] = None,
+                       moreCompleteExhale: Boolean = false)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =
@@ -150,7 +151,8 @@ object State {
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, hack, retryLevel, useHeapTriggers,
-                 isConsumingFunctionPre1, isProducingFunctionPre) =>
+                 isConsumingFunctionPre1, isProducingFunctionPre,
+                 moreCompleteExhale) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -175,7 +177,8 @@ object State {
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `retryLevel`, `useHeapTriggers`,
-                     isConsumingFunctionPre2, `isProducingFunctionPre`) =>
+                     isConsumingFunctionPre2, `isProducingFunctionPre`,
+                     moreCompleteExhale2) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -186,6 +189,7 @@ object State {
             val pmCache3 = pmCache1 ++ pmCache2
 
             val ssCache3 = ssCache1 ++ ssCache2
+            val moreCompleteExhale3 = moreCompleteExhale || moreCompleteExhale2
 
             val isConsumingFunctionPre3 = None
 
@@ -196,7 +200,8 @@ object State {
                     ssCache = ssCache3,
                     smCache = smCache3,
                     pmCache = pmCache3,
-                    isConsumingFunctionPre = isConsumingFunctionPre3)
+                    isConsumingFunctionPre = isConsumingFunctionPre3,
+                    moreCompleteExhale = moreCompleteExhale3)
 
           case _ =>
             val err = new StringBuilder()

@@ -170,7 +170,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 
-    if (s.functionRecorder == NoopFunctionRecorder && !s.hackIssue387DisablePermissionConsumption)
+    if (!s.hackIssue387DisablePermissionConsumption)
       actualConsumeComplete(s, h, resource, args, perms, ve, v)(Q)
     else
       summariseHeapAndAssertReadAccess(s, h, resource, args, ve, v)(Q)
@@ -224,7 +224,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-        actualConsumeCompleteConstrainable(s, relevantChunks, args, perms, ve, v)((s1, updatedChunks, optSnap, v2) => {
+        actualConsumeCompleteConstrainable(s, relevantChunks, resource, args, perms, ve, v)((s1, updatedChunks, optSnap, v2) => {
           Q(s1, Heap(updatedChunks ++ otherChunks), optSnap, v2)})
       } else {
         var pNeeded = perms
@@ -281,23 +281,29 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
         val s0 = s.copy(functionRecorder = currentFunctionRecorder)
 
-        summarise(s0, relevantChunks.toSeq, resource, args, v)((s1, snap, _, _, v1) =>
+        summarise(s0, relevantChunks.toSeq, resource, args, v)((s1, snap, _, _, v1) => {
+          val condSnap = if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
+            snap
+          } else {
+            Ite(IsPositive(perms), snap.convert(sorts.Snap), Unit)
+          }
           if (!moreNeeded) {
-            Q(s1, newHeap, Some(snap), v1)
+            Q(s1, newHeap, Some(condSnap), v1)
           } else {
             v1.decider.assert(pNeeded === NoPerm()) {
               case true =>
-                Q(s1, newHeap, Some(snap), v1)
+                Q(s1, newHeap, Some(condSnap), v1)
               case false =>
                 createFailure(ve, v1, s1)
             }
-          })
+          }})
       }
     }
   }
 
   private def actualConsumeCompleteConstrainable(s: State,
                                                  relevantChunks: ListBuffer[NonQuantifiedChunk],
+                                                 resource: ast.Resource,
                                                  args: Seq[Term],
                                                  perms: Term, // Expected to be constrainable. Will be assumed to equal the consumed permission amount.
                                                  ve: VerificationError,
@@ -305,11 +311,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
                                                 (Q: (State, ListBuffer[NonQuantifiedChunk], Option[Term], Verifier) => VerificationResult)
                                                 : VerificationResult = {
 
-    assert(s.functionRecorder == NoopFunctionRecorder)
-
     var totalPermSum: Term = NoPerm()
     var totalPermTaken: Term = NoPerm()
-    val snap: Term = v.decider.fresh(sorts.Snap)
+    var newFr = s.functionRecorder
 
     val updatedChunks =
       relevantChunks map (ch => {
@@ -319,12 +323,13 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         totalPermSum = PermPlus(totalPermSum, Ite(eq, ch.perm, NoPerm()))
         totalPermTaken = PermPlus(totalPermTaken, permTaken)
 
-        v.decider.assume(Seq(
-          IsValidPermVar(permTaken),
+        val constraint = And(IsValidPermVar(permTaken),
           PermAtMost(permTaken, ch.perm),
-          Implies(Not(eq), permTaken === NoPerm()),
-          Implies(permTaken !== NoPerm(), snap === ch.snap.convert(sorts.Snap))
-        ))
+          Implies(Not(eq), permTaken === NoPerm())
+        )
+
+        v.decider.assume(constraint)
+        newFr = newFr.recordArp(permTaken, constraint)
 
         ch.withPerm(PermMinus(ch.perm, permTaken))
       })
@@ -339,7 +344,8 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     v.decider.assert(totalPermTaken !== NoPerm()) {
       case true =>
         v.decider.assume(perms === totalPermTaken)
-        Q(s, updatedChunks, Some(snap), v)
+        summarise(s, relevantChunks.toSeq, resource, args, v)((s2, snap, _, _, v1) =>
+          Q(s2, updatedChunks, Some(snap), v1))
       case false =>
         createFailure(ve, v, s)
     }
