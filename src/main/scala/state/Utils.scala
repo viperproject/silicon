@@ -225,8 +225,8 @@ package object utils {
       case PredicateTrigger(p, psf, args) => PredicateTrigger(p, go(psf), args map go)
       case HeapLookup(hp, at) => HeapLookup(go(hp), go(at))
       case HeapUpdate(hp, at, vl) => HeapUpdate(go(hp), go(at), go(vl))
-      case ZeroMask() => ZeroMask()
-      case PredZeroMask() => PredZeroMask()
+      case ZeroMask => ZeroMask
+      case PredZeroMask => PredZeroMask
       case MaskSum(m1, m2) => MaskSum(go(m1), go(m2))
       case MaskAdd(m, at, add) => MaskAdd(go(m), go(at), go(add))
       case MaskDiff(m1, m2) => MaskDiff(go(m1), go(m2))

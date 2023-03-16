@@ -453,7 +453,7 @@ class FunctionData(val programFunction: ast.Function,
             HeapLookup(heap, argTerm)
         }
         val permTerm = translateExp(perm.replace(ast.WildcardPerm()(), ast.FullPerm()()))
-        condFrame(Greater(permTerm, NoPerm()), resAcc, Unit)
+        condFrame(Greater(permTerm, NoPerm), resAcc, Unit)
       case QuantifiedPermissionAssertion(forall, _, _: ast.AccessPredicate) => // works the same for fields and predicates
         qpPrecondId = qpPrecondId + 1
         val condName = Identifier(name + "#condqp" + qpPrecondId.toString)
@@ -514,7 +514,7 @@ class FunctionData(val programFunction: ast.Function,
       val (condTerm, argTerm, heap) = func._2 match {
         case QuantifiedPermissionAssertion(_, cond, ast.AccessPredicate(la, perm)) =>
           val condTrans = translateExp(cond)
-          val permGreaterNone = Greater(translateExp(perm.replace(ast.WildcardPerm()(), ast.FullPerm()())), NoPerm())
+          val permGreaterNone = Greater(translateExp(perm.replace(ast.WildcardPerm()(), ast.FullPerm()())), NoPerm)
           val (argTerm, res) = la match {
             case ast.FieldAccess(rcv, field) =>
               (translateExp(rcv), field)

@@ -159,13 +159,13 @@ object chunkSupporter extends ChunkSupportRules {
           val newChunk = ch.withPerm(PermMinus(ch.perm, toTake))
           val takenChunk = Some(ch.withPerm(toTake))
           var newHeap = h - ch
-          if (!v.decider.check(newChunk.perm === NoPerm(), Verifier.config.checkTimeout())) {
+          if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout())) {
             newHeap = newHeap + newChunk
             assumeProperties(newChunk, newHeap)
           }
           (ConsumptionResult(PermMinus(perms, toTake), v, 0), s, newHeap, takenChunk)
         } else {
-          if (v.decider.check(ch.perm !== NoPerm(), Verifier.config.checkTimeout())) {
+          if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout())) {
             v.decider.assume(PermLess(perms, ch.perm))
             val newChunk = ch.withPerm(PermMinus(ch.perm, perms))
             val takenChunk = ch.withPerm(perms)
@@ -177,7 +177,7 @@ object chunkSupporter extends ChunkSupportRules {
           }
         }
       case None =>
-        if (consumeExact && s.retrying && v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
+        if (consumeExact && s.retrying && v.decider.check(perms === NoPerm, Verifier.config.checkTimeout())) {
           (Complete(), s, h, None)
         } else {
           (Incomplete(perms), s, h, None)

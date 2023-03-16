@@ -128,7 +128,9 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
      * to use First(snap)/Second(snap) as the default.
      */
 
-    assert(snap != Unit, "Unit snapshot cannot be decomposed")
+    if (snap == Unit) {
+      throw new IllegalArgumentException("Unit snapshot cannot be decomposed")
+    }
 
     val (snap0, snap1, snapshotEq) =
       /* // [2019-12-22 Malte] Old code kept for documentation purposes

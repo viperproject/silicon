@@ -51,8 +51,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       openSymbExLogger(method)
 
       val heap = if (Verifier.config.carbonQPs()) {
-        val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
-        val predChunks = sInit.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, PredZeroMask(), decider.fresh("hInit", PredHeapSort)))
+        val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask, decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
+        val predChunks = sInit.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, PredZeroMask, decider.fresh("hInit", PredHeapSort)))
         Heap(fieldChunks ++ predChunks)
       } else {
         sInit.h

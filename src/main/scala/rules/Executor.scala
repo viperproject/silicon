@@ -187,8 +187,8 @@ object executor extends ExecutionRules {
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
 
             val bodyHeap = if (Verifier.config.carbonQPs()) {
-              val fieldChunks = s.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask(), v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
-              val predChunks = s.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, PredZeroMask(), v.decider.fresh("hInit", PredHeapSort)))
+              val fieldChunks = s.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
+              val predChunks = s.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort)))
               Heap(fieldChunks ++ predChunks)
             } else {
               Heap()
@@ -315,7 +315,7 @@ object executor extends ExecutionRules {
             val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == field).get.asInstanceOf[BasicCarbonChunk]
             val ve = pve dueTo InsufficientPermission(fa)
             val maskValue = HeapLookup(resChunk.mask, tRcvr)
-            v2.decider.assert(AtLeast(maskValue, FullPerm())) {
+            v2.decider.assert(AtLeast(maskValue, FullPerm)) {
               case true =>
                 val heapUpdated = HeapUpdate(resChunk.heap, tRcvr, tRhs)
                 val newChunk = resChunk.copy(heap = heapUpdated)
@@ -359,7 +359,7 @@ object executor extends ExecutionRules {
               Seq(`?r`),
               `?r` === tRcvr,
               field,
-              FullPerm(),
+              FullPerm,
               chunkOrderHeuristics,
               v2
             )
@@ -369,7 +369,7 @@ object executor extends ExecutionRules {
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 v1.decider.assume(smValueDef)
-                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm, s.program)
+                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm, sm, s.program)
                 if (s3.heapDependentTriggers.contains(field))
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
@@ -384,10 +384,10 @@ object executor extends ExecutionRules {
             val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm(), ve, v2, description)((s3, h3, _, v3) => {
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm, ve, v2, description)((s3, h3, _, v3) => {
               val tSnap = ssaifyRhs(tRhs, field.name, field.typ, v3)
               val id = BasicChunkIdentifier(field.name)
-              val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm())
+              val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm)
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) =>
                 Q(s4.copy(h = h4), v4))
             })
@@ -396,14 +396,14 @@ object executor extends ExecutionRules {
 
       case ast.NewStmt(x, fields) if Verifier.config.carbonQPs() =>
         val tRcvr = v.decider.fresh(x)
-        v.decider.assume(tRcvr !== Null())
+        v.decider.assume(tRcvr !== Null)
         var heap = s.h
         for (field <- fields) {
           // assume currently none
           val fieldChunk = carbonQuantifiedChunkSupporter.findCarbonChunk(heap, field)
-          v.decider.assume(HeapLookup(fieldChunk.mask, tRcvr) === NoPerm())
+          v.decider.assume(HeapLookup(fieldChunk.mask, tRcvr) === NoPerm)
           // add one
-          val newFieldChunk = fieldChunk.copy(mask = HeapUpdate(fieldChunk.mask, tRcvr, FullPerm()))
+          val newFieldChunk = fieldChunk.copy(mask = HeapUpdate(fieldChunk.mask, tRcvr, FullPerm))
           heap = heap - fieldChunk + newFieldChunk
         }
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
@@ -413,9 +413,9 @@ object executor extends ExecutionRules {
 
       case ast.NewStmt(x, fields) =>
         val tRcvr = v.decider.fresh(x)
-        v.decider.assume(tRcvr !== Null())
+        v.decider.assume(tRcvr !== Null)
         val newChunks = fields map (field => {
-          val p = FullPerm()
+          val p = FullPerm
           val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ))
           if (s.qpFields.contains(field)) {
             val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)

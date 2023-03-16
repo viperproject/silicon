@@ -74,7 +74,7 @@ object predicateSupporter extends PredicateSupportRules {
         val s3 = s2.copy(g = s.g,
           smDomainNeeded = s.smDomainNeeded,
           permissionScalingFactor = s.permissionScalingFactor)
-        val newSf = (_: Sort, _: Verifier) => HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap, PredHeapSort), HeapUpdate(PredZeroMask(), toSnapTree(tArgs), FullPerm()), predicate)
+        val newSf = (_: Sort, _: Verifier) => HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap, PredHeapSort), HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate)
         produce(s3, newSf, pap, pve, v1)((s4, v2) => {
           Q(s4, v2)})
       } else {

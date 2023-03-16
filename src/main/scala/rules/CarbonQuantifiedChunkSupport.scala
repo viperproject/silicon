@@ -68,7 +68,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       case Some(c: BasicCarbonChunk) => (h, c)
       case None =>
         val newHeap = v.decider.fresh("mwHeap", PredHeapSort)
-        val newChunk = BasicCarbonChunk(MagicWandID, mwi, PredZeroMask(), newHeap)
+        val newChunk = BasicCarbonChunk(MagicWandID, mwi, PredZeroMask, newHeap)
         (h + newChunk, newChunk)
     }
   }
@@ -119,17 +119,17 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       case MaskAdd(m, r, v) => receivers.add(r); traverse(m)
       case MaskSum(m1, m2) => traverse(m1); traverse(m2)
       case MaskDiff(m1, m2) => masks.add(m2); traverse(m1)
-      case ZeroMask() =>
-      case PredZeroMask() =>
+      case ZeroMask =>
+      case PredZeroMask =>
       case t => masks.add(t)
     }
 
     traverse(mask)
 
-    val individualAssumes = And(receivers.map(r => PermAtMost(HeapLookup(mask, r), FullPerm())))
+    val individualAssumes = And(receivers.map(r => PermAtMost(HeapLookup(mask, r), FullPerm)))
     val qvar = v.decider.fresh(sorts.Ref)
     val triggers = (masks ++ Seq(mask)).map(m => Trigger(HeapLookup(m, qvar))).toSeq
-    val maskAssume = Forall(qvar, PermAtMost(HeapLookup(mask, qvar), FullPerm()), triggers)
+    val maskAssume = Forall(qvar, PermAtMost(HeapLookup(mask, qvar), FullPerm), triggers)
     And(individualAssumes, maskAssume)
   }
 
@@ -147,8 +147,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       case MaskAdd(m, r, v) => termAdditions.update(r, v); traverse(m)
       case MaskSum(m1, m2) => traverse(m1); traverse(m2)
       case MaskDiff(m1, m2) => maskRemovals.add(m2); traverse(m1)
-      case ZeroMask() =>
-      case PredZeroMask() =>
+      case ZeroMask =>
+      case PredZeroMask =>
       case t => maskAdditions.add(t)
     }
     traverse(origMask)
@@ -157,8 +157,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     val directMatch = syntacticAdditions.find(_._2 == amount)
 
     val toReplace = mutable.HashMap.from(if (directMatch.isDefined) {
-      remainingAmount = NoPerm()
-      Seq((directMatch.get, NoPerm()))
+      remainingAmount = NoPerm
+      Seq((directMatch.get, NoPerm))
     } else {
       val additions = (syntacticAdditions ++ termAdditions.filterNot(_._2 == at)).toSeq.distinct
       val result = ListBuffer[((Term, Term), Term)]()
@@ -170,7 +170,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
             val chunkLeft = PermMinus(add, toTake)
             result.append(((r, add), chunkLeft))
 
-            if (v.decider.check(remainingAmount === NoPerm(), Verifier.config.checkTimeout()))
+            if (v.decider.check(remainingAmount === NoPerm, Verifier.config.checkTimeout()))
               done = true
           }
         }
@@ -188,8 +188,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
         case MaskAdd(m, r, v) => MaskAdd(replace(m), r, v)
         case MaskSum(m1, m2) => MaskSum(replace(m1), replace(m2))
         case MaskDiff(m1, m2) => MaskDiff(replace(m1), m2)
-        case ZeroMask() => mask
-        case PredZeroMask() => mask
+        case ZeroMask => mask
+        case PredZeroMask => mask
         case t => t
       }
       val replaced = replace(origMask)
@@ -219,8 +219,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       case MaskAdd(m, r, v) => termAdditions.update(r, v); traverse(m)
       case MaskSum(m1, m2) => traverse(m1); traverse(m2)
       case MaskDiff(m1, m2) => maskRemovals.add(m2); traverse(m1)
-      case ZeroMask() =>
-      case PredZeroMask() =>
+      case ZeroMask =>
+      case PredZeroMask =>
       case t => maskAdditions.add(t)
     }
 
@@ -263,11 +263,11 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
           m1
         case MaskSum(m1, m2) => MaskSum(replace(m1), replace(m2))
         case MaskDiff(m1, m2) => MaskDiff(replace(m1), m2)
-        case ZeroMask() => mask
-        case PredZeroMask() => mask
+        case ZeroMask => mask
+        case PredZeroMask => mask
         case t if t == foundTerm.get =>
           foundTerm = None
-          if (origMask.sort == MaskSort) ZeroMask() else PredZeroMask()
+          if (origMask.sort == MaskSort) ZeroMask else PredZeroMask
         case t => t
       }
       val replaced = replace(origMask)
@@ -318,8 +318,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
         val maskValue = HeapLookup(resChunk.mask, argTerm)
 
-        val hasAll = if (consumeExact) AtLeast(maskValue, rPerm) else Greater(maskValue, NoPerm())
-        val hasNone = AtMost(maskValue, NoPerm())
+        val hasAll = if (consumeExact) AtLeast(maskValue, rPerm) else Greater(maskValue, NoPerm)
+        val hasNone = AtMost(maskValue, NoPerm)
 
         v.decider.check(hasNone, Verifier.config.splitTimeout()) match {
           case false =>
@@ -342,7 +342,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
             //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
             val taken = PermMin(maskValue, rPerm)
             val remainingChunk = resChunk.copy(mask = MaskAdd(resChunk.mask, argTerm, PermNegation(taken)))
-            val consumedChunk = resChunk.copy(mask = MaskAdd(if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask() else PredZeroMask(), argTerm, taken))
+            val consumedChunk = resChunk.copy(mask = MaskAdd(if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask, argTerm, taken))
 
             if (v.decider.check(hasAll, 0)) {
               (Complete(), s1, h1 - resChunk + remainingChunk, Some(consumedChunk))
@@ -372,7 +372,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
       val maskValue = HeapLookup(resChunk.mask, argTerm)
 
-      val toCheck = if (consumeExact) AtLeast(maskValue, permissions) else Greater(maskValue, NoPerm())
+      val toCheck = if (consumeExact) AtLeast(maskValue, permissions) else Greater(maskValue, NoPerm)
 
       v.decider.assume(FunctionPreconditionTransformer.transform(toCheck, s.program))
       v.decider.assert(toCheck) {
@@ -397,7 +397,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
           }
 
           //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
-          val snapPermTerm = if (!consumeExact && s.isConsumingFunctionPre.isDefined) FullPerm() else permissions
+          val snapPermTerm = if (!consumeExact && s.isConsumingFunctionPre.isDefined) FullPerm else permissions
           val newSnapMask = MaskAdd(resMap(resourceToFind), argTerm, snapPermTerm) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
           val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
           // set up partially consumed heap
@@ -531,7 +531,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                 val currentPerm = HeapLookup(currentChunk.mask, argTerm)
 
                 val allPerms = if (constrainPermissions) {
-                  Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(NoPerm(), currentPerm)), Seq(), "sufficientPerms")
+                  Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(NoPerm, currentPerm)), Seq(), "sufficientPerms")
                 } else {
                   Forall(formalQVars, Implies(condOfInvOfLoc, PermAtMost(rPerm, currentPerm)), Seq(), "sufficientPerms")
                 }
@@ -540,7 +540,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                 val (qpMask, newFr) = {
                   val qpMask = v.decider.fresh("qpMaskBADINTRIGGER", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
                   val qpMaskGet = HeapLookup(qpMask, argTerm)
-                  val conditionalizedPermissions = Ite(condOfInvOfLoc, PermMin(rPerm, currentPerm), NoPerm())
+                  val conditionalizedPermissions = Ite(condOfInvOfLoc, PermMin(rPerm, currentPerm), NoPerm)
                   val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
                   v.decider.assume(qpMaskConstraint)
                   (qpMask, s.functionRecorder.recordFieldInv(inverseFunctions).recordArp(qpMask, qpMaskConstraint))
@@ -601,7 +601,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
               val sufficientPerm = if (constrainPermissions) {
                 //Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(NoPerm(), currentPerm)), Seq(), "sufficientPerms")
-                Forall(qvars, Implies(tCond, PermLess(NoPerm(), currentPermQvars)), tTriggers, "sufficientPerms")
+                Forall(qvars, Implies(tCond, PermLess(NoPerm, currentPermQvars)), tTriggers, "sufficientPerms")
               } else {
                 //Forall(formalQVars, Implies(condOfInvOfLoc, PermAtMost(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms")
                 Forall(qvars, Implies(tCond, PermAtMost(loss, currentPermQvars)), tTriggers, "sufficientPerms")
@@ -627,7 +627,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
                 } else {
                   val qpMask = v.decider.fresh("qpMaskBADINTRIGGER", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
                   val qpMaskGet = HeapLookup(qpMask, argTerm)
-                  val conditionalizedPermissions = Ite(condOfInvOfLoc, lossOfInvOfLoc, NoPerm())
+                  val conditionalizedPermissions = Ite(condOfInvOfLoc, lossOfInvOfLoc, NoPerm)
                   val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
                   v.decider.assume(qpMaskConstraint)
                   (qpMask, s.functionRecorder.recordFieldInv (inverseFunctions).recordArp(qpMask, qpMaskConstraint))
@@ -684,8 +684,8 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
     val h1 = s.h - resChunk + ch
 
     val permConstraint = if (resource.isInstanceOf[ast.Field])
-      And(Implies(perms.IsPositive(tPerm), argTerm !== Null()), PermAtMost(HeapLookup(ch.mask, argTerm), FullPerm()))
-    else True()
+      And(Implies(perms.IsPositive(tPerm), argTerm !== Null), PermAtMost(HeapLookup(ch.mask, argTerm), FullPerm))
+    else True
     v.decider.assume(permConstraint)
     
     val s1 = s.copy(h = h1)
@@ -733,7 +733,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       Ite(
         And(And(imagesOfCodomain), tCond.replace(qvarsToInversesOfCodomain)),
         gain.replace(qvarsToInversesOfCodomain),
-        NoPerm())
+        NoPerm)
 
     val snapHeapMap = tSnap.asInstanceOf[FakeMaskMapTerm].masks
 
@@ -780,9 +780,9 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
 
     val permBoundConstraint = resource match {
-      case _: ast.Field => And(Forall(formalQVars, PermAtMost(newMaskGet, FullPerm()), Seq(Trigger(newMaskGet)), "qp_produce_upper_bound"),
-        Forall(formalQVars, Implies(And(And(And(imagesOfCodomain), tCond.replace(qvarsToInversesOfCodomain)), PermLess(NoPerm(), gain.replace(qvarsToInversesOfCodomain))), formalQVars(0) !== Null()), Seq(), "qp_recvr_non_null"))
-      case _ => True()
+      case _: ast.Field => And(Forall(formalQVars, PermAtMost(newMaskGet, FullPerm), Seq(Trigger(newMaskGet)), "qp_produce_upper_bound"),
+        Forall(formalQVars, Implies(And(And(And(imagesOfCodomain), tCond.replace(qvarsToInversesOfCodomain)), PermLess(NoPerm, gain.replace(qvarsToInversesOfCodomain))), formalQVars(0) !== Null), Seq(), "qp_recvr_non_null"))
+      case _ => True
     }
 
     val (effectiveTriggers, effectiveTriggersQVars) =
@@ -842,7 +842,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
               qidPrefix = qid,
               program   = s.program)
           } else {
-            True()
+            True
           }
         v.decider.prover.comment("Check receiver injectivity")
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))

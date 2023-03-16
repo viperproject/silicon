@@ -27,7 +27,7 @@ class QuantifiedPropertyInterpreter extends PropertyInterpreter {
                                 : Term = {
     val body = buildPathCondition(property.expression, Info(chunk, args, perms)).replace(chunk.quantifiedVars, args)
     val description = s"$qidPrefix-${property.name}"
-    val cond = if (argsUsed) condition else terms.True()
+    val cond = if (argsUsed) condition else terms.True
     argsUsed = false
     terms.Forall(qvars, terms.Implies(cond, body), triggers, description)
   }

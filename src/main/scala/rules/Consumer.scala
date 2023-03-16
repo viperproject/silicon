@@ -134,7 +134,7 @@ object consumer extends ConsumptionRules {
                        (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     val term = if (ot.isDefined) ot.get else {
-      val resMap: Seq[(Any, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask() else PredZeroMask())))
+      val resMap: Seq[(Any, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask)))
       FakeMaskMapTerm(immutable.ListMap(resMap: _*))
     }
     internalConsumeTlcs(s, h, tlcs, pves, v, Some(term), havoc)((s2, h2, resMapTerm, v2) => {
@@ -413,7 +413,7 @@ object consumer extends ConsumptionRules {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         val ePerm = ast.FullPerm()()
-        val tPerm = FullPerm()
+        val tPerm = FullPerm
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             carbonQuantifiedChunkSupporter.consume(
@@ -449,7 +449,7 @@ object consumer extends ConsumptionRules {
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
         val ePerm = ast.FullPerm()()
-        val tPerm = FullPerm()
+        val tPerm = FullPerm
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             quantifiedChunkSupporter.consume(
@@ -595,7 +595,7 @@ object consumer extends ConsumptionRules {
           val ident = MagicWandIdentifier(wand, s.program)
           val (h1, _) = carbonQuantifiedChunkSupporter.findOrCreateCarbonChunk(s1.h, ident, v1)
           val s2 = s1.copy(h = h1)
-          carbonQuantifiedChunkSupporter.consumeSingleLocation(s2, h1, Seq(`?r`), tArgs, wand, FullPerm(), pve, v1, resMap.get.asInstanceOf[FakeMaskMapTerm].masks, havoc)(Q)
+          carbonQuantifiedChunkSupporter.consumeSingleLocation(s2, h1, Seq(`?r`), tArgs, wand, FullPerm, pve, v1, resMap.get.asInstanceOf[FakeMaskMapTerm].masks, havoc)(Q)
         })
 
       /* Handle wands */
@@ -615,7 +615,7 @@ object consumer extends ConsumptionRules {
           } else {
             s1
           }
-          val loss = PermTimes(FullPerm(), s1.permissionScalingFactor)
+          val loss = PermTimes(FullPerm, s1.permissionScalingFactor)
           quantifiedChunkSupporter.consumeSingleLocation(
             s1p,
             h,
@@ -635,7 +635,7 @@ object consumer extends ConsumptionRules {
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val ve = pve dueTo MagicWandChunkNotFound(wand)
           val description = s"consume wand $wand"
-          chunkSupporter.consume(s1, h, wand, tArgs, FullPerm(), ve, v1, description)(Q)
+          chunkSupporter.consume(s1, h, wand, tArgs, FullPerm, ve, v1, description)(Q)
         })
 
       case _ =>
