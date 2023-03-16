@@ -815,7 +815,7 @@ object evaluator extends EvaluationRules {
                                    .recordSnapshot(fapp, v3.decider.pcs.branchConditions, snapToRecord)
               val s5 = s4.copy(g = s2.g,
                                h = s2.h,
-                               isConsumingFunctionPre = None,
+                               isConsumingFunctionPre = s2.isConsumingFunctionPre,
                                recordVisited = s2.recordVisited,
                                functionRecorder = fr5,
                                smDomainNeeded = s2.smDomainNeeded,
@@ -1389,12 +1389,32 @@ object evaluator extends EvaluationRules {
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
         v.decider.assume(pcDelta)
-        Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
+        Q(s, toTriggerForm(cachedTriggerTerms ++ remainingTriggerTerms, s), v)
       case _ =>
         for (e <- remainingTriggerExpressions)
           v.reporter.report(WarningsDuringTypechecking(Seq(
             TypecheckerWarning(s"Cannot use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
-        Q(s, cachedTriggerTerms, v)
+        Q(s, toTriggerForm(cachedTriggerTerms, s), v)
+    }
+  }
+
+  private def toTriggerForm(terms: Seq[Term], s: State) = {
+    if (Verifier.config.carbonFunctions()) {
+      terms.map(t => t.transform{
+        case App(hdf: HeapDepFun, args) => {
+          val (heapArgs, otherArgs) = args.partition(t => t.sort == sorts.PredHeapSort || t.sort.isInstanceOf[sorts.HeapSort])
+          val frameFunc = functionSupporter.frameVersion(hdf, heapArgs.length)
+          val funcName = hdf.id match {
+            case SuffixedIdentifier(prefix, _, _) => prefix.name
+            case _ => hdf.id.name
+          }
+          val func = s.program.findFunction(funcName)
+          val frame = s.functionData.get(func).get.getFrameVersion(otherArgs, heapArgs)
+          App(frameFunc, frame +: otherArgs)
+        }
+      }(_ => true))
+    } else {
+      terms
     }
   }
 

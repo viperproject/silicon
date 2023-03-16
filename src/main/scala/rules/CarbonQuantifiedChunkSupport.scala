@@ -32,7 +32,12 @@ class CarbonQuantifiedChunkSupport extends SymbolicExecutionRules {
 
 object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
 
+  val resCache = mutable.HashMap[(Seq[ast.Exp], ast.Program), Seq[Any]]()
   def getResourceSeq(tlcs: Seq[ast.Exp], program: ast.Program): Seq[Any] = {
+    val key = (tlcs, program)
+    val current = resCache.get(key)
+    if (current.isDefined)
+      return current.get
     val resources = tlcs.map(_.shallowCollect {
       case ast.PredicateAccessPredicate(pa, _) => pa.loc(program)
       case ast.FieldAccessPredicate(fa, _) => fa.loc(program)
@@ -50,6 +55,7 @@ object carbonQuantifiedChunkSupporter extends CarbonQuantifiedChunkSupport {
       }
       r1Name < r2Name
     })
+    resCache.put(key, resources)
     resources
   }
 

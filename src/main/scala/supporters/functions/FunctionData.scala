@@ -414,6 +414,11 @@ class FunctionData(val programFunction: ast.Function,
       Combine(a, b)
   }
 
+  val condFrameFunc = Fun(Identifier("internalCondFrame"), Seq(sorts.Bool, sorts.Snap, sorts.Snap), sorts.Snap)
+  private def condFrame(cond: Term, thenTerm: Term, elsTerm: Term): Term = {
+    App(condFrameFunc, Seq(cond, thenTerm, elsTerm))
+  }
+
   private def computeFrameHelper(assertion: ast.Exp, name: String, resources: Seq[Any]): Term = {
 
     def translateExp(e: ast.Exp): Term = {
@@ -448,7 +453,7 @@ class FunctionData(val programFunction: ast.Function,
             HeapLookup(heap, argTerm)
         }
         val permTerm = translateExp(perm.replace(ast.WildcardPerm()(), ast.FullPerm()()))
-        Ite(Greater(permTerm, NoPerm()), resAcc, Unit)
+        condFrame(Greater(permTerm, NoPerm()), resAcc, Unit)
       case QuantifiedPermissionAssertion(forall, _, _: ast.AccessPredicate) => // works the same for fields and predicates
         qpPrecondId = qpPrecondId + 1
         val condName = Identifier(name + "#condqp" + qpPrecondId.toString)
@@ -457,11 +462,11 @@ class FunctionData(val programFunction: ast.Function,
         qpCondFuncs += res
         frameFragment(App(condFunc, arguments))
       case ast.Implies(e0, e1) =>
-        frameFragment(Ite(translateExp(e0), computeFrameHelper(e1, name, resources), Unit))
+        frameFragment(condFrame(translateExp(e0), computeFrameHelper(e1, name, resources), Unit))
       case ast.And(e0, e1) =>
         combineFrames(computeFrameHelper(e0, name, resources), computeFrameHelper(e1, name, resources))
       case ast.CondExp(con, thn, els) =>
-        frameFragment(Ite(translateExp(con), computeFrameHelper(thn, name, resources), computeFrameHelper(els, name, resources)))
+        frameFragment(condFrame(translateExp(con), computeFrameHelper(thn, name, resources), computeFrameHelper(els, name, resources)))
       case ast.Let(varDeclared, boundTo, inBody) =>
         computeFrameHelper(Expressions.instantiateVariables(inBody, Seq(varDeclared.localVar), Seq(boundTo)), name, resources)
       case e if e.isPure =>
@@ -469,12 +474,17 @@ class FunctionData(val programFunction: ast.Function,
     }
   }
 
+  lazy val funcFrame = computeFrame(programFunction.pres, programFunction.name)
+
+  def getFrameVersion(args: Seq[Term], heaps: Seq[Term]) = {
+    funcFrame.replace(formalArgs.values.toSeq ++ snapArgs, args ++ heaps)
+  }
+
   lazy val frameAxiom: Term = {
     //assert(phase == 1, s"Frame axiom must be generated in phase 1, current phase is $phase")
     assert(Verifier.config.carbonFunctions())
 
-    val frameSnap = computeFrame(programFunction.pres, programFunction.name)
-    val frameFuncApp = App(frameFunction, frameSnap +: formalArgs.values.toSeq)
+    val frameFuncApp = App(frameFunction, funcFrame +: formalArgs.values.toSeq)
     val body = functionApplication === frameFuncApp
 
     val res = Forall(arguments, body, Trigger(functionApplication))

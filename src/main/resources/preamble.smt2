@@ -14,6 +14,11 @@
     ($Snap.unit)
     ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
 
+(declare-fun internalCondFrame (Bool $Snap $Snap) $Snap)
+(assert (forall ((cnd Bool) (frst $Snap) (scnd $Snap)) (!
+    (= (internalCondFrame cnd frst scnd) (ite cnd frst scnd))
+    :pattern ((internalCondFrame cnd frst scnd)))))
+
 ; --- References ---
 
 (declare-sort $Ref 0)
