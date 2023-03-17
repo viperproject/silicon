@@ -9,9 +9,10 @@ package viper.silicon.decider
 import viper.silicon.decider.SmtlibNameSanitizer
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.terms._
-import viper.silicon.state.{Identifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
+import viper.silicon.state.{Identifier, MagicWandIdentifier, SimpleIdentifier, SortBasedIdentifier, SuffixedIdentifier}
 import viper.silver.components.StatefulComponent
-import com.microsoft.z3.{ArithExpr, BoolExpr, Context, DatatypeSort, IntExpr, RealExpr, Expr => Z3Expr, FuncDecl => Z3FuncDecl, Sort => Z3Sort, Symbol => Z3Symbol}
+import viper.silver.ast
+import com.microsoft.z3.{ArithExpr, BoolExpr, Context, DatatypeSort, IntExpr, RealExpr, Z3Exception, Expr => Z3Expr, FuncDecl => Z3FuncDecl, Sort => Z3Sort, Symbol => Z3Symbol}
 
 import scala.collection.mutable
 
@@ -105,6 +106,9 @@ class TermToZ3APIConverter
       }
       case sorts.Set(elementSort) => ctx.mkUninterpretedSort("Set<" + convertSortName(elementSort) + ">")
       case sorts.Multiset(elementSort) => ctx.mkUninterpretedSort("Multiset<" + convertSortName(elementSort) + ">")
+      case sorts.HeapSort(valueSort) => ctx.mkUninterpretedSort("$Hp<" + convertSortName(valueSort) + ">")
+      case sorts.PredHeapSort => ctx.mkUninterpretedSort("$Hp<$Pred>")
+      case sorts.PredMaskSort => ctx.mkUninterpretedSort("$Hp<$PredMask>")
       case sorts.UserSort(id) => ctx.mkUninterpretedSort(convertId(id))
       case sorts.SMTSort(id) => {
         // workaround: since we cannot create a built-in sort from its name, we let Z3 parse
@@ -132,6 +136,12 @@ class TermToZ3APIConverter
     res
   }
 
+  private def renderHeapType(s: Sort): String = s match {
+    case sorts.HeapSort(valueSort) => convertSortName(valueSort)
+    case sorts.PredHeapSort => "$Pred"
+    case sorts.PredMaskSort => "$PredMask"
+  }
+
   def convertSortSymbol(s: Sort): Option[Z3Symbol] = {
     s match {
       case sorts.Int => None
@@ -143,6 +153,9 @@ class TermToZ3APIConverter
       case sorts.Seq(elementSort) => Some(ctx.mkSymbol("Seq<" + convertSortName(elementSort) + ">"))
       case sorts.Set(elementSort) => Some(ctx.mkSymbol("Set<" + convertSortName(elementSort) + ">"))
       case sorts.Multiset(elementSort) => Some(ctx.mkSymbol("Multiset<" + convertSortName(elementSort) + ">"))
+      case sorts.HeapSort(valueSort) => Some(ctx.mkSymbol("$Hp<" + convertSortName(valueSort) + ">"))
+      case sorts.PredHeapSort => Some(ctx.mkSymbol("$Hp<$Pred>"))
+      case sorts.PredMaskSort => Some(ctx.mkSymbol("$Hp<$PredMask>"))
       case sorts.UserSort(id) => Some(ctx.mkSymbol(convertId(id)))
       case sorts.SMTSort(_) => {
         ???
@@ -220,6 +233,8 @@ class TermToZ3APIConverter
           case False => ctx.mkFalse()
           case Null => ctx.mkConst("$Ref.null", ctx.mkUninterpretedSort("$Ref"))
           case Unit => ctx.mkConst(getUnitConstructor)
+          case ZeroMask => ctx.mkConst("$Hp.zeroMask", convertSort(l.sort))
+          case PredZeroMask => ctx.mkConst("$Hp.zeroPredMask", convertSort(l.sort))
           case _: SeqNil => createApp("Seq_empty", Seq(), l.sort)
           case _: EmptySet => createApp("Set_empty", Seq(), l.sort)
           case _: EmptyMultiset => createApp("Multiset_empty", Seq(), l.sort)
@@ -266,17 +281,27 @@ class TermToZ3APIConverter
               nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(trm => convertTerm(trm)): _*)).toArray
           } else null
           val weightValue = weight.getOrElse(1)
-          if (quant == Forall) {
-            ctx.mkForall(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
-          }else{
-            ctx.mkExists(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
+          try {
+            if (quant == Forall) {
+              ctx.mkForall(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
+            } else {
+              ctx.mkExists(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
+            }
+          } catch {
+            case e: Z3Exception =>
+              throw e
           }
+
         }
       }
 
       /* Booleans */
 
       case uop: Not => ctx.mkNot(convertTerm(uop.p).asInstanceOf[BoolExpr])
+      case pn: PermNegation =>
+        // val res = ctx.mkUnaryMinus(convertTerm(pn.p).asInstanceOf[ArithExpr]) // This is apparently wrong??
+        val res = ctx.mkSub(ctx.mkReal(0), convertTerm(pn.p).asInstanceOf[ArithExpr])
+        res
       case And(ts) => ctx.mkAnd(ts.map(convertTerm(_).asInstanceOf[BoolExpr]): _*)
       case Or(ts) => ctx.mkOr(ts.map(convertTerm(_).asInstanceOf[BoolExpr]): _*)
       case bop: Implies => ctx.mkImplies(convertTerm(bop.p0).asInstanceOf[BoolExpr], convertTerm(bop.p1).asInstanceOf[BoolExpr])
@@ -333,9 +358,10 @@ class TermToZ3APIConverter
         (define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
     (ite (<= p1 p2) p1 p2))
          */
-        val e0 = convert(t0).asInstanceOf[ArithExpr]
-        val e1 = convert(t1).asInstanceOf[ArithExpr]
-        ctx.mkITE(ctx.mkLe(e0, e1), e0, e1)
+        //val e0 = convert(t0).asInstanceOf[ArithExpr]
+        //val e1 = convert(t1).asInstanceOf[ArithExpr]
+        //ctx.mkITE(ctx.mkLe(e0, e1), e0, e1)
+        createApp("$Perm.min", Seq(t0, t1), sorts.Perm)
       }
       case IsValidPermVar(v) => {
         /*
@@ -411,6 +437,56 @@ class TermToZ3APIConverter
       }), term.sort)
 
       case PermLookup(field, pm, at) => createApp("$FVF.perm_" + field, Seq(pm, at), term.sort)
+
+      case hl@HeapLookup(heap, at) =>
+        createApp("$Hp.get_" + renderHeapType(heap.sort), Seq(heap, at), hl.sort)
+
+      case HeapUpdate(heap, at, value) =>
+        createApp("$Hp.update_" + renderHeapType(heap.sort), Seq(heap, at, value), heap.sort)
+
+      case hs@HeapSingleton(at, value, r) =>
+        createApp("$Hp.singleton_" + renderHeapType(term.sort), Seq(at, value), hs.sort)
+
+      case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
+        createApp("$Hp.identicalOnKnown_" + renderHeapType(newHeap.sort), Seq(oldHeap, newHeap, mask), sorts.Bool)
+
+      case dh@DummyHeap(sort) =>
+        ctx.mkConst("$Hp.default_" + renderHeapType(sort), convertSort(dh.sort))
+
+      case MergeSingle(heap, mask, location, value) =>
+        createApp("$Hp.merge_single_" + renderHeapType(heap.sort), Seq(heap, mask, location, value), heap.sort)
+
+      case MaskEq(m1, m2) =>
+        createApp("$Hp.maskEq", Seq(m1, m2), sorts.Bool)
+
+      case MaskSum(m1, m2) =>
+        createApp("$Hp.maskSum", Seq(m1, m2), m1.sort)
+
+      case MaskDiff(m1, m2) =>
+        createApp("$Hp.maskDiff", Seq(m1, m2), m1.sort)
+
+      case MaskAdd(m, at, value) =>
+        createApp("$Hp.maskAdd", Seq(m, at, value), m.sort)
+
+      case MergeHeaps(h1, m1, h2, m2) =>
+        createApp("$Hp.merge_" + renderHeapType(h1.sort), Seq(h1, m1, h2, m2), h1.sort)
+
+      case HeapsOverlap(h1, m1, h2, m2) =>
+        createApp("$Hp.overlap_" + renderHeapType(h1.sort), Seq(h1, m1, h2, m2), sorts.Bool)
+
+      case sth@SnapToHeap(snap, resource, _) =>
+        createApp("$SortWrappers.$SnapTo$Heap<" + (resource match {
+          case f: ast.Field => f.name
+          case p: ast.Predicate => p.name
+          case _: MagicWandIdentifier => "WAND"
+        }) + ">", Seq(snap), sth.sort)
+
+      case hts@HeapToSnap(heap, mask, resource) =>
+        createApp("$SortWrappers.$Heap<" + (resource match {
+          case f: ast.Field => f.name
+          case p: ast.Predicate => p.name
+          case _: MagicWandIdentifier => "WAND"
+        }) + ">To$Snap", Seq(heap, mask), hts.sort)
 
       case PredicateDomain(id, psf) => createApp("$PSF.domain_" + id, Seq(psf), term.sort)
 

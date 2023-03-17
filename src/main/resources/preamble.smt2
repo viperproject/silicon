@@ -41,8 +41,13 @@
          (not (= p $Perm.No))))
 
 ; min function for permissions
-(define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
-    (ite (<= p1 p2) p1 p2))
+;(define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
+;    (ite (<= p1 p2) p1 p2))
+
+(declare-fun $Perm.min ($Perm $Perm) $Perm)
+(assert (forall ((p1 $Perm) (p2 $Perm)) (!
+    (= ($Perm.min p1 p2) (ite (<= p1 p2) p1 p2))
+    :pattern (($Perm.min p1 p2)))))
 
 ; --- Sort wrappers ---
 
