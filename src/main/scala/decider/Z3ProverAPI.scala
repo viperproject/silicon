@@ -49,7 +49,7 @@ object Z3ProverAPI {
     "delay_units" -> true,
     "smt.mbqi" -> false,
     "mbqi" -> false,
-    "pp.bv_literals" -> false,
+    //"pp.bv_literals" -> false,  // This is part of z3config.smt2 but Z3 won't accept it via API.
     "model.v2" -> true
   )
   val intParams = Map(
