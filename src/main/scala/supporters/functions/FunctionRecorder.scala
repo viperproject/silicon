@@ -143,7 +143,7 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
   }
 
   def recordFvfAndDomain(fvfDef: SnapshotMapDefinition): ActualFunctionRecorder =
-    if (depth <= 1) copy(freshFvfsAndDomains = freshFvfsAndDomains + fvfDef)
+    if (depth <= 2) copy(freshFvfsAndDomains = freshFvfsAndDomains + fvfDef)
     else this
 
   def recordPreconditionQPMask(qpAssertion: ast.Exp, maskFun: Function, maskDef: Term): ActualFunctionRecorder =
@@ -151,11 +151,11 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     else this
 
   def recordFieldInv(inv: InverseFunctions): ActualFunctionRecorder =
-    if (depth <= 1) copy(freshFieldInvs = freshFieldInvs + inv)
+    if (depth <= 2) copy(freshFieldInvs = freshFieldInvs + inv)
     else this
 
   def recordArp(arp: Var, constraint: Term): ActualFunctionRecorder =
-    if (depth <= 1) copy(freshArps = freshArps + ((arp, constraint)))
+    if (depth <= 2) copy(freshArps = freshArps + ((arp, constraint)))
     else this
 
   def recordFreshSnapshot(snap: Function): ActualFunctionRecorder =
