@@ -13,13 +13,14 @@ import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, Ite, MacroDecl, Quantification, Sort, SortDecl, SortWrapperDecl, Term, sorts}
 import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
-import viper.silver.reporter.{InternalWarningMessage, Reporter}
+import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
 import viper.silver.verifier.{MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
 
 import java.io.PrintWriter
 import java.nio.file.Path
 import scala.collection.mutable
 import com.microsoft.z3._
+import com.microsoft.z3.enumerations.Z3_param_kind
 import viper.silicon.reporting.ExternalToolError
 
 import scala.jdk.CollectionConverters.MapHasAsJava
@@ -127,7 +128,47 @@ class Z3ProverAPI(uniqueId: String,
     Z3ProverAPI.stringParams.foreach{
       case (k, v) => params.add(k, v)
     }
+
+    val userProvidedArgs: Array[String] = Verifier.config.proverArgs match {
+      case None =>
+        Array()
+
+      case Some(rawArgs) =>
+        val args = if (rawArgs.startsWith("'") && rawArgs.startsWith("'")) {
+          rawArgs.substring(1, rawArgs.length - 1)
+        } else {
+          rawArgs
+        }
+        // One can pass some options. This allows to check whether they have been received.
+        val msg = s"Additional command-line arguments are $args"
+        reporter report ConfigurationConfirmation(msg)
+        logger debug msg
+        args.split(' ').map(_.trim)
+    }
     prover = ctx.mkSolver()
+    val descrs = prover.getParameterDescriptions
+    for (arg <- userProvidedArgs) {
+      val splitArg = arg.split("=")
+      var key = splitArg(0)
+      if (key.startsWith("smt."))
+        key = key.substring(4)
+      val vl = splitArg(1)
+      val keySymbol = ctx.mkSymbol(key)
+      val param_kind = descrs.getKind(keySymbol)
+      param_kind match {
+        case Z3_param_kind.Z3_PK_BOOL =>
+          params.add(keySymbol, vl.toBoolean)
+        case Z3_param_kind.Z3_PK_UINT =>
+          params.add(key, vl.toInt)
+        case Z3_param_kind.Z3_PK_DOUBLE =>
+          params.add(keySymbol, vl.toDouble)
+        case Z3_param_kind.Z3_PK_STRING =>
+          params.add(keySymbol, vl)
+        case _ =>
+          reporter.report(InternalWarningMessage("Z3 error: unknown parameter" + key))
+
+      }
+    }
     prover.setParameters(params)
     termConverter.start()
     termConverter.ctx = ctx
