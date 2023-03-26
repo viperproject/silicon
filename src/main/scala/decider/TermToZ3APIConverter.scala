@@ -300,7 +300,7 @@ class TermToZ3APIConverter
       case uop: Not => ctx.mkNot(convertTerm(uop.p).asInstanceOf[BoolExpr])
       case pn: PermNegation =>
         // val res = ctx.mkUnaryMinus(convertTerm(pn.p).asInstanceOf[ArithExpr]) // This is apparently wrong??
-        val res = ctx.mkSub(ctx.mkReal(0), convertTerm(pn.p).asInstanceOf[ArithExpr])
+        val res = ctx.mkSub(ctx.mkReal(0), convertToReal(pn.p).asInstanceOf[ArithExpr])
         res
       case And(ts) => ctx.mkAnd(ts.map(convertTerm(_).asInstanceOf[BoolExpr]): _*)
       case Or(ts) => ctx.mkOr(ts.map(convertTerm(_).asInstanceOf[BoolExpr]): _*)
@@ -345,12 +345,12 @@ class TermToZ3APIConverter
       case NoPerm => ctx.mkReal(0)
       case FractionPermLiteral(r) => ctx.mkDiv(convertToReal(IntLiteral(r.numerator)), convertToReal(IntLiteral(r.denominator)))
       case FractionPerm(n, d) => ctx.mkDiv(convertToReal(n), convertToReal(d))
-      case PermLess(t0, t1) => ctx.mkLt(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
-      case PermAtMost(t0, t1) => ctx.mkLe(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
-      case PermPlus(t0, t1) => ctx.mkAdd(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
-      case PermMinus(t0, t1) => ctx.mkSub(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
-      case PermTimes(t0, t1) => ctx.mkMul(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
-      case IntPermTimes(t0, t1) => ctx.mkMul(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
+      case PermLess(t0, t1) => ctx.mkLt(convertToReal(t0).asInstanceOf[ArithExpr], convertToReal(t1).asInstanceOf[ArithExpr])
+      case PermAtMost(t0, t1) => ctx.mkLe(convertToReal(t0).asInstanceOf[ArithExpr], convertToReal(t1).asInstanceOf[ArithExpr])
+      case PermPlus(t0, t1) => ctx.mkAdd(convertToReal(t0).asInstanceOf[ArithExpr], convertToReal(t1).asInstanceOf[ArithExpr])
+      case PermMinus(t0, t1) => ctx.mkSub(convertToReal(t0).asInstanceOf[ArithExpr], convertToReal(t1).asInstanceOf[ArithExpr])
+      case PermTimes(t0, t1) => ctx.mkMul(convertToReal(t0).asInstanceOf[ArithExpr], convertToReal(t1).asInstanceOf[ArithExpr])
+      case IntPermTimes(t0, t1) => ctx.mkMul(convertToReal(t0).asInstanceOf[ArithExpr], convertToReal(t1).asInstanceOf[ArithExpr])
       case PermIntDiv(t0, t1) => ctx.mkDiv(convertToReal(t0), convertToReal(t1))
       case PermPermDiv(t0, t1) => ctx.mkDiv(convertToReal(t0), convertToReal(t1))
       case PermMin(t0, t1) => {
@@ -361,7 +361,9 @@ class TermToZ3APIConverter
         //val e0 = convert(t0).asInstanceOf[ArithExpr]
         //val e1 = convert(t1).asInstanceOf[ArithExpr]
         //ctx.mkITE(ctx.mkLe(e0, e1), e0, e1)
-        createApp("$Perm.min", Seq(t0, t1), sorts.Perm)
+
+        ctx.mkApp(getFuncDecl("$Perm.min", sorts.Perm, Seq(sorts.Perm, sorts.Perm)), Seq(convertToReal(t0), convertToReal(t0)): _*)
+        //createApp("$Perm.min", Seq(t0, t1), sorts.Perm)
       }
       case IsValidPermVar(v) => {
         /*
