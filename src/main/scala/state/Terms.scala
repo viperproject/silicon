@@ -2218,7 +2218,7 @@ object HeapLookup extends CondFlyweightTermFactory[(Term, Term), HeapLookup] {
     case (MergeSingle(_, msk, r1, v), r2) if r1 == r2 && (msk == ZeroMask || msk == PredZeroMask) => v // incomplete for anything but zeromasks, ignores info from merged heap
     case (MaskAdd(ZeroMask, r1, v), r2) if r1 == r2 => v
     case (MaskAdd(PredZeroMask, r1, v), r2) if r1 == r2 => v
-    //case (MaskAdd(m2, r1, v), r2) => PermPlus(HeapLookup(m2, r2), Ite(r1 === r2, v, NoPerm) //TODO: is this good or bad?
+    case (MaskAdd(m2, r1, v), r2) => PermPlus(HeapLookup(m2, r2), Ite(r1 === r2, v, NoPerm)) //TODO: is this good or bad?
     case _ => createIfNonExistent(v0)
   }
 

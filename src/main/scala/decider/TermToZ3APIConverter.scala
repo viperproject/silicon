@@ -362,7 +362,7 @@ class TermToZ3APIConverter
         //val e1 = convert(t1).asInstanceOf[ArithExpr]
         //ctx.mkITE(ctx.mkLe(e0, e1), e0, e1)
 
-        ctx.mkApp(getFuncDecl("$Perm.min", sorts.Perm, Seq(sorts.Perm, sorts.Perm)), Seq(convertToReal(t0), convertToReal(t0)): _*)
+        ctx.mkApp(getFuncDecl("$Perm.min", sorts.Perm, Seq(sorts.Perm, sorts.Perm)), Seq(convertToReal(t0), convertToReal(t1)): _*)
         //createApp("$Perm.min", Seq(t0, t1), sorts.Perm)
       }
       case IsValidPermVar(v) => {
