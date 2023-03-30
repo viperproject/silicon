@@ -21,6 +21,7 @@ import java.nio.file.Path
 import scala.collection.mutable
 import com.microsoft.z3._
 import com.microsoft.z3.enumerations.Z3_param_kind
+import viper.silicon.decider.Z3ProverAPI.oldVersionOnlyParams
 import viper.silicon.reporting.ExternalToolError
 
 import scala.jdk.CollectionConverters.MapHasAsJava
@@ -29,8 +30,8 @@ import scala.util.Random
 
 object Z3ProverAPI {
   val name = "Z3-API"
-  val minVersion = Version("4.8.6.0")
-  val maxVersion = Some(Version("4.8.7.0")) /* X.Y.Z if that is the *last supported* version */
+  val minVersion = Version("4.8.7.0")
+  val maxVersion = Some(Version("4.12.1.0")) /* X.Y.Z if that is the *last supported* version */
 
   // these are not actually used, but since there is a lot of code that expects command line parameters and a
   // config file, we just supply this information here (whose contents will then be ignored)
@@ -68,6 +69,7 @@ object Z3ProverAPI {
     "smt.qi.eager_threshold" -> 100.0,
     "qi.eager_threshold" -> 100.0,
   )
+  val oldVersionOnlyParams = Set("smt.arith.solver", "arith.solver")
 }
 
 
@@ -115,18 +117,27 @@ class Z3ProverAPI(uniqueId: String,
     lastTimeout = -1
     logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
     ctx = new Context(Z3ProverAPI.initialOptions.asJava)
+    val useOldVersionParams = version() <= Version("4.8.7.0")
     val params = ctx.mkParams()
     Z3ProverAPI.boolParams.foreach{
-      case (k, v) => params.add(k, v)
+      case (k, v) =>
+        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
+          params.add(k, v)
     }
     Z3ProverAPI.intParams.foreach{
-      case (k, v) => params.add(k, v)
+      case (k, v) =>
+        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
+          params.add(k, v)
     }
     Z3ProverAPI.doubleParams.foreach{
-      case (k, v) => params.add(k, v)
+      case (k, v) =>
+        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
+          params.add(k, v)
     }
     Z3ProverAPI.stringParams.foreach{
-      case (k, v) => params.add(k, v)
+      case (k, v) =>
+        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
+          params.add(k, v)
     }
 
     val userProvidedArgs: Array[String] = Verifier.config.proverArgs match {
