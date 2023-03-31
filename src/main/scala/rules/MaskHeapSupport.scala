@@ -282,8 +282,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                             permissions: Term, /* p */
                             pve: PartialVerificationError,
                             v: Verifier,
-                            resMap: Map[Any, Term],
-                            havoc: Boolean)
+                            resMap: Map[Any, Term])
                            (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     val resource = resourceAccess.res(s.program)
@@ -384,7 +383,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
             case _ => newMask
           }
 
-          val newChunk = if (!havoc || s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
+          val newChunk = if (s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
             // no need to havoc
             resChunk.copy(mask = newMask)
           } else {
@@ -429,7 +428,6 @@ object maskHeapSupporter extends SymbolicExecutionRules {
               insufficientPermissionReason: => ErrorReason,
               v: Verifier,
               resMap: Map[Any, Term],
-              havoc: Boolean,
               qpExp: ast.Exp)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
@@ -633,7 +631,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                 // simplify only if this mask will be used later
                 val newMask = if (s.isConsumingFunctionPre.isDefined) MaskDiff(currentChunk.mask, qpMask) else subtractMask(currentChunk.mask, qpMask, resource, s.program, v)
 
-                val newChunk = if (!havoc || s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
+                val newChunk = if (s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
                   // no need to havoc
                   currentChunk.copy(mask = newMask)
                 } else {
@@ -734,16 +732,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
     val snapHeapMap = tSnap.asInstanceOf[FakeMaskMapTerm].masks
 
-    val creatingQPMaskFunc = false && s.isProducingFunctionPre.isDefined
-    val (qpMask, qpMaskFunc, constraintVars) = if (creatingQPMaskFunc) {
-      val paramArgs = s.isProducingFunctionPre.get.formalArgs.map(fa => s.g.get(fa.localVar).get)
-      val paramArgSorts = paramArgs.map(_.sort)
-      val maskFunc = v.decider.fresh("qpMaskFunc", paramArgSorts :+ sorts.Snap, if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
-      //val snapTerm = convertToSnapshot(snapHeapMap, snapHeapMap.keys.toSeq, s.h)
-      (App(maskFunc, paramArgs :+ predef.`?s`), Some(maskFunc), paramArgs.asInstanceOf[Seq[Var]] :+ predef.`?s`)
-    } else {
-      (v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort), None, Seq())
-    }
+    val (qpMask, qpMaskFunc, constraintVars) = (v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort), None, Seq())
 
     // forall r :: { get(qpMask, r) } get(qpMask, r) == conditionalizedPermissions
     val argTerm = resource match {
@@ -751,13 +740,8 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       case _ => toSnapTree(formalQVars)
     }
     val qpMaskGet = HeapLookup(qpMask, argTerm)
-    val qpMaskConstraint = if (creatingQPMaskFunc) {
-      val maskDef = Forall(constraintVars ++ formalQVars, Implies(And(v.decider.pcs.assumptions), qpMaskGet === conditionalizedPermissions), Seq(Trigger(qpMaskGet)), "qpMaskdef")
-      val invDefs = Forall(constraintVars, And(inverseFunctions.definitionalAxioms), Seq(Trigger(qpMask)), "qpMaskInvDef")
-      And(maskDef, invDefs)
-    } else {
-      Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
-    }
+    val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+
     v.decider.assume(qpMaskConstraint)
 
     val resourceToFind = resource match {
@@ -858,10 +842,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
             val h1 = hp - currentChunk + newChunk
             v.decider.assume(permBoundConstraint)
-            val newFr = if (!creatingQPMaskFunc)
-              s.functionRecorder.recordFieldInv(inv).recordArp(qpMask.asInstanceOf[Var], qpMaskConstraint)
-            else
-              s.functionRecorder.recordFieldInv(inv).recordPreconditionQPMask(qpExp, qpMaskFunc.get, qpMaskConstraint)
+            val newFr = s.functionRecorder.recordFieldInv(inv).recordArp(qpMask, qpMaskConstraint)
 
             val s1 =
               s.copy(h = h1,

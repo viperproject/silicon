@@ -154,7 +154,6 @@ class FunctionData(val programFunction: ast.Function,
     freshSnapshots = mergedFunctionRecorder.freshSnapshots
     freshPathSymbols = mergedFunctionRecorder.freshPathSymbols
     freshMacros = mergedFunctionRecorder.freshMacros
-    preQPMasks ++= mergedFunctionRecorder.freshQPMasks
 
     freshSymbolsAcrossAllPhases ++= freshPathSymbols map FunctionDecl
     freshSymbolsAcrossAllPhases ++= freshArps.map(pair => FunctionDecl(pair._1))
@@ -168,7 +167,6 @@ class FunctionData(val programFunction: ast.Function,
         case App(f: Function, _) => FunctionDecl(f)
         case other => sys.error(s"Unexpected SM $other of type ${other.getClass.getSimpleName}")
       })
-    freshSymbolsAcrossAllPhases ++= mergedFunctionRecorder.freshQPMasks.map(qpm => FunctionDecl(qpm._2))
     if (phase == 0 && Verifier.config.heapFunctionEncoding())
       freshSymbolsAcrossAllPhases ++= qpFrameFunctionDecls
 
@@ -241,22 +239,6 @@ class FunctionData(val programFunction: ast.Function,
             maskIdentities = Forall(argVars, App(fnc, argVars) === App(fncp, argVars), Seq(Trigger(one), Trigger(other))) :: maskIdentities
           }
         }
-        /*
-        exp match {
-          case QuantifiedPermissionAssertion(forall, cond, ast.FieldAccessPredicate(loc, perm)) =>
-            val permExp = CondExp(cond, perm, ast.NoPerm()())()
-            val permTerm = expressionTranslator.translatePrecondition(program, Seq(permExp), this)(0)
-            val argVars = formalArgs.values.toSeq ++ Seq(`?s`)
-            val permQuant = Forall(argVars, App(fnc, argVars) === permTerm, Seq(Trigger(App(fnc, argVars))))
-            maskDefs = permQuant :: maskDefs
-          case QuantifiedPermissionAssertion(forall, cond, ast.PredicateAccessPredicate(loc, perm)) =>
-            val permExp = CondExp(cond, perm, ast.NoPerm()())()
-            val permTerm = expressionTranslator.translatePrecondition(program, Seq(permExp), this)(0)
-            val argVars = formalArgs.values.toSeq ++ Seq(`?s`)
-            val permQuant = Forall(argVars, App(fnc, argVars) === permTerm, Seq(Trigger(App(fnc, argVars))))
-            maskDefs = permQuant :: maskDefs
-        }
-         */
         maskDefs = fncCnstrnt :: maskDefs
       }
     }
@@ -401,17 +383,14 @@ class FunctionData(val programFunction: ast.Function,
     conjuncts match {
       case Nil => Unit
       case pre +: Nil => computeFrameHelper(pre, functionName, resources)
-      case p +: ps => combineFrames(computeFrameHelper(p, functionName, resources), computeFrame(ps, functionName)) // we don't need to return the list, since this is updated statefully
+      case p +: ps => combineFrames(computeFrameHelper(p, functionName, resources), computeFrame(ps, functionName))
     }
   }
 
-  private def combineFrames(a: Term, b: Term) = {
-    if (a == Unit)
-      b
-    else if (b == Unit)
-      a
-    else
-      Combine(a, b)
+  private def combineFrames(a: Term, b: Term) = (a, b) match {
+    case (Unit, _) => b
+    case (_, Unit) => a
+    case _ => Combine(a, b)
   }
 
   val condFrameFunc = Fun(Identifier("internalCondFrame"), Seq(sorts.Bool, sorts.Snap, sorts.Snap), sorts.Snap)

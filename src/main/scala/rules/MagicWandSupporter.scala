@@ -421,11 +421,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
             val wandSnap = if (Verifier.config.maskHeapMode()) {
               val mwi = MagicWandIdentifier(wand, s1.program)
               val argTerm = toSnapTree(tArgs)
-              val res = MagicWandSnapshot(HeapLookup(SnapToHeap(snap, mwi, PredHeapSort), argTerm))
-              res
-              //snap match {
-              //  case HeapToSnap(HeapSingleton(_, wSnap, _), _, _) => MagicWandSnapshot(wSnap)
-              //}
+              MagicWandSnapshot(HeapLookup(SnapToHeap(snap, mwi, PredHeapSort), argTerm))
             } else {
               MagicWandSnapshot(snap)
             }
@@ -472,9 +468,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 
       val usedChunks = chs2.flatten
-      val (fr4, hUsed) = if (Verifier.config.maskHeapMode()) {
+      val (fr4, hUsed) = if (Verifier.config.maskHeapMode())
         (s3.functionRecorder, usedChunks.foldLeft(s2.reserveHeaps.head)((cur, chnk) => maskHeapSupporter.mergeWandHeaps(cur, Heap(Seq(chnk)), v2)))
-      } else
+      else
         v2.stateConsolidator.merge(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
 
       val s4 = s3.copy(functionRecorder = fr4, reserveHeaps = hUsed +: s3.reserveHeaps.tail)

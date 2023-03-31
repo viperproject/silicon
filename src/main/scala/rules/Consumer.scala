@@ -35,7 +35,7 @@ trait ConsumptionRules extends SymbolicExecutionRules {
     *          consumed partial heap.
     * @return The result of the continuation.
     */
-  def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier, havoc: Boolean)
+  def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
              (Q: (State, Term, Verifier) => VerificationResult)
              : VerificationResult
 
@@ -70,11 +70,11 @@ object consumer extends ConsumptionRules {
    */
 
   /** @inheritdoc */
-  def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier, havoc: Boolean = true)
+  def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
              (Q: (State, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consumeR(s, s.h, a.whenExhaling, pve, v, havoc = havoc)((s1, h1, snap, v1) => {
+    consumeR(s, s.h, a.whenExhaling, pve, v)((s1, h1, snap, v1) => {
       val s2 = s1.copy(h = h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap, v1)})
@@ -111,13 +111,12 @@ object consumer extends ConsumptionRules {
                           tlcs: Seq[ast.Exp],
                           pves: Seq[PartialVerificationError],
                           v: Verifier,
-                          ot: Option[Term],
-                          havoc: Boolean = true)
+                          ot: Option[Term])
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
     if (Verifier.config.maskHeapMode()) {
       val resources = maskHeapSupporter.getResourceSeq(tlcs, s.program)
-      consumeTlcsMaskHeap(s, h, tlcs, pves, v, resources, ot, havoc)(Q)
+      consumeTlcsMaskHeap(s, h, tlcs, pves, v, resources, ot)(Q)
     } else {
       internalConsumeTlcs(s, h, tlcs, pves, v, None)(Q)
     }
@@ -129,15 +128,14 @@ object consumer extends ConsumptionRules {
                           pves: Seq[PartialVerificationError],
                           v: Verifier,
                           resources: Seq[Any],
-                          ot: Option[Term],
-                          havoc: Boolean = true)
+                          ot: Option[Term])
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     val term = if (ot.isDefined) ot.get else {
       val resMap: Seq[(Any, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask)))
       FakeMaskMapTerm(immutable.ListMap(resMap: _*))
     }
-    internalConsumeTlcs(s, h, tlcs, pves, v, Some(term), havoc)((s2, h2, resMapTerm, v2) => {
+    internalConsumeTlcs(s, h, tlcs, pves, v, Some(term))((s2, h2, resMapTerm, v2) => {
       if (ot.isDefined) {
         Q(s2, h2, resMapTerm, v2)
       } else {
@@ -154,8 +152,7 @@ object consumer extends ConsumptionRules {
                                   tlcs: Seq[ast.Exp],
                                   pves: Seq[PartialVerificationError],
                                   v: Verifier,
-                                  resMap: Option[Term],
-                                  havoc: Boolean = true)
+                                  resMap: Option[Term])
                                   (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
 
@@ -169,10 +166,10 @@ object consumer extends ConsumptionRules {
       val pve = pves.head
 
       if (tlcs.tail.isEmpty)
-        wrappedConsumeTlc(s, h, a, pve, v, resMap, havoc)(Q)
+        wrappedConsumeTlc(s, h, a, pve, v, resMap)(Q)
       else
-        wrappedConsumeTlc(s, h, a, pve, v, resMap, havoc)((s1, h1, snap1, v1) => {
-          internalConsumeTlcs(s1, h1, tlcs.tail, pves.tail, v1, Some(snap1), havoc)((s2, h2, snap2, v2) => {
+        wrappedConsumeTlc(s, h, a, pve, v, resMap)((s1, h1, snap1, v1) => {
+          internalConsumeTlcs(s1, h1, tlcs.tail, pves.tail, v1, Some(snap1))((s2, h2, snap2, v2) => {
             if (Verifier.config.maskHeapMode())
               Q(s2, h2, snap2, v2)
             else
@@ -182,14 +179,14 @@ object consumer extends ConsumptionRules {
     }
   }
 
-  private def consumeR(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier, ot: Option[Term] = None, havoc: Boolean = true)
+  private def consumeR(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier, ot: Option[Term] = None)
                       (Q: (State, Heap, Term, Verifier) => VerificationResult)
                       : VerificationResult = {
 
     val tlcs = a.topLevelConjuncts
     val pves = Seq.fill(tlcs.length)(pve)
 
-    consumeTlcs(s, h, tlcs, pves, v, ot, havoc)(Q)
+    consumeTlcs(s, h, tlcs, pves, v, ot)(Q)
   }
 
   /** Wrapper/decorator for consume that injects the following operations:
@@ -201,8 +198,7 @@ object consumer extends ConsumptionRules {
                                   a: ast.Exp,
                                   pve: PartialVerificationError,
                                   v: Verifier,
-                                  resMap: Option[Term],
-                                  havoc: Boolean = true)
+                                  resMap: Option[Term])
                                  (Q: (State, Heap, Term, Verifier) => VerificationResult)
                                  : VerificationResult = {
 
@@ -217,13 +213,13 @@ object consumer extends ConsumptionRules {
 
       val sepIdentifier = v1.symbExLog.openScope(new ConsumeRecord(a, s1, v.decider.pcs))
 
-      consumeTlc(s1, h0, a, pve, v1, resMap, havoc)((s2, h2, snap2, v2) => {
+      consumeTlc(s1, h0, a, pve, v1, resMap)((s2, h2, snap2, v2) => {
         v2.symbExLog.closeScope(sepIdentifier)
         QS(s2, h2, snap2, v2)})
     })(Q)
   }
 
-  private def consumeTlc(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier, resMap: Option[Term], havoc: Boolean = true)
+  private def consumeTlc(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier, resMap: Option[Term])
                         (Q: (State, Heap, Term, Verifier) => VerificationResult)
                         : VerificationResult = {
 
@@ -247,7 +243,7 @@ object consumer extends ConsumptionRules {
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
-            (s2, v2) => consumeR(s2, h, a0, pve, v2, resMap, havoc)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a0, pve, v2, resMap)((s3, h1, t1, v3) => {
               v3.symbExLog.closeScope(uidImplies)
               Q(s3, h1, t1, v3)
             }),
@@ -262,11 +258,11 @@ object consumer extends ConsumptionRules {
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
-            (s2, v2) => consumeR(s2, h, a1, pve, v2, resMap, havoc)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a1, pve, v2, resMap)((s3, h1, t1, v3) => {
               v3.symbExLog.closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             }),
-            (s2, v2) => consumeR(s2, h, a2, pve, v2, resMap, havoc)((s3, h1, t1, v3) => {
+            (s2, v2) => consumeR(s2, h, a2, pve, v2, resMap)((s3, h1, t1, v3) => {
             v3.symbExLog.closeScope(uidCondExp)
               Q(s3, h1, t1, v3)
             })))
@@ -302,7 +298,6 @@ object consumer extends ConsumptionRules {
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1,
               resMap.get.asInstanceOf[FakeMaskMapTerm].masks,
-              havoc,
               qpa)(Q)
         }
 
@@ -364,7 +359,6 @@ object consumer extends ConsumptionRules {
               insufficientPermissionReason = InsufficientPermission(acc.loc),
               v1,
               resMap.get.asInstanceOf[FakeMaskMapTerm].masks,
-              havoc,
               qpa)(Q)
         }
 
@@ -436,7 +430,6 @@ object consumer extends ConsumptionRules {
               insufficientPermissionReason = MagicWandChunkNotFound(wand),
               v1,
               resMap.get.asInstanceOf[FakeMaskMapTerm].masks,
-              havoc,
               qpa)(Q)
         }
 
@@ -490,8 +483,7 @@ object consumer extends ConsumptionRules {
                 loss,
                 pve,
                 v3,
-                resMap.get.asInstanceOf[FakeMaskMapTerm].masks,
-                havoc
+                resMap.get.asInstanceOf[FakeMaskMapTerm].masks
               )((s4, h4, snap, v4) => {
                 val s5 = s4.copy(constrainableARPs = s1.constrainableARPs,
                   partiallyConsumedHeap = Some(h4))
@@ -572,7 +564,7 @@ object consumer extends ConsumptionRules {
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) => {
           val s2 = s1.copy(g = s1.g + g1)
-          consumeR(s2, h, body, pve, v1, resMap, havoc)(Q)})
+          consumeR(s2, h, body, pve, v1, resMap)(Q)})
 
       case ast.AccessPredicate(locacc: ast.LocationAccess, perm) =>
         eval(s, perm, pve, v)((s1, tPerm, v1) =>
@@ -595,7 +587,7 @@ object consumer extends ConsumptionRules {
           val ident = MagicWandIdentifier(wand, s.program)
           val (h1, _) = maskHeapSupporter.findOrCreateMaskHeapChunk(s1.h, ident, v1)
           val s2 = s1.copy(h = h1)
-          maskHeapSupporter.consumeSingleLocation(s2, h1, Seq(`?r`), tArgs, wand, FullPerm, pve, v1, resMap.get.asInstanceOf[FakeMaskMapTerm].masks, havoc)(Q)
+          maskHeapSupporter.consumeSingleLocation(s2, h1, Seq(`?r`), tArgs, wand, FullPerm, pve, v1, resMap.get.asInstanceOf[FakeMaskMapTerm].masks)(Q)
         })
 
       /* Handle wands */

@@ -19,10 +19,10 @@ import viper.silicon.verifier.Verifier
 import viper.silver.ast.{FieldAccess, Forall}
 
 
-class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
-                                            symbolConverter: SymbolConverter,
-                                            termConverter: TermConverter[String, String, String],
-                                            config: Config)
+class MaskHeapFunctionsContributor(preambleReader: PreambleReader[String, String],
+                                   symbolConverter: SymbolConverter,
+                                   termConverter: TermConverter[String, String, String],
+                                   config: Config)
   extends PreambleContributor[Sort, String, String]{
 
   /* PreambleBlock = Comment x Lines */

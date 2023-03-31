@@ -27,7 +27,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
 import viper.silicon.supporters._
 import viper.silicon.supporters.functions.{DefaultFunctionVerificationUnitProvider, FunctionData}
-import viper.silicon.supporters.qps.{DefaultFieldValueFunctionsContributor, DefaultPredicateAndWandSnapFunctionsContributor, HeapFunctionsContributor, PredicateSnapGenerator}
+import viper.silicon.supporters.qps.{DefaultFieldValueFunctionsContributor, DefaultPredicateAndWandSnapFunctionsContributor, MaskHeapFunctionsContributor, PredicateSnapGenerator}
 import viper.silicon.utils.Counter
 import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
@@ -72,7 +72,7 @@ class DefaultMainVerifier(config: Config,
   protected val mapsContributor = new DefaultMapsContributor(domainTranslator, config)
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
-  protected val heapFunctionsContributor = new HeapFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
+  protected val heapFunctionsContributor = new MaskHeapFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
   protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter, snapshotSupporter)
   protected val predicateAndWandSnapFunctionsContributor = new DefaultPredicateAndWandSnapFunctionsContributor(preambleReader, termConverter, predSnapGenerator, config)
 
