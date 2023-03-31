@@ -12,7 +12,7 @@ import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, Precond
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
-import viper.silicon.state.{terms, _}
+import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
@@ -21,7 +21,7 @@ import viper.silicon.utils.toSf
 import viper.silicon.utils.ast.flattenOperator
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
-import viper.silicon.interfaces.state.{CarbonChunk, ChunkIdentifer, NonQuantifiedChunk}
+import viper.silicon.interfaces.state.{MaskHeapChunk, ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silicon.state.terms.sorts.PredHeapSort
 import viper.silver.reporter.WarningsDuringTypechecking
@@ -191,9 +191,9 @@ object evaluator extends EvaluationRules {
            .setConstrainable(Seq(tVar), true)
         Q(s1, tVar, v)
 
-      case fa: ast.FieldAccess if Verifier.config.carbonQPs() =>
+      case fa: ast.FieldAccess if Verifier.config.maskHeapMode() =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, v1) => {
-          val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == fa.field).get.asInstanceOf[BasicCarbonChunk]
+          val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == fa.field).get.asInstanceOf[BasicMaskHeapChunk]
           val ve = pve dueTo InsufficientPermission(fa)
           val maskValue = HeapLookup(resChunk.mask, tRcvr)
           v1.decider.assert(perms.IsPositive(maskValue)){
@@ -207,10 +207,10 @@ object evaluator extends EvaluationRules {
           }
         })
 
-      case pa: ast.PredicateAccess if Verifier.config.carbonQPs() =>
+      case pa: ast.PredicateAccess if Verifier.config.maskHeapMode() =>
         val pvef: ast.Exp => PartialVerificationError = _ => pve
         evals(s, pa.args, pvef, v)((s1, tArgs, v1) => {
-          val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == pa.res(s.program)).get.asInstanceOf[BasicCarbonChunk]
+          val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == pa.res(s.program)).get.asInstanceOf[BasicMaskHeapChunk]
           val ve = pve dueTo InsufficientPermission(pa)
           val maskValue = HeapLookup(resChunk.mask, toSnapTree(tArgs))
           v1.decider.assert(perms.IsPositive(maskValue)) {
@@ -470,7 +470,7 @@ object evaluator extends EvaluationRules {
           val fi = v1.symbolConverter.toFunction(func, s.program)
           Q(s1, App(fi, tArgs), v1)})
 
-      case ast.CurrentPerm(resacc) if Verifier.config.carbonQPs() =>
+      case ast.CurrentPerm(resacc) if Verifier.config.maskHeapMode() =>
         val h = s.partiallyConsumedHeap.getOrElse(s.h)
         evalResourceAccess(s, resacc, pve, v)((s1, _, args, v1) => {
           val res = resacc match {
@@ -482,7 +482,7 @@ object evaluator extends EvaluationRules {
             case _: ast.Predicate => toSnapTree(args)
             case _: MagicWandIdentifier => toSnapTree(args)
           }
-          carbonQuantifiedChunkSupporter.findCarbonChunkOptionally(h, res) match {
+          maskHeapSupporter.findMaskHeapChunkOptionally(h, res) match {
             case Some(chunk) =>
               val result = HeapLookup (chunk.mask, argTerm)
               Q(s1, result, v1)
@@ -570,7 +570,7 @@ object evaluator extends EvaluationRules {
 
           Q(s2, currentPermAmount, v1)})
 
-      case fp@ast.ForPerm(vars, resourceAccess, body) if Verifier.config.carbonQPs() =>
+      case fp@ast.ForPerm(vars, resourceAccess, body) if Verifier.config.maskHeapMode() =>
         // Quick and dirty
         val equivalent = ast.Forall(vars, Seq(ast.Trigger(Seq(resourceAccess))()), ast.Implies(ast.PermGtCmp(ast.CurrentPerm(resourceAccess)(fp.pos), ast.NoPerm()())(fp.pos), body)())(fp.pos)
         eval2(s, equivalent, pve, v)(Q)
@@ -797,10 +797,10 @@ object evaluator extends EvaluationRules {
                                  */
                              smDomainNeeded = true)
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
-              val (snapArgs, snapToRecord) = if (Verifier.config.carbonFunctions()) {
-                val resources = carbonQuantifiedChunkSupporter.getResourceSeq(func.pres, s4.program)
+              val (snapArgs, snapToRecord) = if (Verifier.config.heapFunctionEncoding()) {
+                val resources = maskHeapSupporter.getResourceSeq(func.pres, s4.program)
                 val args = resources.map(r => {
-                  carbonQuantifiedChunkSupporter.findCarbonChunk(s4.h, r).heap
+                  maskHeapSupporter.findMaskHeapChunk(s4.h, r).heap
                 })
                 (args, FakeMaskMapTerm(ListMap(resources.zip(args): _*)))
               } else {
@@ -866,7 +866,7 @@ object evaluator extends EvaluationRules {
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
                       val s7a = s7.copy(g = insg)
 
-                      val predSnapFunc = if (Verifier.config.carbonQPs()) {
+                      val predSnapFunc = if (Verifier.config.maskHeapMode()) {
                         val predSnap = snap match {
                           case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
                           case _ => HeapLookup(SnapToHeap(snap, predicate, PredHeapSort), toSnapTree(tArgs))
@@ -1411,7 +1411,7 @@ object evaluator extends EvaluationRules {
   }
 
   private def toTriggerForm(terms: Seq[Term], s: State) = {
-    if (Verifier.config.carbonFunctions()) {
+    if (Verifier.config.heapFunctionEncoding()) {
       terms.map(t => t.transform{
         case App(hdf: HeapDepFun, args) => {
           val (heapArgs, otherArgs) = args.partition(t => t.sort == sorts.PredHeapSort || t.sort.isInstanceOf[sorts.HeapSort])
@@ -1470,25 +1470,25 @@ object evaluator extends EvaluationRules {
     var s = s0
 
     exps foreach {
-      case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) && !Verifier.config.carbonQPs() =>
+      case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) && !Verifier.config.maskHeapMode() =>
         val (axioms, trigs, _, smDef) = generateFieldTrigger(fa, s, pve, v)
         triggers = triggers.map(ts => ts ++ trigs)
         triggerAxioms = triggerAxioms ++ axioms
         smDefs = smDefs ++ smDef
       case fa: ast.FieldAccess =>
-        val chunk = carbonQuantifiedChunkSupporter.findCarbonChunk(s.h, fa.res(s.program))
+        val chunk = maskHeapSupporter.findMaskHeapChunk(s.h, fa.res(s.program))
         eval(s.copy(triggerExp = true), fa.rcv, pve, v)((_, tRcv, _) => {
           val heapAccess = new HeapLookup(chunk.heap, tRcv)
           val maskAccess = new HeapLookup(chunk.mask, tRcv)
           triggers = triggers.map(ts => ts ++ Seq(heapAccess)) ++  triggers.map(ts => ts ++ Seq(maskAccess))
           Success()
         })
-      case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) && !Verifier.config.carbonQPs() =>
+      case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) && !Verifier.config.maskHeapMode() =>
         val (axioms, trigs, _) = generatePredicateTrigger(pa, s, pve, v)
         triggers = triggers.map(ts => ts ++ trigs)
         triggerAxioms = triggerAxioms ++ axioms
       case pa: ast.PredicateAccess =>
-        val chunk = carbonQuantifiedChunkSupporter.findCarbonChunk(s.h, pa.res(s.program))
+        val chunk = maskHeapSupporter.findMaskHeapChunk(s.h, pa.res(s.program))
         evals(s.copy(triggerExp = true), pa.args, _ => pve, v)((_, tArgs, _) => {
           val tRcv = toSnapTree(tArgs)
           val heapAccess = new HeapLookup(chunk.heap, tRcv)
@@ -1496,13 +1496,13 @@ object evaluator extends EvaluationRules {
           triggers = triggers.map(ts => ts ++ Seq(heapAccess)) ++ triggers.map(ts => ts ++ Seq(maskAccess))
           Success()
         })
-      case wand: ast.MagicWand if s.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program)) && !Verifier.config.carbonQPs() =>
+      case wand: ast.MagicWand if s.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program)) && !Verifier.config.maskHeapMode() =>
         val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
         triggers = triggers.map(ts => ts ++ trigs)
         triggerAxioms = triggerAxioms ++ axioms
       case wand: ast.MagicWand =>
         val mwi = MagicWandIdentifier(wand, s.program)
-        val (hNew, chunk) = carbonQuantifiedChunkSupporter.findOrCreateCarbonChunk(s.h, mwi, v)
+        val (hNew, chunk) = maskHeapSupporter.findOrCreateMaskHeapChunk(s.h, mwi, v)
         s = s.copy(h = hNew)
         magicWandSupporter.evaluateWandArguments(s.copy(triggerExp = true), wand, pve, v)((_, tArgs, _) => {
           val tRcv = toSnapTree(tArgs)

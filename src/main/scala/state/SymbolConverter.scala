@@ -6,7 +6,7 @@
 
 package viper.silicon.state
 
-import viper.silicon.rules.carbonQuantifiedChunkSupporter
+import viper.silicon.rules.maskHeapSupporter
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
 import viper.silver.ast
 import viper.silicon.state.terms.{Sort, sorts}
@@ -75,8 +75,8 @@ class DefaultSymbolConverter extends SymbolConverter {
   }
 
   def toFunction(function: ast.Function, program: ast.Program): terms.HeapDepFun = {
-    if (Verifier.config.carbonFunctions()) {
-      val resources = carbonQuantifiedChunkSupporter.getResourceSeq(function.pres, program)
+    if (Verifier.config.heapFunctionEncoding()) {
+      val resources = maskHeapSupporter.getResourceSeq(function.pres, program)
       val heapSorts = resources.map{
         case f: ast.Field => HeapSort(toSort(f.typ))
         case _ => PredHeapSort

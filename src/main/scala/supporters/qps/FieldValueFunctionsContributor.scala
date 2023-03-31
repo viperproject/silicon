@@ -48,7 +48,7 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
   /* Functionality */
 
   def analyze(program: ast.Program): Unit = {
-    if (Verifier.config.carbonQPs())
+    if (Verifier.config.maskHeapMode())
       return
 
     /* TODO: Use viper.silver.ast.utility.QuantifiedPermissions.quantifiedFields instead? */

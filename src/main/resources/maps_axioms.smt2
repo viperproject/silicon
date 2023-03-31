@@ -7,8 +7,6 @@
 ;   - $T$ is the sanitized name of the sort corresponding to the type of the field
 
 
-
-
 (assert (forall ((m1 $Hp<$T$>) (r1 $Ref) (v $S$)) (!
       (forall ((r2 $Ref)) (!
             (=

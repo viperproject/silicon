@@ -11,7 +11,6 @@
 ; The axiom therefore needs to be emitted after the sort wrappers have
 ; been emitted.
 
-
 (assert (forall ((vs $FVF<$FLD$>) (ws $FVF<$FLD$>)) (!
     (=>
       (and

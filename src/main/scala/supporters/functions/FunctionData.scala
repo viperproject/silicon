@@ -13,7 +13,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.{Expressions, Functions}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
-import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, carbonQuantifiedChunkSupporter, functionSupporter}
+import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, maskHeapSupporter, functionSupporter}
 import viper.silicon.state.terms.{App, _}
 import viper.silicon.state.terms.predef._
 import viper.silicon.supporters.PredicateData
@@ -59,8 +59,8 @@ class FunctionData(val programFunction: ast.Function,
   val statelessFunction = functionSupporter.statelessVersion(function)
   val preconditionFunction = functionSupporter.preconditionVersion(function)
   val frameFunction = {
-    if (Verifier.config.carbonFunctions()) {
-      val resources = carbonQuantifiedChunkSupporter.getResourceSeq(programFunction.pres, program)
+    if (Verifier.config.heapFunctionEncoding()) {
+      val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
       functionSupporter.frameVersion(function, resources.size)
     } else {
       null
@@ -78,8 +78,8 @@ class FunctionData(val programFunction: ast.Function,
                          symbolConverter.toSort(programFunction.result.typ))
 
   val snapArgs = {
-    if (Verifier.config.carbonFunctions()) {
-      val resources = carbonQuantifiedChunkSupporter.getResourceSeq(programFunction.pres, program)
+    if (Verifier.config.heapFunctionEncoding()) {
+      val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
       resources.map(r => {
         val (name, sort) = r match {
           case f: ast.Field => (f.name, sorts.HeapSort(symbolConverter.toSort(f.typ)))
@@ -98,7 +98,7 @@ class FunctionData(val programFunction: ast.Function,
 
   val functionApplication = App(function, snapArgs ++ formalArgs.values.toSeq)
   val limitedFunctionApplication = App(limitedFunction, snapArgs ++ formalArgs.values.toSeq)
-  val triggerFunctionApplication = if (Verifier.config.carbonFunctions()) null else App(statelessFunction, formalArgs.values.toSeq)
+  val triggerFunctionApplication = if (Verifier.config.heapFunctionEncoding()) null else App(statelessFunction, formalArgs.values.toSeq)
   val preconditionFunctionApplication = App(preconditionFunction, snapArgs ++ formalArgs.values.toSeq)
 
   val limitedAxiom =
@@ -169,7 +169,7 @@ class FunctionData(val programFunction: ast.Function,
         case other => sys.error(s"Unexpected SM $other of type ${other.getClass.getSimpleName}")
       })
     freshSymbolsAcrossAllPhases ++= mergedFunctionRecorder.freshQPMasks.map(qpm => FunctionDecl(qpm._2))
-    if (phase == 0 && Verifier.config.carbonFunctions())
+    if (phase == 0 && Verifier.config.heapFunctionEncoding())
       freshSymbolsAcrossAllPhases ++= qpFrameFunctionDecls
 
     phase += 1
@@ -274,7 +274,7 @@ class FunctionData(val programFunction: ast.Function,
       val body = Let(toMap(bodyBindings), innermostBody)
 
       val res = Forall(arguments, body, Trigger(limitedFunctionApplication))
-      val transformedRes = if (Verifier.config.carbonFunctions())
+      val transformedRes = if (Verifier.config.heapFunctionEncoding())
         transformToHeapVersion(res)
       else
         res
@@ -335,7 +335,7 @@ class FunctionData(val programFunction: ast.Function,
   }
 
   def transformToHeapVersion(t: Term) = {
-    val resources = carbonQuantifiedChunkSupporter.getResourceSeq(programFunction.pres, program)
+    val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
     val resHeaps = fromSnapTree(`?s`, resources.size).zip(resources).map {
       case (s, r) =>
         val srt = r match {
@@ -354,7 +354,7 @@ class FunctionData(val programFunction: ast.Function,
       val pre = preconditionFunctionApplication
       val nestedDefinitionalAxioms = generateNestedDefinitionalAxioms
       val body = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
-      if (Verifier.config.carbonQPs()) {
+      if (Verifier.config.maskHeapMode()) {
         val predTriggers = predicateTriggers.values.map(pt => pt match {
           case App(f, args) => Trigger(Seq(limitedFunctionApplication, App(f, `?sp` +: args.tail)))
         }).toSeq
@@ -364,7 +364,7 @@ class FunctionData(val programFunction: ast.Function,
           And(predAxiom, directAxiom)
         else
           directAxiom
-        if (Verifier.config.carbonFunctions())
+        if (Verifier.config.heapFunctionEncoding())
           transformToHeapVersion(res)
         else
           res
@@ -390,14 +390,14 @@ class FunctionData(val programFunction: ast.Function,
       bodies.map(b => Forall(arguments, b, Seq(Trigger(limitedFunctionApplication))))
     } else Seq()
     val res = bodyPreconditions.toSeq ++ postPreconditions
-    if (Verifier.config.carbonFunctions())
+    if (Verifier.config.heapFunctionEncoding())
       res.map(t => transformToHeapVersion(t))
     else
       res
   }
 
   private def computeFrame(conjuncts: Seq[ast.Exp], functionName: String): Term = {
-    val resources = carbonQuantifiedChunkSupporter.getResourceSeq(programFunction.pres, program)
+    val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
     conjuncts match {
       case Nil => Unit
       case pre +: Nil => computeFrameHelper(pre, functionName, resources)
@@ -482,7 +482,7 @@ class FunctionData(val programFunction: ast.Function,
 
   lazy val frameAxiom: Term = {
     //assert(phase == 1, s"Frame axiom must be generated in phase 1, current phase is $phase")
-    assert(Verifier.config.carbonFunctions())
+    assert(Verifier.config.heapFunctionEncoding())
 
     val frameFuncApp = App(frameFunction, funcFrame +: formalArgs.values.toSeq)
     val body = functionApplication === frameFuncApp
@@ -503,7 +503,7 @@ class FunctionData(val programFunction: ast.Function,
       transformToHeapVersion(expressionTranslator.translatePostcondition(program, Seq(e), this)(0))
     }
 
-    val resources = carbonQuantifiedChunkSupporter.getResourceSeq(programFunction.pres, program)
+    val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
 
     val result = ListBuffer[Term]()
     for (func <- qpCondFuncs) {

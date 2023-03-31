@@ -354,34 +354,11 @@ class TermToZ3APIConverter
       case PermIntDiv(t0, t1) => ctx.mkDiv(convertToReal(t0), convertToReal(t1))
       case PermPermDiv(t0, t1) => ctx.mkDiv(convertToReal(t0), convertToReal(t1))
       case PermMin(t0, t1) => {
-        /*
-        (define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
-    (ite (<= p1 p2) p1 p2))
-         */
-        //val e0 = convert(t0).asInstanceOf[ArithExpr]
-        //val e1 = convert(t1).asInstanceOf[ArithExpr]
-        //ctx.mkITE(ctx.mkLe(e0, e1), e0, e1)
-
+        // use a function so we can use this in triggers without issues
         ctx.mkApp(getFuncDecl("$Perm.min", sorts.Perm, Seq(sorts.Perm, sorts.Perm)), Seq(convertToReal(t0), convertToReal(t1)): _*)
-        //createApp("$Perm.min", Seq(t0, t1), sorts.Perm)
       }
-      case IsValidPermVar(v) => {
-        /*
-        (define-fun $Perm.isValidVar ((p $Perm)) Bool
-	        (<= $Perm.No p))
-         */
-        ctx.mkLe(ctx.mkReal(0), convert(v).asInstanceOf[ArithExpr])
-      }
-      case IsReadPermVar(v) => {
-        /*
-        (define-fun $Perm.isReadVar ((p $Perm)) Bool
-         (and ($Perm.isValidVar p)
-         (not (= p $Perm.No))))
-         */
-        ctx.mkLt(ctx.mkReal(0), convert(v).asInstanceOf[ArithExpr]) // simplified
-        //ctx.mkAnd(ctx.mkLe(ctx.mkReal(0), convert(v).asInstanceOf[ArithExpr]),
-        //  ctx.mkNot(ctx.mkEq(convert(v).asInstanceOf[ArithExpr], ctx.mkReal(0))))
-      }
+      case IsValidPermVar(v) => ctx.mkLe(ctx.mkReal(0), convert(v).asInstanceOf[ArithExpr])
+      case IsReadPermVar(v) => ctx.mkLt(ctx.mkReal(0), convert(v).asInstanceOf[ArithExpr])
 
       /* Sequences */
 

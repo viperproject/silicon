@@ -113,7 +113,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
          Seq(Left("Declaring symbols related to program functions (from program analysis)"))
       ++ functionData.values.flatMap(data => {
            val alwaysUsed = Seq(data.function, data.limitedFunction, data.statelessFunction, data.preconditionFunction)
-           val frameFunc = if (Verifier.config.carbonFunctions()) Seq(data.frameFunction) else Seq()
+           val frameFunc = if (Verifier.config.heapFunctionEncoding()) Seq(data.frameFunction) else Seq()
            (alwaysUsed ++ frameFunc).map(FunctionDecl)
          }
          ).map(Right(_))
@@ -157,9 +157,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
-      val heap = if (Verifier.config.carbonQPs()) {
-        val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask, DummyHeap(HeapSort(symbolConverter.toSort(f.typ)))))
-        val predChunks = sInit.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, PredZeroMask, DummyHeap(PredHeapSort)))
+      val heap = if (Verifier.config.maskHeapMode()) {
+        val fieldChunks = sInit.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, DummyHeap(HeapSort(symbolConverter.toSort(f.typ)))))
+        val predChunks = sInit.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, DummyHeap(PredHeapSort)))
         Heap(fieldChunks ++ predChunks)
       } else {
         sInit.h
@@ -183,7 +183,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
         case (result1, phase1data) =>
           emitAndRecordFunctionAxioms(data.limitedAxiom)
-          if (!Verifier.config.carbonFunctions()) {
+          if (!Verifier.config.heapFunctionEncoding()) {
             emitAndRecordFunctionAxioms(data.triggerAxiom)
           } else {
             data.qpFrameFunctionDecls map decider.prover.declare

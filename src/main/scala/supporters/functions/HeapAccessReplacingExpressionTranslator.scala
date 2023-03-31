@@ -11,7 +11,7 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.annotation.unused
 import viper.silver.ast
 import viper.silicon.Map
-import viper.silicon.rules.{carbonQuantifiedChunkSupporter, functionSupporter}
+import viper.silicon.rules.{maskHeapSupporter, functionSupporter}
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
@@ -138,13 +138,13 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         val args = eFApp.args map (arg => translate(arg))
         val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap)
 
-        val fapp = if (Verifier.config.carbonFunctions()) {
+        val fapp = if (Verifier.config.heapFunctionEncoding()) {
           def createApp(trm: Term): Term = trm match {
             case mt: FakeMaskMapTerm => App(funVersion, mt.masks.values.toSeq ++ args)
             case Ite(cond, e1, e2) => Ite(cond, createApp(e1), createApp(e2))
             case v: Var =>
               // unresolved
-              val resources = carbonQuantifiedChunkSupporter.getResourceSeq(silverFunc.pres, program)
+              val resources = maskHeapSupporter.getResourceSeq(silverFunc.pres, program)
               val resHeaps = fromSnapTree(v, resources.size).zip(resources).map {
                 case (s, r) =>
                   val srt = r match {

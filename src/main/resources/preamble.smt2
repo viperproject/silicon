@@ -41,9 +41,7 @@
          (not (= p $Perm.No))))
 
 ; min function for permissions
-;(define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
-;    (ite (<= p1 p2) p1 p2))
-
+; not using define-fun so we can use it in triggers without issues
 (declare-fun $Perm.min ($Perm $Perm) $Perm)
 (assert (forall ((p1 $Perm) (p2 $Perm)) (!
     (= ($Perm.min p1 p2) (ite (<= p1 p2) p1 p2))

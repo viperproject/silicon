@@ -110,23 +110,6 @@ domain $Map[K, V] {
           ==> Map_apply(m, k) in Map_values(m))
   }
 
-  // incomplete, but better than nothing
-  //axiom {
-  //    forall m : $Map[K, V], k : K, v: V, v2: V :: { v2 in Map_values(Map_update(m, k, v)) } { v2 in Map_values(m), Map_update(m, k, v)}
-  //        (v == v2 ==> v2 in Map_values(Map_update(m, k, v))) &&
-  //            (v != v2 ==> ((v2 in Map_values(m) && (!(k in Map_domain(m)) || Map_apply(m, k) != v2)) ==> v2 in Map_values(Map_update(m, k, v))))
-  //  }
-
-  // pretty complete, but leads to timeouts on basic examples
-  //axiom {
-  //  forall m : $Map[K, V], k : K, v: V :: { Map_values(Map_update(m, k, v)) }
-  //
-  //  Map_values(Map_update(m, k, v)) ==
-  //  ((k in Map_domain(m) && (forall kp: K :: { kp in Map_domain(m) } (kp in Map_domain(m)) ==> Map_apply(m, k) == Map_apply(m, kp) ==> k == kp)) ?
-  //  ((Map_values(m) setminus Set(Map_apply(m, k))) union Set(v)) :
-  //  (Map_values(m) union Set(v)))
-  //}
-
   // There's a potential for matching loops with the extra trigger if two maps have equal domains:
   // v in range(m1); some k in dom(m1) = dom(m2) s.t. m1[k] = v; m2[k] in range(m2); some k' in dom(m2) s.t. m2[k'] = m2[k]
 

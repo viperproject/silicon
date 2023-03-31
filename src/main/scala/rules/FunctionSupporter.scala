@@ -18,7 +18,7 @@ object functionSupporter {
 
   def statelessVersion(function: HeapDepFun): Fun = {
     val id = function.id.withSuffix("%", "stateless")
-    if (Verifier.config.carbonFunctions()) Fun(id, function.argSorts, terms.sorts.Bool) else Fun(id, function.argSorts.tail, terms.sorts.Bool)
+    if (Verifier.config.heapFunctionEncoding()) Fun(id, function.argSorts, terms.sorts.Bool) else Fun(id, function.argSorts.tail, terms.sorts.Bool)
   }
 
   def preconditionVersion(function: HeapDepFun): HeapDepFun = {
@@ -27,7 +27,7 @@ object functionSupporter {
   }
 
   def frameVersion(function: HeapDepFun, nHeaps: Int): HeapDepFun = {
-    assert(Verifier.config.carbonFunctions())
+    assert(Verifier.config.heapFunctionEncoding())
     val id = function.id.withSuffix("%", "frame")
     HeapDepFun(id, sorts.Snap +: function.argSorts.drop(nHeaps), function.resultSort)
   }

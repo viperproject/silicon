@@ -16,7 +16,7 @@ import viper.silicon.interfaces.state.Chunk
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer, quantifiedChunkSupporter}
-import viper.silicon.state.{BasicCarbonChunk, Heap, State, Store}
+import viper.silicon.state.{BasicMaskHeapChunk, Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{PredZeroMask, ZeroMask, sorts}
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort}
@@ -50,9 +50,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       openSymbExLogger(method)
 
-      val heap = if (Verifier.config.carbonQPs()) {
-        val fieldChunks = sInit.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask, decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
-        val predChunks = sInit.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, PredZeroMask, decider.fresh("hInit", PredHeapSort)))
+      val heap = if (Verifier.config.maskHeapMode()) {
+        val fieldChunks = sInit.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
+        val predChunks = sInit.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, decider.fresh("hInit", PredHeapSort)))
         Heap(fieldChunks ++ predChunks)
       } else {
         sInit.h

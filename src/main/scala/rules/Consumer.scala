@@ -115,23 +115,23 @@ object consumer extends ConsumptionRules {
                           havoc: Boolean = true)
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
-    if (Verifier.config.carbonQPs()) {
-      val resources = carbonQuantifiedChunkSupporter.getResourceSeq(tlcs, s.program)
-      carbonConsumeTlcs(s, h, tlcs, pves, v, resources, ot, havoc)(Q)
+    if (Verifier.config.maskHeapMode()) {
+      val resources = maskHeapSupporter.getResourceSeq(tlcs, s.program)
+      consumeTlcsMaskHeap(s, h, tlcs, pves, v, resources, ot, havoc)(Q)
     } else {
       internalConsumeTlcs(s, h, tlcs, pves, v, None)(Q)
     }
   }
 
-  def carbonConsumeTlcs(s: State,
-                        h: Heap,
-                        tlcs: Seq[ast.Exp],
-                        pves: Seq[PartialVerificationError],
-                        v: Verifier,
-                        resources: Seq[Any],
-                        ot: Option[Term],
-                        havoc: Boolean = true)
-                       (Q: (State, Heap, Term, Verifier) => VerificationResult)
+  def consumeTlcsMaskHeap(s: State,
+                          h: Heap,
+                          tlcs: Seq[ast.Exp],
+                          pves: Seq[PartialVerificationError],
+                          v: Verifier,
+                          resources: Seq[Any],
+                          ot: Option[Term],
+                          havoc: Boolean = true)
+                         (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     val term = if (ot.isDefined) ot.get else {
       val resMap: Seq[(Any, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask)))
@@ -144,7 +144,7 @@ object consumer extends ConsumptionRules {
         val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks
 
         val heapToUse = if (s.exhaleExt) s2.reserveHeaps.head else h // TODO I'm just guessing
-        Q(s2, h2, carbonQuantifiedChunkSupporter.convertToSnapshot(resMap, resources, heapToUse), v2)
+        Q(s2, h2, maskHeapSupporter.convertToSnapshot(resMap, resources, heapToUse), v2)
       }
     })
   }
@@ -160,7 +160,7 @@ object consumer extends ConsumptionRules {
   : VerificationResult = {
 
     if (tlcs.isEmpty) {
-      if (Verifier.config.carbonQPs())
+      if (Verifier.config.maskHeapMode())
         Q(s, h, resMap.get, v)
       else
         Q(s, h, Unit, v)
@@ -173,7 +173,7 @@ object consumer extends ConsumptionRules {
       else
         wrappedConsumeTlc(s, h, a, pve, v, resMap, havoc)((s1, h1, snap1, v1) => {
           internalConsumeTlcs(s1, h1, tlcs.tail, pves.tail, v1, Some(snap1), havoc)((s2, h2, snap2, v2) => {
-            if (Verifier.config.carbonQPs())
+            if (Verifier.config.maskHeapMode())
               Q(s2, h2, snap2, v2)
             else
               Q(s2, h2, Combine(snap1, snap2), v2)
@@ -253,7 +253,7 @@ object consumer extends ConsumptionRules {
             }),
             (s2, v2) => {
               v2.symbExLog.closeScope(uidImplies)
-              Q(s2, h, if (Verifier.config.carbonQPs()) resMap.get else Unit, v2)
+              Q(s2, h, if (Verifier.config.maskHeapMode()) resMap.get else Unit, v2)
             }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
@@ -274,7 +274,7 @@ object consumer extends ConsumptionRules {
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.
        */
-      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.carbonQPs() =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.maskHeapMode() =>
         val field = acc.loc.field
         val qid = BasicChunkIdentifier(acc.loc.field.name)
         val optTrigger =
@@ -282,7 +282,7 @@ object consumer extends ConsumptionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            carbonQuantifiedChunkSupporter.consume(
+            maskHeapSupporter.consume(
               s = s1,
               h = h,
               resource = field,
@@ -335,7 +335,7 @@ object consumer extends ConsumptionRules {
               v1)(Q)
         }
 
-      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.carbonQPs() =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.maskHeapMode() =>
         val predicate = s.program.findPredicate(acc.loc.predicateName)
         val formalVars = s.predicateFormalVarMap(predicate)
         val qid = BasicChunkIdentifier(acc.loc.predicateName)
@@ -344,7 +344,7 @@ object consumer extends ConsumptionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs@_*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            carbonQuantifiedChunkSupporter.consume(
+            maskHeapSupporter.consume(
               s = s1,
               h = h,
               resource = predicate,
@@ -405,7 +405,7 @@ object consumer extends ConsumptionRules {
               v1)(Q)
         }
 
-      case qpa@QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) if Verifier.config.carbonQPs() =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) if Verifier.config.maskHeapMode() =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val qid = MagicWandIdentifier(wand, s.program)
@@ -416,7 +416,7 @@ object consumer extends ConsumptionRules {
         val tPerm = FullPerm
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            carbonQuantifiedChunkSupporter.consume(
+            maskHeapSupporter.consume(
               s = s1,
               h = h,
               resource = qid,
@@ -441,7 +441,7 @@ object consumer extends ConsumptionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
-        assert(!Verifier.config.carbonQPs())
+        assert(!Verifier.config.maskHeapMode())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val qid = MagicWandIdentifier(wand, s.program).toString
@@ -474,14 +474,14 @@ object consumer extends ConsumptionRules {
         }
 
       case ast.AccessPredicate(locAcc: ast.LocationAccess, ePerm)
-        if Verifier.config.carbonQPs() =>
+        if Verifier.config.maskHeapMode() =>
         evalLocationAccess(s, locAcc, pve, v)((s1, _, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
             permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
               // TODO: assume field trigger
 
               val loss = PermTimes(tPerm, s3.permissionScalingFactor)
-              carbonQuantifiedChunkSupporter.consumeSingleLocation(
+              maskHeapSupporter.consumeSingleLocation(
                 s3,
                 h,
                 Seq(`?r`),
@@ -590,12 +590,12 @@ object consumer extends ConsumptionRules {
       case _: ast.InhaleExhaleExp =>
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
 
-      case wand: ast.MagicWand if Verifier.config.carbonQPs() =>
+      case wand: ast.MagicWand if Verifier.config.maskHeapMode() =>
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val ident = MagicWandIdentifier(wand, s.program)
-          val (h1, _) = carbonQuantifiedChunkSupporter.findOrCreateCarbonChunk(s1.h, ident, v1)
+          val (h1, _) = maskHeapSupporter.findOrCreateMaskHeapChunk(s1.h, ident, v1)
           val s2 = s1.copy(h = h1)
-          carbonQuantifiedChunkSupporter.consumeSingleLocation(s2, h1, Seq(`?r`), tArgs, wand, FullPerm, pve, v1, resMap.get.asInstanceOf[FakeMaskMapTerm].masks, havoc)(Q)
+          maskHeapSupporter.consumeSingleLocation(s2, h1, Seq(`?r`), tArgs, wand, FullPerm, pve, v1, resMap.get.asInstanceOf[FakeMaskMapTerm].masks, havoc)(Q)
         })
 
       /* Handle wands */
@@ -688,7 +688,7 @@ object consumer extends ConsumptionRules {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt)
-      Q(s5, if (Verifier.config.carbonQPs()) resMap.get else Unit, v4)
+      Q(s5, if (Verifier.config.maskHeapMode()) resMap.get else Unit, v4)
     })
   }
 }

@@ -7,7 +7,6 @@
 ;   - $S$ is the sort corresponding to the type of the field
 ;   - $T$ is the sanitized name of the sort corresponding to the type of the field
 
-;tosnap_f(heap_f, set<r>): snap
 
 (declare-fun $SortWrappers.$Heap<$FLD$>To$Snap ($Hp<$T$> $Hp<$Perm>) $Snap)
 

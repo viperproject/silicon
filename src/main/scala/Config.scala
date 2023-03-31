@@ -413,14 +413,18 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     rawZ3RandomizeSeeds() || rawProverRandomizeSeeds()
   }
 
-  lazy val carbonQPs: ScallopOption[Boolean] = opt[Boolean]("carbonQPs",
-    descr = "Use Carbon-like heap encoding",
+  lazy val maskHeapMode: ScallopOption[Boolean] = opt[Boolean]("maskHeapMode",
+    descr = "Use total heap encoding with mask and heap maps",
     default = Some(false),
     noshort = true
   )
 
-  lazy val carbonFunctions: ScallopOption[Boolean] = opt[Boolean]("carbonFunctions",
-    descr = "Use Carbon-like function encoding",
+  def heapFunctionEncoding() = {
+    maskHeapMode() && !maskHeapSnapFunctions()
+  }
+
+  lazy val maskHeapSnapFunctions: ScallopOption[Boolean] = opt[Boolean]("maskHeapSnapFunctions",
+    descr = "Use snapshot-based function encoding in mask heap mode",
     default = Some(false),
     noshort = true
   )

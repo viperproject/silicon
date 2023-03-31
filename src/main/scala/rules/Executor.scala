@@ -15,7 +15,7 @@ import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.state.CarbonChunk
+import viper.silicon.interfaces.state.MaskHeapChunk
 import viper.silicon.logger.records.data.{CommentRecord, ConditionalEdgeRecord, ExecuteRecord, MethodCallRecord}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state._
@@ -186,9 +186,9 @@ object executor extends ExecutionRules {
 
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
 
-            val bodyHeap = if (Verifier.config.carbonQPs()) {
-              val fieldChunks = s.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
-              val predChunks = s.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort)))
+            val bodyHeap = if (Verifier.config.maskHeapMode()) {
+              val fieldChunks = s.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
+              val predChunks = s.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort)))
               Heap(fieldChunks ++ predChunks)
             } else {
               Heap()
@@ -307,12 +307,12 @@ object executor extends ExecutionRules {
           val t = ssaifyRhs(tRhs, x.name, x.typ, v)
           Q(s1.copy(g = s1.g + (x, t)), v1)})
 
-      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) if Verifier.config.carbonQPs() =>
+      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) if Verifier.config.maskHeapMode() =>
         assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
-            val resChunk = s.h.values.find(c => c.asInstanceOf[CarbonChunk].resource == field).get.asInstanceOf[BasicCarbonChunk]
+            val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == field).get.asInstanceOf[BasicMaskHeapChunk]
             val ve = pve dueTo InsufficientPermission(fa)
             val maskValue = HeapLookup(resChunk.mask, tRcvr)
             v2.decider.assert(AtLeast(maskValue, FullPerm)) {
@@ -394,13 +394,13 @@ object executor extends ExecutionRules {
           })
         )
 
-      case ast.NewStmt(x, fields) if Verifier.config.carbonQPs() =>
+      case ast.NewStmt(x, fields) if Verifier.config.maskHeapMode() =>
         val tRcvr = v.decider.fresh(x)
         v.decider.assume(tRcvr !== Null)
         var heap = s.h
         for (field <- fields) {
           // assume currently none
-          val fieldChunk = carbonQuantifiedChunkSupporter.findCarbonChunk(heap, field)
+          val fieldChunk = maskHeapSupporter.findMaskHeapChunk(heap, field)
           v.decider.assume(HeapLookup(fieldChunk.mask, tRcvr) === NoPerm)
           // add one
           val newFieldChunk = fieldChunk.copy(mask = HeapUpdate(fieldChunk.mask, tRcvr, FullPerm))
@@ -585,12 +585,12 @@ object executor extends ExecutionRules {
         val pve = PackageFailed(pckg)
           magicWandSupporter.packageWand(s, wand, proofScript, pve, v)((s1, chWand, v1) => {
 
-            if (Verifier.config.carbonQPs()) {
+            if (Verifier.config.maskHeapMode()) {
               val mwi = MagicWandIdentifier(wand, s1.program)
-              val hOps = carbonQuantifiedChunkSupporter.findCarbonChunkOptionally(s1.reserveHeaps.head, mwi) match {
+              val hOps = maskHeapSupporter.findMaskHeapChunkOptionally(s1.reserveHeaps.head, mwi) match {
                 case None => s1.reserveHeaps.head + chWand
                 case Some(curChunk) =>
-                  val newChunk = chWand.asInstanceOf[BasicCarbonChunk]
+                  val newChunk = chWand.asInstanceOf[BasicMaskHeapChunk]
                   val mergedMask = MaskSum(curChunk.mask, newChunk.mask)
                   val mergedHeap = MergeHeaps(curChunk.heap, curChunk.mask, newChunk.heap, newChunk.mask)
                   val mergedChunk = curChunk.copy(mask = mergedMask, heap = mergedHeap)

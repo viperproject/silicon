@@ -17,7 +17,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
 import viper.silicon.reporting.DefaultStateFormatter
-import viper.silicon.rules.{CarbonQPStateConsolidator, DefaultStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingStateConsolidator, StateConsolidationRules}
+import viper.silicon.rules.{MaskHeapStateConsolidator, DefaultStateConsolidator, MinimalRetryingStateConsolidator, MinimalStateConsolidator, MoreComplexExhaleStateConsolidator, RetryingStateConsolidator, StateConsolidationRules}
 import viper.silicon.utils.Counter
 
 import scala.collection.mutable
@@ -61,7 +61,7 @@ abstract class BaseVerifier(val config: Config,
     import StateConsolidationMode._
 
     config.stateConsolidationMode() match {
-      case _ if config.carbonQPs() => new CarbonQPStateConsolidator
+      case _ if config.maskHeapMode() => new MaskHeapStateConsolidator
       case Minimal => new MinimalStateConsolidator
       case Default => new DefaultStateConsolidator(config)
       case Retrying => new RetryingStateConsolidator(config)

@@ -11,76 +11,66 @@
     )))
 
 (assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>)) (!
-      (=>
-        (forall ((x $Ref)) (!
-                                                    (= (> ($Hp.get_$Perm m1 x) 0.0) (> ($Hp.get_$Perm m2 x) 0.0))
-                                                  :pattern (($Hp.get_$Perm m1 x) ($Hp.get_$Perm m2 x))
-                                                  :qid |qp.$Hp.maskDomainIdentical-def-inner|
-                                                  ))
-        ($Hp.maskDomainIdentical m1 m2)
-        )
+  (=>
+    (forall ((x $Ref)) (!
+        (= (> ($Hp.get_$Perm m1 x) 0.0) (> ($Hp.get_$Perm m2 x) 0.0))
+      :pattern (($Hp.get_$Perm m1 x) ($Hp.get_$Perm m2 x))
+      :qid |qp.$Hp.maskDomainIdentical-def-inner|
+      ))
+    ($Hp.maskDomainIdentical m1 m2)
+    )
     :pattern (($Hp.maskDomainIdentical m1 m2))
     :qid |qp.$Hp.maskDomainIdentical-def|
-    )))
+)))
 
 (assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>)) (!
-      (=>
-        (forall ((x $Ref)) (!
-                                                    (= ($Hp.get_$Perm m1 x) ($Hp.get_$Perm m2 x))
-                                                  :pattern (($Hp.get_$Perm m1 x) ($Hp.get_$Perm m2 x))
-                                                  :qid |qp.$Hp.maskEq-def-inner|
-                                                  ))
-        ($Hp.maskEq m1 m2)
-        )
+  (=>
+    (forall ((x $Ref)) (!
+        (= ($Hp.get_$Perm m1 x) ($Hp.get_$Perm m2 x))
+      :pattern (($Hp.get_$Perm m1 x) ($Hp.get_$Perm m2 x))
+      :qid |qp.$Hp.maskEq-def-inner|
+      ))
+    ($Hp.maskEq m1 m2)
+    )
     :pattern (($Hp.maskEq m1 m2))
     :qid |qp.$Hp.maskEq-def|
-    )))
+)))
 
 
 (assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>)) (!
-      (forall ((r $Ref)) (!
-            (=
-              (+ ($Hp.get_$Perm m1 r) ($Hp.get_$Perm m2 r))
-              ($Hp.get_$Perm ($Hp.maskSum m1 m2) r)
-              )
-          :pattern (($Hp.get_$Perm ($Hp.maskSum m1 m2) r))
-          :qid |qp.$Hp.maskSum-def-inner|
-          ))
+     (forall ((r $Ref)) (!
+        (=
+          (+ ($Hp.get_$Perm m1 r) ($Hp.get_$Perm m2 r))
+          ($Hp.get_$Perm ($Hp.maskSum m1 m2) r)
+          )
+      :pattern (($Hp.get_$Perm ($Hp.maskSum m1 m2) r))
+      :qid |qp.$Hp.maskSum-def-inner|
+      ))
     :pattern (($Hp.maskSum m1 m2))
     :qid |qp.$Hp.maskSum-def|
-    )))
+)))
 
 (assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>)) (!
-      (forall ((r $Ref)) (!
-            (=
-              (- ($Hp.get_$Perm m1 r) ($Hp.get_$Perm m2 r))
-              ($Hp.get_$Perm ($Hp.maskDiff m1 m2) r)
-              )
-          :pattern (($Hp.get_$Perm ($Hp.maskDiff m1 m2) r))
-          :qid |qp.$Hp.maskDiff-def-inner|
-          ))
+    (forall ((r $Ref)) (!
+        (=
+          (- ($Hp.get_$Perm m1 r) ($Hp.get_$Perm m2 r))
+          ($Hp.get_$Perm ($Hp.maskDiff m1 m2) r)
+          )
+      :pattern (($Hp.get_$Perm ($Hp.maskDiff m1 m2) r))
+      :qid |qp.$Hp.maskDiff-def-inner|
+      ))
     :pattern (($Hp.maskDiff m1 m2))
     :qid |qp.$Hp.maskDiff-def|
-    )))
-
-;(declare-fun $Hp.maskAdd ($Hp<$Perm> $Ref $Perm) $Hp<$Perm>)
-
-;(assert (forall ((m $Hp<$Perm>) (r1 $Ref) (v Real) (r2 $Ref)) (!
-;      (=
-;        ($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2)
-;        (+ ($Hp.get_$Perm m r2) (ite (= r1 r2) v 0.0)))
-;    :pattern (($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2))
-;    :qid |qp.$Hp.maskAdd-def|
-;    )))
+)))
 
 (assert (forall ((m $Hp<$Perm>) (r1 $Ref) (v Real)) (!
-      (forall ((r2 $Ref)) (!
-            (=
-              ($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2)
-              (+ ($Hp.get_$Perm m r2) (ite (= r1 r2) v 0.0)))
-          :pattern (($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2))
-          :qid |qp.$Hp.maskAdd-def-inner|
-          ))
+  (forall ((r2 $Ref)) (!
+        (=
+          ($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2)
+          (+ ($Hp.get_$Perm m r2) (ite (= r1 r2) v 0.0)))
+      :pattern (($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2))
+      :qid |qp.$Hp.maskAdd-def-inner|
+      ))
     :pattern (($Hp.maskAdd m r1 v))
     :qid |qp.$Hp.maskAdd-def|
-    )))
+)))

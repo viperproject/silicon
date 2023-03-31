@@ -160,7 +160,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
               case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True
               case (Some(ch1: NonQuantifiedChunk), Some(ch2: NonQuantifiedChunk)) => ch1.snap === ch2.snap
               case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
-              case (Some(ch1: BasicCarbonChunk), Some(ch2: BasicCarbonChunk)) =>
+              case (Some(ch1: BasicMaskHeapChunk), Some(ch2: BasicMaskHeapChunk)) =>
                 // This is weird. Sometimes I get here and one chunk has a zero mask, but for some reason I still need
                 // to equate the heaps to some degree.
                 HeapsOverlap(ch1.heap, ch1.mask, ch2.heap, ch2.mask) // ch1.heap === ch2.heap
@@ -197,9 +197,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
   }
 
   def getEmptyHeap(s: State, v: Verifier) = {
-    if (Verifier.config.carbonQPs()) {
-      val fieldChunks = s.program.fields.map(f => BasicCarbonChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
-      val predChunks = s.program.predicates.map(p => BasicCarbonChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort)))
+    if (Verifier.config.maskHeapMode()) {
+      val fieldChunks = s.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
+      val predChunks = s.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort)))
       Heap(fieldChunks ++ predChunks)
     } else {
       Heap()
@@ -305,13 +305,13 @@ object magicWandSupporter extends SymbolicExecutionRules {
       }
 
       val preMark = v3.decider.setPathConditionMark()
-      if (Verifier.config.carbonQPs()) {
+      if (Verifier.config.maskHeapMode()) {
         evaluateWandArguments(s4, wand, pve, v3)((s5, tArgs, v4) => {
           val wandSnap = MagicWandSnapshot(freshSnapRoot, snap)
           val argTerm = toSnapTree(tArgs)
           val newMask = MaskAdd(PredZeroMask, argTerm, FullPerm)
           val newHeap = HeapSingleton(argTerm, wandSnap, PredHeapSort)
-          val newChunk = BasicCarbonChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
+          val newChunk = BasicMaskHeapChunk(MagicWandID, MagicWandIdentifier(wand, s.program), newMask, newHeap)
           appendToResults(s5, newChunk, v4.decider.pcs.after(preMark), v4)
           Success()
         })
@@ -418,7 +418,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                : VerificationResult = {
         consume(s, wand, pve, v)((s1a, snap, v1a) => {
           evaluateWandArguments(s1a, wand, pve, v1a)((s1, tArgs, v1) => {
-            val wandSnap = if (Verifier.config.carbonQPs()) {
+            val wandSnap = if (Verifier.config.maskHeapMode()) {
               val mwi = MagicWandIdentifier(wand, s1.program)
               val argTerm = toSnapTree(tArgs)
               val res = MagicWandSnapshot(HeapLookup(SnapToHeap(snap, mwi, PredHeapSort), argTerm))
@@ -472,9 +472,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 
       val usedChunks = chs2.flatten
-      val (fr4, hUsed) = if (Verifier.config.carbonQPs()) {
-        (s3.functionRecorder, usedChunks.foldLeft(s2.reserveHeaps.head)((cur, chnk) => carbonQuantifiedChunkSupporter.mergeWandHeaps(cur, Heap(Seq(chnk)), v2)))
-        //(s3.functionRecorder, carbonQuantifiedChunkSupporter.mergeWandHeaps(s2.reserveHeaps.head, Heap(usedChunks), v2))
+      val (fr4, hUsed) = if (Verifier.config.maskHeapMode()) {
+        (s3.functionRecorder, usedChunks.foldLeft(s2.reserveHeaps.head)((cur, chnk) => maskHeapSupporter.mergeWandHeaps(cur, Heap(Seq(chnk)), v2)))
       } else
         v2.stateConsolidator.merge(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
 
@@ -504,8 +503,8 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * Since innermost assertions must be self-framing, combining hUsed, hOps and hLhs
        * is sound.
        */
-      if (Verifier.config.carbonQPs()) {
-        carbonQuantifiedChunkSupporter.mergeWandHeaps(carbonQuantifiedChunkSupporter.mergeWandHeaps(s.reserveHeaps.head, s.reserveHeaps(1), v), s.reserveHeaps(2), v)
+      if (Verifier.config.maskHeapMode()) {
+        maskHeapSupporter.mergeWandHeaps(maskHeapSupporter.mergeWandHeaps(s.reserveHeaps.head, s.reserveHeaps(1), v), s.reserveHeaps(2), v)
       } else {
         s.reserveHeaps.head + s.reserveHeaps(1) + s.reserveHeaps(2)
       }

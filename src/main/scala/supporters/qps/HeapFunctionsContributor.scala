@@ -53,7 +53,7 @@ class HeapFunctionsContributor(preambleReader: PreambleReader[String, String],
   /* Functionality */
 
   def analyze(program: ast.Program): Unit = {
-    if (Verifier.config.carbonQPs()) {
+    if (Verifier.config.maskHeapMode()) {
       collectedFields ++= program.fields
       collectedPredicates ++= program.predicates
       collectedPredicates += ast.Predicate("WAND", Seq(), None)()

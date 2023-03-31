@@ -70,7 +70,7 @@ object predicateSupporter extends PredicateSupportRules {
         v1.decider.assume(predTrigger)
       }
       val s2 = s1a.setConstrainable(constrainableWildcards, false)
-      if (Verifier.config.carbonQPs()) {
+      if (Verifier.config.maskHeapMode()) {
         val s3 = s2.copy(g = s.g,
           smDomainNeeded = s.smDomainNeeded,
           permissionScalingFactor = s.permissionScalingFactor)
@@ -135,12 +135,12 @@ object predicateSupporter extends PredicateSupportRules {
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val s1 = s.scalePermissionFactor(tPerm)
 
-    if (Verifier.config.carbonQPs()) {
+    if (Verifier.config.maskHeapMode()) {
 
       val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
       val permAssertion = pap.copy(perm = ast.FullPerm()())(pap.pos, pap.info, pap.errT) // we've already set permission scaling.
-      carbonConsumeTlcs(s1, s1.h, Seq(permAssertion), Seq(pve), v, Seq(predicate), None)((s2, h1, snap, v1) => {
+      consumeTlcsMaskHeap(s1, s1.h, Seq(permAssertion), Seq(pve), v, Seq(predicate), None)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1, partiallyConsumedHeap = None)
           .setConstrainable(constrainableWildcards, false)
         val predSnap = snap match {

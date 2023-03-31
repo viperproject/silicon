@@ -137,7 +137,7 @@ object producer extends ProductionRules {
                           v: Verifier)
                          (Q: (State, Verifier) => VerificationResult)
                          : VerificationResult = {
-    if (Verifier.config.carbonQPs()) {
+    if (Verifier.config.maskHeapMode()) {
       val givenSnap = sf(sorts.Snap, v)
       val fakeTerm = if (!givenSnap.isInstanceOf[FakeMaskMapTerm]) {
         val resources = as.map(_.shallowCollect {
@@ -188,7 +188,7 @@ object producer extends ProductionRules {
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v)(Q)
       else {
-        if (Verifier.config.carbonQPs()) {
+        if (Verifier.config.maskHeapMode()) {
           wrappedProduceTlc(s, sf, a, pve, v)((s1, v1) =>
             internalProduceTlcs(s1, sf, as.tail, pves.tail, v1)(Q))
         } else {
@@ -272,7 +272,7 @@ object producer extends ProductionRules {
               Q(s3, v3)
             }),
             (s2, v2) => {
-                if (!Verifier.config.carbonQPs())
+                if (!Verifier.config.maskHeapMode())
                   v2.decider.assume(sf(sorts.Snap, v2) === Unit)
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
@@ -306,8 +306,8 @@ object producer extends ProductionRules {
           eval(s1, perm, pve, v1)((s2, tPerm, v2) =>
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
               val gain = PermTimes(tPerm, s3.permissionScalingFactor)
-              if (Verifier.config.carbonQPs()) {
-                carbonQuantifiedChunkSupporter.produceSingleLocation(s3, field, Seq(tRcvr), gain, v3, sf(null, null))(Q)
+              if (Verifier.config.maskHeapMode()) {
+                maskHeapSupporter.produceSingleLocation(s3, field, Seq(tRcvr), gain, v3, sf(null, null))(Q)
               } else {
                 val snap = sf(v3.symbolConverter.toSort(field.typ), v3)
                 if (s3.qpFields.contains(field)) {
@@ -330,8 +330,8 @@ object producer extends ProductionRules {
               val snap = sf(
                 predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
                   .getOrElse(sorts.Snap), v2)
-              if (Verifier.config.carbonQPs()) {
-                carbonQuantifiedChunkSupporter.produceSingleLocation(s2, predicate, tArgs, gain, v2, snap)(Q)
+              if (Verifier.config.maskHeapMode()) {
+                maskHeapSupporter.produceSingleLocation(s2, predicate, tArgs, gain, v2, snap)(Q)
               } else {
               if (s2.qpPredicates.contains(predicate)) {
                 val formalArgs = s2.predicateFormalVarMap(predicate)
@@ -350,18 +350,18 @@ object producer extends ProductionRules {
               }}})))
 
 
-      case wand: ast.MagicWand if Verifier.config.carbonQPs() =>
+      case wand: ast.MagicWand if Verifier.config.maskHeapMode() =>
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val snap = sf(null, null)
           val ident = MagicWandIdentifier(wand, s.program)
-          val (h1, _) = carbonQuantifiedChunkSupporter.findOrCreateCarbonChunk(s1.h, ident, v1)
+          val (h1, _) = maskHeapSupporter.findOrCreateMaskHeapChunk(s1.h, ident, v1)
           val s2 = s1.copy(h = h1)
-          carbonQuantifiedChunkSupporter.produceSingleLocation(s2, ident, tArgs, FullPerm, v1, snap)(Q)
+          maskHeapSupporter.produceSingleLocation(s2, ident, tArgs, FullPerm, v1, snap)(Q)
         })
 
 
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
-        assert(!Verifier.config.carbonQPs())
+        assert(!Verifier.config.maskHeapMode())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         evals(s, bodyVars, _ => pve, v)((s1, args,v1) => {
@@ -404,7 +404,7 @@ object producer extends ProductionRules {
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.
        */
-      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.carbonQPs() =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.maskHeapMode() =>
         val qid = acc.loc.field.name
         val optTrigger =
           if (forall.triggers.isEmpty) None
@@ -413,7 +413,7 @@ object producer extends ProductionRules {
           case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val tSnap = sf(null, null) //sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
             //            v.decider.assume(PermAtMost(tPerm, FullPerm()))
-            carbonQuantifiedChunkSupporter.produce(
+            maskHeapSupporter.produce(
               s1,
               forall,
               acc.loc.field,
@@ -463,7 +463,7 @@ object producer extends ProductionRules {
             )(Q)
         }
 
-      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.carbonQPs() =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.maskHeapMode() =>
         val predicate = s.program.findPredicate(acc.loc.predicateName)
         val formalVars = s.predicateFormalVarMap(predicate)
         val qid = acc.loc.predicateName
@@ -473,7 +473,7 @@ object producer extends ProductionRules {
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val tSnap = sf(null, null) //sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
-            carbonQuantifiedChunkSupporter.produce(
+            maskHeapSupporter.produce(
               s1,
               forall,
               predicate,
@@ -528,7 +528,7 @@ object producer extends ProductionRules {
             )(Q)
         }
 
-      case qpa@QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) if Verifier.config.carbonQPs() =>
+      case qpa@QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) if Verifier.config.maskHeapMode() =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val optTrigger =
@@ -538,7 +538,7 @@ object producer extends ProductionRules {
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
             val tSnap = sf(null, null) //sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
-            carbonQuantifiedChunkSupporter.produce(
+            maskHeapSupporter.produce(
               s1,
               forall,
               qid,
@@ -562,7 +562,7 @@ object producer extends ProductionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
-        assert(!Verifier.config.carbonQPs())
+        assert(!Verifier.config.maskHeapMode())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val optTrigger =
@@ -599,7 +599,7 @@ object producer extends ProductionRules {
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
-        if (!Verifier.config.carbonQPs())
+        if (!Verifier.config.maskHeapMode())
           v.decider.assume(sf(sorts.Snap, v) === Unit) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, v1) => {
           v1.decider.assume(t)
