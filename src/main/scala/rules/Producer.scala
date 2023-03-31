@@ -404,35 +404,6 @@ object producer extends ProductionRules {
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.
        */
-      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.maskHeapMode() =>
-        val qid = acc.loc.field.name
-        val optTrigger =
-          if (forall.triggers.isEmpty) None
-          else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(null, null)
-            maskHeapSupporter.produce(
-              s1,
-              forall,
-              acc.loc.field,
-              qvars, Seq(`?r`),
-              qid, optTrigger,
-              tTriggers,
-              auxGlobals,
-              auxNonGlobals,
-              tCond,
-              Seq(tRcvr),
-              tSnap,
-              tPerm,
-              pve,
-              NegativePermission(acc.perm),
-              QPAssertionNotInjective(acc.loc),
-              v1,
-              qpa
-            )(Q)
-        }
-
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) =>
         val qid = acc.loc.field.name
         val optTrigger =
@@ -440,59 +411,47 @@ object producer extends ProductionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ), acc.loc.field.name), v1)
-//            v.decider.assume(PermAtMost(tPerm, FullPerm()))
-            quantifiedChunkSupporter.produce(
-              s1,
-              forall,
-              acc.loc.field,
-              qvars, Seq(`?r`),
-              qid, optTrigger,
-              tTriggers,
-              auxGlobals,
-              auxNonGlobals,
-              tCond,
-              Seq(tRcvr),
-              tSnap,
-              tPerm,
-              pve,
-              NegativePermission(acc.perm),
-              QPAssertionNotInjective(acc.loc),
-              v1
-            )(Q)
-        }
-
-      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.maskHeapMode() =>
-        val predicate = s.program.findPredicate(acc.loc.predicateName)
-        val formalVars = s.predicateFormalVarMap(predicate)
-        val qid = acc.loc.predicateName
-        val optTrigger =
-          if (forall.triggers.isEmpty) None
-          else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(null, null) //sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
-            maskHeapSupporter.produce(
-              s1,
-              forall,
-              predicate,
-              qvars,
-              formalVars,
-              qid,
-              optTrigger,
-              tTriggers,
-              auxGlobals,
-              auxNonGlobals,
-              tCond,
-              tArgs,
-              tSnap,
-              tPerm,
-              pve,
-              NegativePermission(acc.perm),
-              QPAssertionNotInjective(acc.loc),
-              v1,
-              qpa
-            )(Q)
+            if (Verifier.config.maskHeapMode()) {
+              val tSnap = sf(null, null)
+              maskHeapSupporter.produce(
+                s1,
+                forall,
+                acc.loc.field,
+                qvars, Seq(`?r`),
+                qid, optTrigger,
+                tTriggers,
+                auxGlobals,
+                auxNonGlobals,
+                tCond,
+                Seq(tRcvr),
+                tSnap,
+                tPerm,
+                pve,
+                NegativePermission(acc.perm),
+                QPAssertionNotInjective(acc.loc),
+                v1
+              )(Q)
+            } else {
+              val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ), acc.loc.field.name), v1)
+              quantifiedChunkSupporter.produce(
+                s1,
+                forall,
+                acc.loc.field,
+                qvars, Seq(`?r`),
+                qid, optTrigger,
+                tTriggers,
+                auxGlobals,
+                auxNonGlobals,
+                tCond,
+                Seq(tRcvr),
+                tSnap,
+                tPerm,
+                pve,
+                NegativePermission(acc.perm),
+                QPAssertionNotInjective(acc.loc),
+                v1
+              )(Q)
+            }
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
@@ -504,93 +463,108 @@ object producer extends ProductionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate), predicate.name), v1)
-            quantifiedChunkSupporter.produce(
-              s1,
-              forall,
-              predicate,
-              qvars,
-              formalVars,
-              qid,
-              optTrigger,
-              tTriggers,
-              auxGlobals,
-              auxNonGlobals,
-              tCond,
-              tArgs,
-              tSnap,
-              tPerm,
-              pve,
-              NegativePermission(acc.perm),
-              QPAssertionNotInjective(acc.loc),
-              v1
-            )(Q)
-        }
-
-      case qpa@QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) if Verifier.config.maskHeapMode() =>
-        val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        val optTrigger =
-          if (forall.triggers.isEmpty) None
-          else Some(forall.triggers)
-        val qid = MagicWandIdentifier(wand, s.program)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
-          case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(null, null) //sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
-            maskHeapSupporter.produce(
-              s1,
-              forall,
-              qid,
-              qvars,
-              formalVars,
-              qid.toString,
-              optTrigger,
-              tTriggers,
-              auxGlobals,
-              auxNonGlobals,
-              tCond,
-              tArgs,
-              tSnap,
-              FullPerm,
-              pve,
-              NegativePermission(ast.FullPerm()()),
-              QPAssertionNotInjective(wand),
-              v1,
-              qpa
-            )(Q)
+            if (Verifier.config.maskHeapMode()) {
+              val tSnap = sf(null, null)
+              maskHeapSupporter.produce(
+                s1,
+                forall,
+                predicate,
+                qvars,
+                formalVars,
+                qid,
+                optTrigger,
+                tTriggers,
+                auxGlobals,
+                auxNonGlobals,
+                tCond,
+                tArgs,
+                tSnap,
+                tPerm,
+                pve,
+                NegativePermission(acc.perm),
+                QPAssertionNotInjective(acc.loc),
+                v1
+              )(Q)
+            } else {
+              val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate), predicate.name), v1)
+              quantifiedChunkSupporter.produce(
+                s1,
+                forall,
+                predicate,
+                qvars,
+                formalVars,
+                qid,
+                optTrigger,
+                tTriggers,
+                auxGlobals,
+                auxNonGlobals,
+                tCond,
+                tArgs,
+                tSnap,
+                tPerm,
+                pve,
+                NegativePermission(acc.perm),
+                QPAssertionNotInjective(acc.loc),
+                v1
+              )(Q)
+            }
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
-        assert(!Verifier.config.maskHeapMode())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        val qid = MagicWandIdentifier(wand, s.program).toString
+        val mwi = MagicWandIdentifier(wand, s.program)
+        val qid = mwi.toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v1)
-            quantifiedChunkSupporter.produce(
-              s1,
-              forall,
-              wand,
-              qvars,
-              formalVars,
-              qid,
-              optTrigger,
-              tTriggers,
-              auxGlobals,
-              auxNonGlobals,
-              tCond,
-              tArgs,
-              tSnap,
-              FullPerm,
-              pve,
-              NegativePermission(ast.FullPerm()()),
-              QPAssertionNotInjective(wand),
-              v1
-            )(Q)
+            if (Verifier.config.maskHeapMode()) {
+              val tSnap = sf(null, null)
+              maskHeapSupporter.produce(
+                s1,
+                forall,
+                mwi,
+                qvars,
+                formalVars,
+                qid,
+                optTrigger,
+                tTriggers,
+                auxGlobals,
+                auxNonGlobals,
+                tCond,
+                tArgs,
+                tSnap,
+                FullPerm,
+                pve,
+                NegativePermission(ast.FullPerm()()),
+                QPAssertionNotInjective(wand),
+                v1
+              )(Q)
+            } else {
+              val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v1)
+              quantifiedChunkSupporter.produce(
+                s1,
+                forall,
+                wand,
+                qvars,
+                formalVars,
+                qid,
+                optTrigger,
+                tTriggers,
+                auxGlobals,
+                auxNonGlobals,
+                tCond,
+                tArgs,
+                tSnap,
+                FullPerm,
+                pve,
+                NegativePermission(ast.FullPerm()()),
+                QPAssertionNotInjective(wand),
+                v1
+              )(Q)
+            }
         }
 
       case _: ast.InhaleExhaleExp =>

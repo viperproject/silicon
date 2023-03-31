@@ -9,17 +9,16 @@ package viper.silicon.rules
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.MaskHeapChunk
 import viper.silicon.resources.MagicWandID
-import viper.silicon.rules.quantifiedChunkSupporter.{createFailure, getFreshInverseFunctions}
+import viper.silicon.rules.quantifiedChunkSupporter.getFreshInverseFunctions
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{MaskSort, PredHeapSort, PredMaskSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, App, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapToSnap, HeapUpdate, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskEq, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermLiteral, PermMin, PermMinus, PermNegation, PermPlus, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, predef, sorts, toSnapTree}
-import viper.silicon.state.{BasicMaskHeapChunk, ChunkIdentifier, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, terms}
-import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
+import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapToSnap, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, sorts, toSnapTree}
+import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, terms}
+import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.ast
-import viper.silver.ast.{LocationAccess, PermAdd}
 import viper.silver.reporter.InternalWarningMessage
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 
@@ -427,8 +426,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
               v: Verifier,
-              resMap: Map[Any, Term],
-              qpExp: ast.Exp)
+              resMap: Map[Any, Term])
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
 
@@ -610,23 +608,12 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                 }
 
                 // remove permissions
-                val useExistingQPMaskFunc = s.isConsumingFunctionPre.isDefined && s.functionData.get(s.isConsumingFunctionPre.get).get.preQPMasks.find(_._1 == qpExp).isDefined
-
-                val (qpMask, newFr) = if (useExistingQPMaskFunc) {
-                  val (_, qpMaskFunc, _) = s.functionData.get(s.isConsumingFunctionPre.get).get.preQPMasks.find(_._1 == qpExp).get
-
-                  val paramArgs = s.isConsumingFunctionPre.get.formalArgs.map(fa => s.g.get(fa.localVar).get)
-                  val snapArg = convertToSnapshot(resMap, resMap.keys.toSeq, h)
-
-                  (App(qpMaskFunc, paramArgs :+ snapArg), s.functionRecorder.recordFieldInv (inverseFunctions))
-                } else {
-                  val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
-                  val qpMaskGet = HeapLookup(qpMask, argTerm)
-                  val conditionalizedPermissions = Ite(condOfInvOfLoc, lossOfInvOfLoc, NoPerm)
-                  val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
-                  v.decider.assume(qpMaskConstraint)
-                  (qpMask, s.functionRecorder.recordFieldInv (inverseFunctions).recordArp(qpMask, qpMaskConstraint))
-                }
+                val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+                val qpMaskGet = HeapLookup(qpMask, argTerm)
+                val conditionalizedPermissions = Ite(condOfInvOfLoc, lossOfInvOfLoc, NoPerm)
+                val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+                v.decider.assume(qpMaskConstraint)
+                val newFr = s.functionRecorder.recordFieldInv(inverseFunctions).recordArp(qpMask, qpMaskConstraint)
 
                 // simplify only if this mask will be used later
                 val newMask = if (s.isConsumingFunctionPre.isDefined) MaskDiff(currentChunk.mask, qpMask) else subtractMask(currentChunk.mask, qpMask, resource, s.program, v)
@@ -704,8 +691,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
               pve: PartialVerificationError,
               negativePermissionReason: => ErrorReason,
               notInjectiveReason: => ErrorReason,
-              v: Verifier,
-              qpExp: ast.Exp)
+              v: Verifier)
              (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
 

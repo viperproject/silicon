@@ -19,7 +19,6 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
-import viper.silver.ast.{FieldAccessPredicate, PredicateAccessPredicate}
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 
@@ -270,37 +269,6 @@ object consumer extends ConsumptionRules {
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.
        */
-      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) if Verifier.config.maskHeapMode() =>
-        val field = acc.loc.field
-        val qid = BasicChunkIdentifier(acc.loc.field.name)
-        val optTrigger =
-          if (forall.triggers.isEmpty) None
-          else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            maskHeapSupporter.consume(
-              s = s1,
-              h = h,
-              resource = field,
-              qvars = qvars,
-              formalQVars = Seq(`?r`),
-              qid = qid.name,
-              optTrigger = optTrigger,
-              tTriggers = tTriggers,
-              auxGlobals = auxGlobals,
-              auxNonGlobals = auxNonGlobals,
-              tCond = tCond,
-              tArgs = Seq(tRcvr),
-              tPerm = tPerm,
-              pve = pve,
-              negativePermissionReason = NegativePermission(acc.perm),
-              notInjectiveReason = QPAssertionNotInjective(acc.loc),
-              insufficientPermissionReason = InsufficientPermission(acc.loc),
-              v1,
-              resMap.get.asInstanceOf[FakeMaskMapTerm].masks,
-              qpa)(Q)
-        }
-
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) =>
         val field = acc.loc.field
         val qid = BasicChunkIdentifier(acc.loc.field.name)
@@ -309,57 +277,48 @@ object consumer extends ConsumptionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid.name, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            quantifiedChunkSupporter.consume(
-              s = s1,
-              h = h,
-              resource = field,
-              qvars = qvars,
-              formalQVars = Seq(`?r`),
-              qid = qid.name,
-              optTrigger = optTrigger,
-              tTriggers = tTriggers,
-              auxGlobals = auxGlobals,
-              auxNonGlobals = auxNonGlobals,
-              tCond = tCond,
-              tArgs = Seq(tRcvr),
-              tPerm = tPerm,
-              pve = pve,
-              negativePermissionReason = NegativePermission(acc.perm),
-              notInjectiveReason = QPAssertionNotInjective(acc.loc),
-              insufficientPermissionReason = InsufficientPermission(acc.loc),
-              v1)(Q)
-        }
-
-      case qpa@QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) if Verifier.config.maskHeapMode() =>
-        val predicate = s.program.findPredicate(acc.loc.predicateName)
-        val formalVars = s.predicateFormalVarMap(predicate)
-        val qid = BasicChunkIdentifier(acc.loc.predicateName)
-        val optTrigger =
-          if (forall.triggers.isEmpty) None
-          else Some(forall.triggers)
-        evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pve, v) {
-          case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs@_*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            maskHeapSupporter.consume(
-              s = s1,
-              h = h,
-              resource = predicate,
-              qvars = qvars,
-              formalQVars = formalVars,
-              qid = qid.name,
-              optTrigger = optTrigger,
-              tTriggers = tTriggers,
-              auxGlobals = auxGlobals,
-              auxNonGlobals = auxNonGlobals,
-              tCond = tCond,
-              tArgs = tArgs,
-              tPerm = tPerm,
-              pve = pve,
-              negativePermissionReason = NegativePermission(acc.perm),
-              notInjectiveReason = QPAssertionNotInjective(acc.loc),
-              insufficientPermissionReason = InsufficientPermission(acc.loc),
-              v1,
-              resMap.get.asInstanceOf[FakeMaskMapTerm].masks,
-              qpa)(Q)
+            if (Verifier.config.maskHeapMode()) {
+              maskHeapSupporter.consume(
+                s = s1,
+                h = h,
+                resource = field,
+                qvars = qvars,
+                formalQVars = Seq(`?r`),
+                qid = qid.name,
+                optTrigger = optTrigger,
+                tTriggers = tTriggers,
+                auxGlobals = auxGlobals,
+                auxNonGlobals = auxNonGlobals,
+                tCond = tCond,
+                tArgs = Seq(tRcvr),
+                tPerm = tPerm,
+                pve = pve,
+                negativePermissionReason = NegativePermission(acc.perm),
+                notInjectiveReason = QPAssertionNotInjective(acc.loc),
+                insufficientPermissionReason = InsufficientPermission(acc.loc),
+                v1,
+                resMap.get.asInstanceOf[FakeMaskMapTerm].masks)(Q)
+            } else {
+              quantifiedChunkSupporter.consume(
+                s = s1,
+                h = h,
+                resource = field,
+                qvars = qvars,
+                formalQVars = Seq(`?r`),
+                qid = qid.name,
+                optTrigger = optTrigger,
+                tTriggers = tTriggers,
+                auxGlobals = auxGlobals,
+                auxNonGlobals = auxNonGlobals,
+                tCond = tCond,
+                tArgs = Seq(tRcvr),
+                tPerm = tPerm,
+                pve = pve,
+                negativePermissionReason = NegativePermission(acc.perm),
+                notInjectiveReason = QPAssertionNotInjective(acc.loc),
+                insufficientPermissionReason = InsufficientPermission(acc.loc),
+                v1)(Q)
+            }
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
@@ -378,59 +337,48 @@ object consumer extends ConsumptionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid.name, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            quantifiedChunkSupporter.consume(
-              s = s1,
-              h = h,
-              resource = predicate,
-              qvars = qvars,
-              formalQVars = formalVars,
-              qid = qid.name,
-              optTrigger = optTrigger,
-              tTriggers = tTriggers,
-              auxGlobals = auxGlobals,
-              auxNonGlobals = auxNonGlobals,
-              tCond = tCond,
-              tArgs = tArgs,
-              tPerm = tPerm,
-              pve = pve,
-              negativePermissionReason = NegativePermission(acc.perm),
-              notInjectiveReason = QPAssertionNotInjective(acc.loc),
-              insufficientPermissionReason = InsufficientPermission(acc.loc),
-              v1)(Q)
-        }
-
-      case qpa@QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) if Verifier.config.maskHeapMode() =>
-        val bodyVars = wand.subexpressionsToEvaluate(s.program)
-        val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        val qid = MagicWandIdentifier(wand, s.program)
-        val optTrigger =
-          if (forall.triggers.isEmpty) None
-          else Some(forall.triggers)
-        val ePerm = ast.FullPerm()()
-        val tPerm = FullPerm
-        evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid.toString, pve, v) {
-          case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            maskHeapSupporter.consume(
-              s = s1,
-              h = h,
-              resource = qid,
-              qvars = qvars,
-              formalQVars = formalVars,
-              qid = qid.toString,
-              optTrigger = optTrigger,
-              tTriggers = tTriggers,
-              auxGlobals = auxGlobals,
-              auxNonGlobals = auxNonGlobals,
-              tCond = tCond,
-              tArgs = tArgs,
-              tPerm = tPerm,
-              pve = pve,
-              negativePermissionReason = NegativePermission(ePerm),
-              notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
-              insufficientPermissionReason = MagicWandChunkNotFound(wand),
-              v1,
-              resMap.get.asInstanceOf[FakeMaskMapTerm].masks,
-              qpa)(Q)
+            if (Verifier.config.maskHeapMode()) {
+              maskHeapSupporter.consume(
+                s = s1,
+                h = h,
+                resource = predicate,
+                qvars = qvars,
+                formalQVars = formalVars,
+                qid = qid.name,
+                optTrigger = optTrigger,
+                tTriggers = tTriggers,
+                auxGlobals = auxGlobals,
+                auxNonGlobals = auxNonGlobals,
+                tCond = tCond,
+                tArgs = tArgs,
+                tPerm = tPerm,
+                pve = pve,
+                negativePermissionReason = NegativePermission(acc.perm),
+                notInjectiveReason = QPAssertionNotInjective(acc.loc),
+                insufficientPermissionReason = InsufficientPermission(acc.loc),
+                v1,
+                resMap.get.asInstanceOf[FakeMaskMapTerm].masks)(Q)
+            } else {
+              quantifiedChunkSupporter.consume(
+                s = s1,
+                h = h,
+                resource = predicate,
+                qvars = qvars,
+                formalQVars = formalVars,
+                qid = qid.name,
+                optTrigger = optTrigger,
+                tTriggers = tTriggers,
+                auxGlobals = auxGlobals,
+                auxNonGlobals = auxNonGlobals,
+                tCond = tCond,
+                tArgs = tArgs,
+                tPerm = tPerm,
+                pve = pve,
+                negativePermissionReason = NegativePermission(acc.perm),
+                notInjectiveReason = QPAssertionNotInjective(acc.loc),
+                insufficientPermissionReason = InsufficientPermission(acc.loc),
+                v1)(Q)
+            }
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
@@ -445,25 +393,48 @@ object consumer extends ConsumptionRules {
         val tPerm = FullPerm
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            quantifiedChunkSupporter.consume(
-              s = s1,
-              h = h,
-              resource = wand,
-              qvars = qvars,
-              formalQVars = formalVars,
-              qid = qid,
-              optTrigger = optTrigger,
-              tTriggers = tTriggers,
-              auxGlobals = auxGlobals,
-              auxNonGlobals = auxNonGlobals,
-              tCond = tCond,
-              tArgs = tArgs,
-              tPerm = tPerm,
-              pve = pve,
-              negativePermissionReason = NegativePermission(ePerm),
-              notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
-              insufficientPermissionReason = MagicWandChunkNotFound(wand), /*InsufficientPermission(...)*/
-              v1)(Q)
+            if (Verifier.config.maskHeapMode()) {
+              maskHeapSupporter.consume(
+                s = s1,
+                h = h,
+                resource = qid,
+                qvars = qvars,
+                formalQVars = formalVars,
+                qid = qid.toString,
+                optTrigger = optTrigger,
+                tTriggers = tTriggers,
+                auxGlobals = auxGlobals,
+                auxNonGlobals = auxNonGlobals,
+                tCond = tCond,
+                tArgs = tArgs,
+                tPerm = tPerm,
+                pve = pve,
+                negativePermissionReason = NegativePermission(ePerm),
+                notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
+                insufficientPermissionReason = MagicWandChunkNotFound(wand),
+                v1,
+                resMap.get.asInstanceOf[FakeMaskMapTerm].masks)(Q)
+            } else {
+              quantifiedChunkSupporter.consume(
+                s = s1,
+                h = h,
+                resource = wand,
+                qvars = qvars,
+                formalQVars = formalVars,
+                qid = qid,
+                optTrigger = optTrigger,
+                tTriggers = tTriggers,
+                auxGlobals = auxGlobals,
+                auxNonGlobals = auxNonGlobals,
+                tCond = tCond,
+                tArgs = tArgs,
+                tPerm = tPerm,
+                pve = pve,
+                negativePermissionReason = NegativePermission(ePerm),
+                notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
+                insufficientPermissionReason = MagicWandChunkNotFound(wand), /*InsufficientPermission(...)*/
+                v1)(Q)
+            }
         }
 
       case ast.AccessPredicate(locAcc: ast.LocationAccess, ePerm)
@@ -471,8 +442,6 @@ object consumer extends ConsumptionRules {
         evalLocationAccess(s, locAcc, pve, v)((s1, _, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
             permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
-              // TODO: assume field trigger
-
               val loss = PermTimes(tPerm, s3.permissionScalingFactor)
               maskHeapSupporter.consumeSingleLocation(
                 s3,
@@ -582,6 +551,7 @@ object consumer extends ConsumptionRules {
       case _: ast.InhaleExhaleExp =>
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
 
+      /* Handle wands */
       case wand: ast.MagicWand if Verifier.config.maskHeapMode() =>
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val ident = MagicWandIdentifier(wand, s.program)
@@ -590,7 +560,6 @@ object consumer extends ConsumptionRules {
           maskHeapSupporter.consumeSingleLocation(s2, h1, Seq(`?r`), tArgs, wand, FullPerm, pve, v1, resMap.get.asInstanceOf[FakeMaskMapTerm].masks)(Q)
         })
 
-      /* Handle wands */
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
