@@ -21,7 +21,7 @@
     )
     :pattern (($Hp.maskDomainIdentical m1 m2))
     :qid |qp.$Hp.maskDomainIdentical-def|
-)))
+    )))
 
 (assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>)) (!
   (=>
@@ -34,7 +34,7 @@
     )
     :pattern (($Hp.maskEq m1 m2))
     :qid |qp.$Hp.maskEq-def|
-)))
+    )))
 
 
 (assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>)) (!
@@ -48,7 +48,7 @@
       ))
     :pattern (($Hp.maskSum m1 m2))
     :qid |qp.$Hp.maskSum-def|
-)))
+    )))
 
 (assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>)) (!
     (forall ((r $Ref)) (!
@@ -61,7 +61,7 @@
       ))
     :pattern (($Hp.maskDiff m1 m2))
     :qid |qp.$Hp.maskDiff-def|
-)))
+    )))
 
 (assert (forall ((m $Hp<$Perm>) (r1 $Ref) (v Real)) (!
   (forall ((r2 $Ref)) (!
@@ -73,4 +73,4 @@
       ))
     :pattern (($Hp.maskAdd m r1 v))
     :qid |qp.$Hp.maskAdd-def|
-)))
+    )))

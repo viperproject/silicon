@@ -19,7 +19,7 @@
       ))
     :pattern (($SortWrappers.$SnapTo$Heap<$FLD$> ($SortWrappers.$Heap<$FLD$>To$Snap h s)))
     :qid |qp.$SnapTo$Heap<$FLD$>-def|
-)))
+    )))
 
 (assert (forall ((h1 $Hp<$T$>) (s1 $Hp<$Perm>) (h2 $Hp<$T$>) (s2 $Hp<$Perm>)) (!
   (=>
@@ -34,4 +34,4 @@
     )
     :pattern (($SortWrappers.$Heap<$FLD$>To$Snap h1 s1) ($SortWrappers.$Heap<$FLD$>To$Snap h2 s2))
     :qid |qp.$SnapTo$Heap<$FLD$>-ext|
-)))
+    )))
