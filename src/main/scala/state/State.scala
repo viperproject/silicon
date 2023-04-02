@@ -68,7 +68,9 @@ final case class State(g: Store = Store(),
                        retryLevel: Int = 0,
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
-                       moreCompleteExhale: Boolean = false)
+                       moreCompleteExhale: Boolean = false,
+                       isKnownWelldefined: Boolean = false,
+                       isKnownCorrect: Boolean = false)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =
@@ -149,7 +151,7 @@ object State {
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, hack, retryLevel, useHeapTriggers,
-                 moreCompleteExhale) =>
+                 moreCompleteExhale, isKnownWelldefined, isKnownCorrect) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -174,7 +176,7 @@ object State {
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `retryLevel`, `useHeapTriggers`,
-                     moreCompleteExhale2) =>
+                     moreCompleteExhale2, isKnownWelldefined2, isKnownCorrect2) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
@@ -186,6 +188,8 @@ object State {
 
             val ssCache3 = ssCache1 ++ ssCache2
             val moreCompleteExhale3 = moreCompleteExhale || moreCompleteExhale2
+            val isKnownWelldefined3 = isKnownWelldefined && isKnownWelldefined2
+            val isKnownCorrect3 = isKnownCorrect && isKnownCorrect2
 
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
@@ -194,7 +198,9 @@ object State {
                     ssCache = ssCache3,
                     smCache = smCache3,
                     pmCache = pmCache3,
-                    moreCompleteExhale = moreCompleteExhale3)
+                    moreCompleteExhale = moreCompleteExhale3,
+                    isKnownWelldefined = isKnownWelldefined3,
+                    isKnownCorrect = isKnownCorrect3)
 
           case _ =>
             val err = new StringBuilder()

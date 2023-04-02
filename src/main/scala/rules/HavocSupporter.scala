@@ -125,7 +125,7 @@ object havocSupporter extends SymbolicExecutionRules {
         v.decider.prover.comment("Check havocall receiver injectivity")
         val notInjectiveReason = QuasihavocallNotInjective(havocall)
 
-        v.decider.assert(receiverInjectivityCheck) {
+        v.decider.assertWD(receiverInjectivityCheck, s1, v) {
           case false => createFailure(pve dueTo notInjectiveReason, v, s1)
           case true =>
             // Generate the inverse axioms

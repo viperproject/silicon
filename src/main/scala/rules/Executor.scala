@@ -483,7 +483,7 @@ object executor extends ExecutionRules {
           val preCondLog = new CommentRecord("Precondition", s1, v1.decider.pcs)
           val preCondId = v1.symbExLog.openScope(preCondLog)
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
-                           recordVisited = true)
+                           recordVisited = true, isKnownWelldefined = true)
           consumes(s2, meth.pres, _ => pvePre, v1)((s3, _, v2) => {
             v2.symbExLog.closeScope(preCondId)
             val postCondLog = new CommentRecord("Postcondition", s3, v2.decider.pcs)
@@ -498,7 +498,8 @@ object executor extends ExecutionRules {
                               .map(p => (p._1, s5.g(p._2))).toMap)
               val s6 = s5.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
-                               recordVisited = s1.recordVisited)
+                               recordVisited = s1.recordVisited,
+                               isKnownWelldefined = s1.isKnownWelldefined)
               v3.symbExLog.closeScope(sepIdentifier)
               Q(s6, v3)})})})
 
