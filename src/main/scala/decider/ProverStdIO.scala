@@ -41,6 +41,7 @@ abstract class ProverStdIO(uniqueId: String,
 
   var proverPath: Path = _
   var lastModel : String = _
+  var lastReasonUnknown : String = _
 
   def exeEnvironmentalVariable: String
   def dependencies: Seq[SilDefaultDependency]
@@ -251,6 +252,7 @@ abstract class ProverStdIO(uniqueId: String,
     val endTime = System.currentTimeMillis()
 
     if (!result) {
+      retrieveReasonUnknown()
       retrieveAndSaveModel()
     }
 
@@ -283,6 +285,11 @@ abstract class ProverStdIO(uniqueId: String,
       }
       lastModel = model
     }
+  }
+
+  protected def retrieveReasonUnknown(): Unit = {
+    writeLine("(get-info :reason-unknown)")
+    lastReasonUnknown = readLine()
   }
 
   override def hasModel(): Boolean = {
@@ -474,5 +481,10 @@ abstract class ProverStdIO(uniqueId: String,
 
   override def getModel(): Model = Model(lastModel)
 
-  override def clearLastModel(): Unit = lastModel = null
+  override def getReasonUnknown(): String = lastReasonUnknown
+
+  override def clearLastAssert(): Unit = {
+    lastModel = null
+    lastReasonUnknown = null
+  }
 }

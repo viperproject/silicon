@@ -387,6 +387,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     override def isModelValid(): Boolean = prover.isModelValid()
 
-    override def clearModel(): Unit = prover.clearLastModel()
+    override def clearModel(): Unit = prover.clearLastAssert()
   }
 }

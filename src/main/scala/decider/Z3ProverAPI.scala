@@ -84,6 +84,7 @@ class Z3ProverAPI(uniqueId: String,
 
   var proverPath: Path = _
   var lastModel : Model = _
+  var lastReasonUnknown: String = _
 
   var emittedPreambleString = mutable.Queue[String]()
   var preamblePhaseOver = false
@@ -296,6 +297,7 @@ class Z3ProverAPI(uniqueId: String,
     pop()
 
     if (!result) {
+      retrieveReasonUnknown()
       retrieveAndSaveModel()
     }
 
@@ -321,6 +323,10 @@ class Z3ProverAPI(uniqueId: String,
       val model = prover.getModel
       lastModel = model
     }
+  }
+
+  protected def retrieveReasonUnknown(): Unit = {
+    lastReasonUnknown = prover.getReasonUnknown
   }
 
   protected def assertUsingSoftConstraints(goal: Term, timeout: Option[Int]): (Boolean, Long) = {
@@ -468,6 +474,8 @@ class Z3ProverAPI(uniqueId: String,
     ViperModel(entries.toMap)
   }
 
+  override def getReasonUnknown(): String = lastReasonUnknown
+
   override def hasModel(): Boolean = {
     lastModel != null
   }
@@ -476,7 +484,10 @@ class Z3ProverAPI(uniqueId: String,
     lastModel != null
   }
 
-  override def clearLastModel(): Unit = lastModel = null
+  override def clearLastAssert(): Unit = {
+    lastModel = null
+    lastReasonUnknown = null
+  }
 
   protected def setTimeout(timeout: Option[Int]): Unit = {
     val effectiveTimeout = timeout.getOrElse(Verifier.config.proverTimeout)

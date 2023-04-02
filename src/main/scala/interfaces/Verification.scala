@@ -100,7 +100,7 @@ case class Failure/*[ST <: Store[ST],
   override lazy val toString: String = message.readableMessage
 }
 
-case class SiliconFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
+case class SiliconFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample], reasonUnknown: Option[String]) extends FailureContext {
   lazy val branchConditionString: String = {
     if(branchConditions.nonEmpty) {
       val branchConditionsString =
@@ -118,7 +118,7 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp], counterExample:
     counterExample.fold("")(ce => s"\n\t\tcounterexample:\n$ce")
   }
 
-  override lazy val toString: String = branchConditionString + counterExampleString
+  override lazy val toString: String = branchConditionString + counterExampleString + s"\nPotential incompleteness: ${reasonUnknown}"
 }
 
 trait SiliconCounterexample extends Counterexample {

@@ -46,6 +46,11 @@ trait SymbolicExecutionRules {
         Some(finalCE)
       } else None
     } else None
+    val reasonUnknown = if (v != null && !generateNewModel) {
+      Some(v.decider.prover.getReasonUnknown())
+    } else {
+      None
+    }
 
     val branchconditions = if (Verifier.config.enableBranchconditionReporting()) {
       v.decider.pcs.branchConditionExps.flatten
@@ -56,7 +61,7 @@ trait SymbolicExecutionRules {
           case _ => (-1, -1)
         })
     } else Seq()
-    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample))
+    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
     Failure(res, v.reportFurtherErrors())
 
   }
