@@ -85,6 +85,7 @@ class Z3ProverAPI(uniqueId: String,
   protected var ctx: Context = _
 
   var proverPath: Path = _
+  var lastReasonUnknown : String = _
   var lastModel : Model = _
 
   var emittedPreambleString = mutable.Queue[String]()
@@ -246,6 +247,7 @@ class Z3ProverAPI(uniqueId: String,
 
     if (!result) {
       retrieveAndSaveModel()
+      retrieveReasonUnknown()
     }
 
     (result, endTime - startTime)
@@ -269,6 +271,12 @@ class Z3ProverAPI(uniqueId: String,
     if (Verifier.config.counterexample.toOption.isDefined) {
       val model = prover.getModel
       lastModel = model
+    }
+  }
+
+  protected def retrieveReasonUnknown(): Unit = {
+    if (Verifier.config.reportReasonUnknown()) {
+      lastReasonUnknown = prover.getReasonUnknown
     }
   }
 
@@ -417,7 +425,12 @@ class Z3ProverAPI(uniqueId: String,
     lastModel != null
   }
 
-  override def clearLastModel(): Unit = lastModel = null
+  override def getReasonUnknown(): String = lastReasonUnknown
+
+  override def clearLastAssert(): Unit = {
+    lastReasonUnknown = null
+    lastModel = null
+  }
 
   protected def setTimeout(timeout: Option[Int]): Unit = {
     val effectiveTimeout = timeout.getOrElse(Verifier.config.proverTimeout)
