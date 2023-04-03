@@ -247,7 +247,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
                (Q: Boolean => VerificationResult)
                : VerificationResult = {
       if (s.isKnownCorrect) {
-        //assume(t)
+        assume(t)
         Q(true)
       } else {
         assertRaw(t, timeout)(Q)
@@ -257,8 +257,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def assertWD(t: Term, s: State, v: Verifier, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
                 (Q: Boolean => VerificationResult)
                 : VerificationResult = {
-      if (s.isKnownWelldefined || s.isKnownCorrect) {
-        //assume(t)
+      if ((Verifier.config.avoidReverifyingWelldefinedness() && s.isKnownWelldefined) || s.isKnownCorrect) {
+        // TODO: ME: We could assume(t) here, should we?
         Q(true)
       } else {
         assertRaw(t, timeout)(Q)
