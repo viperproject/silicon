@@ -48,28 +48,22 @@ object Z3ProverAPI {
   val initialOptions = Map("auto_config" -> "false", "type_check" -> "true")
   val boolParams = Map(
     "smt.delay_units" -> true,
-    "delay_units" -> true,
     "smt.mbqi" -> false,
-    "mbqi" -> false,
     // "pp.bv_literals" -> false,
     "model.v2" -> true
   )
   val intParams = Map(
     "smt.case_split" -> 3,
-    "case_split" -> 3,
     "smt.qi.max_multi_patterns" -> 1000,
-    "qi.max_multi_patterns" -> 1000,
     "smt.arith.solver" -> 2,
-    "arith.solver" -> 2
   )
   val stringParams: Map[String, String] = Map(
     // currently none
   )
   val doubleParams = Map(
     "smt.qi.eager_threshold" -> 100.0,
-    "qi.eager_threshold" -> 100.0,
   )
-  val oldVersionOnlyParams = Set("smt.arith.solver", "arith.solver")
+  val oldVersionOnlyParams = Set("smt.arith.solver")
 }
 
 
@@ -118,62 +112,55 @@ class Z3ProverAPI(uniqueId: String,
     logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
     ctx = new Context(Z3ProverAPI.initialOptions.asJava)
     val params = ctx.mkParams()
+
+    // When setting parameters via API, we have to remove the smt. prefix
+    def removeSmtPrefix(s: String) = {
+      if (s.startsWith("smt."))
+        s.substring(4)
+      else
+        s
+    }
+
     val useOldVersionParams = version() <= Version("4.8.7.0")
     Z3ProverAPI.boolParams.foreach{
       case (k, v) =>
         if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
-          params.add(k, v)
+          params.add(removeSmtPrefix(k), v)
     }
     Z3ProverAPI.intParams.foreach{
       case (k, v) =>
         if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
-          params.add(k, v)
+          params.add(removeSmtPrefix(k), v)
     }
     Z3ProverAPI.doubleParams.foreach{
       case (k, v) =>
         if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
-          params.add(k, v)
+          params.add(removeSmtPrefix(k), v)
     }
     Z3ProverAPI.stringParams.foreach{
       case (k, v) =>
         if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
-          params.add(k, v)
+          params.add(removeSmtPrefix(k), v)
     }
-    val userProvidedArgs: Array[String] = Verifier.config.proverArgs match {
-      case None =>
-        Array()
-
-      case Some(rawArgs) =>
-        val args = if (rawArgs.startsWith("'") && rawArgs.startsWith("'")) {
-          rawArgs.substring(1, rawArgs.length - 1)
-        } else {
-          rawArgs
-        }
-        // One can pass some options. This allows to check whether they have been received.
-        val msg = s"Additional command-line arguments are $args"
-        reporter report ConfigurationConfirmation(msg)
-        logger debug msg
-        args.split(' ').map(_.trim)
-    }
+    val userProvidedArgs = Verifier.config.proverConfigArgs
     prover = ctx.mkSolver()
     val descrs = prover.getParameterDescriptions
-    for (arg <- userProvidedArgs) {
-      val splitArg = arg.split("=")
-      var key = splitArg(0)
-      if (key.startsWith("smt."))
-        key = key.substring(4)
-      val vl = splitArg(1)
+    for ((origKey, vl) <- userProvidedArgs) {
+      val key = if (origKey.startsWith("smt."))
+        origKey.substring(4)
+      else
+        origKey
       val keySymbol = ctx.mkSymbol(key)
       val param_kind = descrs.getKind(keySymbol)
       param_kind match {
         case Z3_param_kind.Z3_PK_BOOL =>
-          params.add(keySymbol, vl.toBoolean)
+          params.add(key, vl.toBoolean)
         case Z3_param_kind.Z3_PK_UINT =>
           params.add(key, vl.toInt)
         case Z3_param_kind.Z3_PK_DOUBLE =>
-          params.add(keySymbol, vl.toDouble)
+          params.add(key, vl.toDouble)
         case Z3_param_kind.Z3_PK_STRING =>
-          params.add(keySymbol, vl)
+          params.add(key, vl)
         case _ =>
           reporter.report(InternalWarningMessage("Z3 error: unknown parameter" + key))
       }
@@ -374,7 +361,15 @@ class Z3ProverAPI(uniqueId: String,
     if (!preamblePhaseOver) {
       preamblePhaseOver = true
 
-      val merged = emittedPreambleString.mkString("\n")
+      // Setting all options again , since otherwise some of them seem to get lost.
+      val standardOptionPrefix = Seq("(set-option :auto_config false)", "(set-option :type_check true)") ++
+        Z3ProverAPI.boolParams.map(bp => s"(set-option :${bp._1} ${bp._2})") ++
+        Z3ProverAPI.intParams.map(bp => s"(set-option :${bp._1} ${bp._2})") ++
+        Z3ProverAPI.doubleParams.map(bp => s"(set-option :${bp._1} ${bp._2})") ++
+        Z3ProverAPI.stringParams.map(bp => s"(set-option :${bp._1} ${bp._2})")
+      val customOptionPrefix = Verifier.config.proverConfigArgs.map(a => s"(set-option :${a._1} ${a._2})")
+
+      val merged = (standardOptionPrefix ++ customOptionPrefix ++ emittedPreambleString).mkString("\n")
       val parsed = ctx.parseSMTLIB2String(merged, emittedSortSymbols.toArray, emittedSorts.toArray, emittedFuncSymbols.toArray, emittedFuncs.toArray)
       prover.add(parsed: _*)
       prover.add(preambleAssumes.toSeq : _*)
