@@ -254,7 +254,7 @@ object Converter {
       case Unit              => UnprocessedModelEntry(ConstantEntry(snapUnitId))
       case IntLiteral(x)     => LitIntEntry(x)
       case t: BooleanLiteral => LitBoolEntry(t.value)
-      case Null            => VarEntry(model.entries(nullRefId).toString, sorts.Ref)
+      case Null              => VarEntry(model.entries(nullRefId).toString, sorts.Ref)
       case Var(_, sort) =>
         val key: String = term.toString
         val entry: Option[ModelEntry] = model.entries.get(key)

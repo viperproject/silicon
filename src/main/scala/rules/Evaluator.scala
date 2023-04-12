@@ -1141,7 +1141,7 @@ object evaluator extends EvaluationRules {
                                    pve: PartialVerificationError,
                                    v: Verifier)
                                   (Q: (State, T, Verifier) => VerificationResult)
-  : VerificationResult = {
+                                  : VerificationResult = {
 
     evalBinOp(s, e0, e1, (t0, t1) => termOp((t0, t1)), pve, v)(Q)
   }
