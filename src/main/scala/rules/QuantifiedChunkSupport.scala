@@ -1224,11 +1224,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                            : VerificationResult = {
 
     val resource = resourceAccess.res(s.program)
-    val failure = resourceAccess match {
-      case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
-      case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
-      case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
-    }
     val chunkIdentifier = ChunkIdentifier(resource, s.program)
 
     val chunkOrderHeuristics = optChunkOrderHeuristic match {
@@ -1240,6 +1235,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
 
     if (s.exhaleExt) {
+      val failure = resourceAccess match {
+        case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
+        case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
+        case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
+      }
       magicWandSupporter.transfer(s, permissions, failure, v)((s1, h1, rPerm, v1) => {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifier)
@@ -1313,7 +1313,11 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           val snap = ResourceLookup(resource, smDef1.sm, arguments, s2.program).convert(sorts.Snap)
           Q(s2, h1, snap, v)
         case (Incomplete(_), _, _) =>
-          failure
+          resourceAccess match {
+            case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
+            case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
+            case _ => sys.error(s"Found resource $resourceAccess, which is not yet supported as a quantified resource.")
+          }
       }
     }
   }
