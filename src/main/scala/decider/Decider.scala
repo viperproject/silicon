@@ -237,8 +237,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     /* Asserting facts */
 
     def checkSmoke(isAssert: Boolean = false): Boolean = {
-      val timeout = if (isAssert) Verifier.config.assertTimeout() else Verifier.config.checkTimeout()
-      prover.check(Some(timeout)) == Unsat
+      val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
+      prover.check(timeout) == Unsat
     }
 
     def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
