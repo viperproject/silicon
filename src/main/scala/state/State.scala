@@ -20,6 +20,7 @@ import viper.silicon.{Map, Stack}
 final case class State(g: Store = Store(),
                        h: Heap = Heap(),
                        program: ast.Program,
+                       currentMember: Option[ast.Member],
                        predicateData: Map[ast.Predicate, PredicateData],
                        functionData: Map[ast.Function, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
@@ -64,12 +65,13 @@ final case class State(g: Store = Store(),
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
                        predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
-                       isMethodVerification: Boolean = false,
                        retryLevel: Int = 0,
                        /* ast.Field, ast.Predicate, or MagicWandIdentifier */
                        heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
                        moreCompleteExhale: Boolean = false)
     extends Mergeable[State] {
+
+  val isMethodVerification: Boolean = currentMember.isEmpty || currentMember.get.isInstanceOf[ast.Method]
 
   def incCycleCounter(m: ast.Predicate) =
     if (recordVisited) copy(visited = m :: visited)
@@ -128,7 +130,7 @@ object State {
   def merge(s1: State, s2: State): State = {
     s1 match {
       /* Decompose state s1 */
-      case State(g1, h1, program,
+      case State(g1, h1, program, member,
                  predicateData,
                  functionData,
                  oldHeaps1,
@@ -148,13 +150,13 @@ object State {
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
-                 predicateSnapMap1, predicateFormalVarMap1, hack, retryLevel, useHeapTriggers,
+                 predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
                  moreCompleteExhale) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
           case State(`g1`, `h1`,
-                     `program`,
+                     `program`, `member`,
                      `predicateData`, `functionData`,
                      `oldHeaps1`,
                      `parallelizeBranches1`,
@@ -173,7 +175,7 @@ object State {
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
-                     `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `retryLevel`, `useHeapTriggers`,
+                     `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
                      moreCompleteExhale2) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)

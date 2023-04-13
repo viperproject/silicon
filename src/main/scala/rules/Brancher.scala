@@ -10,10 +10,13 @@ import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
+import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.reporter.{EntityFailureMessage, VerificationResultMessage}
+import viper.silver.verifier.Failure
 
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
@@ -151,17 +154,23 @@ object brancher extends BranchingRules {
         CompletableFuture.completedFuture(Seq(Unreachable()))
       }
 
-    val res = (if (executeThenBranch) {
-      v.symbExLog.markReachable(uidBranchPoint)
-      executionFlowController.locally(s, v)((s1, v1) => {
-        v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-        v1.decider.setCurrentBranchCondition(condition, conditionExp)
+    val res = {
+      val thenRes = if (executeThenBranch) {
+          v.symbExLog.markReachable(uidBranchPoint)
+          executionFlowController.locally(s, v)((s1, v1) => {
+            v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
+            v1.decider.setCurrentBranchCondition(condition, conditionExp)
 
-        fThen(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
-      })
-    } else {
-      Unreachable()
-    }).combine({
+            fThen(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+          })
+        } else {
+          Unreachable()
+        }
+      if (thenRes.isFatal && parallelizeElseBranch && s.retryLevel == 0)
+        v.reporter.report(EntityFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
+          0, condenseToViperResult(Seq(thenRes)).asInstanceOf[Failure]))
+      thenRes
+    }.combine({
 
       /* [BRANCH-PARALLELISATION] */
       var rs: Seq[VerificationResult] = null
@@ -189,6 +198,9 @@ object brancher extends BranchingRules {
       }
 
       assert(rs.length == 1, s"Expected a single verification result but found ${rs.length}")
+      if (rs.head.isFatal && parallelizeElseBranch && s.retryLevel == 0)
+        v.reporter.report(EntityFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
+          0, condenseToViperResult(Seq(rs.head)).asInstanceOf[Failure]))
       rs.head
 
     }, alwaysWaitForOther = parallelizeElseBranch)
