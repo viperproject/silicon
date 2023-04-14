@@ -15,7 +15,7 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.reporter.{EntityFailureMessage, VerificationResultMessage}
+import viper.silver.reporter.{BranchFailureMessage}
 import viper.silver.verifier.Failure
 
 trait BranchingRules extends SymbolicExecutionRules {
@@ -166,9 +166,11 @@ object brancher extends BranchingRules {
         } else {
           Unreachable()
         }
-      if (thenRes.isFatal && parallelizeElseBranch && s.retryLevel == 0)
-        v.reporter.report(EntityFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
-          0, condenseToViperResult(Seq(thenRes)).asInstanceOf[Failure]))
+      if (thenRes.isFatal && !thenRes.isReported && parallelizeElseBranch && s.retryLevel == 0) {
+        thenRes.isReported = true
+        v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
+          condenseToViperResult(Seq(thenRes)).asInstanceOf[Failure]))
+      }
       thenRes
     }.combine({
 
@@ -198,9 +200,11 @@ object brancher extends BranchingRules {
       }
 
       assert(rs.length == 1, s"Expected a single verification result but found ${rs.length}")
-      if (rs.head.isFatal && parallelizeElseBranch && s.retryLevel == 0)
-        v.reporter.report(EntityFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
-          0, condenseToViperResult(Seq(rs.head)).asInstanceOf[Failure]))
+      if (rs.head.isFatal && !rs.head.isReported && parallelizeElseBranch && s.retryLevel == 0) {
+        rs.head.isReported = true
+        v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
+          condenseToViperResult(Seq(rs.head)).asInstanceOf[Failure]))
+      }
       rs.head
 
     }, alwaysWaitForOther = parallelizeElseBranch)
