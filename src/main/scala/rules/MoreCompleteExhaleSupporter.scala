@@ -144,10 +144,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
     if (relevantChunks.isEmpty) {
-      if (v.decider.checkSmoke()) {
+      if (v.decider.checkSmoke(true)) {
         Success() // TODO: Mark branch as dead?
       } else {
-        createFailure(ve, v, s, true)
+        createFailure(ve, v, s)
       }
     } else {
       summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
@@ -217,10 +217,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       // if no permission is exhaled, return none
-      if (v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
-        Q(s, h, None, v)
-      } else {
-        createFailure(ve, v, s)
+      v.decider.assert(perms === NoPerm()){
+        case true => Q(s, h, None, v)
+        case false => createFailure(ve, v, s)
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
