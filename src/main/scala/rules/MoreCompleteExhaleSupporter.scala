@@ -217,10 +217,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       // if no permission is exhaled, return none
-      if (v.decider.check(perms === NoPerm(), Verifier.config.assertTimeout())) {
-        Q(s, h, None, v)
-      } else {
-        createFailure(ve, v, s)
+      v.decider.assert(perms === NoPerm()){
+        case true => Q(s, h, None, v)
+        case false => createFailure(ve, v, s)
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
