@@ -23,10 +23,12 @@ trait SymbolicExecutionRules {
         wrapped
       case _ => ve
     }
-    val counterexample: Option[Counterexample] = if (v != null && Verifier.config.counterexample.toOption.isDefined) {
+    if (v != null && (Verifier.config.reportReasonUnknown() || Verifier.config.counterexample.toOption.isDefined)) {
       if (generateNewModel || !v.decider.hasModel()) {
         v.decider.generateModel()
       }
+    }
+    val counterexample: Option[Counterexample] = if (v != null && Verifier.config.counterexample.toOption.isDefined) {
       if (v.decider.isModelValid()) {
         val nativeModel = v.decider.getModel()
         val ce_type = Verifier.config.counterexample()
@@ -47,6 +49,12 @@ trait SymbolicExecutionRules {
       } else None
     } else None
 
+    val reasonUnknown = if (v != null && Verifier.config.reportReasonUnknown()) {
+      Some(v.decider.prover.getReasonUnknown())
+    } else {
+      None
+    }
+
     val branchconditions = if (Verifier.config.enableBranchconditionReporting()) {
       v.decider.pcs.branchConditionExps.flatten
         .filterNot(e => e.isInstanceOf[viper.silver.ast.TrueLit]) /* remove "true" bcs introduced by viper.silicon.utils.ast.BigAnd */
@@ -56,7 +64,7 @@ trait SymbolicExecutionRules {
           case _ => (-1, -1)
         })
     } else Seq()
-    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample))
+    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
     Failure(res, v.reportFurtherErrors())
 
   }
