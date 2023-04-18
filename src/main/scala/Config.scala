@@ -426,8 +426,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val disableTempDirectory: ScallopOption[Boolean] = opt[Boolean]("disableTempDirectory",
-    descr = "Disable the creation of temporary data (default: ./tmp)",
-    default = Some(false),
+    descr = "Disable the creation of temporary directory to log prover interactions (default: ./tmp)",
+    default = Some(true),
     noshort = true
   )
 

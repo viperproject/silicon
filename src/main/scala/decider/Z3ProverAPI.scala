@@ -80,7 +80,6 @@ class Z3ProverAPI(uniqueId: String,
 
   /* protected */ var pushPopScopeDepth = 0
   protected var lastTimeout: Int = -1
-  protected var logfileWriter: PrintWriter = _
   protected var prover: Solver = _
   protected var ctx: Context = _
 
@@ -113,7 +112,6 @@ class Z3ProverAPI(uniqueId: String,
   def start(): Unit = {
     pushPopScopeDepth = 0
     lastTimeout = -1
-    logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
     ctx = new Context(Z3ProverAPI.initialOptions.asJava)
     val params = ctx.mkParams()
     Z3ProverAPI.boolParams.foreach{
@@ -386,12 +384,6 @@ class Z3ProverAPI(uniqueId: String,
           emittedFuncs.add(converted)
           emittedFuncSymbols.append(termConverter.convertSortWrapperSymbol(swd))
         }
-    }
-  }
-
-  protected def logToFile(str: String): Unit = {
-    if (logfileWriter != null) {
-      logfileWriter.println(str)
     }
   }
 
