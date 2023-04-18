@@ -49,7 +49,10 @@ trait Decider {
    *         1. It passes State and Operations to the continuation
    *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
    */
-  def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+  def assertRaw(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+
+  def assertWD(t: Term, s: State, v: Verifier, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+  def assertC(t: Term, s: State, v: Verifier, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
 
   def fresh(id: String, sort: Sort): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
@@ -243,9 +246,30 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
 
-    def assert(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
-              (Q: Boolean => VerificationResult)
-              : VerificationResult = {
+    def assertC(t: Term, s: State, v: Verifier, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
+               (Q: Boolean => VerificationResult)
+               : VerificationResult = {
+      if (s.isKnownCorrect) {
+        Q(true)
+      } else {
+        assertRaw(t, timeout)(Q)
+      }
+    }
+
+    def assertWD(t: Term, s: State, v: Verifier, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
+                (Q: Boolean => VerificationResult)
+                : VerificationResult = {
+      if ((Verifier.config.avoidReverifyingWelldefinedness() && s.isKnownWelldefined) || s.isKnownCorrect) {
+        // TODO: ME: We could assume(t) here, should we?
+        Q(true)
+      } else {
+        assertRaw(t, timeout)(Q)
+      }
+    }
+
+    def assertRaw(t: Term, timeout: Option[Int] = Verifier.config.assertTimeout.toOption)
+                 (Q: Boolean => VerificationResult)
+                 : VerificationResult = {
 
       val success = deciderAssert(t, timeout)
 

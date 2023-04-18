@@ -213,7 +213,7 @@ object evaluator extends EvaluationRules {
                 val s2 = s1.copy(functionRecorder = fr1)
                 Q(s2, fvfLookup, v1)
               } else {
-                v1.decider.assert(IsPositive(totalPermissions.replace(`?r`, tRcvr))) {
+                v1.decider.assertWD(IsPositive(totalPermissions.replace(`?r`, tRcvr)), s1, v1) {
                   case false =>
                     createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
                   case true =>
@@ -247,7 +247,7 @@ object evaluator extends EvaluationRules {
                   val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
                   IsPositive(totalPermissions)
                 }
-              v1.decider.assert(permCheck) {
+              v1.decider.assertWD(permCheck, s1, v1) {
                 case false =>
                   createFailure(pve dueTo InsufficientPermission(fa), v1, s1)
                 case true =>
@@ -719,6 +719,7 @@ object evaluator extends EvaluationRules {
                 reasonOffendingNode.replace(formalsToActuals)), exampleTrafo)
             val s3 = s2.copy(g = Store(fargs.zip(tArgs)),
                              recordVisited = true,
+                             isKnownWelldefined= true,
                              functionRecorder = s2.functionRecorder.changeDepthBy(+1),
                                 /* Temporarily disable the recorder: when recording (to later on
                                  * translate a particular function fun) and a function application
@@ -756,6 +757,7 @@ object evaluator extends EvaluationRules {
                                recordVisited = s2.recordVisited,
                                functionRecorder = fr5,
                                smDomainNeeded = s2.smDomainNeeded,
+                               isKnownWelldefined = s2.isKnownWelldefined,
                                hackIssue387DisablePermissionConsumption = s.hackIssue387DisablePermissionConsumption)
               QB(s5, tFApp, v3)})
             /* TODO: The join-function is heap-independent, and it is not obvious how a
@@ -771,7 +773,7 @@ object evaluator extends EvaluationRules {
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
           evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
             eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
-              v2.decider.assert(IsNonNegative(tPerm)) { // TODO: Replace with permissionSupporter.assertNotNegative
+              v2.decider.assertWD(IsNonNegative(tPerm), s2, v2) { // TODO: Replace with permissionSupporter.assertNotNegative
                 case true =>
                   joiner.join[Term, Term](s2, v2)((s3, v3, QB) => {
                     val s4 = s3.incCycleCounter(predicate)
@@ -801,11 +803,12 @@ object evaluator extends EvaluationRules {
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val s7a = s7.copy(g = insg)
+                      val s7a = s7.copy(g = insg, isKnownWelldefined = true)
                       produce(s7a, toSf(snap), body, pve, v4)((s8, v5) => {
                         val s9 = s8.copy(g = s7.g,
                                          functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                          recordVisited = s3.recordVisited,
+                                         isKnownWelldefined = s7.isKnownWelldefined,
                                          permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
                         val s10 = v5.stateConsolidator.consolidateIfRetrying(s9, v5)
@@ -834,9 +837,9 @@ object evaluator extends EvaluationRules {
           if (s1.triggerExp) {
             Q(s1, SeqAt(t0, t1), v1)
           } else {
-            v1.decider.assert(AtLeast(t1, IntLiteral(0))) {
+            v1.decider.assertWD(AtLeast(t1, IntLiteral(0)), s1, v1) {
               case true =>
-                v1.decider.assert(Less(t1, SeqLength(t0))) {
+                v1.decider.assertWD(Less(t1, SeqLength(t0)), s1, v1) {
                   case true =>
                     Q(s1, SeqAt(t0, t1), v1)
                   case false =>
@@ -849,7 +852,7 @@ object evaluator extends EvaluationRules {
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
                 if (s1.retryLevel == 0) {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)))
-                  v1.decider.assert(Less(t1, SeqLength(t0))) {
+                  v1.decider.assertWD(Less(t1, SeqLength(t0)), s1, v1) {
                     case true =>
                       failure1 combine Q(s1, SeqAt(t0, t1), v1)
                     case false =>
@@ -872,9 +875,9 @@ object evaluator extends EvaluationRules {
           if (s1.triggerExp) {
             Q(s1, SeqUpdate(t0, t1, t2), v1)
           } else {
-            v1.decider.assert(AtLeast(t1, IntLiteral(0))) {
+            v1.decider.assertWD(AtLeast(t1, IntLiteral(0)), s1, v1) {
               case true =>
-                v1.decider.assert(Less(t1, SeqLength(t0))) {
+                v1.decider.assertWD(Less(t1, SeqLength(t0)), s1, v1) {
                   case true =>
                     Q(s1, SeqUpdate(t0, t1, t2), v1)
                   case false =>
@@ -887,7 +890,7 @@ object evaluator extends EvaluationRules {
                 val failure1 = createFailure(pve dueTo SeqIndexNegative(e0, e1), v1, s1)
                 if (s1.retryLevel == 0) {
                   v1.decider.assume(AtLeast(t1, IntLiteral(0)))
-                  v1.decider.assert(Less(t1, SeqLength(t0))) {
+                  v1.decider.assertWD(Less(t1, SeqLength(t0)), s1, v1) {
                     case true =>
                       failure1 combine Q(s1, SeqUpdate(t0, t1, t2), v1)
                     case false =>
@@ -983,7 +986,7 @@ object evaluator extends EvaluationRules {
       case ast.MapLookup(base, key) =>
         evals2(s, Seq(base, key), Nil, _ => pve, v)({
           case (s1, Seq(baseT, keyT), v1) if s1.triggerExp => Q(s1, MapLookup(baseT, keyT), v1)
-          case (s1, Seq(baseT, keyT), v1) => v1.decider.assert(SetIn(keyT, MapDomain(baseT))) {
+          case (s1, Seq(baseT, keyT), v1) => v1.decider.assertWD(SetIn(keyT, MapDomain(baseT)), s1, v1) {
             case true => Q(s1, MapLookup(baseT, keyT), v1)
             case false =>
               v1.decider.assume(SetIn(keyT, MapDomain(baseT)))
@@ -1159,7 +1162,7 @@ object evaluator extends EvaluationRules {
                              (Q: (State, Term, Verifier) => VerificationResult)
                              : VerificationResult = {
 
-    v.decider.assert(tDivisor !== tZero){
+    v.decider.assertWD(tDivisor !== tZero, s, v){
       case true => Q(s, t, v)
       case false =>
         val failure = createFailure(pve dueTo DivisionByZero(eDivisor), v, s)

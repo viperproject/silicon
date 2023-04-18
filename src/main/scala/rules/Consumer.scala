@@ -480,7 +480,7 @@ object consumer extends ConsumptionRules {
             Quantification(q, vars, Implies(transformed, body), trgs, name, isGlob, weight)
           case _ => t
         }
-        v2.decider.assert(termToAssert) {
+        v2.decider.assertC(termToAssert, s2, v2) {
           case true =>
             v2.decider.assume(t)
             QS(s3, v2)

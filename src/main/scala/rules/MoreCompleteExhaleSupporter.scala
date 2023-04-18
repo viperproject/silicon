@@ -151,7 +151,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
       }
     } else {
       summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
-        v.decider.assert(IsPositive(permSum)) {
+        v.decider.assertWD(IsPositive(permSum), s1, v) {
           case true =>
             Q(s1, snap, v1)
           case false =>
@@ -189,7 +189,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
     summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
-      v.decider.assert(IsPositive(permSum)) {
+      v.decider.assertWD(IsPositive(permSum), s1, v) {
         case true =>
           Q(s1, h, Some(snap), v1)
         case false =>
@@ -217,7 +217,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       // if no permission is exhaled, return none
-      v.decider.assert(perms === NoPerm()){
+      v.decider.assertC(perms === NoPerm(), s, v){
         case true => Q(s, h, None, v)
         case false => createFailure(ve, v, s)
       }
@@ -289,7 +289,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (!moreNeeded) {
             Q(s1, newHeap, Some(condSnap), v1)
           } else {
-            v1.decider.assert(pNeeded === NoPerm()) {
+            v1.decider.assertC(pNeeded === NoPerm(), s1, v1) {
               case true =>
                 Q(s1, newHeap, Some(condSnap), v1)
               case false =>
@@ -342,7 +342,7 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     val s1 = s.copy(functionRecorder = newFr)
 
-    v.decider.assert(totalPermTaken !== NoPerm()) {
+    v.decider.assertC(totalPermTaken !== NoPerm(), s1, v) {
       case true =>
         v.decider.assume(perms === totalPermTaken)
         summarise(s1, relevantChunks.toSeq, resource, args, v)((s2, snap, _, _, v1) =>

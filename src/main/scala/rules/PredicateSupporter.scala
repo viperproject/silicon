@@ -57,7 +57,7 @@ object predicateSupporter extends PredicateSupportRules {
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
     val s1 = s.copy(g = gIns,
-                    smDomainNeeded = true)
+                    smDomainNeeded = true, isKnownWelldefined = true)
               .scalePermissionFactor(tPerm)
     consume(s1, body, pve, v)((s1a, snap, v1) => {
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
@@ -65,7 +65,7 @@ object predicateSupporter extends PredicateSupportRules {
           snap.convert(terms.sorts.Snap) +: tArgs)
         v1.decider.assume(predTrigger)
       }
-      val s2 = s1a.setConstrainable(constrainableWildcards, false)
+      val s2 = s1a.copy(isKnownWelldefined = s.isKnownWelldefined).setConstrainable(constrainableWildcards, false)
       if (s2.qpPredicates.contains(predicate)) {
         val predSnap = snap.convert(s2.predicateSnapMap(predicate))
         val formalArgs = s2.predicateFormalVarMap(predicate)
@@ -134,7 +134,7 @@ object predicateSupporter extends PredicateSupportRules {
         pve,
         v
       )((s2, h2, snap, v1) => {
-        val s3 = s2.copy(g = gIns, h = h2)
+        val s3 = s2.copy(g = gIns, h = h2, isKnownWelldefined = true)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
@@ -145,14 +145,15 @@ object predicateSupporter extends PredicateSupportRules {
             v2.decider.assume(predicateTrigger)
           }
           Q(s4.copy(g = s.g,
-                    permissionScalingFactor = s.permissionScalingFactor),
+                    permissionScalingFactor = s.permissionScalingFactor,
+                    isKnownWelldefined = s.isKnownWelldefined),
             v2)})
       })
     } else {
       val ve = pve dueTo InsufficientPermission(pa)
       val description = s"consume ${pa.pos}: $pa"
       chunkSupporter.consume(s1, s1.h, predicate, tArgs, s1.permissionScalingFactor, ve, v, description)((s2, h1, snap, v1) => {
-        val s3 = s2.copy(g = gIns, h = h1)
+        val s3 = s2.copy(g = gIns, h = h1, isKnownWelldefined = true)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
@@ -162,7 +163,8 @@ object predicateSupporter extends PredicateSupportRules {
             v2.decider.assume(predicateTrigger)
           }
           val s5 = s4.copy(g = s.g,
-                           permissionScalingFactor = s.permissionScalingFactor)
+                           permissionScalingFactor = s.permissionScalingFactor,
+                           isKnownWelldefined = s.isKnownWelldefined)
           Q(s5, v2)})})
     }
   }

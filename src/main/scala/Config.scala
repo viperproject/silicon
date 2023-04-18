@@ -160,6 +160,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val avoidReverifyingWelldefinedness: ScallopOption[Boolean] = opt[Boolean]("avoidReverifyingWelldefinedness",
+    descr = "Do not re-verify well-definedness of contracts or predicates when using them",
+    default = Some(false),
+    noshort = true
+  )
+
   val includeMethods: ScallopOption[String] = opt[String]("includeMethods",
     descr = "Include methods in verification (default: '*'). Wildcard characters are '?' and '*'. ",
     default = Some(".*"),
