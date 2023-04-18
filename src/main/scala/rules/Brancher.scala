@@ -166,7 +166,7 @@ object brancher extends BranchingRules {
         } else {
           Unreachable()
         }
-      if (thenRes.isFatal && !thenRes.isReported && parallelizeElseBranch && s.retryLevel == 0) {
+      if (thenRes.isFatal && !thenRes.isReported && s.parallelizeBranches && s.isLastRetry) {
         thenRes.isReported = true
         v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
           condenseToViperResult(Seq(thenRes)).asInstanceOf[Failure]))
@@ -200,7 +200,7 @@ object brancher extends BranchingRules {
       }
 
       assert(rs.length == 1, s"Expected a single verification result but found ${rs.length}")
-      if (rs.head.isFatal && !rs.head.isReported && parallelizeElseBranch && s.retryLevel == 0) {
+      if (rs.head.isFatal && !rs.head.isReported && s.parallelizeBranches && s.isLastRetry) {
         rs.head.isReported = true
         v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
           condenseToViperResult(Seq(rs.head)).asInstanceOf[Failure]))

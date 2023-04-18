@@ -71,7 +71,12 @@ final case class State(g: Store = Store(),
                        moreCompleteExhale: Boolean = false)
     extends Mergeable[State] {
 
-  val isMethodVerification: Boolean = currentMember.isEmpty || currentMember.get.isInstanceOf[ast.Method]
+  val isMethodVerification: Boolean = {
+    // currentMember being None means we're verifying a CFG; this should behave like verifying a method.
+    currentMember.isEmpty || currentMember.get.isInstanceOf[ast.Method]
+  }
+
+  val isLastRetry: Boolean = retryLevel == 0
 
   def incCycleCounter(m: ast.Predicate) =
     if (recordVisited) copy(visited = m :: visited)
