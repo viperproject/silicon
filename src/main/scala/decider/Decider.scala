@@ -250,7 +250,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
                (Q: Boolean => VerificationResult)
                : VerificationResult = {
       if (s.isKnownCorrect) {
-        assume(t)
         Q(true)
       } else {
         assertRaw(t, timeout)(Q)
