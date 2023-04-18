@@ -26,6 +26,7 @@ import viper.silver.ast.Program
 sealed abstract class VerificationResult {
   var previous: Vector[VerificationResult] = Vector() //Sets had problems with equality
   val continueVerification: Boolean = true
+  var isReported: Boolean = false
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult
