@@ -40,6 +40,7 @@ abstract class ProverStdIO(uniqueId: String,
   protected var output: PrintWriter = _
 
   var proverPath: Path = _
+  var lastReasonUnknown : String = _
   var lastModel : String = _
 
   def exeEnvironmentalVariable: String
@@ -82,7 +83,7 @@ abstract class ProverStdIO(uniqueId: String,
     }
     pushPopScopeDepth = 0
     lastTimeout = -1
-    logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
+    logfileWriter = if (!Verifier.config.enableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
     proverPath = getProverPath
     prover = createProverInstance()
     input = new BufferedReader(new InputStreamReader(prover.getInputStream))
@@ -252,6 +253,7 @@ abstract class ProverStdIO(uniqueId: String,
 
     if (!result) {
       retrieveAndSaveModel()
+      retrieveReasonUnknown()
     }
 
     pop()
@@ -282,6 +284,16 @@ abstract class ProverStdIO(uniqueId: String,
         model = model.replaceAll("\"", "")
       }
       lastModel = model
+    }
+  }
+
+  protected def retrieveReasonUnknown(): Unit = {
+    if (Verifier.config.reportReasonUnknown()) {
+      writeLine("(get-info :reason-unknown)")
+      var result = readLine()
+      if (result.startsWith("(:reason-unknown \""))
+        result = result.substring(18, result.length - 2)
+      lastReasonUnknown = result
     }
   }
 
@@ -474,5 +486,10 @@ abstract class ProverStdIO(uniqueId: String,
 
   override def getModel(): Model = Model(lastModel)
 
-  override def clearLastModel(): Unit = lastModel = null
+  override def getReasonUnknown(): String = lastReasonUnknown
+
+  override def clearLastAssert(): Unit = {
+    lastReasonUnknown = null
+    lastModel = null
+  }
 }

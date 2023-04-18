@@ -172,6 +172,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val reportReasonUnknown: ScallopOption[Boolean] = opt[Boolean]("reportReasonUnknown",
+    descr = "For every verification error, include the reason the SMT solver reported unknown.",
+    default = Some(false),
+    noshort = true
+  )
+
   val recursivePredicateUnfoldings: ScallopOption[Int] = opt[Int]("recursivePredicateUnfoldings",
     descr = (  "Evaluate n unfolding expressions in the body of predicates that (transitively) unfold "
              + "other instances of themselves (default: 1)"),
@@ -419,8 +425,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val disableTempDirectory: ScallopOption[Boolean] = opt[Boolean]("disableTempDirectory",
-    descr = "Disable the creation of temporary data (default: ./tmp)",
+  val enableTempDirectory: ScallopOption[Boolean] = opt[Boolean]("enableTempDirectory",
+    descr = "Enable the creation of temporary directory to log prover interactions (default: ./tmp)",
     default = Some(false),
     noshort = true
   )

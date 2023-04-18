@@ -287,6 +287,13 @@ object App extends CondFlyweightTermFactory[(Applicable, Seq[Term]), App] {
 }
 
 /*
+ * Applicable without arguments, only to be used as a hint for quantified chunks.
+ */
+case class AppHint(applicable: Applicable) extends Term {
+  val sort = applicable.resultSort
+}
+
+/*
  * Terms
  */
 

@@ -126,7 +126,7 @@ object chunkSupporter extends ChunkSupportRules {
                   }
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
-            case _ if v1.decider.checkSmoke() =>
+            case _ if v1.decider.checkSmoke(true) =>
               Success() // TODO: Mark branch as dead?
             case _ =>
               createFailure(ve, v1, s1, true)
@@ -227,7 +227,7 @@ object chunkSupporter extends ChunkSupportRules {
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
         Q(s, ch.snap, v)
-      case _ if v.decider.checkSmoke() =>
+      case _ if v.decider.checkSmoke(true) =>
         Success() // TODO: Mark branch as dead?
       case _ =>
         createFailure(ve, v, s, true)

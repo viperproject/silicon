@@ -34,7 +34,7 @@ trait Decider {
   def pushScope(): Unit
   def popScope(): Unit
 
-  def checkSmoke(): Boolean
+  def checkSmoke(isAssert: Boolean = false): Boolean
 
   def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit
   def setPathConditionMark(): Mark
@@ -236,7 +236,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Asserting facts */
 
-    def checkSmoke(): Boolean = prover.check(Verifier.config.checkTimeout.toOption) == Unsat
+    def checkSmoke(isAssert: Boolean = false): Boolean = {
+      val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
+      prover.check(timeout) == Unsat
+    }
 
     def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
 
@@ -387,6 +390,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     override def isModelValid(): Boolean = prover.isModelValid()
 
-    override def clearModel(): Unit = prover.clearLastModel()
+    override def clearModel(): Unit = prover.clearLastAssert()
   }
 }
