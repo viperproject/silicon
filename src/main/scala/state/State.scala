@@ -45,7 +45,7 @@ final case class State(g: Store = Store(),
                        triggerExp: Boolean = false,
 
                        partiallyConsumedHeap: Option[Heap] = None,
-                       permissionScalingFactor: Term = terms.FullPerm(),
+                       permissionScalingFactor: Term = terms.FullPerm,
 
                        reserveHeaps: Stack[Heap] = Nil,
                        reserveCfgs: Stack[SilverCfg] = Stack(),

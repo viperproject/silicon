@@ -330,7 +330,7 @@ object executor extends ExecutionRules {
               Seq(`?r`),
               `?r` === tRcvr,
               field,
-              FullPerm(),
+              FullPerm,
               chunkOrderHeuristics,
               v2
             )
@@ -340,7 +340,7 @@ object executor extends ExecutionRules {
                 val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
                 v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
                 v1.decider.assume(smValueDef)
-                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm, s.program)
+                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm, sm, s.program)
                 if (s3.heapDependentTriggers.contains(field))
                   v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
                 Q(s3.copy(h = h3 + ch), v2)
@@ -355,10 +355,10 @@ object executor extends ExecutionRules {
             val resource = fa.res(s.program)
             val ve = pve dueTo InsufficientPermission(fa)
             val description = s"consume ${ass.pos}: $ass"
-            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm(), ve, v2, description)((s3, h3, _, v3) => {
+            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm, ve, v2, description)((s3, h3, _, v3) => {
               val tSnap = ssaifyRhs(tRhs, field.name, field.typ, v3)
               val id = BasicChunkIdentifier(field.name)
-              val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm())
+              val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm)
               chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) =>
                 Q(s4.copy(h = h4), v4))
             })
@@ -367,9 +367,9 @@ object executor extends ExecutionRules {
 
       case ast.NewStmt(x, fields) =>
         val tRcvr = v.decider.fresh(x)
-        v.decider.assume(tRcvr !== Null())
+        v.decider.assume(tRcvr !== Null)
         val newChunks = fields map (field => {
-          val p = FullPerm()
+          val p = FullPerm
           val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ))
           if (s.qpFields.contains(field)) {
             val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)

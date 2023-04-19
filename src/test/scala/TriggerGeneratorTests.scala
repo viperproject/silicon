@@ -6,12 +6,19 @@
 
 package viper.silicon.tests
 
+import org.scalatest.BeforeAndAfter
 import org.scalatest.funsuite.AnyFunSuite
+import viper.silicon.Config
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 
-class TriggerGeneratorTests extends AnyFunSuite {
+class TriggerGeneratorTests extends AnyFunSuite with BeforeAndAfter {
   val triggerGenerator = new TriggerGenerator()
+
+  before {
+    Verifier.config = new Config(Seq())
+  }
 
   test("Work in simple cases") {
     val i = Var(Identifier("i"), sorts.Int)

@@ -225,7 +225,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           .map { case (x, a) => x === a })
 
     val conditionalizedPermissions =
-      Ite(condition, permissions, NoPerm())
+      Ite(condition, permissions, NoPerm)
 
     val hints = extractHints(None, arguments)
 
@@ -274,7 +274,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       Ite(
         And(And(imagesOfCodomain), condition.replace(qvarsToInversesOfCodomain)),
         permissions.replace(qvarsToInversesOfCodomain),
-        NoPerm())
+        NoPerm)
 
     val hints = extractHints(Some(condition), arguments)
 
@@ -424,7 +424,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     val additionalFvfArgs = s.functionRecorderQuantifiedVariables()
     val sm = freshSnapshotMap(s, field, additionalFvfArgs, v)
 
-    val smDomainDefinitionCondition = optSmDomainDefinitionCondition.getOrElse(True())
+    val smDomainDefinitionCondition = optSmDomainDefinitionCondition.getOrElse(True)
     val codomainQVarsInDomainOfSummarisingSm = SetIn(codomainQVar, Domain(field.name, sm))
 
     val valueDefinitions =
@@ -520,7 +520,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
         val effectiveCondition =
           And(
-            transformedOptSmDomainDefinitionCondition.getOrElse(True()), /* Alternatively: qvarInDomainOfSummarisingSm */
+            transformedOptSmDomainDefinitionCondition.getOrElse(True), /* Alternatively: qvarInDomainOfSummarisingSm */
             IsPositive(chunk.perm).replace(snapToCodomainTermsSubstitution))
 
         Forall(
@@ -877,7 +877,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               qidPrefix = qid,
               program   = s.program)
           } else {
-            True()
+            True
           }
         v.decider.prover.comment("Check receiver injectivity")
         v.decider.assume(FunctionPreconditionTransformer.transform(receiverInjectivityCheck, s.program))
@@ -1261,7 +1261,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
             codomainQVars,
             relevantChunks,
             v1,
-            optSmDomainDefinitionCondition = if (s2.smDomainNeeded) Some(True()) else None,
+            optSmDomainDefinitionCondition = if (s2.smDomainNeeded) Some(True) else None,
             optQVarsInstantiations = Some(arguments))
         val permsTaken = result match {
           case Complete() => rPerm
@@ -1305,7 +1305,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
               resource = resource,
               codomainQVars = codomainQVars,
               relevantChunks = relevantChunks,
-              optSmDomainDefinitionCondition = if (s1.smDomainNeeded) Some(True()) else None,
+              optSmDomainDefinitionCondition = if (s1.smDomainNeeded) Some(True) else None,
               optQVarsInstantiations = Some(arguments),
               v = v)
           val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1),
@@ -1359,7 +1359,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val precomputedData = candidates map { ch =>
       val permsProvided = ch.perm
-      val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm())
+      val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
       val permsTakenArgs = codomainQVars ++ additionalArgs
       val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenBody)
       val permsTakenMacro = Macro(permsTakenDecl.id, permsTakenDecl.args.map(_.sort), permsTakenDecl.body.sort)
@@ -1376,7 +1376,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     v.decider.prover.comment(s"Done precomputing, updating quantified chunks")
     v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.beforeIteration)
 
-    var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm()), Nil)
+    var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
 
     precomputedData foreach { case (ithChunk, ithPTaken, ithPNeeded) =>
       if (success.isComplete)
@@ -1408,7 +1408,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
          * the assertion to check is recorded by tookEnoughCheck.
          */
         tookEnoughCheck =
-          Forall(codomainQVars, Implies(condition, ithPNeeded === NoPerm()), Nil)
+          Forall(codomainQVars, Implies(condition, ithPNeeded === NoPerm), Nil)
 
         v.decider.prover.comment(s"Intermediate check if already taken enough permissions")
         success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())) {
@@ -1442,7 +1442,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                                                         : (Term, Term) = {
 
     val conditionalizedPerms =
-      Ite(condition, perms, NoPerm()) // c(rs) ? p(rs) : none
+      Ite(condition, perms, NoPerm) // c(rs) ? p(rs) : none
 
     val quantifiedPermissionConstraint =
       if (!constrainPermissions) {
@@ -1453,7 +1453,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
           Forall(
             codomainQVars,
             Implies(
-              ithChunk.perm !== NoPerm(),
+              ithChunk.perm !== NoPerm,
               PermLess(conditionalizedPerms, ithChunk.perm)),
             Nil,
             s"qp.srp${v.counter(this).next()}")
@@ -1466,7 +1466,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       }
 
     val quantifiedDepletedCheck =
-      Forall(codomainQVars, PermMinus(ithChunk.perm, ithPTaken) === NoPerm(), Nil)
+      Forall(codomainQVars, PermMinus(ithChunk.perm, ithPTaken) === NoPerm, Nil)
 
     val (permissionConstraint, depletedCheck) =
       ithChunk.singletonArguments match {
@@ -1478,7 +1478,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
              quantifiedDepletedCheck)
         }
 
-    (permissionConstraint.getOrElse(True()), depletedCheck)
+    (permissionConstraint.getOrElse(True), depletedCheck)
   }
 
   /* Misc */
@@ -1554,7 +1554,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     val argsEqual: Term =
       if (args1.isEmpty)
-        True()
+        True
       else
         (args1 zip args2)
             .map(argsRenamed =>  argsRenamed._1 === argsRenamed._2)
@@ -1631,8 +1631,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         imagesOfCodomains(idx) = img(codomainQVars)
       } else {
         // imageFunctions(idx) remains null, will be filtered out later.
-        imagesOfFcts(idx) = True()
-        imagesOfCodomains(idx) = True()
+        imagesOfFcts(idx) = True
+        imagesOfCodomains(idx) = True
       }
     }
 

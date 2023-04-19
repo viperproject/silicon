@@ -80,7 +80,7 @@ class TriggerGenerator
   }
 
   /* True iff the given node is a possible trigger */
-  def isPossibleTrigger(e: Term): Boolean = e match {
+  def isPossibleTrigger(e: Term): Boolean = (customIsPossibleTrigger orElse {
     case _: Var => false
     case app: App => app.applicable.isInstanceOf[Function]
     case   _: CustomEquals
@@ -106,11 +106,10 @@ class TriggerGenerator
          | _: PredicateLookup
          => true
     case _ => false
-  }
+  }: PartialFunction[Term, Boolean])(e)
 
   /* True iff the given node is not allowed in triggers */
-  def isForbiddenInTrigger(term: Term) = term match {
-    case app: App => app.applicable.isInstanceOf[Macro]
+  def isForbiddenInTrigger(term: Term) = (customIsForbiddenInTrigger orElse {
     case   _: Plus | _: Minus | _: Times | _: Div | _: Mod
          | _: Not | _: Or | _: And | _: Implies | _: Iff | _: Ite
          | _: BuiltinEquals
@@ -118,10 +117,9 @@ class TriggerGenerator
          | _: PermTimes | _: IntPermTimes | _: PermIntDiv | _: PermPermDiv |_: PermPlus | _: PermMinus
          | _: PermLess | _: PermAtMost
          | _: Distinct
-         | _: Let
          => true
     case _ => false
-  }
+  }: PartialFunction[Term, Boolean])(term)
 
   val advancedIsForbiddenInTrigger:PartialFunction[Term, Boolean] = {
     case _: Plus | _: Minus => false
