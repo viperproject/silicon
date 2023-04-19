@@ -72,9 +72,10 @@ object predicateSupporter extends PredicateSupportRules {
       val s2 = s1a.setConstrainable(constrainableWildcards, false)
       if (Verifier.config.maskHeapMode()) {
         val s3 = s2.copy(g = s.g,
-          smDomainNeeded = s.smDomainNeeded,
-          permissionScalingFactor = s.permissionScalingFactor)
-        val newSf = (_: Sort, _: Verifier) => HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap, PredHeapSort), HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate)
+                         smDomainNeeded = s.smDomainNeeded,
+                         permissionScalingFactor = s.permissionScalingFactor)
+        val newSf = (_: Sort, _: Verifier) => HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap, PredHeapSort),
+          HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate)
         produce(s3, newSf, pap, pve, v1)((s4, v2) => {
           Q(s4, v2)})
       } else {
@@ -105,6 +106,7 @@ object predicateSupporter extends PredicateSupportRules {
           val s3 = s2.copy(g = s.g,
             h = h3,
             smCache = smCache,
+            permissionScalingFactor = s.permissionScalingFactor,
             functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
           Q(s3, v1)
         } else {
@@ -136,9 +138,6 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.scalePermissionFactor(tPerm)
 
     if (Verifier.config.maskHeapMode()) {
-
-      val ve = pve dueTo InsufficientPermission(pa)
-      val description = s"consume ${pa.pos}: $pa"
       val permAssertion = pap.copy(perm = ast.FullPerm()())(pap.pos, pap.info, pap.errT) // we've already set permission scaling.
       consumeTlcsMaskHeap(s1, s1.h, Seq(permAssertion), Seq(pve), v, Seq(predicate), None)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1, partiallyConsumedHeap = None)

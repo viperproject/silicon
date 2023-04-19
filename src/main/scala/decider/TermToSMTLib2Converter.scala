@@ -419,7 +419,7 @@ class TermToSMTLib2Converter
     if (args.nonEmpty)
       parens(docAppNoParens)
     else
-      parens(text("as") <+> docAppNoParens <+> render(outSort))
+      docAppNoParens
   }
 
   protected def render(q: Quantifier): Cont = q match {

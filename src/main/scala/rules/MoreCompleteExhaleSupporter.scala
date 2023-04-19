@@ -144,10 +144,10 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
     val relevantChunks = findChunksWithID[NonQuantifiedChunk](h.values, id).toSeq
 
     if (relevantChunks.isEmpty) {
-      if (v.decider.checkSmoke()) {
+      if (v.decider.checkSmoke(true)) {
         Success() // TODO: Mark branch as dead?
       } else {
-        createFailure(ve, v, s, true)
+        createFailure(ve, v, s)
       }
     } else {
       summarise(s, relevantChunks, resource, args, v)((s1, snap, _, permSum, v1) =>
@@ -217,10 +217,9 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
 
     if (relevantChunks.isEmpty) {
       // if no permission is exhaled, return none
-      if (v.decider.check(perms === NoPerm, Verifier.config.checkTimeout())) {
-        Q(s, h, None, v)
-      } else {
-        createFailure(ve, v, s)
+      v.decider.assert(perms === NoPerm) {
+        case true => Q(s, h, None, v)
+        case false => createFailure(ve, v, s)
       }
     } else {
       if (!terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
@@ -246,13 +245,24 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
         relevantChunks.sortWith(sortFunction) foreach { ch =>
           if (moreNeeded) {
             val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
-            pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
 
-            // ME: We used to create macros here, however, most of the time the created terms are simple.
-            // When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
-            // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
-            // that already exists.
-            val pTaken = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
+            val pTaken = if (Verifier.config.useFlyweight) {
+              // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
+              // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
+              // that already exists.
+              Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
+            } else {
+              val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
+              val pTakenArgs = additionalArgs
+              val pTakenDecl = v.decider.freshMacro("mce_pTaken", pTakenArgs, pTakenBody)
+              val pTakenMacro = Macro(pTakenDecl.id, pTakenDecl.args.map(_.sort), pTakenDecl.body.sort)
+              currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(pTakenDecl)
+              val pTakenApp = App(pTakenMacro, pTakenArgs)
+              v.symbExLog.addMacro(pTakenApp, pTakenBody)
+              pTakenApp
+            }
+
+            pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm))
 
             val newChunk = ch.withPerm(PermMinus(ch.perm, pTaken))
             pNeeded = PermMinus(pNeeded, pTaken)

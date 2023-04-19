@@ -314,7 +314,7 @@ class DefaultMainVerifier(config: Config,
           qpMagicWands = quantifiedMagicWands,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
-          isMethodVerification = member.isInstanceOf[ast.Member],
+          currentMember = Some(member),
           heapDependentTriggers = resourceTriggers,
           moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete)
   }
@@ -329,6 +329,7 @@ class DefaultMainVerifier(config: Config,
 
     State(
       program = program,
+      currentMember = None,
       functionData = functionData,
       predicateData = predicateData,
       qpFields = quantifiedFields,

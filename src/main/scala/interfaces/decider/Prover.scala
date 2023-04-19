@@ -39,7 +39,6 @@ trait Prover extends ProverLike with StatefulComponent {
   def getModel(): Model
   def getReasonUnknown(): String
   def clearLastAssert(): Unit
-
   def name: String
   def minVersion: Version
   def maxVersion: Option[Version]

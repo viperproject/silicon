@@ -200,14 +200,13 @@ object producer extends ProductionRules {
              *       the tail of the (decreasing list parameter as) is BigAnd-ed
              *       over and over again.
              */
-
             wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
               internalProduceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
           } catch {
             // We will get an IllegalArgumentException from createSnapshotPair if sf(...) returns Unit.
             // This should never happen if we're in a reachable state, so here we check for that
             // (without timeout, since there is no fallback) and stop verifying the current branch.
-            case _: IllegalArgumentException if v.decider.check(False, 0) =>
+            case _: IllegalArgumentException if v.decider.check(False, Verifier.config.assertTimeout.getOrElse(0)) =>
               Unreachable()
           }
         }

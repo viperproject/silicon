@@ -34,7 +34,7 @@ trait Decider {
   def pushScope(): Unit
   def popScope(): Unit
 
-  def checkSmoke(): Boolean
+  def checkSmoke(isAssert: Boolean = false): Boolean
 
   def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit
   def setPathConditionMark(): Mark
@@ -120,7 +120,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private def getProver(prover: String): Prover = prover match {
       case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
       case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
-      case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter)
+      case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter, triggerGenerator)
       case prover =>
         val msg1 = s"Unknown prover '$prover' provided. Defaulting to ${Z3ProverStdIO.name}."
         logger warn msg1
@@ -236,7 +236,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Asserting facts */
 
-    def checkSmoke(): Boolean = prover.check(Verifier.config.checkTimeout.toOption) == Unsat
+    def checkSmoke(isAssert: Boolean = false): Boolean = {
+      val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
+      prover.check(timeout) == Unsat
+    }
 
     def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
 

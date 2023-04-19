@@ -23,10 +23,12 @@ trait SymbolicExecutionRules {
         wrapped
       case _ => ve
     }
-    val counterexample: Option[Counterexample] = if (v != null && Verifier.config.counterexample.toOption.isDefined) {
+    if (v != null && (Verifier.config.reportReasonUnknown() || Verifier.config.counterexample.toOption.isDefined)) {
       if (generateNewModel || !v.decider.hasModel()) {
         v.decider.generateModel()
       }
+    }
+    val counterexample: Option[Counterexample] = if (v != null && Verifier.config.counterexample.toOption.isDefined) {
       if (v.decider.isModelValid()) {
         val nativeModel = v.decider.getModel()
         val ce_type = Verifier.config.counterexample()
@@ -46,7 +48,8 @@ trait SymbolicExecutionRules {
         Some(finalCE)
       } else None
     } else None
-    val reasonUnknown = if (v != null && !generateNewModel) {
+
+    val reasonUnknown = if (v != null && Verifier.config.reportReasonUnknown()) {
       Some(v.decider.prover.getReasonUnknown())
     } else {
       None

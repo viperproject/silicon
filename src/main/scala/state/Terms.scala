@@ -15,6 +15,7 @@ import viper.silicon.state.terms.sorts.{HeapSort, MaskSort, PredHeapSort}
 import viper.silicon.{Map, Stack, state, toMap}
 import viper.silicon.state.{Identifier, MagicWandChunk, MagicWandIdentifier, SortBasedIdentifier}
 import viper.silicon.verifier.Verifier
+import scala.collection.concurrent.TrieMap
 
 import scala.collection.immutable
 
@@ -306,6 +307,13 @@ object App extends CondFlyweightTermFactory[(Applicable, Seq[Term]), App] {
 }
 
 /*
+ * Applicable without arguments, only to be used as a hint for quantified chunks.
+ */
+case class AppHint(applicable: Applicable) extends Term {
+  val sort = applicable.resultSort
+}
+
+/*
  * Terms
  */
 
@@ -519,7 +527,7 @@ trait ConditionalFlyweight[T, V] { self: AnyRef =>
     }
   }
 
-  override def toString: String = {
+  override lazy val toString: String = {
     val argString = equalityDefiningMembers match {
       case p: Product =>
         p.productIterator.mkString(", ")
@@ -576,8 +584,6 @@ trait CondFlyweightFactory[T, U, V <: U with ConditionalFlyweight[T, V]] extends
   * @tparam V class we are creating instances of
   */
 trait GeneralCondFlyweightFactory[IF, T <: IF, U, V <: U with ConditionalFlyweight[T, V]] extends (IF => U) {
-
-  import scala.collection.concurrent.TrieMap
 
   var pool = new TrieMap[T, V]()
 
@@ -2557,8 +2563,6 @@ object MagicWandSnapshot  {
 
   // Since MagicWandSnapshot subclasses Combine, we apparently cannot inherit the normal subclass, so we
   // have to copy paste the code here.
-  import scala.collection.concurrent.TrieMap
-
   var pool = new TrieMap[(Term, Term), MagicWandSnapshot]()
 
   def createIfNonExistent(args: (Term, Term)): MagicWandSnapshot = {
