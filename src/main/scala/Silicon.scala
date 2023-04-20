@@ -243,21 +243,23 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
 
     /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 
-    val failures =
-      results.flatMap(r => r :: r.previous.toList)
-        .collect{ case f: Failure => f } /* Ignore successes */
-        .pipe(allResults => {
-          /* If branchconditions are to be reported we collect the different failure contexts
-          *  of all failures that report the same error (but on different branches, with different CounterExample)
-          *  and put those into one failure */
-          if (config.enableBranchconditionReporting())
-            allResults.groupBy(failureFilterAndGroupingCriterion).map{case (_: String, fs:List[Failure]) =>
-              fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
-              Failure(fs.head.message)
-            }.toList
-             else allResults.distinctBy(failureFilterAndGroupingCriterion)
-        })
-        .sortBy(failureSortingCriterion)
+    val failures = results
+      // note that we do not extract 'previous' verification errors from VerificationResult's `previous` field
+      // because this is expected to have already been done in `verifier.verify` (for each member).
+      .collect{ case f: Failure => f } /* Ignore successes */
+      .pipe(allResults => {
+        /* If branchconditions are to be reported we collect the different failure contexts
+         *  of all failures that report the same error (but on different branches, with different CounterExample)
+         *  and put those into one failure
+         */
+        if (config.enableBranchconditionReporting())
+          allResults.groupBy(failureFilterAndGroupingCriterion).map{case (_: String, fs:List[Failure]) =>
+            fs.head.message.failureContexts = fs.flatMap(_.message.failureContexts)
+            Failure(fs.head.message)
+          }.toList
+        else allResults.distinctBy(failureFilterAndGroupingCriterion)
+      })
+      .sortBy(failureSortingCriterion)
 
 //    if (config.showStatistics.isDefined) {
 //      val proverStats = verifier.decider.statistics()
@@ -337,6 +339,8 @@ class SiliconFrontend(override val reporter: Reporter,
                       override implicit val logger: Logger = ViperStdOutLogger("SiliconFrontend", "INFO").get) extends SilFrontend {
 
   protected var siliconInstance: Silicon = _
+
+  override def backendTypeFormat: Option[String] = Some("SMTLIB")
 
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(reporter, Seq("args" -> fullCmd))

@@ -6,6 +6,8 @@
 
 package viper.silicon.verifier
 
+import viper.silicon.Config.ExhaleMode
+
 import java.text.SimpleDateFormat
 import java.util.concurrent._
 import scala.annotation.unused
@@ -30,7 +32,7 @@ import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, WarningsDuringTypechecking}
+import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, VerificationTerminationMessage, QuantifierChosenTriggersMessage, WarningsDuringTypechecking}
 import viper.silver.verifier.TypecheckerWarning
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
@@ -165,11 +167,13 @@ class DefaultMainVerifier(config: Config,
           val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers)
           res
         case exists: ast.Exists =>
           val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers)
           res
       }, Traverse.BottomUp)
 
@@ -209,6 +213,7 @@ class DefaultMainVerifier(config: Config,
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
       val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
+        .flatMap(extractAllVerificationResults)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of function `${function.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -218,6 +223,7 @@ class DefaultMainVerifier(config: Config,
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
       val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
+        .flatMap(extractAllVerificationResults)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
@@ -246,6 +252,7 @@ class DefaultMainVerifier(config: Config,
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
           val results = v.methodSupporter.verify(s, method)
+            .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon", method, elapsed, condenseToViperResult(results))
@@ -259,6 +266,7 @@ class DefaultMainVerifier(config: Config,
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
           val results = v.cfgSupporter.verify(s, cfg)
+            .flatMap(extractAllVerificationResults)
           val elapsed = System.currentTimeMillis() - startTime
 
           reporter report VerificationResultMessage(s"silicon"/*, cfg*/, elapsed, condenseToViperResult(results))
@@ -276,6 +284,7 @@ class DefaultMainVerifier(config: Config,
         this.axiomsAfterAnalysis().toList,
         this.postConditionAxioms().toList)
     }
+    reporter report VerificationTerminationMessage()
 
     (   functionVerificationResults
      ++ predicateVerificationResults
@@ -302,8 +311,9 @@ class DefaultMainVerifier(config: Config,
           qpMagicWands = quantifiedMagicWands,
           predicateSnapMap = predSnapGenerator.snapMap,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
-          isMethodVerification = member.isInstanceOf[ast.Method],
-          heapDependentTriggers = resourceTriggers)
+          currentMember = Some(member),
+          heapDependentTriggers = resourceTriggers,
+          moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
@@ -316,13 +326,15 @@ class DefaultMainVerifier(config: Config,
 
     State(
       program = program,
+      currentMember = None,
       functionData = functionData,
       predicateData = predicateData,
       qpFields = quantifiedFields,
       qpPredicates = quantifiedPredicates,
       qpMagicWands = quantifiedMagicWands,
       predicateSnapMap = predSnapGenerator.snapMap,
-      predicateFormalVarMap = predSnapGenerator.formalVarMap)
+      predicateFormalVarMap = predSnapGenerator.formalVarMap,
+      moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete)
   }
 
   private def excludeMethod(method: ast.Method) = (
@@ -513,4 +525,12 @@ class DefaultMainVerifier(config: Config,
     }
     results
   }
+
+  /**
+    * In case Silicon encounters an expected error (i.e. `ErrorMessage.isExpected`), Silicon continues (until at most
+    * config.numberOfErrorsToReport() have been encountered (per member)).
+    * This function combines the verification result with verification results stored in its `previous` field.
+    */
+  private def extractAllVerificationResults(res: VerificationResult): Seq[VerificationResult] =
+    res :: res.previous.toList
 }

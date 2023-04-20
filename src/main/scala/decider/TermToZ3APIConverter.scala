@@ -30,6 +30,7 @@ class TermToZ3APIConverter
 
   val sortCache = mutable.HashMap[Sort, Z3Sort]()
   val funcDeclCache = mutable.HashMap[(String, Seq[Sort], Sort), Z3FuncDecl]()
+  val termCache = mutable.HashMap[Term, Z3Expr]()
 
   def convert(s: Sort): Z3Sort = convertSort(s)
 
@@ -119,11 +120,10 @@ class TermToZ3APIConverter
          */
         ???
 
-      case sorts.FieldValueFunction(codomainSort) => {
-        val name = convertSortName(codomainSort)
-        ctx.mkUninterpretedSort("$FVF<" + name + ">")
+      case sorts.FieldValueFunction(_, fieldName) => {
+        ctx.mkUninterpretedSort("$FVF<" + fieldName + ">")
       }
-      case sorts.PredicateSnapFunction(codomainSort) => ctx.mkUninterpretedSort("$PSF<" + convertSortName(codomainSort) + ">")
+      case sorts.PredicateSnapFunction(_, predName) => ctx.mkUninterpretedSort("$PSF<" + predName + ">")
 
       case sorts.FieldPermFunction() => ctx.mkUninterpretedSort("$FPM") // text("$FPM")
       case sorts.PredicatePermFunction() => ctx.mkUninterpretedSort("$PPM") // text("$PPM")
@@ -153,8 +153,8 @@ class TermToZ3APIConverter
          */
         ???
 
-      case sorts.FieldValueFunction(codomainSort) => Some(ctx.mkSymbol("$FVF<" + convertSortName(codomainSort) + ">")) //
-      case sorts.PredicateSnapFunction(codomainSort) => Some(ctx.mkSymbol("$PSF<" + convertSortName(codomainSort) + ">"))
+      case sorts.FieldValueFunction(_, fieldName) => Some(ctx.mkSymbol("$FVF<" + fieldName + ">")) //
+      case sorts.PredicateSnapFunction(_, predName) => Some(ctx.mkSymbol("$PSF<" + predName + ">"))
 
       case sorts.FieldPermFunction() => Some(ctx.mkSymbol("$FPM")) // text("$FPM")
       case sorts.PredicatePermFunction() => Some(ctx.mkSymbol("$PPM")) // text("$PPM")
@@ -204,6 +204,9 @@ class TermToZ3APIConverter
 
 
   def convertTerm(term: Term): Z3Expr = {
+    val cached = termCache.get(term)
+    if (cached.isDefined)
+      return cached.get
     val res = term match {
       case l: Literal => {
         l match {
@@ -213,9 +216,9 @@ class TermToZ3APIConverter
             else
               ctx.mkUnaryMinus(ctx.mkInt((-n).toString()))
           }
-          case True() => ctx.mkTrue()
-          case False() => ctx.mkFalse()
-          case Null() => ctx.mkConst("$Ref.null", ctx.mkUninterpretedSort("$Ref"))
+          case True => ctx.mkTrue()
+          case False => ctx.mkFalse()
+          case Null => ctx.mkConst("$Ref.null", ctx.mkUninterpretedSort("$Ref"))
           case Unit => ctx.mkConst(getUnitConstructor)
           case _: SeqNil => createApp("Seq_empty", Seq(), l.sort)
           case _: EmptySet => createApp("Set_empty", Seq(), l.sort)
@@ -255,11 +258,13 @@ class TermToZ3APIConverter
         } else{
           val qvarExprs = vars.map(v => convert(v)).toArray
           val nonEmptyTriggers = triggers.filter(_.p.nonEmpty)
-          val patterns = if (nonEmptyTriggers.nonEmpty)
-              // Simplify trigger terms; Z3 does this automatically when used via stdio, and it sometimes makes
-              // triggers valid that would otherwise be rejected.
-              nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(trm => convertTerm(trm).simplify()): _*)).toArray
-            else null
+          val patterns = if (nonEmptyTriggers.nonEmpty) {
+              // ME: Maybe we should simplify trigger terms here? There is some evidence that Z3 does this
+              // automatically when used via stdio, and it sometimes makes triggers valid that would otherwise be
+              // rejected. On the other hand, it's not at all obvious that simplification does not change the shape
+              // of a trigger term, which would not be what we want.
+              nonEmptyTriggers.map(t => ctx.mkPattern(t.p.map(trm => convertTerm(trm)): _*)).toArray
+          } else null
           val weightValue = weight.getOrElse(1)
           if (quant == Forall) {
             ctx.mkForall(qvarExprs, convertTerm(body), weightValue, patterns, null, ctx.mkSymbol(name), null)
@@ -311,8 +316,8 @@ class TermToZ3APIConverter
       /* Permissions */
 
 
-      case FullPerm() => ctx.mkReal(1)
-      case NoPerm() => ctx.mkReal(0)
+      case FullPerm => ctx.mkReal(1)
+      case NoPerm => ctx.mkReal(0)
       case FractionPermLiteral(r) => ctx.mkDiv(convertToReal(IntLiteral(r.numerator)), convertToReal(IntLiteral(r.denominator)))
       case FractionPerm(n, d) => ctx.mkDiv(convertToReal(n), convertToReal(d))
       case PermLess(t0, t1) => ctx.mkLt(convertTerm(t0).asInstanceOf[ArithExpr], convertTerm(t1).asInstanceOf[ArithExpr])
@@ -401,7 +406,7 @@ class TermToZ3APIConverter
         createApp("$FVF.lookup_" + field, Seq(fvf, at), term.sort)
 
       case FieldTrigger(field, fvf, at) => createApp("$FVF.loc_" + field, (fvf.sort match {
-        case sorts.FieldValueFunction(_) => Seq(Lookup(field, fvf, at), at)
+        case sorts.FieldValueFunction(_, _) => Seq(Lookup(field, fvf, at), at)
         case _ => Seq(fvf, at)
       }), term.sort)
 
@@ -442,6 +447,7 @@ class TermToZ3APIConverter
          | _: Quantification =>
         sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
     }
+    termCache.put(term, res)
     res
   }
 
@@ -517,6 +523,7 @@ class TermToZ3APIConverter
     macros.clear()
     funcDeclCache.clear()
     sortCache.clear()
+    termCache.clear()
     unitConstructor = null
     combineConstructor = null
     firstFunc = null

@@ -6,10 +6,10 @@
 
 package viper.silicon.tests
 
-class SiliconTestsMoreCompleteExhale extends SiliconTests {
-  override val testDirectories: Seq[String] = Seq("moreCompleteExhale")
+class SiliconTestsQuasihavoc extends SiliconTests {
+  override val testDirectories: Seq[String] = Seq("quasihavoc")
 
- override val commandLineArguments: Seq[String] = Seq(
+  override val commandLineArguments: Seq[String] = Seq(
     "--timeout", "300" /* seconds */,
-    "--exhaleMode=1")
+    "--enableMoreCompleteExhale")
 }
