@@ -207,8 +207,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     */
   private def combineSnapshots(fr: FunctionRecorder, t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (FunctionRecorder, Term, Term) = {
     (IsPositive(p1), IsPositive(p2)) match {
-      case (True(), b2) => (fr, t1, Implies(b2, t1 === t2))
-      case (b1, True()) => (fr, t2, Implies(b1, t2 === t1))
+      case (True, b2) => (fr, t1, Implies(b2, t1 === t2))
+      case (b1, True) => (fr, t2, Implies(b1, t2 === t1))
       case (b1, b2) =>
         /*
          * Since it is not definitely known whether p1 and p2 are positive,
@@ -245,7 +245,7 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
           val currentPermAmount = PermLookup(field.name, pmDef.pm, receiver)
           v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
           v.decider.assume(
-            Forall(receiver, PermAtMost(currentPermAmount, FullPerm()), Trigger(trigger), "qp-fld-prm-bnd"))
+            Forall(receiver, PermAtMost(currentPermAmount, FullPerm), Trigger(trigger), "qp-fld-prm-bnd"))
         } else {
           /*
           If we don't use heap-dependent triggers, the trigger x.f does not work. Instead, we assume the permission
@@ -255,14 +255,14 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
            */
           for (chunk <- fieldChunks) {
             if (chunk.singletonRcvr.isDefined){
-              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm()))
+              v.decider.assume(PermAtMost(PermLookup(field.name, pmDef.pm, chunk.singletonRcvr.get), FullPerm))
             } else {
               val chunkReceivers = chunk.invs.get.inverses.map(i => App(i, chunk.invs.get.additionalArguments ++ chunk.quantifiedVars))
               val triggers = chunkReceivers.map(r => Trigger(r)).toSeq
               val currentPermAmount = PermLookup(field.name, pmDef.pm, chunk.quantifiedVars.head)
               v.decider.prover.comment(s"Assume upper permission bound for field ${field.name}")
               v.decider.assume(
-                Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm()), triggers, "qp-fld-prm-bnd"))
+                Forall(chunk.quantifiedVars, PermAtMost(currentPermAmount, FullPerm), triggers, "qp-fld-prm-bnd"))
             }
 
           }

@@ -126,7 +126,7 @@ object chunkSupporter extends ChunkSupportRules {
                   }
               }
               QS(s2.copy(h = s.h), h2, snap, v1)
-            case _ if v1.decider.checkSmoke() =>
+            case _ if v1.decider.checkSmoke(true) =>
               Success() // TODO: Mark branch as dead?
             case _ =>
               createFailure(ve, v1, s1, true)
@@ -159,13 +159,13 @@ object chunkSupporter extends ChunkSupportRules {
           val newChunk = ch.withPerm(PermMinus(ch.perm, toTake))
           val takenChunk = Some(ch.withPerm(toTake))
           var newHeap = h - ch
-          if (!v.decider.check(newChunk.perm === NoPerm(), Verifier.config.checkTimeout())) {
+          if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout())) {
             newHeap = newHeap + newChunk
             assumeProperties(newChunk, newHeap)
           }
           (ConsumptionResult(PermMinus(perms, toTake), v, 0), s, newHeap, takenChunk)
         } else {
-          if (v.decider.check(ch.perm !== NoPerm(), Verifier.config.checkTimeout())) {
+          if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout())) {
             v.decider.assume(PermLess(perms, ch.perm))
             val newChunk = ch.withPerm(PermMinus(ch.perm, perms))
             val takenChunk = ch.withPerm(perms)
@@ -177,7 +177,7 @@ object chunkSupporter extends ChunkSupportRules {
           }
         }
       case None =>
-        if (consumeExact && s.retrying && v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
+        if (consumeExact && s.retrying && v.decider.check(perms === NoPerm, Verifier.config.checkTimeout())) {
           (Complete(), s, h, None)
         } else {
           (Incomplete(perms), s, h, None)
@@ -227,7 +227,7 @@ object chunkSupporter extends ChunkSupportRules {
     findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
         Q(s, ch.snap, v)
-      case _ if v.decider.checkSmoke() =>
+      case _ if v.decider.checkSmoke(true) =>
         Success() // TODO: Mark branch as dead?
       case _ =>
         createFailure(ve, v, s, true)
