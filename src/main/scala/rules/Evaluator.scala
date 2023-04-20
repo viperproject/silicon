@@ -1164,11 +1164,32 @@ object evaluator extends EvaluationRules {
     val h = s.oldHeaps(label)
     val s1 = s.copy(h = h, partiallyConsumedHeap = None)
     val s2 = v.stateConsolidator.consolidateIfRetrying(s1, v)
+    val possibleTriggersBefore: Map[ast.Exp, Term] = if (s.recordPossibleTriggers) s.possibleTriggers else Map.empty
 
     eval(s2, e, pve, v)((s3, t, v1) => {
+      val newPossibleTriggers = if (s.recordPossibleTriggers) {
+        // For all new possible trigger expressions e and translated term t,
+        // make sure we remember t as the term for old[label](e) instead.
+        val addedOrChangedPairs = s3.possibleTriggers.filter(t =>
+          !possibleTriggersBefore.contains(t._1) || possibleTriggersBefore(t._1) != t._2)
+
+        def wrapInOld(e: ast.Exp) = {
+          if (label == "old") {
+            ast.Old(e)(e.pos, e.info, e.errT)
+          } else {
+            ast.LabelledOld(e, label)(e.pos, e.info, e.errT)
+          }
+        }
+
+        val oldPairs = addedOrChangedPairs.map(t => wrapInOld(t._1) -> t._2)
+        s.possibleTriggers ++ oldPairs
+      } else {
+        s.possibleTriggers
+      }
       val s4 = s3.copy(h = s.h,
                        oldHeaps = s3.oldHeaps + (label -> s3.h),
-                       partiallyConsumedHeap = s.partiallyConsumedHeap)
+                       partiallyConsumedHeap = s.partiallyConsumedHeap,
+                       possibleTriggers = newPossibleTriggers)
       Q(s4, t, v1)})
   }
 
@@ -1308,34 +1329,23 @@ object evaluator extends EvaluationRules {
                          (Q: (State, Seq[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
 
+    def transformPotentialFuncApp(t: Term) = t match {
+      case app@App(fun: HeapDepFun, _) =>
+        /** Heap-dependent functions that are used as tTriggerSets should be used
+          * in the limited version, because it allows for more instantiations.
+          * Keep this code in sync with [[viper.silicon.supporters.ExpressionTranslator.translate]]
+          *
+          */
+        app.copy(applicable = functionSupporter.limitedVersion(fun))
+      case other =>
+        other
+    }
+
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map {
-        case ast.Old(e) => e /* TODO: What about heap-dependent functions under old in triggers? */
-        case e => e
-      }.map {
-        case fapp: ast.FuncApp =>
-          /** Heap-dependent functions that are used as tTriggerSets should be used
-            * in the limited version, because it allows for more instantiations.
-            * Keep this code in sync with [[viper.silicon.supporters.ExpressionTranslator.translate]]
-            *
-            */
-          val cachedTrigger =
-            s.possibleTriggers.get(fapp) map {
-              case app @ App(fun: HeapDepFun, _) =>
-                app.copy(applicable = functionSupporter.limitedVersion(fun))
-              case app: App =>
-                app
-              case other =>
-                sys.error(s"Expected $fapp to map to a function application, but found $other")
-            }
-
-          (cachedTrigger, if (cachedTrigger.isDefined) None else Some(fapp))
-
-        case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess) =>
-          val cachedTrigger = s.possibleTriggers.get(pt)
-
+        case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
+          val cachedTrigger = s.possibleTriggers.get(pt).map(t => transformPotentialFuncApp(t))
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
-
         case e => (None, Some(e))
       }.unzip match {
         case (optCachedTriggerTerms, optRemainingTriggerExpressions) =>
@@ -1405,7 +1415,7 @@ object evaluator extends EvaluationRules {
       case _ =>
         for (e <- remainingTriggerExpressions)
           v.reporter.report(WarningsDuringTypechecking(Seq(
-            TypecheckerWarning(s"Cannot use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
+            TypecheckerWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
         Q(s, toTriggerForm(cachedTriggerTerms, s), v)
     }
   }
