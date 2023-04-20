@@ -1258,42 +1258,23 @@ object evaluator extends EvaluationRules {
                          (Q: (State, Seq[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
 
+    def transformPotentialFuncApp(t: Term) = t match {
+      case app@App(fun: HeapDepFun, _) =>
+        /** Heap-dependent functions that are used as tTriggerSets should be used
+          * in the limited version, because it allows for more instantiations.
+          * Keep this code in sync with [[viper.silicon.supporters.ExpressionTranslator.translate]]
+          *
+          */
+        app.copy(applicable = functionSupporter.limitedVersion(fun))
+      case other =>
+        other
+    }
+
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map {
-        case fapp: ast.FuncApp =>
-          /** Heap-dependent functions that are used as tTriggerSets should be used
-            * in the limited version, because it allows for more instantiations.
-            * Keep this code in sync with [[viper.silicon.supporters.ExpressionTranslator.translate]]
-            *
-            */
-          val cachedTrigger =
-            s.possibleTriggers.get(fapp) map {
-              case app @ App(fun: HeapDepFun, _) =>
-                app.copy(applicable = functionSupporter.limitedVersion(fun))
-              case app: App =>
-                app
-              case other =>
-                sys.error(s"Expected $fapp to map to a function application, but found $other")
-            }
-
-          (cachedTrigger, if (cachedTrigger.isDefined) None else Some(fapp))
-        case o@ast.Old(fapp: ast.FuncApp) =>
-          val cachedTrigger =
-            s.possibleTriggers.get(o) map {
-              case app@App(fun: HeapDepFun, _) =>
-                app.copy(applicable = functionSupporter.limitedVersion(fun))
-              case app: App =>
-                app
-              case other =>
-                sys.error(s"Expected $fapp to map to a function application, but found $other")
-            }
-
-          (cachedTrigger, if (cachedTrigger.isDefined) None else Some(o))
-        case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess) =>
-          val cachedTrigger = s.possibleTriggers.get(pt)
-
+        case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
+          val cachedTrigger = s.possibleTriggers.get(pt).map(t => transformPotentialFuncApp(t))
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
-
         case e => (None, Some(e))
       }.unzip match {
         case (optCachedTriggerTerms, optRemainingTriggerExpressions) =>
@@ -1363,7 +1344,7 @@ object evaluator extends EvaluationRules {
       case _ =>
         for (e <- remainingTriggerExpressions)
           v.reporter.report(WarningsDuringTypechecking(Seq(
-            TypecheckerWarning(s"Cannot use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
+            TypecheckerWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
         Q(s, cachedTriggerTerms, v)
     }
   }
