@@ -140,7 +140,11 @@ object producer extends ProductionRules {
     if (Verifier.config.maskHeapMode()) {
       val givenSnap = sf(sorts.Snap, v)
       val fakeTerm = if (!givenSnap.isInstanceOf[FakeMaskMapTerm]) {
-        val otherSnap = sf(null, null)
+        val otherSnap = try {
+          sf(null, null)
+        } catch {
+          case _: NullPointerException => null
+        }
         if (otherSnap.isInstanceOf[FakeMaskMapTerm]) {
           val tlcSnaps = fromSnapTree(givenSnap, as.size).map(t => Some(t))
           FakeMaskMapTerm(otherSnap.asInstanceOf[FakeMaskMapTerm].masks, tlcSnaps)
@@ -205,7 +209,7 @@ object producer extends ProductionRules {
           if (s == null && v == null) {
             snapTerm
           } else {
-            snapTerm.tlcNonQpTerms(0).get
+            snapTerm.tlcNonQpTerms(0).get.convert(s)
           }
         }
         sfFirst

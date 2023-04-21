@@ -50,12 +50,34 @@ class MinimalStateConsolidator extends StateConsolidationRules {
   protected def assumeUpperPermissionBoundForQPFields(s: State, @unused heaps: Seq[Heap], @unused v: Verifier): State = s
 }
 
-class MaskHeapStateConsolidator extends MinimalStateConsolidator {
-  override def merge(fr: FunctionRecorder, h: Heap, ch: NonQuantifiedChunk, v: Verifier): (FunctionRecorder, Heap) = ???
+class MaskHeapStateConsolidator(config: Config) extends DefaultStateConsolidator(config) {
+
+  def filterMHChunks(h: Heap): Heap = {
+    Heap(h.values.filterNot(_.isInstanceOf[MaskHeapChunk]))
+  }
+
+  def filterNormalChunks(h: Heap): Heap = {
+    Heap(h.values.filter(_.isInstanceOf[MaskHeapChunk]))
+  }
+
+  override def consolidate(s: State, v: Verifier): State = {
+    val oldH = filterNormalChunks(s.h)
+    val oldReserves = s.reserveHeaps.map(h => filterNormalChunks(h))
+    val consolidated = super.consolidate(s.copy(h = filterMHChunks(s.h), reserveHeaps = s.reserveHeaps.map(h => filterMHChunks(h))), v)
+    consolidated.copy(h = consolidated.h + oldH, reserveHeaps = consolidated.reserveHeaps.zip(oldReserves).map(hs => hs._1 + hs._2))
+  }
 
   override def merge(fr: FunctionRecorder, h: Heap, newH: Heap, v: Verifier): (FunctionRecorder, Heap) = {
-    (fr, maskHeapSupporter.mergeWandHeaps(h, newH, v))
+    val (hMH, hNormal) = h.values.partition(_.isInstanceOf[MaskHeapChunk])
+    val (nMH, nNormal) = newH.values.partition(_.isInstanceOf[MaskHeapChunk])
+    val (fr1, h1) = super.merge(fr, Heap(hNormal), Heap(nNormal), v)
+    val h2 = maskHeapSupporter.mergeWandHeaps(Heap(hMH), Heap(nMH), v)
+    (fr1, h1 + h2)
   }
+
+  override protected def assumeUpperPermissionBoundForQPFields(s: State, v: Verifier): State = s
+
+  override protected def assumeUpperPermissionBoundForQPFields(s: State, heaps: Seq[Heap], v: Verifier): State = s
 }
 
 /** Default implementation that merges as many known-alias chunks as possible, and deduces various

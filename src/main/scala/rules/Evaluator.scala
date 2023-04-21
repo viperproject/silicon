@@ -191,7 +191,7 @@ object evaluator extends EvaluationRules {
            .setConstrainable(Seq(tVar), true)
         Q(s1, tVar, v)
 
-      case fa: ast.FieldAccess if Verifier.config.maskHeapMode() =>
+      case fa: ast.FieldAccess if Verifier.config.maskHeapMode() && s.qpFields.contains(fa.field) =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, v1) => {
           val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == fa.field).get.asInstanceOf[BasicMaskHeapChunk]
           val ve = pve dueTo InsufficientPermission(fa)
@@ -207,7 +207,7 @@ object evaluator extends EvaluationRules {
           }
         })
 
-      case pa: ast.PredicateAccess if Verifier.config.maskHeapMode() =>
+      case pa: ast.PredicateAccess if Verifier.config.maskHeapMode() && s.qpPredicates.contains(pa.res(s.program).asInstanceOf[ast.Predicate]) =>
         val pvef: ast.Exp => PartialVerificationError = _ => pve
         evals(s, pa.args, pvef, v)((s1, tArgs, v1) => {
           val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == pa.res(s.program)).get.asInstanceOf[BasicMaskHeapChunk]
@@ -800,16 +800,16 @@ object evaluator extends EvaluationRules {
               val (snapArgs, snapToRecord) = if (Verifier.config.heapFunctionEncoding()) {
                 val resources = maskHeapSupporter.getResourceSeq(func.pres, s4.program)
                 val args = resources.map(r => {
-                  val existingHeap = maskHeapSupporter.findMaskHeapChunkOptionally(s4.h, r)
+                  val existingHeap = maskHeapSupporter.findMaskHeapChunkOptionally(s3.h, r)
                   if (existingHeap.isDefined) {
                     existingHeap.get.heap
                   } else {
                     val (identifier, rSort) = r match {
-                      case f: ast.Field => (BasicChunkIdentifier(f.name), v.symbolConverter.toSort(f.typ))
-                      case p: ast.Predicate => (BasicChunkIdentifier(p.name), sorts.Snap)
+                      case f: ast.Field => (BasicChunkIdentifier(f.name), sorts.HeapSort(v.symbolConverter.toSort(f.typ)))
+                      case p: ast.Predicate => (BasicChunkIdentifier(p.name), sorts.PredHeapSort)
                       case mwi => (mwi, sorts.Snap)
                     }
-                    val chunks: Seq[BasicChunk] = s4.h.values.filter{
+                    val chunks: Seq[BasicChunk] = s3.h.values.filter{
                       case bc: BasicChunk => bc.id == identifier
                       case _ => false
                     }.toSeq.asInstanceOf[Seq[BasicChunk]]

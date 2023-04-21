@@ -61,10 +61,10 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
   def findMaskHeapChunk(h: Heap, r: Any) = findMaskHeapChunkOptionally(h, r).get
 
-  def findMaskHeapChunkOptionally(h: Heap, r: Any) = h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == r).asInstanceOf[Option[BasicMaskHeapChunk]]
+  def findMaskHeapChunkOptionally(h: Heap, r: Any) = h.values.filter(_.isInstanceOf[MaskHeapChunk]).find(c => c.asInstanceOf[MaskHeapChunk].resource == r).asInstanceOf[Option[BasicMaskHeapChunk]]
 
   def findOrCreateMaskHeapChunk(h: Heap, mwi: MagicWandIdentifier, v: Verifier) = {
-    h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == mwi) match {
+    h.values.filter(_.isInstanceOf[MaskHeapChunk]).find(c => c.asInstanceOf[MaskHeapChunk].resource == mwi) match {
       case Some(c: BasicMaskHeapChunk) => (h, c)
       case None =>
         val newHeap = v.decider.fresh("mwHeap", PredHeapSort)

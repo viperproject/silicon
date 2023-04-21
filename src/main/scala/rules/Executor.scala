@@ -187,8 +187,8 @@ object executor extends ExecutionRules {
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
 
             val bodyHeap = if (Verifier.config.maskHeapMode()) {
-              val fieldChunks = s.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
-              val predChunks = s.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort)))
+              val fieldChunks = s.program.fields.filter(f => s.qpFields.contains(f)).map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, v.decider.fresh("hInit", HeapSort(v.symbolConverter.toSort(f.typ)))))
+              val predChunks = s.program.predicates.filter(p => s.qpPredicates.contains(p)).map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, v.decider.fresh("hInit", PredHeapSort)))
               Heap(fieldChunks ++ predChunks)
             } else {
               Heap()
@@ -307,7 +307,7 @@ object executor extends ExecutionRules {
           val t = ssaifyRhs(tRhs, x.name, x.typ, v)
           Q(s1.copy(g = s1.g + (x, t)), v1)})
 
-      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) if Verifier.config.maskHeapMode() =>
+      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) if Verifier.config.maskHeapMode() && s.qpFields.contains(field) =>
         assert(!s.exhaleExt)
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
@@ -398,7 +398,8 @@ object executor extends ExecutionRules {
         val tRcvr = v.decider.fresh(x)
         v.decider.assume(tRcvr !== Null)
         var heap = s.h
-        for (field <- fields) {
+        val (qpFields, otherFields) = fields.partition(f => s.qpFields.contains(f))
+        for (field <- qpFields) {
           // assume currently none
           val fieldChunk = maskHeapSupporter.findMaskHeapChunk(heap, field)
           v.decider.assume(HeapLookup(fieldChunk.mask, tRcvr) === NoPerm)
@@ -406,8 +407,13 @@ object executor extends ExecutionRules {
           val newFieldChunk = fieldChunk.copy(mask = HeapUpdate(fieldChunk.mask, tRcvr, FullPerm))
           heap = heap - fieldChunk + newFieldChunk
         }
+        val newChunks = otherFields map (field => {
+          val p = FullPerm
+          val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ))
+          BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
+        })
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
-        val s1 = s.copy(g = s.g + (x, tRcvr), h = heap)
+        val s1 = s.copy(g = s.g + (x, tRcvr), h = heap + Heap(newChunks))
         v.decider.assume(ts)
         Q(s1, v)
 

@@ -292,7 +292,7 @@ class FunctionData(val programFunction: ast.Function,
 
   def transformToHeapVersion(t: Term) = {
     val resources = maskHeapSupporter.getResourceSeq(programFunction.pres, program)
-    val resHeaps = fromSnapTree(`?s`, resources.size).zip(resources).map {
+    val resHeaps = fromSnapTree(Second(`?s`), resources.size).zip(resources).map {
       case (s, r) =>
         val srt = r match {
           case f: ast.Field => sorts.HeapSort(symbolConverter.toSort(f.typ))

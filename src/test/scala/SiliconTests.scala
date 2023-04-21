@@ -56,5 +56,5 @@ class SiliconTests extends SilSuite {
   }
 
   val commandLineArguments: Seq[String] =
-    Seq("--timeout", "600" /* seconds */, "--maskHeapMode")
+    Seq("--timeout", "600" /* seconds */, "--maskHeapMode", "--enableMoreCompleteExhale")
 }

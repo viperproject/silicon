@@ -61,7 +61,7 @@ abstract class BaseVerifier(val config: Config,
     import StateConsolidationMode._
 
     config.stateConsolidationMode() match {
-      case _ if config.maskHeapMode() => new MaskHeapStateConsolidator
+      case _ if config.maskHeapMode() => new MaskHeapStateConsolidator(config)
       case Minimal => new MinimalStateConsolidator
       case Default => new DefaultStateConsolidator(config)
       case Retrying => new RetryingStateConsolidator(config)

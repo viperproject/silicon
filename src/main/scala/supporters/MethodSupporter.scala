@@ -51,8 +51,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       openSymbExLogger(method)
 
       val heap = if (Verifier.config.maskHeapMode()) {
-        val fieldChunks = sInit.program.fields.map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
-        val predChunks = sInit.program.predicates.map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, decider.fresh("hInit", PredHeapSort)))
+        val fieldChunks = sInit.program.fields.filter(f => sInit.qpFields.contains(f)).map(f => BasicMaskHeapChunk(FieldID, f, ZeroMask, decider.fresh("hInit", HeapSort(symbolConverter.toSort(f.typ)))))
+        val predChunks = sInit.program.predicates.filter(p => sInit.qpPredicates.contains(p)).map(p => BasicMaskHeapChunk(PredicateID, p, PredZeroMask, decider.fresh("hInit", PredHeapSort)))
         Heap(fieldChunks ++ predChunks)
       } else {
         sInit.h
