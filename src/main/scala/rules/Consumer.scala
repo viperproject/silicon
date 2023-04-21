@@ -114,7 +114,7 @@ object consumer extends ConsumptionRules {
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
                          : VerificationResult = {
     if (Verifier.config.maskHeapMode()) {
-      val resources = maskHeapSupporter.getResourceSeq(tlcs, s.program)
+      val resources = maskHeapSupporter.getResourceSeq(tlcs, s.program, Some(s))
       consumeTlcsMaskHeap(s, h, tlcs, pves, v, resources, ot)(Q)
     } else {
       internalConsumeTlcs(s, h, tlcs, pves, v, None)(Q)
@@ -130,18 +130,22 @@ object consumer extends ConsumptionRules {
                           ot: Option[Term])
                          (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
-    val term = if (ot.isDefined) ot.get else {
+    val term = if (ot.isDefined) {
+      ot.get
+    } else {
       val resMap: Seq[(Any, Term)] = resources.map(r => (r, (if (r.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask)))
-      FakeMaskMapTerm(immutable.ListMap(resMap: _*))
+      FakeMaskMapTerm(immutable.ListMap(resMap: _*), Seq())
     }
     internalConsumeTlcs(s, h, tlcs, pves, v, Some(term))((s2, h2, resMapTerm, v2) => {
       if (ot.isDefined) {
         Q(s2, h2, resMapTerm, v2)
       } else {
-        val resMap = resMapTerm.asInstanceOf[FakeMaskMapTerm].masks
+        val resTerm = resMapTerm.asInstanceOf[FakeMaskMapTerm]
+        val resMap = resTerm.masks
+
 
         val heapToUse = if (s.exhaleExt) s2.reserveHeaps.head else h // TODO I'm just guessing
-        Q(s2, h2, maskHeapSupporter.convertToSnapshot(resMap, resources, heapToUse), v2)
+        Q(s2, h2, maskHeapSupporter.convertToSnapshot(resMap, resTerm.tlcNonQpTerms, resources, heapToUse), v2)
       }
     })
   }
@@ -164,17 +168,37 @@ object consumer extends ConsumptionRules {
       val a = tlcs.head
       val pve = pves.head
 
-      if (tlcs.tail.isEmpty)
-        wrappedConsumeTlc(s, h, a, pve, v, resMap)(Q)
-      else
+      if (tlcs.tail.isEmpty) {
         wrappedConsumeTlc(s, h, a, pve, v, resMap)((s1, h1, snap1, v1) => {
-          internalConsumeTlcs(s1, h1, tlcs.tail, pves.tail, v1, Some(snap1))((s2, h2, snap2, v2) => {
-            if (Verifier.config.maskHeapMode())
+          if (snap1.isInstanceOf[FakeMaskMapTerm]) {
+            val snapTerm = snap1.asInstanceOf[FakeMaskMapTerm]
+            val oldTerm = resMap.get.asInstanceOf[FakeMaskMapTerm]
+            val newSnap = if (snapTerm.tlcNonQpTerms.length == oldTerm.tlcNonQpTerms.length) FakeMaskMapTerm(snapTerm.masks, snapTerm.tlcNonQpTerms ++ Seq(None)) else snapTerm
+            Q(s1, h1, newSnap, v1)
+          } else {
+            val curTerm = resMap.get.asInstanceOf[FakeMaskMapTerm]
+            Q(s1, h1, FakeMaskMapTerm(curTerm.masks, curTerm.tlcNonQpTerms ++ Seq(Some(snap1))), v1)
+          }
+        })
+      } else {
+        wrappedConsumeTlc(s, h, a, pve, v, resMap)((s1, h1, snap1, v1) => {
+          val snap1a = if (snap1.isInstanceOf[FakeMaskMapTerm]) {
+            val snapTerm = snap1.asInstanceOf[FakeMaskMapTerm]
+            val oldTerm = resMap.get.asInstanceOf[FakeMaskMapTerm]
+            if (snapTerm.tlcNonQpTerms.length == oldTerm.tlcNonQpTerms.length) FakeMaskMapTerm(snapTerm.masks, snapTerm.tlcNonQpTerms ++ Seq(None)) else snapTerm
+          } else {
+            val curTerm = resMap.get.asInstanceOf[FakeMaskMapTerm]
+            FakeMaskMapTerm(curTerm.masks, curTerm.tlcNonQpTerms ++ Seq(Some(snap1)))
+          }
+          internalConsumeTlcs(s1, h1, tlcs.tail, pves.tail, v1, Some(snap1a))((s2, h2, snap2, v2) => {
+            if (Verifier.config.maskHeapMode()) {
               Q(s2, h2, snap2, v2)
-            else
+            } else {
               Q(s2, h2, Combine(snap1, snap2), v2)
+            }
           })
         })
+      }
     }
   }
 
@@ -185,7 +209,23 @@ object consumer extends ConsumptionRules {
     val tlcs = a.topLevelConjuncts
     val pves = Seq.fill(tlcs.length)(pve)
 
-    consumeTlcs(s, h, tlcs, pves, v, ot)(Q)
+    val otNew = ot match {
+      case None => None
+      case Some(t: FakeMaskMapTerm) => Some(FakeMaskMapTerm(t.masks, Seq()))
+    }
+
+    consumeTlcs(s, h, tlcs, pves, v, otNew)((s1, h1, snap1, v1) => {
+      val snapFinal = ot match {
+        case None => snap1
+        case Some(t: FakeMaskMapTerm) => {
+          val snapTerm = snap1.asInstanceOf[FakeMaskMapTerm]
+          val tlcs = snapTerm.tlcNonQpTerms.map(t => t.getOrElse(terms.Unit).convert(sorts.Unit))
+          val tlcTerm = toSnapTree(tlcs)
+          FakeMaskMapTerm(snapTerm.masks, t.tlcNonQpTerms ++ Seq(Some(tlcTerm)))
+        }
+      }
+      Q(s1, h1, snapFinal, v1)
+    })
   }
 
   /** Wrapper/decorator for consume that injects the following operations:
@@ -297,7 +337,7 @@ object consumer extends ConsumptionRules {
                 notInjectiveReason = QPAssertionNotInjective(acc.loc),
                 insufficientPermissionReason = InsufficientPermission(acc.loc),
                 v1,
-                resMap.get.asInstanceOf[FakeMaskMapTerm].masks)(Q)
+                resMap.get.asInstanceOf[FakeMaskMapTerm])(Q)
             } else {
               quantifiedChunkSupporter.consume(
                 s = s1,
@@ -357,7 +397,7 @@ object consumer extends ConsumptionRules {
                 notInjectiveReason = QPAssertionNotInjective(acc.loc),
                 insufficientPermissionReason = InsufficientPermission(acc.loc),
                 v1,
-                resMap.get.asInstanceOf[FakeMaskMapTerm].masks)(Q)
+                resMap.get.asInstanceOf[FakeMaskMapTerm])(Q)
             } else {
               quantifiedChunkSupporter.consume(
                 s = s1,
@@ -382,7 +422,6 @@ object consumer extends ConsumptionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
-        assert(!Verifier.config.maskHeapMode())
         val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val qid = MagicWandIdentifier(wand, s.program).toString
@@ -413,7 +452,7 @@ object consumer extends ConsumptionRules {
                 notInjectiveReason = sys.error("Quantified wand not injective"), /*ReceiverNotInjective(...)*/
                 insufficientPermissionReason = MagicWandChunkNotFound(wand),
                 v1,
-                resMap.get.asInstanceOf[FakeMaskMapTerm].masks)(Q)
+                resMap.get.asInstanceOf[FakeMaskMapTerm])(Q)
             } else {
               quantifiedChunkSupporter.consume(
                 s = s1,
@@ -438,7 +477,10 @@ object consumer extends ConsumptionRules {
         }
 
       case ast.AccessPredicate(locAcc: ast.LocationAccess, ePerm)
-        if Verifier.config.maskHeapMode() =>
+        if Verifier.config.maskHeapMode() && (locAcc.res(s.program) match {
+          case f: ast.Field => s.qpFields.contains(f)
+          case p: ast.Predicate => s.qpPredicates.contains(p)
+        }) =>
         evalLocationAccess(s, locAcc, pve, v)((s1, _, tArgs, v1) =>
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
             permissionSupporter.assertNotNegative(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
@@ -452,7 +494,7 @@ object consumer extends ConsumptionRules {
                 loss,
                 pve,
                 v3,
-                resMap.get.asInstanceOf[FakeMaskMapTerm].masks
+                resMap.get.asInstanceOf[FakeMaskMapTerm]
               )((s4, h4, snap, v4) => {
                 val s5 = s4.copy(constrainableARPs = s1.constrainableARPs,
                   partiallyConsumedHeap = Some(h4))
@@ -552,12 +594,12 @@ object consumer extends ConsumptionRules {
         createFailure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a), v, s)
 
       /* Handle wands */
-      case wand: ast.MagicWand if Verifier.config.maskHeapMode() =>
+      case wand: ast.MagicWand if Verifier.config.maskHeapMode() && s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val ident = MagicWandIdentifier(wand, s.program)
           val (h1, _) = maskHeapSupporter.findOrCreateMaskHeapChunk(s1.h, ident, v1)
           val s2 = s1.copy(h = h1)
-          maskHeapSupporter.consumeSingleLocation(s2, h1, Seq(`?r`), tArgs, wand, FullPerm, pve, v1, resMap.get.asInstanceOf[FakeMaskMapTerm].masks)(Q)
+          maskHeapSupporter.consumeSingleLocation(s2, h1, Seq(`?r`), tArgs, wand, FullPerm, pve, v1, resMap.get.asInstanceOf[FakeMaskMapTerm])(Q)
         })
 
       case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>

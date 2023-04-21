@@ -2330,13 +2330,13 @@ object IdenticalOnKnownLocations extends CondFlyweightTermFactory[(Term, Term, T
   override def actualCreate(args: (Term, Term, Term)): IdenticalOnKnownLocations = new IdenticalOnKnownLocations(args._1, args._2, args._3)
 }
 
-class FakeMaskMapTerm(val masks: immutable.ListMap[Any, Term]) extends Term with ConditionalFlyweight[immutable.ListMap[Any, Term], FakeMaskMapTerm] {
-  val equalityDefiningMembers = masks
+class FakeMaskMapTerm(val masks: immutable.ListMap[Any, Term], val tlcNonQpTerms: Seq[Option[Term]]) extends Term with ConditionalFlyweight[(immutable.ListMap[Any, Term], Seq[Option[Term]]), FakeMaskMapTerm] {
+  val equalityDefiningMembers = (masks, tlcNonQpTerms)
   val sort = sorts.Snap // sure, why not
 }
 
-object FakeMaskMapTerm extends PreciseCondFlyweightFactory[immutable.ListMap[Any, Term], FakeMaskMapTerm] {
-  override def actualCreate(args: immutable.ListMap[Any, Term]): FakeMaskMapTerm = new FakeMaskMapTerm(args)
+object FakeMaskMapTerm extends PreciseCondFlyweightFactory[(immutable.ListMap[Any, Term], Seq[Option[Term]]), FakeMaskMapTerm] {
+  override def actualCreate(args: (immutable.ListMap[Any, Term], Seq[Option[Term]])): FakeMaskMapTerm = new FakeMaskMapTerm(args._1, args._2)
 }
 
 class MergeSingle(val heap: Term, val mask: Term, val location: Term, val value: Term) extends Term with ConditionalFlyweight[(Term, Term, Term, Term), MergeSingle] {

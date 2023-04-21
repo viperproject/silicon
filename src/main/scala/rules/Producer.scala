@@ -140,26 +140,39 @@ object producer extends ProductionRules {
     if (Verifier.config.maskHeapMode()) {
       val givenSnap = sf(sorts.Snap, v)
       val fakeTerm = if (!givenSnap.isInstanceOf[FakeMaskMapTerm]) {
-        val resources = as.map(_.shallowCollect {
-          case PredicateAccessPredicate(pa, _) => pa.loc(s.program)
-          case FieldAccessPredicate(fa, _) => fa.loc(s.program)
-          case w: ast.MagicWand => MagicWandIdentifier(w, s.program)
-        }).flatten.distinct.sortWith((r1, r2) => {
-          val r1Name = r1 match {
-            case f: ast.Field => f.name
-            case p: ast.Predicate => p.name
-            case mwi: MagicWandIdentifier => mwi.toString
-          }
-          val r2Name = r2 match {
-            case f: ast.Field => f.name
-            case p: ast.Predicate => p.name
-            case mwi: MagicWandIdentifier => mwi.toString
-          }
-          r1Name < r2Name
-        })
-        val snapParts = fromSnapTree(givenSnap, resources.size)
-        val heapParts = snapParts.zip(resources).map(tpl => (tpl._2, SnapToHeap(tpl._1, tpl._2, if (tpl._2.isInstanceOf[ast.Field]) HeapSort(v.symbolConverter.toSort(tpl._2.asInstanceOf[ast.Field].typ)) else PredHeapSort)))
-        FakeMaskMapTerm(immutable.ListMap.from(heapParts))
+        val otherSnap = sf(null, null)
+        if (otherSnap.isInstanceOf[FakeMaskMapTerm]) {
+          val tlcSnaps = fromSnapTree(givenSnap, as.size).map(t => Some(t))
+          FakeMaskMapTerm(otherSnap.asInstanceOf[FakeMaskMapTerm].masks, tlcSnaps)
+        } else {
+          val resources = as.flatMap(_.shallowCollect {
+            case PredicateAccessPredicate(pa, _) => pa.loc(s.program)
+            case FieldAccessPredicate(fa, _) => fa.loc(s.program)
+            case w: ast.MagicWand => MagicWandIdentifier(w, s.program)
+          }).distinct.filter {
+            case p: ast.Predicate => s.qpPredicates.contains(p)
+            case f: ast.Field => s.qpFields.contains(f)
+            case mwi: MagicWandIdentifier => s.qpMagicWands.contains(mwi)
+          }.sortWith((r1, r2) => {
+            val r1Name = r1 match {
+              case f: ast.Field => f.name
+              case p: ast.Predicate => p.name
+              case mwi: MagicWandIdentifier => mwi.toString
+            }
+            val r2Name = r2 match {
+              case f: ast.Field => f.name
+              case p: ast.Predicate => p.name
+              case mwi: MagicWandIdentifier => mwi.toString
+            }
+            r1Name < r2Name
+          })
+          val maskHeapPart = Second(givenSnap)
+          val tlcPart = First(givenSnap)
+          val snapParts = fromSnapTree(maskHeapPart, resources.size)
+          val heapParts = snapParts.zip(resources).map(tpl => (tpl._2, SnapToHeap(tpl._1, tpl._2, if (tpl._2.isInstanceOf[ast.Field]) HeapSort(v.symbolConverter.toSort(tpl._2.asInstanceOf[ast.Field].typ)) else PredHeapSort)))
+          val tlcSnaps = fromSnapTree(tlcPart, as.size).map(t => Some(t))
+          FakeMaskMapTerm(immutable.ListMap.from(heapParts), tlcSnaps)
+        }
       } else {
         givenSnap
       }
@@ -185,12 +198,30 @@ object producer extends ProductionRules {
       val a = as.head.whenInhaling
       val pve = pves.head
 
-      if (as.tail.isEmpty)
-        wrappedProduceTlc(s, sf, a, pve, v)(Q)
-      else {
+      val firstSf: (Sort, Verifier) => Term = if (Verifier.config.maskHeapMode()) {
+        val snapTerm = sf(null, null).asInstanceOf[FakeMaskMapTerm]
+
+        def sfFirst(s: Sort, v: Verifier): Term = {
+          if (s == null && v == null) {
+            snapTerm
+          } else {
+            snapTerm.tlcNonQpTerms(0).get
+          }
+        }
+        sfFirst
+      } else {
+        sf
+      }
+
+      if (as.tail.isEmpty) {
+        wrappedProduceTlc(s, firstSf, a, pve, v)(Q)
+      } else {
         if (Verifier.config.maskHeapMode()) {
-          wrappedProduceTlc(s, sf, a, pve, v)((s1, v1) =>
-            internalProduceTlcs(s1, sf, as.tail, pves.tail, v1)(Q))
+          val snapTerm = sf(null, null).asInstanceOf[FakeMaskMapTerm]
+          wrappedProduceTlc(s, firstSf, a, pve, v)((s1, v1) => {
+            val newSnapTerm = FakeMaskMapTerm(snapTerm.masks, snapTerm.tlcNonQpTerms.tail)
+            internalProduceTlcs(s1, (_, _) => newSnapTerm, as.tail, pves.tail, v1)(Q)
+          })
         } else {
           try {
             val (sf0, sf1) =
@@ -271,8 +302,7 @@ object producer extends ProductionRules {
               Q(s3, v3)
             }),
             (s2, v2) => {
-                if (!Verifier.config.maskHeapMode())
-                  v2.decider.assume(sf(sorts.Snap, v2) === Unit)
+                v2.decider.assume(sf(sorts.Snap, v2) === Unit)
                   /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
@@ -305,7 +335,7 @@ object producer extends ProductionRules {
           eval(s1, perm, pve, v1)((s2, tPerm, v2) =>
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
               val gain = PermTimes(tPerm, s3.permissionScalingFactor)
-              if (Verifier.config.maskHeapMode()) {
+              if (Verifier.config.maskHeapMode() && s3.qpFields.contains(field)) {
                 maskHeapSupporter.produceSingleLocation(s3, field, Seq(tRcvr), gain, v3, sf(null, null))(Q)
               } else {
                 val snap = sf(v3.symbolConverter.toSort(field.typ), v3)
@@ -326,30 +356,32 @@ object producer extends ProductionRules {
           eval(s1, perm, pve, v1)((s1a, tPerm, v1a) =>
             permissionSupporter.assertNotNegative(s1a, tPerm, perm, pve, v1a)((s2, v2) => {
               val gain = PermTimes(tPerm, s2.permissionScalingFactor)
-              val snap = sf(
-                predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
-                  .getOrElse(sorts.Snap), v2)
-              if (Verifier.config.maskHeapMode()) {
+              if (Verifier.config.maskHeapMode() && s2.qpPredicates.contains(predicate)) {
+                val snap = sf(null, null)
                 maskHeapSupporter.produceSingleLocation(s2, predicate, tArgs, gain, v2, snap)(Q)
               } else {
-              if (s2.qpPredicates.contains(predicate)) {
-                val formalArgs = s2.predicateFormalVarMap(predicate)
-                val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
-                quantifiedChunkSupporter.produceSingleLocation(
-                  s2, predicate, formalArgs, tArgs, snap, gain, trigger, v2)(Q)
-              } else {
-                val snap1 = snap.convert(sorts.Snap)
-                val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
-                chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
-                  if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
-                    && !Verifier.config.disableFunctionUnfoldTrigger()) {
-                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs))
+                val snap = sf(
+                  predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
+                    .getOrElse(sorts.Snap), v2)
+                  if (s2.qpPredicates.contains(predicate)) {
+                    val formalArgs = s2.predicateFormalVarMap(predicate)
+                    val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
+                    quantifiedChunkSupporter.produceSingleLocation(
+                      s2, predicate, formalArgs, tArgs, snap, gain, trigger, v2)(Q)
+                  } else {
+                    val snap1 = snap.convert(sorts.Snap)
+                    val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
+                    chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
+                      if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
+                        && !Verifier.config.disableFunctionUnfoldTrigger()) {
+                        v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs))
+                      }
+                      Q(s3.copy(h = h3), v3)})
                   }
-                  Q(s3.copy(h = h3), v3)})
-              }}})))
+              }})))
 
 
-      case wand: ast.MagicWand if Verifier.config.maskHeapMode() =>
+      case wand: ast.MagicWand if Verifier.config.maskHeapMode() && s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) => {
           val snap = sf(null, null)
           val ident = MagicWandIdentifier(wand, s.program)
@@ -571,8 +603,7 @@ object producer extends ProductionRules {
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
-        if (!Verifier.config.maskHeapMode())
-          v.decider.assume(sf(sorts.Snap, v) === Unit) /* TODO: See comment for case ast.Implies above */
+        v.decider.assume(sf(sorts.Snap, v) === Unit) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, v1) => {
           v1.decider.assume(t)
           Q(s1, v1)})

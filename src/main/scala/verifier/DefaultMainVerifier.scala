@@ -298,9 +298,9 @@ class DefaultMainVerifier(config: Config,
                                  program: ast.Program,
                                  functionData: Map[ast.Function, FunctionData],
                                  predicateData: Map[ast.Predicate, PredicateData]): State = {
-    val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
-    val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
-    val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
+    val quantifiedFields = if (member.isInstanceOf[ast.Function]) InsertionOrderedSet(program.fields) else InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
+    val quantifiedPredicates = if (member.isInstanceOf[ast.Function]) InsertionOrderedSet(program.predicates) else InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
+    val quantifiedMagicWands = if (member.isInstanceOf[ast.Function]) InsertionOrderedSet(program.magicWandStructures.map(MagicWandIdentifier(_, program))) else InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
     val resourceTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map{
       case wand: ast.MagicWand => MagicWandIdentifier(wand, program)
       case r => r

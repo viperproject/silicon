@@ -12,7 +12,7 @@ import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, Precond
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
-import viper.silicon.state._
+import viper.silicon.state.{terms, _}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
@@ -21,7 +21,7 @@ import viper.silicon.utils.toSf
 import viper.silicon.utils.ast.flattenOperator
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
-import viper.silicon.interfaces.state.{MaskHeapChunk, ChunkIdentifer, NonQuantifiedChunk}
+import viper.silicon.interfaces.state.{ChunkIdentifer, MaskHeapChunk, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silicon.state.terms.sorts.PredHeapSort
 import viper.silver.reporter.WarningsDuringTypechecking
@@ -800,9 +800,33 @@ object evaluator extends EvaluationRules {
               val (snapArgs, snapToRecord) = if (Verifier.config.heapFunctionEncoding()) {
                 val resources = maskHeapSupporter.getResourceSeq(func.pres, s4.program)
                 val args = resources.map(r => {
-                  maskHeapSupporter.findMaskHeapChunk(s4.h, r).heap
+                  val existingHeap = maskHeapSupporter.findMaskHeapChunkOptionally(s4.h, r)
+                  if (existingHeap.isDefined) {
+                    existingHeap.get.heap
+                  } else {
+                    val (identifier, rSort) = r match {
+                      case f: ast.Field => (BasicChunkIdentifier(f.name), v.symbolConverter.toSort(f.typ))
+                      case p: ast.Predicate => (BasicChunkIdentifier(p.name), sorts.Snap)
+                      case mwi => (mwi, sorts.Snap)
+                    }
+                    val chunks: Seq[BasicChunk] = s4.h.values.filter{
+                      case bc: BasicChunk => bc.id == identifier
+                      case _ => false
+                    }.toSeq.asInstanceOf[Seq[BasicChunk]]
+                    val emptyMask = if (r.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
+                    var currentMask: Term = emptyMask
+                    var currentHeap: Term = DummyHeap(rSort)
+                    for (c <- chunks) {
+                      val rcvr = if (r.isInstanceOf[ast.Field]) c.args.head else toSnapTree(c.args)
+                      val cHeap = HeapSingleton(rcvr, c.snap, rSort)
+                      val cMask = MaskAdd(emptyMask, rcvr, c.perm)
+                      currentHeap = MergeHeaps(currentHeap, currentMask, cHeap, cMask)
+                      currentMask = MaskAdd(currentMask, rcvr, c.perm)
+                    }
+                    currentHeap
+                  }
                 })
-                (args, FakeMaskMapTerm(ListMap(resources.zip(args): _*)))
+                (args, FakeMaskMapTerm(ListMap(resources.zip(args): _*), Seq()))
               } else {
                 val snapToRecord = snap.convert(sorts.Snap)
                 (Seq(snapToRecord), snapToRecord)

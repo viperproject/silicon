@@ -13,7 +13,7 @@ import viper.silicon.rules.quantifiedChunkSupporter.getFreshInverseFunctions
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{MaskSort, PredHeapSort, PredMaskSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapToSnap, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, sorts, toSnapTree}
+import viper.silicon.state.terms.{And, AtLeast, AtMost, Combine, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapToSnap, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, sorts, toSnapTree}
 import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -28,16 +28,21 @@ import scala.collection.{immutable, mutable}
 object maskHeapSupporter extends SymbolicExecutionRules {
 
   val resCache = mutable.HashMap[(Seq[ast.Exp], ast.Program), Seq[Any]]()
-  def getResourceSeq(tlcs: Seq[ast.Exp], program: ast.Program): Seq[Any] = {
+  def getResourceSeq(tlcs: Seq[ast.Exp], program: ast.Program, s: Option[State] = None): Seq[Any] = {
     val key = (tlcs, program)
     val current = resCache.get(key)
     if (current.isDefined)
       return current.get
-    val resources = tlcs.map(_.shallowCollect {
+    val resources = tlcs.flatMap(_.shallowCollect {
       case ast.PredicateAccessPredicate(pa, _) => pa.loc(program)
       case ast.FieldAccessPredicate(fa, _) => fa.loc(program)
       case mw: ast.MagicWand => MagicWandIdentifier(mw, program)
-    }).flatten.distinct.sortWith((r1, r2) => {
+    }).distinct.filter {
+      case _ if s.isEmpty => true
+      case p: ast.Predicate => s.get.qpPredicates.contains(p)
+      case f: ast.Field => s.get.qpFields.contains(f)
+      case mwi: MagicWandIdentifier => s.get.qpMagicWands.contains(mwi)
+    }.sortWith((r1, r2) => {
       val r1Name = r1 match {
         case f: ast.Field => f.name
         case p: ast.Predicate => p.name
@@ -93,7 +98,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
     mergedHeap
   }
 
-  def convertToSnapshot(masks: Map[Any, Term], resources: Seq[Any], h: Heap) = {
+  def convertToSnapshot(masks: Map[Any, Term], tlcTermsOp: Seq[Option[Term]], resources: Seq[Any], h: Heap) = {
     val snapTerms = resources.map(r => {
       val chunk = findMaskHeapChunkOptionally(h, r)
       if (chunk.isEmpty) {
@@ -104,7 +109,8 @@ object maskHeapSupporter extends SymbolicExecutionRules {
         HeapToSnap(chunk.get.heap, masks(r), r)
       }
     })
-    toSnapTree(snapTerms)
+    val tlcTerms = tlcTermsOp.map(t => t.getOrElse(terms.Unit).convert(sorts.Snap))
+    Combine(toSnapTree(tlcTerms), toSnapTree(snapTerms))
   }
 
   def upperBoundAssertion(mask: Term, v: Verifier): Term = {
@@ -281,10 +287,11 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                             permissions: Term, /* p */
                             pve: PartialVerificationError,
                             v: Verifier,
-                            resMap: Map[Any, Term])
+                            resTerm: FakeMaskMapTerm)
                            (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
     val resource = resourceAccess.res(s.program)
+    val resMap: Map[Any, Term] = resTerm.masks
 
     val resourceToFind = resource match {
       case mw: ast.MagicWand => MagicWandIdentifier(mw, s.program)
@@ -353,11 +360,11 @@ object maskHeapSupporter extends SymbolicExecutionRules {
         optCh match {
           case Some(ch) =>
             val newSnapMask = MaskSum(resMap(resourceToFind), ch.mask) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
-            val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
+            val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]], resTerm.tlcNonQpTerms)
             //val snap = HeapLookup(ch.heap, argTerm) // ResourceLookup(resource, ch.snapshotMap, arguments, s4.program).convert(sorts.Snap)
             Q(s4, s4.h, snap, v2)
           case _ =>
-            Q(s4, s4.h, FakeMaskMapTerm(resMap.asInstanceOf[immutable.ListMap[Any, Term]]), v2)
+            Q(s4, s4.h, FakeMaskMapTerm(resMap.asInstanceOf[immutable.ListMap[Any, Term]], resTerm.tlcNonQpTerms), v2)
         }
       )
     } else {
@@ -394,7 +401,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
           //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
           val snapPermTerm = if (!consumeExact && s.isConsumingFunctionPre.isDefined) FullPerm else permissions
           val newSnapMask = MaskAdd(resMap(resourceToFind), argTerm, snapPermTerm) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
-          val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
+          val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]], resTerm.tlcNonQpTerms)
           // set up partially consumed heap
           Q(s, h - resChunk + newChunk, snap, v)
         case false =>
@@ -426,10 +433,10 @@ object maskHeapSupporter extends SymbolicExecutionRules {
               notInjectiveReason: => ErrorReason,
               insufficientPermissionReason: => ErrorReason,
               v: Verifier,
-              resMap: Map[Any, Term])
+              resTerm: FakeMaskMapTerm)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
   : VerificationResult = {
-
+    val resMap = resTerm.masks
     val (inverseFunctions, imagesOfFormalQVars) =
       quantifiedChunkSupporter.getFreshInverseFunctions(
         qvars,
@@ -569,11 +576,11 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                 optCh match {
                   case Some(ch) =>
                     val newSnapMask = MaskSum(resMap(resourceToFind), ch.mask) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
-                    val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
+                    val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]], resTerm.tlcNonQpTerms)
                     //val snap = HeapLookup(ch.heap, argTerm) // ResourceLookup(resource, ch.snapshotMap, arguments, s4.program).convert(sorts.Snap)
                     Q(s4, s4.h, snap, v2)
                   case _ =>
-                    Q(s4, s4.h, FakeMaskMapTerm(resMap.asInstanceOf[immutable.ListMap[Any, Term]]), v2)
+                    Q(s4, s4.h, FakeMaskMapTerm(resMap.asInstanceOf[immutable.ListMap[Any, Term]], resTerm.tlcNonQpTerms), v2)
                 }
               })
             } else {
@@ -631,7 +638,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                 val newHeap = hp - currentChunk + newChunk
                 val s2 = s.copy(functionRecorder = newFr, partiallyConsumedHeap = Some(newHeap))
                 val newSnapMask = MaskSum(resMap(resourceToFind), qpMask)
-                val snap = FakeMaskMapTerm(resMap.updated(resource, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]])
+                val snap = FakeMaskMapTerm(resMap.updated(resource, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]], resTerm.tlcNonQpTerms)
                 Q(s2, newHeap, snap, v)
               case false =>
                 createFailure (pve dueTo insufficientPermissionReason, v, s)
