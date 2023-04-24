@@ -22,6 +22,7 @@ import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.perms.BigPermSum
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.utils.consumeExactRead
+import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.InternalWarningMessage
@@ -1358,15 +1359,26 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     var currentFunctionRecorder = s.functionRecorder
 
     val precomputedData = candidates map { ch =>
-      val permsProvided = ch.perm
-      val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
-      val permsTakenArgs = codomainQVars ++ additionalArgs
-      val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenBody)
-      val permsTakenMacro = Macro(permsTakenDecl.id, permsTakenDecl.args.map(_.sort), permsTakenDecl.body.sort)
-      val permsTaken = App(permsTakenMacro, permsTakenArgs)
+      // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
+      // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
+      // that already exists.
+      // During function verification, we should not define macros, since they could contain resullt, which is not
+      // defined elsewhere.
+      val declareMacro = s.functionRecorder == NoopFunctionRecorder && !Verifier.config.useFlyweight
 
-      currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(permsTakenDecl)
-      v.symbExLog.addMacro(permsTaken, permsTakenBody)
+      val permsProvided = ch.perm
+      val permsTaken = if (declareMacro) {
+        val permsTakenBody = Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
+        val permsTakenArgs = codomainQVars ++ additionalArgs
+        val permsTakenDecl = v.decider.freshMacro("pTaken", permsTakenArgs, permsTakenBody)
+        val permsTakenMacro = Macro(permsTakenDecl.id, permsTakenDecl.args.map(_.sort), permsTakenDecl.body.sort)
+        currentFunctionRecorder = currentFunctionRecorder.recordFreshMacro(permsTakenDecl)
+        val permsTakenApp = App(permsTakenMacro, permsTakenArgs)
+        v.symbExLog.addMacro(permsTakenApp, permsTakenBody)
+        permsTakenApp
+      } else {
+        Ite(condition, PermMin(permsProvided, permsNeeded), NoPerm)
+      }
 
       permsNeeded = PermMinus(permsNeeded, permsTaken)
 

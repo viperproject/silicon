@@ -1099,6 +1099,7 @@ object evaluator extends EvaluationRules {
       val newPossibleTriggers = if (s.recordPossibleTriggers) {
         // For all new possible trigger expressions e and translated term t,
         // make sure we remember t as the term for old[label](e) instead.
+        // If e is not heap-dependent, we also remember t as the term for e.
         val addedOrChangedPairs = s3.possibleTriggers.filter(t =>
           !possibleTriggersBefore.contains(t._1) || possibleTriggersBefore(t._1) != t._2)
 
@@ -1110,7 +1111,8 @@ object evaluator extends EvaluationRules {
           }
         }
 
-        val oldPairs = addedOrChangedPairs.map(t => wrapInOld(t._1) -> t._2)
+        val oldPairs = addedOrChangedPairs.map(t => wrapInOld(t._1) -> t._2) ++
+          addedOrChangedPairs.filter(t => !t._1.isHeapDependent(s.program))
         s.possibleTriggers ++ oldPairs
       } else {
         s.possibleTriggers
