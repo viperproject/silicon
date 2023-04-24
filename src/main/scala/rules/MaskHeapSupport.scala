@@ -27,12 +27,12 @@ import scala.collection.{immutable, mutable}
 
 object maskHeapSupporter extends SymbolicExecutionRules {
 
-  val resCache = mutable.HashMap[(Seq[ast.Exp], ast.Program), Seq[Any]]()
+  //val resCache = mutable.HashMap[(Seq[ast.Exp], ast.Program), Seq[Any]]()
   def getResourceSeq(tlcs: Seq[ast.Exp], program: ast.Program, s: Option[State] = None): Seq[Any] = {
     val key = (tlcs, program)
-    val current = resCache.get(key)
-    if (current.isDefined)
-      return current.get
+    //val current = resCache.get(key)
+    //if (current.isDefined)
+    //  return current.get
     val resources = tlcs.flatMap(_.shallowCollect {
       case ast.PredicateAccessPredicate(pa, _) => pa.loc(program)
       case ast.FieldAccessPredicate(fa, _) => fa.loc(program)
@@ -55,7 +55,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       }
       r1Name < r2Name
     })
-    resCache.put(key, resources)
+    //resCache.put(key, resources)
     resources
   }
 
@@ -659,7 +659,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                            (Q: (State, Verifier) => VerificationResult)
   : VerificationResult = {
 
-    val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == resource).get.asInstanceOf[BasicMaskHeapChunk]
+    val resChunk = findMaskHeapChunk(s.h, resource)
     val argTerm = resource match {
       case _: ast.Field => tArgs(0)
       case _: ast.Predicate => toSnapTree(tArgs)

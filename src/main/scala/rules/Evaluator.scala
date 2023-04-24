@@ -470,7 +470,11 @@ object evaluator extends EvaluationRules {
           val fi = v1.symbolConverter.toFunction(func, s.program)
           Q(s1, App(fi, tArgs), v1)})
 
-      case ast.CurrentPerm(resacc) if Verifier.config.maskHeapMode() =>
+      case ast.CurrentPerm(resacc) if Verifier.config.maskHeapMode() && (resacc match {
+        case wand: ast.MagicWand => s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))
+        case f: ast.Field => s.qpFields.contains(f)
+        case p: ast.Predicate => s.qpPredicates.contains(p)
+      }) =>
         val h = s.partiallyConsumedHeap.getOrElse(s.h)
         evalResourceAccess(s, resacc, pve, v)((s1, _, args, v1) => {
           val res = resacc match {
@@ -570,7 +574,11 @@ object evaluator extends EvaluationRules {
 
           Q(s2, currentPermAmount, v1)})
 
-      case fp@ast.ForPerm(vars, resourceAccess, body) if Verifier.config.maskHeapMode() =>
+      case fp@ast.ForPerm(vars, resourceAccess, body) if Verifier.config.maskHeapMode() && (resourceAccess match {
+        case wand: ast.MagicWand => s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))
+        case f: ast.Field => s.qpFields.contains(f)
+        case p: ast.Predicate => s.qpPredicates.contains(p)
+      }) =>
         // Quick and dirty
         val equivalent = ast.Forall(vars, Seq(ast.Trigger(Seq(resourceAccess))()), ast.Implies(ast.PermGtCmp(ast.CurrentPerm(resourceAccess)(fp.pos), ast.NoPerm()())(fp.pos), body)())(fp.pos)
         eval2(s, equivalent, pve, v)(Q)
@@ -890,13 +898,14 @@ object evaluator extends EvaluationRules {
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
                       val s7a = s7.copy(g = insg)
 
-                      val predSnapFunc = if (Verifier.config.maskHeapMode()) {
-                        val predSnap = snap match {
+                      val predSnapFunc = if (Verifier.config.maskHeapMode() && s.qpPredicates.contains(predicate)) {
+                        val predSnap = Second(snap) match {
                           case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
-                          case _ => HeapLookup(SnapToHeap(snap, predicate, PredHeapSort), toSnapTree(tArgs))
+                          case _ => HeapLookup(SnapToHeap(Second(snap), predicate, PredHeapSort), toSnapTree(tArgs))
                         }
                         (_: Sort, _: Verifier) => predSnap
-                      } else toSf(snap)
+                      } else
+                        toSf(First(snap))
                       produce(s7a, predSnapFunc, body, pve, v4)((s8, v5) => {
                         val s9 = s8.copy(g = s7.g,
                                          functionRecorder = s8.functionRecorder.changeDepthBy(-1),
