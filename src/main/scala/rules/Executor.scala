@@ -312,11 +312,14 @@ object executor extends ExecutionRules {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
-            val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == field).get.asInstanceOf[BasicMaskHeapChunk]
+            val resChunk = maskHeapSupporter.findMaskHeapChunk(s.h, field)
             val ve = pve dueTo InsufficientPermission(fa)
             val maskValue = HeapLookup(resChunk.mask, tRcvr)
-            v2.decider.assert(AtLeast(maskValue, FullPerm)) {
+            val enoughPerm = AtLeast(maskValue, FullPerm)
+            v2.decider.assert(enoughPerm) {
               case true =>
+                // assume to trigger non-aliasing knowledge.
+                v2.decider.assume(enoughPerm)
                 val heapUpdated = HeapUpdate(resChunk.heap, tRcvr, tRhs)
                 val newChunk = resChunk.copy(heap = heapUpdated)
                 Q(s2.copy(h = s2.h - resChunk + newChunk), v1)

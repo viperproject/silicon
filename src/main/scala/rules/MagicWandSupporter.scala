@@ -305,7 +305,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
       }
 
       val preMark = v3.decider.setPathConditionMark()
-      if (Verifier.config.maskHeapMode()) {
+      if (Verifier.config.maskHeapMode() && s4.qpMagicWands.contains(MagicWandIdentifier(wand, s4.program))) {
         evaluateWandArguments(s4, wand, pve, v3)((s5, tArgs, v4) => {
           val wandSnap = MagicWandSnapshot(freshSnapRoot, snap)
           val argTerm = toSnapTree(tArgs)
@@ -468,9 +468,9 @@ object magicWandSupporter extends SymbolicExecutionRules {
       val s3 = s2.copy(conservedPcs = conservedPcs +: s2.conservedPcs.tail, reserveHeaps = s.reserveHeaps.head +: hs2)
 
       val usedChunks = chs2.flatten
-      val (fr4, hUsed) = if (Verifier.config.maskHeapMode())
-        (s3.functionRecorder, usedChunks.foldLeft(s2.reserveHeaps.head)((cur, chnk) => maskHeapSupporter.mergeWandHeaps(cur, Heap(Seq(chnk)), v2)))
-      else
+      val (fr4, hUsed) = //if (Verifier.config.maskHeapMode())
+        //(s3.functionRecorder, usedChunks.foldLeft(s2.reserveHeaps.head)((cur, chnk) => maskHeapSupporter.wrappedMergeWandHeaps(cur, Heap(Seq(chnk)), v2)))
+      //else
         v2.stateConsolidator.merge(s3.functionRecorder, s2.reserveHeaps.head, Heap(usedChunks), v2)
 
       val s4 = s3.copy(functionRecorder = fr4, reserveHeaps = hUsed +: s3.reserveHeaps.tail)
@@ -500,7 +500,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
        * is sound.
        */
       if (Verifier.config.maskHeapMode()) {
-        maskHeapSupporter.mergeWandHeaps(maskHeapSupporter.mergeWandHeaps(s.reserveHeaps.head, s.reserveHeaps(1), v), s.reserveHeaps(2), v)
+        maskHeapSupporter.wrappedMergeWandHeaps(maskHeapSupporter.wrappedMergeWandHeaps(s.reserveHeaps.head, s.reserveHeaps(1), v), s.reserveHeaps(2), v)
       } else {
         s.reserveHeaps.head + s.reserveHeaps(1) + s.reserveHeaps(2)
       }

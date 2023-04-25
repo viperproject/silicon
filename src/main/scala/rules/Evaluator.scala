@@ -23,6 +23,7 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, MaskHeapChunk, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
+import viper.silicon.resources.FieldID
 import viper.silicon.state.terms.sorts.PredHeapSort
 import viper.silver.reporter.WarningsDuringTypechecking
 import viper.silver.ast.WeightedQuantifier
@@ -193,11 +194,14 @@ object evaluator extends EvaluationRules {
 
       case fa: ast.FieldAccess if Verifier.config.maskHeapMode() && s.qpFields.contains(fa.field) =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, v1) => {
-          val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == fa.field).get.asInstanceOf[BasicMaskHeapChunk]
+          val resChunk = maskHeapSupporter.findMaskHeapChunk(s.h, fa.field)
           val ve = pve dueTo InsufficientPermission(fa)
           val maskValue = HeapLookup(resChunk.mask, tRcvr)
-          v1.decider.assert(perms.IsPositive(maskValue)){
+          val enoughPermission = perms.IsPositive(maskValue)
+          v1.decider.assert(enoughPermission){
             case true =>
+              // assume to trigger non-aliasing knowledge.
+              v.decider.assume(enoughPermission)
               val heapValue = HeapLookup(resChunk.heap, tRcvr)
               val tSnap = heapValue.convert(sorts.Snap)
               val fr = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, tSnap)
@@ -470,7 +474,7 @@ object evaluator extends EvaluationRules {
           val fi = v1.symbolConverter.toFunction(func, s.program)
           Q(s1, App(fi, tArgs), v1)})
 
-      case ast.CurrentPerm(resacc) if Verifier.config.maskHeapMode() && (resacc match {
+      case ast.CurrentPerm(resacc) if Verifier.config.maskHeapMode() && (resacc.res(s.program) match {
         case wand: ast.MagicWand => s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))
         case f: ast.Field => s.qpFields.contains(f)
         case p: ast.Predicate => s.qpPredicates.contains(p)
@@ -574,7 +578,7 @@ object evaluator extends EvaluationRules {
 
           Q(s2, currentPermAmount, v1)})
 
-      case fp@ast.ForPerm(vars, resourceAccess, body) if Verifier.config.maskHeapMode() && (resourceAccess match {
+      case fp@ast.ForPerm(vars, resourceAccess, body) if Verifier.config.maskHeapMode() && (resourceAccess.res(s.program) match {
         case wand: ast.MagicWand => s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program))
         case f: ast.Field => s.qpFields.contains(f)
         case p: ast.Predicate => s.qpPredicates.contains(p)
@@ -807,15 +811,24 @@ object evaluator extends EvaluationRules {
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
               val (snapArgs, snapToRecord) = if (Verifier.config.heapFunctionEncoding()) {
                 val resources = maskHeapSupporter.getResourceSeq(func.pres, s4.program)
+                val localResources = maskHeapSupporter.getResourceSeq(func.pres, s4.program, Some(s4))
+                val localResourceParts = fromSnapTree(Second(snap), localResources.size)
                 val args = resources.map(r => {
                   val existingHeap = maskHeapSupporter.findMaskHeapChunkOptionally(s3.h, r)
-                  if (existingHeap.isDefined) {
+                  if (localResources.contains(r)) {
+                    val rSort = r match {
+                      case f: ast.Field => sorts.HeapSort(v.symbolConverter.toSort(f.typ))
+                      case _: ast.Predicate => sorts.PredHeapSort
+                      case _ => sorts.PredHeapSort
+                    }
+                    SnapToHeap(localResourceParts(localResources.indexOf(r)), r, rSort)
+                  } else if (existingHeap.isDefined) {
                     existingHeap.get.heap
                   } else {
                     val (identifier, rSort) = r match {
                       case f: ast.Field => (BasicChunkIdentifier(f.name), sorts.HeapSort(v.symbolConverter.toSort(f.typ)))
                       case p: ast.Predicate => (BasicChunkIdentifier(p.name), sorts.PredHeapSort)
-                      case mwi => (mwi, sorts.Snap)
+                      case mwi => (mwi, sorts.PredHeapSort)
                     }
                     val chunks: Seq[BasicChunk] = s3.h.values.filter{
                       case bc: BasicChunk => bc.id == identifier
@@ -896,7 +909,15 @@ object evaluator extends EvaluationRules {
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val s7a = s7.copy(g = insg)
+                      val tmpQpFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(predicate, s.program))
+                      val tmpQpPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(predicate, s.program))
+                      val tmpQpWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(predicate, s.program).map(w => MagicWandIdentifier(w, s.program)))
+
+                      // TODO: only do this in maskHeapMode
+                      val s7a = s7.copy(g = insg,
+                                        qpFields = tmpQpFields,
+                                        qpPredicates = tmpQpPredicates,
+                                        qpMagicWands = tmpQpWands)
 
                       val predSnapFunc = if (Verifier.config.maskHeapMode() && s.qpPredicates.contains(predicate)) {
                         val predSnap = Second(snap) match {
@@ -907,10 +928,21 @@ object evaluator extends EvaluationRules {
                       } else
                         toSf(First(snap))
                       produce(s7a, predSnapFunc, body, pve, v4)((s8, v5) => {
+                        val mhDiffFields = s7.qpFields -- tmpQpFields
+                        val mhDiffPreds = s7.qpPredicates -- tmpQpPredicates
+                        val mhDiffWands = s7.qpMagicWands -- tmpQpWands
+                        var heap = s8.h
+                        for (r <- mhDiffFields ++ mhDiffPreds ++ mhDiffWands) {
+                          heap = maskHeapSupporter.convertDefaultToMH(heap, r, v)
+                        }
                         val s9 = s8.copy(g = s7.g,
+                                         h = heap,
                                          functionRecorder = s8.functionRecorder.changeDepthBy(-1),
                                          recordVisited = s3.recordVisited,
-                                         permissionScalingFactor = s6.permissionScalingFactor)
+                                         permissionScalingFactor = s6.permissionScalingFactor,
+                                         qpFields = s7.qpFields,
+                                         qpPredicates = s7.qpPredicates,
+                                         qpMagicWands = s7.qpMagicWands)
                                    .decCycleCounter(predicate)
                         val s10 = v5.stateConsolidator.consolidateIfRetrying(s9, v5)
                         eval(s10, eIn, pve, v5)(QB)})})

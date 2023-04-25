@@ -8,13 +8,13 @@ package viper.silicon.rules
 
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.MaskHeapChunk
-import viper.silicon.resources.MagicWandID
+import viper.silicon.resources.{FieldID, MagicWandID, PredicateID}
 import viper.silicon.rules.quantifiedChunkSupporter.getFreshInverseFunctions
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{MaskSort, PredHeapSort, PredMaskSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, AtLeast, AtMost, Combine, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapToSnap, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, sorts, toSnapTree}
-import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, terms}
+import viper.silicon.state.terms.{And, AtLeast, AtMost, Combine, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapToSnap, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, sorts, toSnapTree}
+import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
@@ -71,6 +71,50 @@ object maskHeapSupporter extends SymbolicExecutionRules {
         val newChunk = BasicMaskHeapChunk(MagicWandID, mwi, PredZeroMask, newHeap)
         (h + newChunk, newChunk)
     }
+  }
+
+  def convertDefaultToMH(h: Heap, r: Any, v: Verifier) : Heap = {
+    val (identifier, rSort, resID) = r match {
+      case f: ast.Field => (BasicChunkIdentifier(f.name), sorts.HeapSort(v.symbolConverter.toSort(f.typ)), FieldID)
+      case p: ast.Predicate => (BasicChunkIdentifier(p.name), sorts.PredHeapSort, PredicateID)
+      case mwi => (mwi, sorts.PredHeapSort, MagicWandID)
+    }
+    val chunks: Seq[BasicChunk] = h.values.filter {
+      case bc: BasicChunk => bc.id == identifier
+      case _ => false
+    }.toSeq.asInstanceOf[Seq[BasicChunk]]
+    val emptyMask = if (r.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
+    var heap = h
+    val (initMask, initHeap) = maskHeapSupporter.findMaskHeapChunkOptionally(h, r) match {
+      case None =>
+        (emptyMask, DummyHeap(rSort))
+      case Some(c) =>
+        heap = heap - c
+        (c.mask, c.heap)
+    }
+    var currentMask = initMask
+    var currentHeap = initHeap
+    for (c <- chunks) {
+      heap = heap - c
+      val rcvr = if (r.isInstanceOf[ast.Field]) c.args.head else toSnapTree(c.args)
+      val cHeap = HeapSingleton(rcvr, c.snap, rSort)
+      val cMask = MaskAdd(emptyMask, rcvr, c.perm)
+      currentHeap = MergeHeaps(currentHeap, currentMask, cHeap, cMask)
+      currentMask = MaskAdd(currentMask, rcvr, c.perm)
+      if (r.isInstanceOf[ast.Field]) {
+        v.decider.assume(PermAtMost(HeapLookup(currentMask, rcvr), FullPerm))
+      }
+    }
+    val newChunk = BasicMaskHeapChunk(resID, r, currentMask, currentHeap)
+    heap = heap + newChunk
+    heap
+  }
+
+  def wrappedMergeWandHeaps(h: Heap, newH: Heap, v: Verifier): Heap = {
+    val (hMH, hNormal) = h.values.partition(_.isInstanceOf[MaskHeapChunk])
+    val (nMH, nNormal) = newH.values.partition(_.isInstanceOf[MaskHeapChunk])
+    val h2 = maskHeapSupporter.mergeWandHeaps(Heap(hMH), Heap(nMH), v)
+    Heap(hNormal ++ nNormal) + h2
   }
 
   def mergeWandHeaps(h: Heap, newH: Heap, v: Verifier): Heap = {
@@ -398,10 +442,10 @@ object maskHeapSupporter extends SymbolicExecutionRules {
             resChunk.copy(mask = newMask, heap = freshHeap)
           }
 
-          //val snap = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
+          val snapVal = HeapLookup(resChunk.heap, argTerm).convert(sorts.Snap)
           val snapPermTerm = if (!consumeExact && s.isConsumingFunctionPre.isDefined) FullPerm else permissions
           val newSnapMask = MaskAdd(resMap(resourceToFind), argTerm, snapPermTerm) //HeapUpdate(resMap(resource), argTerm, PermPlus(HeapLookup(resMap(resource), argTerm), permissions))
-          val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]], resTerm.tlcNonQpTerms)
+          val snap = FakeMaskMapTerm(resMap.updated(resourceToFind, newSnapMask).asInstanceOf[immutable.ListMap[Any, Term]], resTerm.tlcNonQpTerms ++ Seq(Some(snapVal)))
           // set up partially consumed heap
           Q(s, h - resChunk + newChunk, snap, v)
         case false =>

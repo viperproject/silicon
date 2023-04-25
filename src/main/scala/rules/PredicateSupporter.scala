@@ -63,7 +63,21 @@ object predicateSupporter extends PredicateSupportRules {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm)
-    consume(s1, body, pve, v)((s1a, snap, v1) => {
+    consume(s1, body, pve, v)((s1a, snapO, v1) => {
+      val snap = if (Verifier.config.maskHeapMode()) {
+        val mhPart = Second(snapO)
+        val resources = maskHeapSupporter.getResourceSeq(body.topLevelConjuncts, s.program, Some(s1a))
+        val parts = fromSnapTree(mhPart, resources.size)
+        var predQpResources: Set[Any] = Set()
+        predQpResources ++= ast.utility.QuantifiedPermissions.quantifiedFields(predicate, s1a.program)
+        predQpResources ++= ast.utility.QuantifiedPermissions.quantifiedPredicates(predicate, s1a.program)
+        predQpResources ++= ast.utility.QuantifiedPermissions.quantifiedMagicWands(predicate, s1a.program)
+        val requiredParts = resources.zip(parts).filter(r => predQpResources.contains(r._1)).map(_._2)
+        val newMhPart = toSnapTree(requiredParts)
+        Combine(First(snapO), newMhPart)
+      } else {
+        snapO
+      }
       if (!Verifier.config.disableFunctionUnfoldTrigger()) {
         val predTrigger = App(s1a.predicateData(predicate).triggerFunction,
           snap.convert(terms.sorts.Snap) +: tArgs)
@@ -74,8 +88,8 @@ object predicateSupporter extends PredicateSupportRules {
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor)
-        val newSf = (_: Sort, _: Verifier) => HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap, PredHeapSort),
-          HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate)
+        val newSf = (_: Sort, _: Verifier) => Combine(snap, HeapToSnap(HeapSingleton(toSnapTree(tArgs), snap, PredHeapSort),
+          HeapUpdate(PredZeroMask, toSnapTree(tArgs), FullPerm), predicate))
         produce(s3, newSf, pap, pve, v1)((s4, v2) => {
           Q(s4, v2)})
       } else {
@@ -136,26 +150,51 @@ object predicateSupporter extends PredicateSupportRules {
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val s1 = s.scalePermissionFactor(tPerm)
+    val tmpQpFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(predicate, s.program))
+    val tmpQpPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(predicate, s.program))
+    val tmpQpWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(predicate, s.program).map(w => MagicWandIdentifier(w, s.program)))
+
 
     if (Verifier.config.maskHeapMode() && s.qpPredicates.contains(predicate)) {
       val permAssertion = pap.copy(perm = ast.FullPerm()())(pap.pos, pap.info, pap.errT) // we've already set permission scaling.
       consumeTlcsMaskHeap(s1, s1.h, Seq(permAssertion), Seq(pve), v, Seq(predicate), None)((s2, h1, snap, v1) => {
-        val s3 = s2.copy(g = gIns, h = h1, partiallyConsumedHeap = None)
+
+        val s3 = s2.copy(g = gIns,
+                         h = h1,
+                         partiallyConsumedHeap = None,
+                         qpFields = tmpQpFields,
+                         qpPredicates = tmpQpPredicates,
+                         qpMagicWands = tmpQpWands)
           .setConstrainable(constrainableWildcards, false)
-        val predSnap = snap match {
+        val predSnap = Second(snap) match {
           case h2s: HeapToSnap => HeapLookup(h2s.heap, toSnapTree(tArgs))
-          case _ => HeapLookup(SnapToHeap(snap, predicate, PredHeapSort), toSnapTree(tArgs))
+          case _ => HeapLookup(SnapToHeap(Second(snap), predicate, PredHeapSort), toSnapTree(tArgs))
         }
+        //val predSnap = First(snap)
         val predSnapFunc = (_: Sort, _: Verifier) => predSnap
-        produce(s3, predSnapFunc, body, pve, v1)((s4, v2) => {
+        produce(s3, predSnapFunc, body, pve, v1)((s4i, v2) => {
           v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
+          var heap = s4i.h
+          val mhDiffFields = s2.qpFields -- tmpQpFields
+          val mhDiffPreds = s2.qpPredicates -- tmpQpPredicates
+          val mhDiffWands = s2.qpMagicWands -- tmpQpWands
+          for (r <- mhDiffFields ++ mhDiffPreds ++ mhDiffWands) {
+            heap = maskHeapSupporter.convertDefaultToMH(heap, r, v)
+          }
+          val s4 = s4i.copy(
+            h = heap,
+
+          )
           if (!Verifier.config.disableFunctionUnfoldTrigger()) {
             val predicateTrigger =
               App(s4.predicateData(predicate).triggerFunction, snap +: tArgs)
             v2.decider.assume(predicateTrigger)
           }
           val s5 = s4.copy(g = s.g,
-            permissionScalingFactor = s.permissionScalingFactor)
+                           permissionScalingFactor = s.permissionScalingFactor,
+                           qpFields = s2.qpFields,
+                           qpPredicates = s2.qpPredicates,
+                           qpMagicWands = s2.qpMagicWands)
           Q(s5, v2)})})
 
     } else {
@@ -172,9 +211,37 @@ object predicateSupporter extends PredicateSupportRules {
           pve,
           v
         )((s2, h2, snap, v1) => {
-          val s3 = s2.copy(g = gIns, h = h2)
+          val s3 = if (Verifier.config.maskHeapMode()) {
+            s2.copy(
+              g = gIns,
+              h = h2,
+              qpFields = tmpQpFields,
+              qpPredicates = tmpQpPredicates,
+              qpMagicWands = tmpQpWands)
             .setConstrainable(constrainableWildcards, false)
-          produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
+          } else {
+            s2.copy(
+              g = gIns,
+              h = h2).setConstrainable(constrainableWildcards, false)
+          }
+          produce(s3, toSf(snap), body, pve, v1)((s4a, v2) => {
+            val s4 = if (Verifier.config.maskHeapMode()) {
+              var heap = s4a.h
+              val mhDiffFields = s2.qpFields -- tmpQpFields
+              val mhDiffPreds = s2.qpPredicates -- tmpQpPredicates
+              val mhDiffWands = s2.qpMagicWands -- tmpQpWands
+              for (r <- mhDiffFields ++ mhDiffPreds ++ mhDiffWands) {
+                heap = maskHeapSupporter.convertDefaultToMH(heap, r, v)
+              }
+              s4a.copy(
+                h = heap,
+                qpFields = s2.qpFields,
+                qpPredicates = s2.qpPredicates,
+                qpMagicWands = s2.qpMagicWands
+              )
+            } else {
+              s4a
+            }
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
             if (!Verifier.config.disableFunctionUnfoldTrigger()) {
               val predicateTrigger =
@@ -190,10 +257,38 @@ object predicateSupporter extends PredicateSupportRules {
         val ve = pve dueTo InsufficientPermission(pa)
         val description = s"consume ${pa.pos}: $pa"
         chunkSupporter.consume(s1, s1.h, predicate, tArgs, s1.permissionScalingFactor, ve, v, description)((s2, h1, snap, v1) => {
-          val s3 = s2.copy(g = gIns, h = h1)
-            .setConstrainable(constrainableWildcards, false)
-          produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
+          val s3 = if (Verifier.config.maskHeapMode()) {
+            s2.copy(
+              g = gIns,
+              h = h1,
+              qpFields = tmpQpFields,
+              qpPredicates = tmpQpPredicates,
+              qpMagicWands = tmpQpWands)
+              .setConstrainable(constrainableWildcards, false)
+          } else {
+            s2.copy(
+              g = gIns,
+              h = h1).setConstrainable(constrainableWildcards, false)
+          }
+          produce(s3, toSf(snap), body, pve, v1)((s4a, v2) => {
             v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterUnfold)
+            val s4 = if (Verifier.config.maskHeapMode()) {
+              var heap = s4a.h
+              val mhDiffFields = s2.qpFields -- tmpQpFields
+              val mhDiffPreds = s2.qpPredicates -- tmpQpPredicates
+              val mhDiffWands = s2.qpMagicWands -- tmpQpWands
+              for (r <- mhDiffFields ++ mhDiffPreds ++ mhDiffWands) {
+                heap = maskHeapSupporter.convertDefaultToMH(heap, r, v)
+              }
+              s4a.copy(
+                h = heap,
+                qpFields = s2.qpFields,
+                qpPredicates = s2.qpPredicates,
+                qpMagicWands = s2.qpMagicWands
+              )
+            } else {
+              s4a
+            }
             if (!Verifier.config.disableFunctionUnfoldTrigger()) {
               val predicateTrigger =
                 App(s4.predicateData(predicate).triggerFunction, snap +: tArgs)
