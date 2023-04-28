@@ -13,7 +13,7 @@ import viper.silicon.rules.quantifiedChunkSupporter.getFreshInverseFunctions
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{MaskSort, PredHeapSort, PredMaskSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, AtLeast, AtMost, Combine, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapToSnap, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, sorts, toSnapTree}
+import viper.silicon.state.terms.{And, AtLeast, AtMost, Combine, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapSingleton, HeapToSnap, IdenticalOnKnownLocations, Implies, Ite, Let, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, fromSnapTree, perms, sorts, toSnapTree}
 import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -586,7 +586,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                   val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
                   val qpMaskGet = HeapLookup(qpMask, argTerm)
                   val conditionalizedPermissions = Ite(condOfInvOfLoc, PermMin(rPerm, currentPerm), NoPerm)
-                  val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+                  val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdefConsExt")
                   v.decider.assume(qpMaskConstraint)
                   (qpMask, s.functionRecorder.recordFieldInv(inverseFunctions).recordArp(qpMask, qpMaskConstraint))
                 }
@@ -661,9 +661,27 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
                 // remove permissions
                 val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
-                val qpMaskGet = HeapLookup(qpMask, argTerm)
+                val qpMaskArgName = v.identifierFactory.fresh("qpMaskArg")
+                val qpMaskArgTermSort = resource match {
+                  case _: ast.Field => sorts.Ref
+                  case _: ast.Predicate => sorts.Snap
+                  case _ => sorts.Snap
+                }
+                val qpMaskArg = Var(qpMaskArgName, qpMaskArgTermSort)
+
+                val varDefs = resource match {
+                  case _: ast.Field => Seq(qpMaskArg)
+                  case _: ast.Predicate => fromSnapTree(qpMaskArg, formalQVars.size).zip(formalQVars).map(t => t._1.convert(t._2.sort))
+                  case _ => fromSnapTree(qpMaskArg, formalQVars.size).zip(formalQVars).map(t => t._1.convert(t._2.sort))
+                }
+
+                val qpMaskGet = HeapLookup(qpMask, qpMaskArg)
                 val conditionalizedPermissions = Ite(condOfInvOfLoc, lossOfInvOfLoc, NoPerm)
-                val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+
+
+                val qpMaskBody = Let(formalQVars, varDefs, conditionalizedPermissions)
+
+                val qpMaskConstraint = Forall(Seq(qpMaskArg), qpMaskGet === qpMaskBody, Seq(Trigger(qpMaskGet)), "qpMaskdefCons")
                 v.decider.assume(qpMaskConstraint)
                 val newFr = s.functionRecorder.recordFieldInv(inverseFunctions).recordArp(qpMask, qpMaskConstraint)
 
@@ -777,8 +795,25 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       case _: ast.Field => formalQVars(0)
       case _ => toSnapTree(formalQVars)
     }
-    val qpMaskGet = HeapLookup(qpMask, argTerm)
-    val qpMaskConstraint = Forall(formalQVars, qpMaskGet === conditionalizedPermissions, Seq(Trigger(qpMaskGet)), "qpMaskdef")
+
+    val qpMaskArgName = v.identifierFactory.fresh("qpMaskArg")
+    val qpMaskArgTermSort = resource match {
+      case _: ast.Field => sorts.Ref
+      case _: ast.Predicate => sorts.Snap
+      case _ => sorts.Snap
+    }
+    val qpMaskArg = Var(qpMaskArgName, qpMaskArgTermSort)
+
+    val varDefs = resource match {
+      case _: ast.Field => Seq(qpMaskArg)
+      case _: ast.Predicate => fromSnapTree(qpMaskArg, formalQVars.size).zip(formalQVars).map(t => t._1.convert(t._2.sort))
+      case _ => fromSnapTree(qpMaskArg, formalQVars.size).zip(formalQVars).map(t => t._1.convert(t._2.sort))
+    }
+
+    val qpMaskGet = HeapLookup(qpMask, qpMaskArg)
+    //val qpMaskGet = HeapLookup(qpMask, argTerm)
+    val qpMaskConstraintBody = Let(formalQVars, varDefs, conditionalizedPermissions)
+    val qpMaskConstraint = Forall(Seq(qpMaskArg), qpMaskGet === qpMaskConstraintBody, Seq(Trigger(qpMaskGet)), "qpMaskdefProd")
 
     v.decider.assume(qpMaskConstraint)
 
