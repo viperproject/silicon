@@ -99,6 +99,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       val rcvr = if (r.isInstanceOf[ast.Field]) c.args.head else toSnapTree(c.args)
       val cHeap = HeapSingleton(rcvr, c.snap, rSort)
       val cMask = MaskAdd(emptyMask, rcvr, c.perm)
+      v.decider.assume(Implies(And(PermLess(NoPerm, HeapLookup(currentMask, rcvr)), PermLess(NoPerm, c.perm)), HeapLookup(currentHeap, rcvr) === c.snap))
       currentHeap = MergeHeaps(currentHeap, currentMask, cHeap, cMask)
       currentMask = MaskAdd(currentMask, rcvr, c.perm)
       if (r.isInstanceOf[ast.Field]) {
