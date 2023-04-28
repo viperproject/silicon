@@ -826,15 +826,14 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       case mwi: MagicWandIdentifier => findOrCreateMaskHeapChunk(s.h, mwi, v)
       case r: ast.Resource => (s.h, findMaskHeapChunk(s.h, r))
     }
-    val newMask =  MaskSum(currentChunk.mask, qpMask)
+    val newMask = MaskSum(currentChunk.mask, qpMask)
 
     val newHeap = MergeHeaps(currentChunk.heap, currentChunk.mask, snapHeapMap(resource), qpMask)
     val newChunk = currentChunk.copy(mask = newMask, heap = newHeap)
     val newMaskGet = HeapLookup(newMask, argTerm)
 
-
     val permBoundConstraint = resource match {
-      case _: ast.Field => And(Forall(formalQVars, PermAtMost(newMaskGet, FullPerm), Seq(Trigger(newMaskGet)), "qp_produce_upper_bound"),
+      case _: ast.Field => And(upperBoundAssertion(newMask, v),
         Forall(formalQVars, Implies(And(And(And(imagesOfCodomain), tCond.replace(qvarsToInversesOfCodomain)), PermLess(NoPerm, gain.replace(qvarsToInversesOfCodomain))), formalQVars(0) !== Null), Seq(), "qp_recvr_non_null"))
       case _ => True
     }
