@@ -290,7 +290,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       for (add <- additions) {
         if (!done) {
           val equality = Forall(args, HeapLookup(add, argTerm) === removedMaskLookup, Trigger(removedMaskLookup))
-          if (v.decider.check(equality, 0)) {
+          if (v.decider.check(equality, Verifier.config.splitTimeout())) {
             foundTerm = Some(add)
             done = true
           }
@@ -391,7 +391,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
             val remainingChunk = resChunk.copy(mask = MaskAdd(resChunk.mask, argTerm, PermNegation(taken)))
             val consumedChunk = resChunk.copy(mask = MaskAdd(if (resourceToFind.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask, argTerm, taken))
 
-            if (v.decider.check(hasAll, 0)) {
+            if (v.decider.check(hasAll, Verifier.config.assertTimeout.getOrElse(0))) {
               (Complete(), s1, h1 - resChunk + remainingChunk, Some(consumedChunk))
             } else {
               (Incomplete(PermMinus(rPerm, taken)), s1, h1 - resChunk + remainingChunk, Some(consumedChunk))
@@ -612,7 +612,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                  */
                 val s1p = s1.copy(functionRecorder = newFr)
 
-                if (v.decider.check(allPerms, 0)) {
+                if (v.decider.check(allPerms, Verifier.config.assertTimeout.getOrElse(0))) {
                   (Complete(), s1p, hp - currentChunk + remainingChunk, Some(consumedChunk))
                 } else {
                   (Incomplete(PermMinus(rPerm, qpMaskGet)), s1p, hp - currentChunk + remainingChunk, Some(consumedChunk))
