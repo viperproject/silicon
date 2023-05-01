@@ -670,7 +670,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
                 if (constrainPermissions) {
                   // constrain wildcards
-                  val wildcardConstr = Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms")
+                  val wildcardConstr = Forall(formalQVars, Implies(And(condOfInvOfLoc, PermLess(NoPerm, lossOfInvOfLoc)), PermLess(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms")
                   // Forall(Seq(qpMaskArg), qpMaskGet === qpMaskBody, Seq(Trigger(qpMaskGet)), "qpMaskdefCons")
                   v.decider.assume(wildcardConstr)
                 }
