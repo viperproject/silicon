@@ -419,7 +419,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
       val maskValue = HeapLookup(resChunk.mask, argTerm)
 
-      val toCheck = if (consumeExact) AtLeast(maskValue, permissions) else Greater(maskValue, NoPerm)
+      val toCheck = if (consumeExact) AtLeast(maskValue, permissions) else Implies(PermLess(NoPerm, permissions), PermLess(NoPerm, maskValue))
 
       v.decider.assume(FunctionPreconditionTransformer.transform(toCheck, s.program))
       v.decider.assert(toCheck) {
@@ -646,7 +646,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
               val sufficientPerm = if (constrainPermissions) {
                 //Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(NoPerm(), currentPerm)), Seq(), "sufficientPerms")
-                Forall(qvars, Implies(tCond, PermLess(NoPerm, currentPermQvars)), tTriggers, "sufficientPerms")
+                Forall(qvars, Implies(And(tCond, PermLess(NoPerm, loss)), PermLess(NoPerm, currentPermQvars)), tTriggers, "sufficientPerms")
               } else {
                 //Forall(formalQVars, Implies(condOfInvOfLoc, PermAtMost(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms")
                 Forall(qvars, Implies(tCond, PermAtMost(loss, currentPermQvars)), tTriggers, "sufficientPerms")
@@ -654,13 +654,6 @@ object maskHeapSupporter extends SymbolicExecutionRules {
               v.decider.assume(FunctionPreconditionTransformer.transform(sufficientPerm, s.program))
               v.decider.assert(sufficientPerm)(r => r match {
               case true =>
-                if (constrainPermissions) {
-                  // constrain wildcards
-                  v.decider.assume(Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms"))
-                }
-
-                // remove permissions
-                val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
                 val qpMaskArgName = v.identifierFactory.fresh("qpMaskArg")
                 val qpMaskArgTermSort = resource match {
                   case _: ast.Field => sorts.Ref
@@ -674,6 +667,17 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                   case _: ast.Predicate => fromSnapTree(qpMaskArg, formalQVars.size).zip(formalQVars).map(t => t._1.convert(t._2.sort))
                   case _ => fromSnapTree(qpMaskArg, formalQVars.size).zip(formalQVars).map(t => t._1.convert(t._2.sort))
                 }
+
+                if (constrainPermissions) {
+                  // constrain wildcards
+                  val wildcardConstr = Forall(formalQVars, Implies(condOfInvOfLoc, PermLess(lossOfInvOfLoc, currentPerm)), Seq(), "sufficientPerms")
+                  // Forall(Seq(qpMaskArg), qpMaskGet === qpMaskBody, Seq(Trigger(qpMaskGet)), "qpMaskdefCons")
+                  v.decider.assume(wildcardConstr)
+                }
+
+                // remove permissions
+                val qpMask = v.decider.fresh("qpMask", if (resource.isInstanceOf[ast.Field]) MaskSort else PredMaskSort)
+
 
                 val qpMaskGet = HeapLookup(qpMask, qpMaskArg)
                 val conditionalizedPermissions = Ite(condOfInvOfLoc, lossOfInvOfLoc, NoPerm)

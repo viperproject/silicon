@@ -822,8 +822,6 @@ object evaluator extends EvaluationRules {
                       case _ => sorts.PredHeapSort
                     }
                     SnapToHeap(localResourceParts(localResources.indexOf(r)), r, rSort)
-                  } else if (existingHeap.isDefined) {
-                    existingHeap.get.heap
                   } else {
                     val (identifier, rSort) = r match {
                       case f: ast.Field => (BasicChunkIdentifier(f.name), sorts.HeapSort(v.symbolConverter.toSort(f.typ)))
@@ -835,8 +833,8 @@ object evaluator extends EvaluationRules {
                       case _ => false
                     }.toSeq.asInstanceOf[Seq[BasicChunk]]
                     val emptyMask = if (r.isInstanceOf[ast.Field]) ZeroMask else PredZeroMask
-                    var currentMask: Term = emptyMask
-                    var currentHeap: Term = DummyHeap(rSort)
+                    var currentMask: Term = if (existingHeap.isDefined) existingHeap.get.mask else emptyMask
+                    var currentHeap: Term = if (existingHeap.isDefined) existingHeap.get.heap else DummyHeap(rSort)
                     for (c <- chunks) {
                       val rcvr = if (r.isInstanceOf[ast.Field]) c.args.head else toSnapTree(c.args)
                       val cHeap = HeapSingleton(rcvr, c.snap, rSort)

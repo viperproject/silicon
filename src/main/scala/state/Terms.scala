@@ -1335,6 +1335,7 @@ object PermTimes extends CondFlyweightTermFactory[(Term, Term), PermTimes] {
     case (NoPerm, _) => NoPerm
     case (_, NoPerm) => NoPerm
     case (p0: PermLiteral, p1: PermLiteral) => FractionPermLiteral(p0.literal * p1.literal)
+    case (Ite(cond, t0, t1), t2) => Ite(cond, PermTimes(t0, t2), PermTimes(t1, t2))
     case (_, _) => createIfNonExistent(v0)
   }
 
@@ -2238,6 +2239,8 @@ class HeapToSnap(val heap: Term, val mask: Term, val r: Any) extends Term with C
   val equalityDefiningMembers = (heap, mask, r)
 
   val sort = sorts.Snap
+
+  override lazy val toString: String = s"HeapToSnap(${heap})"
 }
 
 object HeapToSnap extends CondFlyweightTermFactory[(Term, Term, Any), HeapToSnap] {
@@ -2246,6 +2249,8 @@ object HeapToSnap extends CondFlyweightTermFactory[(Term, Term, Any), HeapToSnap
 
 class SnapToHeap(val snap: Term, val r: Any, val sort: Sort) extends Term with ConditionalFlyweight[(Term, Any, Sort), SnapToHeap] {
   val equalityDefiningMembers = (snap, r, sort)
+
+  override lazy val toString: String = s"SnapToHeap(${snap})"
 }
 
 object SnapToHeap extends CondFlyweightTermFactory[(Term, Any, Sort), SnapToHeap] {
@@ -2813,7 +2818,7 @@ object utils {
     case PermIntDiv(t0, _) => consumeExactRead(t0, constrainableARPs)
     case PermPermDiv(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
     case PermMin(t0 ,t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
-    case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
     case _ => true
   }
 

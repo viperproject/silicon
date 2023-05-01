@@ -1621,7 +1621,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       inversesOfFcts(idx) = inv(invertibles)
       inversesOfCodomains(idx) = inv(codomainQVars)
 
-      if (qvar.sort != sorts.Int && qvar.sort != sorts.Ref) {
+      if (false && qvar.sort != sorts.Int && qvar.sort != sorts.Ref) {
         // Types known to be infinite, thus there is no need to constrain the domain using image functions.
         val imgFun = v.decider.fresh("img", (additionalInvArgs map (_.sort)) ++ invertibles.map(_.sort), sorts.Bool)
         val img = (ts: Seq[Term]) => App(imgFun, additionalInvArgs ++ ts)
