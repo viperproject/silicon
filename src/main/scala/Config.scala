@@ -82,6 +82,18 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
   }
 
+  private val exhaleModeConverter: ValueConverter[ExhaleMode] = new ValueConverter[ExhaleMode] {
+    def parse(s: List[(String, List[String])]): Either[String, Option[ExhaleMode]] = s match {
+      case Seq((_, Seq("0"))) => Right(Some(ExhaleMode.Greedy))
+      case Seq((_, Seq("1"))) => Right(Some(ExhaleMode.MoreComplete))
+      case Seq((_, Seq("2"))) => Right(Some(ExhaleMode.MoreCompleteOnDemand))
+      case Seq() => Right(None)
+      case _ => Left(s"unexpected arguments")
+    }
+
+    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
+  }
+
   private val saturationTimeoutWeightsConverter: ValueConverter[ProverSaturationTimeoutWeights] = new ValueConverter[ProverSaturationTimeoutWeights] {
     def parse(s: List[(String, List[String])]): Either[String, Option[ProverSaturationTimeoutWeights]] = s match {
       case Seq((_, Seq(rawString))) =>
@@ -157,6 +169,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val excludeMethods: ScallopOption[String] = opt[String]("excludeMethods",
     descr = "Exclude methods from verification (default: ''). Is applied after the include pattern.",
     default = Some(""),
+    noshort = true
+  )
+
+  val reportReasonUnknown: ScallopOption[Boolean] = opt[Boolean]("reportReasonUnknown",
+    descr = "For every verification error, include the reason the SMT solver reported unknown.",
+    default = Some(false),
     noshort = true
   )
 
@@ -407,8 +425,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val disableTempDirectory: ScallopOption[Boolean] = opt[Boolean]("disableTempDirectory",
-    descr = "Disable the creation of temporary data (default: ./tmp)",
+  val enableTempDirectory: ScallopOption[Boolean] = opt[Boolean]("enableTempDirectory",
+    descr = "Enable the creation of temporary directory to log prover interactions (default: ./tmp)",
     default = Some(false),
     noshort = true
   )
@@ -550,6 +568,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
             proverArgs.flatMap(args => proverTimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
         .getOrElse(0)
 
+  lazy val useFlyweight: Boolean = prover() == "Z3-API"
+
   val maxHeuristicsDepth: ScallopOption[Int] = opt[Int]("maxHeuristicsDepth",
     descr = "Maximal number of nested heuristics applications (default: 3)",
     default = Some(3),
@@ -623,11 +643,29 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case _ => opt
   }
 
-  val enableMoreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
-    descr = "Enable a more complete exhale version.",
+  // DEPRECATED and replaced by exhaleMode.
+  val moreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
+    descr =  "Warning: This option is deprecated. "
+           + "Please use 'exhaleMode' instead. "
+           + "Enables a more complete exhale version.",
     default = Some(false),
     noshort = true
   )
+
+  val exhaleModeOption: ScallopOption[ExhaleMode] = opt[ExhaleMode]("exhaleMode",
+    descr = "Exhale mode. Options are 0 (greedy, default), 1 (more complete exhale), 2 (more complete exhale on demand).",
+    default = None,
+    noshort = true
+  )(exhaleModeConverter)
+
+  lazy val exhaleMode: ExhaleMode = {
+    if (exhaleModeOption.isDefined)
+      exhaleModeOption()
+    else if (moreCompleteExhale())
+      ExhaleMode.MoreComplete
+    else
+      ExhaleMode.Greedy
+  }
 
   val numberOfErrorsToReport: ScallopOption[Int] = opt[Int]("numberOfErrorsToReport",
     descr = "Number of errors per member before the verifier stops. If this number is set to 0, all errors are reported.",
@@ -770,16 +808,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       sys.error(s"Unexpected combination: $other")
   }
 
+  validateOpt(counterexample, moreCompleteExhale, exhaleModeOption) {
+    case (Some(_), Some(false), None) |
+         (Some(_), Some(_), Some(ExhaleMode.Greedy)) |
+         (Some(_), Some(_), Some(ExhaleMode.MoreCompleteOnDemand)) =>
+      Left(s"Option ${counterexample.name} requires setting "
+        + s"${exhaleModeOption.name} to 1 (more complete exhale)")
+    case (_, Some(true), Some(m)) if m != ExhaleMode.MoreComplete =>
+      Left(s"Contradictory values given for options ${moreCompleteExhale.name} and ${exhaleModeOption.name}")
+    case _ => Right(())
+  }
+
   validateOpt(assertionMode, parallelizeBranches) {
     case (Some(AssertionMode.SoftConstraints), Some(true)) =>
       Left(s"Assertion mode SoftConstraints is not supported in combination with ${parallelizeBranches.name}")
     case _ => Right()
-  }
-
-  validateOpt(counterexample, enableMoreCompleteExhale) {
-    case (Some(_), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
-                                        + s"flag ${enableMoreCompleteExhale.name}")
-    case _ => Right(())
   }
 
   validateFileOpt(logConfig)
@@ -815,6 +858,13 @@ object Config {
   object AssertionMode {
     case object PushPop extends AssertionMode
     case object SoftConstraints extends AssertionMode
+  }
+
+  sealed trait ExhaleMode
+  object ExhaleMode {
+    case object Greedy extends ExhaleMode
+    case object MoreComplete extends ExhaleMode
+    case object MoreCompleteOnDemand extends ExhaleMode
   }
 
   case class ProverStateSaturationTimeout(timeout: Int, comment: String)

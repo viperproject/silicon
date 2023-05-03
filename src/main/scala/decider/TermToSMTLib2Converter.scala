@@ -197,8 +197,8 @@ class TermToSMTLib2Converter
 
     /* Permissions */
 
-    case FullPerm() => "$Perm.Write"
-    case NoPerm() => "$Perm.No"
+    case FullPerm => "$Perm.Write"
+    case NoPerm => "$Perm.No"
     case FractionPermLiteral(r) => renderBinaryOp("/", renderAsReal(IntLiteral(r.numerator)), renderAsReal(IntLiteral(r.denominator)))
     case FractionPerm(n, d) => renderBinaryOp("/", renderAsReal(n), renderAsReal(d))
     case PermLess(t0, t1) => renderBinaryOp("<", render(t0), render(t1))
@@ -357,7 +357,7 @@ class TermToSMTLib2Converter
     if (args.nonEmpty)
       parens(docAppNoParens)
     else
-      parens(text("as") <+> docAppNoParens <+> render(outSort))
+      docAppNoParens
   }
 
   protected def render(q: Quantifier): Cont = q match {
@@ -371,9 +371,9 @@ class TermToSMTLib2Converter
       else parens(text("- 0") <+> value(-n))
 
     case Unit => "$Snap.unit"
-    case True() => "true"
-    case False() => "false"
-    case Null() => "$Ref.null"
+    case True => "true"
+    case False => "false"
+    case Null => "$Ref.null"
     case _: SeqNil => renderApp("Seq_empty", Seq(), literal.sort)
     case _: EmptySet => renderApp("Set_empty", Seq(), literal.sort)
     case _: EmptyMultiset => renderApp("Multiset_empty", Seq(), literal.sort)

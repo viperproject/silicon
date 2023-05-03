@@ -7,8 +7,10 @@
 package viper.silicon.extensions
 
 import viper.silver.ast._
-import viper.silver.ast.utility.ViperStrategy
+import viper.silver.ast.utility.{Expressions, ViperStrategy}
 import viper.silver.ast.utility.rewriter.Traverse
+
+import scala.collection.mutable
 
 /** An AST rewriter that transforms accessibility predicates under conditionals into accessibility
   * predicates with corresponding conditional permission expressions. E.g. it transforms
@@ -16,19 +18,35 @@ import viper.silver.ast.utility.rewriter.Traverse
   * to
   *   acc(x.f, b ? p : none)
   *
-  * TODO: Support magic wands
-  * TODO: Support ternary expressions b ? a1 : a2
   */
 class ConditionalPermissionRewriter {
-  private val rewriter = ViperStrategy.Context[Condition]({
-    // TODO: Support ternary expressions b ? a1 : a2
+  private def rewriter(implicit p: Program, alreadySeen: mutable.HashSet[Exp]) = ViperStrategy.Context[Condition]({
+    // Does NOT rewrite ternary expressions; those have to be transformed to implications in advance
+    // using the ternaryRewriter below.
     //
     // General note regarding the AST transformer framework: the new node, i.e. the node returned in
     // a match case, will not itself be visited again. The recurseFunc, defined below, will determine
     // which of the new node's children will be visited.
-    case (Implies(cond, acc: AccessPredicate), cc) =>
+    case (i@Implies(cond, acc: AccessPredicate), cc) =>
       // Found an implication b ==> acc(...)
-      (conditionalize(acc, cc.c &*& cond), cc) // Won't recurse into acc's children (see recurseFunc below)
+      // Transformation causes issues if the permission involve a wildcard, so we avoid that case.
+      val res = if (!acc.perm.contains[WildcardPerm])
+        (conditionalize(acc, cc.c &*& cond), cc) // Won't recurse into acc's children (see recurseFunc below)
+      else
+        (Implies(And(cc.c.exp, cond)(), acc)(i.pos, i.info, i.errT), cc)
+      alreadySeen.add(res._1)
+      res
+
+    case (i@Implies(cond, l: Let), cc) if !l.isPure =>
+      if (Expressions.proofObligations(l.exp)(p).isEmpty) {
+        (l, cc.updateContext(cc.c &*& cond))
+      } else {
+        // bound expression might only be well-defined under context conditiond;
+        // thus, don't push conditions further in.
+        val res = (Implies(And(cc.c.exp, cond)(), l)(i.pos, i.info, i.errT), cc)
+        alreadySeen.add(res._1)
+        res
+      }
 
     case (impl: Implies, cc) if !impl.right.isPure =>
       // Entering an implication b ==> A, where A is not pure, i.e. contains an accessibility accessibility
@@ -36,40 +54,85 @@ class ConditionalPermissionRewriter {
 
     case (acc: AccessPredicate, cc) if cc.c.optExp.nonEmpty =>
       // Found an accessibility predicate nested under some conditionals
-      (conditionalize(acc, cc.c), cc) // Won't recurse into acc's children
+      // Wildcards may cause issues, see above.
+      val res = if (!acc.perm.contains[WildcardPerm])
+        (conditionalize(acc, cc.c), cc) // Won't recurse into acc's children
+      else
+        (Implies(cc.c.exp, acc)(acc.pos, acc.info, acc.errT), cc)
+      alreadySeen.add(res._1)
+      res
+
+    case (l: Let, cc) if Expressions.proofObligations(l.exp)(p).nonEmpty =>
+      // Bound expression might only be well-defined under context conditions;
+      // thus, don't push conditions further in.
+      val res = (Implies(cc.c.exp, l)(l.pos, l.info, l.errT), cc)
+      alreadySeen.add(res._1)
+      res
 
     case (exp: Exp, cc) if cc.c.optExp.nonEmpty && exp.isPure =>
       // Found a pure expression nested under some conditionals
       val cond = cc.c.exp
       (Implies(cond, exp)(cond.pos, cond.info, cond.errT), cc) // Won't recurse into exp's children
   }, Condition(), Traverse.TopDown).recurseFunc({
-    case exp: Exp if exp.isPure => Nil // Don't recurse into pure expressions
-    case _: AccessPredicate => Nil // Don't recurse into accessibility predicates
+    case e: Exp if alreadySeen.contains(e) => Nil
+    case exp: Exp if exp.isPure => Nil  // Don't recurse into pure expressions
+    case _: AccessPredicate => Nil  // Don't recurse into accessibility predicates
+    case f: Forall => f.exp :: Nil  // Don't recurse into triggers
+    case e: Exists => e.exp :: Nil  // Don't recurse into triggers
+    case l: Let => l.body :: Nil  // Don't recurse into bound expression
+
   })
 
-  /** Transforms all conditional accessibility predicates in `root` into unconditional accessibility
-    * predicates with suitable conditional permission expressions.
+  // Rewrite impure ternary expressions to a conjuction of implications in order to be able to use the implication
+  // rewriter above.
+  private val ternaryRewriter = ViperStrategy.Slim{
+    case ce@CondExp(cond, tExp, fExp) if !tExp.isPure || !fExp.isPure =>
+      And(Implies(cond, tExp)(ce.pos, ce.info, ce.errT),
+        Implies(Not(cond)(cond.pos, cond.info, cond.errT), fExp)(ce.pos, ce.info, ce.errT))(ce.pos, ce.info, ce.errT)
+  }
+
+  /** Conservatively transforms all conditional accessibility predicates in `root` into unconditional accessibility
+    * predicates with suitable conditional permission expressions when this is safe to do.
     */
-  def rewrite(root: Node): Node = {
-    rewriter.execute(root)
+  def rewrite(root: Program): Program = {
+    val noTernaryProgram: Program = ternaryRewriter.execute(root)
+    val res: Program = rewriter(root, new mutable.HashSet[Exp]()).execute(noTernaryProgram)
+    res
   }
 
   /** Convenient factory for a node CondExp(cond, perm). */
-  private def makeCondExp(cond: Exp, perm: Exp): CondExp = {
-    CondExp(cond, perm, NoPerm()(perm.pos, perm.info, perm.errT))(perm.pos, perm.info, perm.errT)
+  private def makeCondExp(cond: Exp, perm: Exp, elsePerm: Exp = NoPerm()()): CondExp = {
+    CondExp(cond, perm, elsePerm)(perm.pos, perm.info, perm.errT)
   }
 
   /** Makes `acc`'s permissions conditional w.r.t. `cond`.
-    * TODO: Support magic wands
     */
-  private def conditionalize(acc: AccessPredicate, cond: Condition): AccessPredicate = {
+  private def conditionalize(acc: AccessPredicate, cond: Condition)(implicit p: Program): Exp = {
+    // We have to be careful not to introduce well-definedness issues when conditionalizing.
+    // For example, if we transform
+    // i >= 0 && i < |s| ==> acc(s[i].f)
+    // to
+    // acc(s[i].f, i >= 0 && i < |s| ? write : none)
+    // then backends may complain that s[i].f is not well-defined. Thus, we only perform the
+    // transformation if receiver/argument expressions are always well-defined.
     acc match {
       case FieldAccessPredicate(loc, perm) =>
-        FieldAccessPredicate(loc, makeCondExp(cond.exp, perm))(acc.pos, acc.info, acc.errT)
+        if (Expressions.proofObligations(loc.rcv)(p).isEmpty) {
+          FieldAccessPredicate(loc, makeCondExp(cond.exp, perm))(acc.pos, acc.info, acc.errT)
+        } else {
+          // Hack: use a conditional null as the receiver, that's always well-defined.
+          val fieldAccess = loc.copy(rcv = makeCondExp(cond.exp, loc.rcv, NullLit()()))(loc.pos, loc.info, loc.errT)
+          FieldAccessPredicate(fieldAccess, makeCondExp(cond.exp, perm))(acc.pos, acc.info, acc.errT)
+        }
       case PredicateAccessPredicate(loc, perm) =>
-        PredicateAccessPredicate(loc, makeCondExp(cond.exp, perm))(acc.pos, acc.info, acc.errT)
+        if (!loc.args.exists(a => Expressions.proofObligations(a)(p).nonEmpty))
+          PredicateAccessPredicate(loc, makeCondExp(cond.exp, perm))(acc.pos, acc.info, acc.errT)
+        else
+          Implies(cond.exp, acc)(acc.pos, acc.info, acc.errT)
       case wand: MagicWand =>
-        sys.error(s"Cannot conditionalise magic wand $wand (${viper.silicon.utils.ast.sourceLineColumn(wand)})")
+        // Since wands do not have permission amounts, we cannot conditionalize them;
+        // in order to be able to support programs with wands at all, we just write an implication.
+        Implies(cond.exp, wand)(acc.pos, acc.info, acc.errT)
     }
   }
 }

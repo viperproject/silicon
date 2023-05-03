@@ -23,7 +23,7 @@ import viper.silver.ast
 object FunctionPreconditionTransformer {
   def transform(t: Term, p: ast.Program): Term = {
     val res = t match {
-      case _:Literal => True()
+      case _:Literal => True
       case And(ts) => And(transform(ts.head, p), Implies(ts.head, transform(And(ts.tail), p)))
       case Or(ts) => And(transform(ts.head, p), Implies(Not(ts.head), transform(Or(ts.tail), p)))
       case Implies(t0, t1) => And(transform(t0, p), Implies(t0, transform(t1, p)))
@@ -32,7 +32,7 @@ object FunctionPreconditionTransformer {
         And(And(bindings.map(b => transform(b._2, p))), Let(bindings, transform(body, p)))
       case Quantification(_, vars, body, triggers, name, isGlobal, weight) =>
         val tBody = transform(body, p)
-        if (tBody == True()) {
+        if (tBody == True) {
           tBody
         } else {
           // We assume well-definedness for *all* possible values even for existential quantifiers

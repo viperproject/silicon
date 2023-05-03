@@ -93,6 +93,7 @@ object predicateSupporter extends PredicateSupportRules {
         val s3 = s2.copy(g = s.g,
                          h = h3,
                          smCache = smCache,
+                         permissionScalingFactor = s.permissionScalingFactor,
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
         Q(s3, v1)
       } else {

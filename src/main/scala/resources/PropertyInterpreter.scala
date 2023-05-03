@@ -14,10 +14,10 @@ abstract class PropertyInterpreter {
 
   protected def buildPathCondition[K <: Kind](expression: PropertyExpression[K], info: Info): Term = expression match {
     // Literals
-    case True() => terms.True()
-    case False() => terms.False()
+    case True() => terms.True
+    case False() => terms.False
     case PermissionLiteral(numerator, denominator) => buildPermissionLiteral(numerator, denominator)
-    case Null() => terms.Null()
+    case Null() => terms.Null
 
     // Boolean operators
     case Not(expr) => terms.Not(buildPathCondition(expr, info))
@@ -62,7 +62,7 @@ abstract class PropertyInterpreter {
    the right-hand side is not evaluated. */
   protected def buildAnd(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
-      case leftTerm: terms.False => leftTerm
+      case f@terms.False => f
       case leftTerm => terms.And(leftTerm, buildPathCondition(right, info))
     }
   }
@@ -71,7 +71,7 @@ abstract class PropertyInterpreter {
    the right-hand side is not evaluated. */
   protected def buildOr(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
-      case leftTerm: terms.True => leftTerm
+      case t@terms.True => t
       case leftTerm => terms.Or(leftTerm, buildPathCondition(right, info))
     }
   }
@@ -80,26 +80,26 @@ abstract class PropertyInterpreter {
    the right-hand side is not evaluated. */
   protected def buildImplies(left: PropertyExpression[kinds.Boolean], right: PropertyExpression[kinds.Boolean], info: Info) = {
     buildPathCondition(left, info) match {
-      case terms.False() => terms.True()
+      case terms.False => terms.True
       case leftTerm => terms.Implies(leftTerm, buildPathCondition(right, info))
     }
   }
 
   protected def buildEquals[K <: EquatableKind](left: PropertyExpression[K], right: PropertyExpression[K], info: Info) = {
     (left, right) match {
-      case (Null(), Null()) => terms.True()
+      case (Null(), Null()) => terms.True
       case (ArgumentAccess(cv1), ArgumentAccess(cv2)) =>
         val args1 = extractArguments(cv1, info)
         val args2 = extractArguments(cv2, info)
         if (args1 == args2) {
           // if all arguments are the same, they are definitely equal
-          terms.True()
+          terms.True
         } else {
           // else return argument-wise equal
           terms.And(args1.zip(args2).map{ case (t1, t2) => t1 === t2 })
         }
-      case (ArgumentAccess(cv), Null()) => terms.And(extractArguments(cv, info).map(_ === terms.Null()))
-      case (Null(), ArgumentAccess(cv)) => terms.And(extractArguments(cv, info).map(_ === terms.Null()))
+      case (ArgumentAccess(cv), Null()) => terms.And(extractArguments(cv, info).map(_ === terms.Null))
+      case (Null(), ArgumentAccess(cv)) => terms.And(extractArguments(cv, info).map(_ === terms.Null))
       case _ => terms.Equals(buildPathCondition(left, info), buildPathCondition(right, info))
     }
   }
@@ -109,17 +109,26 @@ abstract class PropertyInterpreter {
   protected def buildPermissionLiteral(numerator: BigInt, denominator: BigInt): Term = {
     require(denominator != 0, "Denominator of permission literal must not be 0")
     (numerator, denominator) match {
-      case (n, _) if n == 0 => terms.NoPerm()
-      case (n, d) if n == d => terms.FullPerm()
+      case (n, _) if n == 0 => terms.NoPerm
+      case (n, d) if n == d => terms.FullPerm
       case (n, d) => terms.FractionPerm(terms.IntLiteral(n), terms.IntLiteral(d))
     }
+  }
+
+  protected def buildBinary[K <: Kind]
+                           (builder: ((Term, Term)) => Term,
+                            left: PropertyExpression[K],
+                            right: PropertyExpression[K],
+                            pm: Info): Term = {
+    def wrapper(t0: Term, t1: Term): Term = builder((t0, t1))
+    buildBinary(wrapper _, left, right, pm)
   }
 
   protected def buildBinary[K <: Kind]
                            (builder: (Term, Term) => Term,
                             left: PropertyExpression[K],
                             right: PropertyExpression[K],
-                            pm: Info) = {
+                            pm: Info): Term = {
     val leftTerm = buildPathCondition(left, pm)
     val rightTerm = buildPathCondition(right, pm)
     builder(leftTerm, rightTerm)

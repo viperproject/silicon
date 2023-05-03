@@ -106,7 +106,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
     evaluateWandArguments(s, wand, pve, v)((s1, ts, v1) =>
-      Q(s1, MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, snap, FullPerm()), v1)
+      Q(s1, MagicWandChunk(MagicWandIdentifier(wand, s.program), s1.g.values, ts, snap, FullPerm), v1)
     )
   }
 
@@ -155,10 +155,10 @@ object magicWandSupporter extends SymbolicExecutionRules {
                * and thus be unsound. Since fractional wands do not exist it is not necessary to equate their
                * snapshots. Also have a look at the comments in the packageWand and applyWand methods.
                */
-              case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True()
+              case (Some(_: MagicWandChunk), Some(_: MagicWandChunk)) => True
               case (Some(ch1: NonQuantifiedChunk), Some(ch2: NonQuantifiedChunk)) => ch1.snap === ch2.snap
               case (Some(ch1: QuantifiedBasicChunk), Some(ch2: QuantifiedBasicChunk)) => ch1.snapshotMap === ch2.snapshotMap
-              case _ => True()
+              case _ => True
             }
             v.decider.assume(tEq)
 
@@ -297,7 +297,7 @@ object magicWandSupporter extends SymbolicExecutionRules {
             quantifiedChunkSupporter.singletonSnapshotMap(s5, wand, args, MagicWandSnapshot(freshSnapRoot, snap), v4)
           v4.decider.prover.comment("Definitional axioms for singleton-SM's value")
           v4.decider.assume(smValueDef)
-          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm, s.program)
+          val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm, sm, s.program)
           appendToResults(s5, ch, v4.decider.pcs.after(preMark), v4)
           Success()
         })

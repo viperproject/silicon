@@ -19,7 +19,7 @@ import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.{DefaultDependency => SilDefaultDependency}
 import viper.silicon.{Config, Map, toMap}
-import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter}
+import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage, Reporter, QuantifierInstantiationsMessage}
 import viper.silver.verifier.Model
 
 import scala.collection.mutable
@@ -40,6 +40,7 @@ abstract class ProverStdIO(uniqueId: String,
   protected var output: PrintWriter = _
 
   var proverPath: Path = _
+  var lastReasonUnknown : String = _
   var lastModel : String = _
 
   def exeEnvironmentalVariable: String
@@ -82,7 +83,7 @@ abstract class ProverStdIO(uniqueId: String,
     }
     pushPopScopeDepth = 0
     lastTimeout = -1
-    logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
+    logfileWriter = if (!Verifier.config.enableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
     proverPath = getProverPath
     prover = createProverInstance()
     input = new BufferedReader(new InputStreamReader(prover.getInputStream))
@@ -252,6 +253,7 @@ abstract class ProverStdIO(uniqueId: String,
 
     if (!result) {
       retrieveAndSaveModel()
+      retrieveReasonUnknown()
     }
 
     pop()
@@ -282,6 +284,16 @@ abstract class ProverStdIO(uniqueId: String,
         model = model.replaceAll("\"", "")
       }
       lastModel = model
+    }
+  }
+
+  protected def retrieveReasonUnknown(): Unit = {
+    if (Verifier.config.reportReasonUnknown()) {
+      writeLine("(get-info :reason-unknown)")
+      var result = readLine()
+      if (result.startsWith("(:reason-unknown \""))
+        result = result.substring(18, result.length - 2)
+      lastReasonUnknown = result
     }
   }
 
@@ -444,7 +456,15 @@ abstract class ProverStdIO(uniqueId: String,
       // See: https://github.com/Z3Prover/z3/issues/4522
       val qiProfile = result.startsWith("[quantifier_instances]")
       if (qiProfile) {
-        logger info result
+        val qi_info = result.stripPrefix("[quantifier_instances]").split(":").map(_.trim)
+        if (qi_info.length != 4) {
+          val msg = s"Invalid quantifier instances line from prover: $result"
+          reporter report InternalWarningMessage(msg)
+          logger warn msg
+        } else {
+          reporter report QuantifierInstantiationsMessage(qi_info(0), qi_info(1).toInt, qi_info(2).toInt, qi_info(3).toInt)
+          logger info result
+        }
       }
 
       repeat = warning || qiProfile
@@ -466,5 +486,10 @@ abstract class ProverStdIO(uniqueId: String,
 
   override def getModel(): Model = Model(lastModel)
 
-  override def clearLastModel(): Unit = lastModel = null
+  override def getReasonUnknown(): String = lastReasonUnknown
+
+  override def clearLastAssert(): Unit = {
+    lastReasonUnknown = null
+    lastModel = null
+  }
 }

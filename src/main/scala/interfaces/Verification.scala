@@ -26,6 +26,7 @@ import viper.silver.ast.Program
 sealed abstract class VerificationResult {
   var previous: Vector[VerificationResult] = Vector() //Sets had problems with equality
   val continueVerification: Boolean = true
+  var isReported: Boolean = false
 
   def isFatal: Boolean
   def &&(other: => VerificationResult): VerificationResult
@@ -100,7 +101,9 @@ case class Failure/*[ST <: Store[ST],
   override lazy val toString: String = message.readableMessage
 }
 
-case class SiliconFailureContext(branchConditions: Seq[ast.Exp], counterExample: Option[Counterexample]) extends FailureContext {
+case class SiliconFailureContext(branchConditions: Seq[ast.Exp],
+                                 counterExample: Option[Counterexample],
+                                 reasonUnknown: Option[String]) extends FailureContext {
   lazy val branchConditionString: String = {
     if(branchConditions.nonEmpty) {
       val branchConditionsString =
@@ -118,7 +121,15 @@ case class SiliconFailureContext(branchConditions: Seq[ast.Exp], counterExample:
     counterExample.fold("")(ce => s"\n\t\tcounterexample:\n$ce")
   }
 
-  override lazy val toString: String = branchConditionString + counterExampleString
+  lazy val reasonUnknownString: String = {
+    if (reasonUnknown.isDefined) {
+      s"\nPotential prover incompleteness: ${reasonUnknown.get}"
+    } else {
+      ""
+    }
+  }
+
+  override lazy val toString: String = branchConditionString + counterExampleString + reasonUnknownString
 }
 
 trait SiliconCounterexample extends Counterexample {
