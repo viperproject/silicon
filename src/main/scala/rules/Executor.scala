@@ -292,10 +292,30 @@ object executor extends ExecutionRules {
         Q(s.copy(g = s.g + (x -> t)), v)
 
       case ast.Assign(lhs, rhs) =>
-        eval(s, rhs, AssignmentRhsFailed(rhs), v)((s1, tRhs, v1) => {
+        eval(s, rhs, AssignmentValueFailed(rhs), v)((s1, tRhs, v1) => {
           val t = ssaifyRhs(tRhs, lhs.name, lhs.typ, v1)
           execAssign(s1, lhs, t, v1)(Q)
         })
+
+      case ast.NewStmt(lhs, fields) =>
+        val tRcvr = v.decider.fresh(sorts.Ref)
+        v.decider.assume(tRcvr !== Null)
+        val newChunks = fields map (field => {
+          val p = FullPerm
+          val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ))
+          if (s.qpFields.contains(field)) {
+            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
+            v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
+            v.decider.assume(smValueDef)
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm, s.program)
+          } else {
+            BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
+          }
+        })
+        val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
+        val s1 = s.copy(h = s.h + Heap(newChunks))
+        v.decider.assume(ts)
+        execAssign(s1, lhs, tRcvr, v)(Q)
 
       case inhale @ ast.Inhale(a) => a match {
         case _: ast.FalseLit =>
@@ -546,7 +566,7 @@ object executor extends ExecutionRules {
       /* Assignment for a field that contains quantified chunks */
       case fa @ ast.FieldAccess(eRcvr, field) if s.qpFields.contains(field) =>
         assert(!s.exhaleExt)
-        val pve = AssignmentFailed(fa)
+        val pve = AssignmentTargetFailed(fa)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) => {
           val (relevantChunks, otherChunks) =
             quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(field.name))
@@ -589,7 +609,7 @@ object executor extends ExecutionRules {
 
       case fa @ ast.FieldAccess(eRcvr, field) =>
         assert(!s.exhaleExt)
-        val pve = AssignmentFailed(fa)
+        val pve = AssignmentTargetFailed(fa)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) => {
           val resource = fa.res(s.program)
           val ve = pve dueTo InsufficientPermission(fa)

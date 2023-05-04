@@ -29,8 +29,7 @@ class NodeBacktranslationTests extends AnyFunSuite {
     val exhale = body.ss.last.asInstanceOf[Exhale]
 
     val assignments: Map[LocalVar, Exp] =
-      method.deepCollectInBody { case lva: LocalVarAssign => lva }
-            .map(lva => lva.lhs -> lva.rhs)
+      method.deepCollectInBody { case Assign(lhs: LocalVar, rhs) => lhs -> rhs }
             .to(Map)
 
     val backtranslationTransformer = ViperStrategy.Slim({
