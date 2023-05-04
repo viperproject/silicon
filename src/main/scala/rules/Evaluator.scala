@@ -25,6 +25,7 @@ import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
 import viper.silver.reporter.WarningsDuringTypechecking
 import viper.silver.ast.WeightedQuantifier
+import viper.silicon.resources.FieldID
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -288,6 +289,26 @@ object evaluator extends EvaluationRules {
             createFailure(pve dueTo LabelledStateNotReached(old), v, s)
           case _ =>
             evalInOldState(s, lbl, e0, pve, v)(Q)}
+
+      case ast.NewExp(fields) =>
+        val tRcvr = v.decider.fresh(sorts.Ref)
+        v.decider.assume(tRcvr !== Null)
+        val newChunks = fields map (field => {
+          val p = FullPerm
+          val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ))
+          if (s.qpFields.contains(field)) {
+            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
+            v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
+            v.decider.assume(smValueDef)
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm, s.program)
+          } else {
+            BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
+          }
+        })
+        val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
+        val s1 = s.copy(h = s.h + Heap(newChunks))
+        v.decider.assume(ts)
+        Q(s1, tRcvr, v)
 
       case ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>

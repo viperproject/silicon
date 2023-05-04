@@ -291,99 +291,11 @@ object executor extends ExecutionRules {
         val t = v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ))
         Q(s.copy(g = s.g + (x -> t)), v)
 
-      case ass @ ast.LocalVarAssign(x, rhs) =>
-        eval(s, rhs, AssignmentFailed(ass), v)((s1, tRhs, v1) => {
-          val t = ssaifyRhs(tRhs, x.name, x.typ, v)
-          Q(s1.copy(g = s1.g + (x, t)), v1)})
-
-      /* TODO: Encode assignments e1.f := e2 as
-       *         exhale acc(e1.f)
-       *         inhale acc(e1.f) && e1.f == e2
-       *       and benchmark possible performance effects.
-       */
-
-      /* Assignment for a field that contains quantified chunks */
-      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
-              if s.qpFields.contains(field) =>
-
-        assert(!s.exhaleExt)
-        val pve = AssignmentFailed(ass)
-        eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
-          eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
-            val (relevantChunks, otherChunks) =
-              quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
-            val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-            val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            val s2p = if (s2.heapDependentTriggers.contains(field)){
-              val (smDef1, smCache1) =
-                quantifiedChunkSupporter.summarisingSnapshotMap(
-                  s2, field, Seq(`?r`), relevantChunks, v1)
-              v2.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
-              s2.copy(smCache = smCache1)
-            } else {
-              s2
-            }
-            v2.decider.clearModel()
-            val result = quantifiedChunkSupporter.removePermissions(
-              s2p,
-              relevantChunks,
-              Seq(`?r`),
-              `?r` === tRcvr,
-              field,
-              FullPerm,
-              chunkOrderHeuristics,
-              v2
-            )
-            result match {
-              case (Complete(), s3, remainingChunks) =>
-                val h3 = Heap(remainingChunks ++ otherChunks)
-                val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
-                v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-                v1.decider.assume(smValueDef)
-                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm, sm, s.program)
-                if (s3.heapDependentTriggers.contains(field))
-                  v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
-                Q(s3.copy(h = h3 + ch), v2)
-              case (Incomplete(_), s3, _) =>
-                createFailure(pve dueTo InsufficientPermission(fa), v2, s3)}}))
-
-      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
-        assert(!s.exhaleExt)
-        val pve = AssignmentFailed(ass)
-        eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
-          eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
-            val resource = fa.res(s.program)
-            val ve = pve dueTo InsufficientPermission(fa)
-            val description = s"consume ${ass.pos}: $ass"
-            chunkSupporter.consume(s2, s2.h, resource, Seq(tRcvr), FullPerm, ve, v2, description)((s3, h3, _, v3) => {
-              val tSnap = ssaifyRhs(tRhs, field.name, field.typ, v3)
-              val id = BasicChunkIdentifier(field.name)
-              val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm)
-              chunkSupporter.produce(s3, h3, newChunk, v3)((s4, h4, v4) =>
-                Q(s4.copy(h = h4), v4))
-            })
-          })
-        )
-
-      case ast.NewStmt(x, fields) =>
-        val tRcvr = v.decider.fresh(x)
-        v.decider.assume(tRcvr !== Null)
-        val newChunks = fields map (field => {
-          val p = FullPerm
-          val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ))
-          if (s.qpFields.contains(field)) {
-            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
-            v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
-            v.decider.assume(smValueDef)
-            quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm, s.program)
-          } else {
-            BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
-          }
+      case ast.Assign(lhs, rhs) =>
+        eval(s, rhs, AssignmentRhsFailed(rhs), v)((s1, tRhs, v1) => {
+          val t = ssaifyRhs(tRhs, lhs.name, lhs.typ, v1)
+          execAssign(s1, lhs, t, v1)(Q)
         })
-        val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
-        val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
-        v.decider.assume(ts)
-        Q(s1, v)
 
       case inhale @ ast.Inhale(a) => a match {
         case _: ast.FalseLit =>
@@ -494,13 +406,15 @@ object executor extends ExecutionRules {
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-              val gLhs = Store(lhs.zip(outs)
-                              .map(p => (p._1, s5.g(p._2))).toMap)
-              val s6 = s5.copy(g = s1.g + gLhs,
-                               oldHeaps = s1.oldHeaps,
-                               recordVisited = s1.recordVisited)
-              v3.symbExLog.closeScope(sepIdentifier)
-              Q(s6, v3)})})})
+              val assigns = lhs.zip(outs).map(p => (p._1, s5.g(p._2)))
+              execAssignMany(
+                s5.copy(g = s1.g, oldHeaps = s1.oldHeaps, recordVisited = s1.recordVisited),
+                assigns,
+                v3
+              )((s6, v4) => {
+                v4.symbExLog.closeScope(sepIdentifier)
+                Q(s6, v4)
+              })})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = s.program.findPredicate(predicateName)
@@ -608,6 +522,86 @@ object executor extends ExecutionRules {
     }
 
     executed
+  }
+
+  def execAssignMany(s: State, pairs: Seq[(ast.Lhs, Term)], v: Verifier)(continuation: (State, Verifier) => VerificationResult)
+           : VerificationResult = {
+    pairs match {
+      case Seq() => continuation(s, v)
+      case (lhs, rhs) +: rest =>
+        execAssign(s, lhs, rhs, v)((s1, v1) => execAssignMany(s1, rest, v1)(continuation))
+    }
+  }
+  def execAssign(s: State, lhs: ast.Lhs, rhs: Term, v: Verifier)(continuation: (State, Verifier) => VerificationResult)
+           : VerificationResult = {
+    lhs match {
+      case x: ast.LocalVar => continuation(s.copy(g = s.g + (x, rhs)), v)
+
+      /* TODO: Encode assignments e1.f := e2 as
+       *         exhale acc(e1.f)
+       *         inhale acc(e1.f) && e1.f == e2
+       *       and benchmark possible performance effects.
+       */
+
+      /* Assignment for a field that contains quantified chunks */
+      case fa @ ast.FieldAccess(eRcvr, field) if s.qpFields.contains(field) =>
+        assert(!s.exhaleExt)
+        val pve = AssignmentFailed(fa)
+        eval(s, eRcvr, pve, v)((s1, tRcvr, v1) => {
+          val (relevantChunks, otherChunks) =
+            quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(field.name))
+          val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
+          val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+          val s2p = if (s1.heapDependentTriggers.contains(field)){
+            val (smDef1, smCache1) =
+              quantifiedChunkSupporter.summarisingSnapshotMap(
+                s1, field, Seq(`?r`), relevantChunks, v1)
+            v1.decider.assume(FieldTrigger(field.name, smDef1.sm, tRcvr))
+            s1.copy(smCache = smCache1)
+          } else {
+            s1
+          }
+          v1.decider.clearModel()
+          val result = quantifiedChunkSupporter.removePermissions(
+            s2p,
+            relevantChunks,
+            Seq(`?r`),
+            `?r` === tRcvr,
+            field,
+            FullPerm,
+            chunkOrderHeuristics,
+            v1
+          )
+          result match {
+            case (Complete(), s2, remainingChunks) =>
+              val h2 = Heap(remainingChunks ++ otherChunks)
+              val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s2, field, Seq(tRcvr), rhs, v1)
+              v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
+              v1.decider.assume(smValueDef)
+              val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm, sm, s.program)
+              if (s2.heapDependentTriggers.contains(field))
+                v1.decider.assume(FieldTrigger(field.name, sm, tRcvr))
+              continuation(s2.copy(h = h2 + ch), v1)
+            case (Incomplete(_), s2, _) =>
+              createFailure(pve dueTo InsufficientPermission(fa), v1, s2)
+          }
+        })
+
+      case fa @ ast.FieldAccess(eRcvr, field) =>
+        assert(!s.exhaleExt)
+        val pve = AssignmentFailed(fa)
+        eval(s, eRcvr, pve, v)((s1, tRcvr, v1) => {
+          val resource = fa.res(s.program)
+          val ve = pve dueTo InsufficientPermission(fa)
+          val description = s"consume ${fa.pos}: $fa"
+          chunkSupporter.consume(s1, s1.h, resource, Seq(tRcvr), FullPerm, ve, v1, description)((s2, h2, _, v2) => {
+            val id = BasicChunkIdentifier(field.name)
+            val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), rhs, FullPerm)
+            chunkSupporter.produce(s2, h2, newChunk, v2)((s3, h3, v3) =>
+              continuation(s3.copy(h = h3), v3))
+          })
+        })
+    }
   }
 
    private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term = {
