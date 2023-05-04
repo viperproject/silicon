@@ -291,13 +291,14 @@ object executor extends ExecutionRules {
         val t = v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ))
         Q(s.copy(g = s.g + (x -> t)), v)
 
-      case ast.Assign(lhs, rhs) =>
-        eval(s, rhs, AssignmentValueFailed(rhs), v)((s1, tRhs, v1) => {
+      case stmt @ ast.Assign(lhs, rhs) =>
+        val pve = AssignmentFailed(stmt)
+        eval(s, rhs, pve, v)((s1, tRhs, v1) => {
           val t = ssaifyRhs(tRhs, lhs.name, lhs.typ, v1)
-          execAssign(s1, lhs, t, v1)(Q)
+          execAssign(s1, lhs, t, v1, pve)(Q)
         })
 
-      case ast.NewStmt(lhs, fields) =>
+      case stmt @ ast.NewStmt(lhs, fields) =>
         val tRcvr = v.decider.fresh(sorts.Ref)
         v.decider.assume(tRcvr !== Null)
         val newChunks = fields map (field => {
@@ -315,7 +316,8 @@ object executor extends ExecutionRules {
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s, tRcvr)
         val s1 = s.copy(h = s.h + Heap(newChunks))
         v.decider.assume(ts)
-        execAssign(s1, lhs, tRcvr, v)(Q)
+        val pve = AssignmentFailed(stmt)
+        execAssign(s1, lhs, tRcvr, v, pve)(Q)
 
       case inhale @ ast.Inhale(a) => a match {
         case _: ast.FalseLit =>
@@ -427,10 +429,12 @@ object executor extends ExecutionRules {
               v3.symbExLog.closeScope(postCondId)
               v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
               val assigns = lhs.zip(outs).map(p => (p._1, s5.g(p._2)))
+              val pve = AssignmentFailed(call)
               execAssignMany(
                 s5.copy(g = s1.g, oldHeaps = s1.oldHeaps, recordVisited = s1.recordVisited),
                 assigns,
-                v3
+                v3,
+                pve
               )((s6, v4) => {
                 v4.symbExLog.closeScope(sepIdentifier)
                 Q(s6, v4)
@@ -544,15 +548,15 @@ object executor extends ExecutionRules {
     executed
   }
 
-  def execAssignMany(s: State, pairs: Seq[(ast.Lhs, Term)], v: Verifier)(continuation: (State, Verifier) => VerificationResult)
+  def execAssignMany(s: State, pairs: Seq[(ast.Lhs, Term)], v: Verifier, pve: PartialVerificationError)(continuation: (State, Verifier) => VerificationResult)
            : VerificationResult = {
     pairs match {
       case Seq() => continuation(s, v)
       case (lhs, rhs) +: rest =>
-        execAssign(s, lhs, rhs, v)((s1, v1) => execAssignMany(s1, rest, v1)(continuation))
+        execAssign(s, lhs, rhs, v, pve)((s1, v1) => execAssignMany(s1, rest, v1, pve)(continuation))
     }
   }
-  def execAssign(s: State, lhs: ast.Lhs, rhs: Term, v: Verifier)(continuation: (State, Verifier) => VerificationResult)
+  def execAssign(s: State, lhs: ast.Lhs, rhs: Term, v: Verifier, pve: PartialVerificationError)(continuation: (State, Verifier) => VerificationResult)
            : VerificationResult = {
     lhs match {
       case x: ast.LocalVar => continuation(s.copy(g = s.g + (x, rhs)), v)
@@ -566,7 +570,6 @@ object executor extends ExecutionRules {
       /* Assignment for a field that contains quantified chunks */
       case fa @ ast.FieldAccess(eRcvr, field) if s.qpFields.contains(field) =>
         assert(!s.exhaleExt)
-        val pve = AssignmentTargetFailed(fa)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) => {
           val (relevantChunks, otherChunks) =
             quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s1.h, BasicChunkIdentifier(field.name))
@@ -609,7 +612,6 @@ object executor extends ExecutionRules {
 
       case fa @ ast.FieldAccess(eRcvr, field) =>
         assert(!s.exhaleExt)
-        val pve = AssignmentTargetFailed(fa)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) => {
           val resource = fa.res(s.program)
           val ve = pve dueTo InsufficientPermission(fa)
