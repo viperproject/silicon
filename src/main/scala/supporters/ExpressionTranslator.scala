@@ -107,7 +107,6 @@ trait ExpressionTranslator {
                        vars map (v => Var(Identifier(v.name), toSort(v.typ))),
                        f(body),
                        translatedTriggers,
-                       "",
                        false,
                        weight)
 

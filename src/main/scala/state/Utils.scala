@@ -235,6 +235,7 @@ package object utils {
       case HeapToSnap(hp, msk, r) => HeapToSnap(go(hp), go(msk), r)
       case MergeHeaps(h1, m1, h2, m2) => MergeHeaps(go(h1), go(m1), go(h2), go(m2))
       case MergeSingle(hp, msk, at, vl) => MergeSingle(go(hp), go(msk), go(at), go(vl))
+      case IdenticalOnKnownLocations(oh, nh, msk) => IdenticalOnKnownLocations(go(oh), go(nh), go(msk))
       case PermNegation(p) => PermNegation(go(p))
     }
 

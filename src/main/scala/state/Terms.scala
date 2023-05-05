@@ -794,6 +794,13 @@ object Quantification
             vars: Seq[Var],
             tBody: Term,
             triggers: Seq[Trigger],
+            isGlobal: Boolean,
+            weight: Option[Int]): Quantification = apply(q, vars, tBody, triggers, s"quant-${qidCounter.getAndIncrement()}", isGlobal, weight)
+
+  def apply(q: Quantifier,
+            vars: Seq[Var],
+            tBody: Term,
+            triggers: Seq[Trigger],
             name: String,
             isGlobal: Boolean,
             weight: Option[Int])
@@ -1461,19 +1468,19 @@ object PermMinus extends CondFlyweightTermFactory[(Term, Term), PermMinus] {
 }
 
 class PermNegation(val p: Term) extends  Permissions
-  with StructuralEqualityUnaryOp[Term] {
+  with ConditionalFlyweightUnaryOp[PermNegation] {
 
   override val op = "-"
 }
 
-object PermNegation extends (Term => Term) {
-  def apply(p: Term) = p match {
+object PermNegation extends CondFlyweightTermFactory[Term, PermNegation] {
+  override def apply(p: Term) = p match {
     case PermNegation(pp) => pp
     case NoPerm => p
-    case _ => new PermNegation(p)
+    case _ => createIfNonExistent(p)
   }
 
-  def unapply(pm: PermNegation) = Some(pm.p)
+  override def actualCreate(args: Term): PermNegation = new PermNegation(args)
 }
 
 
@@ -2228,6 +2235,7 @@ object HeapLookup extends CondFlyweightTermFactory[(Term, Term), HeapLookup] {
     // TODO: this seems to be (usually) bad because a) it won't trigger some things, and b) Z3 won't be able to
     //  remember a simple equality between the lookup term and its result outside of lots of case splits.
     //case (MaskAdd(m2, r1, v), r2) => PermPlus(HeapLookup(m2, r2), Ite(r1 === r2, v, NoPerm))
+    case (SnapToHeap(HeapToSnap(hp, _, _) ,_ ,_), r) => HeapLookup(hp, r)
     case _ => createIfNonExistent(v0)
   }
 
@@ -2244,6 +2252,14 @@ class HeapToSnap(val heap: Term, val mask: Term, val r: Any) extends Term with C
 }
 
 object HeapToSnap extends CondFlyweightTermFactory[(Term, Term, Any), HeapToSnap] {
+
+  override def apply(v1: (Term, Term, Any)): Term = v1 match {
+    case (SnapToHeap(snp, _, _), _, r2) => {
+      //assert(r == r2)
+      snp
+    }
+    case _ => createIfNonExistent(v1)
+  }
   override def actualCreate(args: (Term, Term, Any)): HeapToSnap = new HeapToSnap(args._1, args._2, args._3)
 }
 
@@ -2256,7 +2272,7 @@ class SnapToHeap(val snap: Term, val r: Any, val sort: Sort) extends Term with C
 object SnapToHeap extends CondFlyweightTermFactory[(Term, Any, Sort), SnapToHeap] {
   override def apply(v0: (Term, Any, Sort)) = v0._1 match {
     case HeapToSnap(hp, _, r2) => {
-      assert(v0._2 == r2)
+      //assert(v0._2 == r2)
       hp
     }
     case _ => createIfNonExistent(v0)

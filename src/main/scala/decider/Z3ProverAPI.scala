@@ -282,7 +282,19 @@ class Z3ProverAPI(uniqueId: String,
       }
       result
     } catch {
-      case e: Z3Exception => throw ExternalToolError("Prover", "Z3 error: " + e.getMessage)
+      case e: Z3Exception =>
+        triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
+        val cleanTerm = goal.transform {
+          case q@Quantification(_, _, _, triggers, _, _, _) if triggers.nonEmpty =>
+            val goodTriggers = triggers.filterNot(trig => trig.p.exists(ptrn => ptrn.shallowCollect {
+              case t => triggerGenerator.isForbiddenInTrigger(t)
+            }.nonEmpty))
+            q.copy(triggers = goodTriggers)
+        }()
+        if (goal == cleanTerm)
+          throw ExternalToolError("Prover", "Z3 error: " + e.getMessage)
+        else
+          assert(cleanTerm, timeout)
     }
   }
 
