@@ -135,13 +135,22 @@ domain $Seq[E] {
         { Seq_drop(Seq_append(s,t), n) }
         n > 0 && n > Seq_length(s) ==> Seq_add(Seq_sub(n, Seq_length(s)), Seq_length(s)) == n && Seq_drop(Seq_append(s, t), n) == Seq_drop(t, Seq_sub(n, Seq_length(s)))
     }
+    // Note: the following (especially the third) are actually needed to cut matching loops that can otherwise be introduced by the axioms above (which introduce new append terms)
+    axiom {
+        forall s: $Seq[E], n: Int :: { Seq_take(s, n) }
+        n <= 0 ==> Seq_take(s, n) == Seq_empty()
+    }
     axiom {
         forall s: $Seq[E], n: Int :: { Seq_drop(s, n) }
         n <= 0 ==> Seq_drop(s, n) == s
     }
     axiom {
         forall s: $Seq[E], n: Int :: { Seq_take(s, n) }
-        n <= 0 ==> Seq_take(s, n) == Seq_empty()
+        n >= Seq_length(s) ==> Seq_take(s, n) == s
+    }
+    axiom {
+        forall s: $Seq[E], n: Int :: { Seq_drop(s, n) }
+        n >= Seq_length(s) ==> Seq_drop(s, n) == Seq_empty()
     }
 
     // end take/drop
