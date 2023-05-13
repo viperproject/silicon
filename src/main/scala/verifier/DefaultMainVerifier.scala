@@ -307,7 +307,7 @@ class DefaultMainVerifier(config: Config,
     val quantifiedFields = if (member.isInstanceOf[ast.Function])
       InsertionOrderedSet(program.fields)
     else
-      InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program) ++ program.fields.filter(f => hasQPAnnotation(f.info))
+      InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program) ++ program.fields.filter(f => hasQPAnnotation(f.info)))
     val quantifiedPredicates = if (member.isInstanceOf[ast.Function])
       InsertionOrderedSet(program.predicates)
     else
