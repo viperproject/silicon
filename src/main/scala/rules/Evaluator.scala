@@ -291,9 +291,10 @@ object evaluator extends EvaluationRules {
 
       case ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) => {
-          val t = v1.decider.fresh(x.name, v1.symbolConverter.toSort(x.typ))
+          val t = v1.decider.fresh(v1.symbolConverter.toSort(x.typ))
           v1.decider.assume(t === t0)
-          eval(s1.copy(g = s1.g + (x.localVar, t)), e1, pve, v1)(Q)
+          val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t)
+          eval(s1.copy(g = s1.g + (x.localVar, t), functionRecorder = newFuncRec), e1, pve, v1)(Q)
         })
 
       /* Strict evaluation of AND */
