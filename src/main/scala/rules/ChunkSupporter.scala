@@ -156,14 +156,25 @@ object chunkSupporter extends ChunkSupportRules {
       case Some(ch) =>
         if (consumeExact) {
           val toTake = PermMin(ch.perm, perms)
-          val newChunk = ch.withPerm(PermMinus(ch.perm, toTake))
-          val takenChunk = Some(ch.withPerm(toTake))
-          var newHeap = h - ch
-          if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout())) {
-            newHeap = newHeap + newChunk
-            assumeProperties(newChunk, newHeap)
+          if (!toTake.isInstanceOf[PermLiteral] &&
+              v.decider.check(PermAtMost(perms, ch.perm), Verifier.config.checkTimeout())) {
+            val newHeap = h - ch
+            if (!v.decider.check(perms === ch.perm, Verifier.config.checkTimeout())) {
+              val takenChunk = ch.withPerm(PermMinus(ch.perm, perms))
+              (Complete(), s, newHeap + takenChunk, Some(ch.withPerm(PermMinus(ch.perm, perms))))
+            } else {
+              (Complete(), s, newHeap, Some(ch))
+            }
+          } else {
+            val newChunk = ch.withPerm(PermMinus(ch.perm, toTake))
+            val takenChunk = Some(ch.withPerm(toTake))
+            var newHeap = h - ch
+            if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout())) {
+              newHeap = newHeap + newChunk
+              assumeProperties(newChunk, newHeap)
+            }
+            (ConsumptionResult(PermMinus(perms, toTake), v, 0), s, newHeap, takenChunk)
           }
-          (ConsumptionResult(PermMinus(perms, toTake), v, 0), s, newHeap, takenChunk)
         } else {
           if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout())) {
             v.decider.assume(PermLess(perms, ch.perm))
