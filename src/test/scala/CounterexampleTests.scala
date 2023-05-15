@@ -13,7 +13,7 @@ import viper.silicon.interfaces.SiliconMappedCounterexample
 import viper.silicon.reporting.{ExtractedModel, ExtractedModelEntry, LitIntEntry, LitPermEntry, NullRefEntry, RecursiveRefEntry, RefEntry, SeqEntry}
 import viper.silicon.state.terms.Rational
 import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUse, PIntLit, PLookup, PUnExp}
+import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PFieldAccess, PIdnUse, PIntLit, PLookup, POperator, PUnExp}
 import viper.silver.verifier.{FailureContext, VerificationError}
 
 import java.nio.file.Path
@@ -112,7 +112,7 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
   def meetsExpectations(model1: ExpectedCounterexample, model2: ExtractedModel): Boolean = {
     model1.exprs.forall {
       case accPred: PAccPred => containsAccessPredicate(accPred, model2)
-      case PBinExp(lhs, "==", rhs) => containsEquality(lhs, rhs, model2)
+      case PBinExp(lhs, POperator("=="), rhs) => containsEquality(lhs, rhs, model2)
     }
   }
 
@@ -130,8 +130,8 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
   /** resolves `expr` to a model entry in the given model. In case it's a field access, the corresponding permissions are returned as well */
   def resolve(expr: PExp, model: ExtractedModel): Option[(ExtractedModelEntry, Option[Rational])] = expr match {
     case PIntLit(value) => Some(LitIntEntry(value), None)
-    case PUnExp("-", PIntLit(value)) => Some(LitIntEntry(-value), None)
-    case PBinExp(PIntLit(n), "/", PIntLit(d)) => Some(LitPermEntry(Rational(n, d)), None)
+    case PUnExp(POperator("-"), PIntLit(value)) => Some(LitIntEntry(-value), None)
+    case PBinExp(PIntLit(n), POperator("/"), PIntLit(d)) => Some(LitPermEntry(Rational(n, d)), None)
     case PIdnUse(name) => model.entries.get(name).map((_, None))
     case PFieldAccess(rcv, idnuse) => resolveWoPerm(rcv, model).flatMap {
       case RefEntry(_, fields) => fields.get(idnuse.name)
@@ -184,7 +184,7 @@ class CounterexampleParser(fp: FastParser) {
 case class ExpectedCounterexample(exprs: Seq[PExp]) {
   assert(exprs.forall {
     case _: PAccPred => true
-    case PBinExp(_, "==", _) => true
+    case PBinExp(_, POperator("=="), _) => true
     case _ => false
   })
 }
