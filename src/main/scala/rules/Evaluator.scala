@@ -291,8 +291,8 @@ object evaluator extends EvaluationRules {
 
       case ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) => {
-          val t = v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ))
-          v.decider.assume(t === t0)
+          val t = v1.decider.fresh(x.name, v1.symbolConverter.toSort(x.typ))
+          v1.decider.assume(t === t0)
           eval(s1.copy(g = s1.g + (x.localVar, t)), e1, pve, v1)(Q)
         })
 
