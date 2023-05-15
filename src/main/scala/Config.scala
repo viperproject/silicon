@@ -431,6 +431,10 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  lazy val outputProverLog: Boolean = {
+    enableTempDirectory.isSupplied || rawProverLogFile.isSupplied || rawZ3LogFile.isSupplied
+  }
+
   private val rawZ3Exe = opt[String]("z3Exe",
     descr = (s"Z3 executable. The environment variable ${Z3ProverStdIO.exeEnvironmentalVariable}"
              + " can also be used to specify the path of the executable."),
