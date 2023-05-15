@@ -147,13 +147,22 @@ trait ExpressionTranslator {
         val df = Fun(id, inSorts, outSort)
         App(df, tArgs)
 
-      case bfa@ast.BackendFuncApp(func, args) =>
+      case bfa@ast.BackendFuncApp(_, args) =>
         val tArgs = args map f
         val inSorts = tArgs map (_.sort)
         val outSort = toSort(bfa.typ)
         val id = Identifier(bfa.interpretation)
         val sf = SMTFun(id, inSorts, outSort)
         App(sf, tArgs)
+
+      case fa@ast.FuncApp(name, args) =>
+        // We are assuming here that only functions with empty preconditions are used.
+        val tArgs = Unit +: (args map f)
+        val inSorts = tArgs map (_.sort)
+        val outSort = toSort(fa.typ)
+        val id = Identifier(name)
+        val df = HeapDepFun(id, inSorts, outSort)
+        App(df, tArgs)
 
       /* Permissions */
 
