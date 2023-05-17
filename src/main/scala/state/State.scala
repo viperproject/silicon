@@ -171,7 +171,7 @@ object State {
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
                      constrainableARPs2,
-                     `quantifiedVariables1`,
+                     quantifiedVariables2,
                      `retrying1`,
                      `underJoin1`,
                      functionRecorder2,
@@ -191,6 +191,7 @@ object State {
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
             val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
+            val quantifiedVariables3 = (quantifiedVariables1 ++ quantifiedVariables2).distinct
 
             val smCache3 = smCache1.union(smCache2)
             val pmCache3 = pmCache1 ++ pmCache2
@@ -204,6 +205,7 @@ object State {
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
                     constrainableARPs = constrainableARPs3,
+                    quantifiedVariables = quantifiedVariables3,
                     ssCache = ssCache3,
                     smCache = smCache3,
                     pmCache = pmCache3,

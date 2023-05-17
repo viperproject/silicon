@@ -330,8 +330,12 @@ object evaluator extends EvaluationRules {
             evalInOldState(s, lbl, e0, pve, v)(Q)}
 
       case ast.Let(x, e0, e1) =>
-        eval(s, e0, pve, v)((s1, t0, v1) =>
-          eval(s1.copy(g = s1.g + (x.localVar, t0)), e1, pve, v1)(Q))
+        eval(s, e0, pve, v)((s1, t0, v1) => {
+          val t = v1.decider.fresh(v1.symbolConverter.toSort(x.typ))
+          v1.decider.assume(t === t0)
+          val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t)
+          eval(s1.copy(g = s1.g + (x.localVar, t), functionRecorder = newFuncRec), e1, pve, v1)(Q)
+        })
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if Verifier.config.disableShortCircuitingEvaluations() =>
@@ -1233,6 +1237,7 @@ object evaluator extends EvaluationRules {
       val newPossibleTriggers = if (s.recordPossibleTriggers) {
         // For all new possible trigger expressions e and translated term t,
         // make sure we remember t as the term for old[label](e) instead.
+        // If e is not heap-dependent, we also remember t as the term for e.
         val addedOrChangedPairs = s3.possibleTriggers.filter(t =>
           !possibleTriggersBefore.contains(t._1) || possibleTriggersBefore(t._1) != t._2)
 
@@ -1244,7 +1249,8 @@ object evaluator extends EvaluationRules {
           }
         }
 
-        val oldPairs = addedOrChangedPairs.map(t => wrapInOld(t._1) -> t._2)
+        val oldPairs = addedOrChangedPairs.map(t => wrapInOld(t._1) -> t._2) ++
+          addedOrChangedPairs.filter(t => !t._1.isHeapDependent(s.program))
         s.possibleTriggers ++ oldPairs
       } else {
         s.possibleTriggers
