@@ -246,10 +246,12 @@ object moreCompleteExhaleSupporter extends SymbolicExecutionRules {
           if (moreNeeded) {
             val eq = And(ch.args.zip(args).map { case (t1, t2) => t1 === t2 })
 
-            val pTaken = if (Verifier.config.useFlyweight) {
+            val pTaken = if (s.functionRecorder != NoopFunctionRecorder || Verifier.config.useFlyweight) {
               // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
               // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
               // that already exists.
+              // During function verification, we should not define macros, since they could contain resullt, which is not
+              // defined elsewhere.
               Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)
             } else {
               val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm)

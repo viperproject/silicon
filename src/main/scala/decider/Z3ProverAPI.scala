@@ -323,8 +323,13 @@ class Z3ProverAPI(uniqueId: String,
 
   protected def retrieveAndSaveModel(): Unit = {
     if (Verifier.config.counterexample.toOption.isDefined) {
-      val model = prover.getModel
-      lastModel = model
+      try {
+        val model = prover.getModel
+        lastModel = model
+      } catch {
+        case _: Z3Exception =>
+          lastModel = null
+      }
     }
   }
 
@@ -454,7 +459,11 @@ class Z3ProverAPI(uniqueId: String,
     for (constDecl <- lastModel.getConstDecls){
       val constInterp = lastModel.getConstInterp(constDecl)
       val constName = constDecl.getName.toString
-      val entry = fastparse.parse(constInterp.toString, ModelParser.value(_)).get.value
+      val constInterpString = constInterp match {
+        case rn: RatNum => s"(/ ${rn.getBigIntNumerator} ${rn.getBigIntDenominator})"
+        case _ => constInterp.toString
+      }
+      val entry = fastparse.parse(constInterpString, ModelParser.value(_)).get.value
       entries.update(constName, entry)
     }
     for (funcDecl <- lastModel.getFuncDecls) {
