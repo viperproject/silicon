@@ -294,7 +294,7 @@ object evaluator extends EvaluationRules {
           val t = v1.decider.fresh(v1.symbolConverter.toSort(x.typ))
           v1.decider.assume(t === t0)
           val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t)
-          eval(s1.copy(g = s1.g + (x.localVar, t), functionRecorder = newFuncRec), e1, pve, v1)(Q)
+          eval(s1.copy(g = s1.g + (x.localVar, t0), functionRecorder = newFuncRec), e1, pve, v1)(Q)
         })
 
       /* Strict evaluation of AND */
