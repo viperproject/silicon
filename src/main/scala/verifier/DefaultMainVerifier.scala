@@ -321,6 +321,16 @@ class DefaultMainVerifier(config: Config,
       case r => r
     }
 
+    logger.trace(s"Verifying member ${member.name}")
+    val nonQp = if (Verifier.config.exhaleMode == ExhaleMode.MoreComplete) "mce" else "greedy"
+    for (f <- program.fields) {
+      logger.trace(s"Field ${f.name} algorithm ${if (quantifiedFields.contains(f)) "maskHeap" else nonQp}")
+    }
+    for (p <- program.predicates) {
+      logger.trace(s"Predicate ${p.name} algorithm ${if (quantifiedPredicates.contains(p)) "maskHeap" else nonQp}")
+    }
+    logger.trace(s"Quantified wands: ${quantifiedMagicWands.size}")
+
     State(program = program,
           functionData = functionData,
           predicateData = predicateData,
