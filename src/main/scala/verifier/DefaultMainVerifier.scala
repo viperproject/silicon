@@ -306,6 +306,17 @@ class DefaultMainVerifier(config: Config,
       case r => r
     }
 
+    logger.trace(s"Verifying member ${member.name}")
+    val nonQp = if (Verifier.config.maskHeapMode()) "maskHeap" else if (Verifier.config.exhaleMode == ExhaleMode.MoreComplete) "mce" else "greedy"
+    val qp = if (Verifier.config.maskHeapMode()) "maskHeap" else "qp"
+    for (f <- program.fields) {
+      logger.trace(s"Field ${f.name} algorithm ${if (quantifiedFields.contains(f)) qp else nonQp}")
+    }
+    for (p <- program.predicates) {
+      logger.trace(s"Predicate ${p.name} algorithm ${if (quantifiedPredicates.contains(p)) qp else nonQp}")
+    }
+    logger.trace(s"Quantified wands: ${quantifiedMagicWands.size}")
+
     State(program = program,
           functionData = functionData,
           predicateData = predicateData,
@@ -326,6 +337,7 @@ class DefaultMainVerifier(config: Config,
     val quantifiedFields = InsertionOrderedSet(program.fields)
     val quantifiedPredicates = InsertionOrderedSet(program.predicates)
     val quantifiedMagicWands = InsertionOrderedSet[MagicWandIdentifier]() // TODO: Implement support for quantified magic wands.
+
 
     State(
       program = program,
