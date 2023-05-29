@@ -261,18 +261,22 @@ abstract class ProverStdIO(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
+  def saturate(data: Option[Config.ProverStateSaturationTimeout]): Boolean = {
     data match {
       case Some(Config.ProverStateSaturationTimeout(timeout, comment)) => saturate(timeout, comment)
-      case None => /* Don't do anything */
+      case None => true /* Don't do anything */
     }
   }
 
-  def saturate(timeout: Int, comment: String): Unit = {
+  def saturate(timeout: Int, comment: String): Boolean = {
     this.comment(s"State saturation: $comment")
     setTimeout(Some(timeout))
     writeLine("(check-sat)")
-    readLine()
+    readLine() match {
+      case "sat" => true
+      case "unsat" => false
+      case "unknown" => true
+    }
   }
 
   protected def retrieveAndSaveModel(): Unit = {

@@ -304,18 +304,22 @@ class Z3ProverAPI(uniqueId: String,
     (result, endTime - startTime)
   }
 
-  def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
+  def saturate(data: Option[Config.ProverStateSaturationTimeout]): Boolean = {
     endPreamblePhase()
     data match {
       case Some(Config.ProverStateSaturationTimeout(timeout, comment)) => saturate(timeout, comment)
-      case None => /* Don't do anything */
+      case None => true /* Don't do anything */
     }
   }
 
-  def saturate(timeout: Int, comment: String): Unit = {
+  def saturate(timeout: Int, comment: String): Boolean = {
     endPreamblePhase()
     setTimeout(Some(timeout))
-    prover.check()
+    prover.check() match {
+      case Status.SATISFIABLE => true
+      case Status.UNSATISFIABLE => false
+      case Status.UNKNOWN => true
+    }
   }
 
   protected def retrieveAndSaveModel(): Unit = {

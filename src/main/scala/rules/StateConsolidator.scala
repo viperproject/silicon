@@ -58,7 +58,8 @@ class DefaultStateConsolidator(protected val config: Config) extends StateConsol
     val comLog = new CommentRecord("state consolidation", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(comLog)
     v.decider.prover.comment("[state consolidation]")
-    v.decider.prover.saturate(config.proverSaturationTimeouts.beforeIteration)
+    if (!v.decider.prover.saturate(config.proverSaturationTimeouts.beforeIteration))
+      return s
 
     val initialHeaps = s.h +: s.reserveHeaps
 

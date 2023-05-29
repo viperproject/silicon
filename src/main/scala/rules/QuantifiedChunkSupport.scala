@@ -1386,7 +1386,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     }
 
     v.decider.prover.comment(s"Done precomputing, updating quantified chunks")
-    v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.beforeIteration)
+    if (!v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.beforeIteration))
+      return (Complete(), s.copy(functionRecorder = currentFunctionRecorder), remainingChunks)
 
     var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
 

@@ -136,12 +136,12 @@ class DefaultMainVerifier(config: Config,
       _verificationPoolManager.pooledVerifiers.comment(content)
     }
 
-    def saturate(timeout: Int, comment: String): Unit = {
+    def saturate(timeout: Int, comment: String): Boolean = {
       decider.prover.saturate(timeout, comment)
       _verificationPoolManager.pooledVerifiers.saturate(timeout, comment)
     }
 
-    def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
+    def saturate(data: Option[Config.ProverStateSaturationTimeout]): Boolean = {
       decider.prover.saturate(data)
       _verificationPoolManager.pooledVerifiers.saturate(data)
     }

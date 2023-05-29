@@ -29,11 +29,15 @@ class VerificationPoolManager(mainVerifier: MainVerifier) extends StatefulCompon
     def declare(decl: Decl): Unit =  workerVerifiers foreach (_.decider.prover.declare(decl))
     def comment(content: String): Unit = workerVerifiers foreach (_.decider.prover.comment(content))
 
-    def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit =
+    def saturate(data: Option[Config.ProverStateSaturationTimeout]): Boolean = {
       workerVerifiers foreach (_.decider.prover.saturate(data))
+      true
+    }
 
-    def saturate(timeout: Int, comment: String): Unit =
+    def saturate(timeout: Int, comment: String): Boolean = {
       workerVerifiers foreach (_.decider.prover.saturate(timeout, comment))
+      true
+    }
 
     override def emitSettings(contents: Iterable[String]): Unit =
       workerVerifiers foreach (_.decider.prover.emitSettings(contents))

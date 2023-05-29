@@ -25,8 +25,8 @@ trait ProverLike {
   def assume(term: Term): Unit
   def declare(decl: Decl): Unit
   def comment(content: String): Unit
-  def saturate(timeout: Int, comment: String): Unit
-  def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit
+  def saturate(timeout: Int, comment: String): Boolean
+  def saturate(data: Option[Config.ProverStateSaturationTimeout]): Boolean
 }
 
 trait Prover extends ProverLike with StatefulComponent {

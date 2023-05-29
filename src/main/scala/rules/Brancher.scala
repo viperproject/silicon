@@ -128,10 +128,13 @@ object brancher extends BranchingRules {
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
 
-            if (v.uniqueId != v0.uniqueId)
-              v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-
-            fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+            if (v.uniqueId != v0.uniqueId) {
+              v1.decider.saturate(Verifier.config.proverSaturationTimeouts.afterContract){
+                fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+              }
+            } else {
+              fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+            }
           })
         }
       } else {

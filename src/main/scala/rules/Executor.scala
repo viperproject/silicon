@@ -219,13 +219,12 @@ object executor extends ExecutionRules {
                       intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
                         v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions)
-                        v2.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-                        if (v2.decider.checkSmoke())
-                          Success()
-                        else {
+                        v2.decider.saturate(Verifier.config.proverSaturationTimeouts.afterContract){
                           execs(s3, stmts, v2)((s4, v3) => {
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
-                            follows(s4, sortedEdges, WhileFailed, v3)(Q)})}})}})}))
+                            follows(s4, sortedEdges, WhileFailed, v3)(Q)
+                          })
+                        }})}})}))
 
           case _ =>
             /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
@@ -391,8 +390,9 @@ object executor extends ExecutionRules {
           Success()
         case _ =>
           produce(s, freshSnap, a, InhaleFailed(inhale), v)((s1, v1) => {
-            v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterInhale)
-            Q(s1, v1)})
+            v1.decider.saturate(Verifier.config.proverSaturationTimeouts.afterInhale){
+              Q(s1, v1)
+            }})
       }
 
       case exhale @ ast.Exhale(a) =>
@@ -493,14 +493,15 @@ object executor extends ExecutionRules {
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
               v3.symbExLog.closeScope(postCondId)
-              v3.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
-              val gLhs = Store(lhs.zip(outs)
-                              .map(p => (p._1, s5.g(p._2))).toMap)
-              val s6 = s5.copy(g = s1.g + gLhs,
-                               oldHeaps = s1.oldHeaps,
-                               recordVisited = s1.recordVisited)
-              v3.symbExLog.closeScope(sepIdentifier)
-              Q(s6, v3)})})})
+              v3.decider.saturate(Verifier.config.proverSaturationTimeouts.afterContract){
+                val gLhs = Store(lhs.zip(outs)
+                  .map(p => (p._1, s5.g(p._2))).toMap)
+                val s6 = s5.copy(g = s1.g + gLhs,
+                  oldHeaps = s1.oldHeaps,
+                  recordVisited = s1.recordVisited)
+                v3.symbExLog.closeScope(sepIdentifier)
+                Q(s6, v3)
+              }})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = s.program.findPredicate(predicateName)

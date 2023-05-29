@@ -51,6 +51,8 @@ trait Decider {
    */
   def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
 
+  def saturate(data: Option[Config.ProverStateSaturationTimeout])(Q: => VerificationResult): VerificationResult
+
   def fresh(id: String, sort: Sort): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def freshMacro(id: String, formalArgs: Seq[Var], body: Term): MacroDecl
@@ -293,6 +295,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       symbExLog.closeScope(sepIdentifier)
 
       result
+    }
+
+    override def saturate(data: Option[Config.ProverStateSaturationTimeout])
+                         (Q: => VerificationResult): VerificationResult = {
+      val satResult = prover.saturate(data)
+      if (!satResult) {
+        Unreachable()
+      } else {
+        Q
+      }
     }
 
     /* Fresh symbols */
