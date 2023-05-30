@@ -101,7 +101,7 @@ object chunkSupporter extends ChunkSupportRules {
                       (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                       : VerificationResult = {
 
-    val id = ChunkIdentifier(resource, Verifier.program)
+    val id = ChunkIdentifier(resource, s.program)
     if (s.exhaleExt) {
       val failure = createFailure(ve, v, s)
       magicWandSupporter.transfer(s, perms, failure, v)(consumeGreedy(_, _, id, args, _, _))((s1, optCh, v1) =>
@@ -109,15 +109,24 @@ object chunkSupporter extends ChunkSupportRules {
     } else {
       executionFlowController.tryOrFail2[Heap, Option[Term]](s.copy(h = h), v)((s1, v1, QS) =>
         // 2022-05-07 MHS: MoreCompleteExhale isn't yet integrated into function verification, hence the limitation to method verification
-        if (s.isMethodVerification && Verifier.config.enableMoreCompleteExhale()) {
+        if (s1.moreCompleteExhale) {
           moreCompleteExhaleSupporter.consumeComplete(s1, s1.h, resource, args, perms, ve, v1)((s2, h2, snap2, v2) => {
             QS(s2.copy(h = s.h), h2, snap2, v2)
           })
         } else {
           consumeGreedy(s1, s1.h, id, args, perms, v1) match {
             case (Complete(), s2, h2, optCh2) =>
-              QS(s2.copy(h = s.h), h2, optCh2.map(_.snap), v1)
-            case _ if v1.decider.checkSmoke() =>
+              val snap = optCh2 match {
+                case None => None
+                case Some(ch) =>
+                  if (v1.decider.check(IsPositive(perms), Verifier.config.checkTimeout())) {
+                    Some(ch.snap)
+                  } else {
+                    Some(Ite(IsPositive(perms), ch.snap.convert(sorts.Snap), Unit))
+                  }
+              }
+              QS(s2.copy(h = s.h), h2, snap, v1)
+            case _ if v1.decider.checkSmoke(true) =>
               Success() // TODO: Mark branch as dead?
             case _ =>
               createFailure(ve, v1, s1, true)
@@ -150,13 +159,13 @@ object chunkSupporter extends ChunkSupportRules {
           val newChunk = ch.withPerm(PermMinus(ch.perm, toTake))
           val takenChunk = Some(ch.withPerm(toTake))
           var newHeap = h - ch
-          if (!v.decider.check(newChunk.perm === NoPerm(), Verifier.config.checkTimeout())) {
+          if (!v.decider.check(newChunk.perm === NoPerm, Verifier.config.checkTimeout())) {
             newHeap = newHeap + newChunk
             assumeProperties(newChunk, newHeap)
           }
           (ConsumptionResult(PermMinus(perms, toTake), v, 0), s, newHeap, takenChunk)
         } else {
-          if (v.decider.check(ch.perm !== NoPerm(), Verifier.config.checkTimeout())) {
+          if (v.decider.check(ch.perm !== NoPerm, Verifier.config.checkTimeout())) {
             v.decider.assume(PermLess(perms, ch.perm))
             val newChunk = ch.withPerm(PermMinus(ch.perm, perms))
             val takenChunk = ch.withPerm(perms)
@@ -168,7 +177,7 @@ object chunkSupporter extends ChunkSupportRules {
           }
         }
       case None =>
-        if (consumeExact && s.retrying && v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
+        if (consumeExact && s.retrying && v.decider.check(perms === NoPerm, Verifier.config.checkTimeout())) {
           (Complete(), s, h, None)
         } else {
           (Incomplete(perms), s, h, None)
@@ -197,7 +206,7 @@ object chunkSupporter extends ChunkSupportRules {
 
     executionFlowController.tryOrFail2[Heap, Term](s.copy(h = h), v)((s1, v1, QS) => {
       val lookupFunction =
-        if (s.isMethodVerification && Verifier.config.enableMoreCompleteExhale()) moreCompleteExhaleSupporter.lookupComplete _
+        if (s1.moreCompleteExhale) moreCompleteExhaleSupporter.lookupComplete _
         else lookupGreedy _
       lookupFunction(s1, s1.h, resource, args, ve, v1)((s2, tSnap, v2) =>
         QS(s2.copy(h = s.h), s2.h, tSnap, v2))
@@ -213,12 +222,12 @@ object chunkSupporter extends ChunkSupportRules {
                           (Q: (State, Term, Verifier) => VerificationResult)
                           : VerificationResult = {
 
-    val id = ChunkIdentifier(resource, Verifier.program)
-
-    findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+    val id = ChunkIdentifier(resource, s.program)
+    val findRes = findChunk[NonQuantifiedChunk](h.values, id, args, v)
+    findRes match {
       case Some(ch) if v.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) =>
         Q(s, ch.snap, v)
-      case _ if v.decider.checkSmoke() =>
+      case _ if v.decider.checkSmoke(true) =>
         Success() // TODO: Mark branch as dead?
       case _ =>
         createFailure(ve, v, s, true)
@@ -247,6 +256,29 @@ object chunkSupporter extends ChunkSupportRules {
     }
   }
 
+/** Extract the chunks with resource matching id.
+ * Return two sequences of chunks -- one with resource id, and the
+ * other with the remaining resources.
+ */
+  def splitHeap[CH <: NonQuantifiedChunk : ClassTag](h: Heap, id: ChunkIdentifer)
+                                                   : (Seq[CH], Seq[Chunk]) = {
+
+    var relevantChunks = Seq[CH]()
+    var otherChunks = Seq[Chunk]()
+
+    h.values foreach {
+      case ch: CH if ch.id == id =>
+        relevantChunks +:= ch
+      case ch: QuantifiedChunk if ch.id == id =>
+        sys.error(
+          s"I did not expect quantified chunks on the heap for resource $id, "
+            + s"but found $ch")
+      case ch =>
+        otherChunks +:= ch
+    }
+
+    (relevantChunks, otherChunks)
+  }
   private def findChunkLiterally[CH <: NonQuantifiedChunk](chunks: Iterable[CH], args: Iterable[Term]) = {
     chunks find (ch => ch.args == args)
   }

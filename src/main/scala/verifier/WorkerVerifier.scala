@@ -7,12 +7,13 @@
 package viper.silicon.verifier
 
 import viper.silicon.supporters._
+import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.reporter.Reporter
 
-class SlaveVerifier(master: MasterVerifier,
-                    uniqueId: String,
-                    override val reporter: Reporter)
+class WorkerVerifier(mainVerifier: MainVerifier,
+                     uniqueId: String,
+                     override val reporter: Reporter)
     extends BaseVerifier(Verifier.config, uniqueId)
        with DefaultMethodVerificationUnitProvider
        with DefaultCfgVerificationUnitProvider {
@@ -22,7 +23,11 @@ class SlaveVerifier(master: MasterVerifier,
     cfgSupporter
   )
 
-  def verificationPoolManager: VerificationPoolManager = master.verificationPoolManager
+  def verificationPoolManager: VerificationPoolManager = mainVerifier.verificationPoolManager
+
+  override def openSymbExLogger(member: ast.Member): Unit = {
+    symbExLog = mainVerifier.rootSymbExLogger.openMemberScope(member, decider.pcs)
+  }
 
   /* Lifetime */
 

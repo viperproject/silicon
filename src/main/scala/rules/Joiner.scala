@@ -8,17 +8,18 @@ package viper.silicon.rules
 
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.{Success, VerificationResult}
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.structural.JoiningRecord
 import viper.silicon.state.State
+import viper.silicon.state.terms.{And, Or, Term}
 import viper.silicon.verifier.Verifier
 
 case class JoinDataEntry[D](s: State, data: D, pathConditions: RecordedPathConditions) {
   // Instead of merging states by calling State.merge,
   // we can directly merge JoinDataEntries to obtain new States,
   // and the join data entries themselves provide information about the path conditions to State.merge.
-  def pathConditionAwareMerge(other: JoinDataEntry[D]): State = {
-    State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
+  def pathConditionAwareMerge(other: JoinDataEntry[D], v: Verifier): State = {
+    val res = State.merge(this.s, this.pathConditions, other.s, other.pathConditions)
+    v.stateConsolidator.consolidate(res, v)
   }
 }
 
@@ -40,7 +41,7 @@ object joiner extends JoiningRules {
     var entries: Seq[JoinDataEntry[D]] = Vector.empty
 
     val joiningRecord = new JoiningRecord(s, v.decider.pcs)
-    val uidJoin = SymbExLogger.currentLog().openScope(joiningRecord)
+    val uidJoin = v.symbExLog.openScope(joiningRecord)
 
     executionFlowController.locally(s, v)((s1, v1) => {
       val preMark = v1.decider.setPathConditionMark()
@@ -67,11 +68,12 @@ object joiner extends JoiningRules {
             // For more joins, state shouldn't be reset.
             s3
           }
+
         entries :+= JoinDataEntry(s4, data, v2.decider.pcs.after(preMark))
         Success()
       })
     }) combine {
-      SymbExLogger.currentLog().closeScope(uidJoin)
+      v.symbExLog.closeScope(uidJoin)
       if (entries.isEmpty) {
         /* No block data was collected, which we interpret as all branches through
          * the block being infeasible. In turn, we assume that the overall verification path
@@ -81,11 +83,16 @@ object joiner extends JoiningRules {
       } else {
         val (sJoined, dataJoined) = merge(entries)
 
+        var feasibleBranches: List[Term] = Nil
+
         entries foreach (entry => {
           val pcs = entry.pathConditions.conditionalized
           v.decider.prover.comment("Joined path conditions")
           v.decider.assume(pcs)
+          feasibleBranches = And(entry.pathConditions.branchConditions) :: feasibleBranches
         })
+        // Assume we are in a feasible branch
+        v.decider.assume(Or(feasibleBranches))
 
         Q(sJoined, dataJoined, v)
       }

@@ -12,7 +12,7 @@ import scala.util.matching.Regex
 import scala.util.Properties._
 import org.rogach.scallop._
 import viper.silicon.Config.StateConsolidationMode.StateConsolidationMode
-import viper.silicon.decider.{Z3ProverStdIO, Cvc5ProverStdIO}
+import viper.silicon.decider.{Cvc5ProverStdIO, Z3ProverAPI, Z3ProverStdIO}
 import viper.silver.frontend.SilFrontendConfig
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
@@ -76,6 +76,18 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       case (_, pushPopRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.PushPop))
       case (_, softConstraintsRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.SoftConstraints))
       case Nil => Right(None)
+      case _ => Left(s"unexpected arguments")
+    }
+
+    val argType: ArgType.V = org.rogach.scallop.ArgType.LIST
+  }
+
+  private val exhaleModeConverter: ValueConverter[ExhaleMode] = new ValueConverter[ExhaleMode] {
+    def parse(s: List[(String, List[String])]): Either[String, Option[ExhaleMode]] = s match {
+      case Seq((_, Seq("0"))) => Right(Some(ExhaleMode.Greedy))
+      case Seq((_, Seq("1"))) => Right(Some(ExhaleMode.MoreComplete))
+      case Seq((_, Seq("2"))) => Right(Some(ExhaleMode.MoreCompleteOnDemand))
+      case Seq() => Right(None)
       case _ => Left(s"unexpected arguments")
     }
 
@@ -160,6 +172,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val reportReasonUnknown: ScallopOption[Boolean] = opt[Boolean]("reportReasonUnknown",
+    descr = "For every verification error, include the reason the SMT solver reported unknown.",
+    default = Some(false),
+    noshort = true
+  )
+
   val recursivePredicateUnfoldings: ScallopOption[Int] = opt[Int]("recursivePredicateUnfoldings",
     descr = (  "Evaluate n unfolding expressions in the body of predicates that (transitively) unfold "
              + "other instances of themselves (default: 1)"),
@@ -194,7 +212,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val assertTimeout: ScallopOption[Int] = opt[Int]("assertTimeout",
-    descr = ("Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout)."
+    descr = ("Timeout (in ms) per SMT solver assertion (default: 0, i.e. no timeout). "
             + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
     default = None,
     noshort = true
@@ -206,7 +224,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              + "check doesn't, at least not directly. However, failing checks might result in "
              + "performance degradation, e.g. when a dead program path is nevertheless explored, "
              + "and indirectly in verification failures due to incompletenesses, e.g. when "
-             + "the held permission amount is too coarsely underapproximated (default: 10)."
+             + "the held permission amount is too coarsely underapproximated (default: 10). "
              + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
     default = Some(10),
     noshort = true
@@ -219,6 +237,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              +  "either be disabled (weights or base timeout of 0) or forced with no timeout "
              + "(positive weight and base timeout)."),
     default = Some(100),
+    noshort = true
+  )
+
+  val pushTimeout: ScallopOption[Int] = opt[Int]("pushTimeout",
+    descr = (  "Timeout (in ms) per push operation in the SMT solver. (default: 0, i.e. no timeout). "
+             + s"Ignored when using the ${Cvc5ProverStdIO.name} prover."),
+    default = Some(0),
     noshort = true
   )
 
@@ -400,11 +425,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val disableTempDirectory: ScallopOption[Boolean] = opt[Boolean]("disableTempDirectory",
-    descr = "Disable the creation of temporary data (default: ./tmp)",
+  val enableTempDirectory: ScallopOption[Boolean] = opt[Boolean]("enableTempDirectory",
+    descr = "Enable the creation of temporary directory to log prover interactions (default: ./tmp)",
     default = Some(false),
     noshort = true
   )
+
+  lazy val outputProverLog: Boolean = {
+    enableTempDirectory.isSupplied || rawProverLogFile.isSupplied || rawZ3LogFile.isSupplied
+  }
 
   private val rawZ3Exe = opt[String]("z3Exe",
     descr = (s"Z3 executable. The environment variable ${Z3ProverStdIO.exeEnvironmentalVariable}"
@@ -543,6 +572,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
             proverArgs.flatMap(args => proverTimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
         .getOrElse(0)
 
+  lazy val useFlyweight: Boolean = prover() == "Z3-API"
+
   val maxHeuristicsDepth: ScallopOption[Int] = opt[Int]("maxHeuristicsDepth",
     descr = "Maximal number of nested heuristics applications (default: 3)",
     default = Some(3),
@@ -558,7 +589,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val assertionMode: ScallopOption[AssertionMode] = opt[AssertionMode]("assertionMode",
     descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
-             + "'pp' (push-pop) and 'cs' (soft constraints) (default: cs)."),
+             + "'pp' (push-pop) and 'sc' (soft constraints) (default: pp)."),
     default = Some(AssertionMode.PushPop),
     noshort = true
   )(assertionModeConverter)
@@ -605,13 +636,22 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val disableFunctionUnfoldTrigger: ScallopOption[Boolean] = opt[Boolean]("disableFunctionUnfoldTrigger",
+    descr = "Disables automatic triggering of function definitions when unfolding predicates they depend on.",
+    default = Some(false),
+    noshort = true
+  )
+
   def mapCache[A](opt: Option[A]): Option[A] = opt match {
     case Some(_) if disableCaches() => None
     case _ => opt
   }
 
-  val enableMoreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
-    descr = "Enable a more complete exhale version.",
+  // DEPRECATED and replaced by exhaleMode.
+  val moreCompleteExhale: ScallopOption[Boolean] = opt[Boolean]("enableMoreCompleteExhale",
+    descr =  "Warning: This option is deprecated. "
+           + "Please use 'exhaleMode' instead. "
+           + "Enables a more complete exhale version.",
     default = Some(false),
     noshort = true
   )
@@ -621,6 +661,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some(false),
     noshort = true
   )
+
+  val exhaleModeOption: ScallopOption[ExhaleMode] = opt[ExhaleMode]("exhaleMode",
+    descr = "Exhale mode. Options are 0 (greedy, default), 1 (more complete exhale), 2 (more complete exhale on demand).",
+    default = None,
+    noshort = true
+  )(exhaleModeConverter)
+
+  lazy val exhaleMode: ExhaleMode = {
+    if (exhaleModeOption.isDefined)
+      exhaleModeOption()
+    else if (moreCompleteExhale())
+      ExhaleMode.MoreComplete
+    else
+      ExhaleMode.Greedy
+  }
 
   val numberOfErrorsToReport: ScallopOption[Int] = opt[Int]("numberOfErrorsToReport",
     descr = "Number of errors per member before the verifier stops. If this number is set to 0, all errors are reported.",
@@ -636,8 +691,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val numberOfParallelVerifiers: ScallopOption[Int] = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
-             + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
+             + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()})"),
     default = Some(Runtime.getRuntime.availableProcessors()),
+    noshort = true
+  )
+
+  val parallelizeBranches= opt[Boolean]("parallelizeBranches",
+    descr = "Verify different branches in parallel.",
+    default = Some(false),
     noshort = true
   )
 
@@ -723,7 +784,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val prover: ScallopOption[String] = opt[String]("prover",
-    descr = s"One of the provers ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}. " +
+    descr = s"One of the provers ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}, ${Z3ProverAPI.name}. " +
             s"(default: ${Z3ProverStdIO.name}).",
     default = Some(Z3ProverStdIO.name),
     noshort = true
@@ -732,8 +793,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   /* Option validation (trailing file argument is validated by parent class) */
 
   validateOpt(prover) {
-    case Some(Z3ProverStdIO.name) | Some(Cvc5ProverStdIO.name) => Right(())
-    case prover => Left(s"Unknown prover '$prover' provided. Expected one of ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}.")
+    case Some(Z3ProverStdIO.name) | Some(Cvc5ProverStdIO.name) | Some(Z3ProverAPI.name) => Right(())
+    case prover => Left(s"Unknown prover '$prover' provided. Expected one of ${Z3ProverStdIO.name}, ${Cvc5ProverStdIO.name}, ${Z3ProverAPI.name}.")
   }
 
   validateOpt(timeout) {
@@ -741,23 +802,30 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case _ => Right(())
   }
 
-  validateOpt(ideModeAdvanced, numberOfParallelVerifiers) {
-    case (Some(false), _) =>
-      Right(())
-    case (Some(true), Some(n)) =>
-      if (n == 1)
-        Right(())
-      else
-        Left(  s"Option ${ideModeAdvanced.name} requires setting "
-             + s"${numberOfParallelVerifiers.name} to 1")
+  validateOpt(ideModeAdvanced, parallelizeBranches) {
+    case (Some(false), _) => Right(())
+    case (_, Some(false)) => Right(())
+    case (Some(true), Some(true)) =>
+      Left(s"Option ${ideModeAdvanced.name} is not supported in combination with ${parallelizeBranches.name}")
     case other =>
       sys.error(s"Unexpected combination: $other")
   }
-  
-  validateOpt(counterexample, enableMoreCompleteExhale) {
-    case (Some(_), Some(false)) => Left(  s"Option ${counterexample.name} requires setting "
-                                        + s"flag ${enableMoreCompleteExhale.name}")
+
+  validateOpt(counterexample, moreCompleteExhale, exhaleModeOption) {
+    case (Some(_), Some(false), None) |
+         (Some(_), Some(_), Some(ExhaleMode.Greedy)) |
+         (Some(_), Some(_), Some(ExhaleMode.MoreCompleteOnDemand)) =>
+      Left(s"Option ${counterexample.name} requires setting "
+        + s"${exhaleModeOption.name} to 1 (more complete exhale)")
+    case (_, Some(true), Some(m)) if m != ExhaleMode.MoreComplete =>
+      Left(s"Contradictory values given for options ${moreCompleteExhale.name} and ${exhaleModeOption.name}")
     case _ => Right(())
+  }
+
+  validateOpt(assertionMode, parallelizeBranches) {
+    case (Some(AssertionMode.SoftConstraints), Some(true)) =>
+      Left(s"Assertion mode SoftConstraints is not supported in combination with ${parallelizeBranches.name}")
+    case _ => Right()
   }
 
   validateFileOpt(logConfig)
@@ -793,6 +861,13 @@ object Config {
   object AssertionMode {
     case object PushPop extends AssertionMode
     case object SoftConstraints extends AssertionMode
+  }
+
+  sealed trait ExhaleMode
+  object ExhaleMode {
+    case object Greedy extends ExhaleMode
+    case object MoreComplete extends ExhaleMode
+    case object MoreCompleteOnDemand extends ExhaleMode
   }
 
   case class ProverStateSaturationTimeout(timeout: Int, comment: String)

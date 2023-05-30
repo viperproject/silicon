@@ -54,8 +54,11 @@ class SMTLib2PreambleReader extends PreambleReader[String, String] {
         lineAcc.replace(orig, repl)})
   }
 
-  def emitPreamble(preamble: Iterable[String], sink: ProverLike): Unit = {
-    sink.emit(preamble)
+  def emitPreamble(preamble: Iterable[String], sink: ProverLike, isOptions: Boolean): Unit = {
+    if (isOptions)
+      sink.emitSettings(preamble)
+    else
+      sink.emit(preamble)
   }
 
   def emitParametricPreamble(resource: String,
@@ -63,6 +66,6 @@ class SMTLib2PreambleReader extends PreambleReader[String, String] {
                              sink: ProverLike)
                             : Unit = {
 
-    emitPreamble(readParametricPreamble(resource, substitutions), sink)
+    emitPreamble(readParametricPreamble(resource, substitutions), sink, false)
   }
 }

@@ -8,18 +8,22 @@ package viper.silicon.rules
 
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
+import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
-import viper.silicon.logger.SymbExLogger
+import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
-import viper.silicon.state.terms.{Not, Term}
+import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.reporter.{BranchFailureMessage}
+import viper.silver.verifier.Failure
 
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
              condition: Term,
              conditionExp: Option[ast.Exp],
              v: Verifier,
+             sequentialOnly: Boolean = false,
              fromShortCircuitingAnd: Boolean = false)
             (fTrue: (State, Verifier) => VerificationResult,
              fFalse: (State, Verifier) => VerificationResult)
@@ -31,6 +35,7 @@ object brancher extends BranchingRules {
              condition: Term,
              conditionExp: Option[ast.Exp],
              v: Verifier,
+             sequentialOnly: Boolean = false,
              fromShortCircuitingAnd: Boolean = false)
             (fThen: (State, Verifier) => VerificationResult,
              fElse: (State, Verifier) => VerificationResult)
@@ -38,7 +43,7 @@ object brancher extends BranchingRules {
 
     val negatedCondition = Not(condition)
     val negatedConditionExp = conditionExp.fold[Option[ast.Exp]](None)(c => Some(ast.Not(c)(pos = conditionExp.get.pos, info = conditionExp.get.info, ast.NoTrafos)))
-    val parallelizeElseBranch = s.parallelizeBranches && !s.underJoin
+
 
     /* Skip path feasibility check if one of the following holds:
      *   (1) the branching is due to the short-circuiting evaluation of a conjunction
@@ -61,6 +66,8 @@ object brancher extends BranchingRules {
       || skipPathFeasibilityCheck
       || !v.decider.check(condition, Verifier.config.checkTimeout()))
 
+    val parallelizeElseBranch = s.parallelizeBranches && !sequentialOnly && executeThenBranch && executeElseBranch
+
 //    val additionalPaths =
 //      if (executeThenBranch && exploreFalseBranch) 1
 //      else 0
@@ -75,11 +82,19 @@ object brancher extends BranchingRules {
     v.decider.prover.comment(thenBranchComment)
     v.decider.prover.comment(elseBranchComment)
 
-    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition))
+    var elseBranchVerifier: String = null
+
+    val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), conditionExp)
+    var functionsOfCurrentDecider: Set[FunctionDecl] = null
+    var macrosOfCurrentDecider: Vector[MacroDecl] = null
+    var wasElseExecutedOnDifferentVerifier = false
+    var functionsOfElseBranchDecider: Set[FunctionDecl] = null
+    var macrosOfElseBranchDecider: Seq[MacroDecl] = null
+    var pcsForElseBranch: PathConditionStack = null
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch) {
-/* [BRANCH-PARALLELISATION] */
+        /* [BRANCH-PARALLELISATION] */
         /* Compute the following sets
          *   1. only if the else-branch needs to be explored
          *   2. right now, i.e. not when the exploration actually takes place
@@ -87,44 +102,50 @@ object brancher extends BranchingRules {
          * needed, the second one ensures that the current path conditions (etc.) of the
          * "offloading" verifier are captured.
          */
-//        val functionsOfCurrentDecider = v.decider.freshFunctions
-//        val macrosOfCurrentDecider = v.decider.freshMacros
-//        val pcsOfCurrentDecider = v.decider.pcs.duplicate()
-
-//        println(s"\n[INIT elseBranchVerificationTask v.uniqueId = ${v.uniqueId}]")
-//        println(s"  condition = $condition")
-//        println("  v.decider.pcs.assumptions = ")
-//        v.decider.pcs.assumptions foreach (a => println(s"    $a"))
-//        println("  v.decider.pcs.branchConditions = ")
-//        v.decider.pcs.branchConditions foreach (a => println(s"    $a"))
+        if (parallelizeElseBranch){
+          functionsOfCurrentDecider = v.decider.freshFunctions
+          macrosOfCurrentDecider = v.decider.freshMacros
+          pcsForElseBranch = v.decider.pcs.duplicate()
+        }
 
         (v0: Verifier) => {
-          SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
-          SymbExLogger.currentLog().markReachable(uidBranchPoint)
+          v0.symbExLog.switchToNextBranch(uidBranchPoint)
+          v0.symbExLog.markReachable(uidBranchPoint)
+          if (v.uniqueId != v0.uniqueId){
+            /* [BRANCH-PARALLELISATION] */
+            // executing the else branch on a different verifier, need to adapt the state
+            wasElseExecutedOnDifferentVerifier = true
+
+            if (s.underJoin)
+              v0.decider.pushSymbolStack()
+            val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
+            val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
+
+            v0.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v0.uniqueId}]")
+            v0.decider.prover.comment(s"Bulk-declaring functions")
+            v0.decider.declareAndRecordAsFreshFunctions(newFunctions, false)
+            v0.decider.prover.comment(s"Bulk-declaring macros")
+            v0.decider.declareAndRecordAsFreshMacros(newMacros, false)
+
+            v0.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
+            v0.decider.setPcs(pcsForElseBranch)
+          }
+          elseBranchVerifier = v0.uniqueId
+
           executionFlowController.locally(s, v0)((s1, v1) => {
-            if (v.uniqueId != v1.uniqueId) {
-
-              /* [BRANCH-PARALLELISATION] */
-              throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
-
-//                val newFunctions = functionsOfCurrentDecider -- v1.decider.freshFunctions
-//                val newMacros = macrosOfCurrentDecider.diff(v1.decider.freshMacros)
-//
-//                v1.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v1.uniqueId}]")
-//                v1.decider.prover.comment(s"Bulk-declaring functions")
-//                v1.decider.declareAndRecordAsFreshFunctions(newFunctions)
-//                v1.decider.prover.comment(s"Bulk-declaring macros")
-//                v1.decider.declareAndRecordAsFreshMacros(newMacros)
-//
-//                v1.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
-//                v1.decider.setPcs(pcsOfCurrentDecider)
-//                v1.decider.pcs.pushScope() /* Empty scope for which the branch condition can be set */
-            }
-
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
             v1.decider.setCurrentBranchCondition(negatedCondition, negatedConditionExp)
 
-            fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+            if (v.uniqueId != v0.uniqueId)
+              v1.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+
+            val result = fElse(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+            if (wasElseExecutedOnDifferentVerifier && s.underJoin) {
+              val newSymbols = v1.decider.popSymbolStack()
+              functionsOfElseBranchDecider = newSymbols._1
+              macrosOfElseBranchDecider = newSymbols._2
+            }
+            result
           })
         }
       } else {
@@ -135,15 +156,11 @@ object brancher extends BranchingRules {
       if (executeElseBranch) {
         if (parallelizeElseBranch) {
           /* [BRANCH-PARALLELISATION] */
-          throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
-//          v.verificationPoolManager.queueVerificationTask(v0 => {
-//            v0.verificationPoolManager.runningVerificationTasks.put(elseBranchVerificationTask, true)
-//            val res = elseBranchVerificationTask(v0)
-//
-//            v0.verificationPoolManager.runningVerificationTasks.remove(elseBranchVerificationTask)
-//
-//            Seq(res)
-//          })
+          v.verificationPoolManager.queueVerificationTask(v0 => {
+            val res = elseBranchVerificationTask(v0)
+
+            Seq(res)
+          })
         } else {
           new SynchronousFuture(Seq(elseBranchVerificationTask(v)))
         }
@@ -151,52 +168,69 @@ object brancher extends BranchingRules {
         CompletableFuture.completedFuture(Seq(Unreachable()))
       }
 
-    val res = (if (executeThenBranch) {
-      SymbExLogger.currentLog().markReachable(uidBranchPoint)
-      executionFlowController.locally(s, v)((s1, v1) => {
-        v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-        v1.decider.setCurrentBranchCondition(condition, conditionExp)
+    val res = {
+      val thenRes = if (executeThenBranch) {
+          v.symbExLog.markReachable(uidBranchPoint)
+          executionFlowController.locally(s, v)((s1, v1) => {
+            v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
+            v1.decider.setCurrentBranchCondition(condition, conditionExp)
 
-        fThen(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
-      })
-    } else {
-      Unreachable()
-    }) combine {
+            fThen(v1.stateConsolidator.consolidateIfRetrying(s1, v1), v1)
+          })
+        } else {
+          Unreachable()
+        }
+      if (thenRes.isFatal && !thenRes.isReported && s.parallelizeBranches && s.isLastRetry) {
+        thenRes.isReported = true
+        v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
+          condenseToViperResult(Seq(thenRes)).asInstanceOf[Failure]))
+      }
+      thenRes
+    }.combine({
 
       /* [BRANCH-PARALLELISATION] */
-      if (parallelizeElseBranch) {
-//          && v.verificationPoolManager.slaveVerifierPool.getNumIdle == 0
-//          && !v.verificationPoolManager.runningVerificationTasks.containsKey(elseBranchVerificationTask)
-//                /* TODO: This attempt to ensure that the elseBranchVerificationTask is not already
-//                 *       being executed is most likely not thread-safe since checking if a task
-//                 *       is still in the queue and canceling it, if so, is not an atomic operation.
-//                 *       I.e. the task may be taken out of the queue in between.
-//                 */
+      var rs: Seq[VerificationResult] = null
+      try {
+        if (parallelizeElseBranch) {
+          val pcsAfterThenBranch = v.decider.pcs.duplicate()
 
-        throw new RuntimeException("Branch parallelisation is expected to be deactivated for now")
+          val pcsBefore = v.decider.pcs
 
-//        /* Cancelling the task should result in the underlying task being removed from the task
-//         * queue/executor
-//         */
-//        elseBranchFuture.cancel(true)
-//
-//        /* Run the task on the current thread */
-//        elseBranchVerificationTask(v)
-      } else {
-        var rs: Seq[VerificationResult] = null
-        try {
           rs = elseBranchFuture.get()
-        } catch {
-          case ex: ExecutionException =>
-            ex.getCause.printStackTrace()
-            throw ex
-        }
 
-        assert(rs.length == 1, s"Expected a single verification result but found ${rs.length}")
-        rs.head
+          if (v.decider.pcs != pcsBefore && v.uniqueId != elseBranchVerifier){
+            // we have done other work during the join, need to reset
+            v.decider.prover.comment(s"Resetting path conditions after interruption")
+            v.decider.setPcs(pcsAfterThenBranch)
+            v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
+          }
+        }else{
+          rs = elseBranchFuture.get()
+        }
+      } catch {
+        case ex: ExecutionException =>
+          ex.getCause.printStackTrace()
+          throw ex
       }
+
+      assert(rs.length == 1, s"Expected a single verification result but found ${rs.length}")
+      if (rs.head.isFatal && !rs.head.isReported && s.parallelizeBranches && s.isLastRetry) {
+        rs.head.isReported = true
+        v.reporter.report(BranchFailureMessage("silicon", s.currentMember.get.asInstanceOf[ast.Member with Serializable],
+          condenseToViperResult(Seq(rs.head)).asInstanceOf[Failure]))
+      }
+      rs.head
+
+    }, alwaysWaitForOther = parallelizeElseBranch)
+    v.symbExLog.endBranchPoint(uidBranchPoint)
+    if (wasElseExecutedOnDifferentVerifier && s.underJoin) {
+
+      v.decider.prover.comment(s"[To continue after join, adding else branch functions and macros to current verifier.]")
+      v.decider.prover.comment(s"Bulk-declaring functions")
+      v.decider.declareAndRecordAsFreshFunctions(functionsOfElseBranchDecider, true)
+      v.decider.prover.comment(s"Bulk-declaring macros")
+      v.decider.declareAndRecordAsFreshMacros(macrosOfElseBranchDecider, true)
     }
-    SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
     res
   }
 }

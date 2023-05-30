@@ -14,10 +14,10 @@ trait PreambleReader[I, O] {
   def readPreamble(resource: I): Iterable[O]
   def readParametricPreamble(resource: String, substitutions: Map[I, O]): Iterable[O]
 
-  def emitPreamble(preamble: Iterable[O], sink: ProverLike): Unit
+  def emitPreamble(preamble: Iterable[O], sink: ProverLike, isOptions: Boolean): Unit
 
-  def emitPreamble(resource: I, sink: ProverLike): Unit = {
-    emitPreamble(readPreamble(resource), sink)
+  def emitPreamble(resource: I, sink: ProverLike, isOptions: Boolean): Unit = {
+    emitPreamble(readPreamble(resource), sink, isOptions)
   }
 
   def emitParametricPreamble(resource: String, substitutions: Map[I, O], sink: ProverLike): Unit
@@ -34,8 +34,6 @@ trait PreambleContributor[+SO, +SY, +AX] extends StatefulComponent {
 
   def axiomsAfterAnalysis: Iterable[AX]
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit
-
-  def updateGlobalStateAfterAnalysis(): Unit
 }
 
 trait VerifyingPreambleContributor[+SO, +SY, +AX, U <: ast.Node]
@@ -50,6 +48,4 @@ trait VerifyingPreambleContributor[+SO, +SY, +AX, U <: ast.Node]
 
   def axiomsAfterVerification: Iterable[AX]
   def emitAxiomsAfterVerification(sink: ProverLike): Unit
-
-  def contributeToGlobalStateAfterVerification(): Unit
 }

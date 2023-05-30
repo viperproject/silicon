@@ -6,10 +6,10 @@
 
 package viper.silicon.tests
 
-class SiliconTestsMoreCompleteExhale extends SiliconTests {
-  override val testDirectories: Seq[String] = Seq("moreCompleteExhale")
+class SiliconTestsParallelBranches extends SiliconTests {
+  override val testDirectories: Seq[String] = Seq("examples")
 
  override val commandLineArguments: Seq[String] = Seq(
     "--timeout", "300" /* seconds */,
-    "--exhaleMode=1")
+    "--parallelizeBranches")
 }

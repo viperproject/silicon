@@ -10,8 +10,7 @@ import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.VerificationResult
-import viper.silicon.logger.SymbExLogger
+import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.logger.records.data.{CondExpRecord, ImpliesRecord, ProduceRecord}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.predef.`?r`
@@ -146,16 +145,25 @@ object producer extends ProductionRules {
       if (as.tail.isEmpty)
         wrappedProduceTlc(s, sf, a, pve, v)(Q)
       else {
-        val (sf0, sf1) =
-          v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
+        try {
+          val (sf0, sf1) =
+            v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
           /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
            *       then remove use of BigAnd; for one it is not efficient since
            *       the tail of the (decreasing list parameter as) is BigAnd-ed
            *       over and over again.
            */
 
-        wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
-          produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
+          wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
+            produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
+        } catch {
+          // We will get an IllegalArgumentException from createSnapshotPair if sf(...) returns Unit.
+          // This should never happen if we're in a reachable state, so here we check for that
+          // (without timeout, since there is no fallback) and stop verifying the current branch.
+          case _: IllegalArgumentException if v.decider.check(False, Verifier.config.assertTimeout.getOrElse(0)) =>
+            Unreachable()
+        }
+
       }
     }
   }
@@ -185,9 +193,9 @@ object producer extends ProductionRules {
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
 
-    val sepIdentifier = SymbExLogger.currentLog().openScope(new ProduceRecord(a, s, v.decider.pcs))
+    val sepIdentifier = v.symbExLog.openScope(new ProduceRecord(a, s, v.decider.pcs))
     produceTlc(s, sf, a, pve, v)((s1, v1) => {
-      SymbExLogger.currentLog().closeScope(sepIdentifier)
+      v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -208,14 +216,14 @@ object producer extends ProductionRules {
     val produced = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure && Verifier.config.moreJoins() =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
-        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
+        val uidImplies = v.symbExLog.openScope(impliesRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1, t0, Some(e0), v1)(
+            branch(s1, t0, Some(e0), v1, true)(
               (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
-                SymbExLogger.currentLog().closeScope(uidImplies)
+                v3.symbExLog.closeScope(uidImplies)
                 QB(s3, null, v3)
               }),
               (s2, v2) => {
@@ -224,7 +232,7 @@ object producer extends ProductionRules {
                  * otherwise. In order words, only make this assumption if `sf` has
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                  */
-                SymbExLogger.currentLog().closeScope(uidImplies)
+                v2.symbExLog.closeScope(uidImplies)
                 QB(s2, null, v2)
               })
           )(entries => {
@@ -232,7 +240,7 @@ object producer extends ProductionRules {
               case Seq(entry) => // One branch is dead
                 entry.s
               case Seq(entry1, entry2) => // Both branches are alive
-                entry1.pathConditionAwareMerge(entry2)
+                entry1.pathConditionAwareMerge(entry2, v1)
               case _ =>
                 sys.error(s"Unexpected join data entries: $entries")}
             (s2, null)
@@ -241,12 +249,12 @@ object producer extends ProductionRules {
 
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
         val impliesRecord = new ImpliesRecord(imp, s, v.decider.pcs, "produce")
-        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
+        val uidImplies = v.symbExLog.openScope(impliesRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
             (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
-              SymbExLogger.currentLog().closeScope(uidImplies)
+              v3.symbExLog.closeScope(uidImplies)
               Q(s3, v3)
             }),
             (s2, v2) => {
@@ -255,24 +263,24 @@ object producer extends ProductionRules {
                    * otherwise. In order words, only make this assumption if `sf` has
                    * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                    */
-                SymbExLogger.currentLog().closeScope(uidImplies)
+                v2.symbExLog.closeScope(uidImplies)
                 Q(s2, v2)
             }))
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure && Verifier.config.moreJoins() =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
-        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
+        val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           // The type arguments here are Null because there is no need to pass any join data.
           joiner.join[scala.Null, scala.Null](s1, v1, resetState = false)((s1, v1, QB) =>
-            branch(s1, t0, Some(e0), v1)(
+            branch(s1, t0, Some(e0), v1, true)(
               (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
-                SymbExLogger.currentLog().closeScope(uidCondExp)
+                v3.symbExLog.closeScope(uidCondExp)
                 QB(s3, null, v3)
               }),
               (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
-                SymbExLogger.currentLog().closeScope(uidCondExp)
+                v3.symbExLog.closeScope(uidCondExp)
                 QB(s3, null, v3)
               }))
           )(entries => {
@@ -280,7 +288,7 @@ object producer extends ProductionRules {
               case Seq(entry) => // One branch is dead
                 entry.s
               case Seq(entry1, entry2) => // Both branches are alive
-                entry1.pathConditionAwareMerge(entry2)
+                entry1.pathConditionAwareMerge(entry2, v1)
               case _ =>
                 sys.error(s"Unexpected join data entries: $entries")}
             (s2, null)
@@ -289,16 +297,16 @@ object producer extends ProductionRules {
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
         val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
-        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
+        val uidCondExp = v.symbExLog.openScope(condExpRecord)
 
         eval(s, e0, pve, v)((s1, t0, v1) =>
           branch(s1, t0, Some(e0), v1)(
             (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
-              SymbExLogger.currentLog().closeScope(uidCondExp)
+              v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)
             }),
             (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
-              SymbExLogger.currentLog().closeScope(uidCondExp)
+              v3.symbExLog.closeScope(uidCondExp)
               Q(s3, v3)
             })))
 
@@ -322,12 +330,12 @@ object producer extends ProductionRules {
               }})))
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
-        val predicate = Verifier.program.findPredicate(predicateName)
+        val predicate = s.program.findPredicate(predicateName)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s1a, tPerm, v1a) =>
             permissionSupporter.assertNotNegative(s1a, tPerm, perm, pve, v1a)((s2, v2) => {
               val snap = sf(
-                predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1)
+                predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, s.program)._1)
                               .getOrElse(sorts.Snap), v2)
               val gain = PermTimes(tPerm, s2.permissionScalingFactor)
               if (s2.qpPredicates.contains(predicate)) {
@@ -339,16 +347,17 @@ object producer extends ProductionRules {
                 val snap1 = snap.convert(sorts.Snap)
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
                 chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
-                  if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder) {
-                    v3.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs))
+                  if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder
+                    && !Verifier.config.disableFunctionUnfoldTrigger()) {
+                    v3.decider.assume(App(s3.predicateData(predicate).triggerFunction, snap1 +: tArgs))
                   }
                   Q(s3.copy(h = h3), v3)})
               }})))
 
-      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, Verifier.program)) =>
-        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+      case wand: ast.MagicWand if s.qpMagicWands.contains(MagicWandIdentifier(wand, s.program)) =>
+        val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
-        evals(s, bodyVars, _ => pve, v)((s1, args, v1) => {
+        evals(s, bodyVars, _ => pve, v)((s1, args,v1) => {
           val (sm, smValueDef) =
             quantifiedChunkSupporter.singletonSnapshotMap(s1, wand, args, sf(sorts.Snap, v1), v1)
           v1.decider.prover.comment("Definitional axioms for singleton-SM's value")
@@ -358,14 +367,19 @@ object producer extends ProductionRules {
             if (s1.recordPcs) (s1.conservedPcs.head :+ v1.decider.pcs.after(definitionalAxiomMark)) +: s1.conservedPcs.tail
             else s1.conservedPcs
           val ch =
-            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm(), sm)
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(formalVars, wand, args, FullPerm, sm, s.program)
           val h2 = s1.h + ch
-          val (relevantChunks, _) =
-            quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h2, ch.id)
-          val (smDef1, smCache1) =
-            quantifiedChunkSupporter.summarisingSnapshotMap(
-              s1, wand, formalVars, relevantChunks, v1)
-          v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args))
+          val smCache1 = if(s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))){
+            val (relevantChunks, _) =
+              quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h2, ch.id)
+            val (smDef1, smCache1) =
+              quantifiedChunkSupporter.summarisingSnapshotMap(
+                s1, wand, formalVars, relevantChunks, v1)
+            v1.decider.assume(PredicateTrigger(ch.id.toString, smDef1.sm, args))
+            smCache1
+          } else {
+            s1.smCache
+          }
           val smDef = SnapshotMapDefinition(wand, sm, Seq(smValueDef), Seq())
           val s2 =
             s1.copy(h = h2,
@@ -390,7 +404,7 @@ object producer extends ProductionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.loc.rcv, acc.perm), optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tRcvr, tPerm), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ)), v1)
+            val tSnap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(acc.loc.field.typ), acc.loc.field.name), v1)
 //            v.decider.assume(PermAtMost(tPerm, FullPerm()))
             quantifiedChunkSupporter.produce(
               s1,
@@ -413,7 +427,7 @@ object producer extends ProductionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.PredicateAccessPredicate) =>
-        val predicate = Verifier.program.findPredicate(acc.loc.predicateName)
+        val predicate = s.program.findPredicate(acc.loc.predicateName)
         val formalVars = s.predicateFormalVarMap(predicate)
         val qid = acc.loc.predicateName
         val optTrigger =
@@ -421,7 +435,7 @@ object producer extends ProductionRules {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
+            val tSnap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate), predicate.name), v1)
             quantifiedChunkSupporter.produce(
               s1,
               forall,
@@ -445,15 +459,15 @@ object producer extends ProductionRules {
         }
 
       case QuantifiedPermissionAssertion(forall, cond, wand: ast.MagicWand) =>
-        val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+        val bodyVars = wand.subexpressionsToEvaluate(s.program)
         val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(bodyVars(i).typ)))
         val optTrigger =
           if (forall.triggers.isEmpty) None
           else Some(forall.triggers)
-        val qid = MagicWandIdentifier(wand, Verifier.program).toString
+        val qid = MagicWandIdentifier(wand, s.program).toString
         evalQuantified(s, Forall, forall.variables, Seq(cond), bodyVars, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), tArgs, tTriggers, (auxGlobals, auxNonGlobals), v1) =>
-            val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap), v1)
+            val tSnap = sf(sorts.PredicateSnapFunction(sorts.Snap, qid), v1)
             quantifiedChunkSupporter.produce(
               s1,
               forall,
@@ -468,7 +482,7 @@ object producer extends ProductionRules {
               tCond,
               tArgs,
               tSnap,
-              FullPerm(),
+              FullPerm,
               pve,
               NegativePermission(ast.FullPerm()()),
               QPAssertionNotInjective(wand),

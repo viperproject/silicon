@@ -46,6 +46,7 @@ trait PathConditionStack extends RecordedPathConditions {
   def pushScope(): Unit
   def popScope(): Unit
   def mark(): Mark
+  def popUntilMark(mark: Mark): Unit
   def after(mark: Mark): RecordedPathConditions
   def isEmpty: Boolean
   def duplicate(): PathConditionStack
@@ -142,7 +143,7 @@ private trait LayeredPathConditionStackLike {
   protected def conditionalized(layers: Stack[PathConditionStackLayer]): Seq[Term] = {
     var unconditionalTerms = Vector.empty[Term]
     var conditionalTerms = Vector.empty[Term]
-    var implicationLHS: Term = True()
+    var implicationLHS: Term = True
 
     for (layer <- layers.reverseIterator) {
       unconditionalTerms ++= layer.globalAssumptions
@@ -181,7 +182,7 @@ private trait LayeredPathConditionStackLike {
         Quantification(
           quantifier,
           qvars,
-          And(layer.nonGlobalAssumptions -- ignores),
+          Implies(layer.branchCondition.getOrElse(True), And(layer.nonGlobalAssumptions -- ignores)),
           triggers,
           name,
           isGlobal)
@@ -221,7 +222,7 @@ private[decider] class LayeredPathConditionStack
        with PathConditionStack
        with Cloneable {
 
-  private var layers: Stack[PathConditionStackLayer] = Stack.empty
+  /* private */ var layers: Stack[PathConditionStackLayer] = Stack.empty
   private var markToLength: Map[Mark, Int] = Map.empty
   private var scopeMarks: List[Mark] = List.empty
   private var markCounter = new Counter(0)
@@ -270,6 +271,11 @@ private[decider] class LayeredPathConditionStack
     layers = new PathConditionStackLayer() +: layers
 
     mark
+  }
+
+  def popUntilMark(mark: Mark): Unit = {
+    assert(markToLength.contains(mark), "Cannot pop unknown mark")
+    popLayersAndRemoveMark(mark)
   }
 
   private def popLayersAndRemoveMark(mark: Mark): Unit = {

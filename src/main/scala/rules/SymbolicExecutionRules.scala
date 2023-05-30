@@ -11,7 +11,7 @@ import viper.silicon.state.State
 import viper.silicon.verifier.Verifier
 import viper.silver.frontend.{MappedModel, NativeModel, VariablesModel}
 import viper.silver.verifier.errors.ErrorWrapperWithExampleTransformer
-import viper.silver.verifier.{Counterexample, CounterexampleTransformer, Model, VerificationError}
+import viper.silver.verifier.{Counterexample, CounterexampleTransformer, VerificationError}
 
 trait SymbolicExecutionRules {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
@@ -23,13 +23,14 @@ trait SymbolicExecutionRules {
         wrapped
       case _ => ve
     }
-    val counterexample: Option[Counterexample] = if (v != null && Verifier.config.counterexample.toOption.isDefined) {
-      if (generateNewModel || v.decider.getModel() == null) {
+    if (v != null && (Verifier.config.reportReasonUnknown() || Verifier.config.counterexample.toOption.isDefined)) {
+      if (generateNewModel || !v.decider.hasModel()) {
         v.decider.generateModel()
       }
-      val model = v.decider.getModel()
-      if (model != null && !model.contains("model is not available")) {
-        val nativeModel = Model(model)
+    }
+    val counterexample: Option[Counterexample] = if (v != null && Verifier.config.counterexample.toOption.isDefined) {
+      if (v.decider.isModelValid()) {
+        val nativeModel = v.decider.getModel()
         val ce_type = Verifier.config.counterexample()
         val ce: Counterexample = ce_type match {
           case NativeModel =>
@@ -38,7 +39,7 @@ trait SymbolicExecutionRules {
           case VariablesModel =>
             SiliconVariableCounterexample(s.g, nativeModel)
           case MappedModel =>
-            SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel)
+            SiliconMappedCounterexample(s.g, s.h.values, s.oldHeaps, nativeModel, s.program)
         }
         val finalCE = ceTrafo match {
           case Some(trafo) => trafo.f(ce)
@@ -47,6 +48,12 @@ trait SymbolicExecutionRules {
         Some(finalCE)
       } else None
     } else None
+
+    val reasonUnknown = if (v != null && Verifier.config.reportReasonUnknown()) {
+      Some(v.decider.prover.getReasonUnknown())
+    } else {
+      None
+    }
 
     val branchconditions = if (Verifier.config.enableBranchconditionReporting()) {
       v.decider.pcs.branchConditionExps.flatten
@@ -57,7 +64,7 @@ trait SymbolicExecutionRules {
           case _ => (-1, -1)
         })
     } else Seq()
-    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample))
+    res.failureContexts = Seq(SiliconFailureContext(branchconditions, counterexample, reasonUnknown))
     Failure(res, v.reportFurtherErrors())
 
   }

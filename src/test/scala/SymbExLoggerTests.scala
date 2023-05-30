@@ -6,17 +6,17 @@
 
 package viper.silicon.tests
 
-import java.io.File
-import java.nio.file.{Files, Path, Paths}
-
-import viper.silicon.logger.SymbExLogger
-import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
-import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
+import viper.silicon.logger.SymbExLog
 import viper.silicon.{Silicon, SiliconFrontend}
 import viper.silver.ast
 import viper.silver.ast.Position
 import viper.silver.frontend.{DefaultStates, Frontend}
 import viper.silver.reporter.NoopReporter
+import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
+import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
+
+import java.io.File
+import java.nio.file.{Files, Path, Paths}
 
 class SymbExLoggerTests extends SilSuite {
   val testDirectories = Seq("symbExLogTests")
@@ -24,17 +24,10 @@ class SymbExLoggerTests extends SilSuite {
   override def frontend(verifier: Verifier, files: Seq[Path]): Frontend = {
     require(files.length == 1, "tests should consist of exactly one file")
 
-    /* If needed, Silicon reads the filename of the program under verification from Verifier.inputFile.
-    When the test suite is executed (sbt test/testOnly), Verifier.inputFile is set here. When Silicon is
-    run from the command line, Verifier.inputFile is set in src/main/scala/Silicon.scala. */
-    viper.silicon.verifier.Verifier.inputFile = Some(files.head)
-
     // For Unit-Testing of the Symbolic Execution Logging, the name of the file
     // to be tested must be known, which is why it's passed here to the SymbExLogger-Object.
     // SymbExLogger.reset() cleans the logging object (only relevant for verifying multiple
     // tests at once, e.g. with the 'test'-sbt-command.
-    SymbExLogger.reset()
-    SymbExLogger.filePath = files.head
     val fe = new SiliconFrontendWithUnitTesting(files.head)
     fe.init(verifier)
     fe.reset(files.head)
@@ -95,7 +88,7 @@ class SiliconFrontendWithUnitTesting(path: Path) extends SiliconFrontend(NoopRep
 
     if (testIsExecuted) {
       val pw = new java.io.PrintWriter(new File(actualPath))
-      try pw.write(SymbExLogger.toSimpleTreeString) finally pw.close()
+      try pw.write(siliconInstance.symbExLog.asInstanceOf[SymbExLog].toSimpleTreeString) finally pw.close()
 
       val expectedSource = scala.io.Source.fromFile(expectedPath)
       val expected = expectedSource.getLines()

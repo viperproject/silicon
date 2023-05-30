@@ -13,13 +13,17 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.state.{Chunk, GeneralChunk}
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms.{And, Ite, NoPerm, Term, Var}
-import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
+import viper.silicon.state.terms.{And, Ite, NoPerm, SeqAppend, Term, Var}
+import viper.silicon.supporters.PredicateData
+import viper.silicon.supporters.functions.{FunctionData, FunctionRecorder, NoopFunctionRecorder}
 import viper.silicon.{Map, Stack}
-import viper.silver.cfg.silver.SilverCfg.SilverBlock
 
 final case class State(g: Store = Store(),
                        h: Heap = Heap(),
+                       program: ast.Program,
+                       currentMember: Option[ast.Member],
+                       predicateData: Map[ast.Predicate, PredicateData],
+                       functionData: Map[ast.Function, FunctionData],
                        oldHeaps: OldHeaps = Map.empty,
 
                        parallelizeBranches: Boolean = false,
@@ -42,7 +46,7 @@ final case class State(g: Store = Store(),
                        triggerExp: Boolean = false,
 
                        partiallyConsumedHeap: Option[Heap] = None,
-                       permissionScalingFactor: Term = terms.FullPerm(),
+                       permissionScalingFactor: Term = terms.FullPerm,
 
                        reserveHeaps: Stack[Heap] = Nil,
                        reserveCfgs: Stack[SilverCfg] = Stack(),
@@ -62,9 +66,18 @@ final case class State(g: Store = Store(),
                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
                        predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty,
-                       isMethodVerification: Boolean = false,
-                       retryLevel: Int = 0)
+                       retryLevel: Int = 0,
+                       /* ast.Field, ast.Predicate, or MagicWandIdentifier */
+                       heapDependentTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet.empty,
+                       moreCompleteExhale: Boolean = false)
     extends Mergeable[State] {
+
+  val isMethodVerification: Boolean = {
+    // currentMember being None means we're verifying a CFG; this should behave like verifying a method.
+    currentMember.isEmpty || currentMember.get.isInstanceOf[ast.Method]
+  }
+
+  val isLastRetry: Boolean = retryLevel == 0
 
   def incCycleCounter(m: ast.Predicate) =
     if (recordVisited) copy(visited = m :: visited)
@@ -123,7 +136,10 @@ object State {
   def merge(s1: State, s2: State): State = {
     s1 match {
       /* Decompose state s1 */
-      case State(g1, h1, oldHeaps1,
+      case State(g1, h1, program, member,
+                 predicateData,
+                 functionData,
+                 oldHeaps1,
                  parallelizeBranches1,
                  recordVisited1, visited1,
                  methodCfg1, invariantContexts1,
@@ -140,16 +156,20 @@ object State {
                  reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
-                 predicateSnapMap1, predicateFormalVarMap1, hack, retryLevel) =>
+                 predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
+                 moreCompleteExhale) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
-          case State(`g1`, `h1`, `oldHeaps1`,
+          case State(`g1`, `h1`,
+                     `program`, `member`,
+                     `predicateData`, `functionData`,
+                     `oldHeaps1`,
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
                      constrainableARPs2,
-                     `quantifiedVariables1`,
+                     quantifiedVariables2,
                      `retrying1`,
                      `underJoin1`,
                      functionRecorder2,
@@ -161,25 +181,30 @@ object State {
                      `reserveHeaps1`, `reserveCfgs1`, `conservedPcs1`, `recordPcs1`, `exhaleExt1`,
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
-                     `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `retryLevel`) =>
+                     `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`,
+                     moreCompleteExhale2) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
             val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
+            val quantifiedVariables3 = (quantifiedVariables1 ++ quantifiedVariables2).distinct
 
             val smCache3 = smCache1.union(smCache2)
             val pmCache3 = pmCache1 ++ pmCache2
 
             val ssCache3 = ssCache1 ++ ssCache2
+            val moreCompleteExhale3 = moreCompleteExhale || moreCompleteExhale2
 
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     triggerExp = triggerExp3,
                     constrainableARPs = constrainableARPs3,
+                    quantifiedVariables = quantifiedVariables3,
                     ssCache = ssCache3,
                     smCache = smCache3,
-                    pmCache = pmCache3)
+                    pmCache = pmCache3,
+                    moreCompleteExhale = moreCompleteExhale3)
 
           case _ =>
             val err = new StringBuilder()
@@ -237,7 +262,7 @@ object State {
     h map (c => {
       c match {
         case c: GeneralChunk =>
-          c.withPerm(Ite(cond, c.perm, NoPerm()))
+          c.withPerm(Ite(cond, c.perm, NoPerm))
         case _ => sys.error("Chunk type not conditionalizable.")
       }
     })
@@ -262,7 +287,9 @@ object State {
   def merge(s1: State, pc1: RecordedPathConditions, s2: State, pc2: RecordedPathConditions): State = {
     s1 match {
       /* Decompose state s1 */
-      case State(g1, h1, oldHeaps1,
+      case State(g1, h1, program, member,
+      predicateData, functionData,
+      oldHeaps1,
       parallelizeBranches1,
       recordVisited1, visited1,
       methodCfg1, invariantContexts1,
@@ -279,11 +306,14 @@ object State {
       reserveHeaps1, reserveCfgs1, conservedPcs1, recordPcs1, exhaleExt1,
       ssCache1, hackIssue387DisablePermissionConsumption1,
       qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
-      predicateSnapMap1, predicateFormalVarMap1, hack, retryLevel) =>
+      predicateSnapMap1, predicateFormalVarMap1, retryLevel, useHeapTriggers,
+      moreCompleteExhale) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
-          case State(g2, h2, oldHeaps2,
+          case State(g2, h2, `program`, `member`,
+          `predicateData`, `functionData`,
+          oldHeaps2,
           `parallelizeBranches1`,
           `recordVisited1`, `visited1`,
           `methodCfg1`, invariantContexts2,
@@ -300,7 +330,7 @@ object State {
           reserveHeaps2, `reserveCfgs1`, conservedPcs2, `recordPcs1`, `exhaleExt1`,
           ssCache2, `hackIssue387DisablePermissionConsumption1`,
           `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, smDomainNeeded2,
-          `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`, `retryLevel`) =>
+          `predicateSnapMap1`, `predicateFormalVarMap1`, `retryLevel`, `useHeapTriggers`, moreCompleteExhale2) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2

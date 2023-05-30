@@ -25,7 +25,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
     extends ExpressionTranslator
        with LazyLogging {
 
-  private var program: ast.Program = _
+  protected var program: ast.Program = _
   @unused private var func: ast.Function = _
   private var data: FunctionData = _
   private var ignoreAccessPredicates = false
@@ -87,8 +87,8 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                   : Term =
 
     e match {
-      case _: ast.AccessPredicate | _: ast.MagicWand if ignoreAccessPredicates => True()
-      case q: ast.Forall if !q.isPure && ignoreAccessPredicates => True()
+      case _: ast.AccessPredicate | _: ast.MagicWand if ignoreAccessPredicates => True
+      case q: ast.Forall if !q.isPure && ignoreAccessPredicates => True
 
       case _: ast.Result => data.formalResult
 

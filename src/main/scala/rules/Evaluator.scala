@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silver.ast
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError}
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, TypecheckerWarning}
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -22,8 +22,9 @@ import viper.silicon.utils.ast.flattenOperator
 import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
-import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
+import viper.silver.reporter.WarningsDuringTypechecking
+import viper.silver.ast.WeightedQuantifier
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -86,9 +87,9 @@ object evaluator extends EvaluationRules {
           (Q: (State, Term, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    val sepIdentifier = SymbExLogger.currentLog().openScope(new EvaluateRecord(e, s, v.decider.pcs))
+    val sepIdentifier = v.symbExLog.openScope(new EvaluateRecord(e, s, v.decider.pcs))
     eval3(s, e, pve, v)((s1, t, v1) => {
-      SymbExLogger.currentLog().closeScope(sepIdentifier)
+      v1.symbExLog.closeScope(sepIdentifier)
       Q(s1, t, v1)})
   }
 
@@ -149,10 +150,10 @@ object evaluator extends EvaluationRules {
                      : VerificationResult = {
 
     val resultTerm = e match {
-      case _: ast.TrueLit => Q(s, True(), v)
-      case _: ast.FalseLit => Q(s, False(), v)
+      case _: ast.TrueLit => Q(s, True, v)
+      case _: ast.FalseLit => Q(s, False, v)
 
-      case _: ast.NullLit => Q(s, Null(), v)
+      case _: ast.NullLit => Q(s, Null, v)
       case ast.IntLit(bigval) => Q(s, IntLiteral(bigval), v)
 
       case ast.EqCmp(e0, e1) => evalBinOp(s, e0, e1, Equals, pve, v)(Q)
@@ -160,8 +161,8 @@ object evaluator extends EvaluationRules {
 
       case x: ast.AbstractLocalVar => Q(s, s.g(x), v)
 
-      case _: ast.FullPerm => Q(s, FullPerm(), v)
-      case _: ast.NoPerm => Q(s, NoPerm(), v)
+      case _: ast.FullPerm => Q(s, FullPerm, v)
+      case _: ast.NoPerm => Q(s, NoPerm, v)
 
       case ast.FractionalPerm(e0, e1) =>
         var t1: Term = null
@@ -202,8 +203,10 @@ object evaluator extends EvaluationRules {
                * which is protected by a trigger term that we currently don't have.
                */
               v1.decider.assume(fvfDef.valueDefinitions)
-              val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
-              v1.decider.assume(trigger)
+              if (s1.heapDependentTriggers.contains(fa.field)){
+                val trigger = FieldTrigger(fa.field.name, fvfDef.sm, tRcvr)
+                v1.decider.assume(trigger)
+              }
               if (s1.triggerExp) {
                 val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                 val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
@@ -216,7 +219,11 @@ object evaluator extends EvaluationRules {
                   case true =>
                     val fvfLookup = Lookup(fa.field.name, fvfDef.sm, tRcvr)
                     val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup).recordFvfAndDomain(fvfDef)
-                    val s2 = s1.copy(functionRecorder = fr1, possibleTriggers = if (s1.recordPossibleTriggers) s1.possibleTriggers + (fa -> trigger) else s1.possibleTriggers)
+                    val possTriggers = if (s1.heapDependentTriggers.contains(fa.field) && s1.recordPossibleTriggers)
+                      s1.possibleTriggers + (fa -> FieldTrigger(fa.field.name, fvfDef.sm, tRcvr))
+                    else
+                      s1.possibleTriggers
+                    val s2 = s1.copy(functionRecorder = fr1, possibleTriggers = possTriggers)
                     Q(s2, fvfLookup, v1)}
               }
             case _ =>
@@ -229,11 +236,13 @@ object evaluator extends EvaluationRules {
                   optSmDomainDefinitionCondition =  None,
                   optQVarsInstantiations = None,
                   v = v1)
-              val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
-              v1.decider.assume(trigger)
+              if (s1.heapDependentTriggers.contains(fa.field)){
+                val trigger = FieldTrigger(fa.field.name, smDef1.sm, tRcvr)
+                v1.decider.assume(trigger)
+              }
               val permCheck =
                 if (s1.triggerExp) {
-                  True()
+                  True
                 } else {
                   val totalPermissions = PermLookup(fa.field.name, pmDef1.pm, tRcvr)
                   IsPositive(totalPermissions)
@@ -254,7 +263,7 @@ object evaluator extends EvaluationRules {
       case fa: ast.FieldAccess =>
         evalLocationAccess(s, fa, pve, v)((s1, _, tArgs, v1) => {
           val ve = pve dueTo InsufficientPermission(fa)
-          val resource = fa.res(Verifier.program)
+          val resource = fa.res(s.program)
           chunkSupporter.lookup(s1, s1.h, resource, tArgs, ve, v1)((s2, h2, tSnap, v2) => {
             val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
             val s3 = s2.copy(h = h2, functionRecorder = fr)
@@ -281,8 +290,12 @@ object evaluator extends EvaluationRules {
             evalInOldState(s, lbl, e0, pve, v)(Q)}
 
       case ast.Let(x, e0, e1) =>
-        eval(s, e0, pve, v)((s1, t0, v1) =>
-          eval(s1.copy(g = s1.g + (x.localVar, t0)), e1, pve, v1)(Q))
+        eval(s, e0, pve, v)((s1, t0, v1) => {
+          val t = v1.decider.fresh(v1.symbolConverter.toSort(x.typ))
+          v1.decider.assume(t === t0)
+          val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t)
+          eval(s1.copy(g = s1.g + (x.localVar, t0), functionRecorder = newFuncRec), e1, pve, v1)(Q)
+        })
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if Verifier.config.disableShortCircuitingEvaluations() =>
@@ -305,19 +318,19 @@ object evaluator extends EvaluationRules {
 
       case implies @ ast.Implies(e0, e1) =>
         val impliesRecord = new ImpliesRecord(implies, s, v.decider.pcs, "Implies")
-        val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
+        val uidImplies = v.symbExLog.openScope(impliesRecord)
         eval(s, e0, pve, v)((s1, t0, v1) =>
           evalImplies(s1, t0, Some(e0), e1, implies.info == FromShortCircuitingAnd, pve, v1)((s2, t1, v2) => {
-            SymbExLogger.currentLog().closeScope(uidImplies)
+            v2.symbExLog.closeScope(uidImplies)
             Q(s2, t1, v2)
           }))
 
       case condExp @ ast.CondExp(e0, e1, e2) =>
         val condExpRecord = new CondExpRecord(condExp, s, v.decider.pcs, "CondExp")
-        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
+        val uidCondExp = v.symbExLog.openScope(condExpRecord)
         eval(s, e0, pve, v)((s1, t0, v1) =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, Some(e0), v2)(
+            brancher.branch(s2, t0, Some(e0), v2, true)(
               (s3, v3) => eval(s3, e1, pve, v3)(QB),
               (s3, v3) => eval(s3, e2, pve, v3)(QB))
           )(entries => {
@@ -332,7 +345,7 @@ object evaluator extends EvaluationRules {
                 sys.error(s"Unexpected join data entries: $entries")}
             (s2, result)
           })((s4, t3, v3) => {
-            SymbExLogger.currentLog().closeScope(uidCondExp)
+            v3.symbExLog.closeScope(uidCondExp)
             Q(s4, t3, v3)
           }))
 
@@ -377,7 +390,7 @@ object evaluator extends EvaluationRules {
 
       case ast.PermMinus(e0) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
-          Q(s1, PermMinus(NoPerm(), t0), v1))
+          Q(s1, PermMinus(NoPerm, t0), v1))
 
       case ast.PermMul(e0, e1) =>
         evalBinOp(s, e0, e1, PermTimes, pve, v)(Q)
@@ -416,18 +429,19 @@ object evaluator extends EvaluationRules {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) => {
           val inSorts = tArgs map (_.sort)
           val outSort = v1.symbolConverter.toSort(dfa.typ)
-          val fi = v1.symbolConverter.toFunction(Verifier.program.findDomainFunction(funcName), inSorts :+ outSort)
+          val fi = v1.symbolConverter.toFunction(s.program.findDomainFunction(funcName), inSorts :+ outSort, s.program)
           Q(s1, App(fi, tArgs), v1)})
 
-      case ast.BackendFuncApp(func, eArgs) =>
+      case ast.BackendFuncApp(funcName, eArgs) =>
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) => {
-          val fi = v1.symbolConverter.toFunction(func)
+          val func = s.program.findDomainFunction(funcName)
+          val fi = v1.symbolConverter.toFunction(func, s.program)
           Q(s1, App(fi, tArgs), v1)})
 
       case ast.CurrentPerm(resacc) =>
         val h = s.partiallyConsumedHeap.getOrElse(s.h)
         evalResourceAccess(s, resacc, pve, v)((s1, identifier, args, v1) => {
-          val res = resacc.res(Verifier.program)
+          val res = resacc.res(s.program)
           /* It is assumed that, for a given field/predicate/wand identifier (res)
            * either only quantified or only non-quantified chunks are used.
            */
@@ -441,22 +455,38 @@ object evaluator extends EvaluationRules {
                 case wand: ast.MagicWand =>
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](h, identifier)
-                  val bodyVars = wand.subexpressionsToEvaluate(Verifier.program)
+                  val bodyVars = wand.subexpressionsToEvaluate(s.program)
                   val formalVars = bodyVars.indices.toList.map(i => Var(Identifier(s"x$i"), v1.symbolConverter.toSort(bodyVars(i).typ)))
-                  val (s2, smDef, pmDef) =
-                    quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
-                  v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args))
+                  val (s2, pmDef) = if (s1.heapDependentTriggers.contains(MagicWandIdentifier(wand, s1.program))) {
+                    val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, wand, formalVars, relevantChunks, v1)
+                    v1.decider.assume(PredicateTrigger(identifier.toString, smDef.sm, args))
+                    (s2, pmDef)
+                  } else {
+                    val (pmDef, pmCache) =
+                      quantifiedChunkSupporter.summarisingPermissionMap(
+                        s1, wand, formalVars, relevantChunks, null, v1)
+
+                    (s1.copy(pmCache = pmCache), pmDef)
+                  }
                   (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
 
                 case field: ast.Field =>
                   val (relevantChunks, _) =
                     quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](h, identifier)
-                  val (s2, smDef, pmDef) =
-                    quantifiedChunkSupporter.heapSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
-                  v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head))
+                  val (s2, pmDef) = if (s1.heapDependentTriggers.contains(field)) {
+                    val (s2, smDef, pmDef) = quantifiedChunkSupporter.heapSummarisingMaps(s1, field, Seq(`?r`), relevantChunks, v1)
+                    v1.decider.assume(FieldTrigger(field.name, smDef.sm, args.head))
+                    (s2, pmDef)
+                  } else {
+                    val (pmDef, pmCache) =
+                      quantifiedChunkSupporter.summarisingPermissionMap(
+                        s1, field, Seq(`?r`), relevantChunks, null, v1)
+
+                    (s1.copy(pmCache = pmCache), pmDef)
+                  }
                   val currentPermAmount = PermLookup(field.name, pmDef.pm, args.head)
                   v1.decider.prover.comment(s"perm($resacc)  ~~>  assume upper permission bound")
-                  v1.decider.assume(PermAtMost(currentPermAmount, FullPerm()))
+                  v1.decider.assume(PermAtMost(currentPermAmount, FullPerm))
                   (s2, currentPermAmount)
 
                 case predicate: ast.Predicate =>
@@ -465,16 +495,18 @@ object evaluator extends EvaluationRules {
                   val (s2, smDef, pmDef) =
                     quantifiedChunkSupporter.heapSummarisingMaps(
                       s1, predicate, s1.predicateFormalVarMap(predicate), relevantChunks, v1)
-                  val trigger = PredicateTrigger(predicate.name, smDef.sm, args)
-                  v1.decider.assume(trigger)
+                  if (s2.heapDependentTriggers.contains(predicate)){
+                    val trigger = PredicateTrigger(predicate.name, smDef.sm, args)
+                    v1.decider.assume(trigger)
+                  }
                   (s2, PredicatePermLookup(identifier.toString, pmDef.pm, args))
               }
             } else {
               val chs = chunkSupporter.findChunksWithID[NonQuantifiedChunk](h.values, identifier)
               val currentPermAmount =
-                chs.foldLeft(NoPerm(): Term)((q, ch) => {
+                chs.foldLeft(NoPerm: Term)((q, ch) => {
                   val argsPairWiseEqual = And(args.zip(ch.args).map { case (a1, a2) => a1 === a2 })
-                  PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm()))
+                  PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm))
                 })
               /* TODO: See todo above */
 //              v1.decider.prover.comment(s"perm($locacc)  ~~>  assume upper permission bound")
@@ -521,16 +553,16 @@ object evaluator extends EvaluationRules {
 
             // TODO LA: nonQuantArgs are not recorded yet
             val impliesRecord = new ImpliesRecord(null, s2, v.decider.pcs, "bindRcvrsAndEvalBody")
-            val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
+            val uidImplies = v.symbExLog.openScope(impliesRecord)
 
             evals(s2, nonQuantArgs, _ => pve, v)((s3, tArgs, v1) => {
               val argsWithIndex = tArgs zip indices
               val zippedArgs = argsWithIndex map (ai => (ai._1, ch.args(ai._2)))
               val argsPairWiseEqual = And(zippedArgs map {case (a1, a2) => a1 === a2})
 
-              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False()), None,body, false, pve, v1) ((s4, tImplies, v2) =>
+              evalImplies(s3, Ite(argsPairWiseEqual, And(addCons :+ IsPositive(ch.perm)), False), None,body, false, pve, v1) ((s4, tImplies, v2) =>
                 bindRcvrsAndEvalBody(s4, chs.tail, args, tImplies +: ts, v2)((s5, ts1, v3) => {
-                  SymbExLogger.currentLog().closeScope(uidImplies)
+                  v3.symbExLog.closeScope(uidImplies)
                   Q(s5, ts1, v3)
                 }))
             })
@@ -553,7 +585,7 @@ object evaluator extends EvaluationRules {
 
             // TODO LA: args are not recorded yet
             val impliesRecord = new ImpliesRecord(null, s1, v.decider.pcs, "bindQuantRcvrsAndEvalBody")
-            val uidImplies = SymbExLogger.currentLog().openScope(impliesRecord)
+            val uidImplies = v.symbExLog.openScope(impliesRecord)
 
             evals(s1, args, _ => pve, v)((s2, ts1, v1) => {
               val bc = IsPositive(ch.perm.replace(ch.quantifiedVars, ts1))
@@ -568,7 +600,7 @@ object evaluator extends EvaluationRules {
               evalImplies(s2, And(trig, bc), None, body, false, pve, v1)((s3, tImplies, v2) => {
                 val tQuant = Quantification(Forall, tVars, tImplies, tTriggers)
                 bindQuantRcvrsAndEvalBody(s3, chs.tail, args, tQuant +: ts, v2)((s4, ts2, v3) => {
-                  SymbExLogger.currentLog().closeScope(uidImplies)
+                  v3.symbExLog.closeScope(uidImplies)
                   Q(s4, ts2, v3)
                 })})
             })
@@ -577,13 +609,13 @@ object evaluator extends EvaluationRules {
 
         val s1 = s.copy(h = s.partiallyConsumedHeap.getOrElse(s.h))
 
-        val resIdent = ChunkIdentifier(resourceAccess.res(Verifier.program), Verifier.program)
+        val resIdent = ChunkIdentifier(resourceAccess.res(s.program), s.program)
         val args = resourceAccess match {
           case fa: ast.FieldAccess => Seq(fa.rcv)
           case pa: ast.PredicateAccess => pa.args
-          case w: ast.MagicWand => w.subexpressionsToEvaluate(Verifier.program)
+          case w: ast.MagicWand => w.subexpressionsToEvaluate(s.program)
         }
-        val usesQPChunks = resourceAccess.res(Verifier.program) match {
+        val usesQPChunks = resourceAccess.res(s.program) match {
           case _: ast.MagicWand => s1.qpMagicWands.contains(resIdent.asInstanceOf[MagicWandIdentifier])
           case field: ast.Field => s1.qpFields.contains(field)
           case pred: ast.Predicate => s1.qpPredicates.contains(pred)
@@ -614,42 +646,41 @@ object evaluator extends EvaluationRules {
             (exists, Exists, exists.triggers)
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
+        val quantWeight = sourceQuant.info match {
+          case w: WeightedQuantifier => Some(w.weight)
+          case _ => None
+        }
 
         val body = eQuant.exp
-        val name = s"prog.l${viper.silicon.utils.ast.sourceLine(sourceQuant)}"
+        // Remove whitespace in identifiers to avoid parsing problems for the axiom profiler.
+        val posString = viper.silicon.utils.ast.sourceLine(sourceQuant).replaceAll(" ", "")
+        val name = s"prog.l$posString"
         evalQuantified(s, qantOp, eQuant.variables, Nil, Seq(body), Some(eTriggers), name, pve, v){
           case (s1, tVars, _, Seq(tBody), tTriggers, (tAuxGlobal, tAux), v1) =>
             val tAuxHeapIndep = tAux.flatMap(v.quantifierSupporter.makeTriggersHeapIndependent(_, v1.decider.fresh))
 
-            // TODO: Extracted top-level quantifications (tlqGlobal) are currently assumed twice:
-            //       once directly (tlqGlobal), once nested (tAuxGlobal). It would be better to remove the nested
-            //       instances, e.g. by replacing them with "true".
-
-            val tlqGlobal: Seq[Quantification] = tAuxGlobal flatMap {
-              case q1: Quantification => q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2}
-              case _ => Seq.empty
-            }
-
-            val tlq: Seq[Quantification] = tAux flatMap (q1 =>
-              q1.deepCollect {case q2: Quantification if !q2.existsDefined {case v: Var if q1.vars.contains(v) => } => q2})
-
             v1.decider.prover.comment("Nested auxiliary terms: globals (aux)")
             v1.decider.assume(tAuxGlobal)
-            v1.decider.prover.comment("Nested auxiliary terms: globals (tlq)")
-            v1.decider.assume(tlqGlobal)
             v1.decider.prover.comment("Nested auxiliary terms: non-globals (aux)")
             v1.decider.assume(tAuxHeapIndep/*tAux*/)
-            v1.decider.prover.comment("Nested auxiliary terms: non-globals (tlq)")
-            v1.decider.assume(tlq)
 
-            val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
+            if (qantOp == Exists) {
+              // For universal quantification, the non-global auxiliary assumptions will contain the information that
+              // forall vars :: all function preconditions are fulfilled.
+              // However, if this quantifier is existential, they will only assume that there exist values s.t.
+              // all function preconditions hold. This is not enough: We need to know (and have checked that)
+              // function preconditions hold for *all* possible values of the quantified variables.
+              // So we explicitly add this assumption here.
+              v1.decider.assume(Quantification(Forall, tVars, FunctionPreconditionTransformer.transform(tBody, s1.program), tTriggers, name, quantWeight))
+            }
+
+            val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name, quantWeight)
             Q(s1, tQuant, v1)
         }
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
-        val func = Verifier.program.findFunction(funcName)
-        val s0 = s.copy(hackIssue387DisablePermissionConsumption = Verifier.config.enableMoreCompleteExhale())
-        evals2(s0, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
+        val func = s.program.findFunction(funcName)
+        evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
 //          bookkeeper.functionApplications += 1
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
@@ -718,6 +749,8 @@ object evaluator extends EvaluationRules {
                              smDomainNeeded = true)
             consumes(s3, pres, _ => pvePre, v2)((s4, snap, v3) => {
               val snap1 = snap.convert(sorts.Snap)
+              val preFApp = App(functionSupporter.preconditionVersion(v3.symbolConverter.toFunction(func)), snap1 :: tArgs)
+              v3.decider.assume(preFApp)
               val tFApp = App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
               val fr5 =
                 s4.functionRecorder.changeDepthBy(-1)
@@ -738,7 +771,7 @@ object evaluator extends EvaluationRules {
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
               eIn) =>
 
-        val predicate = Verifier.program.findPredicate(predicateName)
+        val predicate = s.program.findPredicate(predicateName)
         if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
           evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
             eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
@@ -767,7 +800,8 @@ object evaluator extends EvaluationRules {
                          * to the function arguments and the predicate snapshot
                          * (see 'predicateTriggers' in FunctionData.scala).
                          */
-                      v4.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
+                      if (!Verifier.config.disableFunctionUnfoldTrigger())
+                        v4.decider.assume(App(s.predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
                       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                       val s7 = s6.scalePermissionFactor(tPerm)
                       val insg = s7.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
@@ -1041,13 +1075,13 @@ object evaluator extends EvaluationRules {
                          : VerificationResult = {
 
     joiner.join[Term, Term](s, v)((s1, v1, QB) =>
-      brancher.branch(s1, tLhs, eLhs, v1, fromShortCircuitingAnd)(
+      brancher.branch(s1, tLhs, eLhs, v1, true, fromShortCircuitingAnd)(
         (s2, v2) => eval(s2, eRhs, pve, v2)(QB),
-        (s2, v2) => QB(s2, True(), v2))
+        (s2, v2) => QB(s2, True, v2))
     )(entries => {
       assert(entries.length <= 2)
       val s1 = entries.tail.foldLeft(entries.head.s)((sAcc, entry) => sAcc.merge(entry.s))
-      val t = Implies(tLhs, entries.headOption.map(_.data).getOrElse(True()))
+      val t = Implies(tLhs, entries.headOption.map(_.data).getOrElse(True))
       (s1, t)
     })(Q)
   }
@@ -1063,11 +1097,34 @@ object evaluator extends EvaluationRules {
     val h = s.oldHeaps(label)
     val s1 = s.copy(h = h, partiallyConsumedHeap = None)
     val s2 = v.stateConsolidator.consolidateIfRetrying(s1, v)
+    val possibleTriggersBefore: Map[ast.Exp, Term] = if (s.recordPossibleTriggers) s.possibleTriggers else Map.empty
 
     eval(s2, e, pve, v)((s3, t, v1) => {
+      val newPossibleTriggers = if (s.recordPossibleTriggers) {
+        // For all new possible trigger expressions e and translated term t,
+        // make sure we remember t as the term for old[label](e) instead.
+        // If e is not heap-dependent, we also remember t as the term for e.
+        val addedOrChangedPairs = s3.possibleTriggers.filter(t =>
+          !possibleTriggersBefore.contains(t._1) || possibleTriggersBefore(t._1) != t._2)
+
+        def wrapInOld(e: ast.Exp) = {
+          if (label == "old") {
+            ast.Old(e)(e.pos, e.info, e.errT)
+          } else {
+            ast.LabelledOld(e, label)(e.pos, e.info, e.errT)
+          }
+        }
+
+        val oldPairs = addedOrChangedPairs.map(t => wrapInOld(t._1) -> t._2) ++
+          addedOrChangedPairs.filter(t => !t._1.isHeapDependent(s.program))
+        s.possibleTriggers ++ oldPairs
+      } else {
+        s.possibleTriggers
+      }
       val s4 = s3.copy(h = s.h,
                        oldHeaps = s3.oldHeaps + (label -> s3.h),
-                       partiallyConsumedHeap = s.partiallyConsumedHeap)
+                       partiallyConsumedHeap = s.partiallyConsumedHeap,
+                       possibleTriggers = newPossibleTriggers)
       Q(s4, t, v1)})
   }
 
@@ -1094,7 +1151,7 @@ object evaluator extends EvaluationRules {
     resacc match {
       case wand : ast.MagicWand =>
         magicWandSupporter.evaluateWandArguments(s, wand, pve, v)((s1, tArgs, v1) =>
-        Q(s1, MagicWandIdentifier(wand, Verifier.program), tArgs, v1))
+        Q(s1, MagicWandIdentifier(wand, s.program), tArgs, v1))
       case ast.FieldAccess(eRcvr, field) =>
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           Q(s1, BasicChunkIdentifier(field.name), tRcvr :: Nil, v1))
@@ -1102,6 +1159,18 @@ object evaluator extends EvaluationRules {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           Q(s1, BasicChunkIdentifier(predicateName), tArgs, v1))
     }
+  }
+
+  private def evalBinOp[T <: Term](s: State,
+                                   e0: ast.Exp,
+                                   e1: ast.Exp,
+                                   termOp: ((Term, Term)) => T,
+                                   pve: PartialVerificationError,
+                                   v: Verifier)
+                                  (Q: (State, T, Verifier) => VerificationResult)
+                                  : VerificationResult = {
+
+    evalBinOp(s, e0, e1, (t0, t1) => termOp((t0, t1)), pve, v)(Q)
   }
 
   private def evalBinOp[T <: Term]
@@ -1195,34 +1264,23 @@ object evaluator extends EvaluationRules {
                          (Q: (State, Seq[Term], Verifier) => VerificationResult)
                          : VerificationResult = {
 
+    def transformPotentialFuncApp(t: Term) = t match {
+      case app@App(fun: HeapDepFun, _) =>
+        /** Heap-dependent functions that are used as tTriggerSets should be used
+          * in the limited version, because it allows for more instantiations.
+          * Keep this code in sync with [[viper.silicon.supporters.ExpressionTranslator.translate]]
+          *
+          */
+        app.copy(applicable = functionSupporter.limitedVersion(fun))
+      case other =>
+        other
+    }
+
     val (cachedTriggerTerms, remainingTriggerExpressions) =
       exps.map {
-        case ast.Old(e) => e /* TODO: What about heap-dependent functions under old in triggers? */
-        case e => e
-      }.map {
-        case fapp: ast.FuncApp =>
-          /** Heap-dependent functions that are used as tTriggerSets should be used
-            * in the limited version, because it allows for more instantiations.
-            * Keep this code in sync with [[viper.silicon.supporters.ExpressionTranslator.translate]]
-            *
-            */
-          val cachedTrigger =
-            s.possibleTriggers.get(fapp) map {
-              case app @ App(fun: HeapDepFun, _) =>
-                app.copy(applicable = functionSupporter.limitedVersion(fun))
-              case app: App =>
-                app
-              case other =>
-                sys.error(s"Expected $fapp to map to a function application, but found $other")
-            }
-
-          (cachedTrigger, if (cachedTrigger.isDefined) None else Some(fapp))
-
-        case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess) =>
-          val cachedTrigger = s.possibleTriggers.get(pt)
-
+        case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess | _: ast.LabelledOld | _: ast.Old) =>
+          val cachedTrigger = s.possibleTriggers.get(pt).map(t => transformPotentialFuncApp(t))
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
-
         case e => (None, Some(e))
       }.unzip match {
         case (optCachedTriggerTerms, optRemainingTriggerExpressions) =>
@@ -1236,6 +1294,7 @@ object evaluator extends EvaluationRules {
      */
 
     var optRemainingTriggerTerms: Option[Seq[Term]] = None
+    // Setting a mark pushes a scope that needs to be popped again later, see below.
     val preMark = v.decider.setPathConditionMark()
     var pcDelta = InsertionOrderedSet.empty[Term]
 
@@ -1277,12 +1336,21 @@ object evaluator extends EvaluationRules {
         pcDelta = v1.decider.pcs.after(preMark).assumptions //decider.π -- πPre
         Success()})
 
+    // Remove all assumptions resulting from evaluating the trigger.
+    // IF trigger evaluation was successful, we will assume them again (see success case below).
+    // However, they need to be removed for now since they would otherwise be assumed unconditionally
+    // (since the preMark layer has no branch conditions), and we can assume them only conditionally.
+    // See issue #688 for an example of what happens otherwise.
+    v.decider.pcs.popUntilMark(preMark)
+
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
         v.decider.assume(pcDelta)
         Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>
-//        bookkeeper.logfiles("evalTrigger").println(s"Couldn't evaluate some trigger expressions:\n  $remainingTriggerExpressions\nReason:\n  $r")
+        for (e <- remainingTriggerExpressions)
+          v.reporter.report(WarningsDuringTypechecking(Seq(
+            TypecheckerWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
         Q(s, cachedTriggerTerms, v)
     }
   }
@@ -1323,17 +1391,19 @@ object evaluator extends EvaluationRules {
                              (Q: (State, Seq[Term], Verifier) => VerificationResult) : VerificationResult = {
     var triggers: Seq[Term] = Seq()
     var triggerAxioms: Seq[Term] = Seq()
+    var smDefs: Seq[SnapshotMapDefinition] = Seq()
 
     exps foreach {
-      case fa: ast.FieldAccess =>
-        val (axioms, trigs, _) = generateFieldTrigger(fa, s, pve, v)
+      case fa: ast.FieldAccess if s.heapDependentTriggers.contains(fa.field) =>
+        val (axioms, trigs, _, smDef) = generateFieldTrigger(fa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
-      case pa: ast.PredicateAccess =>
+        smDefs = smDefs ++ smDef
+      case pa: ast.PredicateAccess if s.heapDependentTriggers.contains(pa.loc(s.program)) =>
         val (axioms, trigs, _) = generatePredicateTrigger(pa, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
-      case wand: ast.MagicWand =>
+      case wand: ast.MagicWand if s.heapDependentTriggers.contains(MagicWandIdentifier(wand, s.program)) =>
         val (axioms, trigs, _) = generateWandTrigger(wand, s, pve, v)
         triggers = triggers ++ trigs
         triggerAxioms = triggerAxioms ++ axioms
@@ -1343,14 +1413,18 @@ object evaluator extends EvaluationRules {
       })
     }
     v.decider.assume(triggerAxioms)
-    Q(s, triggers, v)
+    var fr = s.functionRecorder
+    for (smDef <- smDefs){
+      fr = fr.recordFvfAndDomain(smDef)
+    }
+    Q(s.copy(functionRecorder = fr), triggers, v)
   }
 
   private def generateFieldTrigger(fa: ast.FieldAccess,
                                    s: State,
                                    pve: PartialVerificationError,
                                    v: Verifier)
-                                  : (Seq[Term], Seq[Term], FieldTrigger) = {
+                                  : (Seq[Term], Seq[Term], FieldTrigger, Seq[SnapshotMapDefinition]) = {
 
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
@@ -1365,6 +1439,7 @@ object evaluator extends EvaluationRules {
       quantifiedChunkSupporter.summarisingSnapshotMap(
         s, fa.field, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
 
+    var smRes = Seq(smDef1)
     /* TODO: Reduce code duplication below */
     /* TODO: Return updated snapshot caches (or let generateFieldTrigger take a continuation) */
 
@@ -1378,6 +1453,7 @@ object evaluator extends EvaluationRules {
         axioms = axioms ++ smDef1.valueDefinitions ++ rcvHelper._1
         mostRecentTrig = FieldTrigger(fa.field.name, smDef1.sm, Lookup(rcvTrig.field, rcvTrig.fvf, rcvTrig.at))
         triggers = triggers ++ rcvHelper._2 :+ mostRecentTrig
+        smRes = smRes ++ rcvHelper._4
       case rcv =>
         val s1 = s.copy(smCache = smCache1)
         val t = s1.possibleTriggers.get(fa)
@@ -1406,7 +1482,7 @@ object evaluator extends EvaluationRules {
         }
     }
 
-    (axioms, triggers, mostRecentTrig)
+    (axioms, triggers, mostRecentTrig, smRes)
   }
 
   /* TODO: Try to unify with generateFieldTrigger above, or at least with generateWandTrigger below */
@@ -1414,7 +1490,7 @@ object evaluator extends EvaluationRules {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
-    val codomainQVars = s.predicateFormalVarMap(pa.loc(Verifier.program))
+    val codomainQVars = s.predicateFormalVarMap(pa.loc(s.program))
     val (relevantChunks, _) =
       quantifiedChunkSupporter.splitHeap[QuantifiedPredicateChunk](s.h, BasicChunkIdentifier(pa.predicateName))
     val optSmDomainDefinitionCondition =
@@ -1422,7 +1498,7 @@ object evaluator extends EvaluationRules {
       else None
     val (smDef1, smCache1) =
       quantifiedChunkSupporter.summarisingSnapshotMap(
-        s, pa.loc(Verifier.program), codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
+        s, pa.loc(s.program), codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
     val s1 = s.copy(smCache = smCache1)
 
     evals(s1, pa.args, _ => pve, v)((_, tArgs, _) => {
@@ -1440,11 +1516,11 @@ object evaluator extends EvaluationRules {
     var axioms = Seq.empty[Term]
     var triggers = Seq.empty[Term]
     var mostRecentTrig: PredicateTrigger = null
-    val wandHoles = wand.subexpressionsToEvaluate(Verifier.program)
+    val wandHoles = wand.subexpressionsToEvaluate(s.program)
     val codomainQVars =
       wandHoles.indices.toList.map(i => Var(Identifier(s"x$i"), v.symbolConverter.toSort(wandHoles(i).typ)))
     val (relevantChunks, _) =
-      quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s.h, MagicWandIdentifier(wand, Verifier.program))
+      quantifiedChunkSupporter.splitHeap[QuantifiedMagicWandChunk](s.h, MagicWandIdentifier(wand, s.program))
     val optSmDomainDefinitionCondition =
       if (s.smDomainNeeded) { v.logger.debug("Axiomatisation of an SM domain missing!"); None }
       else None
@@ -1453,9 +1529,9 @@ object evaluator extends EvaluationRules {
         s, wand, codomainQVars, relevantChunks, v, optSmDomainDefinitionCondition)
     val s1 = s.copy(smCache = smCache1)
 
-    evals(s1, wand.subexpressionsToEvaluate(Verifier.program), _ => pve, v)((_, tArgs, _) => {
+    evals(s1, wand.subexpressionsToEvaluate(s.program), _ => pve, v)((_, tArgs, _) => {
       axioms = axioms ++ smDef1.valueDefinitions
-      mostRecentTrig = PredicateTrigger(MagicWandIdentifier(wand, Verifier.program).toString, smDef1.sm, tArgs)
+      mostRecentTrig = PredicateTrigger(MagicWandIdentifier(wand, s.program).toString, smDef1.sm, tArgs)
       triggers = triggers :+ mostRecentTrig
       Success()
     })
@@ -1484,8 +1560,8 @@ object evaluator extends EvaluationRules {
 
     // TODO: Find out and document why swapIfAnd is needed
     val (stop, swapIfAnd) =
-      if(constructor == Or) (True(), (a: brFun, b: brFun) => (a, b))
-      else (False(), (a: brFun, b: brFun) => (b, a))
+      if(constructor == Or) (True, (a: brFun, b: brFun) => (a, b))
+      else (False, (a: brFun, b: brFun) => (b, a))
 
     eval(s, exps.head, pve, v)((s1, t0, v1) => {
       t0 match {
@@ -1493,7 +1569,7 @@ object evaluator extends EvaluationRules {
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, Some(viper.silicon.utils.ast.BigAnd(exps)), v2, true) _ tupled swapIfAnd(
+            brancher.branch(s2, t0, Some(viper.silicon.utils.ast.BigAnd(exps)), v2, true, true) _ tupled swapIfAnd(
               (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>

@@ -13,8 +13,8 @@ import viper.silicon.toMap
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.{SymbolConverter, terms}
-import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Symbol, Term}
-import viper.silver.ast.NamedDomainAxiom
+import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Term}
+import viper.silver.ast.{NamedDomainAxiom}
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
   def uniquenessAssumptionsAfterAnalysis: Iterable[UA]
@@ -28,7 +28,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
   private var collectedSorts = InsertionOrderedSet[Sort]()
   private var collectedFunctions = InsertionOrderedSet[terms.DomainFun]()
   private var collectedAxioms = InsertionOrderedSet[Term]()
-  private var uniqueSymbols = MultiMap.empty[Sort, Symbol]
+  private var uniqueSymbols = MultiMap.empty[Sort, DomainFun]
 
   /* Lifetime */
 
@@ -56,7 +56,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
       necessaryDomainTypes map (cdt => domainNameMap(cdt.domainName).instantiate(cdt, program))
 
     collectDomainSorts(necessaryDomainTypes)
-    collectDomainMembers(instantiatedDomains)
+    collectDomainMembers(instantiatedDomains, program)
   }
 
   private def collectDomainSorts(domainTypes: Iterable[ast.DomainType]): Unit = {
@@ -68,7 +68,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
     })
   }
 
-  private def collectDomainMembers(instantiatedDomains: Set[ast.Domain]): Unit = {
+  private def collectDomainMembers(instantiatedDomains: Set[ast.Domain], program: ast.Program): Unit = {
     /* Since domain member instances come with Silver types, but the corresponding prover
      * declarations work with Silicon sorts, it can happen that two instances with different types
      * result in the same function declaration because the types are mapped to the same sort(s).
@@ -84,15 +84,17 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
     instantiatedDomains foreach (domain => {
       domain.functions foreach (function => {
-        val fct = symbolConverter.toFunction(function)
+        if (function.interpretation.isEmpty) {
+          val fct = symbolConverter.toFunction(function, program).asInstanceOf[DomainFun]
 
-        collectedFunctions += fct
+          collectedFunctions += fct
 
-        if (function.unique) {
-          assert(function.formalArgs.isEmpty,
-            s"Expected unique domain functions to not take arguments, but found $function")
+          if (function.unique) {
+            assert(function.formalArgs.isEmpty,
+              s"Expected unique domain functions to not take arguments, but found $function")
 
-          uniqueSymbols = uniqueSymbols.addBinding(fct.resultSort, fct)
+            uniqueSymbols = uniqueSymbols.addBinding(fct.resultSort, fct)
+          }
         }
       })
 
@@ -132,24 +134,27 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 }
 
 trait DomainsTranslator[R] {
-  def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort): R
+  def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort, builtin: Boolean = false): R
 }
 
 class DefaultDomainsTranslator()
     extends DomainsTranslator[Term]
        with ExpressionTranslator {
 
-  def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort): Term = {
-    translate(toSort)(ax.exp) match {
-      case terms.Quantification(q, vars, body, triggers, "", _) =>
+  def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort, builtin: Boolean = false): Term = {
+    isBuiltin = builtin
+    val res = translate(toSort)(ax.exp) match {
+      case terms.Quantification(q, vars, body, triggers, "", _, weight) =>
         val qid = ax match {
           case axiom: NamedDomainAxiom => s"prog.${axiom.name}"
           case _ => ""
         }
 
-        terms.Quantification(q, vars, body, triggers, qid)
+        terms.Quantification(q, vars, body, triggers, qid, weight)
 
       case other => other
     }
+    isBuiltin = false
+    res
   }
 }
