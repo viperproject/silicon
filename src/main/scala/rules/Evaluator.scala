@@ -647,18 +647,18 @@ object evaluator extends EvaluationRules {
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
         val quantWeight = sourceQuant.info.getUniqueInfo[WeightedQuantifier] match {
-          case Some(w) => Some(w.weight)
+          case Some(w) =>
+            if (w.weight >= 0) {
+              Some(w.weight)
+            } else {
+              v.reporter.report(AnnotationWarning(s"Invalid quantifier weight annotation: ${w}"))
+              None
+            }
           case None => sourceQuant.info.getUniqueInfo[AnnotationInfo] match {
             case Some(ai) if ai.values.contains("weight") =>
               ai.values("weight") match {
-                case Seq(w) =>
-                  try {
-                    Some(w.toInt)
-                  } catch {
-                    case _: NumberFormatException =>
-                      v.reporter.report(AnnotationWarning(s"Invalid quantifier weight annotation: ${w}"))
-                      None
-                  }
+                case Seq(w) if w.toIntOption.exists(w => w >= 0) =>
+                  Some(w.toInt)
                 case s =>
                   v.reporter.report(AnnotationWarning(s"Invalid quantifier weight annotation: ${s}"))
                   None

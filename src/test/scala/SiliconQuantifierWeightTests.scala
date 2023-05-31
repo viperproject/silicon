@@ -59,6 +59,19 @@ class SiliconQuantifierWeightTests extends AnyFunSuite {
     assert(rendered.contains(":weight 12"))
   }
 
+  test("The weight annotation is ignored for negative values") {
+    val expr = Forall(
+      Seq(LocalVarDecl("x", Int)()),
+      Seq(),
+      TrueLit()()
+    )(
+      info = AnnotationInfo(Map("weight" -> Seq("-12")))
+    )
+    val term = translator.translateExpr(expr)
+    val rendered = termConverter.convert(term)
+    assert(!rendered.contains(":weight"))
+  }
+
   test("The weight is part of the translation of an Exists") {
     val expr = Exists(
       Seq(LocalVarDecl("x", Int)()),

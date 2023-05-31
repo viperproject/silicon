@@ -97,22 +97,21 @@ trait ExpressionTranslator {
             case other => other
           }
         )))
-
         val weight = sourceQuant.info.getUniqueInfo[WeightedQuantifier] match {
-          case Some(w) => Some(w.weight)
+          case Some(w) =>
+            if (w.weight >= 0) {
+              Some(w.weight)
+            } else {
+              // TODO: We would like to emit a warning here, but don't have a reporter available.
+              None
+            }
           case None => sourceQuant.info.getUniqueInfo[AnnotationInfo] match {
             case Some(ai) if ai.values.contains("weight") =>
               ai.values("weight") match {
-                case Seq(w) =>
-                  try {
-                    Some(w.toInt)
-                  } catch {
-                    case _: NumberFormatException =>
-                      // TODO: We would like to emit a warning here, but don't have a reporter available.
-                      None
-                  }
+                case Seq(w) if w.toIntOption.exists(w => w >= 0) =>
+                  Some(w.toInt)
                 case s =>
-                  // TODO: We would like to emit a warning here.
+                  // TODO: We would like to emit a warning here, but don't have a reporter available.
                   None
               }
             case _ => None
