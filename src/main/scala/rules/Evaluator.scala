@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silver.ast
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, TypecheckerWarning}
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -23,7 +23,7 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
-import viper.silver.reporter.WarningsDuringTypechecking
+import viper.silver.reporter.WarningsDuringVerification
 import viper.silver.ast.WeightedQuantifier
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
@@ -1349,8 +1349,8 @@ object evaluator extends EvaluationRules {
         Q(s, cachedTriggerTerms ++ remainingTriggerTerms, v)
       case _ =>
         for (e <- remainingTriggerExpressions)
-          v.reporter.report(WarningsDuringTypechecking(Seq(
-            TypecheckerWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
+          v.reporter.report(WarningsDuringVerification(Seq(
+            VerifierWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
         Q(s, cachedTriggerTerms, v)
     }
   }
