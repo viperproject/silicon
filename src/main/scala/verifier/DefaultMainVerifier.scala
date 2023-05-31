@@ -167,13 +167,13 @@ class DefaultMainVerifier(config: Config,
           val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringVerification(Seq(VerifierWarning("No triggers provided or inferred for quantifier.", res.pos))))
-          reporter report QuantifierChosenTriggersMessage(res, res.triggers)
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers, forall.triggers)
           res
         case exists: ast.Exists =>
           val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
           if (res.triggers.isEmpty)
             reporter.report(WarningsDuringVerification(Seq(VerifierWarning("No triggers provided or inferred for quantifier.", res.pos))))
-          reporter report QuantifierChosenTriggersMessage(res, res.triggers)
+          reporter report QuantifierChosenTriggersMessage(res, res.triggers, exists.triggers)
           res
       }, Traverse.BottomUp)
 
