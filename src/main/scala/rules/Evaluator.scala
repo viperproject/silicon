@@ -23,8 +23,8 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
-import viper.silver.reporter.WarningsDuringVerification
-import viper.silver.ast.WeightedQuantifier
+import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
+import viper.silver.ast.{AnnotationInfo, WeightedQuantifier}
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -646,9 +646,25 @@ object evaluator extends EvaluationRules {
             (exists, Exists, exists.triggers)
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
-        val quantWeight = sourceQuant.info match {
-          case w: WeightedQuantifier => Some(w.weight)
-          case _ => None
+        val quantWeight = sourceQuant.info.getUniqueInfo[WeightedQuantifier] match {
+          case Some(w) =>
+            if (w.weight >= 0) {
+              Some(w.weight)
+            } else {
+              v.reporter.report(AnnotationWarning(s"Invalid quantifier weight annotation: ${w}"))
+              None
+            }
+          case None => sourceQuant.info.getUniqueInfo[AnnotationInfo] match {
+            case Some(ai) if ai.values.contains("weight") =>
+              ai.values("weight") match {
+                case Seq(w) if w.toIntOption.exists(w => w >= 0) =>
+                  Some(w.toInt)
+                case s =>
+                  v.reporter.report(AnnotationWarning(s"Invalid quantifier weight annotation: ${s}"))
+                  None
+              }
+            case _ => None
+          }
         }
 
         val body = eQuant.exp

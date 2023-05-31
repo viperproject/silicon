@@ -10,7 +10,7 @@ import viper.silver.ast
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
-import viper.silver.ast.WeightedQuantifier
+import viper.silver.ast.{AnnotationInfo, WeightedQuantifier}
 
 trait ExpressionTranslator {
   /* TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
@@ -97,10 +97,25 @@ trait ExpressionTranslator {
             case other => other
           }
         )))
-
-        val weight = sourceQuant.info match {
-          case w: WeightedQuantifier => Some(w.weight)
-          case _ => None
+        val weight = sourceQuant.info.getUniqueInfo[WeightedQuantifier] match {
+          case Some(w) =>
+            if (w.weight >= 0) {
+              Some(w.weight)
+            } else {
+              // TODO: We would like to emit a warning here, but don't have a reporter available.
+              None
+            }
+          case None => sourceQuant.info.getUniqueInfo[AnnotationInfo] match {
+            case Some(ai) if ai.values.contains("weight") =>
+              ai.values("weight") match {
+                case Seq(w) if w.toIntOption.exists(w => w >= 0) =>
+                  Some(w.toInt)
+                case s =>
+                  // TODO: We would like to emit a warning here, but don't have a reporter available.
+                  None
+              }
+            case _ => None
+          }
         }
 
         Quantification(qantOp,
