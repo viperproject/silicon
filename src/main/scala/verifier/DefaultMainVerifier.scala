@@ -306,7 +306,7 @@ class DefaultMainVerifier(config: Config,
     val mce = member.info.getUniqueInfo[ast.AnnotationInfo] match {
       case Some(ai) if ai.values.contains("exhaleMode") =>
         ai.values("exhaleMode") match {
-          case Seq("0") | Seq("greedy") =>
+          case Seq("0") | Seq("greedy") | Seq("2") | Seq("mceOnDemand") =>
             if (Verifier.config.counterexample.isSupplied)
               reporter report AnnotationWarning(s"Member ${member.name} has exhaleMode annotation that may interfere with counterexample generation.")
             false
