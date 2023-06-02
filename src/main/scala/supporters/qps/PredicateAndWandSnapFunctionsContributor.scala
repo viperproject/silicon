@@ -90,6 +90,7 @@ class DefaultPredicateAndWandSnapFunctionsContributor(preambleReader: PreambleRe
         val predicateAccesses = trigExps flatMap (e => e.deepCollect { case pa: PredicateAccess => pa })
         collectedPredicates ++= (predicateAccesses map (_.loc(program)))
     }
+collectedPredicates = InsertionOrderedSet(program.predicates);
 
     collectedWandIdentifiers =
       ast.utility.QuantifiedPermissions.quantifiedMagicWands(program, program)

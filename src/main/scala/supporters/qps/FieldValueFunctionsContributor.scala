@@ -64,6 +64,7 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
         val fieldAccesses = trigExps flatMap (e => e.deepCollect { case fa: FieldAccess => fa })
         collectedFields ++= (fieldAccesses map (_.field))
     }
+    collectedFields = InsertionOrderedSet(program.fields);
 
     // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over fields
 
