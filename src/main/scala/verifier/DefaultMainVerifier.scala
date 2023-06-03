@@ -295,8 +295,10 @@ class DefaultMainVerifier(config: Config,
                                  program: ast.Program,
                                  functionData: Map[ast.Function, FunctionData],
                                  predicateData: Map[ast.Predicate, PredicateData]): State = {
-    val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
-    val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
+//  val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
+//  val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
+val quantifiedFields = InsertionOrderedSet(program.fields.toSet)
+val quantifiedPredicates = InsertionOrderedSet(program.predicates.toSet)
     val quantifiedMagicWands = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedMagicWands(member, program)).map(MagicWandIdentifier(_, program))
     val resourceTriggers: InsertionOrderedSet[Any] = InsertionOrderedSet(ast.utility.QuantifiedPermissions.resourceTriggers(member, program)).map{
       case wand: ast.MagicWand => MagicWandIdentifier(wand, program)
@@ -317,6 +319,16 @@ class DefaultMainVerifier(config: Config,
         }
       case _ => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
     }
+   logger.trace(s"Verifying member ${member.name}")
+    val nonQp = if (Verifier.config.exhaleMode == ExhaleMode.MoreComplete) "mce" else "greedy"
+    val qp = "qp"
+    for (f <- program.fields) {
+      logger.trace(s"Field ${f.name} algorithm ${if (quantifiedFields.contains(f)) qp else nonQp}")
+    }
+    for (p <- program.predicates) {
+      logger.trace(s"Predicate ${p.name} algorithm ${if (quantifiedPredicates.contains(p)) qp else nonQp}")
+    }
+    logger.trace(s"Quantified wands: ${quantifiedMagicWands.size}")
 
     State(program = program,
           functionData = functionData,

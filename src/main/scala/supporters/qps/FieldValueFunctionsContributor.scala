@@ -48,18 +48,19 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
 
   def analyze(program: ast.Program): Unit = {
     /* TODO: Use viper.silver.ast.utility.QuantifiedPermissions.quantifiedFields instead? */
-    program visit {
-      case QuantifiedPermissionAssertion(_, _, acc: ast.FieldAccessPredicate) =>
-        collectedFields += acc.loc.field
-      case Forall(_, triggers, _) =>
-        val trigExps = triggers flatMap (_.exps)
-        val fieldAccesses = trigExps flatMap (e => e.deepCollect {case fa: FieldAccess => fa})
-        collectedFields ++= (fieldAccesses map (_.field))
-      case Exists(_, triggers, _) =>
-        val trigExps = triggers flatMap (_.exps)
-        val fieldAccesses = trigExps flatMap (e => e.deepCollect { case fa: FieldAccess => fa })
-        collectedFields ++= (fieldAccesses map (_.field))
-    }
+//  program visit {
+//    case QuantifiedPermissionAssertion(_, _, acc: ast.FieldAccessPredicate) =>
+//      collectedFields += acc.loc.field
+//    case Forall(_, triggers, _) =>
+//      val trigExps = triggers flatMap (_.exps)
+//      val fieldAccesses = trigExps flatMap (e => e.deepCollect {case fa: FieldAccess => fa})
+//      collectedFields ++= (fieldAccesses map (_.field))
+//    case Exists(_, triggers, _) =>
+//      val trigExps = triggers flatMap (_.exps)
+//      val fieldAccesses = trigExps flatMap (e => e.deepCollect { case fa: FieldAccess => fa })
+//      collectedFields ++= (fieldAccesses map (_.field))
+//  }
+        collectedFields = InsertionOrderedSet(program.fields);
 
     // WARNING: DefaultSetsContributor contributes a sort that is due to QPs over fields
 
