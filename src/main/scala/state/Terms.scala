@@ -2351,6 +2351,40 @@ object IdenticalOnKnownLocations extends CondFlyweightTermFactory[(Term, Term, T
   override def actualCreate(args: (Term, Term, Term)): IdenticalOnKnownLocations = new IdenticalOnKnownLocations(args._1, args._2, args._3)
 }
 
+class GoodMask(val mask: Term) extends Term with ConditionalFlyweight[Term, GoodMask] {
+
+  val equalityDefiningMembers = mask
+
+  val sort = sorts.Bool
+}
+
+object GoodMask extends CondFlyweightTermFactory[Term, GoodMask] {
+  override def apply (v0: Term) = v0 match {
+    case ZeroMask => True
+    case PredZeroMask => True
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: Term): GoodMask = new GoodMask(args)
+}
+
+class GoodFieldMask(val mask: Term) extends Term with ConditionalFlyweight[Term, GoodFieldMask] {
+
+  val equalityDefiningMembers = mask
+
+  val sort = sorts.Bool
+}
+
+object GoodFieldMask extends CondFlyweightTermFactory[Term, GoodFieldMask] {
+  override def apply (v0: Term) = v0 match {
+    case ZeroMask => True
+    case PredZeroMask => True
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: Term): GoodFieldMask = new GoodFieldMask(args)
+}
+
 class FakeMaskMapTerm(val masks: immutable.ListMap[Any, Term], val tlcNonQpTerms: Seq[Option[Term]]) extends Term with ConditionalFlyweight[(immutable.ListMap[Any, Term], Seq[Option[Term]]), FakeMaskMapTerm] {
   val equalityDefiningMembers = (masks, tlcNonQpTerms)
   val sort = sorts.Snap // sure, why not

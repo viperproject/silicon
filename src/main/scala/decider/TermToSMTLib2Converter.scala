@@ -301,6 +301,12 @@ class TermToSMTLib2Converter
     case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
       parens(text("$Hp.identicalOnKnown_") <> renderHeapType(newHeap.sort) <+> render(oldHeap) <+> render(newHeap) <+> render(mask))
 
+    case GoodMask(mask) =>
+      parens(text("$Hp.maskGood") <+> render(mask))
+
+    case GoodMask(mask) =>
+      parens(text("$Hp.maskGoodField") <+> render(mask))
+
     case DummyHeap(sort) =>
       text("$Hp.default_") <> renderHeapType(sort)
 

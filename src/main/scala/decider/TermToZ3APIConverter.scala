@@ -429,6 +429,12 @@ class TermToZ3APIConverter
       case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
         createApp("$Hp.identicalOnKnown_" + renderHeapType(newHeap.sort), Seq(oldHeap, newHeap, mask), sorts.Bool)
 
+      case GoodMask(mask) =>
+        createApp("$Hp.maskGood", Seq(mask), sorts.Bool)
+
+      case GoodFieldMask(mask) =>
+        createApp("$Hp.maskGoodField", Seq(mask), sorts.Bool)
+
       case dh@DummyHeap(sort) =>
         ctx.mkConst("$Hp.default_" + renderHeapType(sort), convertSort(dh.sort))
 

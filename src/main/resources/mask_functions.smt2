@@ -8,5 +8,8 @@
 (declare-fun $Hp.maskDiff ($Hp<$Perm> $Hp<$Perm>) $Hp<$Perm>)
 (declare-fun $Hp.maskEq ($Hp<$Perm> $Hp<$Perm>) Bool)
 (declare-fun $Hp.maskAdd ($Hp<$Perm> $Ref Real) $Hp<$Perm>)
+(declare-fun $Hp.maskGood ($Hp<$Perm>) Bool)
+(declare-fun $Hp.maskGoodField ($Hp<$Perm>) Bool)
+
 
 
