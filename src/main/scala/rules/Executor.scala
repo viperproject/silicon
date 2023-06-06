@@ -178,13 +178,12 @@ object executor extends ExecutionRules {
       case _ =>
         val uidBranchPoint = v.symbExLog.insertBranchPoint(edges.length)
         val res = edges.zipWithIndex.foldLeft(Success(): VerificationResult) {
-          case (fatalResult: FatalResult, _) => fatalResult
-          case (_, (edge, edgeIndex)) => {
+          case (result: VerificationResult, (edge, edgeIndex)) => {
             if (edgeIndex != 0) {
               v.symbExLog.switchToNextBranch(uidBranchPoint)
             }
             v.symbExLog.markReachable(uidBranchPoint)
-            follow(s, edge, v, joinPoint)(Q)
+            result combine follow(s, edge, v, joinPoint)(Q)
           }
         }
         v.symbExLog.endBranchPoint(uidBranchPoint)
