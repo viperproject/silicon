@@ -56,5 +56,5 @@ class SiliconTests extends SilSuite {
   }
 
   val commandLineArguments: Seq[String] =
-    Seq("--timeout", "600" /* seconds */, "--moreJoins", "--enableMoreCompleteExhale", "--parallelizeBranches")
+    Seq("--timeout", "600" /* seconds */)
 }
