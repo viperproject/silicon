@@ -313,7 +313,7 @@ object executor extends ExecutionRules {
             val (relevantChunks, otherChunks) =
               quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, BasicChunkIdentifier(field.name))
             val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
-            val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+            val chunkOrderHeuristics = quantifiedChunkSupporter.singleReceiverChunkOrderHeuristic(Seq(tRcvr), hints, v2)
             val s2p = if (s2.heapDependentTriggers.contains(field)){
               val (smDef1, smCache1) =
                 quantifiedChunkSupporter.summarisingSnapshotMap(

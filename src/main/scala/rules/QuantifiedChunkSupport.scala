@@ -1364,7 +1364,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       // that already exists.
       // During function verification, we should not define macros, since they could contain resullt, which is not
       // defined elsewhere.
-      val declareMacro = s.functionRecorder == NoopFunctionRecorder && !Verifier.config.useFlyweight && ch.singletonArguments.isEmpty
+      val declareMacro = s.functionRecorder == NoopFunctionRecorder && !Verifier.config.useFlyweight
 
       val permsProvided = ch.perm
       val permsTaken = if (declareMacro) {
