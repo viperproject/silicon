@@ -34,7 +34,7 @@ trait Decider {
   def pushScope(): Unit
   def popScope(): Unit
 
-  def checkSmoke(): Boolean
+  def checkSmoke(isAssert: Boolean = false): Boolean
 
   def setCurrentBranchCondition(t: Term, te: Option[ast.Exp] = None): Unit
   def setPathConditionMark(): Mark
@@ -120,7 +120,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private def getProver(prover: String): Prover = prover match {
       case Z3ProverStdIO.name => new Z3ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
       case Cvc5ProverStdIO.name => new Cvc5ProverStdIO(uniqueId, termConverter, identifierFactory, reporter)
-      case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter)
+      case Z3ProverAPI.name => new Z3ProverAPI(uniqueId, new TermToZ3APIConverter(), identifierFactory, reporter, triggerGenerator)
       case prover =>
         val msg1 = s"Unknown prover '$prover' provided. Defaulting to ${Z3ProverStdIO.name}."
         logger warn msg1
@@ -236,7 +236,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Asserting facts */
 
-    def checkSmoke(): Boolean = prover.check(Verifier.config.checkTimeout.toOption) == Unsat
+    def checkSmoke(isAssert: Boolean = false): Boolean = {
+      val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
+      prover.check(timeout) == Unsat
+    }
 
     def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
 
@@ -270,10 +273,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def isKnownToBeTrue(t: Term) = t match {
-      case True() => true
+      case True => true
   //    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
       case _ if pcs.assumptions contains t => true
-      case q: Quantification if q.body == True() => true
+      case q: Quantification if q.body == True => true
       case _ => false
     }
 
@@ -379,7 +382,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def statistics(): Map[String, String] = prover.statistics()
 
-    override def generateModel(): Unit = proverAssert(False(), None)
+    override def generateModel(): Unit = proverAssert(False, None)
 
     override def getModel(): Model = prover.getModel()
 
@@ -387,6 +390,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     override def isModelValid(): Boolean = prover.isModelValid()
 
-    override def clearModel(): Unit = prover.clearLastModel()
+    override def clearModel(): Unit = prover.clearLastAssert()
   }
 }

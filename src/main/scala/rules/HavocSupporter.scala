@@ -116,7 +116,7 @@ object havocSupporter extends SymbolicExecutionRules {
           quantifiedChunkSupporter.injectivityAxiom(
             qvars     = tVars,
             condition = tCond,
-            perms     = FullPerm(),
+            perms     = FullPerm,
             arguments = tArgs,
             triggers  = Nil,
             qidPrefix = qid,

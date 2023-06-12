@@ -9,17 +9,19 @@ package viper.silicon.decider
 import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
-import viper.silicon.state.IdentifierFactory
-import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, MacroDecl, Sort, SortDecl, SortWrapperDecl, Term, sorts}
+import viper.silicon.state.{IdentifierFactory, State}
+import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, Ite, MacroDecl, Quantification, Sort, SortDecl, SortWrapperDecl, Term, Trigger, TriggerGenerator, sorts}
 import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
 import viper.silver.verifier.{MapEntry, ModelEntry, ModelParser, ValueEntry, DefaultDependency => SilDefaultDependency, Model => ViperModel}
+
 import java.io.PrintWriter
 import java.nio.file.Path
-
 import scala.collection.mutable
 import com.microsoft.z3._
+import com.microsoft.z3.enumerations.Z3_param_kind
+import viper.silicon.decider.Z3ProverAPI.oldVersionOnlyParams
 import viper.silicon.reporting.ExternalToolError
 
 import scala.jdk.CollectionConverters.MapHasAsJava
@@ -28,8 +30,8 @@ import scala.util.Random
 
 object Z3ProverAPI {
   val name = "Z3-API"
-  val minVersion = Version("4.8.6.0")
-  val maxVersion = Some(Version("4.8.7.0")) /* X.Y.Z if that is the *last supported* version */
+  val minVersion = Version("4.8.7.0")
+  val maxVersion = Some(Version("4.12.1.0")) /* X.Y.Z if that is the *last supported* version */
 
   // these are not actually used, but since there is a lot of code that expects command line parameters and a
   // config file, we just supply this information here (whose contents will then be ignored)
@@ -46,59 +48,42 @@ object Z3ProverAPI {
   val initialOptions = Map("auto_config" -> "false", "type_check" -> "true")
   val boolParams = Map(
     "smt.delay_units" -> true,
-    "delay_units" -> true,
-    "nnf.sk_hack" -> true,
     "smt.mbqi" -> false,
-    "mbqi" -> false,
-    "nlsat.randomize" -> true,
-    "nlsat.shuffle_vars" -> false,
-    "smt.arith.random_initial_value" -> true,
-    "arith.random_initial_value" -> true,
-    "bv.reflect" -> true,
+    //"pp.bv_literals" -> false,  // This is part of z3config.smt2 but Z3 won't accept it via API.
+    "model.v2" -> true
   )
   val intParams = Map(
-    "smt.restart_strategy" -> 0,
-    "restart_strategy" -> 0,
     "smt.case_split" -> 3,
-    "case_split" -> 3,
-    "smt.delay_units_threshold" -> 16,
-    "delay_units_threshold" -> 16,
     "smt.qi.max_multi_patterns" -> 1000,
-    "qi.max_multi_patterns" -> 1000,
-    "smt.phase_selection" -> 0,
-    "phase_selection" -> 0,
-    "sat.random_seed" -> 0,
-    "nlsat.seed" -> 0,
-    "random_seed" -> 0,
+    "smt.arith.solver" -> 2,
   )
-  val stringParams = Map(
-    //"smt.qi.cost" -> "(+ weight generation)", // cannot set this for some reason, but this is the default value anyway.
-    "sat.phase" -> "caching"
+  val stringParams: Map[String, String] = Map(
+    // currently none
   )
   val doubleParams = Map(
-    "smt.restart_factor" -> 1.5,
-    "restart_factor" -> 1.5,
     "smt.qi.eager_threshold" -> 100.0,
-    "qi.eager_threshold" -> 100.0,
   )
+  val allParams = boolParams ++ intParams ++ stringParams ++ doubleParams
+  val oldVersionOnlyParams = Set("smt.arith.solver")
 }
 
 
 class Z3ProverAPI(uniqueId: String,
                   termConverter: TermToZ3APIConverter,
                   identifierFactory: IdentifierFactory,
-                  reporter: Reporter)
+                  reporter: Reporter,
+                  triggerGenerator: TriggerGenerator)
     extends Prover
       with LazyLogging
 {
 
   /* protected */ var pushPopScopeDepth = 0
   protected var lastTimeout: Int = -1
-  protected var logfileWriter: PrintWriter = _
   protected var prover: Solver = _
   protected var ctx: Context = _
 
   var proverPath: Path = _
+  var lastReasonUnknown : String = _
   var lastModel : Model = _
 
   var emittedPreambleString = mutable.Queue[String]()
@@ -126,22 +111,61 @@ class Z3ProverAPI(uniqueId: String,
   def start(): Unit = {
     pushPopScopeDepth = 0
     lastTimeout = -1
-    logfileWriter = if (Verifier.config.disableTempDirectory()) null else viper.silver.utility.Common.PrintWriter(Verifier.config.proverLogFile(uniqueId).toFile)
     ctx = new Context(Z3ProverAPI.initialOptions.asJava)
     val params = ctx.mkParams()
+
+    // When setting parameters via API, we have to remove the smt. prefix
+    def removeSmtPrefix(s: String) = {
+      if (s.startsWith("smt."))
+        s.substring(4)
+      else
+        s
+    }
+
+    val useOldVersionParams = version() <= Version("4.8.7.0")
     Z3ProverAPI.boolParams.foreach{
-      case (k, v) => params.add(k, v)
+      case (k, v) =>
+        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
+          params.add(removeSmtPrefix(k), v)
     }
     Z3ProverAPI.intParams.foreach{
-      case (k, v) => params.add(k, v)
+      case (k, v) =>
+        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
+          params.add(removeSmtPrefix(k), v)
     }
     Z3ProverAPI.doubleParams.foreach{
-      case (k, v) => params.add(k, v)
+      case (k, v) =>
+        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
+          params.add(removeSmtPrefix(k), v)
     }
     Z3ProverAPI.stringParams.foreach{
-      case (k, v) => params.add(k, v)
+      case (k, v) =>
+        if (useOldVersionParams || !oldVersionOnlyParams.contains(k))
+          params.add(removeSmtPrefix(k), v)
     }
+    val userProvidedArgs = Verifier.config.proverConfigArgs
     prover = ctx.mkSolver()
+    val descrs = prover.getParameterDescriptions
+    for ((origKey, vl) <- userProvidedArgs) {
+      val key = if (origKey.startsWith("smt."))
+        origKey.substring(4)
+      else
+        origKey
+      val keySymbol = ctx.mkSymbol(key)
+      val param_kind = descrs.getKind(keySymbol)
+      param_kind match {
+        case Z3_param_kind.Z3_PK_BOOL =>
+          params.add(key, vl.toBoolean)
+        case Z3_param_kind.Z3_PK_UINT =>
+          params.add(key, vl.toInt)
+        case Z3_param_kind.Z3_PK_DOUBLE =>
+          params.add(key, vl.toDouble)
+        case Z3_param_kind.Z3_PK_STRING =>
+          params.add(key, vl)
+        case _ =>
+          reporter.report(InternalWarningMessage("Z3 error: unknown parameter" + key))
+      }
+    }
     prover.setParameters(params)
     termConverter.start()
     termConverter.ctx = ctx
@@ -227,7 +251,21 @@ class Z3ProverAPI(uniqueId: String,
       else
         preambleAssumes.add(termConverter.convert(term).asInstanceOf[BoolExpr])
     } catch {
-      case e: Z3Exception => reporter.report(InternalWarningMessage("Z3 error: " + e.getMessage))
+      case e: Z3Exception =>
+        // The only reason we get an exception here is that we've tried to assume a quantifier with an invalid trigger.
+        // When used via API, Z3 completely discards assumptions that contain invalid triggers (whereas it just ignores
+        // the invalid trigger when used via stdio). Thus, to make sure our assumption is not discarded, we manually
+        // walk through all quantifiers and remove invalid terms inside the trigger.
+        triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
+        val cleanTerm = term.transform{
+          case q@Quantification(_, _, _, triggers, _, _, _) if triggers.nonEmpty =>
+            val goodTriggers = triggers.filterNot(trig => trig.p.exists(ptrn => ptrn.shallowCollect{
+              case t => triggerGenerator.isForbiddenInTrigger(t)
+            }.nonEmpty))
+            q.copy(triggers = goodTriggers)
+        }()
+        prover.add(termConverter.convert(cleanTerm).asInstanceOf[BoolExpr])
+        reporter.report(InternalWarningMessage("Z3 error: " + e.getMessage))
     }
   }
 
@@ -260,6 +298,7 @@ class Z3ProverAPI(uniqueId: String,
 
     if (!result) {
       retrieveAndSaveModel()
+      retrieveReasonUnknown()
     }
 
     (result, endTime - startTime)
@@ -281,8 +320,19 @@ class Z3ProverAPI(uniqueId: String,
 
   protected def retrieveAndSaveModel(): Unit = {
     if (Verifier.config.counterexample.toOption.isDefined) {
-      val model = prover.getModel
-      lastModel = model
+      try {
+        val model = prover.getModel
+        lastModel = model
+      } catch {
+        case _: Z3Exception =>
+          lastModel = null
+      }
+    }
+  }
+
+  protected def retrieveReasonUnknown(): Unit = {
+    if (Verifier.config.reportReasonUnknown()) {
+      lastReasonUnknown = prover.getReasonUnknown
     }
   }
 
@@ -324,7 +374,13 @@ class Z3ProverAPI(uniqueId: String,
     if (!preamblePhaseOver) {
       preamblePhaseOver = true
 
-      val merged = emittedPreambleString.mkString("\n")
+      // Setting all options again , since otherwise some of them seem to get lost.
+      val standardOptionPrefix = Seq("(set-option :auto_config false)", "(set-option :type_check true)") ++
+        Z3ProverAPI.allParams.map(bp => s"(set-option :${bp._1} ${bp._2})")
+
+      val customOptionPrefix = Verifier.config.proverConfigArgs.map(a => s"(set-option :${a._1} ${a._2})")
+
+      val merged = (standardOptionPrefix ++ customOptionPrefix ++ emittedPreambleString).mkString("\n")
       val parsed = ctx.parseSMTLIB2String(merged, emittedSortSymbols.toArray, emittedSorts.toArray, emittedFuncSymbols.toArray, emittedFuncs.toArray)
       prover.add(parsed: _*)
       prover.add(preambleAssumes.toSeq : _*)
@@ -395,18 +451,16 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  protected def logToFile(str: String): Unit = {
-    if (logfileWriter != null) {
-      logfileWriter.println(str)
-    }
-  }
-
   override def getModel(): ViperModel = {
     val entries = new mutable.HashMap[String, ModelEntry]()
     for (constDecl <- lastModel.getConstDecls){
       val constInterp = lastModel.getConstInterp(constDecl)
       val constName = constDecl.getName.toString
-      val entry = fastparse.parse(constInterp.toString, ModelParser.value(_)).get.value
+      val constInterpString = constInterp match {
+        case rn: RatNum => s"(/ ${rn.getBigIntNumerator} ${rn.getBigIntDenominator})"
+        case _ => constInterp.toString
+      }
+      val entry = fastparse.parse(constInterpString, ModelParser.value(_)).get.value
       entries.update(constName, entry)
     }
     for (funcDecl <- lastModel.getFuncDecls) {
@@ -431,7 +485,12 @@ class Z3ProverAPI(uniqueId: String,
     lastModel != null
   }
 
-  override def clearLastModel(): Unit = lastModel = null
+  override def getReasonUnknown(): String = lastReasonUnknown
+
+  override def clearLastAssert(): Unit = {
+    lastReasonUnknown = null
+    lastModel = null
+  }
 
   protected def setTimeout(timeout: Option[Int]): Unit = {
     val effectiveTimeout = timeout.getOrElse(Verifier.config.proverTimeout)

@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silver.ast
+import viper.silicon.Config.ExhaleMode
 import viper.silicon.interfaces._
 import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.state.State
@@ -128,9 +130,22 @@ object executionFlowController extends ExecutionFlowRules {
 
         val comLog = new CommentRecord("Retry", s0, v.decider.pcs)
         val sepIdentifier = v.symbExLog.openScope(comLog)
-        action(s0.copy(retrying = true, retryLevel = s.retryLevel), v, (s1, r, v1) => {
+        val temporaryMCE = s0.currentMember.map(_.info.getUniqueInfo[ast.AnnotationInfo]) match {
+          case Some(Some(ai)) if ai.values.contains("exhaleMode") =>
+            ai.values("exhaleMode") match {
+              case Seq("0") | Seq("greedy") =>
+                false
+              case Seq("1") | Seq("mce") | Seq("moreCompleteExhale") | Seq("2") | Seq("mceOnDemand") => true
+              case _ =>
+                // Invalid annotation was already reported when creating the initial state.
+                Verifier.config.exhaleMode != ExhaleMode.Greedy
+            }
+          case _ => Verifier.config.exhaleMode != ExhaleMode.Greedy
+        }
+
+        action(s0.copy(retrying = true, retryLevel = s.retryLevel, moreCompleteExhale = temporaryMCE), v, (s1, r, v1) => {
           v1.symbExLog.closeScope(sepIdentifier)
-          Q(s1.copy(retrying = false), r, v1)
+          Q(s1.copy(retrying = false, moreCompleteExhale = s0.moreCompleteExhale), r, v1)
         })
       }
 

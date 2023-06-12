@@ -10,7 +10,7 @@ import viper.silver.ast
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
-import viper.silver.ast.WeightedQuantifier
+import viper.silver.ast.{AnnotationInfo, WeightedQuantifier}
 
 trait ExpressionTranslator {
   /* TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
@@ -40,9 +40,18 @@ trait ExpressionTranslator {
       }
 
     def translateAnySetBinExp(exp: ast.AnySetBinExp,
+                              setTerm: ((Term, Term)) => Term,
+                              multisetTerm: ((Term, Term)) => Term,
+                              anysetTypedExp: ast.Exp = exp): Term = {
+      def setFun(t0: Term, t1: Term): Term = setTerm((t0, t1))
+      def multisetFun(t0: Term, t1: Term): Term = multisetTerm((t0, t1))
+      actualTranslateAnySetBinExp(exp, setFun _, multisetFun _, anysetTypedExp)
+    }
+
+    def actualTranslateAnySetBinExp(exp: ast.AnySetBinExp,
                               setTerm: (Term, Term) => Term,
                               multisetTerm: (Term, Term) => Term,
-                              anysetTypedExp: ast.Exp = exp) =
+                              anysetTypedExp: ast.Exp = exp): Term =
 
       anysetTypedExp.typ match {
         case _: ast.SetType => setTerm(f(exp.left), f(exp.right))
@@ -88,10 +97,25 @@ trait ExpressionTranslator {
             case other => other
           }
         )))
-
-        val weight = sourceQuant.info match {
-          case w: WeightedQuantifier => Some(w.weight)
-          case _ => None
+        val weight = sourceQuant.info.getUniqueInfo[WeightedQuantifier] match {
+          case Some(w) =>
+            if (w.weight >= 0) {
+              Some(w.weight)
+            } else {
+              // TODO: We would like to emit a warning here, but don't have a reporter available.
+              None
+            }
+          case None => sourceQuant.info.getUniqueInfo[AnnotationInfo] match {
+            case Some(ai) if ai.values.contains("weight") =>
+              ai.values("weight") match {
+                case Seq(w) if w.toIntOption.exists(w => w >= 0) =>
+                  Some(w.toInt)
+                case s =>
+                  // TODO: We would like to emit a warning here, but don't have a reporter available.
+                  None
+              }
+            case _ => None
+          }
         }
 
         Quantification(qantOp,
@@ -102,8 +126,8 @@ trait ExpressionTranslator {
                        false,
                        weight)
 
-      case _: ast.TrueLit => True()
-      case _: ast.FalseLit => False()
+      case _: ast.TrueLit => True
+      case _: ast.FalseLit => False
       case ast.Not(e0) => Not(f(e0))
       case ast.And(e0, e1) => And(f(e0), f(e1))
       case ast.Or(e0, e1) => Or(f(e0), f(e1))
@@ -126,7 +150,7 @@ trait ExpressionTranslator {
       case ast.LeCmp(e0, e1) => AtMost(f(e0), f(e1))
       case ast.LtCmp(e0, e1) => Less(f(e0), f(e1))
 
-      case _: ast.NullLit => Null()
+      case _: ast.NullLit => Null
 
       case v: ast.AbstractLocalVar => Var(Identifier(v.name), toSort(v.typ))
 
@@ -148,11 +172,11 @@ trait ExpressionTranslator {
 
       /* Permissions */
 
-      case _: ast.FullPerm => FullPerm()
-      case _: ast.NoPerm => NoPerm()
+      case _: ast.FullPerm => FullPerm
+      case _: ast.NoPerm => NoPerm
       case ast.FractionalPerm(e0, e1) => FractionPerm(f(e0), f(e1))
 
-      case ast.PermMinus(e0) => PermMinus(NoPerm(), f(e0))
+      case ast.PermMinus(e0) => PermMinus(NoPerm, f(e0))
       case ast.PermAdd(e0, e1) => PermPlus(f(e0), f(e1))
       case ast.PermSub(e0, e1) => PermMinus(f(e0), f(e1))
       case ast.PermMul(e0, e1) => PermTimes(f(e0), f(e1))
@@ -197,7 +221,7 @@ trait ExpressionTranslator {
       case as: ast.AnySetIntersection => translateAnySetBinExp(as, SetIntersection, MultisetIntersection)
       case as: ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset, as.left)
       case as: ast.AnySetMinus => translateAnySetBinExp(as, SetDifference, MultisetDifference)
-      case as: ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
+      case as: ast.AnySetContains => translateAnySetBinExp(as, SetIn, { case (t0, t1) => MultisetCount(t1, t0) }, as.right)
       case as: ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality, as.exp)
 
       /* Maps */
