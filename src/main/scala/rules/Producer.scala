@@ -257,7 +257,12 @@ object producer extends ProductionRules {
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) =>
             permissionSupporter.assertNotNegative(s2, tPerm, perm, pve, v2)((s3, v3) => {
-              val snap = sf(v3.symbolConverter.toSort(field.typ), v3)
+              val fieldSort = v3.symbolConverter.toSort(field.typ)
+              val snap = sf(fieldSort, v3)
+              snap match {
+                case SortWrapper(t, s) if t.sort == sorts.Snap => v3.decider.assume(IsSortToSnap(t, s))
+                case _ =>
+              }
               val gain = PermTimes(tPerm, s3.permissionScalingFactor)
               if (s3.qpFields.contains(field)) {
                 val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)

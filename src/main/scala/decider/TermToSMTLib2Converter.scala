@@ -305,6 +305,9 @@ class TermToSMTLib2Converter
     case SortWrapper(t, to) =>
       parens(text(render(SortWrapperId(t.sort, to))) <+> render(t))
 
+    case IsSortToSnap(t, from) =>
+      parens(text(s"is-$$SortWrappers.${convert(from)}To$$Snap") <+> render(t))
+
     case Distinct(symbols) =>
       parens(text("distinct") <+> ssep((symbols.toSeq map (s => render(s.id): Cont)).to(collection.immutable.Seq), space))
 

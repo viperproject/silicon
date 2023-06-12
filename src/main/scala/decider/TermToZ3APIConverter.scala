@@ -437,6 +437,9 @@ class TermToZ3APIConverter
       case SortWrapper(t, to) =>
         createApp(convertId(SortWrapperId(t.sort, to)), Seq(t), to)
 
+      case IsSortToSnap(t, from) =>
+        createApp(s"is-$$SortWrappers.${convert(from)}To$$Snap", Seq(t), sorts.Bool)
+
       case Distinct(symbols) =>
         ctx.mkDistinct(symbols.map(s => ctx.mkConst(convertId(s.id), convertSort(s.resultSort))).toSeq: _*)
 

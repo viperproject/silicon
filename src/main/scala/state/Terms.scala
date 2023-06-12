@@ -2422,6 +2422,26 @@ object SortWrapper extends CondFlyweightTermFactory[(Term, Sort), SortWrapper] {
   override def actualCreate(args: (Term, Sort)): SortWrapper = new SortWrapper(args._1, args._2)
 }
 
+class IsSortToSnap(val t: Term, val from: Sort)
+  extends Term
+    with ConditionalFlyweight[(Term, Sort), IsSortToSnap] {
+
+  val equalityDefiningMembers = (t, from)
+  //  override lazy val toString = s"SortWrapper($t, $to)"
+  override lazy val toString = s"is${from}toSnap(${t}"
+  override val sort = sorts.Bool
+}
+
+object IsSortToSnap extends CondFlyweightTermFactory[(Term, Sort), IsSortToSnap] {
+  override def apply(v0: (Term, Sort)) = v0 match {
+    case (t, sorts.Snap) => True
+    case (sw: SortWrapper, from) if sw.t.sort == from => True
+    case _ => createIfNonExistent(v0)
+  }
+
+  override def actualCreate(args: (Term, Sort)): IsSortToSnap = new IsSortToSnap(args._1, args._2)
+}
+
 /* Other terms */
 
 class Distinct(val ts: Set[DomainFun]) extends BooleanTerm with ConditionalFlyweight[Set[DomainFun], Distinct] {
