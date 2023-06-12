@@ -1130,7 +1130,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                 val (relevantChunks, otherChunks) =
                   quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](
                     heap, ChunkIdentifier(resource, s.program))
-                val (result, s3, remainingChunks) =
+                val (result, s3, remainingChunks, _) =
                   quantifiedChunkSupporter.removePermissions(
                     s2,
                     relevantChunks,
@@ -1188,22 +1188,33 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                   v
                 )
               permissionRemovalResult match {
-                case (Complete(), s2, remainingChunks) =>
+                case (Complete(), s2, remainingChunks, potentiallyUsedChunks) =>
                   val h3 = Heap(remainingChunks ++ otherChunks)
                   val optSmDomainDefinitionCondition2 =
                     if (s2.smDomainNeeded) Some(And(condOfInvOfLoc, IsPositive(lossOfInvOfLoc), And(And(imagesOfFormalQVars))))
                     else None
-                  val (smDef2, smCache2) =
-                    quantifiedChunkSupporter.summarisingSnapshotMap(
-                      s2, resource, formalQVars, relevantChunks, v, optSmDomainDefinitionCondition2)
-                  val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
-                                               .recordFieldInv(inverseFunctions)
+                  val (sm, fr3, smCache2) = if (potentiallyUsedChunks.size == 1 && !s2.isLastRetry) {
+                    val sm = resource match {
+                      case _: ast.Field => potentiallyUsedChunks.head.asInstanceOf[QuantifiedFieldChunk].fvf
+                      case _: ast.Predicate => potentiallyUsedChunks.head.asInstanceOf[QuantifiedPredicateChunk].psf
+                      case _: ast.MagicWand => potentiallyUsedChunks.head.asInstanceOf[QuantifiedMagicWandChunk].wsf
+                    }
+                    (sm, s2.functionRecorder.recordFieldInv(inverseFunctions), s2.smCache)
+                  } else {
+                    val (smDef2, smCache2) =
+                      quantifiedChunkSupporter.summarisingSnapshotMap(
+                        s2, resource, formalQVars, if (s2.isLastRetry) relevantChunks else potentiallyUsedChunks, v, optSmDomainDefinitionCondition2)
+                    val fr3 = s2.functionRecorder.recordFvfAndDomain(smDef2)
+                      .recordFieldInv(inverseFunctions)
+                    (smDef2.sm, fr3, smCache2)
+                  }
+
                   val s3 = s2.copy(functionRecorder = fr3,
                                    partiallyConsumedHeap = Some(h3),
                                    constrainableARPs = s.constrainableARPs,
                                    smCache = smCache2)
-                  Q(s3, h3, smDef2.sm.convert(sorts.Snap), v)
-                case (Incomplete(_), s2, _) =>
+                  Q(s3, h3, sm.convert(sorts.Snap), v)
+                case (Incomplete(_), s2, _, _) =>
                   createFailure(pve dueTo insufficientPermissionReason, v, s2)}
             }
           case false =>
@@ -1244,7 +1255,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       magicWandSupporter.transfer(s, permissions, failure, v)((s1, h1, rPerm, v1) => {
         val (relevantChunks, otherChunks) =
           quantifiedChunkSupporter.splitHeap[QuantifiedBasicChunk](h1, chunkIdentifier)
-        val (result, s2, remainingChunks) = quantifiedChunkSupporter.removePermissions(
+        val (result, s2, remainingChunks, _) = quantifiedChunkSupporter.removePermissions(
           s1,
           relevantChunks,
           codomainQVars,
@@ -1298,22 +1309,33 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v
       )
       result match {
-        case (Complete(), s1, remainingChunks) =>
+        case (Complete(), s1, remainingChunks, potentiallyUsedChunks) =>
           val h1 = Heap(remainingChunks ++ otherChunks)
-          val (smDef1, smCache1) =
-            quantifiedChunkSupporter.summarisingSnapshotMap(
-              s = s1,
-              resource = resource,
-              codomainQVars = codomainQVars,
-              relevantChunks = relevantChunks,
-              optSmDomainDefinitionCondition = if (s1.smDomainNeeded) Some(True) else None,
-              optQVarsInstantiations = Some(arguments),
-              v = v)
-          val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef1),
+          val (sm, smCache1, fr1) = if (potentiallyUsedChunks.size == 1 && !s1.isLastRetry) {
+            val sm = resource match {
+              case _: ast.Field => potentiallyUsedChunks.head.asInstanceOf[QuantifiedFieldChunk].fvf
+              case _: ast.Predicate => potentiallyUsedChunks.head.asInstanceOf[QuantifiedPredicateChunk].psf
+              case _: ast.MagicWand => potentiallyUsedChunks.head.asInstanceOf[QuantifiedMagicWandChunk].wsf
+            }
+            (sm, s1.smCache, s1.functionRecorder)
+          } else {
+            val (smDef1, smCache1) =
+              quantifiedChunkSupporter.summarisingSnapshotMap(
+                s = s1,
+                resource = resource,
+                codomainQVars = codomainQVars,
+                relevantChunks = if (s1.isLastRetry) relevantChunks else potentiallyUsedChunks,
+                optSmDomainDefinitionCondition = if (s1.smDomainNeeded) Some(True) else None,
+                optQVarsInstantiations = Some(arguments),
+                v = v)
+            (smDef1.sm, smCache1, s1.functionRecorder.recordFvfAndDomain(smDef1))
+          }
+
+          val s2 = s1.copy(functionRecorder = fr1,
                            smCache = smCache1)
-          val snap = ResourceLookup(resource, smDef1.sm, arguments, s2.program).convert(sorts.Snap)
+          val snap = ResourceLookup(resource, sm, arguments, s2.program).convert(sorts.Snap)
           Q(s2, h1, snap, v)
-        case (Incomplete(_), _, _) =>
+        case (Incomplete(_), _, _, _) =>
           resourceAccess match {
             case locAcc: ast.LocationAccess => createFailure(pve dueTo InsufficientPermission(locAcc), v, s)
             case wand: ast.MagicWand => createFailure(pve dueTo MagicWandChunkNotFound(wand), v, s)
@@ -1333,7 +1355,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
                         perms: Term, // p(rs)
                         chunkOrderHeuristic: Seq[QuantifiedBasicChunk] => Seq[QuantifiedBasicChunk],
                         v: Verifier)
-                       : (ConsumptionResult, State, Seq[QuantifiedBasicChunk]) = {
+                       : (ConsumptionResult, State, Seq[QuantifiedBasicChunk], Seq[QuantifiedBasicChunk]) = {
 
     val rmPermRecord = new CommentRecord("removePermissions", s, v.decider.pcs)
     val sepIdentifier = v.symbExLog.openScope(rmPermRecord)
@@ -1393,10 +1415,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
 
     var tookEnoughCheck = Forall(codomainQVars, Implies(condition, permsNeeded === NoPerm), Nil)
 
+    var potentiallyUsedChunks = Vector.empty[QuantifiedBasicChunk]
+
     precomputedData foreach { case (ithChunk, ithPTaken, ithPNeeded) =>
-      if (success.isComplete)
+      if (success.isComplete) {
         remainingChunks = remainingChunks :+ ithChunk
-      else {
+      } else {
         val (permissionConstraint, depletedCheck) =
           createPermissionConstraintAndDepletedCheck(
             codomainQVars, condition, perms,constrainPermissions, ithChunk, ithPTaken, v)
@@ -1425,6 +1449,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         tookEnoughCheck =
           Forall(codomainQVars, Implies(condition, ithPNeeded === NoPerm), Nil)
 
+        potentiallyUsedChunks = potentiallyUsedChunks :+ ithChunk
+
         v.decider.prover.comment(s"Intermediate check if already taken enough permissions")
         success = if (v.decider.check(tookEnoughCheck, Verifier.config.splitTimeout())) {
           Complete()
@@ -1444,7 +1470,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
     v.decider.prover.comment("Done removing quantified permissions")
     v.symbExLog.closeScope(sepIdentifier)
     
-    (success, s.copy(functionRecorder = currentFunctionRecorder), remainingChunks)
+    (success, s.copy(functionRecorder = currentFunctionRecorder), remainingChunks, potentiallyUsedChunks)
   }
 
   private def createPermissionConstraintAndDepletedCheck(codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
