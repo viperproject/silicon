@@ -1365,9 +1365,12 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
       // ME: When using Z3 via API, it is beneficial to not use macros, since macro-terms will *always* be different
       // (leading to new terms that have to be translated), whereas without macros, we can usually use a term
       // that already exists.
+      // ME: Update: Actually, it seems better to use macros even with the API since Silicon terms can grow so large
+      // that e.g. the instantiate call in createPermissionConstraintAndDepletedCheck takes forever, before even
+      // converting to a Z3 term.
       // During function verification, we should not define macros, since they could contain resullt, which is not
       // defined elsewhere.
-      val declareMacro = s.functionRecorder == NoopFunctionRecorder && !Verifier.config.useFlyweight
+      val declareMacro = s.functionRecorder == NoopFunctionRecorder // && !Verifier.config.useFlyweight
 
       val permsProvided = ch.perm
       val permsTaken = if (declareMacro) {
