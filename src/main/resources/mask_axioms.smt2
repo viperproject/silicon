@@ -39,9 +39,19 @@
 
 (assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>)) (!
      (forall ((r $Ref)) (!
-        (=
-          (+ ($Hp.get_$Perm m1 r) ($Hp.get_$Perm m2 r))
-          ($Hp.get_$Perm ($Hp.maskSum m1 m2) r)
+        (ite
+          (= ($Hp.get_$Perm m2 r) 0.0)
+          (=
+            ($Hp.get_$Perm ($Hp.maskSum m1 m2) r)
+            ($Hp.get_$Perm m1 r)
+          )
+          (and
+            (= ($Hp.get_$Perm m1 r) 0.0)
+            (=
+                ($Hp.get_$Perm ($Hp.maskSum m1 m2) r)
+                ($Hp.get_$Perm m2 r)
+            )
+          )
           )
       :pattern (($Hp.get_$Perm ($Hp.maskSum m1 m2) r))
       :qid |qp.$Hp.maskSum-def-inner|
@@ -52,10 +62,11 @@
 
 (assert (forall ((m1 $Hp<$Perm>) (m2 $Hp<$Perm>)) (!
     (forall ((r $Ref)) (!
-        (=
-          (- ($Hp.get_$Perm m1 r) ($Hp.get_$Perm m2 r))
-          ($Hp.get_$Perm ($Hp.maskDiff m1 m2) r)
-          )
+        (ite
+          (= ($Hp.get_$Perm m2 r) 0.0)
+          (= ($Hp.get_$Perm ($Hp.maskDiff m1 m2) r) ($Hp.get_$Perm m1 r))
+          (= ($Hp.get_$Perm ($Hp.maskDiff m1 m2) r) ($Hp.get_$Perm m2 r))
+        )
       :pattern (($Hp.get_$Perm ($Hp.maskDiff m1 m2) r))
       :qid |qp.$Hp.maskDiff-def-inner|
       ))
@@ -65,9 +76,22 @@
 
 (assert (forall ((m $Hp<$Perm>) (r1 $Ref) (v Real)) (!
   (forall ((r2 $Ref)) (!
-        (=
-          ($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2)
-          (+ ($Hp.get_$Perm m r2) (ite (= r1 r2) v 0.0)))
+        (ite
+          (>= v 0.0)
+          (ite
+            (= r1 r2)
+            (and
+              (= ($Hp.get_$Perm m r2) 0.0)
+              (= ($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2) v)
+            )
+            (= ($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2) ($Hp.get_$Perm m r2))
+          )
+          (ite
+            (= r1 r2)
+            (= ($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2) 0.0)
+            (= ($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2) ($Hp.get_$Perm m r2))
+          )
+        )
       :pattern (($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2))
       :qid |qp.$Hp.maskAdd-def-inner|
       ))
