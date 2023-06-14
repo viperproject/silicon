@@ -178,9 +178,40 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
     val individualAssumes = And(receivers.map(r => PermAtMost(HeapLookup(mask, r), FullPerm)))
     val qvar = v.decider.fresh(sorts.Ref)
-    val triggers = (masks ++ Seq(mask)).map(m => Trigger(HeapLookup(m, qvar))).toSeq
-    val maskAssume = Forall(qvar, PermAtMost(HeapLookup(mask, qvar), FullPerm), triggers)
-    And(individualAssumes, maskAssume)
+     if (simplifyOnConsume) {
+      val triggers = (masks ++ Seq(mask)).map(m => Trigger(HeapLookup(m, qvar))).toSeq
+      val maskAssume = Forall(qvar, PermAtMost(HeapLookup(mask, qvar), FullPerm), triggers)
+      And(individualAssumes, maskAssume)
+    } else {
+      Forall(qvar, PermAtMost(HeapLookup(mask, qvar), FullPerm), Seq(Trigger(HeapLookup(mask, qvar))))
+    }
+  }
+
+
+  def upperBoundAssertionPredicate(mask: Term, v: Verifier): Term = {
+    val receivers = mutable.LinkedHashSet[Term]()
+    val masks = mutable.LinkedHashSet[Term]()
+
+    def traverse(mask: Term): Unit = mask match {
+      case MaskAdd(m, r, v) => receivers.add(r); traverse(m)
+      case MaskSum(m1, m2) => traverse(m1); traverse(m2)
+      case MaskDiff(m1, m2) => masks.add(m2); traverse(m1)
+      case ZeroMask =>
+      case PredZeroMask =>
+      case t => masks.add(t)
+    }
+
+    traverse(mask)
+
+    val individualAssumes = And(receivers.map(r => PermAtMost(HeapLookup(mask, r), FullPerm)))
+    val qvar = v.decider.fresh(sorts.Snap)
+     if (simplifyOnConsume) {
+      val triggers = (masks ++ Seq(mask)).map(m => Trigger(HeapLookup(m, qvar))).toSeq
+      val maskAssume = Forall(qvar, PermAtMost(HeapLookup(mask, qvar), FullPerm), triggers)
+      And(individualAssumes, maskAssume)
+    } else {
+      Forall(qvar, PermAtMost(HeapLookup(mask, qvar), FullPerm), Seq(Trigger(HeapLookup(mask, qvar))))
+    }
   }
 
   def removeSingleAdd(origMask: Term, at: Term, amount: Term, v: Verifier): Term = {
@@ -758,7 +789,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
     val permConstraint = if (resource.isInstanceOf[ast.Field])
       And(Implies(perms.IsPositive(tPerm), argTerm !== Null), PermAtMost(HeapLookup(ch.mask, argTerm), FullPerm))
-    else True
+    else PermAtMost(HeapLookup(ch.mask, argTerm), FullPerm)
     v.decider.assume(permConstraint)
 
     val s1 = s.copy(h = h1)
@@ -858,7 +889,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
     val permBoundConstraint = resource match {
       case _: ast.Field => And(upperBoundAssertion(newMask, v),
         Forall(formalQVars, Implies(And(And(And(imagesOfCodomain), tCond.replace(qvarsToInversesOfCodomain)), PermLess(NoPerm, gain.replace(qvarsToInversesOfCodomain))), formalQVars(0) !== Null), Seq(), "qp_recvr_non_null"))
-      case _ => True
+      case _ => upperBoundAssertionPredicate(newMask, v)
     }
 
     val (effectiveTriggers, effectiveTriggersQVars) =
