@@ -15,7 +15,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.sorts.{HeapSort, PredHeapSort, PredMaskSort}
 import viper.silver.ast
 
-class TermToSMTLib2Converter 
+class TermToSMTLib2Converter
     extends FastPrettyPrinterBase
        with TermConverter[String, String, String]
        with StatefulComponent {
@@ -304,7 +304,7 @@ class TermToSMTLib2Converter
     case GoodMask(mask) =>
       parens(text("$Hp.maskGood") <+> render(mask))
 
-    case GoodMask(mask) =>
+    case GoodFieldMask(mask) =>
       parens(text("$Hp.maskGoodField") <+> render(mask))
 
     case DummyHeap(sort) =>

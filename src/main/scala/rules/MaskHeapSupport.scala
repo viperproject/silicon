@@ -476,7 +476,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
             case _ => newMask
           }
           if (assumeGoodMask)
-            v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
+            v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodFieldMask(newMask))
 
           val newChunk = if (s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
             // no need to havoc
@@ -736,7 +736,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
                 // simplify only if this mask will be used later
                 val newMask = if (s.isConsumingFunctionPre.isDefined) MaskDiff(currentChunk.mask, qpMask) else subtractMask(currentChunk.mask, qpMask, resource, s.program, v)
                 if (assumeGoodMask)
-                  v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
+                  v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodFieldMask(newMask))
 
                 val newChunk = if (s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
                   // no need to havoc
@@ -780,7 +780,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
     }
     val newMask = MaskAdd(resChunk.mask, argTerm, tPerm) // HeapUpdate(resChunk.mask, argTerm, PermPlus(HeapLookup(resChunk.mask, argTerm), tPerm))
     if (assumeGoodMask)
-      v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
+      v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodFieldMask(newMask))
     val snapHeapMap = snap.asInstanceOf[FakeMaskMapTerm].masks
 
     val newHeap = MergeSingle(resChunk.heap, resChunk.mask, argTerm, HeapLookup(snapHeapMap(resource), argTerm))
@@ -880,7 +880,7 @@ object maskHeapSupporter extends SymbolicExecutionRules {
     }
     val newMask = MaskSum(currentChunk.mask, qpMask)
     if (assumeGoodMask)
-      v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
+      v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodFieldMask(newMask))
 
     val newHeap = MergeHeaps(currentChunk.heap, currentChunk.mask, snapHeapMap(resource), qpMask)
     val newChunk = currentChunk.copy(mask = newMask, heap = newHeap)
