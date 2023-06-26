@@ -26,6 +26,7 @@ import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.{freshSnap, toSf}
 
 import scala.annotation.unused
+import viper.silver.reporter.{BenchmarkingAccumulator, ProverActionIDs}
 
 trait FunctionVerificationUnit[SO, SY, AX]
     extends VerifyingPreambleContributor[SO, SY, AX, ast.Function]
@@ -162,16 +163,22 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data), conservingSnapshotGeneration = true)
 
       /* Phase 1: Check well-definedness of the specifications */
-      checkSpecificationWelldefinedness(s, function) match {
+      val funcID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("func_well_def", funcID)
+      val wellDef = checkSpecificationWelldefinedness(s, function)
+      reporter report BenchmarkingAccumulator("func_well_def", funcID)
+      wellDef match {
         case (result1: FatalResult, _) =>
           data.verificationFailures = data.verificationFailures :+ result1
 
           result1
 
         case (result1, phase1data) =>
+          reporter report BenchmarkingAccumulator("func_emit_axioms", funcID)
           emitAndRecordFunctionAxioms(data.limitedAxiom)
           emitAndRecordFunctionAxioms(data.triggerAxiom)
           emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
+          reporter report BenchmarkingAccumulator("func_emit_axioms", funcID)
           this.postConditionAxioms = this.postConditionAxioms ++ data.postAxiom.toSeq
 
           if (function.body.isEmpty) {
@@ -179,7 +186,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
             result1
           } else {
             /* Phase 2: Verify the function's postcondition */
+            reporter report BenchmarkingAccumulator("func_phase2", funcID)
             val result2 = verify(function, phase1data)
+            reporter report BenchmarkingAccumulator("func_phase2", funcID)
 
             result2 match {
               case fatalResult: FatalResult =>

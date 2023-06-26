@@ -18,6 +18,7 @@ import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.utils.freshSnap
+import viper.silver.reporter.{ProverActionIDs, BenchmarkingAccumulator}
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -49,7 +50,10 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val pres = method.pres
       val posts = method.posts
 
+      val methodID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("method_to_cfg", methodID)
       val body = method.bodyOrAssumeFalse.toCfg()
+      reporter report BenchmarkingAccumulator("method_to_cfg", methodID)
         /* TODO: Might be worth special-casing on methods with empty bodies */
 
       val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)

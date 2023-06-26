@@ -34,6 +34,8 @@ import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, VerificationTerminationMessage, QuantifierChosenTriggersMessage, WarningsDuringTypechecking}
 import viper.silver.verifier.TypecheckerWarning
+import viper.silver.reporter.{BenchmarkingPhase, BenchmarkingAccumulator, BenchmarkingReport}
+import viper.silver.reporter.ProverActionIDs
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -161,6 +163,7 @@ class DefaultMainVerifier(config: Config,
       * (top-down should also work, but the default of 'innermost' won't).
       * See also [[viper.silicon.utils.ast.autoTrigger]].
       */
+    reporter report BenchmarkingPhase("Parsing, Semantic, Translation, Consistency")
     var program: ast.Program =
       originalProgram.transform({
         case forall: ast.Forall if forall.isPure =>
@@ -182,6 +185,8 @@ class DefaultMainVerifier(config: Config,
     if (config.conditionalizePermissions()) {
       program = new ConditionalPermissionRewriter().rewrite(program).asInstanceOf[ast.Program]
     }
+
+    reporter report(BenchmarkingPhase("Transforms"))
 
     if (config.printTranslatedProgram()) {
       println(program)
@@ -206,13 +211,17 @@ class DefaultMainVerifier(config: Config,
     allProvers.comment("-" * 60)
 
     allProvers.saturate(config.proverSaturationTimeouts.afterPrelude)
-
+    reporter report(BenchmarkingPhase("Emit preamble"))
     /* TODO: A workaround for Silver issue #94. toList must be before flatMap.
      *       Otherwise Set will be used internally and some error messages will be lost.
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
-      val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
+      val functionID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("func_initial_state", functionID)
+      val s = createInitialState(function, program, functionData, predicateData)
+      reporter report BenchmarkingAccumulator("func_initial_state", functionID)
+      val results = functionsSupporter.verify(s, function)
         .flatMap(extractAllVerificationResults)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
@@ -220,15 +229,23 @@ class DefaultMainVerifier(config: Config,
       setErrorScope(results, function)
     })
 
+    reporter report BenchmarkingPhase("Function verification")
+
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
-      val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
+      val predicateID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("pred_initial_state", predicateID)
+      val s = createInitialState(predicate, program, functionData, predicateData)
+      reporter report BenchmarkingAccumulator("pred_initial_state", predicateID)
+      val results = predicateSupporter.verify(s, predicate)
         .flatMap(extractAllVerificationResults)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
       setErrorScope(results, predicate)
     })
+
+    reporter report BenchmarkingPhase("Predicate verification")
 
     decider.prover.stop()
 
@@ -243,11 +260,18 @@ class DefaultMainVerifier(config: Config,
     _verificationPoolManager.pooledVerifiers.comment("End function- and predicate-related preamble")
     _verificationPoolManager.pooledVerifiers.comment("-" * 60)
 
+    reporter report BenchmarkingPhase("Emit preamble on the rest prover instances")
+
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
 
+        val methodID = ProverActionIDs.getID
+        reporter report BenchmarkingAccumulator("meth_initial_state", methodID)
         val s = createInitialState(method, program, functionData, predicateData).copy(parallelizeBranches =
           Verifier.config.parallelizeBranches()) /* [BRANCH-PARALLELISATION] */
+        reporter report BenchmarkingAccumulator("meth_initial_state", methodID)
+
+        
 
         _verificationPoolManager.queueVerificationTask(v => {
           val startTime = System.currentTimeMillis()
@@ -278,6 +302,8 @@ class DefaultMainVerifier(config: Config,
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
 
+    reporter report BenchmarkingPhase("Method verification")
+
     if (config.ideModeAdvanced()) {
       reporter report ExecutionTraceReport(
         rootSymbExLogger.logs.toIndexedSeq,
@@ -285,6 +311,14 @@ class DefaultMainVerifier(config: Config,
         this.postConditionAxioms().toList)
     }
     reporter report VerificationTerminationMessage()
+    reporter report BenchmarkingReport("function intitial state creation", "func_initial_state")
+    reporter report BenchmarkingReport("function well definedness", "func_well_def")
+    reporter report BenchmarkingReport("function axiom emission", "func_emit_axioms")
+    reporter report BenchmarkingReport("function verification", "func_phase2")
+    reporter report BenchmarkingReport("predicate intitial state creation", "pred_initial_state")
+    reporter report BenchmarkingReport("method intitial state creation", "meth_initial_state")
+    reporter report BenchmarkingReport("method cfg creation", "method_to_cfg")
+    reporter report BenchmarkingReport("prover", "prover")
 
     (   functionVerificationResults
      ++ predicateVerificationResults

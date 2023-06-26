@@ -22,6 +22,7 @@ import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silver.reporter.{ConfigurationConfirmation, InternalWarningMessage}
 
 import scala.collection.immutable.HashSet
+import viper.silver.reporter.{BenchmarkingAccumulator, ProverActionIDs}
 
 /*
  * Interfaces
@@ -107,13 +108,19 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       /* [BRANCH-PARALLELISATION] */
       pathConditions = other
       while (prover.pushPopScopeDepth > 1){
+        val scopeID = ProverActionIDs.getID
+        reporter report BenchmarkingAccumulator("prover", scopeID)
         prover.pop()
+        reporter report BenchmarkingAccumulator("prover", scopeID)
       }
       // TODO: Change interface to make the cast unnecessary?
       val layeredStack = other.asInstanceOf[LayeredPathConditionStack]
       layeredStack.layers.reverse.foreach(l => {
+        val scopeID = ProverActionIDs.getID
+        reporter report BenchmarkingAccumulator("prover", scopeID)
         l.assumptions foreach prover.assume
         prover.push(timeout = Verifier.config.pushTimeout.toOption)
+        reporter report BenchmarkingAccumulator("prover", scopeID)
       })
     }
 
@@ -183,16 +190,22 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def pushScope(): Unit = {
       //val commentRecord = new CommentRecord("push", null, null)
       //val sepIdentifier = symbExLog.openScope(commentRecord)
+      val scopeID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("prover", scopeID)
       pathConditions.pushScope()
       _prover.push(timeout = Verifier.config.pushTimeout.toOption)
+      reporter report BenchmarkingAccumulator("prover", scopeID)
       //symbExLog.closeScope(sepIdentifier)
     }
 
     def popScope(): Unit = {
       //val commentRecord = new CommentRecord("pop", null, null)
       //val sepIdentifier = symbExLog.openScope(commentRecord)
+      val scopeID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("prover", scopeID)
       _prover.pop()
       pathConditions.popScope()
+      reporter report BenchmarkingAccumulator("prover", scopeID)
       //symbExLog.closeScope(sepIdentifier)
     }
 
@@ -228,7 +241,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       terms foreach pathConditions.add
 
       /* Add terms to the prover's assumptions */
+      val assumeID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("prover", assumeID)
       terms foreach prover.assume
+      reporter report BenchmarkingAccumulator("prover", assumeID)
 
       symbExLog.closeScope(sepIdentifier)
       None
@@ -238,7 +254,11 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def checkSmoke(isAssert: Boolean = false): Boolean = {
       val timeout = if (isAssert) Verifier.config.assertTimeout.toOption else Verifier.config.checkTimeout.toOption
-      prover.check(timeout) == Unsat
+      val assertID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("prover", assertID)
+      val res = prover.check(timeout) == Unsat
+      reporter report BenchmarkingAccumulator("prover", assertID)
+      res
     }
 
     def check(t: Term, timeout: Int): Boolean = deciderAssert(t, Some(timeout))
@@ -284,7 +304,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val assertRecord = new ProverAssertRecord(t, timeout)
       val sepIdentifier = symbExLog.openScope(assertRecord)
 
+      val assertID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("prover", assertID)
       val result = prover.assert(t, timeout)
+      reporter report BenchmarkingAccumulator("prover", assertID)
 
       symbExLog.whenEnabled {
         assertRecord.statistics = Some(symbExLog.deltaStatistics(prover.statistics()))
@@ -318,7 +341,10 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       val name = identifierFactory.fresh(id)
       val macroDecl = MacroDecl(name, formalArgs, body)
 
+      val macroID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("prover", macroID)
       prover.declare(macroDecl)
+      reporter report BenchmarkingAccumulator("prover", macroID)
 
       _freshMacros = _freshMacros :+ macroDecl /* [BRANCH-PARALLELISATION] */
 
@@ -367,13 +393,19 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def freshMacros: Vector[MacroDecl] = _freshMacros
 
     def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl]): Unit = {
+      val declareID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("prover", declareID)
       functions foreach prover.declare
+      reporter report BenchmarkingAccumulator("prover", declareID)
 
       _freshFunctions = _freshFunctions ++ functions
     }
 
     def declareAndRecordAsFreshMacros(macros: Vector[MacroDecl]): Unit = {
+      val declareID = ProverActionIDs.getID
+      reporter report BenchmarkingAccumulator("prover", declareID)
       macros foreach prover.declare
+      reporter report BenchmarkingAccumulator("prover", declareID)
 
       _freshMacros = _freshMacros ++ macros
     }
