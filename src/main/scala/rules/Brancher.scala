@@ -6,17 +6,21 @@
 
 package viper.silicon.rules
 
+import com.microsoft.z3.{Context, Solver}
+
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
-import viper.silicon.decider.PathConditionStack
+import viper.silicon.decider.{PathConditionStack, Z3ProverAPI}
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.reporting.condenseToViperResult
 import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.reporter.{BranchFailureMessage}
+import viper.silver.reporter.BranchFailureMessage
 import viper.silver.verifier.Failure
+
+import scala.jdk.CollectionConverters.MapHasAsJava
 
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
@@ -85,7 +89,13 @@ object brancher extends BranchingRules {
     val uidBranchPoint = v.symbExLog.insertBranchPoint(2, Some(condition), conditionExp)
     var functionsOfCurrentDecider: Set[FunctionDecl] = null
     var macrosOfCurrentDecider: Vector[MacroDecl] = null
+
     var pcsForElseBranch: PathConditionStack = null
+
+    var proverOfCurrentDecider: (Solver, List[viper.silicon.state.terms.App]) = null
+    var tempContext: Context = null
+
+    val cloneSolver = parallelizeElseBranch && v.decider.prover.isInstanceOf[Z3ProverAPI]
 
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch) {
@@ -98,9 +108,14 @@ object brancher extends BranchingRules {
          * "offloading" verifier are captured.
          */
         if (parallelizeElseBranch){
-          functionsOfCurrentDecider = v.decider.freshFunctions
-          macrosOfCurrentDecider = v.decider.freshMacros
           pcsForElseBranch = v.decider.pcs.duplicate()
+          if (cloneSolver) {
+            tempContext = new Context(Z3ProverAPI.initialOptions.asJava)
+            proverOfCurrentDecider = v.decider.prover.asInstanceOf[Z3ProverAPI].getSolver(tempContext)
+          } else {
+            functionsOfCurrentDecider = v.decider.freshFunctions
+            macrosOfCurrentDecider = v.decider.freshMacros
+          }
         }
 
         (v0: Verifier) => {
@@ -110,17 +125,22 @@ object brancher extends BranchingRules {
             /* [BRANCH-PARALLELISATION] */
             // executing the else branch on a different verifier, need to adapt the state
 
-            val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
-            val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
+            if (cloneSolver) {
+              v0.decider.prover.asInstanceOf[Z3ProverAPI].setSolver(proverOfCurrentDecider)
+            } else {
+              val newFunctions = functionsOfCurrentDecider -- v0.decider.freshFunctions
+              val newMacros = macrosOfCurrentDecider.diff(v0.decider.freshMacros)
 
-            v0.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v0.uniqueId}]")
-            v0.decider.prover.comment(s"Bulk-declaring functions")
-            v0.decider.declareAndRecordAsFreshFunctions(newFunctions)
-            v0.decider.prover.comment(s"Bulk-declaring macros")
-            v0.decider.declareAndRecordAsFreshMacros(newMacros)
+              v0.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v0.uniqueId}]")
+              v0.decider.prover.comment(s"Bulk-declaring functions")
+              v0.decider.declareAndRecordAsFreshFunctions(newFunctions)
+              v0.decider.prover.comment(s"Bulk-declaring macros")
+              v0.decider.declareAndRecordAsFreshMacros(newMacros)
 
-            v0.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
-            v0.decider.setPcs(pcsForElseBranch)
+              v0.decider.prover.comment(s"Taking path conditions from source verifier ${v.uniqueId}")
+            }
+
+            v0.decider.setPcs(pcsForElseBranch, !cloneSolver)
           }
           elseBranchVerifier = v0.uniqueId
 
@@ -187,7 +207,12 @@ object brancher extends BranchingRules {
           if (v.decider.pcs != pcsBefore && v.uniqueId != elseBranchVerifier){
             // we have done other work during the join, need to reset
             v.decider.prover.comment(s"Resetting path conditions after interruption")
-            v.decider.setPcs(pcsAfterThenBranch)
+
+            if (cloneSolver) {
+              v.decider.prover.asInstanceOf[Z3ProverAPI].setSolver(proverOfCurrentDecider)
+            }
+
+            v.decider.setPcs(pcsAfterThenBranch, !cloneSolver)
             v.decider.prover.saturate(Verifier.config.proverSaturationTimeouts.afterContract)
           }
         }else{
