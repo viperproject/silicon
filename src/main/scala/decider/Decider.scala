@@ -74,7 +74,7 @@ trait Decider {
   def freshMacros: Vector[MacroDecl]
   def declareAndRecordAsFreshFunctions(functions: Set[FunctionDecl]): Unit
   def declareAndRecordAsFreshMacros(functions: Vector[MacroDecl]): Unit
-  def setPcs(other: PathConditionStack): Unit
+  def setPcs(other: PathConditionStack, setInProver: Boolean): Unit
 
   def statistics(): Map[String, String]
 }
@@ -103,18 +103,21 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def pcs: PathConditionStack = pathConditions
 
-    def setPcs(other: PathConditionStack) = {
+    def setPcs(other: PathConditionStack, setInProver: Boolean) = {
       /* [BRANCH-PARALLELISATION] */
       pathConditions = other
-      while (prover.pushPopScopeDepth > 1){
-        prover.pop()
+
+      if (setInProver) {
+        while (prover.pushPopScopeDepth > 1) {
+          prover.pop()
+        }
+        // TODO: Change interface to make the cast unnecessary?
+        val layeredStack = other.asInstanceOf[LayeredPathConditionStack]
+        layeredStack.layers.reverse.foreach(l => {
+          l.assumptions foreach prover.assume
+          prover.push(timeout = Verifier.config.pushTimeout.toOption)
+        })
       }
-      // TODO: Change interface to make the cast unnecessary?
-      val layeredStack = other.asInstanceOf[LayeredPathConditionStack]
-      layeredStack.layers.reverse.foreach(l => {
-        l.assumptions foreach prover.assume
-        prover.push(timeout = Verifier.config.pushTimeout.toOption)
-      })
     }
 
     private def getProver(prover: String): Prover = prover match {

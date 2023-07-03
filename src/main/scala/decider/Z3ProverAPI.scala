@@ -10,7 +10,7 @@ import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Result, Sat, Unknown, Unsat}
 import viper.silicon.state.{IdentifierFactory, State}
-import viper.silicon.state.terms.{App, Decl, Fun, FunctionDecl, Implies, Ite, MacroDecl, Quantification, Sort, SortDecl, SortWrapperDecl, Term, Trigger, TriggerGenerator, sorts}
+import viper.silicon.state.terms.{And, App, Decl, Fun, FunctionDecl, Implies, Ite, MacroDecl, Not, Quantification, Sort, SortDecl, SortWrapperDecl, Term, Trigger, TriggerGenerator, sorts}
 import viper.silicon.{Config, Map}
 import viper.silicon.verifier.Verifier
 import viper.silver.reporter.{InternalWarningMessage, Reporter}
@@ -81,6 +81,7 @@ class Z3ProverAPI(uniqueId: String,
   protected var prover: Solver = _
   protected var ctx: Context = _
   protected var params: Params = _
+  protected var usePushPop: Boolean = true
 
   var proverPath: Path = _
   var lastReasonUnknown : String = _
@@ -94,10 +95,24 @@ class Z3ProverAPI(uniqueId: String,
   val emittedFuncs = mutable.LinkedHashSet[FuncDecl]()
   val emittedFuncSymbols = mutable.Queue[Symbol]()
 
+  var guardStack = List[App]()
+  var curGuards: Array[Expr] = _
+
   // If true, we do not define macros on the Z3 level, but perform macro expansion ourselves on Silicon Terms.
   // Otherwise, we define a function on the Z3 level and axiomatize it according to the macro definition.
   // In terms of performance, I could not measure any substantial difference.
   val expandMacros = true
+
+
+
+  def getSolver(c: Context) = (prover.translate(ctx), guardStack)
+
+  def setSolver(arg: (Solver, List[App])) = {
+    val (s, _guardStack) = arg
+    prover = s.translate(ctx)
+    guardStack = _guardStack
+    curGuards = _guardStack.map(termConverter.convert(_)).toArray
+  }
 
 
 
@@ -109,6 +124,8 @@ class Z3ProverAPI(uniqueId: String,
   }
 
   def start(): Unit = {
+    usePushPop = Verifier.config.assertionMode() == Config.AssertionMode.PushPop
+    curGuards = new Array[Expr](0)
     pushPopScopeDepth = 0
     lastTimeout = -1
     ctx = new Context(Z3ProverAPI.initialOptions.asJava)
@@ -193,6 +210,8 @@ class Z3ProverAPI(uniqueId: String,
     emittedSorts.clear()
     emittedFuncSymbols.clear()
     emittedSortSymbols.clear()
+    guardStack = Nil
+    curGuards = new Array[Expr](0)
     prover = null
     lastModel = null
     if (ctx != null){
@@ -205,18 +224,30 @@ class Z3ProverAPI(uniqueId: String,
     endPreamblePhase()
     setTimeout(timeout)
     pushPopScopeDepth += n
-    if (n == 1) {
-      // the normal case; we handle this without invoking a bunch of higher order functions
-      prover.push()
+    if (usePushPop) {
+      if (n == 1) {
+        // the normal case; we handle this without invoking a bunch of higher order functions
+        prover.push()
+      } else {
+        // this might never actually happen
+        (0 until n).foreach(_ => prover.push())
+      }
     } else {
-      // this might never actually happen
-      (0 until n).foreach(_ => prover.push())
+      val guard = fresh("lvl", Nil, sorts.Bool)
+      val guardApp = App(guard, Nil)
+      guardStack = guardApp :: guardStack
+      curGuards = termConverter.convert(guardApp) +: curGuards
     }
   }
 
   def pop(n: Int = 1): Unit = {
     endPreamblePhase()
-    prover.pop(n)
+    if (usePushPop) {
+      prover.pop(n)
+    } else {
+      guardStack = guardStack.tail
+      curGuards = curGuards.tail
+    }
     pushPopScopeDepth -= n
   }
 
@@ -247,7 +278,8 @@ class Z3ProverAPI(uniqueId: String,
     }
   }
 
-  def assume(term: Term): Unit = {
+  def assume(trm: Term): Unit = {
+    val term = if (usePushPop || guardStack.isEmpty) trm else Implies(guardStack.head, trm)
     try {
       if (preamblePhaseOver)
         prover.add(termConverter.convert(term).asInstanceOf[BoolExpr])
@@ -259,42 +291,42 @@ class Z3ProverAPI(uniqueId: String,
         // When used via API, Z3 completely discards assumptions that contain invalid triggers (whereas it just ignores
         // the invalid trigger when used via stdio). Thus, to make sure our assumption is not discarded, we manually
         // walk through all quantifiers and remove invalid terms inside the trigger.
-        triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
-        val cleanTerm = term.transform{
-          case q@Quantification(_, _, _, triggers, _, _, _) if triggers.nonEmpty =>
-            val goodTriggers = triggers.filterNot(trig => trig.p.exists(ptrn => ptrn.shallowCollect{
-              case t => triggerGenerator.isForbiddenInTrigger(t)
-            }.nonEmpty))
-            q.copy(triggers = goodTriggers)
-        }()
+        val cleanTerm = cleanTriggers(term)
         prover.add(termConverter.convert(cleanTerm).asInstanceOf[BoolExpr])
         reporter.report(InternalWarningMessage("Z3 error: " + e.getMessage))
     }
+  }
+
+  def cleanTriggers(term: Term): Term = {
+    triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
+    val cleanTerm = term.transform {
+      case q@Quantification(_, _, _, triggers, _, _, _) if triggers.nonEmpty =>
+        val goodTriggers = triggers.filterNot(trig => trig.p.exists(ptrn => ptrn.shallowCollect {
+          case t => triggerGenerator.isForbiddenInTrigger(t)
+        }.nonEmpty))
+        q.copy(triggers = goodTriggers)
+    }()
+    cleanTerm
   }
 
   def assert(goal: Term, timeout: Option[Int]): Boolean = {
     endPreamblePhase()
 
     try {
-      val (result, _) = Verifier.config.assertionMode() match {
-        case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal, timeout)
-        case Config.AssertionMode.PushPop => assertUsingPushPop(goal, timeout)
+      val (result, _) = usePushPop match {
+        case false => assertUsingSoftConstraints(goal, timeout)
+        case true => assertUsingPushPop(goal, timeout)
       }
       result
     } catch {
-      case e: Z3Exception =>
-        triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
-        val cleanTerm = goal.transform {
-          case q@Quantification(_, _, _, triggers, _, _, _) if triggers.nonEmpty =>
-            val goodTriggers = triggers.filterNot(trig => trig.p.exists(ptrn => ptrn.shallowCollect {
-              case t => triggerGenerator.isForbiddenInTrigger(t)
-            }.nonEmpty))
-            q.copy(triggers = goodTriggers)
-        }()
-        if (goal == cleanTerm)
+      case e: Z3Exception => {
+        val cleanGoal = cleanTriggers(goal)
+        if (cleanGoal == goal) {
           throw ExternalToolError("Prover", "Z3 error: " + e.getMessage)
-        else
-          assert(cleanTerm, timeout)
+        } else {
+          assert(cleanGoal, timeout)
+        }
+      }
     }
   }
 
@@ -357,12 +389,13 @@ class Z3ProverAPI(uniqueId: String,
 
     val guard = fresh("grd", Nil, sorts.Bool)
     val guardApp = App(guard, Nil)
-    val goalImplication = Implies(guardApp, goal)
+    val goalImplication = Implies(guardApp, Not(goal))
 
     prover.add(termConverter.convertTerm(goalImplication).asInstanceOf[BoolExpr])
 
     val startTime = System.currentTimeMillis()
-    val res = prover.check(termConverter.convertTerm(guardApp).asInstanceOf[BoolExpr])
+
+    val res = prover.check(termConverter.convertTerm(guardApp).asInstanceOf[BoolExpr] +: curGuards : _*)
     val endTime = System.currentTimeMillis()
     val result = res == Status.UNSATISFIABLE
     if (!result) {
