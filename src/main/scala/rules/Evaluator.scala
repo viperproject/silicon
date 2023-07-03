@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silver.ast
-import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, TypecheckerWarning}
+import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationError, VerifierWarning}
 import viper.silver.verifier.errors.{ErrorWrapperWithExampleTransformer, PreconditionInAppFalse}
 import viper.silver.verifier.reasons._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -23,10 +23,11 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, MaskHeapChunk, NonQuantifiedChunk}
 import viper.silicon.logger.records.data.{CondExpRecord, EvaluateRecord, ImpliesRecord}
-import viper.silicon.resources.FieldID
 import viper.silicon.state.terms.sorts.PredHeapSort
 import viper.silver.reporter.WarningsDuringTypechecking
 import viper.silver.ast.WeightedQuantifier
+import viper.silver.reporter.{AnnotationWarning, WarningsDuringVerification}
+import viper.silver.ast.AnnotationInfo
 
 import scala.collection.immutable.ListMap
 
@@ -334,7 +335,7 @@ object evaluator extends EvaluationRules {
           val t = v1.decider.fresh(v1.symbolConverter.toSort(x.typ))
           v1.decider.assume(t === t0)
           val newFuncRec = s1.functionRecorder.recordFreshSnapshot(t)
-          eval(s1.copy(g = s1.g + (x.localVar, t), functionRecorder = newFuncRec), e1, pve, v1)(Q)
+          eval(s1.copy(g = s1.g + (x.localVar, t0), functionRecorder = newFuncRec), e1, pve, v1)(Q)
         })
 
       /* Strict evaluation of AND */
@@ -720,9 +721,25 @@ object evaluator extends EvaluationRules {
             (exists, Exists, exists.triggers)
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
-        val quantWeight = sourceQuant.info match {
-          case w: WeightedQuantifier => Some(w.weight)
-          case _ => None
+        val quantWeight = sourceQuant.info.getUniqueInfo[WeightedQuantifier] match {
+          case Some(w) =>
+            if (w.weight >= 0) {
+              Some(w.weight)
+            } else {
+              v.reporter.report(AnnotationWarning(s"Invalid quantifier weight annotation: ${w}"))
+              None
+            }
+          case None => sourceQuant.info.getUniqueInfo[AnnotationInfo] match {
+            case Some(ai) if ai.values.contains("weight") =>
+              ai.values("weight") match {
+                case Seq(w) if w.toIntOption.exists(w => w >= 0) =>
+                  Some(w.toInt)
+                case s =>
+                  v.reporter.report(AnnotationWarning(s"Invalid quantifier weight annotation: ${s}"))
+                  None
+              }
+            case _ => None
+          }
         }
 
         val body = eQuant.exp
@@ -1483,8 +1500,8 @@ object evaluator extends EvaluationRules {
         Q(s, toTriggerForm(cachedTriggerTerms ++ remainingTriggerTerms, s), v)
       case _ =>
         for (e <- remainingTriggerExpressions)
-          v.reporter.report(WarningsDuringTypechecking(Seq(
-            TypecheckerWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
+          v.reporter.report(WarningsDuringVerification(Seq(
+            VerifierWarning(s"Might not be able to use trigger $e, since it is not evaluated while evaluating the body of the quantifier", e.pos))))
         Q(s, toTriggerForm(cachedTriggerTerms, s), v)
     }
   }

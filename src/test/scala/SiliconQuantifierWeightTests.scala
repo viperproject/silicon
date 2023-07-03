@@ -11,7 +11,7 @@ import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms.Term
 import viper.silicon.supporters.ExpressionTranslator
 import viper.silver.ast
-import viper.silver.ast.{AnonymousDomainAxiom, Bool, Domain, DomainFunc, DomainFuncApp, EqCmp, Exists, Forall, Int, IntLit, LocalVar, LocalVarDecl, Method, Program, Seqn, Trigger, TrueLit, WeightedQuantifier}
+import viper.silver.ast.{AnnotationInfo, AnonymousDomainAxiom, Bool, Domain, DomainFunc, DomainFuncApp, EqCmp, Exists, Forall, Int, IntLit, LocalVar, LocalVarDecl, Method, Program, Seqn, Trigger, TrueLit, WeightedQuantifier}
 import viper.silver.reporter.NoopReporter
 import viper.silver.verifier.{Failure, Success}
 
@@ -44,6 +44,32 @@ class SiliconQuantifierWeightTests extends AnyFunSuite {
     val term = translator.translateExpr(expr)
     val rendered = termConverter.convert(term)
     assert(rendered.contains(":weight 12"))
+  }
+
+  test("The weight annotation is part of the translation of a Forall") {
+    val expr = Forall(
+      Seq(LocalVarDecl("x", Int)()),
+      Seq(),
+      TrueLit()()
+    )(
+      info = AnnotationInfo(Map("weight" -> Seq("12")))
+    )
+    val term = translator.translateExpr(expr)
+    val rendered = termConverter.convert(term)
+    assert(rendered.contains(":weight 12"))
+  }
+
+  test("The weight annotation is ignored for negative values") {
+    val expr = Forall(
+      Seq(LocalVarDecl("x", Int)()),
+      Seq(),
+      TrueLit()()
+    )(
+      info = AnnotationInfo(Map("weight" -> Seq("-12")))
+    )
+    val term = translator.translateExpr(expr)
+    val rendered = termConverter.convert(term)
+    assert(!rendered.contains(":weight"))
   }
 
   test("The weight is part of the translation of an Exists") {
