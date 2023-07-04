@@ -33,8 +33,8 @@ import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
-import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, Reporter, VerificationResultMessage, VerificationTerminationMessage, QuantifierChosenTriggersMessage, WarningsDuringTypechecking}
-import viper.silver.verifier.TypecheckerWarning
+import viper.silver.reporter.{AnnotationWarning, ConfigurationConfirmation, ExecutionTraceReport, QuantifierChosenTriggersMessage, Reporter, VerificationResultMessage, VerificationTerminationMessage, WarningsDuringVerification}
+import viper.silver.verifier.VerifierWarning
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -169,13 +169,13 @@ class DefaultMainVerifier(config: Config,
         case forall: ast.Forall if forall.isPure =>
           val res = viper.silicon.utils.ast.autoTrigger(forall, forall.autoTrigger)
           if (res.triggers.isEmpty)
-            reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+            reporter.report(WarningsDuringVerification(Seq(VerifierWarning("No triggers provided or inferred for quantifier.", res.pos))))
           reporter report QuantifierChosenTriggersMessage(res, res.triggers)
           res
         case exists: ast.Exists =>
           val res = viper.silicon.utils.ast.autoTrigger(exists, exists.autoTrigger)
           if (res.triggers.isEmpty)
-            reporter.report(WarningsDuringTypechecking(Seq(TypecheckerWarning("No triggers provided or inferred for quantifier.", res.pos))))
+            reporter.report(WarningsDuringVerification(Seq(VerifierWarning("No triggers provided or inferred for quantifier.", res.pos))))
           reporter report QuantifierChosenTriggersMessage(res, res.triggers)
           res
       }, Traverse.BottomUp)
@@ -316,6 +316,20 @@ class DefaultMainVerifier(config: Config,
       logger.trace(s"Predicate ${p.name} algorithm ${if (quantifiedPredicates.contains(p)) qp else nonQp}")
     }
     logger.trace(s"Quantified wands: ${quantifiedMagicWands.size}")
+    val mce = member.info.getUniqueInfo[ast.AnnotationInfo] match {
+      case Some(ai) if ai.values.contains("exhaleMode") =>
+        ai.values("exhaleMode") match {
+          case Seq("0") | Seq("greedy") | Seq("2") | Seq("mceOnDemand") =>
+            if (Verifier.config.counterexample.isSupplied)
+              reporter report AnnotationWarning(s"Member ${member.name} has exhaleMode annotation that may interfere with counterexample generation.")
+            false
+          case Seq("1") | Seq("mce") | Seq("moreCompleteExhale") => true
+          case v =>
+            reporter report AnnotationWarning(s"Member ${member.name} has invalid exhaleMode annotation value $v. Annotation will be ignored.")
+            Verifier.config.exhaleMode == ExhaleMode.MoreComplete
+        }
+      case _ => Verifier.config.exhaleMode == ExhaleMode.MoreComplete
+    }
 
     State(program = program,
           functionData = functionData,
@@ -327,7 +341,7 @@ class DefaultMainVerifier(config: Config,
           predicateFormalVarMap = predSnapGenerator.formalVarMap,
           currentMember = Some(member),
           heapDependentTriggers = resourceTriggers,
-          moreCompleteExhale = Verifier.config.exhaleMode == ExhaleMode.MoreComplete)
+          moreCompleteExhale = mce)
   }
 
   private def createInitialState(@unused cfg: SilverCfg,
