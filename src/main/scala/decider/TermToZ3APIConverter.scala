@@ -429,6 +429,12 @@ class TermToZ3APIConverter
       case IdenticalOnKnownLocations(oldHeap, newHeap, mask) =>
         createApp("$Hp.identicalOnKnown_" + renderHeapType(newHeap.sort), Seq(oldHeap, newHeap, mask), sorts.Bool)
 
+      case GoodMask(mask) =>
+        createApp("$Hp.maskGood", Seq(mask), sorts.Bool)
+
+      case GoodFieldMask(mask) =>
+        createApp("$Hp.maskGoodField", Seq(mask), sorts.Bool)
+
       case dh@DummyHeap(sort) =>
         ctx.mkConst("$Hp.default_" + renderHeapType(sort), convertSort(dh.sort))
 
@@ -527,7 +533,7 @@ class TermToZ3APIConverter
     // a string that uses the function, take the AST, and get the func decl from there, so that we can
     // programmatically create a func app.
     val decls = args.zipWithIndex.map{case (a, i) => s"(declare-const workaround${i} ${smtlibConverter.convert(a.sort)})"}.mkString(" ")
-    val funcAppString = s"(${functionName} ${(0 until args.length).map(i => "workaround" + i).mkString(" ")})"
+    val funcAppString = if (args.isEmpty) functionName else s"(${functionName} ${(0 until args.length).map(i => "workaround" + i).mkString(" ")})"
     val assertion = decls + s" (assert (= ${funcAppString} ${funcAppString}))"
     val workaround = ctx.parseSMTLIB2String(assertion, null, null, null, null)
     val app = workaround(0).getArgs()(0)

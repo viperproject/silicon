@@ -94,6 +94,8 @@ package object utils {
     case HeapLookup(h, at) => h :: at :: Nil
     case HeapUpdate(h, at, v) => h :: at :: v :: Nil
     case IdenticalOnKnownLocations(oh, nh, m) => oh :: nh :: m :: Nil
+    case GoodMask(m) => m :: Nil
+    case GoodFieldMask(m) => m :: Nil
     case SnapToHeap(sn, _, _) => sn :: Nil
     case HeapToSnap(hp, msk, _) => hp :: msk :: Nil
     case HeapSingleton(at, vl, _) => at :: vl :: Nil
@@ -235,6 +237,9 @@ package object utils {
       case HeapToSnap(hp, msk, r) => HeapToSnap(go(hp), go(msk), r)
       case MergeHeaps(h1, m1, h2, m2) => MergeHeaps(go(h1), go(m1), go(h2), go(m2))
       case MergeSingle(hp, msk, at, vl) => MergeSingle(go(hp), go(msk), go(at), go(vl))
+      case IdenticalOnKnownLocations(oh, nh, msk) => IdenticalOnKnownLocations(go(oh), go(nh), go(msk))
+      case GoodMask(m) => GoodMask(go(m))
+      case GoodFieldMask(m) => GoodFieldMask(go(m))
       case PermNegation(p) => PermNegation(go(p))
     }
 

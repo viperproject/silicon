@@ -13,7 +13,7 @@ import viper.silicon.rules.quantifiedChunkSupporter.getFreshInverseFunctions
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.sorts.{MaskSort, PredHeapSort, PredMaskSort}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, Greater, HeapLookup, HeapToSnap, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, sorts, toSnapTree}
+import viper.silicon.state.terms.{And, AtLeast, AtMost, DummyHeap, FakeMaskMapTerm, Forall, FullPerm, GoodFieldMask, GoodMask, Greater, HeapLookup, HeapToSnap, IdenticalOnKnownLocations, Implies, Ite, MaskAdd, MaskDiff, MaskSum, MergeHeaps, MergeSingle, NoPerm, Null, PermAtMost, PermLess, PermMin, PermMinus, PermNegation, PermTimes, PredZeroMask, Quantification, Term, Trigger, True, Var, ZeroMask, perms, sorts, toSnapTree}
 import viper.silicon.state.{BasicMaskHeapChunk, FunctionPreconditionTransformer, Heap, Identifier, MagicWandIdentifier, State, terms}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
@@ -26,6 +26,9 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.{immutable, mutable}
 
 object maskHeapSupporter extends SymbolicExecutionRules {
+
+  val assumeGoodMask = true
+  val simplifyOnConsume = !Verifier.config.prover.toOption.contains("Z3-API")
 
   val resCache = mutable.HashMap[(Seq[ast.Exp], ast.Program), Seq[Any]]()
   def getResourceSeq(tlcs: Seq[ast.Exp], program: ast.Program): Seq[Any] = {
@@ -130,6 +133,10 @@ object maskHeapSupporter extends SymbolicExecutionRules {
   }
 
   def removeSingleAdd(origMask: Term, at: Term, amount: Term, v: Verifier): Term = {
+    if (!simplifyOnConsume) {
+      return MaskAdd(origMask, at, PermNegation(amount))
+    }
+
     val termAdditions = mutable.LinkedHashMap[Term, Term]()
     val termRemovals = mutable.LinkedHashMap[Term, Term]()
     val maskAdditions = mutable.LinkedHashSet[Term]()
@@ -190,11 +197,6 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       }
       val replaced = replace(origMask)
       val res = MaskAdd(replaced, at, PermNegation(remainingAmount))
-//      val check = v.decider.check(MaskEq(res, MaskAdd(origMask, at, PermNegation(amount))), Verifier.config.checkTimeout())
-//      if (!check) {
-//        val real = v.decider.check(MaskEq(res, MaskAdd(origMask, at, PermNegation(amount))), 0)
-//        println("oops")
-//      }
       res
     } else {
       MaskAdd(origMask, at, PermNegation(amount))
@@ -202,6 +204,10 @@ object maskHeapSupporter extends SymbolicExecutionRules {
   }
 
   def subtractMask(origMask: Term, removedMask: Term, resource: Any, program: ast.Program, v: Verifier): Term = {
+    if (!simplifyOnConsume) {
+      return MaskDiff(origMask, removedMask)
+    }
+
     val termAdditions = mutable.LinkedHashMap[Term, Term]()
     val termRemovals = mutable.LinkedHashMap[Term, Term]()
     val maskAdditions = mutable.LinkedHashSet[Term]()
@@ -381,6 +387,9 @@ object maskHeapSupporter extends SymbolicExecutionRules {
             case MaskAdd(resChunk.mask, argTerm, PermNegation(permissions)) if s.isConsumingFunctionPre.isEmpty => removeSingleAdd(resChunk.mask, argTerm, permissions, v)
             case _ => newMask
           }
+
+          if (assumeGoodMask)
+            v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
 
           val newChunk = if (s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
             // no need to havoc
@@ -617,6 +626,8 @@ object maskHeapSupporter extends SymbolicExecutionRules {
 
                 // simplify only if this mask will be used later
                 val newMask = if (s.isConsumingFunctionPre.isDefined) MaskDiff(currentChunk.mask, qpMask) else subtractMask(currentChunk.mask, qpMask, resource, s.program, v)
+                if (assumeGoodMask)
+                  v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
 
                 val newChunk = if (s.functionRecorder != NoopFunctionRecorder || s.isConsumingFunctionPre.isDefined) {
                   // no need to havoc
@@ -659,6 +670,8 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       case _: MagicWandIdentifier => toSnapTree(tArgs)
     }
     val newMask = MaskAdd(resChunk.mask, argTerm, tPerm) // HeapUpdate(resChunk.mask, argTerm, PermPlus(HeapLookup(resChunk.mask, argTerm), tPerm))
+    if (assumeGoodMask)
+      v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
     val snapHeapMap = snap.asInstanceOf[FakeMaskMapTerm].masks
 
     val newHeap = MergeSingle(resChunk.heap, resChunk.mask, argTerm, HeapLookup(snapHeapMap(resource), argTerm))
@@ -740,6 +753,8 @@ object maskHeapSupporter extends SymbolicExecutionRules {
       case r: ast.Resource => (s.h, findMaskHeapChunk(s.h, r))
     }
     val newMask =  MaskSum(currentChunk.mask, qpMask)
+    if (assumeGoodMask)
+      v.decider.assume(if (resource.isInstanceOf[ast.Field]) GoodFieldMask(newMask) else GoodMask(newMask))
 
     val newHeap = MergeHeaps(currentChunk.heap, currentChunk.mask, snapHeapMap(resource), qpMask)
     val newChunk = currentChunk.copy(mask = newMask, heap = newHeap)

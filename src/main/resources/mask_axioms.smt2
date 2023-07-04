@@ -74,3 +74,33 @@
     :pattern (($Hp.maskAdd m r1 v))
     :qid |qp.$Hp.maskAdd-def|
     )))
+
+(assert (forall ((m $Hp<$Perm>)) (!
+  (=> ($Hp.maskGood m)
+  (forall ((r2 $Ref)) (!
+        (>=
+          ($Hp.get_$Perm m r2)
+          0.0)
+      :pattern (($Hp.get_$Perm m r2))
+      :qid |qp.$Hp.maskGood-def-inner|
+      )))
+    :pattern (($Hp.maskGood m))
+    :qid |qp.$Hp.maskGood-def|
+    )))
+
+
+(assert (forall ((m $Hp<$Perm>)) (!
+  (=> ($Hp.maskGoodField m)
+  (forall ((r2 $Ref)) (!
+        (and (>=
+          ($Hp.get_$Perm m r2)
+          0.0)
+          (<=
+                    ($Hp.get_$Perm m r2)
+                    1.0))
+      :pattern (($Hp.get_$Perm m r2))
+      :qid |qp.$Hp.maskGoodField-def-inner|
+      )))
+    :pattern (($Hp.maskGoodField m))
+    :qid |qp.$Hp.maskGoodField-def|
+    )))
