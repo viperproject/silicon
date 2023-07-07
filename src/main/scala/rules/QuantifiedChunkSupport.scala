@@ -33,34 +33,53 @@ case class InverseFunctions(condition: Term,
                             axiomInversesOfInvertibles: Quantification,
                             axiomInvertiblesOfInverses: Quantification,
                             qvarsToInverses: Map[Var, Function],
-                            qvarsToImages: Map[Var, Function]) {
+                            qvarsToImages: Map[Var, Function],
+                            trivial: Boolean,
+                            triggers: Seq[Trigger],
+                            triggerVars: Seq[Var]) {
 
-  val inverses: Iterable[Function] = qvarsToInverses.values
+  def setAxInvTriggers(effectiveTriggers: Seq[Trigger]) = if (trivial) this.copy(triggers = effectiveTriggers) else this.copy(triggers= effectiveTriggers, axiomInversesOfInvertibles = Forall(axiomInversesOfInvertibles.vars, axiomInversesOfInvertibles.body, effectiveTriggers))
 
-  val images: Iterable[Function] = qvarsToImages.values
+  val inverses: Iterable[Function] = if (trivial) Seq() else qvarsToInverses.values
 
-  val definitionalAxioms: Vector[Quantification] =
-    Vector(axiomInversesOfInvertibles, axiomInvertiblesOfInverses)
+  val images: Iterable[Function] = if (trivial) Seq() else qvarsToImages.values
 
-  def inversesOf(argument: Term): Seq[App] =
+  val definitionalAxioms: Vector[Quantification] = {
+    if (trivial) Vector() else
+      Vector(axiomInversesOfInvertibles, axiomInvertiblesOfInverses)
+  }
+
+  def inversesOf(argument: Term): Seq[Term] =
     inversesOf(Seq(argument))
 
-  def inversesOf(arguments: Seq[Term]): Seq[App] =
+  def inversesOf(arguments: Seq[Term]): Seq[Term] =
     /* TODO: Memoisation might be worthwhile, e.g. because often used with `?r` */
-    qvarsToInverses.values.map(inv =>
+    if (trivial) {
+      qvarsToInverses.values.map(_ =>
+        arguments.head
+      ).to(Seq)
+    } else {
+      qvarsToInverses.values.map(inv =>
       App(inv, additionalArguments ++ arguments)
     ).to(Seq)
+    }
 
-  def qvarsToInversesOf(argument: Term): Map[Var, App] =
+  def qvarsToInversesOf(argument: Term): Map[Var, Term] =
     qvarsToInversesOf(Seq(argument))
 
-  def qvarsToInversesOf(arguments: Seq[Term]): Map[Var, App] =
+  def qvarsToInversesOf(arguments: Seq[Term]): Map[Var, Term] =
     /* TODO: Memoisation might be worthwhile, e.g. because often used with `?r` */
-    qvarsToInverses.map {
+    if (trivial) {
+      qvarsToInverses.map {
+        case (x, inv) => x -> arguments.head
+      }.to(Map)
+    } else {
+      qvarsToInverses.map {
       case (x, inv) => x -> App(inv, additionalArguments ++ arguments)
     }.to(Map)
+    }
 
-  override lazy val toString: String = indentedToString("")
+  override lazy val toString: String = if (trivial) "none" else indentedToString("")
 
   def indentedToString(linePrefix: String): String =
       s"""$linePrefix${this.getClass.getSimpleName}@${System.identityHashCode(this)}
@@ -841,8 +860,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
            * Note that the trigger generation code might have added quantified variables
            * to that axiom.
            */
-          (inverseFunctions.axiomInversesOfInvertibles.triggers,
-            inverseFunctions.axiomInversesOfInvertibles.vars)
+          (inverseFunctions.triggers,
+            inverseFunctions.triggerVars)
       }
 
     if (effectiveTriggers.isEmpty) {
@@ -885,7 +904,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         v.decider.assert(receiverInjectivityCheck) {
           case true =>
             val ax = inverseFunctions.axiomInversesOfInvertibles
-            val inv = inverseFunctions.copy(axiomInversesOfInvertibles = Forall(ax.vars, ax.body, effectiveTriggers))
+            val inv = inverseFunctions.setAxInvTriggers(effectiveTriggers)
 
             v.decider.prover.comment("Definitional axioms for inverse functions")
             val definitionalAxiomMark = v.decider.setPathConditionMark()
@@ -1716,15 +1735,34 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport {
         isGlobal = true,
         v.axiomRewriter)
 
-    val res = InverseFunctions(
-      condition,
-      invertibles,
-      additionalInvArgs.toVector,
-      axInvsOfFct,
-      axFctsOfInvs,
-      qvars.zip(inverseFunctions).to(Map),
-      qvars.zip(imageFunctions).filter(_._2 != null).to(Map)
-    )
+
+    val res = if (qvars.size == 1 && qvars.head == invertibles.head && additionalInvArgs.isEmpty) {
+      InverseFunctions(
+        condition,
+        invertibles,
+        additionalInvArgs.toVector,
+        null,
+        null,
+        qvars.map(qv => qv -> null).to(Map),
+        Map(),
+        true,
+        axInvsOfFct.triggers,
+        axInvsOfFct.vars
+      )
+    } else {
+      InverseFunctions(
+        condition,
+        invertibles,
+        additionalInvArgs.toVector,
+        axInvsOfFct,
+        axFctsOfInvs,
+        qvars.zip(inverseFunctions).to(Map),
+        qvars.zip(imageFunctions).filter(_._2 != null).to(Map),
+        false,
+        axInvsOfFct.triggers,
+        axInvsOfFct.vars
+      )
+    }
     (res, imagesOfCodomains)
   }
 
