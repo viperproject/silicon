@@ -19,7 +19,7 @@ trait ExpressionTranslator {
    *       was done before - but that is less efficient and creates lots of additional noise output
    *       in the prover log.
    */
-  protected var isBuiltin: Boolean = false
+  protected var isBuiltin: Option[Seq[Sort]] = None
 
   protected def translate(toSort: ast.Type => Sort)
                          (exp: ast.Exp)
@@ -158,7 +158,7 @@ trait ExpressionTranslator {
         val tArgs = args map f
         val inSorts = tArgs map (_.sort)
         val outSort = toSort(exp.typ)
-        val id = if (isBuiltin) Identifier(funcName) else Identifier(funcName + Seq(outSort).mkString("[",",","]"))
+        val id = if (isBuiltin.isDefined) Identifier(funcName + isBuiltin.get.mkString("[",",","]")) else Identifier(funcName + Seq(outSort).mkString("[",",","]"))
         val df = Fun(id, inSorts, outSort)
         App(df, tArgs)
 

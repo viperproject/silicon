@@ -8,7 +8,6 @@ package viper.silicon.supporters
 
 import java.io.File
 import java.net.URL
-
 import scala.annotation.unused
 import scala.reflect.ClassTag
 import viper.silver.ast
@@ -17,7 +16,7 @@ import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
-import viper.silver.ast.LineCol
+import viper.silver.ast.{LineCol, SeqType}
 
 abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
   type BuiltinDomainType <: ast.GenericType
@@ -112,10 +111,24 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
   }
 
   protected def collectFunctions(domains: Set[ast.Domain], program: ast.Program): Unit = {
-    domains foreach (
-      _.functions foreach (df =>
+    domains foreach (d =>
+      d.functions foreach (df =>
         if (df.interpretation.isEmpty)
-          collectedFunctions += symbolConverter.toFunction(df, program).asInstanceOf[DomainFun]))
+          collectedFunctions += symbolConverter.toBuiltinFunction(df, program, getTypeArgs(df).map(t => symbolConverter.toSort(t))).asInstanceOf[DomainFun]))
+  }
+
+  def getTypeArgs(df: ast.DomainFunc): Seq[ast.Type] = {
+    for (t <- df.formalArgs.map(v => v.typ) ++ Seq(df.typ)) {
+      t match {
+        case ast.DomainType(_, tvs) => return tvs.values.toSeq
+        case ast.SeqType(e) => return Seq(e)
+        case ast.SetType(e) => return Seq(e)
+        case ast.MultisetType(e) => return Seq(e)
+        case ast.MapType(k, v) => return Seq(k, v)
+        case _ =>
+      }
+    }
+    ??? // unreachable
   }
 
   protected def collectAxioms(domains: Set[(ast.DomainType, ast.Domain)]): Unit = {
@@ -130,7 +143,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
      * are preserved.
      */
     val domainName = f"${d.domainName}[${d.typVarsMap.values.map(t => symbolConverter.toSort(t)).mkString(",")}]"
-    domainTranslator.translateAxiom(ax, symbolConverter.toSort, true).transform {
+    domainTranslator.translateAxiom(ax, symbolConverter.toSort, Some(d.typVarsMap.values.map(t => symbolConverter.toSort(t)).toSeq)).transform {
       case q@Quantification(_,_,_,_,name,_,_) if name != "" =>
         q.copy(name = f"${domainName}_${name}")
       case Equals(t1, t2) => BuiltinEquals(t1, t2)

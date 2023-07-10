@@ -25,8 +25,8 @@
 (declare-sort $PPM 0)
 (define-sort $Perm () Real)
 
-(define-const $Perm.Write $Perm 1.0)
-(define-const $Perm.No $Perm 0.0)
+(define-fun $Perm.Write () $Perm 1.0)
+(define-fun $Perm.No () $Perm 0.0)
 
 (define-fun $Perm.isValidVar ((p $Perm)) Bool
 	(<= $Perm.No p))

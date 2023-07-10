@@ -18,10 +18,8 @@
           (=>
             (Set_in x ($PSF.domain_$FRD$ vs))
             (= ($PSF.lookup_$PRD$ vs x) ($PSF.lookup_$PRD$ ws x)))
-          :qid |qp.$PSF<$S$>-eq-inner|
           )))
       (= vs ws))
-    :qid |qp.$PSF<$S$>-eq-outer|
     )))
 
 (assert (forall ((s $Snap) (f $S$)) (!

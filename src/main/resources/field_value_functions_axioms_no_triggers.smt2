@@ -19,10 +19,8 @@
           (=>
             (Set_in x ($FVF.domain_$FLD$ vs))
             (= ($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))
-          :qid |qp.$FVF<$T$>-eq-inner|
           )))
       (= vs ws))
-    :qid |qp.$FVF<$T$>-eq-outer|
     )))
 
 (assert (forall ((r $Ref) (pm $FPM)) (!

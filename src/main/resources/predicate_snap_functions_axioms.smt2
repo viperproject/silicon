@@ -20,14 +20,12 @@
             (= ($PSF.lookup_$PRD$ vs x) ($PSF.lookup_$PRD$ ws x)))
           ; :pattern ((Set_in x ($PSF.domain_$PRD$ vs)))
           :pattern (($PSF.lookup_$PRD$ vs x) ($PSF.lookup_$PRD$ ws x))
-          :qid |qp.$PSF<$PRD$>-eq-inner|
           )))
       (= vs ws))
     :pattern (($SortWrappers.$PSF<$PRD$>To$Snap vs)
               ($SortWrappers.$PSF<$PRD$>To$Snap ws)
 ;              ($PSF.after_$PRD$ vs ws)
               )
-    :qid |qp.$PSF<$PRD$>-eq-outer|
     )))
 
 (assert (forall ((s $Snap) (pm $PPM)) (!

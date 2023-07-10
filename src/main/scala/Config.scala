@@ -236,7 +236,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
              +  s"Note that for the ${Cvc5ProverStdIO.name} prover, state saturation calls can "
              +  "either be disabled (weights or base timeout of 0) or forced with no timeout "
              + "(positive weight and base timeout)."),
-    default = Some(100),
+    default = Some(0),
     noshort = true
   )
 

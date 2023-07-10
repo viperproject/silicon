@@ -132,28 +132,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       _prover.start() /* Cannot query prover version otherwise */
 
-      val proverVersion = _prover.version()
+      //val proverVersion = _prover.version()
       // One can pass some options. This allows to check whether they have been received.
 
       val path = prover match {
         case pio: ProverStdIO => pio.proverPath
         case _ => "No Path"
       }
-      val msg = s"Using ${_prover.name} $proverVersion located at ${path}"
-      reporter report ConfigurationConfirmation(msg)
-      logger debug msg
 
-      if (proverVersion < _prover.minVersion) {
-        val msg1 = s"Expected at least ${_prover.name} version ${_prover.minVersion.version}, but found $proverVersion"
-        reporter report InternalWarningMessage(msg1)
-        logger warn msg1
-      }
-
-      if (_prover.maxVersion.fold(false)(_ < proverVersion)) {
-        val msg1 = s"Silicon might not work with ${_prover.name} version $proverVersion, consider using ${_prover.maxVersion.get}"
-        reporter report InternalWarningMessage(msg1)
-        logger warn msg1
-      }
 
       None
     }

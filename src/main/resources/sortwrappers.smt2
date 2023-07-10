@@ -10,12 +10,10 @@
 (assert (forall ((x $T$)) (!
     (= x ($SortWrappers.$SnapTo$S$($SortWrappers.$S$To$Snap x)))
     :pattern (($SortWrappers.$S$To$Snap x))
-    :qid |$Snap.$SnapTo$S$To$Snap|
     )))
 (assert (forall ((x $Snap)) (!
     (= x ($SortWrappers.$S$To$Snap($SortWrappers.$SnapTo$S$ x)))
     :pattern (($SortWrappers.$SnapTo$S$ x))
-    :qid |$Snap.$S$To$SnapTo$S$|
     )))
 
 ; On several examples, e.g., AVLTree.iterative.sil, Z3 instantiates the sort

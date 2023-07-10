@@ -60,6 +60,16 @@ class DefaultSymbolConverter extends SymbolConverter {
       terms.SMTFun(Identifier(function.interpretation.get), inSorts, outSort)
   }
 
+  def toBuiltinFunction(function: ast.DomainFunc, program: ast.Program, sorts: Seq[Sort]): terms.Applicable = {
+    val inSorts = function.formalArgs map (_.typ) map toSort
+    val outSort = toSort(function.typ)
+
+    val domainFunc = program.findDomainFunctionOptionally(function.name)
+    val id = Identifier(function.name + sorts.mkString("[",",","]"))
+
+    terms.DomainFun(id, inSorts, outSort)
+  }
+
   def toFunction(function: ast.DomainFunc, sorts: Seq[Sort], program: ast.Program): terms.DomainFun = {
     assert(sorts.nonEmpty, "Expected at least one sort, but found none")
 

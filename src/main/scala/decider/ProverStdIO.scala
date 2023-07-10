@@ -178,13 +178,13 @@ abstract class ProverStdIO(uniqueId: String,
   def push(n: Int = 1, timeout: Option[Int] = None): Unit = {
     setTimeout(timeout)
     pushPopScopeDepth += n
-    val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + pushPopScopeDepth
+    val cmd = (if (n == 1) "(push 1)" else "(push " + n + ")") + " ; " + pushPopScopeDepth
     writeLine(cmd)
     readSuccess()
   }
 
   def pop(n: Int = 1): Unit = {
-    val cmd = (if (n == 1) "(pop)" else "(pop " + n + ")") + " ; " + pushPopScopeDepth
+    val cmd = (if (n == 1) "(pop 1)" else "(pop " + n + ")") + " ; " + pushPopScopeDepth
     pushPopScopeDepth -= n
     writeLine(cmd)
     readSuccess()
@@ -259,6 +259,10 @@ abstract class ProverStdIO(uniqueId: String,
     pop()
 
     (result, endTime - startTime)
+  }
+
+  def writeCheckSat(): Unit = {
+    writeLine("check-sat")
   }
 
   def saturate(data: Option[Config.ProverStateSaturationTimeout]): Unit = {
@@ -400,10 +404,10 @@ abstract class ProverStdIO(uniqueId: String,
   /* TODO: Handle multi-line output, e.g. multiple error messages. */
 
   protected def readSuccess(): Unit = {
-    val answer = readLine()
+    //val answer = readLine()
 
-    if (answer != "success")
-      throw ProverInteractionFailed(uniqueId, s"Unexpected output of prover. Expected 'success' but found: $answer")
+    //if (answer != "success")
+    //  throw ProverInteractionFailed(uniqueId, s"Unexpected output of prover. Expected 'success' but found: $answer")
   }
 
   protected def readUnsat(): Boolean = readLine() match {

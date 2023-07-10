@@ -101,6 +101,16 @@ class TermToSMTLib2Converter
     super.pretty(defaultWidth, render(t))
   }
 
+  def getTypeArg(s: Sort) : String = {
+    val srt = s match {
+      case sorts.Seq(e) => Seq(e)
+      case sorts.Set(e) => Seq(e)
+      case sorts.Multiset(e) => Seq(e)
+      case sorts.Map(k, v) => Seq(k, v)
+    }
+    srt.mkString("<",",",">")
+  }
+
   protected def render(term: Term): Cont = term match {
     case lit: Literal => render(lit)
 
@@ -138,8 +148,7 @@ class TermToSMTLib2Converter
             ssep(renderedTriggerTerms.map(d => text(":pattern") <+> parens(d)).to(collection.immutable.Seq), line)
 
         val docQid: Cont =
-          if (name.isEmpty) nil
-          else s":qid |$name|"
+          nil
 
         val docWeight = weight match {
           case Some(value) => line <> text(":weight") <+> value.toString
@@ -218,11 +227,11 @@ class TermToSMTLib2Converter
     case SeqRanged(t0, t1) => renderBinaryOp("Seq_range", render(t0), render(t1))
     case SeqSingleton(t0) => parens(text("Seq_singleton") <+> render(t0))
     case bop: SeqAppend => renderBinaryOp("Seq_append", bop)
-    case uop: SeqLength => renderUnaryOp("Seq_length", uop)
-    case bop: SeqAt => renderBinaryOp("Seq_index", bop)
+    case uop: SeqLength => renderUnaryOp(s"Seq_length${getTypeArg(uop.p.sort)}", uop)
+    case bop: SeqAt => renderBinaryOp(s"Seq_index${getTypeArg(bop.p0.sort)}", bop)
     case bop: SeqTake => renderBinaryOp("Seq_take", bop)
     case bop: SeqDrop => renderBinaryOp("Seq_drop", bop)
-    case bop: SeqIn => renderBinaryOp("Seq_contains", bop)
+    case bop: SeqIn => renderBinaryOp(s"Seq_contains${getTypeArg(bop.p0.sort)}", bop)
     case SeqUpdate(t0, t1, t2) => renderNAryOp("Seq_update", t0, t1, t2)
 
     /* Sets */
@@ -233,7 +242,7 @@ class TermToSMTLib2Converter
     case bop: SetDifference => renderApp("Set_difference", Seq(bop.p0, bop.p1), bop.sort)
     case bop: SetIntersection => renderApp("Set_intersection", Seq(bop.p0, bop.p1), bop.sort)
     case bop: SetUnion => renderApp("Set_union", Seq(bop.p0, bop.p1), bop.sort)
-    case bop: SetIn => renderApp("Set_in", Seq(bop.p0, bop.p1), bop.sort)
+    case bop: SetIn => renderApp(s"Set_in${getTypeArg(bop.p1.sort)}", Seq(bop.p0, bop.p1), bop.sort)
     case bop: SetSubset => renderApp("Set_subset", Seq(bop.p0, bop.p1), bop.sort)
     case bop: SetDisjoint => renderApp("Set_disjoint", Seq(bop.p0, bop.p1), bop.sort)
 

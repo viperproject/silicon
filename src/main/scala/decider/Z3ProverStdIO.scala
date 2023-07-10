@@ -22,7 +22,7 @@ object Z3ProverStdIO {
   val exeEnvironmentalVariable = "Z3_EXE"
   val dependencies = Seq(SilDefaultDependency("Z3", minVersion.version, "https://github.com/Z3Prover/z3"))
   val staticPreamble = "/z3config.smt2"
-  val startUpArgs = Seq("-smt2", "-in")
+  val startUpArgs = Seq("-smt2", "-in") // Seq("-i", "smtlib2")
   val randomizeSeedsOptions = Seq("sat.random_seed", "nlsat.seed", "fp.spacer.random_seed", "smt.random_seed", "sls.random_seed")
 }
 
@@ -55,9 +55,9 @@ class Z3ProverStdIO(uniqueId: String,
       if(Verifier.config.proverEnableResourceBounds) {
         writeLine(s"(set-option :rlimit ${effectiveTimeout * Verifier.config.proverResourcesPerMillisecond})")
       } else {
-        writeLine(s"(set-option :timeout $effectiveTimeout)")
+        //writeLine(s"(set-option :timeout $effectiveTimeout)")
       }
-      readSuccess()
+      //readSuccess()
     }
   }
 
