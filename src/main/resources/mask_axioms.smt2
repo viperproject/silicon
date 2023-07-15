@@ -69,6 +69,7 @@
           ($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2)
           (+ ($Hp.get_$Perm m r2) (ite (= r1 r2) v 0.0)))
       :pattern (($Hp.get_$Perm ($Hp.maskAdd m r1 v) r2))
+      ;:pattern (($Hp.get_$Perm m r2))
       :qid |qp.$Hp.maskAdd-def-inner|
       ))
     :pattern (($Hp.maskAdd m r1 v))
@@ -103,4 +104,17 @@
       )))
     :pattern (($Hp.maskGoodField m))
     :qid |qp.$Hp.maskGoodField-def|
+    )))
+
+
+(assert (forall ((m $Hp<$Perm>) (r $Ref) (v Real)) (!
+  (=> ($Hp.maskGoodField m)
+        (and (>=
+          ($Hp.get_$Perm ($Hp.maskAdd m r v) r)
+          0.0)
+          (<=
+                    ($Hp.get_$Perm ($Hp.maskAdd m r v) r)
+                    1.0)))
+    :pattern (($Hp.maskGoodField ($Hp.maskAdd m r v)))
+    :qid |qp.$Hp.maskGoodFieldAdd-def|
     )))
