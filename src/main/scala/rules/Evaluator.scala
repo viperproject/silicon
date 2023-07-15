@@ -214,7 +214,7 @@ object evaluator extends EvaluationRules {
       case pa: ast.PredicateAccess if Verifier.config.maskHeapMode() && s.qpPredicates.contains(pa.res(s.program).asInstanceOf[ast.Predicate]) =>
         val pvef: ast.Exp => PartialVerificationError = _ => pve
         evals(s, pa.args, pvef, v)((s1, tArgs, v1) => {
-          val resChunk = s.h.values.find(c => c.asInstanceOf[MaskHeapChunk].resource == pa.res(s.program)).get.asInstanceOf[BasicMaskHeapChunk]
+          val resChunk = s.h.values.find(c => c.isInstanceOf[MaskHeapChunk] && c.asInstanceOf[MaskHeapChunk].resource == pa.res(s.program)).get.asInstanceOf[BasicMaskHeapChunk]
           val ve = pve dueTo InsufficientPermission(pa)
           val maskValue = HeapLookup(resChunk.mask, toSnapTree(tArgs))
           v1.decider.assert(perms.IsPositive(maskValue)) {
