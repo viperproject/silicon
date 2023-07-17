@@ -10,9 +10,21 @@
 
 ; --- Snapshots ---
 
-(declare-datatypes (($Snap 0)) ((
-    ($Snap.unit)
-    ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
+;(declare-datatypes (($Snap 0)) ((
+;    ($Snap.unit)
+;    ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
+
+(declare-sort $Snap 0)
+(declare-const $Snap.unit $Snap)
+(declare-fun $Snap.first ($Snap) $Snap)
+(declare-fun $Snap.second ($Snap) $Snap)
+(declare-fun $Snap.combine ($Snap $Snap) $Snap)
+(assert (forall ((s1 $Snap) (s2 $Snap)) (!
+   (and (= ($Snap.first ($Snap.combine s1 s2)) s1)
+        (= ($Snap.second ($Snap.combine s1 s2)) s2))
+    :pattern (($Snap.combine s1 s2)))))
+
+
 
 ; --- References ---
 
