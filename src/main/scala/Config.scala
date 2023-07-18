@@ -822,12 +822,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case _ => Right(())
   }
 
-  validateOpt(assertionMode, parallelizeBranches) {
-    case (Some(AssertionMode.SoftConstraints), Some(true)) =>
-      Left(s"Assertion mode SoftConstraints is not supported in combination with ${parallelizeBranches.name}")
-    case _ => Right()
-  }
-
   validateFileOpt(logConfig)
   validateFileOpt(setAxiomatizationFile)
   validateFileOpt(multisetAxiomatizationFile)
