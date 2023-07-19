@@ -319,7 +319,9 @@ class DefaultMainVerifier(config: Config,
     reporter report BenchmarkingReport("predicate intitial state creation", "pred_initial_state")
     reporter report BenchmarkingReport("method intitial state creation", "meth_initial_state")
     reporter report BenchmarkingReport("method cfg creation", "method_to_cfg")
+    reporter report BenchmarkingReport("method well definedness", "meth_well_def")
     reporter report BenchmarkingReport("prover", "prover")
+    reporter report BenchmarkingReport("consume", "consume")
 
     (   functionVerificationResults
      ++ predicateVerificationResults

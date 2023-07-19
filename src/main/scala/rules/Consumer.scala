@@ -17,6 +17,8 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
+import viper.silver.reporter.ProverActionIDs
+import viper.silver.reporter.BenchmarkingAccumulator
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 
@@ -96,9 +98,12 @@ object consumer extends ConsumptionRules {
       allPves ++= pves
     })
 
+    val consumeID = ProverActionIDs.getID
+    v.reporter report BenchmarkingAccumulator("consume", consumeID)
     consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, h1, snap1, v1) => {
       val s2 = s1.copy(h = h1,
-                       partiallyConsumedHeap = s.partiallyConsumedHeap)
+        partiallyConsumedHeap = s.partiallyConsumedHeap)
+      v.reporter report BenchmarkingAccumulator("consume", consumeID)
       Q(s2, snap1, v1)
     })
   }
