@@ -322,6 +322,7 @@ class DefaultMainVerifier(config: Config,
     reporter report BenchmarkingReport("method well definedness", "meth_well_def")
     reporter report BenchmarkingReport("prover", "prover")
     reporter report BenchmarkingReport("consume", "consume")
+    reporter report BenchmarkingReport("branch", "branching")
 
     (   functionVerificationResults
      ++ predicateVerificationResults

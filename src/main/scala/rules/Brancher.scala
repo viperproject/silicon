@@ -15,7 +15,7 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.{FunctionDecl, MacroDecl, Not, Term}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
-import viper.silver.reporter.{BranchFailureMessage}
+import viper.silver.reporter.{BranchFailureMessage, BenchmarkingAccumulator}
 import viper.silver.verifier.Failure
 
 trait BranchingRules extends SymbolicExecutionRules {
@@ -38,6 +38,9 @@ object brancher extends BranchingRules {
             (fThen: (State, Verifier) => VerificationResult,
              fElse: (State, Verifier) => VerificationResult)
             : VerificationResult = {
+
+    v.reporter report BenchmarkingAccumulator("branching", 1) // just for measuring the amount of branches
+    v.reporter report BenchmarkingAccumulator("branching", 1)
 
     val negatedCondition = Not(condition)
     val negatedConditionExp = conditionExp.fold[Option[ast.Exp]](None)(c => Some(ast.Not(c)(pos = conditionExp.get.pos, info = conditionExp.get.info, ast.NoTrafos)))
