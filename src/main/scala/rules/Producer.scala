@@ -19,6 +19,8 @@ import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.verifier.reasons.{NegativePermission, QPAssertionNotInjective}
+import viper.silver.reporter.ProverActionIDs
+import viper.silver.reporter.BenchmarkingAccumulator
 
 trait ProductionRules extends SymbolicExecutionRules {
 
@@ -125,7 +127,13 @@ object producer extends ProductionRules {
       allPves ++= pves
     })
 
-    produceTlcs(s, sf, allTlcs.result(), allPves.result(), v)(Q)
+    val produceID = ProverActionIDs.getID
+    v.reporter report BenchmarkingAccumulator("produce", produceID)
+
+    produceTlcs(s, sf, allTlcs.result(), allPves.result(), v)((s, v) => {
+      v.reporter report BenchmarkingAccumulator("produce", produceID)
+      Q(s, v)
+    })
   }
 
   private def produceTlcs(s: State,

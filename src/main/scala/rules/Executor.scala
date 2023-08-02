@@ -23,6 +23,8 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.cfg.ConditionalEdge
+import viper.silver.reporter.BenchmarkingAccumulator
+import viper.silver.reporter.ProverActionIDs
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -143,7 +145,13 @@ object executor extends ExecutionRules {
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    exec(s, graph.entry, cfg.Kind.Normal, v)(Q)
+    val execID = ProverActionIDs.getID
+    println(s"OIJOIEWJFOIJW $execID")
+    v.reporter report BenchmarkingAccumulator("exec", execID, true)
+    exec(s, graph.entry, cfg.Kind.Normal, v)((s, v) => {
+      v.reporter report BenchmarkingAccumulator("exec", execID)
+      Q(s, v)
+    })
   }
 
   def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier)
