@@ -146,8 +146,7 @@ object executor extends ExecutionRules {
           : VerificationResult = {
 
     val execID = ProverActionIDs.getID
-    println(s"OIJOIEWJFOIJW $execID")
-    v.reporter report BenchmarkingAccumulator("exec", execID, true)
+    v.reporter report BenchmarkingAccumulator("exec", execID)
     exec(s, graph.entry, cfg.Kind.Normal, v)((s, v) => {
       v.reporter report BenchmarkingAccumulator("exec", execID)
       Q(s, v)
