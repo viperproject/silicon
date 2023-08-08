@@ -22,7 +22,6 @@ import viper.silicon.extensions.ConditionalPermissionRewriter
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.logger.{MemberSymbExLogger, SymbExLogger}
-import viper.silicon.logger.writer.SymbExLogReportWriter
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
@@ -35,8 +34,6 @@ import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.reporter.{AnnotationWarning, ConfigurationConfirmation, ExecutionTraceReport, QuantifierChosenTriggersMessage, Reporter, VerificationResultMessage, VerificationTerminationMessage, WarningsDuringVerification}
 import viper.silver.verifier.VerifierWarning
-import spray.json.JsArray
-import viper.silicon.logger.{LogConfig, MemberSymbExLog}
 import viper.silicon.logger.benchmarker.SymbExLogBenchmarker
 
 /* TODO: Extract a suitable MainVerifier interface, probably including
@@ -291,7 +288,6 @@ class DefaultMainVerifier(config: Config,
 
     if (config.benchmark()) {
       SymbExLogBenchmarker.analyse(rootSymbExLogger)
-      //println(SymbExLogReportWriter.toJSON(rootSymbExLogger.logs.toSeq.asInstanceOf[Seq[MemberSymbExLog]], LogConfig.default()) : JsArray)
     }
     reporter report VerificationTerminationMessage()
 
