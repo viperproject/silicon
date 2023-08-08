@@ -206,7 +206,7 @@ class Silicon(val reporter: Reporter, private var debugInfo: Seq[(String, Any)] 
         result = Some(condenseToViperResult(failures))
       } catch { /* Catch exceptions thrown during verification (errors are not caught) */
         case _: TimeoutException =>
-          if (config.ideModeAdvanced()) {
+          if (config.ideModeAdvanced() || config.benchmark()) {
             symbExLog.close()
             reporter report ExecutionTraceReport(symbExLog.logs.toSeq, List(), List())
           }

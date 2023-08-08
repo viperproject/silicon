@@ -193,7 +193,7 @@ import scala.util.{Failure, Success, Try}
 
 case object SymbExLogger {
   def ofConfig(config: Config): SymbExLogger[_ <: MemberSymbExLogger] = {
-    if(config.ideModeAdvanced())
+    if(config.ideModeAdvanced() || config.benchmark())
       SymbExLog(parseLogConfig(config))
     else
       NoopSymbExLog
