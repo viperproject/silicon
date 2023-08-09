@@ -98,7 +98,7 @@ object consumer extends ConsumptionRules {
 
     consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, h1, snap1, v1) => {
       val s2 = s1.copy(h = h1,
-                       partiallyConsumedHeap = s.partiallyConsumedHeap)
+        partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap1, v1)
     })
   }

@@ -32,6 +32,8 @@ import viper.silicon.utils.Counter
 import viper.silver.ast.{BackendType, Member}
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
+import viper.silver.verifier.TypecheckerWarning
+import viper.silver.reporter.BenchmarkingPhase
 import viper.silver.reporter.{AnnotationWarning, ConfigurationConfirmation, ExecutionTraceReport, QuantifierChosenTriggersMessage, Reporter, VerificationResultMessage, VerificationTerminationMessage, WarningsDuringVerification}
 import viper.silver.verifier.VerifierWarning
 import viper.silicon.logger.benchmarker.SymbExLogBenchmarker
@@ -162,6 +164,7 @@ class DefaultMainVerifier(config: Config,
       * (top-down should also work, but the default of 'innermost' won't).
       * See also [[viper.silicon.utils.ast.autoTrigger]].
       */
+    reporter report BenchmarkingPhase("Parsing, Semantic, Translation, Consistency")
     var program: ast.Program =
       originalProgram.transform({
         case forall: ast.Forall if forall.isPure =>
@@ -183,6 +186,8 @@ class DefaultMainVerifier(config: Config,
     if (config.conditionalizePermissions()) {
       program = new ConditionalPermissionRewriter().rewrite(program).asInstanceOf[ast.Program]
     }
+
+    reporter report(BenchmarkingPhase("Transforms"))
 
     if (config.printTranslatedProgram()) {
       println(program)
@@ -207,13 +212,14 @@ class DefaultMainVerifier(config: Config,
     allProvers.comment("-" * 60)
 
     allProvers.saturate(config.proverSaturationTimeouts.afterPrelude)
-
+    reporter report(BenchmarkingPhase("Emit preamble"))
     /* TODO: A workaround for Silver issue #94. toList must be before flatMap.
      *       Otherwise Set will be used internally and some error messages will be lost.
      */
     val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
       val startTime = System.currentTimeMillis()
-      val results = functionsSupporter.verify(createInitialState(function, program, functionData, predicateData), function)
+      val s = createInitialState(function, program, functionData, predicateData)
+      val results = functionsSupporter.verify(s, function)
         .flatMap(extractAllVerificationResults)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", function, elapsed, condenseToViperResult(results))
@@ -221,15 +227,20 @@ class DefaultMainVerifier(config: Config,
       setErrorScope(results, function)
     })
 
+    reporter report BenchmarkingPhase("Function verification")
+
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate => {
       val startTime = System.currentTimeMillis()
-      val results = predicateSupporter.verify(createInitialState(predicate, program, functionData, predicateData), predicate)
+      val s = createInitialState(predicate, program, functionData, predicateData)
+      val results = predicateSupporter.verify(s, predicate)
         .flatMap(extractAllVerificationResults)
       val elapsed = System.currentTimeMillis() - startTime
       reporter report VerificationResultMessage(s"silicon", predicate, elapsed, condenseToViperResult(results))
       logger debug s"Silicon finished verification of predicate `${predicate.name}` in ${viper.silver.reporter.format.formatMillisReadably(elapsed)} seconds with the following result: ${condenseToViperResult(results).toString}"
       setErrorScope(results, predicate)
     })
+
+    reporter report BenchmarkingPhase("Predicate verification")
 
     decider.prover.stop()
 
@@ -243,6 +254,8 @@ class DefaultMainVerifier(config: Config,
     functionsSupporter.emitAxiomsAfterVerification(_verificationPoolManager.pooledVerifiers)
     _verificationPoolManager.pooledVerifiers.comment("End function- and predicate-related preamble")
     _verificationPoolManager.pooledVerifiers.comment("-" * 60)
+
+    reporter report BenchmarkingPhase("Emit preamble on the rest prover instances")
 
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
@@ -278,6 +291,8 @@ class DefaultMainVerifier(config: Config,
       })
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
+
+    reporter report BenchmarkingPhase("Method verification")
 
     if (config.ideModeAdvanced()) {
       reporter report ExecutionTraceReport(
