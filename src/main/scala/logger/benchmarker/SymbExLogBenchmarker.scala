@@ -10,6 +10,8 @@ import viper.silicon.logger.records.scoping.CloseScopeRecord
 import viper.silicon.logger.records.scoping.OpenScopeRecord
 import viper.silicon.logger.records.structural.BranchingRecord
 import viper.silicon.logger.writer.SymbExLogReportWriter
+import viper.silicon.logger.records.data.ProduceRecord
+import viper.silicon.logger.records.data.ConsumeRecord
 //import viper.silicon.logger.LogConfig
 //import spray.json.JsArray
 
@@ -29,6 +31,10 @@ object SymbExLogBenchmarker {
         case _: BranchingRecord =>
           num_branches += 1
           to_open = ""
+        case _: ConsumeRecord =>
+          to_open = "consume"
+        case _: ProduceRecord =>
+          to_open = "produce"
         case s: OpenScopeRecord =>
           if (!to_open.isEmpty())
             running_times(s.refId) = (to_open, s.timeMs, s.timeMs)
@@ -42,8 +48,10 @@ object SymbExLogBenchmarker {
           to_open = ""
       }
     }
-    println(s"Prover time: ${accumulated_times("prover")}")
-    println(s"Number of branches: ${num_branches}")
+    println(s"[Benchmarking] Prover time: ${accumulated_times("prover")} ms")
+    println(s"[Benchmarking] Consume time: ${accumulated_times("consume")} ms")
+    println(s"[Benchmarking] Produce time: ${accumulated_times("produce")} ms")
+    println(s"[Benchmarking] Number of branches: ${num_branches}")
   }
 }
 
